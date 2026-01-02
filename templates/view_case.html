@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="mb-3">
+            <a href="/start-exam" class="btn btn-secondary">← Back to Candidates</a>
+        </div>
+
+        {% if case %}
+        <div class="card mb-4">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">Case {{ case.case_number }} - Packet {{ packet.packet_id if packet else '' }}</h5>
+            </div>
+            <div class="card-body">
+                <div class="row mb-4">
+                    <div class="col-md-12">
+                        <h6 class="text-muted">Candidate: 
+                            <strong>{{ candidate.candidate_name if candidate else 'N/A' }}</strong> 
+                            (Candidate #{{ candidate.candidate_number if candidate else 'N/A' }})
+                        </h6>
+                    </div>
+                </div>
+
+                <!-- Case Details in Grid Format -->
+                <table class="table table-bordered">
+                    <tbody>
+                        <tr>
+                            <td class="fw-bold bg-light" style="width: 20%;">Case Number</td>
+                            <td>{{ case.case_number }}</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold bg-light">Diagnosis</td>
+                            <td>
+                                <div style="max-height: 200px; overflow-y: auto;">
+                                    {{ case.diagnosis }}
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold bg-light">Questions</td>
+                            <td>
+                                <div style="max-height: 200px; overflow-y: auto;">
+                                    <pre>{{ case.questions }}</pre>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold bg-light">Answers</td>
+                            <td>
+                                <div style="max-height: 200px; overflow-y: auto;">
+                                    <pre>{{ case.answers }}</pre>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold bg-light">Discussion/Comments</td>
+                            <td>
+                                <div style="max-height: 200px; overflow-y: auto;">
+                                    {{ case.discussion if case.discussion else 'No discussion provided.' }}
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <!-- Navigation Buttons -->
+                <div class="mt-4">
+                    <a href="/view-packet/{{ case.packet.id }}" class="btn btn-secondary">← Back to Cases</a>
+                    <a href="/" class="btn btn-primary">Home</a>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="alert alert-danger">
+            <h4>Error</h4>
+            <p>Could not load case information.</p>
+            <a href="/start-exam" class="btn btn-primary">Back to Exam</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

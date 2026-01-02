@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h1 class="mb-4">Start Examination</h1>
+        
+        {% if exam %}
+        <div class="card mb-4">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">Current Exam Session</h5>
+            </div>
+            <div class="card-body">
+                <p><strong>Exam Date:</strong> {{ exam.exam_date.strftime('%Y-%m-%d') }}</p>
+                <p><strong>Exam Time:</strong> {{ exam.exam_time }}</p>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Select Candidate</h5>
+            </div>
+            <div class="card-body">
+                <p>Please select a candidate to begin their examination:</p>
+                <div id="candidatesContainer" class="row">
+                    <!-- Candidates will be loaded here -->
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="alert alert-warning">
+            <h4>No Exam Session Found</h4>
+            <p>Please create an exam session first by going to the "Prepare for Exam" tab.</p>
+            <a href="/" class="btn btn-primary">Go Back</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    loadCandidates();
+});
+
+function loadCandidates() {
+    const examId = {{ exam.id }};
+    
+    fetch(`/api/candidates/${examId}`)
+    .then(response => response.json())
+    .then(data => {
+        const container = document.getElementById('candidatesContainer');
+        
+        if (data.length === 0) {
+            container.innerHTML = '<p class="text-muted">No candidates registered for this exam.</p>';
+        } else {
+            const html = data.map(candidate => `
+                <div class="col-md-6 mb-3">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h5 class="card-title">${candidate.candidate_name}</h5>
+                            <p class="card-text">
+                                <strong>Candidate #:</strong> ${candidate.candidate_number}<br>
+                                <strong>Packet #:</strong> ${candidate.packet_number}
+                            </p>
+                            <a href="/view-packet/${candidate.id}" class="btn btn-primary btn-sm">
+                                View Packet
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+            container.innerHTML = html;
+        }
+    })
+    .catch(error => console.error('Error:', error));
+}
+</script>
+{% endblock %}

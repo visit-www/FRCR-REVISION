@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="mb-3">
+            <a href="/start-exam" class="btn btn-secondary">← Back to Candidates</a>
+        </div>
+
+        {% if candidate and packet %}
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Candidate Information</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Candidate Name:</strong> {{ candidate.candidate_name }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Candidate Number:</strong> {{ candidate.candidate_number }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Packet Number:</strong> {{ packet.packet_number }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Packet ID:</strong> {{ packet.packet_id }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">Cases in Packet</h5>
+            </div>
+            <div class="card-body">
+                <div id="casesContainer" class="row">
+                    <!-- Cases will be loaded here -->
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="alert alert-danger">
+            <h4>Error</h4>
+            <p>Could not load candidate or packet information.</p>
+            <a href="/start-exam" class="btn btn-primary">Back to Exam</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    loadCases();
+});
+
+function loadCases() {
+    const packetId = {{ packet.id if packet else 'null' }};
+    
+    if (!packetId) return;
+    
+    fetch(`/api/packet/${packetId}/cases`)
+    .then(response => response.json())
+    .then(data => {
+        const container = document.getElementById('casesContainer');
+        
+        if (data.length === 0) {
+            container.innerHTML = '<p class="text-muted">No cases in this packet.</p>';
+        } else {
+            const html = data.map(caseItem => `
+                <div class="col-md-4 mb-3">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h5 class="card-title">Case ${caseItem.case_number}</h5>
+                            <p class="card-text">
+                                <strong>Diagnosis:</strong><br>
+                                ${caseItem.diagnosis.substring(0, 50)}...
+                            </p>
+                            <a href="/view-case/${caseItem.id}" class="btn btn-success btn-sm">
+                                View Case
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+            container.innerHTML = html;
+        }
+    })
+    .catch(error => console.error('Error:', error));
+}
+</script>
+{% endblock %}
