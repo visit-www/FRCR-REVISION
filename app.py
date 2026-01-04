@@ -341,6 +341,26 @@ def update_case(case_id):
     return jsonify({'message': 'Case updated successfully'})
 
 
+@app.route('/api/candidate/<int:candidate_id>', methods=['PUT'])
+def update_candidate(candidate_id):
+    """Update a candidate"""
+    candidate = Candidate.query.get(candidate_id)
+    
+    if not candidate:
+        return jsonify({'error': 'Candidate not found'}), 404
+    
+    data = request.get_json()
+    
+    if 'candidate_name' in data:
+        candidate.candidate_name = data['candidate_name']
+    if 'candidate_number' in data:
+        candidate.candidate_number = data['candidate_number']
+    
+    db.session.commit()
+    
+    return jsonify({'message': 'Candidate updated successfully'})
+
+
 @app.route('/api/candidate/<int:candidate_id>', methods=['DELETE'])
 def delete_candidate(candidate_id):
     """Delete a candidate"""

@@ -569,12 +569,15 @@ function renderCandidates(candidates) {
 
     const html = '<ul class="list-group">' +
         candidates.map(c => `
-            <li class="list-group-item d-flex justify-content-between align-items-center">
-                <div>
+            <li class="list-group-item d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div class="flex-grow-1">
                     <strong>${c.candidate_name}</strong><br>
                     <small class="text-muted">Candidate #${c.candidate_number} - Packet #${c.packet_number}</small>
                 </div>
-                <button class="btn btn-sm btn-danger" onclick="deleteCandidate(${c.id})">Delete</button>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-sm btn-primary" onclick="editCandidate(${c.id}, '${c.candidate_name}', ${c.candidate_number})">Edit</button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteCandidate(${c.id})">Delete</button>
+                </div>
             </li>
         `).join('') +
         '</ul>';
@@ -622,7 +625,88 @@ function saveCandidate() {
     .catch(error => {
         console.error('Error:', error);
         alert('Error adding candidate');
+    });editCandidate(candidateId, name, number) {
+    const formId = `edit-candidate-${candidateId}`;
+    
+    if (document.getElementById(formId)) {
+        return; // Form already open
+    }
+
+    const html = `
+        <div class="card card-sm mb-3" id="${formId}">
+            <div class="card-header bg-warning">
+                <h6 class="mb-0">Edit Candidate</h6>
+            </div>
+            <div class="card-body">
+                <div class="row g-2 mb-3">
+                    <div class="col-12 col-md-6">
+                        <label class="form-label form-label-sm">Candidate Name:</label>
+                        <input type="text" class="form-control form-control-sm edit-cand-name" value="${name}" required>
+                    </div>
+                    <div class="col-12 col-md-3">
+                        <label class="form-label form-label-sm">Candidate Number:</label>
+                        <select class="form-select form-select-sm edit-cand-number" required>
+                            <option value="">Select...</option>
+                            <option value="1" ${number === 1 ? 'selected' : ''}>1</option>
+                            <option value="2" ${number === 2 ? 'selected' : ''}>2</option>
+                            <option value="3" ${number === 3 ? 'selected' : ''}>3</option>
+                            <option value="4" ${number === 4 ? 'selected' : ''}>4</option>
+                        </select>
+                    </div>
+                    <div class="col-12 col-md-3 d-flex flex-column gap-2 align-self-end">
+                        <button class="btn btn-success btn-sm" onclick="updateCandidate(${candidateId})">Update</button>
+                        <button class="btn btn-secondary btn-sm" onclick="cancelEditCandidate('${formId}')">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    const container = document.getElementById('candidatesList').parentElement;
+    container.insertAdjacentHTML('beforeend', html);
+    document.getElementById(formId).scrollIntoView({ behavior: 'smooth' });
+}
+
+function updateCandidate(candidateId) {
+    const form = document.querySelector(`#edit-candidate-${candidateId}`);
+    const candidateName = form.querySelector('.edit-cand-name').value;
+    const candidateNumber = form.querySelector('.edit-cand-number').value;
+
+    if (!candidateName || !candidateNumber) {
+        alert('Please fill in all fields');
+        return;
+    }
+
+    fetch(`/api/candidate/${candidateId}`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            candidate_name: candidateName,
+            candidate_number: parseInt(candidateNumber)
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert('Candidate updated successfully!');
+        cancelEditCandidate(`edit-candidate-${candidateId}`);
+        loadCandidates();
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error updating candidate');
     });
+}
+
+function cancelEditCandidate(formId) {
+    const form = document.getElementById(formId);
+    if (form) {
+        form.remove();
+    }
+}
+
+function 
 }
 
 function deleteCandidate(candidateId) {
