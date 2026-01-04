@@ -35,11 +35,9 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['None'],
 )
 app = BUNDLE(
     exe,
     name='FRCR_Examiner.app',
-    icon='None',
     bundle_identifier=None,
 )
