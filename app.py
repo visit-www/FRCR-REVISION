@@ -375,5 +375,50 @@ def delete_candidate(candidate_id):
     return jsonify({'message': 'Candidate deleted successfully'})
 
 
+
+import socket
+
+def find_free_port(start_port=5000, max_tries=20):
+    port = start_port
+    for _ in range(max_tries):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            try:
+                s.bind(('127.0.0.1', port))
+                return port
+            except OSError:
+                port += 1
+    raise RuntimeError("No free port found.")
+
+
+import sys
+
+def show_macos_gatekeeper_popup():
+    try:
+        import tkinter as tk
+        from tkinter import messagebox
+        root = tk.Tk()
+        root.withdraw()
+        message = (
+            "macOS Security Notice:\n\n"
+            "If you see a message like:\n"
+            "'FRCR_Examiner.app cannot be opened because it is from an unidentified developer.'\n\n"
+            "This is normal for apps not downloaded from the App Store.\n\n"
+            "How to open the app:\n"
+            "1. Open Finder and locate FRCR_Examiner.app (in Applications or Downloads)\n"
+            "2. Right-click (or Control-click) the app and select Open\n"
+            "3. In the dialog, click Open again\n"
+            "4. If you still can't open it, go to System Settings → Privacy & Security,\n"
+            "   scroll to Security, click 'Allow Anyway', then try again.\n\n"
+            "This only needs to be done the first time."
+        )
+        messagebox.showinfo("FRCR Examiner - macOS Info", message)
+        root.destroy()
+    except Exception:
+        pass
+
 if __name__ == '__main__':
-    app.run(debug=True, host='localhost', port=5000)
+    if sys.platform == 'darwin':
+        show_macos_gatekeeper_popup()
+    port = find_free_port(5000, 20)
+    print(f"Starting server on http://127.0.0.1:{port}")
+    app.run(debug=True, host='127.0.0.1', port=port)

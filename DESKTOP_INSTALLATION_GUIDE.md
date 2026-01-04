@@ -60,13 +60,20 @@ A **standalone desktop application** for managing FRCR exam sessions, packets, c
 4. Select **"Move to Applications"**
 5. Or just keep in Downloads folder (either works)
 
+
 #### Step 3: Run the App
 **First Time Only:**
 1. Open Finder → Applications (or Downloads)
 2. Right-click `FRCR_Examiner.app`
 3. Click **"Open"** (do NOT double-click)
 4. Click **"Open"** in the security dialog
-5. App starts and browser opens
+5. If you see a message like "FRCR_Examiner.app cannot be opened because it is from an unidentified developer":
+   - Go to **System Settings** → **Privacy & Security**
+   - Scroll down to the Security section
+   - You will see a message about "FRCR_Examiner.app was blocked..."
+   - Click **Allow Anyway**
+   - Try opening the app again (right-click → Open)
+6. App starts and browser opens
 
 **After First Time:**
 - Just double-click `FRCR_Examiner.app` to launch

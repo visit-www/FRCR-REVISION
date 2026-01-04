@@ -24,9 +24,34 @@ FRCR_Examiner/
 - Mac: `FRCR_Examiner.app`
 - Windows: `FRCR_Examiner.exe`
 
+
 ### **Step 2: Run**
 - Mac: Right-click app → **Open**
 - Windows: Double-click `.exe` file
+
+---
+
+### ⚠️  macOS Security Notice (Gatekeeper)
+
+**If you see a message like:**
+> "FRCR_Examiner.app cannot be opened because it is from an unidentified developer."
+
+This is normal for apps not downloaded from the App Store.
+
+**How to open the app:**
+1. Open Finder and locate `FRCR_Examiner.app` (in Applications or Downloads)
+2. Right-click (or Control-click) the app and select **Open**
+3. In the dialog, click **Open** again
+4. The app will launch
+
+**If you still can't open it:**
+1. Go to **System Settings** → **Privacy & Security**
+2. Scroll down to "Security" section
+3. You will see a message about "FRCR_Examiner.app was blocked..."
+4. Click **Allow Anyway**
+5. Try opening the app again (right-click → Open)
+
+This only needs to be done the first time. After that, you can double-click to open normally.
 
 ### **Step 3: Use**
 - App opens in your browser
