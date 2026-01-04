@@ -5,8 +5,19 @@ import os
 
 app = Flask(__name__)
 
+# Ensure instance folder exists
+instance_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'instance')
+os.makedirs(instance_path, exist_ok=True)
+
 # Configuration
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///instance/frcr_examiner.db'
+# Use PostgreSQL on production (Railway), SQLite locally
+DATABASE_URL = os.getenv('DATABASE_URL')
+if DATABASE_URL:
+    # PostgreSQL on Railway
+    app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL.replace('postgres://', 'postgresql://')
+else:
+    # SQLite for local development
+    app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(instance_path, "frcr_examiner.db")}'
 app.config['SECRET_KEY'] = 'your-secret-key-change-in-production'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
@@ -29,6 +40,19 @@ def prepare_exam():
     return render_template('prepare_exam.html')
 
 
+@app.route('/api/exam/sessions')
+def get_exam_sessions():
+    """Get all exam sessions"""
+    sessions = ExamSession.query.order_by(ExamSession.created_at.desc()).all()
+    return jsonify([{
+        'id': s.id,
+        'session_name': s.session_name,
+        'exam_date': s.exam_date.strftime('%Y-%m-%d'),
+        'exam_time': s.exam_time,
+        'created_at': s.created_at.strftime('%Y-%m-%d %H:%M:%S')
+    } for s in sessions])
+
+
 @app.route('/api/exam/create', methods=['POST'])
 def create_exam():
     """Create a new exam session"""
@@ -37,11 +61,28 @@ def create_exam():
     exam_date = datetime.strptime(data['exam_date'], '%Y-%m-%d').date()
     exam_time = data['exam_time']
     
-    exam = ExamSession(exam_date=exam_date, exam_time=exam_time)
+    # Format session name: "05 Jan 2026 1:30 PM Exam Session"
+    date_str = exam_date.strftime('%d %b %Y')
+    
+    # Convert 24-hour time to 12-hour format with AM/PM
+    time_obj = datetime.strptime(exam_time, '%H:%M').time()
+    time_str = time_obj.strftime('%I:%M %p')
+    
+    session_name = f"{date_str} {time_str} Exam Session"
+    
+    exam = ExamSession(
+        exam_date=exam_date,
+        exam_time=exam_time,
+        session_name=session_name
+    )
     db.session.add(exam)
     db.session.commit()
     
-    return jsonify({'exam_id': exam.id, 'message': 'Exam session created'})
+    return jsonify({
+        'exam_id': exam.id,
+        'session_name': session_name,
+        'message': f'Exam session "{session_name}" created'
+    })
 
 
 @app.route('/api/packet/create', methods=['POST'])
@@ -198,6 +239,120 @@ def get_case(case_id):
         'answers': case.answers,
         'discussion': case.discussion
     })
+
+
+@app.route('/manage-session/<int:session_id>')
+def manage_session(session_id):
+    """Manage exam session - edit packets and candidates"""
+    exam = ExamSession.query.get(session_id)
+    
+    if not exam:
+        return redirect(url_for('index'))
+    
+    session['current_exam_id'] = session_id
+    return render_template('manage_session.html', session=exam)
+
+
+@app.route('/api/session/<int:session_id>/packets')
+def get_session_packets(session_id):
+    """Get all packets for a session"""
+    packets = Packet.query.filter_by(exam_id=session_id).all()
+    return jsonify([{
+        'id': p.id,
+        'packet_number': p.packet_number,
+        'packet_id': p.packet_id
+    } for p in packets])
+
+
+@app.route('/api/packet/<int:packet_id>', methods=['DELETE'])
+def delete_packet(packet_id):
+    """Delete a packet and all its cases"""
+    packet = Packet.query.get(packet_id)
+    
+    if not packet:
+        return jsonify({'error': 'Packet not found'}), 404
+    
+    # Delete all cases in this packet
+    Case.query.filter_by(packet_id=packet_id).delete()
+    
+    db.session.delete(packet)
+    db.session.commit()
+    
+    return jsonify({'message': 'Packet deleted successfully'})
+
+
+@app.route('/api/packet/<int:packet_id>', methods=['PUT'])
+def update_packet(packet_id):
+    """Update a packet"""
+    packet = Packet.query.get(packet_id)
+    
+    if not packet:
+        return jsonify({'error': 'Packet not found'}), 404
+    
+    data = request.get_json()
+    
+    if 'packet_number' in data:
+        packet.packet_number = data['packet_number']
+    if 'packet_id' in data:
+        packet.packet_id = data['packet_id']
+    
+    db.session.commit()
+    
+    return jsonify({'message': 'Packet updated successfully'})
+
+
+@app.route('/api/case/<int:case_id>', methods=['DELETE'])
+def delete_case(case_id):
+    """Delete a case"""
+    case = Case.query.get(case_id)
+    
+    if not case:
+        return jsonify({'error': 'Case not found'}), 404
+    
+    db.session.delete(case)
+    db.session.commit()
+    
+    return jsonify({'message': 'Case deleted successfully'})
+
+
+@app.route('/api/case/<int:case_id>', methods=['PUT'])
+def update_case(case_id):
+    """Update a case"""
+    case = Case.query.get(case_id)
+    
+    if not case:
+        return jsonify({'error': 'Case not found'}), 404
+    
+    data = request.get_json()
+    
+    if 'case_number' in data:
+        case.case_number = data['case_number']
+    if 'diagnosis' in data:
+        case.diagnosis = data['diagnosis']
+    if 'questions' in data:
+        case.questions = data['questions']
+    if 'answers' in data:
+        case.answers = data['answers']
+    if 'discussion' in data:
+        case.discussion = data['discussion']
+    
+    db.session.commit()
+    
+    return jsonify({'message': 'Case updated successfully'})
+
+
+@app.route('/api/candidate/<int:candidate_id>', methods=['DELETE'])
+def delete_candidate(candidate_id):
+    """Delete a candidate"""
+    candidate = Candidate.query.get(candidate_id)
+    
+    if not candidate:
+        return jsonify({'error': 'Candidate not found'}), 404
+    
+    db.session.delete(candidate)
+    db.session.commit()
+    
+    return jsonify({'message': 'Candidate deleted successfully'})
 
 
 if __name__ == '__main__':

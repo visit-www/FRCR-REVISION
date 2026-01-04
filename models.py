@@ -8,13 +8,14 @@ class ExamSession(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     exam_date = db.Column(db.Date, nullable=False)
     exam_time = db.Column(db.String(10), nullable=False)
+    session_name = db.Column(db.String(100), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     packets = db.relationship('Packet', backref='exam', lazy=True, cascade='all, delete-orphan')
     candidates = db.relationship('Candidate', backref='exam', lazy=True, cascade='all, delete-orphan')
     
     def __repr__(self):
-        return f'<ExamSession {self.exam_date} at {self.exam_time}>'
+        return f'<ExamSession {self.session_name}>'
 
 
 class Packet(db.Model):

@@ -1,0 +1,684 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12 px-2 px-md-4">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-md-items-center mb-4 gap-3">
+            <div class="flex-grow-1">
+                <h1 class="mb-2 fs-4 fs-md-3">{{ session.session_name }}</h1>
+                <p class="text-muted mb-0 fs-sm">
+                    <strong>Date:</strong> {{ session.exam_date.strftime('%Y-%m-%d') }} | 
+                    <strong>Time:</strong> {{ session.exam_time }}
+                </p>
+            </div>
+            <a href="/" class="btn btn-secondary btn-sm align-self-start">← Back to Home</a>
+        </div>
+
+        <!-- Packets Section -->
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <h5 class="mb-0 fs-6">Manage Packets & Cases</h5>
+                    <button class="btn btn-light btn-sm" onclick="addPacketForm()">+ Add Packet</button>
+                </div>
+            </div>
+            <div class="card-body p-2 p-md-4">
+                <div id="packetsContainer">
+                    <p class="text-muted">Loading packets...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Candidates Section -->
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <h5 class="mb-0 fs-6">Manage Candidates</h5>
+                    <button class="btn btn-light btn-sm" onclick="showCandidateForm()">+ Add Candidate</button>
+                </div>
+            </div>
+            <div class="card-body p-2 p-md-4">
+                <div id="candidateFormContainer" style="display:none;" class="mb-3">
+                    <div class="row g-2 mb-3">
+                        <div class="col-12 col-md-6">
+                            <label for="candidateName" class="form-label form-label-sm">Candidate Name:</label>
+                            <input type="text" class="form-control form-control-sm" id="candidateName" placeholder="Enter candidate name" required>
+                        </div>
+                        <div class="col-12 col-md-3">
+                            <label for="candidateNumber" class="form-label form-label-sm">Candidate Number:</label>
+                            <select class="form-select form-select-sm" id="candidateNumber" required>
+                                <option value="">Select...</option>
+                                <option value="1">1</option>
+                                <option value="2">2</option>
+                                <option value="3">3</option>
+                                <option value="4">4</option>
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-3 d-flex flex-column gap-2">
+                            <button class="btn btn-success btn-sm" onclick="saveCandidate()">Add Candidate</button>
+                            <button class="btn btn-secondary btn-sm" onclick="hideCandidateForm()">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+                <div id="candidatesList">
+                    <p class="text-muted">Loading candidates...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const sessionId = {{ session.id }};
+let packets = [];
+let newPacketIndex = 0;
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadPackets();
+    loadCandidates();
+});
+
+function loadPackets() {
+    fetch(`/api/session/${sessionId}/packets`)
+    .then(response => response.json())
+    .then(data => {
+        packets = data;
+        renderPackets();
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        document.getElementById('packetsContainer').innerHTML = '<p class="text-danger">Error loading packets.</p>';
+    });
+}
+
+function renderPackets() {
+    const container = document.getElementById('packetsContainer');
+    
+    if (packets.length === 0) {
+        container.innerHTML = '<p class="text-muted">No packets added yet.</p>';
+        return;
+    }
+
+    const html = packets.map((packet, index) => `
+        <div class="card mb-3" id="packet-${packet.id}">
+            <div class="card-header bg-light">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0">Packet ${packet.packet_number} - ${packet.packet_id}</h6>
+                    <div>
+                        <button class="btn btn-warning btn-sm me-2" onclick="editPacket(${packet.id})">Edit</button>
+                        <button class="btn btn-danger btn-sm" onclick="deletePacket(${packet.id})">Delete</button>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <h6 class="mb-3">Cases:</h6>
+                <div id="cases-${packet.id}" class="mb-3">
+                    <p class="text-muted">Loading cases...</p>
+                </div>
+                <button class="btn btn-secondary btn-sm" onclick="addCaseForm(${packet.id})">+ Add Case</button>
+            </div>
+        </div>
+    `).join('');
+
+    container.innerHTML = html;
+    
+    // Load cases for each packet
+    packets.forEach(packet => {
+        loadCases(packet.id);
+    });
+}
+
+function loadCases(packetId) {
+    fetch(`/api/packet/${packetId}/cases`)
+    .then(response => response.json())
+    .then(data => {
+        renderCases(packetId, data);
+    })
+    .catch(error => console.error('Error:', error));
+}
+
+function renderCases(packetId, cases) {
+    const container = document.getElementById(`cases-${packetId}`);
+    
+    if (cases.length === 0) {
+        container.innerHTML = '<p class="text-muted text-sm">No cases added yet.</p>';
+        return;
+    }
+
+    const html = '<ul class="list-group">' +
+        cases.map(caseItem => `
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                <div>
+                    <strong>Case ${caseItem.case_number}:</strong> ${caseItem.diagnosis}
+                </div>
+                <div>
+                    <button class="btn btn-sm btn-warning me-2" onclick="editCase(${caseItem.id})">Edit</button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteCase(${caseItem.id})">Delete</button>
+                </div>
+            </li>
+        `).join('') +
+        '</ul>';
+    
+    container.innerHTML = html;
+}
+
+function addPacketForm() {
+    const container = document.getElementById('packetsContainer');
+    const formId = `new-packet-${newPacketIndex}`;
+    
+    const html = `
+        <div class="card mb-3" id="${formId}">
+            <div class="card-header bg-light">
+                <h6 class="mb-0">New Packet</h6>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Packet Number (1-4):</label>
+                        <input type="number" class="form-control packet-number-${newPacketIndex}" min="1" max="4" placeholder="1-4" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Packet ID (e.g., FORM001):</label>
+                        <input type="text" class="form-control packet-id-${newPacketIndex}" placeholder="FORM001" required>
+                    </div>
+                    <div class="col-md-4 align-self-end">
+                        <button type="button" class="btn btn-primary w-100" onclick="savePacket(${newPacketIndex})">Create Packet</button>
+                        <button type="button" class="btn btn-secondary w-100 mt-2" onclick="cancelPacketForm('${formId}')">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    if (packets.length === 0) {
+        container.innerHTML = html;
+    } else {
+        container.insertAdjacentHTML('beforeend', html);
+    }
+    newPacketIndex++;
+}
+
+function savePacket(index) {
+    const packetNumber = document.querySelector(`.packet-number-${index}`).value;
+    const packetId = document.querySelector(`.packet-id-${index}`).value;
+
+    if (!packetNumber || !packetId) {
+        alert('Please fill in packet number and ID');
+        return;
+    }
+
+    fetch('/api/packet/create', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            exam_id: sessionId,
+            packet_number: parseInt(packetNumber),
+            packet_id: packetId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert('Packet created successfully!');
+        loadPackets();
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error creating packet');
+    });
+}
+
+function cancelPacketForm(formId) {
+    const form = document.getElementById(formId);
+    if (form) {
+        form.remove();
+    }
+}
+
+function editPacket(packetId) {
+    const packet = packets.find(p => p.id === packetId);
+    if (!packet) return;
+
+    const container = document.getElementById(`packet-${packetId}`);
+    const formId = `edit-packet-${packetId}`;
+    
+    if (document.getElementById(formId)) {
+        return; // Form already open
+    }
+
+    const html = `
+        <div class="card mb-3" id="${formId}">
+            <div class="card-header bg-warning">
+                <h6 class="mb-0">Edit Packet</h6>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Packet Number (1-4):</label>
+                        <input type="number" class="form-control edit-packet-number" min="1" max="4" value="${packet.packet_number}" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Packet ID (e.g., FORM001):</label>
+                        <input type="text" class="form-control edit-packet-id" value="${packet.packet_id}" required>
+                    </div>
+                    <div class="col-md-4 align-self-end">
+                        <button type="button" class="btn btn-success w-100" onclick="updatePacket(${packetId})">Update Packet</button>
+                        <button type="button" class="btn btn-secondary w-100 mt-2" onclick="cancelEditPacket('${formId}')">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    container.insertAdjacentHTML('beforebegin', html);
+}
+
+function updatePacket(packetId) {
+    const form = document.querySelector(`#edit-packet-${packetId}`);
+    const packetNumber = form.querySelector('.edit-packet-number').value;
+    const packetId_val = form.querySelector('.edit-packet-id').value;
+
+    if (!packetNumber || !packetId_val) {
+        alert('Please fill in packet number and ID');
+        return;
+    }
+
+    fetch(`/api/packet/${packetId}`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            packet_number: parseInt(packetNumber),
+            packet_id: packetId_val
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert('Packet updated successfully!');
+        loadPackets();
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error updating packet');
+    });
+}
+
+function cancelEditPacket(formId) {
+    const form = document.getElementById(formId);
+    if (form) {
+        form.remove();
+    }
+}
+
+function deletePacket(packetId) {
+    if (confirm('Are you sure you want to delete this packet and all its cases?')) {
+        fetch(`/api/packet/${packetId}`, {
+            method: 'DELETE'
+        })
+        .then(response => response.json())
+        .then(data => {
+            alert('Packet deleted successfully!');
+            loadPackets();
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error deleting packet');
+        });
+    }
+}
+
+function addCaseForm(packetId) {
+    const container = document.getElementById(`cases-${packetId}`);
+    const formId = `case-form-${packetId}`;
+    
+    if (document.getElementById(formId)) {
+        return; // Form already open
+    }
+
+    const html = `
+        <div class="card card-sm mb-2" id="${formId}">
+            <div class="card-body">
+                <div class="row mb-2">
+                    <div class="col-md-2">
+                        <label class="form-label form-label-sm">Case #:</label>
+                        <input type="number" class="form-control form-control-sm case-number" min="1" max="3" required>
+                    </div>
+                    <div class="col-md-10">
+                        <label class="form-label form-label-sm">Diagnosis:</label>
+                        <input type="text" class="form-control form-control-sm case-diagnosis" placeholder="Enter case diagnosis" required>
+                    </div>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label form-label-sm">Questions:</label>
+                    <textarea class="form-control form-control-sm case-questions" rows="2" placeholder="Enter case questions" required></textarea>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label form-label-sm">Answers:</label>
+                    <textarea class="form-control form-control-sm case-answers" rows="2" placeholder="Enter case answers" required></textarea>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label form-label-sm">Discussion/Comments:</label>
+                    <textarea class="form-control form-control-sm case-discussion" rows="5" placeholder="Enter discussion or comments (supports multiple paragraphs and line breaks)" style="font-family: 'Courier New', monospace; white-space: pre-wrap;"></textarea>
+                </div>
+                <button type="button" class="btn btn-success btn-sm" onclick="saveNewCase(${packetId})">
+                    Save Case
+                </button>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="cancelCaseForm('${formId}')">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    `;
+    
+    container.insertAdjacentHTML('beforeend', html);
+}
+
+function saveNewCase(packetId) {
+    const form = document.querySelector(`#case-form-${packetId}`);
+    const caseNumber = form.querySelector('.case-number').value;
+    const diagnosis = form.querySelector('.case-diagnosis').value;
+    const questions = form.querySelector('.case-questions').value;
+    const answers = form.querySelector('.case-answers').value;
+    const discussion = form.querySelector('.case-discussion').value;
+
+    if (!caseNumber || !diagnosis || !questions || !answers) {
+        alert('Please fill in all required fields');
+        return;
+    }
+
+    fetch('/api/case/create', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            packet_id: packetId,
+            case_number: parseInt(caseNumber),
+            diagnosis: diagnosis,
+            questions: questions,
+            answers: answers,
+            discussion: discussion
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert('Case saved successfully!');
+        loadCases(packetId);
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error saving case');
+    });
+}
+
+function cancelCaseForm(formId) {
+    const form = document.getElementById(formId);
+    if (form) {
+        form.remove();
+    }
+}
+
+function editCase(caseId) {
+    fetch(`/api/case/${caseId}`)
+    .then(response => response.json())
+    .then(caseData => {
+        showEditCaseForm(caseData);
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error loading case data');
+    });
+}
+
+function showEditCaseForm(caseData) {
+    const container = document.getElementById('candidateFormContainer').parentElement;
+    const formId = `edit-case-${caseData.id}`;
+    
+    if (document.getElementById(formId)) {
+        return; // Form already open
+    }
+
+    const html = `
+        <div class="card mb-3" id="${formId}">
+            <div class="card-header bg-warning">
+                <h6 class="mb-0">Edit Case ${caseData.case_number}</h6>
+            </div>
+            <div class="card-body">
+                <div class="row mb-2">
+                    <div class="col-md-2">
+                        <label class="form-label form-label-sm">Case #:</label>
+                        <input type="number" class="form-control form-control-sm edit-case-number" min="1" max="3" value="${caseData.case_number}" required>
+                    </div>
+                    <div class="col-md-10">
+                        <label class="form-label form-label-sm">Diagnosis:</label>
+                        <input type="text" class="form-control form-control-sm edit-case-diagnosis" value="${caseData.diagnosis}" required>
+                    </div>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label form-label-sm">Questions:</label>
+                    <textarea class="form-control form-control-sm edit-case-questions" rows="2" required>${caseData.questions}</textarea>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label form-label-sm">Answers:</label>
+                    <textarea class="form-control form-control-sm edit-case-answers" rows="2" required>${caseData.answers}</textarea>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label form-label-sm">Discussion/Comments:</label>
+                    <textarea class="form-control form-control-sm edit-case-discussion" rows="5" placeholder="Enter discussion or comments (supports multiple paragraphs and line breaks)" style="font-family: 'Courier New', monospace; white-space: pre-wrap;">${caseData.discussion || ''}</textarea>
+                </div>
+                <button type="button" class="btn btn-success btn-sm" onclick="updateCase(${caseData.id})">
+                    Update Case
+                </button>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="cancelEditCase('${formId}')">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', html);
+    // Scroll to form
+    document.getElementById(formId).scrollIntoView({ behavior: 'smooth' });
+}
+
+function updateCase(caseId) {
+    const form = document.querySelector(`#edit-case-${caseId}`);
+    const caseNumber = form.querySelector('.edit-case-number').value;
+    const diagnosis = form.querySelector('.edit-case-diagnosis').value;
+    const questions = form.querySelector('.edit-case-questions').value;
+    const answers = form.querySelector('.edit-case-answers').value;
+    const discussion = form.querySelector('.edit-case-discussion').value;
+
+    if (!caseNumber || !diagnosis || !questions || !answers) {
+        alert('Please fill in all required fields');
+        return;
+    }
+
+    fetch(`/api/case/${caseId}`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            case_number: parseInt(caseNumber),
+            diagnosis: diagnosis,
+            questions: questions,
+            answers: answers,
+            discussion: discussion
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert('Case updated successfully!');
+        cancelEditCase(`edit-case-${caseId}`);
+        loadPackets();
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error updating case');
+    });
+}
+
+function cancelEditCase(formId) {
+    const form = document.getElementById(formId);
+    if (form) {
+        form.remove();
+    }
+}
+
+function deleteCase(caseId) {
+    if (confirm('Are you sure you want to delete this case?')) {
+        fetch(`/api/case/${caseId}`, {
+            method: 'DELETE'
+        })
+        .then(response => response.json())
+        .then(data => {
+            alert('Case deleted successfully!');
+            loadPackets();
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error deleting case');
+        });
+    }
+}
+
+function loadCandidates() {
+    fetch(`/api/candidates/${sessionId}`)
+    .then(response => response.json())
+    .then(data => {
+        renderCandidates(data);
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        document.getElementById('candidatesList').innerHTML = '<p class="text-danger">Error loading candidates.</p>';
+    });
+}
+
+function renderCandidates(candidates) {
+    const container = document.getElementById('candidatesList');
+    
+    if (candidates.length === 0) {
+        container.innerHTML = '<p class="text-muted">No candidates added yet.</p>';
+        return;
+    }
+
+    const html = '<ul class="list-group">' +
+        candidates.map(c => `
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+                <div>
+                    <strong>${c.candidate_name}</strong><br>
+                    <small class="text-muted">Candidate #${c.candidate_number} - Packet #${c.packet_number}</small>
+                </div>
+                <button class="btn btn-sm btn-danger" onclick="deleteCandidate(${c.id})">Delete</button>
+            </li>
+        `).join('') +
+        '</ul>';
+    
+    container.innerHTML = html;
+}
+
+function showCandidateForm() {
+    document.getElementById('candidateFormContainer').style.display = 'block';
+    document.getElementById('candidateName').focus();
+}
+
+function hideCandidateForm() {
+    document.getElementById('candidateFormContainer').style.display = 'none';
+    document.getElementById('candidateName').value = '';
+    document.getElementById('candidateNumber').value = '';
+}
+
+function saveCandidate() {
+    const candidateName = document.getElementById('candidateName').value;
+    const candidateNumber = document.getElementById('candidateNumber').value;
+
+    if (!candidateName || !candidateNumber) {
+        alert('Please fill in all fields');
+        return;
+    }
+
+    fetch('/api/candidate/create', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            exam_id: sessionId,
+            candidate_name: candidateName,
+            candidate_number: parseInt(candidateNumber)
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideCandidateForm();
+        alert('Candidate added successfully!');
+        loadCandidates();
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error adding candidate');
+    });
+}
+
+function deleteCandidate(candidateId) {
+    if (confirm('Are you sure you want to delete this candidate?')) {
+        fetch(`/api/candidate/${candidateId}`, {
+            method: 'DELETE'
+        })
+        .then(response => response.json())
+        .then(data => {
+            alert('Candidate deleted successfully!');
+            loadCandidates();
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error deleting candidate');
+        });
+    }
+}
+</script>
+
+<style>
+    @media (max-width: 768px) {
+        h1 {
+            font-size: 1.25rem;
+        }
+        
+        .fs-sm {
+            font-size: 0.85rem;
+        }
+        
+        .card-header h5 {
+            font-size: 1rem;
+        }
+        
+        .form-label-sm {
+            font-size: 0.85rem;
+        }
+        
+        .form-control-sm {
+            font-size: 0.85rem;
+        }
+        
+        .btn-sm {
+            font-size: 0.85rem;
+            padding: 0.4rem 0.8rem;
+        }
+    }
+    
+    @media (min-width: 769px) {
+        h1 {
+            font-size: 2rem;
+        }
+        
+        .card-header h5 {
+            font-size: 1.25rem;
+        }
+    }
+</style>
+{% endblock %}

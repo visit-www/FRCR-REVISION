@@ -13,6 +13,12 @@
                 </button>
             </li>
             <li class="nav-item" role="presentation">
+                <button class="nav-link" id="manage-tab" data-bs-toggle="tab" 
+                        data-bs-target="#manage" type="button" role="tab">
+                    Manage Sessions
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
                 <button class="nav-link" id="start-tab" data-bs-toggle="tab" 
                         data-bs-target="#start" type="button" role="tab">
                     Start Exam
@@ -80,6 +86,20 @@
                 </div>
             </div>
 
+            <!-- Manage Sessions Tab -->
+            <div class="tab-pane fade" id="manage" role="tabpanel">
+                <div class="card mt-3">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0">Exam Sessions</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="sessionsContainer">
+                            <p class="text-muted">Loading sessions...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Start Exam Tab -->
             <div class="tab-pane fade" id="start" role="tabpanel">
                 <div class="card mt-3">
@@ -112,6 +132,8 @@ function createExamSession() {
         return;
     }
 
+    console.log('Creating exam session with:', { exam_date: examDate, exam_time: examTime });
+
     fetch('/api/exam/create', {
         method: 'POST',
         headers: {
@@ -122,14 +144,24 @@ function createExamSession() {
             exam_time: examTime
         })
     })
-    .then(response => response.json())
+    .then(response => {
+        console.log('Response status:', response.status);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
     .then(data => {
+        console.log('Response data:', data);
         currentExamId = data.exam_id;
-        alert('Exam session created successfully!');
+        alert(`Exam session "${data.session_name}" created successfully! ID: ${currentExamId}`);
         document.getElementById('packetsSection').style.display = 'block';
         document.getElementById('candidatesSection').style.display = 'block';
     })
-    .catch(error => console.error('Error:', error));
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error creating exam session: ' + error.message);
+    });
 }
 
 function addPacket() {
@@ -329,5 +361,46 @@ function loadCandidatesList() {
     })
     .catch(error => console.error('Error:', error));
 }
-</script>
+
+// Load sessions when Manage Sessions tab is clicked
+document.addEventListener('DOMContentLoaded', function() {
+    const manageTab = document.getElementById('manage-tab');
+    if (manageTab) {
+        manageTab.addEventListener('click', loadExamSessions);
+    }
+});
+
+function loadExamSessions() {
+    fetch('/api/exam/sessions')
+    .then(response => response.json())
+    .then(data => {
+        const container = document.getElementById('sessionsContainer');
+        if (data.length === 0) {
+            container.innerHTML = '<p class="text-muted">No exam sessions created yet.</p>';
+        } else {
+            const html = '<div class="row">' + 
+                data.map(session => `
+                    <div class="col-md-6 mb-3">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <h5 class="card-title">${session.session_name}</h5>
+                                <p class="card-text">
+                                    <strong>Created:</strong> ${session.created_at.substring(0, 10)}<br>
+                                </p>
+                                <a href="/manage-session/${session.id}" class="btn btn-primary btn-sm">
+                                    Edit Session
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                `).join('') +
+                '</div>';
+            container.innerHTML = html;
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        document.getElementById('sessionsContainer').innerHTML = '<p class="text-danger">Error loading sessions.</p>';
+    });
+}</script>
 {% endblock %}
