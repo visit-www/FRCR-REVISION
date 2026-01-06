@@ -3,6 +3,12 @@
  * Handles: Case details, Q&A pairs, images with descriptions
  */
 
+// Get API base URL from config.js
+const getAPIUrl = (path) => {
+    const baseUrl = (typeof API_BASE_URL !== 'undefined') ? API_BASE_URL : 'http://localhost:5000';
+    return baseUrl + path;
+};
+
 // Initialize and navigate to the edit case page
 function openCaseEditModal(caseId) {
     // Navigate to the full-page edit interface

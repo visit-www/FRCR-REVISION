@@ -1,22 +1,19 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "app.py",
-      "use": "@vercel/python"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "app.py"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "app.py"
-    }
-  ],
+  "buildCommand": "mkdir -p public && cp -r templates/* public/ 2>/dev/null ; cp -r static/* public/ 2>/dev/null ; echo 'Frontend files ready'",
+  "outputDirectory": "public",
   "env": {
-    "FLASK_ENV": "production"
-  }
+    "FLASK_BACKEND_URL": "http://localhost:5000"
+  },
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, no-cache, must-revalidate, max-age=0"
+        }
+      ]
+    }
+  ]
 }
