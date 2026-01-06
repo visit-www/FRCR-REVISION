@@ -73,8 +73,18 @@
           "y": 150,
           "type": "link",
           "path": "/Applications"
+        },
+        {
+          "x": 370,
+          "y": 150,
+          "type": "file",
+          "path": "INSTALL_INSTRUCTIONS.txt"
         }
-      ]
+      ],
+      "window": {
+        "width": 600,
+        "height": 400
+      }
     },
     "win": {
       "target": [

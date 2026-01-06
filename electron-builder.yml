@@ -49,10 +49,15 @@ dmg:
       y: 150
       type: link
       path: /Applications
+    - x: 370
+      y: 150
+      type: file
+      path: INSTALL_INSTRUCTIONS.txt
   iconSize: 128
   window:
-    width: 500
+    width: 600
     height: 400
+  background: null
 
 # Windows Configuration
 win:
