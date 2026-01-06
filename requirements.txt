@@ -1,7 +1,20 @@
+altgraph @ file:///AppleInternal/Library/BuildRoots/4~CAP1ugDqYZ2ZVF_54thwSWnK-8L4LO5_Zcx-VcI/Library/Caches/com.apple.xbs/Sources/python3/altgraph-0.17.2-py2.py3-none-any.whl
+blinker==1.9.0
+click==8.1.8
 Flask==2.3.3
 Flask-SQLAlchemy==3.0.5
-Flask-CORS==4.0.0
-SQLAlchemy==2.0.45
+future @ file:///AppleInternal/Library/BuildRoots/4~CAP1ugDqYZ2ZVF_54thwSWnK-8L4LO5_Zcx-VcI/Library/Caches/com.apple.xbs/Sources/python3/future-0.18.2-py3-none-any.whl
+gunicorn==21.2.0
+importlib_metadata==8.7.1
+itsdangerous==2.2.0
+Jinja2==3.1.6
+macholib @ file:///AppleInternal/Library/BuildRoots/4~CAP1ugDqYZ2ZVF_54thwSWnK-8L4LO5_Zcx-VcI/Library/Caches/com.apple.xbs/Sources/python3/macholib-1.15.2-py2.py3-none-any.whl
+MarkupSafe==3.0.3
+packaging==25.0
+psycopg2-binary==2.9.9
 python-dotenv==1.0.0
+six @ file:///AppleInternal/Library/BuildRoots/4~CAP1ugDqYZ2ZVF_54thwSWnK-8L4LO5_Zcx-VcI/Library/Caches/com.apple.xbs/Sources/python3/six-1.15.0-py2.py3-none-any.whl
+SQLAlchemy==2.0.45
+typing_extensions==4.15.0
 Werkzeug==2.3.7
-APScheduler==3.10.1
+zipp==3.23.0
