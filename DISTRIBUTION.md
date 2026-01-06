@@ -72,9 +72,18 @@ After installation, colleagues should:
 - Delete ~/Library/Application Support/FRCR Examiner/instance/
 - Relaunch the app (will recreate database)
 
-**"Permission denied"**
-- Right-click app → Open
-- This is macOS security, not an app issue
+**"Apple cannot verify the developer" (Gatekeeper warning)**
+
+For non-technical users:
+- Right-click app → Open → Click Open in dialog
+- Done! Won't appear again
+
+For IT/technical users, provide this Terminal command:
+```bash
+sudo xattr -rd com.apple.quarantine "/Applications/FRCR Examiner.app"
+```
+
+This permanently removes the quarantine attribute without user interaction.
 
 ## Key Differences from Development
 

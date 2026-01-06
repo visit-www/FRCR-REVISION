@@ -22,10 +22,32 @@ The FRCR Examiner app is now fully self-contained and **does NOT require Python,
 ### Troubleshooting
 
 #### "The app can't be opened because Apple cannot check it for malicious software"
-1. Right-click the **FRCR Examiner** app
+
+**Option 1: One-Time Approval (Easiest)**
+1. Right-click the **FRCR Examiner** app in Applications
 2. Select **Open** from the context menu
-3. Click **Open** in the dialog
-4. The app will launch and remember your choice for future launches
+3. Click **Open** in the security dialog
+4. The app will launch and remember your choice for all future launches
+5. Done! You won't see this message again
+
+**Option 2: Permanent Fix via Terminal (Technical Users)**
+
+If you prefer, copy and paste this command in Terminal to permanently remove the security warning:
+
+```bash
+sudo xattr -rd com.apple.quarantine "/Applications/FRCR Examiner.app"
+```
+
+**Steps:**
+1. Open Terminal (Applications → Utilities → Terminal)
+2. Copy the command above (press Cmd+C)
+3. Paste it in Terminal (press Cmd+V)
+4. Press Enter
+5. Enter your Mac password when prompted (it won't show as you type)
+6. Press Enter
+7. Close Terminal
+
+After this, the app will open normally without any security warnings.
 
 *No Apple Developer subscription needed!*
 
