@@ -5,18 +5,39 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FRCR Examiner Tool</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <nav class="navbar navbar-dark bg-primary">
+    <!-- Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-dark sticky-top">
         <div class="container-fluid">
-            <a class="navbar-brand" href="/">
-                <strong>FRCR Examiner Tool</strong>
+            <a class="navbar-brand fw-bold" href="/">
+                <i class="fas fa-stethoscope me-2"></i>FRCR Examiner
             </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
         </div>
     </nav>
 
-    <div class="container-fluid mt-4">
+    <!-- Hero Banner -->
+    <div class="hero-banner">
+        <div class="hero-overlay"></div>
+        <div class="hero-content">
+            <div class="container h-100">
+                <div class="row h-100 align-items-center">
+                    <div class="col-lg-8 mx-auto text-center">
+                        <h1 class="hero-title">FRCR Examiner's tools</h1>
+                        <p class="hero-subtitle">The app that helps Examiners to prepare for FRCR viva exams</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="container-fluid main-content">
         {% with messages = get_flashed_messages() %}
             {% if messages %}
                 {% for message in messages %}
@@ -30,6 +51,44 @@
 
         {% block content %}{% endblock %}
     </div>
+
+    <!-- Footer -->
+    <footer class="footer mt-5">
+        <div class="footer-content">
+            <div class="container">
+                <div class="row py-5">
+                    <div class="col-md-4 mb-4 mb-md-0 text-center text-md-start">
+                        <h6 class="footer-title mb-3">
+                            <i class="fas fa-stethoscope me-2"></i>FRCR Examiner
+                        </h6>
+                        <p class="footer-text small">Empowering medical professionals to excel in FRCR examinations with intelligent preparation tools.</p>
+                    </div>
+                    <div class="col-md-4 mb-4 mb-md-0 text-center">
+                        <h6 class="footer-title mb-3">Contact</h6>
+                        <p class="footer-text small">
+                            <i class="fas fa-envelope me-2"></i>
+                            <a href="mailto:lotusheart2016@gmail.com" class="footer-link">lotusheart2016@gmail.com</a>
+                        </p>
+                    </div>
+                    <div class="col-md-4 text-center text-md-end">
+                        <h6 class="footer-title mb-3">Developed By</h6>
+                        <p class="footer-text small">
+                            <i class="fas fa-user-md me-2"></i>
+                            Dr Gaurav S.P Gupta, MBBS, MD, FRCR
+                        </p>
+                    </div>
+                </div>
+                <hr class="footer-divider">
+                <div class="row py-3">
+                    <div class="col-12 text-center">
+                        <p class="footer-copyright small">
+                            &copy; 2026 FRCR Examiner Tool. All rights reserved.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     {% block scripts %}{% endblock %}

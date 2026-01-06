@@ -16,9 +16,17 @@ def load_sample_data():
         # db.create_all()
         
         # Create exam session
+        exam_date = date.today()
+        exam_time = '09:00'
+        date_str = exam_date.strftime('%d %b %Y')
+        time_obj = datetime.strptime(exam_time, '%H:%M').time()
+        time_str = time_obj.strftime('%I:%M %p')
+        session_name = f"{date_str} {time_str} Exam Session"
+        
         exam = ExamSession(
-            exam_date=date.today(),
-            exam_time='09:00'
+            exam_date=exam_date,
+            exam_time=exam_time,
+            session_name=session_name
         )
         db.session.add(exam)
         db.session.flush()  # Get the exam ID

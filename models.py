@@ -41,8 +41,23 @@ class Case(db.Model):
     answers = db.Column(db.Text, nullable=False)  # Can contain multiple answers
     discussion = db.Column(db.Text)  # Optional discussion/comments
     
+    images = db.relationship('CaseImage', backref='case', lazy=True, cascade='all, delete-orphan')
+    
     def __repr__(self):
         return f'<Case {self.case_number} - {self.diagnosis}>'
+
+
+class CaseImage(db.Model):
+    """Store images for a case"""
+    id = db.Column(db.Integer, primary_key=True)
+    case_id = db.Column(db.Integer, db.ForeignKey('case.id'), nullable=False)
+    image_data = db.Column(db.LargeBinary, nullable=False)  # Binary image data
+    image_filename = db.Column(db.String(255), nullable=False)
+    image_type = db.Column(db.String(50), nullable=False)  # e.g., 'image/png', 'image/jpeg'
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def __repr__(self):
+        return f'<CaseImage {self.image_filename} for Case {self.case_id}>'
 
 
 class Candidate(db.Model):

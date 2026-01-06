@@ -1,7 +1,9 @@
-from flask import Flask, render_template, request, jsonify, redirect, url_for, session
-from models import db, ExamSession, Packet, Case, Candidate
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session, send_file
+from models import db, ExamSession, Packet, Case, Candidate, CaseImage
 from datetime import datetime
 import os
+from io import BytesIO
+import mimetypes
 
 app = Flask(__name__)
 
@@ -313,6 +315,97 @@ def delete_case(case_id):
     db.session.commit()
     
     return jsonify({'message': 'Case deleted successfully'})
+
+
+@app.route('/api/case/<int:case_id>/image', methods=['POST'])
+def upload_case_image(case_id):
+    """Upload an image for a case"""
+    case = Case.query.get(case_id)
+    
+    if not case:
+        return jsonify({'error': 'Case not found'}), 404
+    
+    if 'image' not in request.files:
+        return jsonify({'error': 'No image file provided'}), 400
+    
+    file = request.files['image']
+    
+    if file.filename == '':
+        return jsonify({'error': 'No file selected'}), 400
+    
+    # Check file size (max 10MB)
+    file.seek(0, os.SEEK_END)
+    file_size = file.tell()
+    file.seek(0)
+    
+    if file_size > 10 * 1024 * 1024:  # 10MB
+        return jsonify({'error': 'File size exceeds 10MB limit'}), 400
+    
+    # Check file type
+    allowed_types = {'image/jpeg', 'image/png', 'image/gif', 'image/webp'}
+    file_type = mimetypes.guess_type(file.filename)[0]
+    
+    if file_type not in allowed_types:
+        return jsonify({'error': 'Only image files (JPEG, PNG, GIF, WebP) are allowed'}), 400
+    
+    image_data = file.read()
+    
+    case_image = CaseImage(
+        case_id=case_id,
+        image_data=image_data,
+        image_filename=file.filename,
+        image_type=file_type
+    )
+    
+    db.session.add(case_image)
+    db.session.commit()
+    
+    return jsonify({
+        'image_id': case_image.id,
+        'filename': case_image.image_filename,
+        'message': 'Image uploaded successfully'
+    })
+
+
+@app.route('/api/case/<int:case_id>/images')
+def get_case_images(case_id):
+    """Get all images for a case"""
+    images = CaseImage.query.filter_by(case_id=case_id).order_by(CaseImage.created_at).all()
+    return jsonify([{
+        'id': img.id,
+        'filename': img.image_filename,
+        'created_at': img.created_at.strftime('%Y-%m-%d %H:%M:%S')
+    } for img in images])
+
+
+@app.route('/api/case-image/<int:image_id>')
+def get_case_image(image_id):
+    """Retrieve a case image by ID"""
+    image = CaseImage.query.get(image_id)
+    
+    if not image:
+        return jsonify({'error': 'Image not found'}), 404
+    
+    return send_file(
+        BytesIO(image.image_data),
+        mimetype=image.image_type,
+        as_attachment=False,
+        download_name=image.image_filename
+    )
+
+
+@app.route('/api/case-image/<int:image_id>', methods=['DELETE'])
+def delete_case_image(image_id):
+    """Delete a case image"""
+    image = CaseImage.query.get(image_id)
+    
+    if not image:
+        return jsonify({'error': 'Image not found'}), 404
+    
+    db.session.delete(image)
+    db.session.commit()
+    
+    return jsonify({'message': 'Image deleted successfully'})
 
 
 @app.route('/api/case/<int:case_id>', methods=['PUT'])
