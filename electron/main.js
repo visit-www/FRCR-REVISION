@@ -60,10 +60,20 @@ function startFlaskServer() {
           spawnArgs = [appPyPath];
         }
       } else {
-        // Development mode: use system Python
+        // Development mode: try venv Python first, fallback to system Python
         const isPythonWindows = process.platform === 'win32';
-        const pythonCmd = isPythonWindows ? 'python' : 'python3';
-        flaskExecutable = pythonCmd;
+        const venvPythonPath = isPythonWindows 
+          ? path.join(appPath, 'venv', 'Scripts', 'python.exe')
+          : path.join(appPath, 'venv', 'bin', 'python');
+        
+        // Check if venv exists
+        if (fs.existsSync(venvPythonPath)) {
+          flaskExecutable = venvPythonPath;
+        } else {
+          // Fallback to system Python
+          flaskExecutable = isPythonWindows ? 'python' : 'python3';
+        }
+        
         spawnArgs = [path.join(appPath, 'app.py')];
       }
 
