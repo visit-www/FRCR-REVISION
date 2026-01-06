@@ -4,18 +4,240 @@
 <div class="container py-5">
     <div class="row">
         <div class="col-12">
-            <h2 class="mb-4">Manage Candidates</h2>
-            <div class="alert alert-info">
-                <i class="fas fa-info-circle me-2"></i>
-                Add and manage all your exam candidates across different sessions.
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>Manage Candidates</h2>
+                <a href="/" class="btn btn-secondary">← Back to Home</a>
             </div>
         </div>
     </div>
 
-    <div class="row">
-        <div class="col-12">
-            <p class="text-muted text-center py-5">Candidate management coming soon...</p>
+    <!-- Session Selection -->
+    <div class="row mb-5">
+        <div class="col-lg-8 mx-auto">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-calendar me-2"></i>Select Exam Session</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">Choose a session to manage its candidates:</p>
+                    <div id="sessionsGrid" class="row g-3">
+                        <div class="col-12">
+                            <p class="text-muted text-center">Loading sessions...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Candidates Management (shown after session selection) -->
+    <div id="candidatesSection" style="display: none;">
+        <div class="row mb-5">
+            <div class="col-lg-8 mx-auto">
+                <div class="card shadow-sm border-0">
+                    <div class="card-header bg-success text-white">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0"><i class="fas fa-users me-2"></i>Candidates in <span id="sessionNameDisplay"></span></h5>
+                            <button class="btn btn-sm btn-light" data-bs-toggle="modal" data-bs-target="#addCandidateModal">
+                                <i class="fas fa-plus me-1"></i>Add Candidate
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div id="candidatesGrid" class="row g-3">
+                            <!-- Candidates will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
+
+<!-- Add Candidate Modal -->
+<div class="modal fade" id="addCandidateModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add Candidate</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Candidate Name</label>
+                    <input type="text" class="form-control" id="candidateName" placeholder="Full name">
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <label class="form-label">Candidate Number</label>
+                        <select class="form-select" id="candidateNumber">
+                            <option value="">Select...</option>
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                            <option value="4">4</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Packet Number</label>
+                        <select class="form-select" id="packetNumber">
+                            <option value="">Select...</option>
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="addCandidate()">Add Candidate</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentSessionId = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Check for session parameter in URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const sessionId = urlParams.get('session');
+    
+    if (sessionId) {
+        // Load this specific session's candidates
+        fetch('/api/exam/sessions')
+            .then(r => r.json())
+            .then(sessions => {
+                const selectedSession = sessions.find(s => s.id == sessionId);
+                if (selectedSession) {
+                    selectSession(selectedSession.id, selectedSession.session_name);
+                } else {
+                    loadSessions();
+                }
+            });
+    } else {
+        loadSessions();
+    }
+});
+
+function loadSessions() {
+    fetch('/api/exam/sessions')
+        .then(r => r.json())
+        .then(sessions => {
+            if (!sessions || sessions.length === 0) {
+                document.getElementById('sessionsGrid').innerHTML = '<div class="col-12"><p class="text-muted">No sessions available. Create one in Setup → Exam Sessions.</p></div>';
+                return;
+            }
+            
+            document.getElementById('sessionsGrid').innerHTML = sessions.map(session => `
+                <div class="col-md-6">
+                    <div class="card h-100 cursor-pointer" onclick="selectSession(${session.id}, '${session.session_name}')" style="cursor: pointer; transition: all 0.3s;">
+                        <div class="card-body">
+                            <h5 class="card-title">${session.session_name}</h5>
+                            <p class="card-text">
+                                <small class="text-muted">
+                                    <i class="fas fa-calendar me-1"></i>${new Date(session.exam_date).toLocaleDateString()}<br>
+                                    <i class="fas fa-clock me-1"></i>${session.exam_time}
+                                </small>
+                            </p>
+                        </div>
+                        <div class="card-footer bg-light">
+                            <button class="btn btn-sm btn-primary w-100" onclick="selectSession(${session.id}, '${session.session_name}'); event.stopPropagation();">
+                                <i class="fas fa-arrow-right me-1"></i>Select
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        });
+}
+
+function selectSession(sessionId, sessionName) {
+    currentSessionId = sessionId;
+    document.getElementById('sessionNameDisplay').textContent = sessionName;
+    document.getElementById('candidatesSection').style.display = 'block';
+    loadCandidates(sessionId);
+    document.getElementById('candidatesSection').scrollIntoView({behavior: 'smooth'});
+}
+
+function loadCandidates(sessionId) {
+    fetch(`/api/candidates/${sessionId}`)
+        .then(r => r.json())
+        .then(candidates => {
+            if (!candidates || candidates.length === 0) {
+                document.getElementById('candidatesGrid').innerHTML = '<div class="col-12"><p class="text-muted">No candidates registered yet.</p></div>';
+                return;
+            }
+            
+            document.getElementById('candidatesGrid').innerHTML = candidates.map(candidate => `
+                <div class="col-md-6">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title">${candidate.candidate_name}</h5>
+                            <p class="card-text">
+                                <small class="text-muted">
+                                    <i class="fas fa-id-badge me-1"></i>Candidate #${candidate.candidate_number}<br>
+                                    <i class="fas fa-folder me-1"></i>Packet #${candidate.packet_number}
+                                </small>
+                            </p>
+                        </div>
+                        <div class="card-footer bg-light">
+                            <a href="/view-packet/${candidate.id}" class="btn btn-sm btn-outline-primary w-100">
+                                <i class="fas fa-eye me-1"></i>View Packet
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        });
+}
+
+function addCandidate() {
+    const name = document.getElementById('candidateName').value;
+    const number = document.getElementById('candidateNumber').value;
+    const packet = document.getElementById('packetNumber').value;
+    
+    if (!name || !number || !packet) {
+        alert('Please fill in all fields');
+        return;
+    }
+    
+    fetch('/api/candidate/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            exam_id: currentSessionId,
+            candidate_name: name,
+            candidate_number: parseInt(number),
+            packet_number: parseInt(packet)
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.candidate_id) {
+            alert('Candidate added successfully!');
+            document.getElementById('candidateName').value = '';
+            document.getElementById('candidateNumber').value = '';
+            document.getElementById('packetNumber').value = '';
+            bootstrap.Modal.getInstance(document.getElementById('addCandidateModal')).hide();
+            loadCandidates(currentSessionId);
+        }
+    })
+    .catch(e => alert('Error adding candidate: ' + e.message));
+}
+</script>
+
+<style>
+    .cursor-pointer {
+        cursor: pointer;
+    }
+    
+    .card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 16px rgba(0,0,0,0.1) !important;
+    }
+</style>
 {% endblock %}
+
