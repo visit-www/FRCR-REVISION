@@ -1,203 +1,260 @@
-# FRCR EXAMINER - Quick Reference Card
+# Quick Reference Guide
 
-## ⚡ Quick Start (30 seconds)
-```bash
-cd /Users/zen/myRepos/projects/FRCR_EXAMINER
-./run.sh
-# Open: http://localhost:5000
-```
+Fast lookup guide for common tasks and commands.
 
-## 📁 Key Files
+## 📚 Documentation Files
 
-| File | Purpose |
-|------|---------|
-| `app.py` | Main Flask app (all routes & APIs) |
-| `models.py` | Database models (4 tables) |
-| `templates/` | HTML pages (5 templates) |
-| `static/style.css` | Custom styling |
-| `instance/frcr_examiner.db` | SQLite database |
-| `requirements.txt` | Python dependencies |
-| `run.sh` | Quick start script |
-
-## 🎯 Main Workflow
-
-### Prepare Exam
-1. Exam Date + Time → Create Session
-2. Packet ID (FORM001) → Create Packet (x4)
-3. Case Details → Add Cases (3 per packet)
-4. Candidate Names → Register Candidates (x4)
-
-### Start Exam
-1. Select Candidate
-2. View Packet (auto-selected)
-3. Browse Cases
-4. View Case Details (grid format)
-
-## 🔌 API Quick Reference
-
-```
-POST /api/exam/create          → exam_id, exam_time
-POST /api/packet/create        → packet_id, packet_number
-POST /api/case/create          → case_number, diagnosis, questions, answers
-POST /api/candidate/create     → candidate_name, candidate_number
-
-GET /api/candidates/<exam_id>
-GET /api/packet/<packet_id>/cases
-GET /api/case/<case_id>
-```
-
-## 🗄️ Database Tables
-
-```
-ExamSession
-├─ id, exam_date, exam_time
-├─ packets []
-└─ candidates []
-
-Packet
-├─ id, exam_id, packet_number, packet_id
-└─ cases []
-
-Case
-├─ id, packet_id, case_number
-├─ diagnosis, questions, answers, discussion
-└─ packet_id (FK)
-
-Candidate
-├─ id, exam_id, candidate_name
-└─ candidate_number, packet_number
-```
-
-## 🚀 Commands
-
-```bash
-# Start application
-./run.sh
-
-# OR manual:
-source venv/bin/activate
-python app.py
-
-# Load sample data
-python load_sample_data.py
-
-# Stop server
-Ctrl+C
-
-# Deactivate venv
-deactivate
-
-# Delete & recreate database
-rm instance/frcr_examiner.db && python app.py
-```
-
-## 🌐 URLs
-
-| URL | Description |
-|-----|-------------|
-| http://localhost:5000 | Home page (tabs) |
-| http://localhost:5000/prepare-exam | Exam prep |
-| http://localhost:5000/start-exam | Exam start |
-
-## 📊 Data Structure
-
-```
-Exam Session (1)
-├── Packet 1 (FORM001)
-│   ├── Case 1: Diagnosis, Q&A, Discussion
-│   ├── Case 2: Diagnosis, Q&A, Discussion
-│   └── Case 3: Diagnosis, Q&A, Discussion
-├── Packet 2 (FORM002) ... [similar]
-├── Packet 3 (FORM003) ... [similar]
-├── Packet 4 (FORM004) ... [similar]
-└── Candidates (4)
-    ├── Candidate A → Packet 1
-    ├── Candidate B → Packet 2
-    ├── Candidate C → Packet 3
-    └── Candidate D → Packet 4
-```
-
-## 🔧 Configuration
-
-**To change port:**
-Edit `app.py` last line: `port=5001`
-
-**To add more candidates:**
-Edit `templates/index.html`: Add options 5, 6, 7...
-
-**To disable debug mode:**
-Edit `app.py` last line: `debug=False`
-
-## 💡 Common Tasks
-
-### Check Database
-```bash
-python -c "
-from app import app
-from models import ExamSession, Packet, Case, Candidate
-with app.app_context():
-    print(f'Exams: {ExamSession.query.count()}')
-    print(f'Packets: {Packet.query.count()}')
-    print(f'Cases: {Case.query.count()}')
-    print(f'Candidates: {Candidate.query.count()}')
-"
-```
-
-### Backup Database
-```bash
-cp instance/frcr_examiner.db instance/frcr_examiner_backup.db
-```
-
-### Clear Database
-```bash
-rm instance/frcr_examiner.db
-python app.py  # Recreates empty DB
-```
-
-## 📱 Browser Support
-- ✅ Chrome/Edge
-- ✅ Firefox
-- ✅ Safari
-- ⚠️ IE11 (not tested)
-
-## 🐛 Troubleshooting
-
-| Error | Fix |
-|-------|-----|
-| Port in use | `lsof -i :5000` → kill PID |
-| Import error | `pip install -r requirements.txt` |
-| DB corrupted | `rm instance/frcr_examiner.db` |
-| Venv broken | `deactivate && rm -rf venv` → recreate |
-
-## 📚 Documentation
-
-- **README.md** - User guide
-- **SETUP.md** - Detailed setup & config
-- **PROJECT_OVERVIEW.md** - Complete documentation
-- This file - Quick reference
-
-## ✨ Features at a Glance
-
-✅ Flask backend with SQLAlchemy ORM
-✅ Bootstrap 5 responsive UI
-✅ SQLite local database
-✅ 4 interconnected data models
-✅ 5 HTML templates
-✅ RESTful API endpoints
-✅ Exam prep & exam execution workflows
-✅ Dynamic form creation
-✅ AJAX data loading
-✅ Grid format case display
-
-## 🎓 Tech Stack Summary
-
-- **Backend**: Flask 2.3.3
-- **Database**: SQLite3
-- **ORM**: SQLAlchemy 2.0.21
-- **Frontend**: Bootstrap 5.3
-- **Scripting**: Vanilla JavaScript
-- **Python**: 3.8+
+| File | Purpose | Audience |
+|------|---------|----------|
+| **README.md** | Complete technical overview | Developers, DevOps |
+| **HOW_TO_USE.md** | Step-by-step user guide | End users, Examiners |
+| **SETUP.md** | Installation instructions | System admins, Developers |
+| **CONTRIBUTING.md** | Developer guidelines | Contributors |
+| **CHANGELOG.md** | Version history and changes | Everyone |
 
 ---
 
-**Need help?** Check README.md, SETUP.md, or PROJECT_OVERVIEW.md
+## 🚀 Quick Start Commands
+
+### Local Development
+```bash
+# Setup
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+pip install -r requirements.txt
+
+# Run
+export FLASK_ENV=development
+flask run
+
+# Access
+Open http://localhost:5000
+```
+
+### Production Deployment (Railway)
+1. Push to GitHub
+2. Connect repo to Railway.app
+3. Add `DATABASE_URL` environment variable
+4. Deploy automatically
+
+---
+
+## 🎯 User Workflow
+
+```
+Home → Get Started → Manage Session → Add Cases & Candidates
+  ↓
+Exam → Select Session → Choose Candidate → Start Exam
+```
+
+---
+
+## 🛠️ Common Admin Tasks
+
+### Backup
+- Automatic: Every 24 hours in `backups/` folder
+- Manual: Copy database file or use Admin panel
+
+### Add New User Feature
+1. Define model in `models.py`
+2. Create API endpoint in `app.py`
+3. Add template in `templates/`
+4. Update documentation
+
+### Change Database
+- Development: SQLite (automatic)
+- Production: Set `DATABASE_URL` environment variable
+
+---
+
+## 📝 File Structure Quick Reference
+
+```
+app.py              → Main Flask app & routes
+models.py           → Database models
+requirements.txt    → Python dependencies
+templates/
+  ├── base.html     → Navigation template
+  ├── dashboard.html → Home page
+  └── ...other pages
+static/
+  ├── style.css     → Styling
+  └── ...js files
+instance/           → Database (development)
+backups/            → Auto-backups
+```
+
+---
+
+## 🔗 Important Routes
+
+| Path | Purpose |
+|------|---------|
+| `/` | Dashboard home |
+| `/setup/sessions` | Manage exam sessions |
+| `/manage-session/<id>` | Edit session, add cases/candidates |
+| `/exam/start` | Start exam workflow |
+| `/view-case/<id>` | View case during exam |
+| `/admin` | Admin dashboard |
+| `/api/*` | REST API endpoints |
+
+---
+
+## 🐛 Troubleshooting Quick Links
+
+| Issue | Solution |
+|-------|----------|
+| Port 5000 in use | `flask run --port 5001` |
+| Module not found | Activate venv, reinstall requirements |
+| Database error | Check DATABASE_URL, restart PostgreSQL |
+| Images not showing | Check static files, clear browser cache |
+| Permission denied | Fix file/directory permissions with chmod |
+
+---
+
+## 📊 Database Models
+
+### Core Models
+- **ExamSession** - Exam sessions
+- **Candidate** - Candidate information
+- **Packet** - Case packets
+- **Case** - Medical cases
+- **Question** - Q&A questions
+- **Answer** - Q&A answers
+- **CaseImage** - Case images
+
+---
+
+## 🔐 Security Checklist
+
+- [ ] Set `SECRET_KEY` in production
+- [ ] Use PostgreSQL (not SQLite) in production
+- [ ] Enable HTTPS
+- [ ] Set `FLASK_ENV=production`
+- [ ] Configure firewall rules
+- [ ] Enable backups
+- [ ] Use strong database password
+- [ ] Regular security updates
+
+---
+
+## 📱 Browser Support
+
+- Chrome/Edge: ✅ Fully supported
+- Firefox: ✅ Fully supported
+- Safari: ✅ Fully supported
+- IE: ❌ Not supported (use modern browser)
+
+### Mobile
+- Responsive design for tablets
+- Touch-friendly interface
+- Tested on iOS Safari and Android Chrome
+
+---
+
+## 🚀 Performance Tips
+
+- Optimize images (< 5MB each)
+- Use compression for backups
+- Keep < 100 sessions active
+- Limit cases per session to < 1000
+- Regular database optimization
+
+---
+
+## 📞 Support Resources
+
+| Need | Contact |
+|------|---------|
+| Bug report | GitHub Issues |
+| Feature request | GitHub Issues |
+| General help | lotusheart2016@gmail.com |
+| Installation help | See SETUP.md |
+| Usage help | See HOW_TO_USE.md |
+
+---
+
+## 📖 Key Concepts
+
+### Session
+Container for one day's exams, holds packets and candidates
+
+### Packet
+Group of cases assigned to a candidate
+
+### Case
+Medical scenario with images, diagnosis, and Q&A
+
+### Candidate
+Person taking the exam, assigned to a specific packet
+
+### Q&A Pair
+Question to ask and expected answer for learning/reference
+
+---
+
+## ⚡ Performance Metrics
+
+- Page load: < 2 seconds
+- Database query: < 500ms
+- Image upload: Depends on file size
+- Backup creation: < 5 seconds
+
+---
+
+## 📅 Important Dates
+
+- **Version**: 1.0.0
+- **Release Date**: January 6, 2026
+- **Last Updated**: January 6, 2026
+
+---
+
+## 🎓 Learning Resources
+
+1. **For Users**: Start with HOW_TO_USE.md
+2. **For Developers**: Read README.md then CONTRIBUTING.md
+3. **For DevOps**: Check SETUP.md
+4. **For History**: See CHANGELOG.md
+
+---
+
+## 💾 Database Connection Examples
+
+### SQLite (Development)
+```python
+DATABASE_URL = "sqlite:///./instance/frcr_examiner.db"
+```
+
+### PostgreSQL (Production)
+```python
+DATABASE_URL = "postgresql://user:password@localhost:5432/frcr_examiner"
+```
+
+### Environment Variable
+```bash
+export DATABASE_URL="postgresql://user:password@host:5432/db"
+```
+
+---
+
+## 🔄 Workflow Examples
+
+### Create and Run Exam
+1. Create session: Name, Date, Time
+2. Add packet in session
+3. Add case to packet with images
+4. Add Q&A pairs to case
+5. Register candidate and assign packet
+6. Start exam from Exam menu
+
+### Backup and Restore
+1. Automatic backups created in backups/
+2. Backup files: `frcr_examiner_backup_YYYYMMDD_HHMMSS.db`
+3. Restore: Copy backup file back to instance/
+
+---
+
+**Quick Help**: For detailed information, refer to appropriate documentation file listed above.
+
+Last Updated: January 6, 2026
