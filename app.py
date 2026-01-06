@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session, send_file
+from flask_cors import CORS
 from models import db, ExamSession, Packet, Case, Candidate, CaseImage, Question, Answer
 from backup_manager import init_backup_manager, get_backup_manager
 from datetime import datetime
@@ -8,6 +9,15 @@ import mimetypes
 import atexit
 
 app = Flask(__name__)
+
+# Enable CORS for Vercel frontend access
+CORS(app, resources={
+    r"/api/*": {
+        "origins": ["*"],
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        "allow_headers": ["Content-Type"]
+    }
+})
 
 # Ensure instance folder exists
 instance_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'instance')
