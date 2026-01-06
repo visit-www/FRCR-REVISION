@@ -17,7 +17,9 @@
     "pack": "electron-builder --dir",
     "dist": "electron-builder",
     "build-python": "pyinstaller flask_server.spec --clean --noconfirm",
-    "build-with-python": "bash build-with-python.sh"
+    "build-with-python": "bash build-with-python.sh",
+    "build-installer": "bash build-installer.sh",
+    "release": "npm run build-mac && npm run build-installer"
   },
   "dependencies": {
     "axios": "^1.6.2"
