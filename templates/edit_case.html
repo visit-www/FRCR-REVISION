@@ -229,11 +229,43 @@
 <script>
 // Load case data when page loads
 document.addEventListener('DOMContentLoaded', function() {
-    const caseId = new URLSearchParams(window.location.search).get('id');
-    if (caseId) {
+    const params = new URLSearchParams(window.location.search);
+    const caseId = params.get('id');
+    const isNew = params.get('new') === 'true';
+    const packetId = params.get('packetId');
+    
+    if (isNew && packetId) {
+        // Initialize for creating a new case
+        initializeNewCase(packetId);
+    } else if (caseId) {
+        // Load existing case for editing
         loadCaseForEdit(caseId);
     }
 });
+
+// Initialize form for creating a new case
+function initializeNewCase(packetId) {
+    // Store packet ID for later when saving
+    document.getElementById('editCaseId').value = `new-${packetId}`;
+    
+    // Update page title and subtitle
+    document.querySelector('h1').innerHTML = '<i class="fas fa-plus me-3" style="color: #667eea;"></i>Create New Case';
+    const subtitle = document.getElementById('pageSubtitle');
+    if (subtitle) {
+        subtitle.textContent = `Adding new case to packet #${packetId}`;
+    }
+    
+    // Initialize empty Q&A container
+    const qaPairsContainer = document.getElementById('qaPairsContainer');
+    qaPairsContainer.innerHTML = `
+        <div class="text-center py-4">
+            <p class="text-muted">No Q&A pairs yet. Click "Add Q&A Pair" to get started.</p>
+        </div>
+    `;
+    
+    // Add first Q&A pair automatically
+    addNewQAPair();
+}
 
 // Load case data for editing
 function loadCaseForEdit(caseId) {

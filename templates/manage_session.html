@@ -367,49 +367,9 @@ function deletePacket(packetId) {
 }
 
 function addCaseForm(packetId) {
-    const container = document.getElementById(`cases-${packetId}`);
-    const formId = `case-form-${packetId}`;
-    
-    if (document.getElementById(formId)) {
-        return; // Form already open
-    }
-
-    const html = `
-        <div class="card card-sm mb-2" id="${formId}">
-            <div class="card-body">
-                <div class="row mb-2">
-                    <div class="col-md-2">
-                        <label class="form-label form-label-sm">Case #:</label>
-                        <input type="number" class="form-control form-control-sm case-number" min="1" max="3" required>
-                    </div>
-                    <div class="col-md-10">
-                        <label class="form-label form-label-sm">Diagnosis:</label>
-                        <input type="text" class="form-control form-control-sm case-diagnosis" placeholder="Enter case diagnosis" required>
-                    </div>
-                </div>
-                <div class="mb-2">
-                    <label class="form-label form-label-sm"><strong><i class="fas fa-question-circle me-1"></i>Questions:</strong></label>
-                    <textarea class="form-control form-control-sm case-questions" rows="8" placeholder="Enter case questions" required style="resize: vertical;"></textarea>
-                </div>
-                <div class="mb-2">
-                    <label class="form-label form-label-sm"><strong><i class="fas fa-check-circle me-1"></i>Answers:</strong></label>
-                    <textarea class="form-control form-control-sm case-answers" rows="8" placeholder="Enter case answers" required style="resize: vertical;"></textarea>
-                </div>
-                <div class="mb-2">
-                    <label class="form-label form-label-sm">Discussion/Comments:</label>
-                    <textarea class="form-control form-control-sm case-discussion" rows="5" placeholder="Enter discussion or comments (supports multiple paragraphs and line breaks)" style="font-family: 'Courier New', monospace; white-space: pre-wrap;"></textarea>
-                </div>
-                <button type="button" class="btn btn-success btn-sm" onclick="saveNewCase(${packetId})">
-                    Save Case
-                </button>
-                <button type="button" class="btn btn-secondary btn-sm" onclick="cancelCaseForm('${formId}')">
-                    Cancel
-                </button>
-            </div>
-        </div>
-    `;
-    
-    container.insertAdjacentHTML('beforeend', html);
+    // Redirect to robust case editor for creating new case
+    // The case editor will handle creation and return user to manage session
+    window.location.href = `/edit-case?packetId=${packetId}&new=true&returnTo=/manage-session/${sessionId}`;
 }
 
 function saveNewCase(packetId) {

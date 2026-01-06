@@ -153,18 +153,34 @@ def create_case():
     """Create a new case"""
     data = request.get_json()
     
+    # Extract questions and answers from pairs
+    questions = []
+    answers = []
+    if 'pairs' in data:
+        for pair in data['pairs']:
+            if pair.get('question_text'):
+                questions.append({'question_text': pair['question_text']})
+            if pair.get('answer_text'):
+                answers.append({'answer_text': pair['answer_text']})
+    
+    # If questions/answers are provided directly (for backwards compatibility)
+    if 'questions' in data:
+        questions = data['questions']
+    if 'answers' in data:
+        answers = data['answers']
+    
     case = Case(
         packet_id=data['packet_id'],
         case_number=data['case_number'],
         diagnosis=data['diagnosis'],
-        questions=data['questions'],
-        answers=data['answers'],
+        questions=questions or [],
+        answers=answers or [],
         discussion=data.get('discussion', '')
     )
     db.session.add(case)
     db.session.commit()
     
-    return jsonify({'case_id': case.id, 'message': 'Case created'})
+    return jsonify({'success': True, 'id': case.id, 'case_id': case.id, 'message': 'Case created'})
 
 
 @app.route('/api/candidate/create', methods=['POST'])
@@ -272,15 +288,25 @@ def view_case(case_id):
 def edit_case():
     """Full-page edit interface for a case"""
     case_id = request.args.get('id', type=int)
+    is_new = request.args.get('new', 'false').lower() == 'true'
+    packet_id = request.args.get('packetId', type=int)
+    return_to = request.args.get('returnTo', url_for('start_exam'))
     
-    if not case_id:
+    if not is_new and not case_id:
         return redirect(url_for('start_exam'))
     
-    case = Case.query.get(case_id)
-    if not case:
+    if is_new and not packet_id:
         return redirect(url_for('start_exam'))
     
-    return render_template('edit_case.html')
+    case = Case.query.get(case_id) if case_id else None
+    if not is_new and not case:
+        return redirect(url_for('start_exam'))
+    
+    return render_template('edit_case.html', 
+                         is_new=is_new,
+                         packet_id=packet_id,
+                         return_to=return_to,
+                         case=case)
 
 
 @app.route('/api/case/<int:case_id>', methods=['GET', 'PUT'])

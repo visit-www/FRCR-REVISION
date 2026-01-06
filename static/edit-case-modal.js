@@ -344,7 +344,7 @@ function uploadImage() {
 
 // Save all changes - improved with validation and error handling
 function saveEditedCase() {
-    const caseId = document.getElementById('editCaseId').value;
+    const caseIdField = document.getElementById('editCaseId').value;
     const caseNumber = document.getElementById('editCaseNumber').value.trim();
     const diagnosis = document.getElementById('editCaseDiagnosis').value.trim();
     const discussion = document.getElementById('editCaseDiscussion').value.trim();
@@ -388,9 +388,35 @@ function saveEditedCase() {
     saveBtn.disabled = true;
     saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Saving...';
     
-    // Send update to server
-    fetch(`/api/case/${caseId}`, {
-        method: 'PUT',
+    // Get return_to parameter from URL if present
+    const params = new URLSearchParams(window.location.search);
+    const returnTo = params.get('returnTo');
+    const isNew = params.get('new') === 'true';
+    const packetId = params.get('packetId');
+    
+    // Determine endpoint and method
+    let endpoint = '';
+    let method = '';
+    
+    if (isNew && packetId) {
+        // Creating new case
+        endpoint = '/api/case/create';
+        method = 'POST';
+        payload.packet_id = packetId;
+    } else if (caseIdField && !caseIdField.startsWith('new-')) {
+        // Editing existing case
+        endpoint = `/api/case/${caseIdField}`;
+        method = 'PUT';
+    } else {
+        alert('Error: Invalid case state');
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = originalText;
+        return;
+    }
+    
+    // Send request to server
+    fetch(endpoint, {
+        method: method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
     })
@@ -399,11 +425,20 @@ function saveEditedCase() {
         return r.json();
     })
     .then(data => {
-        if (data.success) {
+        if (data.success || data.id) {
             alert('Case saved successfully!');
-            // Redirect back to view case page
-            const caseId = document.getElementById('editCaseId').value;
-            window.location.href = `/view-case/${caseId}`;
+            
+            // Determine redirect destination
+            let redirectUrl = '/start-exam';
+            if (returnTo) {
+                redirectUrl = returnTo;
+            } else if (isNew) {
+                redirectUrl = `/view-case/${data.id || data.case_id}`;
+            } else {
+                redirectUrl = `/view-case/${caseIdField}`;
+            }
+            
+            window.location.href = redirectUrl;
         } else {
             alert('Error: ' + (data.error || 'Failed to save case'));
         }
