@@ -6,7 +6,6 @@ __pycache__/
 .Python
 build/
 develop-eggs/
-dist/
 downloads/
 eggs/
 .eggs/
@@ -26,4 +25,23 @@ wheels/
 *.swp
 *.swo
 *~
+
+# Instance folder - contains local database
 instance/frcr_examiner.db
+instance/*.db
+
+# Backup files - keep structure but not content
+backups/*.db
+backups/*.sql
+
+# Release packages - built locally, not tracked
+release-*/
+*.zip
+
+# Logs
+*.log
+
+# OS specific
+Thumbs.db
+.Spotlight-V100
+.Trashes

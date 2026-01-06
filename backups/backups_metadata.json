@@ -1,268 +1,128 @@
 {
-  "20260106_215621": {
-    "filename": "frcr_examiner_backup_20260106_215621.db",
-    "timestamp": "20260106_215621",
-    "size_kb": 10336.0,
-    "description": "Automatic scheduled backup",
-    "database_stats": {},
-    "verified": true,
-    "exists": true
-  },
-  "20260106_215622": {
-    "filename": "frcr_examiner_backup_20260106_215622.db",
-    "timestamp": "20260106_215622",
-    "size_kb": 10336.0,
-    "description": "Automatic scheduled backup",
-    "database_stats": {},
-    "verified": true,
-    "exists": true
-  },
-  "20260106_215753": {
-    "filename": "frcr_examiner_backup_20260106_215753.db",
-    "timestamp": "20260106_215753",
-    "size_kb": 10336.0,
-    "description": "Automatic scheduled backup",
-    "database_stats": {},
-    "verified": true,
-    "exists": true
-  },
-  "20260106_215754": {
-    "filename": "frcr_examiner_backup_20260106_215754.db",
-    "timestamp": "20260106_215754",
-    "size_kb": 10336.0,
-    "description": "Automatic scheduled backup",
-    "database_stats": {},
-    "verified": true,
-    "exists": true
-  },
-  "20260106_221035": {
-    "filename": "frcr_examiner_backup_20260106_221035.db",
-    "timestamp": "20260106_221035",
+  "20260106_230141": {
+    "filename": "frcr_examiner_backup_20260106_230141.db",
+    "timestamp": "20260106_230141",
     "size_kb": 19704.0,
     "description": "Automatic scheduled backup",
     "database_stats": {},
     "verified": true,
     "exists": true
   },
-  "20260106_221204": {
-    "filename": "frcr_examiner_backup_20260106_221204.db",
-    "timestamp": "20260106_221204",
+  "20260106_230214": {
+    "filename": "frcr_examiner_backup_20260106_230214.db",
+    "timestamp": "20260106_230214",
     "size_kb": 19704.0,
     "description": "Automatic scheduled backup",
     "database_stats": {},
-    "verified": true,
-    "exists": true
+    "verified": true
   },
-  "20260106_221520": {
-    "filename": "frcr_examiner_backup_20260106_221520.db",
-    "timestamp": "20260106_221520",
+  "20260106_230248": {
+    "filename": "frcr_examiner_backup_20260106_230248.db",
+    "timestamp": "20260106_230248",
+    "size_kb": 19704.0,
+    "description": "Auto backup on app shutdown",
+    "database_stats": {},
+    "verified": true
+  },
+  "20260106_230602": {
+    "filename": "frcr_examiner_backup_20260106_230602.db",
+    "timestamp": "20260106_230602",
     "size_kb": 19704.0,
     "description": "Automatic scheduled backup",
     "database_stats": {},
-    "verified": true,
-    "exists": true
+    "verified": true
   },
-  "20260106_221547": {
-    "filename": "frcr_examiner_backup_20260106_221547.db",
-    "timestamp": "20260106_221547",
+  "20260106_230819": {
+    "filename": "frcr_examiner_backup_20260106_230819.db",
+    "timestamp": "20260106_230819",
+    "size_kb": 19704.0,
+    "description": "Auto backup on app shutdown",
+    "database_stats": {},
+    "verified": true
+  },
+  "20260106_230914": {
+    "filename": "frcr_examiner_backup_20260106_230914.db",
+    "timestamp": "20260106_230914",
     "size_kb": 19704.0,
     "description": "Automatic scheduled backup",
     "database_stats": {},
-    "verified": true,
-    "exists": true
+    "verified": true
   },
-  "20260106_221645": {
-    "filename": "frcr_examiner_backup_20260106_221645.db",
-    "timestamp": "20260106_221645",
+  "20260106_231002": {
+    "filename": "frcr_examiner_backup_20260106_231002.db",
+    "timestamp": "20260106_231002",
     "size_kb": 19704.0,
     "description": "Automatic scheduled backup",
     "database_stats": {},
-    "verified": true,
-    "exists": true
+    "verified": true
   },
-  "20260106_221812": {
-    "filename": "frcr_examiner_backup_20260106_221812.db",
-    "timestamp": "20260106_221812",
+  "20260106_231634": {
+    "filename": "frcr_examiner_backup_20260106_231634.db",
+    "timestamp": "20260106_231634",
     "size_kb": 19704.0,
     "description": "Automatic scheduled backup",
     "database_stats": {},
-    "verified": true,
-    "exists": true
+    "verified": true
   },
-  "20260106_222045": {
-    "filename": "frcr_examiner_backup_20260106_222045.db",
-    "timestamp": "20260106_222045",
+  "20260106_231800": {
+    "filename": "frcr_examiner_backup_20260106_231800.db",
+    "timestamp": "20260106_231800",
+    "size_kb": 19704.0,
+    "description": "Auto backup on app shutdown",
+    "database_stats": {},
+    "verified": true
+  },
+  "20260106_231921": {
+    "filename": "frcr_examiner_backup_20260106_231921.db",
+    "timestamp": "20260106_231921",
+    "size_kb": 19704.0,
+    "description": "Auto backup on app shutdown",
+    "database_stats": {},
+    "verified": true
+  },
+  "20260106_232027": {
+    "filename": "frcr_examiner_backup_20260106_232027.db",
+    "timestamp": "20260106_232027",
+    "size_kb": 19704.0,
+    "description": "Auto backup on app shutdown",
+    "database_stats": {},
+    "verified": true
+  },
+  "20260106_232034": {
+    "filename": "frcr_examiner_backup_20260106_232034.db",
+    "timestamp": "20260106_232034",
     "size_kb": 19704.0,
     "description": "Automatic scheduled backup",
     "database_stats": {},
-    "verified": true,
-    "exists": true
+    "verified": true
   },
-  "20260106_222326": {
-    "filename": "frcr_examiner_backup_20260106_222326.db",
-    "timestamp": "20260106_222326",
+  "20260106_232100": {
+    "filename": "frcr_examiner_backup_20260106_232100.db",
+    "timestamp": "20260106_232100",
+    "size_kb": 19704.0,
+    "description": "Auto backup on app shutdown",
+    "database_stats": {},
+    "verified": true
+  },
+  "20260106_232101": {
+    "filename": "frcr_examiner_backup_20260106_232101.db",
+    "timestamp": "20260106_232101",
     "size_kb": 19704.0,
     "description": "Automatic scheduled backup",
     "database_stats": {},
-    "verified": true,
-    "exists": true
+    "verified": true
   },
-  "20260106_222337": {
-    "filename": "frcr_examiner_backup_20260106_222337.db",
-    "timestamp": "20260106_222337",
+  "20260106_232126": {
+    "filename": "frcr_examiner_backup_20260106_232126.db",
+    "timestamp": "20260106_232126",
     "size_kb": 19704.0,
-    "description": "Automatic scheduled backup",
+    "description": "Auto backup on app shutdown",
     "database_stats": {},
-    "verified": true,
-    "exists": true
+    "verified": true
   },
-  "20260106_222342": {
-    "filename": "frcr_examiner_backup_20260106_222342.db",
-    "timestamp": "20260106_222342",
-    "size_kb": 19704.0,
-    "description": "Automatic scheduled backup",
-    "database_stats": {},
-    "verified": true,
-    "exists": true
-  },
-  "20260106_222356": {
-    "filename": "frcr_examiner_backup_20260106_222356.db",
-    "timestamp": "20260106_222356",
-    "size_kb": 19704.0,
-    "description": "Automatic scheduled backup",
-    "database_stats": {},
-    "verified": true,
-    "exists": true
-  },
-  "20260106_222504": {
-    "filename": "frcr_examiner_backup_20260106_222504.db",
-    "timestamp": "20260106_222504",
-    "size_kb": 19704.0,
-    "description": "Automatic scheduled backup",
-    "database_stats": {},
-    "verified": true,
-    "exists": true
-  },
-  "20260106_222526": {
-    "filename": "frcr_examiner_backup_20260106_222526.db",
-    "timestamp": "20260106_222526",
-    "size_kb": 19704.0,
-    "description": "Automatic scheduled backup",
-    "database_stats": {},
-    "verified": true,
-    "exists": true
-  },
-  "20260106_222527": {
-    "filename": "frcr_examiner_backup_20260106_222527.db",
-    "timestamp": "20260106_222527",
-    "size_kb": 19704.0,
-    "description": "Automatic scheduled backup",
-    "database_stats": {},
-    "verified": true,
-    "exists": true
-  },
-  "20260106_222947": {
-    "filename": "frcr_examiner_backup_20260106_222947.db",
-    "timestamp": "20260106_222947",
-    "size_kb": 19704.0,
-    "description": "Automatic scheduled backup",
-    "database_stats": {},
-    "verified": true,
-    "exists": true
-  },
-  "20260106_223129": {
-    "filename": "frcr_examiner_backup_20260106_223129.db",
-    "timestamp": "20260106_223129",
-    "size_kb": 19704.0,
-    "description": "Automatic scheduled backup",
-    "database_stats": {},
-    "verified": true,
-    "exists": true
-  },
-  "20260106_223152": {
-    "filename": "frcr_examiner_backup_20260106_223152.db",
-    "timestamp": "20260106_223152",
-    "size_kb": 19704.0,
-    "description": "Automatic scheduled backup",
-    "database_stats": {},
-    "verified": true,
-    "exists": true
-  },
-  "20260106_223224": {
-    "filename": "frcr_examiner_backup_20260106_223224.db",
-    "timestamp": "20260106_223224",
-    "size_kb": 19704.0,
-    "description": "Automatic scheduled backup",
-    "database_stats": {},
-    "verified": true,
-    "exists": true
-  },
-  "20260106_223705": {
-    "filename": "frcr_examiner_backup_20260106_223705.db",
-    "timestamp": "20260106_223705",
-    "size_kb": 19704.0,
-    "description": "Automatic scheduled backup",
-    "database_stats": {},
-    "verified": true,
-    "exists": true
-  },
-  "20260106_223801": {
-    "filename": "frcr_examiner_backup_20260106_223801.db",
-    "timestamp": "20260106_223801",
-    "size_kb": 19704.0,
-    "description": "Automatic scheduled backup",
-    "database_stats": {},
-    "verified": true,
-    "exists": true
-  },
-  "20260106_223802": {
-    "filename": "frcr_examiner_backup_20260106_223802.db",
-    "timestamp": "20260106_223802",
-    "size_kb": 19704.0,
-    "description": "Automatic scheduled backup",
-    "database_stats": {},
-    "verified": true,
-    "exists": true
-  },
-  "20260106_224249": {
-    "filename": "frcr_examiner_backup_20260106_224249.db",
-    "timestamp": "20260106_224249",
-    "size_kb": 19704.0,
-    "description": "Automatic scheduled backup",
-    "database_stats": {},
-    "verified": true,
-    "exists": true
-  },
-  "20260106_224550": {
-    "filename": "frcr_examiner_backup_20260106_224550.db",
-    "timestamp": "20260106_224550",
-    "size_kb": 19704.0,
-    "description": "Automatic scheduled backup",
-    "database_stats": {},
-    "verified": true,
-    "exists": true
-  },
-  "20260106_224751": {
-    "filename": "frcr_examiner_backup_20260106_224751.db",
-    "timestamp": "20260106_224751",
-    "size_kb": 19704.0,
-    "description": "Automatic scheduled backup",
-    "database_stats": {},
-    "verified": true,
-    "exists": true
-  },
-  "20260106_224944": {
-    "filename": "frcr_examiner_backup_20260106_224944.db",
-    "timestamp": "20260106_224944",
-    "size_kb": 19704.0,
-    "description": "Automatic scheduled backup",
-    "database_stats": {},
-    "verified": true,
-    "exists": true
-  },
-  "20260106_225052": {
-    "filename": "frcr_examiner_backup_20260106_225052.db",
-    "timestamp": "20260106_225052",
+  "20260106_232127": {
+    "filename": "frcr_examiner_backup_20260106_232127.db",
+    "timestamp": "20260106_232127",
     "size_kb": 19704.0,
     "description": "Automatic scheduled backup",
     "database_stats": {},

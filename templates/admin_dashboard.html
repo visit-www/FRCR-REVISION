@@ -22,7 +22,7 @@
     <!-- Statistics Card -->
     <div class="row mb-5">
         <div class="col-md-12">
-            <div class="card" style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: #c8e6d9; border: 1px solid #8bb8d9;">
+            <div class="card" style="background: linear-gradient(135deg, #2a2d35 0%, #1f2834 100%); color: #c8e6d9; border: 1px solid #8bb8d9;">
                 <div class="card-body">
                     <h5 class="card-title" style="color: #8bb8d9;"><i class="fas fa-chart-bar"></i> Backup Statistics</h5>
                     
@@ -30,25 +30,25 @@
                         <div class="col-md-3">
                             <div class="text-center">
                                 <h3 id="stat-total-backups">-</h3>
-                                <p class="text-muted">Total Backups</p>
+                                <p class="text-info">Total Backups</p>
                             </div>
                         </div>
                         <div class="col-md-3">
                             <div class="text-center">
                                 <h3 id="stat-total-size">-</h3>
-                                <p class="text-muted">Storage Used</p>
+                                <p class="text-info">Storage Used</p>
                             </div>
                         </div>
                         <div class="col-md-3">
                             <div class="text-center">
                                 <h3 id="stat-oldest">-</h3>
-                                <p class="text-muted">Oldest Backup</p>
+                                <p class="text-info">Oldest Backup</p>
                             </div>
                         </div>
                         <div class="col-md-3">
                             <div class="text-center">
                                 <h3 id="stat-newest">-</h3>
-                                <p class="text-muted">Latest Backup</p>
+                                <p class="text-info">Latest Backup</p>
                             </div>
                         </div>
                     </div>
@@ -65,7 +65,7 @@
     <!-- Backup Actions -->
     <div class="row mb-5">
         <div class="col-md-12">
-            <div class="card" style="background: #1a1a1a; border: 1px solid #333;">
+            <div class="card" style="background: #2a2d35; border: 1px solid #3a3d45;">
                 <div class="card-body">
                     <h5 class="card-title" style="color: #8bb8d9;"><i class="fas fa-cogs"></i> Backup Actions</h5>
                     
@@ -74,17 +74,17 @@
                             <div>
                                 <label style="color: #c8e6d9;">Create New Backup</label>
                                 <input type="text" id="backup-description" class="form-control form-control-sm mb-2" 
-                                       placeholder="Optional description" style="background: #2a2a2a; color: #c8e6d9; border-color: #444;">
+                                       placeholder="Optional description" style="background: #353841; color: #c8e6d9; border-color: #4a4d55;">
                                 <button class="btn btn-success w-100" onclick="createBackup()">
                                     <i class="fas fa-save"></i> Create Backup Now
                                 </button>
                             </div>
                         </div>
                         <div class="col-md-6">
-                            <div style="background: #2a2a2a; padding: 15px; border-radius: 5px; border-left: 3px solid #8bb8d9;">
+                            <div style="background: #353841; padding: 15px; border-radius: 5px; border-left: 3px solid #8bb8d9;">
                                 <p style="color: #c8e6d9; margin: 0;">
                                     <strong>ℹ️ Auto-Backup Active</strong><br>
-                                    <small>Database is automatically backed up every 24 hours</small>
+                                    <small>Database is automatically backed up every time you use the app</small>
                                 </p>
                             </div>
                         </div>
@@ -97,7 +97,7 @@
     <!-- Database Table Summary -->
     <div class="row mb-5">
         <div class="col-md-12">
-            <div class="card" style="background: #1a1a1a; border: 1px solid #333;">
+            <div class="card" style="background: #2a2d35; border: 1px solid #3a3d45;">
                 <div class="card-body">
                     <h5 class="card-title" style="color: #8bb8d9;"><i class="fas fa-database"></i> Database Summary</h5>
                     <div id="database-summary" class="mt-3" style="color: #c8e6d9;"></div>
@@ -109,7 +109,7 @@
     <!-- Backups List -->
     <div class="row mb-5">
         <div class="col-md-12">
-            <div class="card" style="background: #1a1a1a; border: 1px solid #333;">
+            <div class="card" style="background: #2a2d35; border: 1px solid #3a3d45;">
                 <div class="card-body">
                     <h5 class="card-title" style="color: #8bb8d9;"><i class="fas fa-history"></i> Available Backups</h5>
                     
@@ -124,11 +124,11 @@
     <!-- Backup Log -->
     <div class="row mb-5">
         <div class="col-md-12">
-            <div class="card" style="background: #1a1a1a; border: 1px solid #333;">
+            <div class="card" style="background: #2a2d35; border: 1px solid #3a3d45;">
                 <div class="card-body">
                     <h5 class="card-title" style="color: #8bb8d9;"><i class="fas fa-list"></i> Recent Activity Log</h5>
                     
-                    <div id="backup-log" class="mt-4" style="background: #0a0a0a; padding: 15px; border-radius: 5px; font-family: monospace; font-size: 12px; color: #c8e6d9; max-height: 400px; overflow-y: auto;"></div>
+                    <div id="backup-log" class="mt-4" style="background: #1f2229; padding: 15px; border-radius: 5px; font-family: monospace; font-size: 12px; color: #c8e6d9; max-height: 400px; overflow-y: auto;"></div>
                 </div>
             </div>
         </div>
@@ -192,7 +192,7 @@
                         const icon = getTableIcon(table);
                         summaryHtml += `
                             <div class="col-md-3 mb-3">
-                                <div style="background: #2a2a2a; padding: 15px; border-radius: 5px; text-align: center;">
+                                <div style="background: #353841; padding: 15px; border-radius: 5px; text-align: center;">
                                     <h3 style="color: #8bb8d9; margin: 0;">${icon} ${count}</h3>
                                     <p style="margin: 5px 0 0 0; text-transform: capitalize;">${table}</p>
                                 </div>

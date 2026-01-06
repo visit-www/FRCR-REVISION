@@ -2,6 +2,24 @@
 
 A professional examination management system designed for FRCR (Fellowship of the Royal College of Radiologists) viva exams. This application helps examiners prepare, organize, and conduct candidate examinations with medical images, case discussions, and Q&A pairs.
 
+## 🚀 Quick Install (For End Users)
+
+**Download the latest release for your operating system:**
+
+[![Download for Windows](https://img.shields.io/badge/Download-Windows-blue?style=for-the-badge&logo=windows)](https://github.com/visit-www/Frcr-examiner/releases/latest)
+[![Download for macOS](https://img.shields.io/badge/Download-macOS-lightgrey?style=for-the-badge&logo=apple)](https://github.com/visit-www/Frcr-examiner/releases/latest)
+
+### Installation Steps
+
+1. **Download** the appropriate package for your system
+2. **Extract** the ZIP file
+3. **Run the installer** (see guides below)
+4. **Launch** the app from your desktop or applications folder
+
+📖 **Detailed guides:** See [INSTALLATION_GUIDE.md](dist/INSTALLATION_GUIDE.md) or [QUICK_START.md](dist/QUICK_START.md)
+
+---
+
 ## Features
 
 ### 📋 Core Functionality

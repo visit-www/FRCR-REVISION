@@ -227,16 +227,20 @@ class DatabaseBackupManager:
             self.log_event(f"Restore failed: {e}", 'ERROR')
             return {'success': False, 'message': f'Restore failed: {e}'}
     
-    def apply_retention_policy(self):
-        """Apply retention policy to backups"""
+    def apply_retention_policy(self, max_backups=6):
+        """Apply retention policy to backups
+        
+        Args:
+            max_backups: Maximum number of backups to keep (default: 6, keeps last 5-7)
+        """
         
         backups = sorted([f for f in os.listdir(self.backup_dir) if f.endswith('.db')])
         
-        if len(backups) <= 30:
+        if len(backups) <= max_backups:
             return
         
-        # Keep most recent 30 backups
-        for backup in backups[:-30]:
+        # Keep most recent N backups (default 6)
+        for backup in backups[:-max_backups]:
             backup_path = os.path.join(self.backup_dir, backup)
             try:
                 os.remove(backup_path)
@@ -329,11 +333,10 @@ def init_backup_manager(app):
     global backup_manager
     backup_manager = DatabaseBackupManager(app)
     
-    # Create initial backup if none exist
-    if not backup_manager.get_backup_list():
-        backup_manager.create_backup(description="Initial system backup")
+    # Create startup backup (always create on app start)
+    backup_manager.create_backup(description="Auto backup on app startup")
     
-    # Start automatic daily backups
+    # Start automatic daily backups (24-hour interval)
     backup_manager.start_auto_backup_scheduler(interval_hours=24)
     
     return backup_manager

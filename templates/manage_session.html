@@ -995,7 +995,7 @@ showEditCaseForm = function(caseData) {
                 <hr>
                 <div class="image-description-section">
                     <h6 class="text-start mb-2">Image Description</h6>
-                    <textarea id="imageDescriptionManage" class="form-control form-control-sm" rows="3" placeholder="Add or edit image description..." style="background-color: #1a1a1a; color: #c8e6d9; border-color: #8bb8d9;"></textarea>
+                    <textarea id="imageDescriptionManage" class="form-control form-control-sm" rows="3" placeholder="Add or edit image description..." style="background-color: #2a2d35; color: #c8e6d9; border-color: #8bb8d9;"></textarea>
                     <button class="btn btn-sm btn-success mt-2" onclick="saveImageDescriptionManage()">Save Description</button>
                 </div>
             </div>
@@ -1079,13 +1079,13 @@ function loadQAPairsForEditManage(caseId) {
                         <div class="row g-3">
                             <div class="col-md-6">
                                 <label class="form-label" style="color: #8bb8d9;"><i class="fas fa-question-circle me-1"></i>Question ${pair.number}</label>
-                                <div class="form-control form-control-plaintext" style="background-color: #2a2a2a; color: #e0e0e0; border: 1px solid #444; border-radius: 4px; padding: 0.75rem; min-height: 100px; overflow-y: auto; white-space: pre-wrap; word-wrap: break-word;">
+                                <div class="form-control form-control-plaintext" style="background-color: #353841; color: #e0e0e0; border: 1px solid #4a4d55; border-radius: 4px; padding: 0.75rem; min-height: 100px; overflow-y: auto; white-space: pre-wrap; word-wrap: break-word;">
                                     ${(pair.question.text || 'No text').substring(0, 200)}${(pair.question.text || '').length > 200 ? '...' : ''}
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label" style="color: #c8e6d9;"><i class="fas fa-check-circle me-1"></i>Answer ${pair.number}</label>
-                                <div class="form-control form-control-plaintext" style="background-color: #2a2a2a; color: #e0e0e0; border: 1px solid #444; border-radius: 4px; padding: 0.75rem; min-height: 100px; overflow-y: auto; white-space: pre-wrap; word-wrap: break-word;">
+                                <div class="form-control form-control-plaintext" style="background-color: #353841; color: #e0e0e0; border: 1px solid #4a4d55; border-radius: 4px; padding: 0.75rem; min-height: 100px; overflow-y: auto; white-space: pre-wrap; word-wrap: break-word;">
                                     ${(pair.answer.text || 'No text').substring(0, 200)}${(pair.answer.text || '').length > 200 ? '...' : ''}
                                 </div>
                             </div>
@@ -1290,11 +1290,11 @@ function addNewQAPairRowManage() {
         <div class="row g-3">
             <div class="col-md-6">
                 <label class="form-label" style="color: #e0e0e0;"><i class="fas fa-question-circle me-1" style="color: #8bb8d9;"></i>Question Text</label>
-                <textarea class="form-control qa-question-edit" rows="5" placeholder="Enter question text" data-question-id="" style="background-color: #2a2a2a; color: #e0e0e0; border-color: #444;"></textarea>
+                <textarea class="form-control qa-question-edit" rows="5" placeholder="Enter question text" data-question-id="" style="background-color: #353841; color: #e0e0e0; border-color: #4a4d55;"></textarea>
             </div>
             <div class="col-md-6">
                 <label class="form-label" style="color: #e0e0e0;"><i class="fas fa-check-circle me-1" style="color: #c8e6d9;"></i>Answer Text</label>
-                <textarea class="form-control qa-answer-edit" rows="5" placeholder="Enter answer text" data-answer-id="" style="background-color: #2a2a2a; color: #e0e0e0; border-color: #444;"></textarea>
+                <textarea class="form-control qa-answer-edit" rows="5" placeholder="Enter answer text" data-answer-id="" style="background-color: #353841; color: #e0e0e0; border-color: #4a4d55;"></textarea>
             </div>
         </div>
     `;

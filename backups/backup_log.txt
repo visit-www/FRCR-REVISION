@@ -608,3 +608,158 @@
 [2026-01-06 22:50:52] [INFO] Deleted old backup: frcr_examiner_backup_20260106_215541.db
 [2026-01-06 22:50:52] [INFO] Auto-backup scheduler started (interval: 24h)
 [2026-01-06 22:50:52] [INFO] Backup created: frcr_examiner_backup_20260106_225052.db (19704.00 KB)
+[2026-01-06 23:00:14] [INFO] Auto-backup scheduler started (interval: 24h)
+[2026-01-06 23:00:14] [INFO] Backup created: frcr_examiner_backup_20260106_230014.db (19704.00 KB)
+[2026-01-06 23:00:14] [INFO] Deleted old backup: frcr_examiner_backup_20260106_215621.db
+[2026-01-06 23:00:14] [INFO] Auto-backup scheduler started (interval: 24h)
+[2026-01-06 23:00:14] [INFO] Backup created: frcr_examiner_backup_20260106_230014.db (19704.00 KB)
+[2026-01-06 23:01:41] [INFO] Auto-backup scheduler started (interval: 24h)
+[2026-01-06 23:01:41] [INFO] Backup created: frcr_examiner_backup_20260106_230141.db (19704.00 KB)
+[2026-01-06 23:01:41] [INFO] Deleted old backup: frcr_examiner_backup_20260106_215622.db
+[2026-01-06 23:01:41] [INFO] Deleted old backup: frcr_examiner_backup_20260106_215753.db
+[2026-01-06 23:01:41] [INFO] Deleted old backup: frcr_examiner_backup_20260106_215754.db
+[2026-01-06 23:01:41] [INFO] Deleted old backup: frcr_examiner_backup_20260106_221035.db
+[2026-01-06 23:01:41] [INFO] Deleted old backup: frcr_examiner_backup_20260106_221204.db
+[2026-01-06 23:01:41] [INFO] Deleted old backup: frcr_examiner_backup_20260106_221520.db
+[2026-01-06 23:01:41] [INFO] Deleted old backup: frcr_examiner_backup_20260106_221547.db
+[2026-01-06 23:01:41] [INFO] Deleted old backup: frcr_examiner_backup_20260106_221645.db
+[2026-01-06 23:01:41] [INFO] Deleted old backup: frcr_examiner_backup_20260106_221812.db
+[2026-01-06 23:01:41] [INFO] Deleted old backup: frcr_examiner_backup_20260106_222045.db
+[2026-01-06 23:01:41] [INFO] Deleted old backup: frcr_examiner_backup_20260106_222326.db
+[2026-01-06 23:01:41] [INFO] Deleted old backup: frcr_examiner_backup_20260106_222337.db
+[2026-01-06 23:01:41] [INFO] Deleted old backup: frcr_examiner_backup_20260106_222342.db
+[2026-01-06 23:01:41] [INFO] Deleted old backup: frcr_examiner_backup_20260106_222356.db
+[2026-01-06 23:01:41] [INFO] Deleted old backup: frcr_examiner_backup_20260106_222504.db
+[2026-01-06 23:01:41] [INFO] Deleted old backup: frcr_examiner_backup_20260106_222526.db
+[2026-01-06 23:01:41] [INFO] Deleted old backup: frcr_examiner_backup_20260106_222527.db
+[2026-01-06 23:01:41] [INFO] Deleted old backup: frcr_examiner_backup_20260106_222947.db
+[2026-01-06 23:01:41] [INFO] Deleted old backup: frcr_examiner_backup_20260106_223129.db
+[2026-01-06 23:01:41] [INFO] Deleted old backup: frcr_examiner_backup_20260106_223152.db
+[2026-01-06 23:01:41] [INFO] Deleted old backup: frcr_examiner_backup_20260106_223224.db
+[2026-01-06 23:01:41] [INFO] Deleted old backup: frcr_examiner_backup_20260106_223705.db
+[2026-01-06 23:01:41] [INFO] Deleted old backup: frcr_examiner_backup_20260106_223801.db
+[2026-01-06 23:01:41] [INFO] Deleted old backup: frcr_examiner_backup_20260106_223802.db
+[2026-01-06 23:01:41] [INFO] Deleted old backup: frcr_examiner_backup_20260106_224249.db
+[2026-01-06 23:02:10] [INFO] Auto-backup scheduler started (interval: 24h)
+[2026-01-06 23:02:10] [INFO] Backup created: frcr_examiner_backup_20260106_230210.db (19704.00 KB)
+[2026-01-06 23:02:10] [INFO] Deleted old backup: frcr_examiner_backup_20260106_224550.db
+[2026-01-06 23:02:14] [INFO] Backup created: frcr_examiner_backup_20260106_230214.db (19704.00 KB)
+[2026-01-06 23:02:14] [INFO] Deleted old backup: frcr_examiner_backup_20260106_224751.db
+[2026-01-06 23:02:14] [INFO] Backup created: frcr_examiner_backup_20260106_230214.db (19704.00 KB)
+[2026-01-06 23:02:14] [INFO] Auto-backup scheduler started (interval: 24h)
+[2026-01-06 23:02:14] [INFO] Backup created: frcr_examiner_backup_20260106_230214.db (19704.00 KB)
+[2026-01-06 23:02:23] [INFO] Backup created: frcr_examiner_backup_20260106_230223.db (19704.00 KB)
+[2026-01-06 23:02:23] [INFO] Deleted old backup: frcr_examiner_backup_20260106_224944.db
+[2026-01-06 23:02:23] [INFO] Backup created: frcr_examiner_backup_20260106_230223.db (19704.00 KB)
+[2026-01-06 23:02:23] [INFO] Auto-backup scheduler started (interval: 24h)
+[2026-01-06 23:02:23] [INFO] Backup created: frcr_examiner_backup_20260106_230223.db (19704.00 KB)
+[2026-01-06 23:02:48] [INFO] Backup created: frcr_examiner_backup_20260106_230248.db (19704.00 KB)
+[2026-01-06 23:02:48] [INFO] Deleted old backup: frcr_examiner_backup_20260106_225052.db
+[2026-01-06 23:03:59] [INFO] Backup created: frcr_examiner_backup_20260106_230359.db (19704.00 KB)
+[2026-01-06 23:03:59] [INFO] Deleted old backup: frcr_examiner_backup_20260106_230014.db
+[2026-01-06 23:03:59] [INFO] Auto-backup scheduler started (interval: 24h)
+[2026-01-06 23:03:59] [INFO] Backup created: frcr_examiner_backup_20260106_230359.db (19704.00 KB)
+[2026-01-06 23:03:59] [INFO] Backup created: frcr_examiner_backup_20260106_230359.db (19704.00 KB)
+[2026-01-06 23:03:59] [INFO] Auto-backup scheduler started (interval: 24h)
+[2026-01-06 23:03:59] [INFO] Backup created: frcr_examiner_backup_20260106_230359.db (19704.00 KB)
+[2026-01-06 23:06:01] [INFO] Backup created: frcr_examiner_backup_20260106_230601.db (19704.00 KB)
+[2026-01-06 23:06:01] [INFO] Deleted old backup: frcr_examiner_backup_20260106_230141.db
+[2026-01-06 23:06:01] [INFO] Backup created: frcr_examiner_backup_20260106_230601.db (19704.00 KB)
+[2026-01-06 23:06:02] [INFO] Backup created: frcr_examiner_backup_20260106_230602.db (19704.00 KB)
+[2026-01-06 23:06:02] [INFO] Deleted old backup: frcr_examiner_backup_20260106_230210.db
+[2026-01-06 23:06:02] [INFO] Auto-backup scheduler started (interval: 24h)
+[2026-01-06 23:06:02] [INFO] Backup created: frcr_examiner_backup_20260106_230602.db (19704.00 KB)
+[2026-01-06 23:06:02] [INFO] Backup created: frcr_examiner_backup_20260106_230602.db (19704.00 KB)
+[2026-01-06 23:06:02] [INFO] Auto-backup scheduler started (interval: 24h)
+[2026-01-06 23:06:02] [INFO] Backup created: frcr_examiner_backup_20260106_230602.db (19704.00 KB)
+[2026-01-06 23:08:19] [INFO] Backup created: frcr_examiner_backup_20260106_230819.db (19704.00 KB)
+[2026-01-06 23:08:19] [INFO] Deleted old backup: frcr_examiner_backup_20260106_230214.db
+[2026-01-06 23:08:19] [INFO] Backup created: frcr_examiner_backup_20260106_230819.db (19704.00 KB)
+[2026-01-06 23:08:20] [INFO] Backup created: frcr_examiner_backup_20260106_230820.db (19704.00 KB)
+[2026-01-06 23:08:20] [INFO] Deleted old backup: frcr_examiner_backup_20260106_230223.db
+[2026-01-06 23:08:20] [INFO] Auto-backup scheduler started (interval: 24h)
+[2026-01-06 23:08:20] [INFO] Backup created: frcr_examiner_backup_20260106_230820.db (19704.00 KB)
+[2026-01-06 23:08:20] [INFO] Backup created: frcr_examiner_backup_20260106_230820.db (19704.00 KB)
+[2026-01-06 23:08:20] [INFO] Auto-backup scheduler started (interval: 24h)
+[2026-01-06 23:08:20] [INFO] Backup created: frcr_examiner_backup_20260106_230820.db (19704.00 KB)
+[2026-01-06 23:09:06] [INFO] Backup created: frcr_examiner_backup_20260106_230906.db (19704.00 KB)
+[2026-01-06 23:09:06] [INFO] Deleted old backup: frcr_examiner_backup_20260106_230248.db
+[2026-01-06 23:09:07] [INFO] Backup created: frcr_examiner_backup_20260106_230907.db (19704.00 KB)
+[2026-01-06 23:09:07] [INFO] Deleted old backup: frcr_examiner_backup_20260106_230359.db
+[2026-01-06 23:09:14] [INFO] Backup created: frcr_examiner_backup_20260106_230914.db (19704.00 KB)
+[2026-01-06 23:09:14] [INFO] Deleted old backup: frcr_examiner_backup_20260106_230601.db
+[2026-01-06 23:09:14] [INFO] Auto-backup scheduler started (interval: 24h)
+[2026-01-06 23:09:14] [INFO] Backup created: frcr_examiner_backup_20260106_230914.db (19704.00 KB)
+[2026-01-06 23:09:15] [INFO] Backup created: frcr_examiner_backup_20260106_230914.db (19704.00 KB)
+[2026-01-06 23:09:15] [INFO] Auto-backup scheduler started (interval: 24h)
+[2026-01-06 23:09:15] [INFO] Backup created: frcr_examiner_backup_20260106_230915.db (19704.00 KB)
+[2026-01-06 23:09:15] [INFO] Deleted old backup: frcr_examiner_backup_20260106_230602.db
+[2026-01-06 23:09:59] [INFO] Backup created: frcr_examiner_backup_20260106_230959.db (19704.00 KB)
+[2026-01-06 23:09:59] [INFO] Deleted old backup: frcr_examiner_backup_20260106_230819.db
+[2026-01-06 23:09:59] [INFO] Backup created: frcr_examiner_backup_20260106_230959.db (19704.00 KB)
+[2026-01-06 23:10:02] [INFO] Backup created: frcr_examiner_backup_20260106_231002.db (19704.00 KB)
+[2026-01-06 23:10:02] [INFO] Deleted old backup: frcr_examiner_backup_20260106_230820.db
+[2026-01-06 23:10:02] [INFO] Auto-backup scheduler started (interval: 24h)
+[2026-01-06 23:10:02] [INFO] Backup created: frcr_examiner_backup_20260106_231002.db (19704.00 KB)
+[2026-01-06 23:10:03] [INFO] Backup created: frcr_examiner_backup_20260106_231003.db (19704.00 KB)
+[2026-01-06 23:10:03] [INFO] Deleted old backup: frcr_examiner_backup_20260106_230906.db
+[2026-01-06 23:10:03] [INFO] Auto-backup scheduler started (interval: 24h)
+[2026-01-06 23:10:03] [INFO] Backup created: frcr_examiner_backup_20260106_231003.db (19704.00 KB)
+[2026-01-06 23:16:34] [INFO] Backup created: frcr_examiner_backup_20260106_231634.db (19704.00 KB)
+[2026-01-06 23:16:34] [INFO] Deleted old backup: frcr_examiner_backup_20260106_230907.db
+[2026-01-06 23:16:34] [INFO] Auto-backup scheduler started (interval: 24h)
+[2026-01-06 23:16:34] [INFO] Backup created: frcr_examiner_backup_20260106_231634.db (19704.00 KB)
+[2026-01-06 23:16:35] [INFO] Backup created: frcr_examiner_backup_20260106_231635.db (19704.00 KB)
+[2026-01-06 23:16:35] [INFO] Deleted old backup: frcr_examiner_backup_20260106_230914.db
+[2026-01-06 23:16:35] [INFO] Auto-backup scheduler started (interval: 24h)
+[2026-01-06 23:16:35] [INFO] Backup created: frcr_examiner_backup_20260106_231635.db (19704.00 KB)
+[2026-01-06 23:18:00] [INFO] Backup created: frcr_examiner_backup_20260106_231800.db (19704.00 KB)
+[2026-01-06 23:18:00] [INFO] Deleted old backup: frcr_examiner_backup_20260106_230915.db
+[2026-01-06 23:18:00] [INFO] Backup created: frcr_examiner_backup_20260106_231800.db (19704.00 KB)
+[2026-01-06 23:18:02] [INFO] Backup created: frcr_examiner_backup_20260106_231802.db (19704.00 KB)
+[2026-01-06 23:18:02] [INFO] Deleted old backup: frcr_examiner_backup_20260106_230959.db
+[2026-01-06 23:18:02] [INFO] Auto-backup scheduler started (interval: 24h)
+[2026-01-06 23:18:02] [INFO] Backup created: frcr_examiner_backup_20260106_231802.db (19704.00 KB)
+[2026-01-06 23:18:02] [INFO] Backup created: frcr_examiner_backup_20260106_231802.db (19704.00 KB)
+[2026-01-06 23:18:02] [INFO] Auto-backup scheduler started (interval: 24h)
+[2026-01-06 23:18:02] [INFO] Backup created: frcr_examiner_backup_20260106_231802.db (19704.00 KB)
+[2026-01-06 23:19:21] [INFO] Backup created: frcr_examiner_backup_20260106_231921.db (19704.00 KB)
+[2026-01-06 23:19:21] [INFO] Deleted old backup: frcr_examiner_backup_20260106_231002.db
+[2026-01-06 23:19:21] [INFO] Backup created: frcr_examiner_backup_20260106_231921.db (19704.00 KB)
+[2026-01-06 23:19:40] [INFO] Backup created: frcr_examiner_backup_20260106_231940.db (19704.00 KB)
+[2026-01-06 23:19:40] [INFO] Deleted old backup: frcr_examiner_backup_20260106_231003.db
+[2026-01-06 23:19:40] [INFO] Auto-backup scheduler started (interval: 24h)
+[2026-01-06 23:19:40] [INFO] Backup created: frcr_examiner_backup_20260106_231940.db (19704.00 KB)
+[2026-01-06 23:19:40] [INFO] Backup created: frcr_examiner_backup_20260106_231940.db (19704.00 KB)
+[2026-01-06 23:19:40] [INFO] Auto-backup scheduler started (interval: 24h)
+[2026-01-06 23:19:40] [INFO] Backup created: frcr_examiner_backup_20260106_231940.db (19704.00 KB)
+[2026-01-06 23:20:27] [INFO] Backup created: frcr_examiner_backup_20260106_232027.db (19704.00 KB)
+[2026-01-06 23:20:27] [INFO] Deleted old backup: frcr_examiner_backup_20260106_231634.db
+[2026-01-06 23:20:27] [INFO] Backup created: frcr_examiner_backup_20260106_232027.db (19704.00 KB)
+[2026-01-06 23:20:34] [INFO] Backup created: frcr_examiner_backup_20260106_232034.db (19704.00 KB)
+[2026-01-06 23:20:34] [INFO] Deleted old backup: frcr_examiner_backup_20260106_231635.db
+[2026-01-06 23:20:34] [INFO] Auto-backup scheduler started (interval: 24h)
+[2026-01-06 23:20:34] [INFO] Backup created: frcr_examiner_backup_20260106_232034.db (19704.00 KB)
+[2026-01-06 23:20:34] [INFO] Backup created: frcr_examiner_backup_20260106_232034.db (19704.00 KB)
+[2026-01-06 23:20:34] [INFO] Auto-backup scheduler started (interval: 24h)
+[2026-01-06 23:20:34] [INFO] Backup created: frcr_examiner_backup_20260106_232034.db (19704.00 KB)
+[2026-01-06 23:21:00] [INFO] Backup created: frcr_examiner_backup_20260106_232100.db (19704.00 KB)
+[2026-01-06 23:21:00] [INFO] Deleted old backup: frcr_examiner_backup_20260106_231800.db
+[2026-01-06 23:21:00] [INFO] Backup created: frcr_examiner_backup_20260106_232100.db (19704.00 KB)
+[2026-01-06 23:21:01] [INFO] Backup created: frcr_examiner_backup_20260106_232101.db (19704.00 KB)
+[2026-01-06 23:21:01] [INFO] Deleted old backup: frcr_examiner_backup_20260106_231802.db
+[2026-01-06 23:21:01] [INFO] Auto-backup scheduler started (interval: 24h)
+[2026-01-06 23:21:01] [INFO] Backup created: frcr_examiner_backup_20260106_232101.db (19704.00 KB)
+[2026-01-06 23:21:01] [INFO] Backup created: frcr_examiner_backup_20260106_232101.db (19704.00 KB)
+[2026-01-06 23:21:01] [INFO] Auto-backup scheduler started (interval: 24h)
+[2026-01-06 23:21:01] [INFO] Backup created: frcr_examiner_backup_20260106_232101.db (19704.00 KB)
+[2026-01-06 23:21:26] [INFO] Backup created: frcr_examiner_backup_20260106_232126.db (19704.00 KB)
+[2026-01-06 23:21:26] [INFO] Deleted old backup: frcr_examiner_backup_20260106_231921.db
+[2026-01-06 23:21:26] [INFO] Backup created: frcr_examiner_backup_20260106_232126.db (19704.00 KB)
+[2026-01-06 23:21:27] [INFO] Backup created: frcr_examiner_backup_20260106_232127.db (19704.00 KB)
+[2026-01-06 23:21:27] [INFO] Deleted old backup: frcr_examiner_backup_20260106_231940.db
+[2026-01-06 23:21:27] [INFO] Auto-backup scheduler started (interval: 24h)
+[2026-01-06 23:21:27] [INFO] Backup created: frcr_examiner_backup_20260106_232127.db (19704.00 KB)
+[2026-01-06 23:21:27] [INFO] Backup created: frcr_examiner_backup_20260106_232127.db (19704.00 KB)
+[2026-01-06 23:21:27] [INFO] Auto-backup scheduler started (interval: 24h)
+[2026-01-06 23:21:27] [INFO] Backup created: frcr_examiner_backup_20260106_232127.db (19704.00 KB)

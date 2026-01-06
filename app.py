@@ -5,6 +5,7 @@ from datetime import datetime
 import os
 from io import BytesIO
 import mimetypes
+import atexit
 
 app = Flask(__name__)
 
@@ -29,8 +30,21 @@ db.init_app(app)
 
 with app.app_context():
     db.create_all()
-    # Initialize backup manager with automatic daily backups
-    init_backup_manager(app)
+    # Initialize backup manager and create startup backup
+    backup_manager = init_backup_manager(app)
+
+
+# ==================== BACKUP HOOKS ====================
+
+def backup_on_shutdown():
+    """Create backup when application shuts down"""
+    backup_manager = get_backup_manager()
+    if backup_manager:
+        backup_manager.create_backup(description="Auto backup on app shutdown")
+
+
+# Register shutdown backup
+atexit.register(backup_on_shutdown)
 
 
 @app.route('/')
