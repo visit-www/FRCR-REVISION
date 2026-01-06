@@ -333,11 +333,22 @@ def init_backup_manager(app):
     global backup_manager
     backup_manager = DatabaseBackupManager(app)
     
-    # Create startup backup (always create on app start)
-    backup_manager.create_backup(description="Auto backup on app startup")
+    # Skip backups in serverless environment (Vercel, AWS Lambda, etc.)
+    # These environments have ephemeral storage that gets wiped anyway
+    is_serverless = os.getenv('VERCEL') or os.getenv('AWS_LAMBDA_FUNCTION_NAME')
     
-    # Start automatic daily backups (24-hour interval)
-    backup_manager.start_auto_backup_scheduler(interval_hours=24)
+    if not is_serverless:
+        # Create startup backup (always create on app start)
+        try:
+            backup_manager.create_backup(description="Auto backup on app startup")
+        except Exception as e:
+            print(f"Warning: Could not create startup backup: {e}")
+        
+        # Start automatic daily backups (24-hour interval)
+        try:
+            backup_manager.start_auto_backup_scheduler(interval_hours=24)
+        except Exception as e:
+            print(f"Warning: Could not start backup scheduler: {e}")
     
     return backup_manager
 

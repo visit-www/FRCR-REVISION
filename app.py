@@ -8,7 +8,10 @@ from io import BytesIO
 import mimetypes
 import atexit
 
-app = Flask(__name__)
+app = Flask(__name__, 
+    template_folder=os.path.join(os.path.dirname(__file__), 'templates'),
+    static_folder=os.path.join(os.path.dirname(__file__), 'static')
+)
 
 # Enable CORS for Vercel frontend access
 CORS(app, resources={
@@ -21,36 +24,51 @@ CORS(app, resources={
 
 # Ensure instance folder exists
 instance_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'instance')
-os.makedirs(instance_path, exist_ok=True)
+try:
+    os.makedirs(instance_path, exist_ok=True)
+except Exception as e:
+    print(f"Warning: Could not create instance folder: {e}")
+    instance_path = '/tmp'
 
 # Configuration
-# Use PostgreSQL on production (Railway), SQLite locally
+# Use PostgreSQL on production (Vercel), SQLite locally
 DATABASE_URL = os.getenv('DATABASE_URL')
 if DATABASE_URL:
-    # PostgreSQL on Railway
+    # PostgreSQL on Vercel or external
     app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL.replace('postgres://', 'postgresql://')
 else:
     # SQLite for local development
     app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(instance_path, "frcr_examiner.db")}'
-app.config['SECRET_KEY'] = 'your-secret-key-change-in-production'
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-secret-key-change-in-production')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Initialize database
 db.init_app(app)
 
 with app.app_context():
-    db.create_all()
-    # Initialize backup manager and create startup backup
-    backup_manager = init_backup_manager(app)
+    try:
+        db.create_all()
+        # Initialize backup manager and create startup backup (optional for serverless)
+        try:
+            backup_manager = init_backup_manager(app)
+        except Exception as e:
+            print(f"Warning: Could not initialize backup manager: {e}")
+            backup_manager = None
+    except Exception as e:
+        print(f"Error initializing database: {e}")
+        raise
 
 
 # ==================== BACKUP HOOKS ====================
 
 def backup_on_shutdown():
     """Create backup when application shuts down"""
-    backup_manager = get_backup_manager()
-    if backup_manager:
-        backup_manager.create_backup(description="Auto backup on app shutdown")
+    try:
+        backup_manager = get_backup_manager()
+        if backup_manager:
+            backup_manager.create_backup(description="Auto backup on app shutdown")
+    except Exception as e:
+        print(f"Warning: Could not create shutdown backup: {e}")
 
 
 # Register shutdown backup

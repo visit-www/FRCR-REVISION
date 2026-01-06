@@ -11,7 +11,9 @@ parent_dir = str(Path(__file__).parent.parent)
 if parent_dir not in sys.path:
     sys.path.insert(0, parent_dir)
 
+# Import Flask app
 from app import app
 
-# IMPORTANT: For Vercel, we need to export the Flask app as 'app'
-# This is the handler that Vercel's Python runtime will call
+# Export app for Vercel WSGI handler
+# Vercel will call this as the ASGI application
+

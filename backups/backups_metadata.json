@@ -1,28 +1,4 @@
 {
-  "20260107_032301": {
-    "filename": "frcr_examiner_backup_20260107_032301.db",
-    "timestamp": "20260107_032301",
-    "size_kb": 32.0,
-    "description": "Automatic scheduled backup",
-    "database_stats": {},
-    "verified": true
-  },
-  "20260107_042838": {
-    "filename": "frcr_examiner_backup_20260107_042838.db",
-    "timestamp": "20260107_042838",
-    "size_kb": 32.0,
-    "description": "Automatic scheduled backup",
-    "database_stats": {},
-    "verified": true
-  },
-  "20260107_042852": {
-    "filename": "frcr_examiner_backup_20260107_042852.db",
-    "timestamp": "20260107_042852",
-    "size_kb": 32.0,
-    "description": "Auto backup on app shutdown",
-    "database_stats": {},
-    "verified": true
-  },
   "20260107_043203": {
     "filename": "frcr_examiner_backup_20260107_043203.db",
     "timestamp": "20260107_043203",
@@ -34,6 +10,30 @@
   "20260107_043213": {
     "filename": "frcr_examiner_backup_20260107_043213.db",
     "timestamp": "20260107_043213",
+    "size_kb": 32.0,
+    "description": "Auto backup on app shutdown",
+    "database_stats": {},
+    "verified": true
+  },
+  "20260107_052654": {
+    "filename": "frcr_examiner_backup_20260107_052654.db",
+    "timestamp": "20260107_052654",
+    "size_kb": 32.0,
+    "description": "Automatic scheduled backup",
+    "database_stats": {},
+    "verified": true
+  },
+  "20260107_052712": {
+    "filename": "frcr_examiner_backup_20260107_052712.db",
+    "timestamp": "20260107_052712",
+    "size_kb": 32.0,
+    "description": "Auto backup on app shutdown",
+    "database_stats": {},
+    "verified": true
+  },
+  "20260107_052717": {
+    "filename": "frcr_examiner_backup_20260107_052717.db",
+    "timestamp": "20260107_052717",
     "size_kb": 32.0,
     "description": "Auto backup on app shutdown",
     "database_stats": {},
