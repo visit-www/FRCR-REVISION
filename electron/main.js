@@ -35,9 +35,11 @@ function startFlaskServer() {
         const exeName = isWindows ? 'flask_server.exe' : 'flask_server';
         
         // Try multiple possible locations for the bundled executable
+        // In packaged apps, asarUnpack extracts files to app.asar.unpacked
         const possiblePaths = [
-          path.join(appPath, 'flask_server', exeName),  // Standard location
+          path.join(appPath, 'app.asar.unpacked', 'resources', 'flask_server', exeName),  // Unpacked location
           path.join(appPath, 'resources', 'flask_server', exeName),  // Resources folder
+          path.join(appPath, 'flask_server', exeName),  // Standard location
           path.join(appPath, exeName),  // Direct in resources
         ];
         

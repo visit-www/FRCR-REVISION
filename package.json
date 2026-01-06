@@ -49,6 +49,9 @@
       "backups/**/*",
       "node_modules/**/*"
     ],
+    "asarUnpack": [
+      "resources/flask_server/**/*"
+    ],
     "mac": {
       "target": [
         "dmg",
