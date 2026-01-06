@@ -1,10 +1,9 @@
 /* FRCR Examiner Tool Styles - Soft Pastel Theme */
 
 :root {
-    /* Soft Pastel Colors */
+    /* Soft Pastel Colors - Bootstrap 5 Palette */
     --pastel-blue: #8bb8d9;
     --pastel-green: #a8d5a8;
-    --pastel-pink: #f0b3d9;
     --pastel-purple: #d4a5e8;
     --pastel-peach: #f5d9b8;
     --pastel-yellow: #f0e8b8;
@@ -16,7 +15,7 @@
     --soft-bg-light: #faf9f7;
     --soft-bg-pale-blue: #f0f6fc;
     --soft-bg-pale-green: #f0f8f0;
-    --soft-bg-pale-pink: #fdf5fa;
+    --soft-bg-pale-lavender: #f3eef8;
     
     /* Legacy colors mapped to pastels */
     --primary-color: #8bb8d9;
