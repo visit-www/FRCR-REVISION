@@ -1,0 +1,88 @@
+# Electron Builder Configuration
+# Generates installers for macOS, Windows, and Linux
+
+appId: com.frcr.examiner
+productName: FRCR Examiner
+artifactName: ${productName}-${version}-${arch}.${ext}
+
+directories:
+  buildResources: assets
+  output: dist
+
+files:
+  - electron/**/*
+  - templates/**/*
+  - static/**/*
+  - instance/**/*
+  - backups/**/*
+  - app.py
+  - models.py
+  - requirements.txt
+  - .env.example
+  - node_modules/**/*
+
+# macOS Configuration
+mac:
+  target:
+    - dmg
+    - zip
+  category: public.app-category.medical
+  icon: assets/icon.icns
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: assets/entitlements.mac.plist
+  entitlementsInherit: assets/entitlements.mac.plist
+
+dmg:
+  contents:
+    - x: 110
+      y: 150
+      type: file
+    - x: 240
+      y: 150
+      type: link
+      path: /Applications
+  iconSize: 128
+  window:
+    width: 500
+    height: 400
+
+# Windows Configuration
+win:
+  target:
+    - nsis
+    - portable
+  icon: assets/icon.ico
+  certificateFile: null
+  certificatePassword: null
+  signingHashAlgorithms:
+    - sha256
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: FRCR Examiner
+
+# Linux Configuration
+linux:
+  target:
+    - AppImage
+    - deb
+  icon: assets/icon.png
+  category: Education
+
+deb:
+  depends:
+    - python3
+
+appImage:
+  artifactName: ${productName}-${version}.${ext}
+
+# Build Publish Settings
+publish:
+  provider: github
+  owner: visit-www
+  repo: Frcr-examiner
+  releaseType: release
