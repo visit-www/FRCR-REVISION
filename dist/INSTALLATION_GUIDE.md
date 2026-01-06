@@ -57,10 +57,14 @@ Welcome to the FRCR Examiner Tool! This guide will help you install and set up t
    - Verify installation by opening Terminal and typing: `python3 --version`
 
 3. **Run the Installer**
-   - Open Terminal
-   - Navigate to the extracted folder: `cd ~/Downloads/FRCR-Examiner-macOS`
-   - Run: `cd dist/macos && ./install.sh`
+   
+   - Navigate to the extracted folder
+   - Go to `dist/macos` folder
+   - **Double-click** `install.command`
+   - The Terminal will open automatically
    - Follow the on-screen instructions
+   
+   **That's it!** No need to type any commands!
 
 4. **Handle macOS Security Warning**
    

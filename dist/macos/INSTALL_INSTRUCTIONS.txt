@@ -1,0 +1,41 @@
+╔═══════════════════════════════════════════════════════════════╗
+║                                                               ║
+║           FRCR EXAMINER TOOL - macOS Installation            ║
+║                                                               ║
+╚═══════════════════════════════════════════════════════════════╝
+
+✅  EASY INSTALLATION - JUST DOUBLE-CLICK!
+
+═══════════════════════════════════════════════════════════════
+
+📋 INSTALLATION STEPS:
+
+1. Find the file "install.command" in this folder
+
+2. Double-click "install.command"
+   └─ Terminal will open automatically
+   └─ No commands to type!
+
+3. Follow the on-screen instructions
+   └─ That's it!
+
+═══════════════════════════════════════════════════════════════
+
+✨ It's that simple!
+
+The installer does everything automatically.
+You don't need to type any Terminal commands.
+
+═══════════════════════════════════════════════════════════════
+
+📖 For detailed instructions, see:
+   • INSTALLATION_GUIDE.md
+   • QUICK_START.md
+
+═══════════════════════════════════════════════════════════════
+
+👨‍⚕️ Developed by Dr Gaurav S.P Gupta, MBBS, MD, FRCR
+📧 Support: lotusheart2016@gmail.com
+🐙 GitHub: github.com/visit-www/Frcr-examiner
+
+═══════════════════════════════════════════════════════════════

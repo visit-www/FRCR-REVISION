@@ -1,18 +1,19 @@
 #!/bin/bash
-# FRCR Examiner Tool - macOS Installer
-# This installer will set up FRCR Examiner on your Mac
-#
-# HOW TO RUN THIS INSTALLER:
-# 1. Open Terminal (Applications > Utilities > Terminal)
-# 2. Type: cd 
-# 3. Drag this script's folder into Terminal window
-# 4. Press Enter
-# 5. Type: ./install.sh
-# 6. Press Enter
+# FRCR Examiner Tool - macOS Double-Click Installer
+# Simply DOUBLE-CLICK this file to install!
+
+# Get the directory where this script is located
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+cd "$SCRIPT_DIR"
+
+# Clear screen
+clear
 
 echo "============================================"
 echo "FRCR Examiner Tool - Installation Wizard"
 echo "============================================"
+echo ""
+echo "Welcome! This installer will set up FRCR Examiner on your Mac."
 echo ""
 
 # Check for Python
@@ -43,8 +44,8 @@ mkdir -p "$INSTALL_DIR"
 
 # Copy application files
 echo "[3/6] Copying application files..."
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-rsync -av --exclude='__pycache__' --exclude='*.pyc' --exclude='.git' --exclude='venv' --exclude='env' --exclude='node_modules' --exclude='.DS_Store' --exclude='dist' --exclude='build' "$SCRIPT_DIR/../../" "$INSTALL_DIR/" > /dev/null 2>&1
+echo "This may take a moment..."
+rsync -av --exclude='__pycache__' --exclude='*.pyc' --exclude='.git' --exclude='venv' --exclude='env' --exclude='node_modules' --exclude='.DS_Store' --exclude='dist' --exclude='build' --exclude='release-*' "$SCRIPT_DIR/../../" "$INSTALL_DIR/" > /dev/null 2>&1
 
 if [ $? -ne 0 ]; then
     echo "Warning: Some files may not have been copied. Continuing..."
@@ -56,11 +57,12 @@ echo ""
 echo "[4/6] Installing Python dependencies..."
 echo "This may take a few minutes..."
 cd "$INSTALL_DIR"
-python3 -m pip install --upgrade pip > /dev/null 2>&1
-python3 -m pip install -r requirements.txt
+python3 -m pip install --upgrade pip --quiet > /dev/null 2>&1
+python3 -m pip install -r requirements.txt --quiet
 
 if [ $? -ne 0 ]; then
     echo "ERROR: Failed to install dependencies!"
+    echo "Please check your internet connection and try again."
     read -p "Press Enter to exit..."
     exit 1
 fi
@@ -73,10 +75,19 @@ LAUNCHER_PATH="$INSTALL_DIR/FRCR_Examiner_Launcher.command"
 cat > "$LAUNCHER_PATH" << 'EOFLAUNCH'
 #!/bin/bash
 # FRCR Examiner Tool - Launcher
+# Double-click this file to start the application
 
 # Get the directory where this script is located
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd "$SCRIPT_DIR"
+
+# Clear screen
+clear
+
+echo "============================================"
+echo "       FRCR Examiner Tool - Starting       "
+echo "============================================"
+echo ""
 
 # Check if Python is available
 if ! command -v python3 &> /dev/null; then
@@ -84,13 +95,15 @@ if ! command -v python3 &> /dev/null; then
     exit 1
 fi
 
-# Start the application
 echo "Starting FRCR Examiner Tool..."
 echo "Please wait while the application loads..."
 echo ""
 echo "The application will open in your web browser."
 echo ""
-echo "To stop the application, close this window or press Ctrl+C."
+echo "To stop the application:"
+echo "  - Close this window"
+echo "  - Or press Ctrl+C"
+echo ""
 echo "============================================"
 echo ""
 
@@ -108,6 +121,12 @@ echo ""
 # Create Application Bundle
 echo "[6/6] Creating Application Bundle..."
 APP_BUNDLE="$HOME/Applications/FRCR Examiner.app"
+
+# Remove old app bundle if exists
+if [ -d "$APP_BUNDLE" ]; then
+    rm -rf "$APP_BUNDLE"
+fi
+
 mkdir -p "$APP_BUNDLE/Contents/MacOS"
 mkdir -p "$APP_BUNDLE/Contents/Resources"
 
@@ -124,7 +143,7 @@ cat > "$APP_BUNDLE/Contents/Info.plist" << 'EOFPLIST'
     <key>CFBundleIdentifier</key>
     <string>com.frcr.examiner</string>
     <key>CFBundleVersion</key>
-    <string>1.0.0</string>
+    <string>1.0.1</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleSignature</key>
@@ -144,6 +163,14 @@ cat > "$APP_BUNDLE/Contents/MacOS/launcher" << 'EOFLAUNCHER'
 #!/bin/bash
 INSTALL_DIR="$HOME/Applications/FRCR_Examiner"
 cd "$INSTALL_DIR"
+
+# Check Python
+if ! command -v python3 &> /dev/null; then
+    osascript -e 'display dialog "Python 3 is not installed!\n\nPlease install from:\nhttps://www.python.org/downloads/" buttons {"OK"} default button "OK" with icon stop with title "FRCR Examiner"'
+    exit 1
+fi
+
+# Start app
 (sleep 2 && open http://127.0.0.1:5000) &
 python3 app.py 2>&1 | tee "$HOME/Library/Logs/FRCR_Examiner.log"
 EOFLAUNCHER
@@ -154,32 +181,49 @@ echo "Application Bundle created!"
 echo ""
 
 # Success message
+clear
 echo "============================================"
-echo "Installation Complete!"
+echo "        Installation Complete! 🎉         "
 echo "============================================"
 echo ""
 echo "The FRCR Examiner Tool has been installed successfully!"
 echo ""
-echo "You can now launch the application:"
-echo "  - Double-click 'FRCR Examiner' in your Applications folder"
-echo "  - Or run: $LAUNCHER_PATH"
+echo "🚀 How to Launch the Application:"
+echo ""
+echo "Option 1 (Recommended):"
+echo "  - Go to your Applications folder"
+echo "  - Double-click 'FRCR Examiner'"
+echo ""
+echo "Option 2:"
+echo "  - Double-click: $LAUNCHER_PATH"
 echo ""
 echo ""
-echo "IMPORTANT - macOS Security Notice:"
+echo "⚠️  IMPORTANT - macOS Security Notice:"
 echo "============================================"
-echo "When you first run the app, macOS may show a security warning"
+echo "When you first run the app, macOS will show a security warning"
 echo "because the app is not downloaded from the App Store."
 echo ""
 echo "To allow the app to run:"
 echo "  1. Try to open the app (it will be blocked)"
-echo "  2. Go to: System Preferences > Security & Privacy"
+echo "  2. Go to: System Preferences → Security & Privacy"
 echo "  3. Click 'Open Anyway' next to the blocked app message"
-echo "  4. Or right-click the app and select 'Open'"
 echo ""
-echo "This is normal for apps distributed outside the App Store."
-echo "Your data will be stored locally at:"
-echo "$INSTALL_DIR/instance"
+echo "OR:"
+echo "  1. Right-click (Control+click) the app"
+echo "  2. Select 'Open' from the menu"
+echo "  3. Click 'Open' in the security dialog"
+echo ""
+echo "You only need to do this ONCE!"
+echo ""
+echo "============================================"
+echo ""
+echo "📂 Your data will be stored at:"
+echo "   $INSTALL_DIR/instance/"
+echo ""
+echo "📧 Support: lotusheart2016@gmail.com"
+echo "🌐 GitHub: github.com/visit-www/Frcr-examiner"
 echo ""
 echo "Thank you for installing FRCR Examiner Tool!"
 echo ""
-read -p "Press Enter to finish..."
+echo "Press Enter to close this window..."
+read

@@ -23,8 +23,10 @@ echo ""
 
 # Create Windows package
 echo "[1/2] Creating Windows distribution package..."
-cd "$(dirname "$0")/.."
-zip -r "$RELEASE_DIR/FRCR-Examiner-Windows-v${VERSION}.zip" \
+SCRIPT_DIR="$(dirname "$0")"
+cd "$SCRIPT_DIR/.."
+mkdir -p "$RELEASE_DIR"
+zip -r "$SCRIPT_DIR/$RELEASE_DIR/FRCR-Examiner-Windows-v${VERSION}.zip" \
     app.py \
     models.py \
     backup_*.py \
@@ -49,7 +51,7 @@ else
     echo "✗ Failed to create Windows package"
 fi
 
-# Create macOS package
+# Create SCRIPT_DIR/$macOS package
 echo "[2/2] Creating macOS distribution package..."
 zip -r "$RELEASE_DIR/FRCR-Examiner-macOS-v${VERSION}.zip" \
     app.py \
@@ -79,18 +81,18 @@ fi
 # Generate checksums
 echo ""
 echo "Generating checksums..."
-cd "$RELEASE_DIR"
+cd "$SCRIPT_DIR/$RELEASE_DIR"
 shasum -a 256 *.zip > checksums.txt
-cd ..
+cd "$SCRIPT_DIR"
 
 echo ""
 echo "============================================"
 echo "Distribution packages created successfully!"
 echo "============================================"
 echo ""
-echo "Location: $RELEASE_DIR/"
+echo "Location: $SCRIPT_DIR/$RELEASE_DIR/"
 echo ""
-ls -lh "$RELEASE_DIR"
+ls -lh "$SCRIPT_DIR/$RELEASE_DIR"
 echo ""
 echo "Files created:"
 echo "  - FRCR-Examiner-Windows-v${VERSION}.zip"

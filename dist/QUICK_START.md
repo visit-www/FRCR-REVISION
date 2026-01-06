@@ -24,13 +24,12 @@ If you don't have Python:
 
 ### Installation
 1. Download `FRCR-Examiner-macOS.zip`
-2. Extract the ZIP file
-3. Open Terminal and run:
-   ```bash
-   cd ~/Downloads/FRCR-Examiner-macOS/dist/macos
-   ./install.sh
-   ```
-4. Follow the installer instructions
+2. Extract the ZIP file (double-click in Finder)
+3. Go to `dist/macos` folder
+4. **Double-click** `install.command`
+5. Follow the installer instructions
+
+**That's it!** Simple double-click installation!
 
 ### First Launch
 - Open "FRCR Examiner" from Applications folder
