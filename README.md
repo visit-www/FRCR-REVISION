@@ -1,114 +1,241 @@
-# FRCR EXAMINER - Setup and Run Guide
+# FRCR Examiner Tool
 
-## Project Overview
-FRCR Examiner is a Flask-based web application for managing FRCR (Fellowship of Royal College of Radiologists) exam preparation and recording exam results for candidates.
+A professional examination management system designed for FRCR (Fellowship of the Royal College of Radiologists) viva exams. This application helps examiners prepare, organize, and conduct candidate examinations with medical images, case discussions, and Q&A pairs.
 
-### Features
-- **Prepare for Exam**: Create exam sessions, manage 4 packets (FORM IDs), add 3 cases per packet with questions, answers, and discussions
-- **Start Exam**: Select candidate (1-4), view corresponding packet, navigate through cases, view case details in grid format
-- **Responsive Design**: Bootstrap 5 UI, works on all screen sizes
-- **SQLite Database**: Simple local database for data persistence
+## Features
 
-## Project Structure
-```
-FRCR_EXAMINER/
-├── app.py                 # Main Flask application
-├── models.py             # Database models
-├── requirements.txt      # Python dependencies
-├── templates/            # HTML templates
-│   ├── base.html        # Base template with navbar
-│   ├── index.html       # Home page with tabs
-│   ├── start_exam.html  # Select candidate page
-│   ├── view_packet.html # View cases in packet
-│   └── view_case.html   # View individual case details
-├── static/              # Static files
-│   └── style.css        # Custom styles
-└── instance/            # Instance folder (database stored here)
-```
+### 📋 Core Functionality
+- **Exam Session Management**: Create and manage multiple exam sessions with dates and times
+- **Candidate Management**: Register candidates with unique identifiers and packet assignments
+- **Case Management**: Organize medical cases with images, diagnoses, and discussion points
+- **Q&A Pairs**: Add and manage question-answer pairs for each case
+- **Image Handling**: Upload, manage, and attach medical images to cases
+- **Exam Workflow**: Guide candidates through structured examination sessions
 
-## Installation & Setup
+### 🎯 Key Features
+- Intuitive web-based interface
+- Responsive Bootstrap 5 design
+- Session-based candidate organization
+- Rich text editor for case discussions
+- Image annotation and description capabilities
+- Automatic database backups
+- Admin dashboard for system management
+
+## Technology Stack
+
+- **Backend**: Flask (Python)
+- **Database**: PostgreSQL (production) / SQLite (development)
+- **Frontend**: Bootstrap 5, Vanilla JavaScript
+- **ORM**: SQLAlchemy
+- **Server**: WSGI-compatible (Railway/Gunicorn for production)
+
+## Quick Start
 
 ### Prerequisites
-- Python 3.8 or higher
+- Python 3.7+
+- PostgreSQL (production) or SQLite (development)
 - pip (Python package manager)
 
-### Step 1: Create Virtual Environment
-```bash
-cd /Users/zen/myRepos/projects/FRCR_EXAMINER
-python3 -m venv venv
-source venv/bin/activate
-```
+### Installation
 
-### Step 2: Install Dependencies
-```bash
-pip install -r requirements.txt
-```
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/visit-www/Frcr-examiner.git
+   cd Frcr-examiner
+   ```
 
-### Step 3: Run the Application
-```bash
-python app.py
-```
+2. **Create virtual environment**
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
 
-The application will start on `http://localhost:5000`
+3. **Install dependencies**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. **Configure database**
+   - Development: SQLite is configured by default
+   - Production: Set `DATABASE_URL` environment variable
+
+5. **Run the application**
+   ```bash
+   flask run
+   ```
+   Visit `http://localhost:5000` in your browser.
 
 ## Usage Guide
 
-### 1. Prepare for Exam Tab
-1. Enter **Exam Date** and **Exam Time**
-2. Click **Create Exam Session**
-3. Click **Add Packet** to create packets (1-4)
-   - Enter Packet Number (1-4)
-   - Enter Packet ID (e.g., FORM001, FORM002)
-   - Click **Create Packet**
-4. For each packet, click **Add Case** to add 3 cases:
-   - Case Number (1-3)
-   - Diagnosis (text)
-   - Questions (text)
-   - Answers (text)
-   - Discussion/Comments (optional)
-5. Click **Add Candidate** to register candidates (1-4):
-   - Candidate Name
-   - Candidate Number (1-4) - auto-maps to packet number
+### Getting Started
+1. **Navigate to Home**: Click "Home" in the navigation bar to access the dashboard
+2. **Create Session**: Click "Manage Sessions" to create a new exam session
+3. **Set Details**: Provide session name, exam date, and time
+4. **Manage Session**: Click "Manage Session" button to organize that session
 
-### 2. Start Exam Tab
-1. Click **Start Exam Session**
-2. Select a candidate from the list
-3. Click **View Packet** to see cases in that candidate's packet
-4. Click **View Case** to see full case details in grid format
-5. Review case diagnosis, questions, answers, and discussion
+### Managing Sessions
+From the Manage Session page, you can:
+- **Add Packets**: Create exam packets containing medical cases
+- **Add Cases**: Add medical cases to packets with images and descriptions
+- **Add Candidates**: Register exam candidates for the session
+- **Add Q&A Pairs**: Create question-answer pairs for discussion
 
-## Database
-- SQLite database is automatically created at: `instance/frcr_examiner.db`
-- Database includes tables for:
-  - ExamSession
-  - Packet
-  - Case
-  - Candidate
+### Taking an Exam
+1. Navigate to **Exam** in the navigation bar
+2. Select an exam session
+3. Choose a candidate
+4. View their packet and cases
+5. Review images, diagnoses, and discussion points
+6. Discuss and evaluate the candidate's responses
 
-## Stopping the Application
-Press `Ctrl+C` in the terminal running the Flask app
+### Admin Functions
+- Access **Admin** section for system management
+- View and manage backups
+- Monitor system status
 
-## Deactivating Virtual Environment
-```bash
-deactivate
+## Project Structure
+
+```
+FRCR_EXAMINER/
+├── app.py                    # Main Flask application
+├── models.py                 # Database models
+├── requirements.txt          # Python dependencies
+├── templates/
+│   ├── base.html            # Base template with navigation
+│   ├── dashboard.html        # Home dashboard
+│   ├── setup_sessions.html   # Session management
+│   ├── manage_session.html   # Session detail management
+│   ├── start_exam.html       # Exam start workflow
+│   ├── view_case.html        # Case viewing and review
+│   ├── edit_case.html        # Case editing interface
+│   └── admin_dashboard.html  # Admin panel
+├── static/
+│   ├── style.css            # Application styles
+│   └── edit-case-modal.js   # Case editing JavaScript
+├── instance/                 # Instance-specific files (database)
+└── backups/                  # Automatic database backups
 ```
 
-## Dependencies
-- **Flask 2.3.3**: Web framework
-- **Flask-SQLAlchemy 3.0.5**: ORM for database
-- **SQLAlchemy 2.0.21**: Database toolkit
-- **Bootstrap 5.3**: CSS framework (loaded via CDN)
+## API Endpoints
 
-## Notes
-- The app runs in **debug mode** for development (auto-reload on code changes)
-- Database file persists between sessions
-- Each exam session can have multiple packets and candidates
-- Candidate numbers 1-4 automatically map to packet numbers 1-4
+### Session Management
+- `GET /api/exam/sessions` - List all sessions
+- `POST /api/exam/create` - Create new session
+- `GET /api/session/{id}/packets` - Get packets in session
+
+### Candidate Management
+- `GET /api/candidates/{session_id}` - List candidates in session
+- `POST /api/candidate/create` - Create new candidate
+- `DELETE /api/candidate/{id}` - Delete candidate
+
+### Case Management
+- `GET /api/case/{id}` - Get case details
+- `PUT /api/case/{id}` - Update case
+- `GET /api/case/{id}/qa-pairs` - Get Q&A pairs for case
+- `GET /api/case/{id}/images` - Get case images
+
+### Image Management
+- `POST /api/case-image/upload` - Upload image
+- `DELETE /api/case-image/{id}` - Delete image
+- `PUT /api/case-image/{id}` - Update image description
+
+## Configuration
+
+### Environment Variables
+- `DATABASE_URL` - Database connection string (production)
+- `FLASK_ENV` - Set to `development` or `production`
+- `SECRET_KEY` - Flask secret key for sessions
+
+### Database
+- **Development**: SQLite (instance/frcr_examiner.db)
+- **Production**: PostgreSQL via `DATABASE_URL`
+
+## Backup & Recovery
+
+The application includes automatic backup functionality:
+- Backups are created every 24 hours
+- Old backups are automatically cleaned up
+- Manual backups can be initiated from Admin panel
+- Stored in `backups/` directory
+
+## Development
+
+### Setting up for Development
+```bash
+# Install dev dependencies
+pip install -r requirements.txt
+
+# Run in debug mode
+export FLASK_ENV=development
+flask run
+```
+
+### Database Migrations
+Models are defined in `models.py`. For schema changes:
+1. Update model definitions
+2. Restart Flask (will create new tables if needed)
+3. For production, use migration tools
+
+## Deployment
+
+The application is designed for easy deployment on:
+- **Railway**: Configure `DATABASE_URL` and deploy
+- **Heroku**: Use Procfile configuration
+- **Traditional VPS**: Use gunicorn with nginx reverse proxy
+
+### Production Checklist
+- [ ] Set `FLASK_ENV=production`
+- [ ] Configure `DATABASE_URL` for PostgreSQL
+- [ ] Set strong `SECRET_KEY`
+- [ ] Enable HTTPS
+- [ ] Set up automated backups
+- [ ] Configure email notifications
 
 ## Troubleshooting
-- If port 5000 is already in use, modify `app.py` line with `port=5000` to another port (e.g., 5001)
-- If database issues occur, delete `instance/frcr_examiner.db` and restart the app
-- Ensure virtual environment is activated before running the app
 
----
-**Happy Exam Preparation!**
+### Common Issues
+
+**Port 5000 already in use**
+```bash
+# Use different port
+flask run --port 5001
+```
+
+**Database connection errors**
+- Verify DATABASE_URL format
+- Check database credentials
+- Ensure database server is running
+
+**Image upload issues**
+- Check file permissions on upload directory
+- Verify image format is supported
+- Check available disk space
+
+## Contributing
+
+1. Create a feature branch
+2. Make your changes
+3. Test thoroughly
+4. Commit with clear messages
+5. Push and create pull request
+
+## License
+
+This project is for educational and professional use in medical training environments.
+
+## Support & Contact
+
+For issues, suggestions, or support:
+- Email: lotusheart2016@gmail.com
+- Author: Dr Gaurav S.P Gupta, MBBS, MD, FRCR
+
+## Changelog
+
+### Version 1.0.0
+- Initial release
+- Complete session and candidate management
+- Image upload and management
+- Exam workflow
+- Automatic backups
+- Admin dashboard
+- Responsive Bootstrap 5 UI
