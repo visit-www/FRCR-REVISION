@@ -22,14 +22,28 @@ Two options available:
 
 ## Installation Instructions (Simple Version)
 
-### For Colleagues:
+### For Colleagues - Manual Installation:
 ```
 1. Download DMG from Release Page
 2. Double-click to mount
-3. Drag app to Applications folder
-4. Double-click to run
+3. Drag app to Applications folder (important!)
+4. Open Applications folder and double-click app
 5. Done! (No other setup needed)
 ```
+
+### For Colleagues - Automated Installation:
+
+**DMG Installer (one-line Terminal command):**
+```bash
+cp -r /Volumes/FRCR\ Examiner/FRCR\ Examiner.app /Applications/ && hdiutil unmount /Volumes/FRCR\ Examiner
+```
+
+**ZIP Archive (one-line Terminal command):**
+```bash
+mv ~/Downloads/FRCR\ Examiner.app /Applications/
+```
+
+Just have them copy and paste into Terminal for automatic installation!
 
 ### If They Get a Security Warning:
 ```
@@ -37,6 +51,11 @@ Two options available:
 2. Select "Open"
 3. Click "Open" again
 4. App launches normally
+```
+
+**OR use this Terminal command (permanent fix):**
+```bash
+sudo xattr -rd com.apple.quarantine "/Applications/FRCR Examiner.app"
 ```
 
 ## Verification

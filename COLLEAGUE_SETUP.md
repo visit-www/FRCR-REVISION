@@ -6,18 +6,56 @@ The FRCR Examiner app is now fully self-contained and **does NOT require Python,
 
 ### Installation Steps
 
-#### Option 1: Using DMG Installer (Recommended)
+#### Option 1: Using DMG Installer (Recommended - Manual)
 1. Download `FRCR Examiner-1.0.0-arm64.dmg` from the [Release Page](https://github.com/visit-www/Frcr-examiner/releases)
+   - File will be in your **Downloads** folder
 2. Double-click the DMG file to mount it
-3. Drag the **FRCR Examiner** icon to the **Applications** folder
-4. Open **Applications** folder in Finder
+   - A window will open showing the app
+3. **IMPORTANT:** Drag the **FRCR Examiner** icon to the **Applications** folder
+   - You'll see the Applications folder icon in the same window
+   - Drag the app icon and drop it on the Applications folder
+4. After the copy completes, open **Applications** folder in Finder
 5. Double-click **FRCR Examiner** to launch
+
+#### Option 1B: Using DMG Installer (Automated - Copy-Paste)
+
+Prefer automatic installation? Copy and paste this command in Terminal:
+
+```bash
+cp -r /Volumes/FRCR\ Examiner/FRCR\ Examiner.app /Applications/ && hdiutil unmount /Volumes/FRCR\ Examiner
+```
+
+**Steps:**
+1. Download and mount the DMG (double-click it)
+2. Open Terminal (Applications → Utilities → Terminal)
+3. Paste the command above and press Enter
+4. The app will be automatically copied to Applications
+5. DMG will unmount automatically
 
 #### Option 2: Using ZIP Archive
 1. Download `FRCR Examiner-1.0.0-arm64-mac.zip` from the [Release Page](https://github.com/visit-www/Frcr-examiner/releases)
-2. Unzip the file (double-click)
-3. Drag **FRCR Examiner.app** to **Applications** folder (or anywhere you prefer)
-4. Double-click to launch
+   - File will be in your **Downloads** folder
+2. Unzip the file (double-click it)
+   - Unzipped app will appear in Downloads folder
+3. **IMPORTANT:** Move the app to **Applications** folder
+   - Open Finder
+   - Go to Downloads folder
+   - Drag **FRCR Examiner.app** to Applications folder (drag to sidebar or open Applications folder)
+4. Open **Applications** folder and double-click **FRCR Examiner** to launch
+
+#### Option 2B: Using ZIP Archive (Automated - Copy-Paste)
+
+Prefer automatic setup? Copy and paste this command in Terminal:
+
+```bash
+mv ~/Downloads/FRCR\ Examiner.app /Applications/
+```
+
+**Steps:**
+1. Download and unzip the ZIP file (double-click it)
+2. Open Terminal (Applications → Utilities → Terminal)
+3. Paste the command above and press Enter
+4. The app will be automatically moved to Applications
 
 ### Troubleshooting
 
