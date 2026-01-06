@@ -55,7 +55,11 @@
         "zip"
       ],
       "category": "public.app-category.medical",
-      "icon": "assets/icon.icns"
+      "icon": "assets/icon.icns",
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false,
+      "entitlements": null,
+      "entitlementsInherit": null
     },
     "dmg": {
       "contents": [
