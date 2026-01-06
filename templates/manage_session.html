@@ -961,13 +961,61 @@ function deleteImageManage(event, imageId, caseId) {
 }
 
 function viewImageFullSizeManage(imageId, filename) {
+    // Store current image ID for description saving
+    window.currentImageIdManage = imageId;
+    
     const modal = new bootstrap.Modal(document.getElementById('imageModalManage'), {
         backdrop: 'static',
         keyboard: true
     });
     document.getElementById('modalImageDisplayManage').src = `/api/case-image/${imageId}`;
     document.getElementById('imageInfoManage').textContent = `Filename: ${filename}`;
+    
+    // Load image description from API
+    const caseId = document.querySelector('[data-case-id]')?.dataset.caseId;
+    if (caseId) {
+        fetch(`/api/case/${caseId}/images`)
+            .then(response => response.json())
+            .then(images => {
+                const image = images.find(img => img.id == imageId);
+                if (image) {
+                    document.getElementById('imageDescriptionManage').value = image.description || '';
+                }
+            })
+            .catch(error => {
+                console.error('Error loading image description:', error);
+                document.getElementById('imageDescriptionManage').value = '';
+            });
+    }
+    
     modal.show();
+}
+
+function saveImageDescriptionManage() {
+    const imageId = window.currentImageIdManage;
+    const description = document.getElementById('imageDescriptionManage').value;
+    
+    if (!imageId) {
+        alert('No image selected');
+        return;
+    }
+    
+    fetch(`/api/case-image/${imageId}/description`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ description: description })
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('Description saved:', data);
+        alert('Description saved successfully!');
+    })
+    .catch(error => {
+        console.error('Error saving description:', error);
+        alert('Failed to save description: ' + error.message);
+    });
 }
 
 function showStatusManage(element, message, type) {
@@ -994,7 +1042,13 @@ showEditCaseForm = function(caseData) {
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body text-center">
-                <img id="modalImageDisplayManage" src="" alt="Image" style="max-width: 100%; max-height: 70vh; object-fit: contain;">
+                <img id="modalImageDisplayManage" src="" alt="Image" style="max-width: 100%; max-height: 50vh; object-fit: contain;">
+                <hr>
+                <div class="image-description-section">
+                    <h6 class="text-start mb-2">Image Description</h6>
+                    <textarea id="imageDescriptionManage" class="form-control form-control-sm" rows="3" placeholder="Add or edit image description..." style="background-color: #1a1a1a; color: #c8e6d9; border-color: #8bb8d9;"></textarea>
+                    <button class="btn btn-sm btn-success mt-2" onclick="saveImageDescriptionManage()">Save Description</button>
+                </div>
             </div>
             <div class="modal-footer">
                 <small id="imageInfoManage" class="me-auto text-muted"></small>

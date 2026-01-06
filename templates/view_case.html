@@ -94,6 +94,10 @@
                             <div class="mt-3">
                                 <label for="imageInput" class="form-label">Upload Image</label>
                                 <input type="file" id="imageInput" class="form-control form-control-sm" accept="image/*" />
+                                
+                                <label for="imageDescription" class="form-label mt-2">Image Description (Optional)</label>
+                                <textarea id="imageDescription" class="form-control form-control-sm" rows="2" placeholder="Add a description for this image..." style="resize: vertical;"></textarea>
+                                
                                 <button id="uploadImageBtn" class="btn btn-sm btn-outline-primary mt-2">Upload Image</button>
                                 <div id="imageStatus" class="mt-2"></div>
                             </div>
@@ -127,7 +131,13 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body text-center">
-                <img id="modalImageDisplay" src="" alt="Image" style="max-width: 100%; max-height: 70vh; object-fit: contain;">
+                <img id="modalImageDisplay" src="" alt="Image" style="max-width: 100%; max-height: 50vh; object-fit: contain;">
+                <hr>
+                <div class="image-description-section">
+                    <h6 class="text-start mb-2">Image Description</h6>
+                    <textarea id="imageDescription" class="form-control form-control-sm" rows="3" placeholder="Add or edit image description..." style="background-color: #1a1a1a; color: #c8e6d9; border-color: #8bb8d9;"></textarea>
+                    <button class="btn btn-sm btn-success mt-2" onclick="saveImageDescription()">Save Description</button>
+                </div>
             </div>
             <div class="modal-footer">
                 <small id="imageInfo" class="me-auto text-muted"></small>
@@ -316,6 +326,7 @@
     
     function uploadImage() {
         const fileInput = document.getElementById('imageInput');
+        const descriptionInput = document.getElementById('imageDescription');
         const statusDiv = document.getElementById('imageStatus');
         const file = fileInput.files[0];
         
@@ -326,6 +337,7 @@
         
         const formData = new FormData();
         formData.append('image', file);
+        formData.append('description', descriptionInput.value);
         
         showStatus(statusDiv, 'Uploading...', 'info');
         
@@ -340,6 +352,7 @@
             } else {
                 showStatus(statusDiv, 'Image uploaded successfully!', 'success');
                 fileInput.value = '';
+                descriptionInput.value = '';
                 loadImages();
             }
         })
@@ -368,9 +381,55 @@
     }
     
     function viewImageFullSize(imageId, filename) {
+        // Store current image ID for description saving
+        window.currentImageId = imageId;
+        
         document.getElementById('modalImageDisplay').src = `/api/case-image/${imageId}`;
         document.getElementById('imageInfo').textContent = `Filename: ${filename}`;
+        
+        // Load image description from API
+        fetch(`/api/case/${caseId}/images`)
+            .then(response => response.json())
+            .then(images => {
+                const image = images.find(img => img.id == imageId);
+                if (image) {
+                    document.getElementById('imageDescription').value = image.description || '';
+                }
+            })
+            .catch(error => {
+                console.error('Error loading image description:', error);
+                document.getElementById('imageDescription').value = '';
+            });
+        
         imageModal.show();
+    }
+    
+    function saveImageDescription() {
+        const imageId = window.currentImageId;
+        const description = document.getElementById('imageDescription').value;
+        
+        if (!imageId) {
+            alert('No image selected');
+            return;
+        }
+        
+        fetch(`/api/case-image/${imageId}/description`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ description: description })
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log('Description saved:', data);
+            alert('Description saved successfully!');
+        })
+        .catch(error => {
+            console.error('Error saving description:', error);
+            alert('Failed to save description: ' + error.message);
+        });
+
     }
     
     function showStatus(element, message, type) {

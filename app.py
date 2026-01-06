@@ -350,11 +350,15 @@ def upload_case_image(case_id):
     
     image_data = file.read()
     
+    # Get description from form data
+    description = request.form.get('description', '')
+    
     case_image = CaseImage(
         case_id=case_id,
         image_data=image_data,
         image_filename=file.filename,
-        image_type=file_type
+        image_type=file_type,
+        image_description=description
     )
     
     db.session.add(case_image)
@@ -374,6 +378,7 @@ def get_case_images(case_id):
     return jsonify([{
         'id': img.id,
         'filename': img.image_filename,
+        'description': img.image_description if img.image_description else '',
         'created_at': img.created_at.strftime('%Y-%m-%d %H:%M:%S')
     } for img in images])
 
@@ -406,6 +411,27 @@ def delete_case_image(image_id):
     db.session.commit()
     
     return jsonify({'message': 'Image deleted successfully'})
+
+
+@app.route('/api/case-image/<int:image_id>/description', methods=['PUT'])
+def update_image_description(image_id):
+    """Update image description"""
+    image = CaseImage.query.get(image_id)
+    
+    if not image:
+        return jsonify({'error': 'Image not found'}), 404
+    
+    data = request.get_json()
+    description = data.get('description', '')
+    
+    image.image_description = description
+    db.session.commit()
+    
+    return jsonify({
+        'image_id': image.id,
+        'description': image.image_description,
+        'message': 'Description updated successfully'
+    })
 
 
 @app.route('/api/case/<int:case_id>', methods=['PUT'])

@@ -555,6 +555,41 @@ pre {
     color: #a8d5a8 !important;
 }
 
+/* Image Description Section */
+.image-description-section {
+    background-color: rgba(26, 26, 26, 0.7);
+    padding: 1rem;
+    border-radius: 0.5rem;
+    border: 1px solid #8bb8d9;
+    margin-top: 1rem;
+}
+
+.image-description-section h6 {
+    color: #c8e6d9;
+    font-weight: 600;
+}
+
+.image-description-section textarea {
+    resize: vertical;
+    font-size: 0.9rem;
+}
+
+.image-description-section textarea:focus {
+    box-shadow: 0 0 10px rgba(139, 184, 217, 0.3) !important;
+}
+
+.image-description-section .btn-success {
+    background-color: #a8d5a8 !important;
+    border-color: #a8d5a8 !important;
+    color: #333 !important;
+    font-weight: 500;
+}
+
+.image-description-section .btn-success:hover {
+    background-color: #97c597 !important;
+    border-color: #97c597 !important;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
     .hero-title {

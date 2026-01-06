@@ -54,6 +54,7 @@ class CaseImage(db.Model):
     image_data = db.Column(db.LargeBinary, nullable=False)  # Binary image data
     image_filename = db.Column(db.String(255), nullable=False)
     image_type = db.Column(db.String(50), nullable=False)  # e.g., 'image/png', 'image/jpeg'
+    image_description = db.Column(db.Text, default='')  # Optional image description
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     def __repr__(self):
