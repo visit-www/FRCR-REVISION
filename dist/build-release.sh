@@ -51,9 +51,10 @@ else
     echo "✗ Failed to create Windows package"
 fi
 
-# Create SCRIPT_DIR/$macOS package
+# Create macOS package
 echo "[2/2] Creating macOS distribution package..."
-zip -r "$RELEASE_DIR/FRCR-Examiner-macOS-v${VERSION}.zip" \
+cd "$SCRIPT_DIR/.."
+zip -r "$SCRIPT_DIR/$RELEASE_DIR/FRCR-Examiner-macOS-v${VERSION}.zip" \
     app.py \
     models.py \
     backup_*.py \
