@@ -13,10 +13,15 @@ files:
   - electron/**/*
   - templates/**/*
   - static/**/*
+  - resources/flask_server/**/*
   - instance/**/*
   - backups/**/*
   - app.py
   - models.py
+  - backup_database.py
+  - backup_manager.py
+  - backup_scheduler.py
+  - restore_database.py
   - requirements.txt
   - .env.example
   - node_modules/**/*

@@ -21,13 +21,53 @@ const APP_NAME = 'FRCR Examiner';
 function startFlaskServer() {
   return new Promise((resolve, reject) => {
     try {
-      // Determine Python path based on OS
-      const isPythonWindows = process.platform === 'win32';
-      const pythonCmd = isPythonWindows ? 'python' : 'python3';
+      // Get the correct app path (works in both dev and packaged app)
+      const appPath = app.isPackaged 
+        ? process.resourcesPath 
+        : path.join(__dirname, '..');
+      
+      let flaskExecutable;
+      let spawnArgs = [];
+      
+      if (app.isPackaged) {
+        // Use bundled PyInstaller executable
+        const isWindows = process.platform === 'win32';
+        const exeName = isWindows ? 'flask_server.exe' : 'flask_server';
+        
+        // Try multiple possible locations for the bundled executable
+        const possiblePaths = [
+          path.join(appPath, 'flask_server', exeName),  // Standard location
+          path.join(appPath, 'resources', 'flask_server', exeName),  // Resources folder
+          path.join(appPath, exeName),  // Direct in resources
+        ];
+        
+        flaskExecutable = null;
+        for (const possiblePath of possiblePaths) {
+          if (fs.existsSync(possiblePath)) {
+            flaskExecutable = possiblePath;
+            break;
+          }
+        }
+        
+        // Check if bundled executable exists, fallback to Python if not
+        if (!flaskExecutable) {
+          console.warn('⚠️ Bundled Flask executable not found, falling back to system Python');
+          const pythonCmd = isWindows ? 'python' : 'python3';
+          const appPyPath = path.join(appPath, 'app.py');
+          flaskExecutable = pythonCmd;
+          spawnArgs = [appPyPath];
+        }
+      } else {
+        // Development mode: use system Python
+        const isPythonWindows = process.platform === 'win32';
+        const pythonCmd = isPythonWindows ? 'python' : 'python3';
+        flaskExecutable = pythonCmd;
+        spawnArgs = [path.join(appPath, 'app.py')];
+      }
 
       // Spawn Flask process
-      flaskProcess = spawn(pythonCmd, ['app.py'], {
-        cwd: __dirname + '/..',
+      flaskProcess = spawn(flaskExecutable, spawnArgs, {
+        cwd: appPath,
         stdio: ['ignore', 'pipe', 'pipe'],
         detached: false,
       });
@@ -84,16 +124,20 @@ function createWindow() {
     minWidth: 800,
     minHeight: 600,
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
+      preload: app.isPackaged
+        ? path.join(process.resourcesPath, 'electron', 'preload.js')
+        : path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
       contextIsolation: true,
       enableRemoteModule: false,
     },
-    icon: path.join(__dirname, '../assets/icon.png'),
+    icon: app.isPackaged 
+      ? path.join(process.resourcesPath, 'assets', 'icon.png')
+      : path.join(__dirname, '../assets/icon.png'),
   });
 
-  // Load Vercel frontend (or fallback to local Flask)
-  const startUrl = process.env.ELECTRON_START_URL || `file://${path.join(__dirname, '../templates/index.html')}`;
+  // Load Flask backend (always use localhost in packaged app)
+  const startUrl = process.env.ELECTRON_START_URL || FLASK_URL;
   mainWindow.loadURL(startUrl);
 
   // Open DevTools in development

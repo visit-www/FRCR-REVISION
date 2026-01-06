@@ -15,7 +15,9 @@
     "build-win": "electron-builder --win",
     "build-all": "electron-builder -mw",
     "pack": "electron-builder --dir",
-    "dist": "electron-builder"
+    "dist": "electron-builder",
+    "build-python": "pyinstaller flask_server.spec --clean --noconfirm",
+    "build-with-python": "bash build-with-python.sh"
   },
   "dependencies": {
     "axios": "^1.6.2"
@@ -33,6 +35,16 @@
     },
     "files": [
       "electron/**/*",
+      "templates/**/*",
+      "static/**/*",
+      "resources/flask_server/**/*",
+      "app.py",
+      "models.py",
+      "backup_database.py",
+      "backup_manager.py",
+      "backup_scheduler.py",
+      "restore_database.py",
+      "requirements.txt",
       "instance/**/*",
       "backups/**/*",
       "node_modules/**/*"
