@@ -1,39 +1,32 @@
-# FRCR Examiner v3.0
+# FRCR Examiner
 
 Medical exam management system for FRCR (Fundamental Recognition of Competence and Readiness) candidates.
 
-## Installation & Usage
+## ⚡ Quick Start
 
-### Prerequisites
-- **Python 3.9+**
-- **Node.js & npm** (for building the native app with Nativefier)
-
-### Quick Start
-
-**Option 1: Run Flask Server Directly**
+### macOS/Linux
 ```bash
-python3 run.py
+git clone https://github.com/visit-www/Frcr-examiner.git
+cd Frcr-examiner
+chmod +x start.sh
+./start.sh
 ```
 Opens at http://localhost:5000
 
-**Option 2: Run Flask with Startup Script**
+### Windows
 ```bash
-bash startup.sh
+git clone https://github.com/visit-www/Frcr-examiner.git
+cd Frcr-examiner
+start.bat
 ```
+Opens at http://localhost:5000
 
-### Build Native macOS App (Nativefier)
+---
 
-```bash
-# Install dependencies
-pip install -r requirements.txt
+## Prerequisites
+- **Python 3.9+** (download from https://www.python.org/downloads/)
 
-# Build the native app
-nativefier --name "FRCR Examiner" \
-  http://localhost:5000 \
-  --out dist
-```
-
-This creates a standalone native macOS application in `dist/` folder.
+That's it!
 
 ## Features
 
@@ -42,7 +35,9 @@ This creates a standalone native macOS application in `dist/` folder.
 - 🏥 Medical case management with images
 - 💬 Q&A pairs for each case
 - 📊 Session analytics
-- 💾 Automatic database backups
+- 💾 Automatic database backups (every 24h)
+
+All data stored locally. Nothing goes to the cloud.
 
 ## Project Structure
 
