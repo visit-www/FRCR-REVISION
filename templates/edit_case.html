@@ -1,0 +1,272 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12 px-2 px-md-5">
+        <!-- Back Button -->
+        <div class="mb-4 mt-4">
+            <button class="btn btn-outline-secondary btn-sm" onclick="window.history.back()">
+                <i class="fas fa-arrow-left me-2"></i>Back
+            </button>
+        </div>
+
+        <!-- Page Header -->
+        <div class="mb-5 pb-4 border-bottom">
+            <h1 class="display-6 mb-2">
+                <i class="fas fa-edit me-3" style="color: #667eea;"></i>Edit Case
+            </h1>
+            <p class="text-muted" id="pageSubtitle">Loading case details...</p>
+        </div>
+
+        <!-- Form Container -->
+        <form id="caseEditForm">
+            <input type="hidden" id="editCaseId">
+
+            <!-- Section 1: Case Details -->
+            <div class="card shadow-sm mb-5 border-0">
+                <div class="card-header bg-gradient text-white" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                    <h5 class="mb-0">
+                        <i class="fas fa-file-medical me-2"></i>Case Information
+                    </h5>
+                </div>
+                <div class="card-body p-4">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-4">
+                                <label class="form-label fw-bold text-secondary">Case Number *</label>
+                                <input type="text" class="form-control form-control-lg" id="editCaseNumber" placeholder="e.g., 001" required>
+                                <small class="text-muted d-block mt-2">Unique identifier for this case</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-4">
+                                <label class="form-label fw-bold text-secondary">Diagnosis *</label>
+                                <input type="text" class="form-control form-control-lg" id="editCaseDiagnosis" placeholder="e.g., Pneumonia" required>
+                                <small class="text-muted d-block mt-2">Primary diagnosis for this case</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 2: Questions & Answers -->
+            <div class="card shadow-sm mb-5 border-0">
+                <div class="card-header bg-gradient text-white" style="background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);">
+                    <h5 class="mb-0">
+                        <i class="fas fa-comments me-2"></i>Questions & Answers
+                    </h5>
+                </div>
+                <div class="card-body p-4">
+                    <div id="qaPairsContainer">
+                        <p class="text-muted text-center py-5">Loading Q&A pairs...</p>
+                    </div>
+                    
+                    <div class="border-top pt-3 mt-3">
+                        <button type="button" class="btn btn-success w-100" onclick="addNewQAPair()">
+                            <i class="fas fa-plus me-2"></i>Add Q&A Pair
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 3: Discussion/Comments -->
+            <div class="card shadow-sm mb-5 border-0">
+                <div class="card-header bg-gradient text-white" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%);">
+                    <h5 class="mb-0">
+                        <i class="fas fa-sticky-note me-2"></i>Discussion & Clinical Notes
+                    </h5>
+                </div>
+                <div class="card-body p-4">
+                    <label class="form-label fw-bold text-secondary mb-3">Add Detailed Notes</label>
+                    <textarea class="form-control form-control-lg" id="editCaseDiscussion" rows="6" placeholder="Add any discussion, clinical findings, differential diagnosis, teaching points, or additional comments about this case..."></textarea>
+                    <small class="text-muted d-block mt-2">Optional field for comprehensive case discussion</small>
+                </div>
+            </div>
+
+            <!-- Section 4: Images -->
+            <div class="card shadow-sm mb-5 border-0">
+                <div class="card-header bg-gradient text-white" style="background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);">
+                    <h5 class="mb-0">
+                        <i class="fas fa-images me-2"></i>Case Images
+                    </h5>
+                </div>
+                <div class="card-body p-4">
+                    <!-- Images Grid -->
+                    <div id="editImagesContainer" class="mb-5">
+                        <p class="text-muted text-center py-5">Loading images...</p>
+                    </div>
+
+                    <!-- Upload Section -->
+                    <div class="border-top pt-4">
+                        <label class="form-label fw-bold text-secondary mb-3">Upload New Image</label>
+                        <div class="input-group input-group-lg">
+                            <input type="file" id="editImageInput" class="form-control" accept="image/*">
+                            <button type="button" class="btn btn-info" onclick="uploadImage()">
+                                <i class="fas fa-upload me-1"></i>Upload
+                            </button>
+                        </div>
+                        <small class="text-muted d-block mt-2">
+                            <i class="fas fa-info-circle me-1"></i>Supported formats: JPEG, PNG, GIF, WebP (Max 10MB)
+                        </small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="sticky-bottom bg-white border-top p-3 mb-5 shadow-sm">
+                <div class="d-flex gap-2 justify-content-end">
+                    <button type="button" class="btn btn-lg btn-outline-secondary" onclick="window.history.back()">
+                        <i class="fas fa-times me-2"></i>Cancel
+                    </button>
+                    <button type="button" class="btn btn-lg btn-primary" onclick="saveEditedCase()">
+                        <i class="fas fa-save me-2"></i>Save All Changes
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    body {
+        background-color: #f8f9fa;
+    }
+
+    .card {
+        border-radius: 8px;
+    }
+
+    .card-header {
+        border-radius: 8px 8px 0 0;
+        padding: 1.25rem 1.5rem;
+    }
+
+    .card-body {
+        background-color: #ffffff;
+    }
+
+    .form-control-lg,
+    .form-control-lg.form-control {
+        padding: 0.875rem 1rem;
+        font-size: 1.025rem;
+        height: auto;
+    }
+
+    .form-label {
+        font-size: 0.95rem;
+        margin-bottom: 0.75rem;
+        color: #495057;
+    }
+
+    .form-control:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+    }
+
+    textarea.form-control {
+        resize: vertical;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        line-height: 1.6;
+    }
+
+    .sticky-bottom {
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 100;
+    }
+
+    .qa-pair-row {
+        border-left: 5px solid #764ba2;
+        border-radius: 4px;
+        transition: all 0.2s ease;
+    }
+
+    .qa-pair-row:hover {
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .qa-pair-row textarea {
+        min-height: 120px;
+    }
+
+    .image-card {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .image-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+    }
+
+    .bg-gradient {
+        background-attachment: fixed;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .col-12 {
+            padding-left: 0.5rem !important;
+            padding-right: 0.5rem !important;
+        }
+
+        .card {
+            margin-bottom: 1rem !important;
+        }
+
+        .sticky-bottom {
+            padding: 1rem 0.5rem !important;
+        }
+
+        .btn-lg {
+            padding: 0.5rem 1rem;
+            font-size: 0.95rem;
+        }
+    }
+</style>
+
+<script src="/static/edit-case-modal.js"></script>
+<script>
+// Load case data when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    const caseId = new URLSearchParams(window.location.search).get('id');
+    if (caseId) {
+        loadCaseForEdit(caseId);
+    }
+});
+
+// Load case data for editing
+function loadCaseForEdit(caseId) {
+    Promise.all([
+        fetch(`/api/case/${caseId}`).then(r => r.json()),
+        fetch(`/api/case/${caseId}/images`).then(r => r.json())
+    ])
+    .then(([caseData, images]) => {
+        // Set the case ID
+        document.getElementById('editCaseId').value = caseData.id;
+        
+        // Update page subtitle
+        const subtitle = document.getElementById('pageSubtitle');
+        if (subtitle) {
+            subtitle.textContent = `Case #${caseData.case_number} - ${caseData.diagnosis}`;
+        }
+        
+        // Populate form fields
+        document.getElementById('editCaseNumber').value = caseData.case_number || '';
+        document.getElementById('editCaseDiagnosis').value = caseData.diagnosis || '';
+        document.getElementById('editCaseDiscussion').value = caseData.discussion || '';
+        
+        // Populate Q&A pairs
+        populateQAPairs(caseData);
+        
+        // Populate images
+        populateImages(images);
+    })
+    .catch(error => {
+        console.error('Error loading case:', error);
+        alert('Error loading case data');
+        window.history.back();
+    });
+}
+</script>
+{% endblock %}
