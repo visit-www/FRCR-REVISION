@@ -28,10 +28,12 @@ mac:
     - zip
   category: public.app-category.medical
   icon: assets/icon.icns
-  hardenedRuntime: true
+  hardenedRuntime: false
   gatekeeperAssess: false
-  entitlements: assets/entitlements.mac.plist
-  entitlementsInherit: assets/entitlements.mac.plist
+  sign: null
+  notarize: false
+  certificateFile: null
+  certificatePassword: null
 
 dmg:
   contents:
