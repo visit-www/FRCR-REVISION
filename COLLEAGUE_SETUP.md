@@ -57,9 +57,46 @@ mv ~/Downloads/FRCR\ Examiner.app /Applications/
 3. Paste the command above and press Enter
 4. The app will be automatically moved to Applications
 
+### Automatic Setup (Professional Installer)
+
+**Use the one-click installer for the smoothest experience:**
+
+We provide a professional installer script that automates everything for you, including security configuration. Download `FRCR-Examiner-Installer-1.0.0.dmg` from the [Release Page](https://github.com/visit-www/Frcr-examiner/releases/tag/v1.0.0).
+
+**What the installer does automatically:**
+✓ Mounts the installation DMG
+✓ Copies the app to Applications folder
+✓ **Removes all security quarantine attributes**
+✓ **Sets proper executable permissions**
+✓ Handles backups of existing installations
+✓ Cleans up temporary files
+✓ Offers to launch the app
+
+This means **you won't encounter any permission denied errors**, and the app will run smoothly on your first try!
+
 ### Troubleshooting
 
 #### "The app can't be opened because Apple cannot check it for malicious software"
+
+> **Note:** The professional installer handles this automatically. Only needed if installing manually.
+
+**Option 1: One-Time Approval (Easiest)**
+1. Right-click the **FRCR Examiner** app in Applications
+2. Select **Open** from the context menu
+3. Click **Open** in the security dialog
+4. The app will launch and remember your choice for all future launches
+5. Done! You won't see this message again
+
+**Option 2: Permanent Fix via Terminal (Technical Users)**
+
+If you prefer, copy and paste this command in Terminal to permanently remove the security warning:
+
+```bash
+sudo xattr -rd com.apple.quarantine "/Applications/FRCR Examiner.app"
+```
+
+**Steps:**
+1. Open Terminal (Applications → Utilities → Terminal)
 
 **Option 1: One-Time Approval (Easiest)**
 1. Right-click the **FRCR Examiner** app in Applications

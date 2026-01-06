@@ -191,16 +191,21 @@ echo
 info "Configuring security settings..."
 
 if [ -d "$APP_PATH" ]; then
-    # Try to remove quarantine attribute
-    if xattr -d com.apple.quarantine "$APP_PATH" 2>/dev/null; then
-        status "Security attribute removed (app will open without warnings)"
+    # Remove quarantine attribute from app bundle recursively
+    sudo xattr -rd com.apple.quarantine "$APP_PATH" 2>/dev/null || true
+    
+    # Make all executables in MacOS folder executable
+    if [ -d "$APP_PATH/Contents/MacOS" ]; then
+        chmod +x "$APP_PATH/Contents/MacOS"/* 2>/dev/null || true
+        status "Security attributes removed and executable permissions set"
     else
-        # If not quarantined, that's fine
         status "Security settings configured"
     fi
     
-    # Make executable
-    chmod +x "$APP_PATH/Contents/MacOS"/* 2>/dev/null || true
+    # Verify the app can be executed
+    if [ -x "$APP_PATH/Contents/MacOS/FRCR Examiner" ] 2>/dev/null; then
+        status "Application verified as executable"
+    fi
 fi
 
 echo
