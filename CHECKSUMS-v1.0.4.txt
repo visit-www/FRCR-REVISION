@@ -1,2 +1,0 @@
-1fa4969a2d21c58633dee883dfd01a479fbc0aeb06249d8f89e78df74623117f  FRCR-Examiner-macOS-v1.0.4.zip
-78fa4e23a40fbd3277f3202feeac81851c00b3c63e833502bd71af46e8edb293  FRCR-Examiner-Windows-v1.0.4.zip
