@@ -45,3 +45,7 @@ release-*/
 Thumbs.db
 .Spotlight-V100
 .Trashes
+.vercel
+.env*.local
+node_modules
+dist/
