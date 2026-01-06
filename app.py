@@ -35,14 +35,42 @@ with app.app_context():
 
 @app.route('/')
 def index():
-    """Home page with two tabs"""
-    return render_template('index.html')
+    """Smart dashboard - entry point for all workflows"""
+    return render_template('dashboard.html')
+
+
+# ==================== SETUP WORKFLOW ====================
+
+@app.route('/setup/sessions')
+def setup_sessions():
+    """Manage exam sessions"""
+    return render_template('setup_sessions.html')
+
+
+@app.route('/setup/cases')
+def setup_cases():
+    """Case bank management"""
+    return render_template('setup_cases.html')
+
+
+@app.route('/setup/candidates')
+def setup_candidates():
+    """Candidate management"""
+    return render_template('setup_candidates.html')
+
+
+# ==================== EXAM WORKFLOW ====================
+
+@app.route('/exam/start')
+def exam_start():
+    """Start exam - select candidate"""
+    return render_template('exam_start.html')
 
 
 @app.route('/prepare-exam')
 def prepare_exam():
-    """Prepare exam page - enter exam details and cases"""
-    return render_template('prepare_exam.html')
+    """Deprecated - redirects to new setup"""
+    return redirect(url_for('setup_sessions'))
 
 
 @app.route('/api/exam/sessions')
@@ -144,26 +172,25 @@ def create_candidate():
 
 @app.route('/start-exam')
 def start_exam():
-    """Start exam page - select exam session"""
+    """Deprecated - redirects to new exam start"""
+    return redirect(url_for('exam_start'))
+
+
+@app.route('/exam/select-candidate')
+def exam_select_candidate():
+    """Select candidate from session"""
     exam_sessions = ExamSession.query.order_by(ExamSession.created_at.desc()).all()
     
     if not exam_sessions:
-        return redirect(url_for('prepare_exam'))
+        return redirect(url_for('setup_sessions'))
     
     return render_template('start_exam.html', exams=exam_sessions)
 
 
 @app.route('/select-candidate')
 def select_candidate():
-    """Select candidate page"""
-    exam_id = request.args.get('exam_id')
-    exam = ExamSession.query.get(exam_id)
-    
-    if not exam:
-        return redirect(url_for('start_exam'))
-    
-    session['current_exam_id'] = exam_id
-    return render_template('select_candidate.html', exam=exam)
+    """Deprecated - redirects to new workflow"""
+    return redirect(url_for('exam_select_candidate'))
 
 
 @app.route('/api/candidates/<int:exam_id>')

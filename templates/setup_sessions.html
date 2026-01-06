@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>Exam Sessions</h2>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newSessionModal">
+                    <i class="fas fa-plus me-2"></i>Create New Session
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sessions List -->
+    <div class="row" id="sessionsContainer">
+        <div class="col-12">
+            <p class="text-muted">Loading sessions...</p>
+        </div>
+    </div>
+</div>
+
+<!-- New Session Modal -->
+<div class="modal fade" id="newSessionModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Create New Exam Session</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Session Name</label>
+                    <input type="text" class="form-control" id="sessionName" placeholder="e.g., FRCR Viva 2026 Jan">
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <label class="form-label">Exam Date</label>
+                        <input type="date" class="form-control" id="examDate">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Exam Time</label>
+                        <input type="time" class="form-control" id="examTime">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="createSession()">Create Session</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', loadSessions);
+
+function loadSessions() {
+    fetch('/api/exam/sessions')
+        .then(r => r.json())
+        .then(sessions => {
+            const container = document.getElementById('sessionsContainer');
+            
+            if (!sessions || sessions.length === 0) {
+                container.innerHTML = '<div class="col-12"><p class="text-muted">No sessions yet. Create one to get started.</p></div>';
+                return;
+            }
+            
+            container.innerHTML = sessions.map(session => `
+                <div class="col-md-4 mb-4">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title">${session.session_name}</h5>
+                            <p class="card-text">
+                                <small class="text-muted">
+                                    <i class="fas fa-calendar me-2"></i>${new Date(session.exam_date).toLocaleDateString()}<br>
+                                    <i class="fas fa-clock me-2"></i>${session.exam_time}
+                                </small>
+                            </p>
+                        </div>
+                        <div class="card-footer bg-transparent">
+                            <a href="/manage-session/${session.id}" class="btn btn-sm btn-outline-primary w-100">
+                                <i class="fas fa-edit me-1"></i>Manage
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        });
+}
+
+function createSession() {
+    const name = document.getElementById('sessionName').value;
+    const date = document.getElementById('examDate').value;
+    const time = document.getElementById('examTime').value;
+    
+    if (!name || !date || !time) {
+        alert('Please fill in all fields');
+        return;
+    }
+    
+    fetch('/api/exam/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            session_name: name,
+            exam_date: date,
+            exam_time: time
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.exam_id) {
+            alert('Session created successfully!');
+            bootstrap.Modal.getInstance(document.getElementById('newSessionModal')).hide();
+            document.getElementById('sessionName').value = '';
+            document.getElementById('examDate').value = '';
+            document.getElementById('examTime').value = '';
+            loadSessions();
+        }
+    })
+    .catch(e => alert('Error creating session: ' + e.message));
+}
+</script>
+{% endblock %}

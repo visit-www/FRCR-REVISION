@@ -9,21 +9,54 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <!-- Navigation Bar -->
-    <nav class="navbar navbar-expand-lg navbar-dark sticky-top">
+    <!-- Smart Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-dark sticky-top" style="background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%); box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
         <div class="container-fluid">
-            <a class="navbar-brand fw-bold" href="/">
-                <i class="fas fa-stethoscope me-2"></i>FRCR Examiner
+            <!-- Logo & Home -->
+            <a class="navbar-brand fw-bold" href="/" style="font-size: 1.3rem;">
+                <i class="fas fa-stethoscope me-2" style="color: #3498db;"></i>FRCR Examiner
             </a>
+            
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
+            
+            <!-- Navigation Links -->
             <div class="collapse navbar-collapse" id="navbarNav">
-                <div class="ms-auto">
-                    <a href="/admin" class="btn btn-sm btn-outline-info me-2">
-                        <i class="fas fa-shield-alt"></i> Backup Center
-                    </a>
-                </div>
+                <ul class="navbar-nav ms-auto gap-2">
+                    <!-- Dashboard -->
+                    <li class="nav-item">
+                        <a class="nav-link" href="/" title="Go to dashboard">
+                            <i class="fas fa-home me-1"></i>Dashboard
+                        </a>
+                    </li>
+                    
+                    <!-- Setup Workflow -->
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="setupDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Setup and prepare exams">
+                            <i class="fas fa-cog me-1"></i>Setup
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="setupDropdown">
+                            <li><a class="dropdown-item" href="/setup/sessions"><i class="fas fa-list me-2"></i>Exam Sessions</a></li>
+                            <li><a class="dropdown-item" href="/setup/cases"><i class="fas fa-file-medical me-2"></i>Case Bank</a></li>
+                            <li><a class="dropdown-item" href="/setup/candidates"><i class="fas fa-users me-2"></i>Candidates</a></li>
+                        </ul>
+                    </li>
+                    
+                    <!-- Exam Workflow -->
+                    <li class="nav-item">
+                        <a class="nav-link" href="/exam/start" title="Start examining a candidate">
+                            <i class="fas fa-play me-1"></i>Exam
+                        </a>
+                    </li>
+                    
+                    <!-- Admin -->
+                    <li class="nav-item">
+                        <a class="nav-link" href="/admin" title="Manage backups and system">
+                            <i class="fas fa-shield-alt me-1"></i>Admin
+                        </a>
+                    </li>
+                </ul>
             </div>
         </div>
     </nav>

@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-5">
+    <!-- Welcome Header -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="alert alert-light border-start border-4 border-primary" style="background: linear-gradient(135deg, #ecf0f1 0%, #f8f9fa 100%);">
+                <h2 class="mb-2">Welcome to FRCR Examiner</h2>
+                <p class="mb-0">Your complete solution for managing and conducting FRCR viva exams</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Action Cards -->
+    <div class="row g-4 mb-5">
+        <!-- Setup Workflow Card -->
+        <div class="col-lg-6 col-xl-4">
+            <div class="card h-100 shadow-sm border-0 hover-card" style="transition: all 0.3s ease;">
+                <div class="card-body d-flex flex-column">
+                    <div class="mb-3" style="font-size: 2.5rem; color: #3498db;">
+                        <i class="fas fa-cog"></i>
+                    </div>
+                    <h4 class="card-title mb-2">Setup & Prepare</h4>
+                    <p class="card-text text-muted flex-grow-1">Create exam sessions, add cases, and register candidates for your exams.</p>
+                    <div class="btn-group-vertical gap-2 mt-auto">
+                        <a href="/setup/sessions" class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-list me-2"></i>Manage Sessions
+                        </a>
+                        <a href="/setup/cases" class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-file-medical me-2"></i>Case Bank
+                        </a>
+                        <a href="/setup/candidates" class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-users me-2"></i>Manage Candidates
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Exam Workflow Card -->
+        <div class="col-lg-6 col-xl-4">
+            <div class="card h-100 shadow-sm border-0 hover-card" style="transition: all 0.3s ease;">
+                <div class="card-body d-flex flex-column">
+                    <div class="mb-3" style="font-size: 2.5rem; color: #27ae60;">
+                        <i class="fas fa-play-circle"></i>
+                    </div>
+                    <h4 class="card-title mb-2">Start Exam</h4>
+                    <p class="card-text text-muted flex-grow-1">Begin examining a candidate by selecting from your prepared candidates.</p>
+                    <a href="/exam/start" class="btn btn-success mt-auto">
+                        <i class="fas fa-play me-2"></i>Start Examination
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Admin Card -->
+        <div class="col-lg-6 col-xl-4">
+            <div class="card h-100 shadow-sm border-0 hover-card" style="transition: all 0.3s ease;">
+                <div class="card-body d-flex flex-column">
+                    <div class="mb-3" style="font-size: 2.5rem; color: #e74c3c;">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                    <h4 class="card-title mb-2">Administration</h4>
+                    <p class="card-text text-muted flex-grow-1">Manage backups, system settings, and application administration.</p>
+                    <a href="/admin" class="btn btn-danger mt-auto">
+                        <i class="fas fa-cog me-2"></i>Admin Center
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Stats / Info Section -->
+    <div class="row g-4">
+        <div class="col-md-3 col-6">
+            <div class="card text-center shadow-sm border-0">
+                <div class="card-body">
+                    <div style="font-size: 2rem; color: #3498db; font-weight: bold;" id="sessionCount">-</div>
+                    <small class="text-muted">Active Sessions</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="card text-center shadow-sm border-0">
+                <div class="card-body">
+                    <div style="font-size: 2rem; color: #27ae60; font-weight: bold;" id="candidateCount">-</div>
+                    <small class="text-muted">Total Candidates</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="card text-center shadow-sm border-0">
+                <div class="card-body">
+                    <div style="font-size: 2rem; color: #f39c12; font-weight: bold;" id="caseCount">-</div>
+                    <small class="text-muted">Cases in Bank</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-6">
+            <div class="card text-center shadow-sm border-0">
+                <div class="card-body">
+                    <div style="font-size: 2rem; color: #9b59b6; font-weight: bold;" id="packetCount">-</div>
+                    <small class="text-muted">Total Packets</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .hover-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 24px rgba(0,0,0,0.15) !important;
+    }
+    
+    .btn-group-vertical {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .btn-group-vertical .btn {
+        border-radius: 6px;
+    }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    loadDashboardStats();
+});
+
+function loadDashboardStats() {
+    // Load exam sessions count
+    fetch('/api/exam/sessions')
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('sessionCount').textContent = (data || []).length;
+        })
+        .catch(() => document.getElementById('sessionCount').textContent = '0');
+    
+    // Load candidates count (would need to create endpoint or fetch from all sessions)
+    // Placeholder for now
+    document.getElementById('candidateCount').textContent = '-';
+    document.getElementById('caseCount').textContent = '-';
+    document.getElementById('packetCount').textContent = '-';
+}
+</script>
+{% endblock %}
