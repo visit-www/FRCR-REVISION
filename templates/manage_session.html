@@ -388,12 +388,12 @@ function addCaseForm(packetId) {
                     </div>
                 </div>
                 <div class="mb-2">
-                    <label class="form-label form-label-sm">Questions:</label>
-                    <textarea class="form-control form-control-sm case-questions" rows="2" placeholder="Enter case questions" required></textarea>
+                    <label class="form-label form-label-sm"><strong><i class="fas fa-question-circle me-1"></i>Questions:</strong></label>
+                    <textarea class="form-control form-control-sm case-questions" rows="8" placeholder="Enter case questions" required style="resize: vertical;"></textarea>
                 </div>
                 <div class="mb-2">
-                    <label class="form-label form-label-sm">Answers:</label>
-                    <textarea class="form-control form-control-sm case-answers" rows="2" placeholder="Enter case answers" required></textarea>
+                    <label class="form-label form-label-sm"><strong><i class="fas fa-check-circle me-1"></i>Answers:</strong></label>
+                    <textarea class="form-control form-control-sm case-answers" rows="8" placeholder="Enter case answers" required style="resize: vertical;"></textarea>
                 </div>
                 <div class="mb-2">
                     <label class="form-label form-label-sm">Discussion/Comments:</label>
@@ -458,76 +458,25 @@ function cancelCaseForm(formId) {
 }
 
 function editCase(caseId) {
-    fetch(`/api/case/${caseId}`)
-    .then(response => response.json())
-    .then(caseData => {
-        showEditCaseForm(caseData);
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Error loading case data');
-    });
+    openCaseEditModal(caseId); // Use the shared edit modal
 }
 
-function showEditCaseForm(caseData) {
-    const container = document.getElementById('candidateFormContainer').parentElement;
-    const formId = `edit-case-${caseData.id}`;
+function showEditModalCase(caseData) {
+    const modal = new bootstrap.Modal(document.getElementById('editCaseModalManage') || createEditModalManage(), {
+        backdrop: 'static',
+        keyboard: false
+    });
     
-    if (document.getElementById(formId)) {
-        return; // Form already open
-    }
-
-    const html = `
-        <div class="card mb-3" id="${formId}">
-            <div class="card-header bg-warning">
-                <h6 class="mb-0">Edit Case ${caseData.case_number}</h6>
-            </div>
-            <div class="card-body">
-                <div class="row mb-2">
-                    <div class="col-md-2">
-                        <label class="form-label form-label-sm">Case #:</label>
-                        <input type="number" class="form-control form-control-sm edit-case-number" min="1" max="3" value="${caseData.case_number}" required>
-                    </div>
-                    <div class="col-md-10">
-                        <label class="form-label form-label-sm">Diagnosis:</label>
-                        <input type="text" class="form-control form-control-sm edit-case-diagnosis" value="${caseData.diagnosis}" required>
-                    </div>
-                </div>
-                <div class="mb-2">
-                    <label class="form-label form-label-sm">Questions:</label>
-                    <textarea class="form-control form-control-sm edit-case-questions" rows="2" required>${caseData.questions}</textarea>
-                </div>
-                <div class="mb-2">
-                    <label class="form-label form-label-sm">Answers:</label>
-                    <textarea class="form-control form-control-sm edit-case-answers" rows="2" required>${caseData.answers}</textarea>
-                </div>
-                <div class="mb-2">
-                    <label class="form-label form-label-sm">Discussion/Comments:</label>
-                    <textarea class="form-control form-control-sm edit-case-discussion" rows="5" placeholder="Enter discussion or comments (supports multiple paragraphs and line breaks)" style="font-family: 'Courier New', monospace; white-space: pre-wrap;">${caseData.discussion || ''}</textarea>
-                </div>
-                <div class="mb-2">
-                    <label class="form-label form-label-sm"><strong>Images:</strong></label>
-                    <div id="imagesContainer-${caseData.id}" class="mb-2" style="padding: 10px; background-color: #f8f9fa; border-radius: 4px;">
-                        <div id="imagesList-${caseData.id}" class="d-flex flex-wrap gap-2 mb-2"></div>
-                        <label for="imageInput-${caseData.id}" class="form-label form-label-sm">Upload Image:</label>
-                        <input type="file" id="imageInput-${caseData.id}" class="form-control form-control-sm" accept="image/*" />
-                        <button type="button" class="btn btn-sm btn-outline-primary mt-2" onclick="uploadImageManage(${caseData.id})">Upload Image</button>
-                        <div id="imageStatus-${caseData.id}" class="mt-2"></div>
-                    </div>
-                </div>
-                <button type="button" class="btn btn-success btn-sm" onclick="updateCase(${caseData.id})">
-                    Update Case
-                </button>
-                <button type="button" class="btn btn-secondary btn-sm" onclick="cancelEditCase('${formId}')">
-                    Cancel
-                </button>
-            </div>
-        </div>
-    `;
+    // Populate form
+    document.getElementById('editCaseNumberManage').value = caseData.case_number || '';
+    document.getElementById('editCaseDiagnosisManage').value = caseData.diagnosis || '';
+    document.getElementById('editCaseDiscussionManage').value = caseData.discussion || '';
+    document.getElementById('editCaseIdManage').value = caseData.id;
     
-    document.body.insertAdjacentHTML('beforeend', html);
-    // Scroll to form
-    document.getElementById(formId).scrollIntoView({ behavior: 'smooth' });
+    // Load Q&A pairs into edit form
+    loadQAPairsForEditManage(caseData.id);
+    
+    modal.show();
 }
 
 function updateCase(caseId) {
@@ -1057,5 +1006,476 @@ showEditCaseForm = function(caseData) {
         </div>
     </div>
 </div>
+
+<!-- Edit Case Modal - Unified with view_case.html -->
+<div class="modal fade" id="editCaseModalManage" tabindex="-1" aria-labelledby="editCaseLabelManage" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title" id="editCaseLabelManage">Edit Case</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+                <form id="editCaseFormManage">
+                    <input type="hidden" id="editCaseIdManage">
+                    <div class="mb-3">
+                        <label class="form-label">Case Number</label>
+                        <input type="text" class="form-control" id="editCaseNumberManage" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Diagnosis</label>
+                        <input type="text" class="form-control" id="editCaseDiagnosisManage" required>
+                    </div>
+                    
+                    <hr class="my-4">
+                    <h6 class="mb-3"><i class="fas fa-comments me-2"></i><strong>Questions & Answers</strong></h6>
+                    
+                    <div id="qaPairsContainerManage">
+                        <p class="text-muted">Loading...</p>
+                    </div>
+                    
+                    <div id="pairButtonsContainerManage" class="mb-3"></div>
+                    
+                    <hr class="my-4">
+                    <div class="mb-3">
+                        <label class="form-label">Discussion/Comments</label>
+                        <textarea class="form-control" id="editCaseDiscussionManage" rows="4"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-warning" onclick="saveEditedCaseManage()">Save All Changes</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function loadQAPairsForEditManage(caseId) {
+    fetch(`/api/case/${caseId}/qa-pairs`)
+        .then(response => response.json())
+        .then(pairs => {
+            const container = document.getElementById('qaPairsContainerManage');
+            if (!container) return;
+            
+            container.innerHTML = '';
+            
+            if (pairs.length === 0) {
+                container.innerHTML = '<p class="text-muted mb-3">No Q&A pairs yet. Click "Add New Pair" below.</p>';
+            } else {
+                // Show ALL pairs with edit/delete buttons for each
+                pairs.forEach((pair) => {
+                    const pairDiv = document.createElement('div');
+                    pairDiv.className = 'qa-edit-pair mb-4 p-3 border rounded bg-dark';
+                    pairDiv.innerHTML = `
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h6 class="mb-0" style="color: #fff;"><strong>Pair ${pair.number}</strong></h6>
+                            <div class="btn-group btn-group-sm">
+                                <button type="button" class="btn btn-warning" onclick="editQAPairModalManage(${pair.question.id}, ${pair.answer.id}, ${pair.number})"><i class="fas fa-edit"></i> Edit</button>
+                                <button type="button" class="btn btn-danger" onclick="deleteQAPairManage(${pair.question.id}, ${pair.answer.id})"><i class="fas fa-trash"></i> Delete</button>
+                            </div>
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label" style="color: #8bb8d9;"><i class="fas fa-question-circle me-1"></i>Question ${pair.number}</label>
+                                <div class="form-control form-control-plaintext" style="background-color: #2a2a2a; color: #e0e0e0; border: 1px solid #444; border-radius: 4px; padding: 0.75rem; min-height: 100px; overflow-y: auto; white-space: pre-wrap; word-wrap: break-word;">
+                                    ${(pair.question.text || 'No text').substring(0, 200)}${(pair.question.text || '').length > 200 ? '...' : ''}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" style="color: #c8e6d9;"><i class="fas fa-check-circle me-1"></i>Answer ${pair.number}</label>
+                                <div class="form-control form-control-plaintext" style="background-color: #2a2a2a; color: #e0e0e0; border: 1px solid #444; border-radius: 4px; padding: 0.75rem; min-height: 100px; overflow-y: auto; white-space: pre-wrap; word-wrap: break-word;">
+                                    ${(pair.answer.text || 'No text').substring(0, 200)}${(pair.answer.text || '').length > 200 ? '...' : ''}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    container.appendChild(pairDiv);
+                });
+            }
+            
+            // Update button container
+            updatePairButtonsManage(pairs.length);
+            container.dataset.showingAll = 'true';
+        });
+}
+
+function updatePairButtonsManage(totalPairs) {
+    const btnContainer = document.getElementById('pairButtonsContainerManage');
+    if (btnContainer) {
+        let html = '<button type="button" class="btn btn-success" onclick="addNewQAPairRowManage()"><i class="fas fa-plus me-1"></i>Add New Pair</button>';
+        btnContainer.innerHTML = html;
+    }
+}
+
+function editQAPairModalManage(questionId, answerId, pairNumber) {
+    const caseId = document.getElementById('editCaseIdManage').value;
+    
+    // Fetch the case data to get the pair details
+    fetch(`/api/case/${caseId}/qa-pairs`)
+        .then(r => r.json())
+        .then(pairs => {
+            // Find the pair with matching question and answer IDs
+            const pair = pairs.find(p => p.question.id === questionId && p.answer.id === answerId);
+            
+            if (!pair) {
+                alert('Could not find pair data');
+                return;
+            }
+            
+            console.log('Found pair:', pair);
+            
+            // Create modal if it doesn't exist
+            let editModal = document.getElementById('editQAPairModalInnerManage');
+            if (!editModal) {
+                console.log('Creating new modal');
+                editModal = createQAPairEditModalManage();
+            }
+            
+            // Strip "Question X:" and "Answer X:" prefixes if they exist
+            let questionText = (pair.question.text || '').trim();
+            let answerText = (pair.answer.text || '').trim();
+            
+            questionText = questionText.replace(/^Question\s+\d+:\s*/i, '');
+            answerText = answerText.replace(/^Answer\s+\d+:\s*/i, '');
+            
+            console.log('Setting form fields:', {questionId, answerId, questionText, answerText});
+            
+            // Populate fields
+            document.getElementById('editQAPairNumberManage').textContent = pairNumber;
+            document.getElementById('editQAPairQuestionIdManage').value = questionId;
+            document.getElementById('editQAPairAnswerIdManage').value = answerId;
+            document.getElementById('editQAPairQuestionTextManage').value = questionText;
+            document.getElementById('editQAPairAnswerTextManage').value = answerText;
+            
+            // Show modal
+            const modal = new bootstrap.Modal(editModal);
+            modal.show();
+            console.log('Modal shown');
+        })
+        .catch(error => {
+            console.error('Error loading pair:', error);
+            alert('Error loading pair data: ' + error.message);
+        });
+}
+
+function createQAPairEditModalManage() {
+    const modalHTML = `
+        <div class="modal fade" id="editQAPairModalInnerManage" tabindex="-1" aria-labelledby="editQAPairLabelManage" aria-hidden="true">
+            <div class="modal-dialog modal-xl">
+                <div class="modal-content">
+                    <div class="modal-header bg-info">
+                        <h5 class="modal-title" id="editQAPairLabelManage">Edit Q&A Pair <span id="editQAPairNumberManage">1</span></h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="hidden" id="editQAPairQuestionIdManage">
+                        <input type="hidden" id="editQAPairAnswerIdManage">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label" style="color: #333;"><i class="fas fa-question-circle me-1" style="color: #8bb8d9;"></i>Question Text</label>
+                                <textarea class="form-control" id="editQAPairQuestionTextManage" rows="8" required style="background-color: #f8f9fa; color: #333; border-color: #ddd;"></textarea>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" style="color: #333;"><i class="fas fa-check-circle me-1" style="color: #c8e6d9;"></i>Answer Text</label>
+                                <textarea class="form-control" id="editQAPairAnswerTextManage" rows="8" required style="background-color: #f8f9fa; color: #333; border-color: #ddd;"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-info" onclick="saveQAPairEditManage()">Save Pair</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    const div = document.createElement('div');
+    div.innerHTML = modalHTML;
+    document.body.appendChild(div.firstElementChild);
+    return document.getElementById('editQAPairModalInnerManage');
+}
+
+function saveQAPairEditManage() {
+    const questionId = document.getElementById('editQAPairQuestionIdManage').value;
+    const answerId = document.getElementById('editQAPairAnswerIdManage').value;
+    const questionText = document.getElementById('editQAPairQuestionTextManage').value.trim();
+    const answerText = document.getElementById('editQAPairAnswerTextManage').value.trim();
+    const caseId = document.getElementById('editCaseIdManage').value;
+    
+    console.log('Starting save with:', {questionId, answerId, questionText, answerText});
+    
+    if (!questionText || !answerText) {
+        alert('Please fill in both question and answer');
+        return;
+    }
+    
+    if (!questionId || !answerId) {
+        alert('Error: Missing question or answer ID');
+        return;
+    }
+    
+    console.log('Proceeding with save...');
+    
+    // Save both with proper error handling
+    Promise.all([
+        fetch(`/api/question/${questionId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: questionText })
+        }).then(r => {
+            console.log('Question response status:', r.status);
+            if (!r.ok) {
+                return r.json().then(err => {
+                    throw new Error(`Question save failed: ${r.status} - ${JSON.stringify(err)}`);
+                });
+            }
+            return r.json();
+        }).then(data => {
+            console.log('Question saved successfully:', data);
+            return data;
+        }),
+        fetch(`/api/answer/${answerId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: answerText })
+        }).then(r => {
+            console.log('Answer response status:', r.status);
+            if (!r.ok) {
+                return r.json().then(err => {
+                    throw new Error(`Answer save failed: ${r.status} - ${JSON.stringify(err)}`);
+                });
+            }
+            return r.json();
+        }).then(data => {
+            console.log('Answer saved successfully:', data);
+            return data;
+        })
+    ])
+    .then(() => {
+        console.log('Both saved successfully');
+        const modalElement = document.getElementById('editQAPairModalInnerManage');
+        if (modalElement) {
+            const modal = bootstrap.Modal.getInstance(modalElement);
+            if (modal) {
+                modal.hide();
+            }
+        }
+        setTimeout(() => {
+            console.log('Reloading pairs...');
+            loadQAPairsForEditManage(caseId);
+            alert('Pair updated successfully!');
+        }, 300);
+    })
+    .catch(error => {
+        console.error('Error saving pair:', error);
+        alert('Error saving pair: ' + error.message);
+    });
+}
+
+function addNewQAPairRowManage() {
+    const container = document.getElementById('qaPairsContainerManage');
+    const nextNumber = container.querySelectorAll('.qa-edit-pair').length + 1;
+    
+    const pairDiv = document.createElement('div');
+    pairDiv.className = 'qa-edit-pair mb-4 p-3 border rounded bg-dark new-pair';
+    pairDiv.innerHTML = `
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="mb-0" style="color: #fff;"><strong>New Pair ${nextNumber}</strong></h6>
+            <button type="button" class="btn btn-sm btn-danger" onclick="this.closest('.qa-edit-pair').remove()"><i class="fas fa-trash"></i> Remove</button>
+        </div>
+        
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label" style="color: #e0e0e0;"><i class="fas fa-question-circle me-1" style="color: #8bb8d9;"></i>Question Text</label>
+                <textarea class="form-control qa-question-edit" rows="5" placeholder="Enter question text" data-question-id="" style="background-color: #2a2a2a; color: #e0e0e0; border-color: #444;"></textarea>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label" style="color: #e0e0e0;"><i class="fas fa-check-circle me-1" style="color: #c8e6d9;"></i>Answer Text</label>
+                <textarea class="form-control qa-answer-edit" rows="5" placeholder="Enter answer text" data-answer-id="" style="background-color: #2a2a2a; color: #e0e0e0; border-color: #444;"></textarea>
+            </div>
+        </div>
+    `;
+    container.appendChild(pairDiv);
+}
+
+function deleteQAPairManage(questionId, answerId) {
+    if (!confirm('Delete this Q&A pair?')) return;
+    
+    let deletePromises = [];
+    
+    if (questionId) {
+        deletePromises.push(
+            fetch(`/api/question/${questionId}`, { method: 'DELETE' })
+                .then(r => r.json())
+        );
+    }
+    
+    if (answerId) {
+        deletePromises.push(
+            fetch(`/api/answer/${answerId}`, { method: 'DELETE' })
+                .then(r => r.json())
+        );
+    }
+    
+    Promise.all(deletePromises)
+        .then(() => {
+            const caseId = document.getElementById('editCaseIdManage').value;
+            loadQAPairsForEditManage(caseId);
+        })
+        .catch(error => {
+            console.error('Error deleting pair:', error);
+            alert('Error deleting pair');
+        });
+}
+
+function saveEditedCaseManage() {
+    const caseId = document.getElementById('editCaseIdManage').value;
+    
+    // Update basic case info
+    const basicData = {
+        case_number: document.getElementById('editCaseNumberManage').value,
+        diagnosis: document.getElementById('editCaseDiagnosisManage').value,
+        discussion: document.getElementById('editCaseDiscussionManage').value
+    };
+    
+    // Collect all Q&A pairs
+    const qaPairs = [];
+    document.querySelectorAll('.qa-edit-pair').forEach(pairDiv => {
+        const questionTextarea = pairDiv.querySelector('.qa-question-edit');
+        const answerTextarea = pairDiv.querySelector('.qa-answer-edit');
+        
+        const questionId = questionTextarea.dataset.questionId || null;
+        const answerId = answerTextarea.dataset.answerId || null;
+        const questionText = questionTextarea.value.trim();
+        const answerText = answerTextarea.value.trim();
+        
+        if (questionText || answerText) {
+            qaPairs.push({
+                question_id: questionId ? parseInt(questionId) : null,
+                answer_id: answerId ? parseInt(answerId) : null,
+                question_text: questionText,
+                answer_text: answerText
+            });
+        }
+    });
+    
+    // Save case first
+    fetch(`/api/case/${caseId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(basicData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (!data.success) {
+            throw new Error(data.error || 'Failed to update case');
+        }
+        
+        // Then save all Q&A pairs
+        return saveQAPairsManage(caseId, qaPairs);
+    })
+    .then(() => {
+        alert('Case updated successfully!');
+        location.reload();
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error: ' + error.message);
+    });
+}
+
+function saveQAPairsManage(caseId, pairs) {
+    console.log('Saving pairs:', pairs);
+    
+    const savePromises = [];
+    
+    pairs.forEach((pair, index) => {
+        const pairNumber = index + 1;
+        
+        // Handle question
+        if (pair.question_id) {
+            // Update existing question
+            console.log(`Updating question ${pair.question_id}`);
+            savePromises.push(
+                fetch(`/api/question/${pair.question_id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ question_text: pair.question_text })
+                })
+                .then(r => {
+                    if (!r.ok) throw new Error(`Question update failed: ${r.status}`);
+                    return r.json();
+                })
+            );
+        } else if (pair.question_text) {
+            // Create new question
+            console.log(`Creating new question for pair ${pairNumber}`);
+            savePromises.push(
+                fetch(`/api/question`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        case_id: parseInt(caseId),
+                        question_number: pairNumber,
+                        question_text: pair.question_text
+                    })
+                })
+                .then(r => {
+                    if (!r.ok) throw new Error(`Question creation failed: ${r.status}`);
+                    return r.json();
+                })
+            );
+        }
+        
+        // Handle answer
+        if (pair.answer_id) {
+            // Update existing answer
+            console.log(`Updating answer ${pair.answer_id}`);
+            savePromises.push(
+                fetch(`/api/answer/${pair.answer_id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ answer_text: pair.answer_text })
+                })
+                .then(r => {
+                    if (!r.ok) throw new Error(`Answer update failed: ${r.status}`);
+                    return r.json();
+                })
+            );
+        } else if (pair.answer_text) {
+            // Create new answer
+            console.log(`Creating new answer for pair ${pairNumber}`);
+            savePromises.push(
+                fetch(`/api/answer`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        case_id: parseInt(caseId),
+                        answer_number: pairNumber,
+                        answer_text: pair.answer_text
+                    })
+                })
+                .then(r => {
+                    if (!r.ok) throw new Error(`Answer creation failed: ${r.status}`);
+                    return r.json();
+                })
+            );
+        }
+    });
+    
+    return Promise.all(savePromises)
+        .then(() => {
+            console.log('All pairs saved successfully');
+        })
+        .catch(error => {
+            console.error('Error saving pairs:', error);
+            throw error;
+        });
+}
+</script>
+<script src="/static/edit-case-modal.js"></script>
 
 {% endblock %}

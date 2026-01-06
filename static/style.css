@@ -269,6 +269,15 @@ body {
     padding: 0.625rem 0.875rem;
     background-color: #faf9f7;
     transition: all 0.2s ease;
+    text-indent: 0;
+}
+
+textarea.form-control {
+    padding: 0.75rem;
+    font-family: inherit;
+    text-indent: 0;
+    word-wrap: break-word;
+    white-space: pre-wrap;
 }
 
 .form-control:focus,
@@ -486,6 +495,38 @@ h1, h2, h3, h4, h5, h6 {
 
 .form-control-sm {
     font-size: 0.875rem;
+    text-indent: 0 !important;
+    padding-left: 0.75rem !important;
+}
+
+textarea {
+    text-align: left !important;
+    text-indent: 0 !important;
+    padding: 0.75rem !important;
+    padding-left: 0.75rem !important;
+    margin-left: 0 !important;
+    font-family: monospace !important;
+    word-wrap: break-word !important;
+    white-space: pre-wrap !important;
+    overflow-wrap: break-word !important;
+    direction: ltr !important;
+}\n\ntextarea.form-control {
+    text-align: left !important;
+    text-indent: 0 !important;
+    padding: 0.75rem !important;
+}\n\ntextarea.form-control-sm {
+    text-align: left !important;
+    text-indent: 0 !important;
+    padding: 0.75rem !important;
+}\n\n.case-questions,
+.case-answers,
+.case-discussion,
+.edit-case-questions,
+.edit-case-answers,
+.edit-case-discussion {
+    text-align: left !important;
+    text-indent: 0 !important;
+    padding-left: 0.75rem !important;
 }
 
 pre {
@@ -572,6 +613,10 @@ pre {
 .image-description-section textarea {
     resize: vertical;
     font-size: 0.9rem;
+    text-indent: 0;
+    padding: 0.75rem;
+    white-space: pre-wrap;
+    word-wrap: break-word;
 }
 
 .image-description-section textarea:focus {
@@ -674,4 +719,687 @@ pre {
     h1, h2, h3 {
         font-size: 1.25rem !important;
     }
+
+    /* Q&A Cards - Mobile Stacking */
+    .qa-section {
+        margin: 20px 0;
+    }
+
+    .qa-card {
+        height: 100%;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+
+    .qa-question-card .qa-body,
+    .qa-answer-card .qa-body {
+        min-height: 200px;
+    }
 }
+
+/* ==================== Q&A CARDS STYLING ==================== */
+
+.qa-section {
+    margin: 30px 0;
+}
+
+.qa-card {
+    background-color: #1a1a1a;
+    border: 2px solid #333;
+    border-radius: 8px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.qa-card:hover {
+    border-color: #8bb8d9;
+    box-shadow: 0 6px 16px rgba(139, 184, 217, 0.2);
+    transform: translateY(-2px);
+}
+
+.qa-question-card {
+    border-left: 5px solid #8bb8d9;
+    border-top: 3px solid #8bb8d9;
+    position: relative;
+    box-shadow: 2px 2px 8px rgba(139, 184, 217, 0.2);
+}
+
+.qa-question-card:hover {
+    border-left-color: #6fa8d9;
+    border-top-color: #6fa8d9;
+    box-shadow: 2px 2px 12px rgba(139, 184, 217, 0.4);
+}
+
+.qa-answer-card {
+    border-left: 5px solid #c8e6d9;
+    border-top: 3px solid #c8e6d9;
+    position: relative;
+    box-shadow: 2px 2px 8px rgba(200, 230, 217, 0.2);
+}
+
+.qa-answer-card:hover {
+    border-left-color: #b0d4c8;
+    border-top-color: #b0d4c8;
+    box-shadow: 2px 2px 12px rgba(200, 230, 217, 0.4);
+}
+
+/* Desktop layout with better spacing */
+@media (min-width: 769px) {
+    .qa-section .row {
+        gap: 2rem !important;
+    }
+    
+    .qa-section .row > .col-md-6 {
+        position: relative;
+    }
+    
+    /* Vertical line separator */
+    .qa-section .row > .col-md-6:first-child::after {
+        content: '';
+        position: absolute;
+        right: -1.3rem;
+        top: 2rem;
+        bottom: 2rem;
+        width: 2px;
+        background: linear-gradient(180deg, #8bb8d9 0%, #c8e6d9 50%, #8bb8d9 100%);
+    }
+}
+
+/* ==================== VIEW CASE PAGE - PROFESSIONAL DESIGN ==================== */
+
+/* Case Card Header */
+.case-card {
+    border: none !important;
+    margin-bottom: 2rem !important;
+}
+
+.case-card-header {
+    background: linear-gradient(135deg, #a8d5a8 0%, #8bb8d9 100%) !important;
+    border-radius: 12px 12px 0 0 !important;
+    padding: 2.5rem !important;
+    position: relative;
+    overflow: hidden;
+}
+
+.case-card-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 200px;
+    height: 100%;
+    background: url("data:image/svg+xml,%3Csvg width='200' height='200' xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3ClinearGradient id='grad' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' style='stop-color:rgba(255,255,255,0.3);stop-opacity:1' /%3E%3Cstop offset='100%25' style='stop-color:rgba(255,255,255,0.1);stop-opacity:1' /%3E%3C/linearGradient%3E%3C/defs%3E%3Ccircle cx='100' cy='50' r='60' fill='url(%23grad)' /%3E%3C/svg%3E") no-repeat right top;
+    opacity: 0.3;
+    pointer-events: none;
+}
+
+.case-card-header h3 {
+    color: white !important;
+    font-size: 2.2rem !important;
+    font-weight: 800 !important;
+    letter-spacing: -0.8px;
+    margin-bottom: 0.5rem !important;
+    position: relative;
+    z-index: 1;
+}
+
+.case-card-header p {
+    color: rgba(255,255,255,0.9) !important;
+    font-size: 1rem !important;
+    position: relative;
+    z-index: 1;
+}
+
+.case-card-header .text-end {
+    position: relative;
+    z-index: 1;
+}
+
+/* Case Details Container */
+.case-details {
+    padding: 0;
+}
+
+/* Section Titles */
+.section-title {
+    color: #2c3e50 !important;
+    font-size: 1.3rem !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.3px;
+    padding-bottom: 0.5rem;
+    border-bottom: 3px solid #ADD8E6;
+    display: inline-block;
+}
+
+/* Diagnosis Section - Featured */
+.diagnosis-section {
+    background: linear-gradient(135deg, #fff8f0 0%, #fffbf5 100%) !important;
+    border-radius: 12px !important;
+    border-left: 5px solid #FFD700 !important;
+    padding: 2rem !important;
+    margin-bottom: 2.5rem !important;
+    position: relative;
+    overflow: hidden;
+}
+
+.diagnosis-section::after {
+    content: '';
+    position: absolute;
+    top: -20px;
+    right: -20px;
+    width: 100px;
+    height: 100px;
+    background: rgba(255, 215, 0, 0.05);
+    border-radius: 50%;
+    pointer-events: none;
+}
+
+.diagnosis-text {
+    color: #2c3e50 !important;
+    font-size: 1.05rem !important;
+    line-height: 1.8 !important;
+    font-weight: 500 !important;
+    text-align: left !important;
+    text-indent: 0 !important;
+    padding-left: 0 !important;
+    margin-left: 0 !important;
+}
+
+/* Discussion Section */
+.discussion-section {
+    background: linear-gradient(135deg, #f0f8fc 0%, #f5fbff 100%) !important;
+    border-radius: 12px !important;
+    border-left: 5px solid #17a2b8 !important;
+    padding: 2rem !important;
+    margin-bottom: 2.5rem !important;
+    position: relative;
+    overflow: hidden;
+}
+
+.discussion-section::after {
+    content: '';
+    position: absolute;
+    top: -20px;
+    right: -20px;
+    width: 100px;
+    height: 100px;
+    background: rgba(23, 162, 184, 0.05);
+    border-radius: 50%;
+    pointer-events: none;
+}
+
+.discussion-text {
+    color: #2c3e50 !important;
+    font-size: 1rem !important;
+    line-height: 1.8 !important;
+    text-align: left !important;
+    text-indent: 0 !important;
+    padding-left: 0 !important;
+    margin-left: 0 !important;
+}
+
+/* Images Gallery */
+.images-gallery {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem !important;
+}
+
+.image-thumbnail {
+    position: relative;
+    border-radius: 12px;
+    overflow: hidden;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 2px solid #dee2e6;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.image-thumbnail:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px rgba(139, 184, 217, 0.15);
+    border-color: #8bb8d9;
+}
+
+.image-thumbnail img {
+    width: 120px;
+    height: 120px;
+    object-fit: cover;
+    display: block;
+}
+
+/* Image Delete Button */
+.image-delete {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    background: rgba(244, 67, 54, 0.9);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    opacity: 0;
+    transition: all 0.2s;
+    z-index: 10;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.image-thumbnail:hover .image-delete {
+    opacity: 1;
+}
+
+.image-delete:hover {
+    background: rgba(244, 67, 54, 1) !important;
+    transform: scale(1.1);
+}
+
+/* Action Buttons */
+.action-buttons {
+    padding-top: 1.5rem !important;
+    border-top: 2px solid #e8d4f0 !important;
+}
+
+.btn-group-primary {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.btn-group-secondary {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.btn.rounded-pill {
+    border-radius: 50px !important;
+    font-weight: 600 !important;
+    transition: all 0.3s ease;
+    padding: 0.5rem 1.5rem !important;
+}
+
+.btn.rounded-pill:hover {
+    transform: translateY(-2px);
+}
+
+.btn-warning.rounded-pill {
+    background: linear-gradient(135deg, #f0e8b8 0%, #e0d9a8 100%) !important;
+    color: #333 !important;
+    box-shadow: 0 4px 12px rgba(240, 232, 184, 0.4) !important;
+}
+
+.btn-warning.rounded-pill:hover {
+    box-shadow: 0 8px 20px rgba(240, 232, 184, 0.5) !important;
+}
+
+/* ==================== Q&A CARDS DESIGN ==================== */
+
+.qa-cards-container {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+.qa-cards-row {
+    padding: 0;
+    margin-bottom: 0;
+    width: 100%;
+    gap: 0 !important;
+}
+
+/* Q&A Cards - Professional Design */
+.qa-card {
+    background: linear-gradient(135deg, #1a1a1a 0%, #0f0f0f 100%);
+    border: 1px solid #2a2a2a;
+    border-radius: 12px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    height: auto;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.qa-card:hover {
+    border-color: #FFD700;
+    box-shadow: 0 8px 20px rgba(255, 215, 0, 0.15);
+    transform: translateY(-2px);
+}
+
+.qa-question-card-display {
+    border-top: 4px solid #FFC107;
+}
+
+.qa-answer-card-display {
+    border-top: 4px solid #17a2b8;
+}
+
+/* Card Header */
+.qa-card-header {
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid #2a2a2a;
+    background: linear-gradient(90deg, rgba(255, 193, 7, 0.05) 0%, transparent 100%);
+}
+
+/* Card Number - Yellow with Icon */
+.qa-card-number {
+    color: #FFD700;
+    font-weight: 700;
+    font-size: 1rem;
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+}
+
+.qa-card-number i {
+    font-size: 1.1rem;
+}
+
+/* Card Body */
+.qa-card-body {
+    padding: 0.5rem 0.5rem 0 0.5rem;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Card Text */
+.qa-card-text {
+    word-wrap: break-word;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    line-height: 1.5;
+    font-size: 0.95rem;
+    letter-spacing: 0.3px;
+    text-align: left !important;
+    text-indent: 0 !important;
+    padding-left: 0 !important;
+    margin-left: 0 !important;
+    margin: 0 !important;
+    white-space: normal !important;
+}
+
+/* Question Text - Warning Color */
+.qa-question-card-display .qa-card-text {
+    color: #FFC107;
+}
+
+/* Answer Text - White */
+.qa-answer-card-display .qa-card-text {
+    color: #FFFFFF;
+}
+
+/* Pair Divider - Golden */
+.qa-pair-divider {
+    height: 2px;
+    background: linear-gradient(90deg, 
+        transparent 0%, 
+        #FFD700 10%, 
+        #FFD700 90%, 
+        transparent 100%);
+    margin: 1.5rem 0;
+    opacity: 0.6;
+    border-radius: 2px;
+}
+
+/* Desktop: Side-by-side layout with gap */
+@media (min-width: 768px) {
+    .qa-cards-row .row {
+        gap: 1rem !important;
+        align-items: stretch;
+    }
+    
+    .qa-card {
+        height: 100%;
+    }
+    
+    .qa-card-text {
+        font-size: 0.97rem;
+    }
+    
+    .action-buttons {
+        justify-content: space-between;
+    }
+}
+
+/* Mobile: Stacked layout */
+@media (max-width: 767px) {
+    .qa-cards-row .row {
+        gap: 1rem !important;
+        align-items: stretch;
+    }
+    
+    .qa-card {
+        height: 100%;
+        margin-bottom: 0;
+    }
+    
+    .qa-card-header {
+        padding: 1rem;
+    }
+    
+    .qa-card-body {
+        padding: 1.25rem;
+    }
+    
+    .qa-card-text {
+        font-size: 0.93rem;
+        line-height: 1.6;
+    }
+    
+    .qa-card-number {
+        font-size: 0.95rem;
+    }
+    
+    .qa-pair-divider {
+        margin: 1.5rem 0;
+    }
+    
+    .case-card-header {
+        padding: 1.5rem !important;
+    }
+    
+    .case-card-header h3 {
+        font-size: 1.5rem !important;
+    }
+    
+    .diagnosis-section,
+    .discussion-section {
+        padding: 1.5rem !important;
+    }
+    
+    .action-buttons {
+        flex-direction: column;
+        gap: 1rem !important;
+    }
+    
+    .btn-group-primary,
+    .btn-group-secondary {
+        width: 100%;
+    }
+    
+    .btn-group-secondary {
+        flex-direction: column;
+    }
+    
+    .btn.rounded-pill {
+        width: 100% !important;
+        text-align: center;
+    }
+}
+
+/* Aesthetic horizontal separator between pairs */
+.qa-separator {
+    height: 2px;
+    background: linear-gradient(90deg, transparent 0%, #8bb8d9 25%, #c8e6d9 50%, #8bb8d9 75%, transparent 100%);
+    margin: 1.5rem 0;
+    border-radius: 1px;
+    opacity: 0.6;
+}
+
+/* Desktop: side-by-side layout */
+@media (min-width: 768px) {
+    .qa-pair-row .row {
+        gap: 3rem;
+    }
+    
+    .qa-pair-text {
+        padding-right: 1rem;
+    }
+}
+
+/* Mobile: stacked layout */
+@media (max-width: 767px) {
+    .qa-pair-row {
+        padding: 1rem 0;
+    }
+    
+    .qa-pair-text {
+        margin-bottom: 1rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid rgba(139, 184, 217, 0.2);
+    }
+    
+    .qa-pair-text:last-child {
+        border-bottom: none;
+        margin-bottom: 0;
+        padding-bottom: 0;
+    }
+    
+    /* Hide mobile divider on desktop */
+    .qa-mobile-divider {
+        display: none;
+    }
+}
+
+/* Mobile layout */
+@media (max-width: 768px) {
+    .qa-section .row {
+        gap: 1.5rem !important;
+    }
+    
+    /* Horizontal line separator - Yellow for visibility */
+    .qa-mobile-divider {
+        height: 4px;
+        background: linear-gradient(90deg, #FFD700 0%, #FFF000 50%, #FFD700 100%);
+        margin: 1rem 0;
+        border-radius: 2px;
+    }
+}
+
+.qa-header {
+    background: linear-gradient(135deg, #2a2a2a 0%, #1f1f2e 100%);
+    padding: 15px;
+    border-bottom: 1px solid #444;
+}
+
+.qa-title {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #c8e6d9;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.qa-question-card .qa-title {
+    color: #8bb8d9;
+}
+
+.qa-answer-card .qa-title {
+    color: #c8e6d9;
+}
+
+.qa-icon {
+    font-size: 1.2rem;
+    opacity: 0.9;
+}
+
+.qa-body {
+    padding: 20px;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    background-color: #1a1a1a;
+    color: #c8e6d9;
+    font-size: 0.95rem;
+    line-height: 1.8;
+    overflow-y: auto;
+}
+
+.qa-body::-webkit-scrollbar {
+    width: 6px;
+}
+
+.qa-body::-webkit-scrollbar-track {
+    background: #2a2a2a;
+    border-radius: 3px;
+}
+
+.qa-body::-webkit-scrollbar-thumb {
+    background: #8bb8d9;
+    border-radius: 3px;
+}
+
+.qa-body::-webkit-scrollbar-thumb:hover {
+    background: #6fa8d9;
+}
+
+/* Desktop: Side-by-side layout */
+@media (min-width: 769px) {
+    .qa-section .row {
+        display: flex;
+        gap: 1.5rem;
+    }
+
+    .qa-section .col-md-6 {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .qa-card {
+        min-height: 300px;
+    }
+}
+
+/* Mobile: Vertical stacking */
+@media (max-width: 768px) {
+    .qa-section .row {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .qa-section .col-12 {
+        width: 100%;
+    }
+
+    .qa-card {
+        min-height: auto;
+    }
+
+    .qa-body {
+        min-height: 150px;
+    }
+
+    .qa-title {
+        font-size: 1rem;
+    }
+
+    .qa-icon {
+        font-size: 1rem;
+    }
+}
+

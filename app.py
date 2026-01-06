@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session, send_file
-from models import db, ExamSession, Packet, Case, Candidate, CaseImage
+from models import db, ExamSession, Packet, Case, Candidate, CaseImage, Question, Answer
+from backup_manager import init_backup_manager, get_backup_manager
 from datetime import datetime
 import os
 from io import BytesIO
@@ -28,6 +29,8 @@ db.init_app(app)
 
 with app.app_context():
     db.create_all()
+    # Initialize backup manager with automatic daily backups
+    init_backup_manager(app)
 
 
 @app.route('/')
@@ -141,14 +144,13 @@ def create_candidate():
 
 @app.route('/start-exam')
 def start_exam():
-    """Start exam page - select candidate and view packets"""
-    exam_sessions = ExamSession.query.order_by(ExamSession.created_at.desc()).first()
+    """Start exam page - select exam session"""
+    exam_sessions = ExamSession.query.order_by(ExamSession.created_at.desc()).all()
     
     if not exam_sessions:
         return redirect(url_for('prepare_exam'))
     
-    session['current_exam_id'] = exam_sessions.id
-    return render_template('start_exam.html', exam=exam_sessions)
+    return render_template('start_exam.html', exams=exam_sessions)
 
 
 @app.route('/select-candidate')
@@ -225,22 +227,86 @@ def view_case(case_id):
     return render_template('view_case.html', case=case, packet=packet, candidate=candidate)
 
 
-@app.route('/api/case/<int:case_id>')
+@app.route('/edit-case')
+def edit_case():
+    """Full-page edit interface for a case"""
+    case_id = request.args.get('id', type=int)
+    
+    if not case_id:
+        return redirect(url_for('start_exam'))
+    
+    case = Case.query.get(case_id)
+    if not case:
+        return redirect(url_for('start_exam'))
+    
+    return render_template('edit_case.html')
+
+
+@app.route('/api/case/<int:case_id>', methods=['GET', 'PUT'])
 def get_case(case_id):
-    """Get case details as JSON"""
+    """Get case details as JSON or update case"""
     case = Case.query.get(case_id)
     
     if not case:
         return jsonify({'error': 'Case not found'}), 404
     
-    return jsonify({
-        'id': case.id,
-        'case_number': case.case_number,
-        'diagnosis': case.diagnosis,
-        'questions': case.questions,
-        'answers': case.answers,
-        'discussion': case.discussion
-    })
+    # Handle GET request
+    if request.method == 'GET':
+        return jsonify({
+            'id': case.id,
+            'case_number': case.case_number,
+            'diagnosis': case.diagnosis,
+            'questions': [{'question_text': q.question_text, 'id': q.id} for q in case.question_items],
+            'answers': [{'answer_text': a.answer_text, 'id': a.id} for a in case.answer_items],
+            'discussion': case.discussion
+        })
+    
+    # Handle PUT request - update case
+    data = request.get_json()
+    
+    try:
+        # Update basic case fields
+        if 'diagnosis' in data:
+            case.diagnosis = data['diagnosis'].strip()
+        if 'discussion' in data:
+            case.discussion = data['discussion'].strip() if data['discussion'] else None
+        if 'case_number' in data:
+            case.case_number = data['case_number']
+        
+        # Handle Q&A pairs if provided
+        if 'pairs' in data:
+            # Delete existing pairs
+            Question.query.filter_by(case_id=case_id).delete()
+            Answer.query.filter_by(case_id=case_id).delete()
+            
+            # Create new pairs
+            for index, pair in enumerate(data['pairs'], start=1):
+                question_text = (pair.get('question_text') or '').strip()
+                answer_text = (pair.get('answer_text') or '').strip()
+                
+                if question_text or answer_text:
+                    if question_text:
+                        question = Question(
+                            case_id=case_id,
+                            question_number=index,
+                            question_text=question_text
+                        )
+                        db.session.add(question)
+                    
+                    if answer_text:
+                        answer = Answer(
+                            case_id=case_id,
+                            answer_number=index,
+                            answer_text=answer_text
+                        )
+                        db.session.add(answer)
+        
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'Case updated successfully'})
+    
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
 
 
 @app.route('/manage-session/<int:session_id>')
@@ -314,7 +380,7 @@ def delete_case(case_id):
     db.session.delete(case)
     db.session.commit()
     
-    return jsonify({'message': 'Case deleted successfully'})
+    return jsonify({'success': True, 'message': 'Case deleted successfully'})
 
 
 @app.route('/api/case/<int:case_id>/image', methods=['POST'])
@@ -434,30 +500,7 @@ def update_image_description(image_id):
     })
 
 
-@app.route('/api/case/<int:case_id>', methods=['PUT'])
-def update_case(case_id):
-    """Update a case"""
-    case = Case.query.get(case_id)
-    
-    if not case:
-        return jsonify({'error': 'Case not found'}), 404
-    
-    data = request.get_json()
-    
-    if 'case_number' in data:
-        case.case_number = data['case_number']
-    if 'diagnosis' in data:
-        case.diagnosis = data['diagnosis']
-    if 'questions' in data:
-        case.questions = data['questions']
-    if 'answers' in data:
-        case.answers = data['answers']
-    if 'discussion' in data:
-        case.discussion = data['discussion']
-    
-    db.session.commit()
-    
-    return jsonify({'message': 'Case updated successfully'})
+
 
 
 @app.route('/api/candidate/<int:candidate_id>', methods=['PUT'])
@@ -493,6 +536,102 @@ def delete_candidate(candidate_id):
     
     return jsonify({'message': 'Candidate deleted successfully'})
 
+
+# ==================== BACKUP MANAGEMENT ENDPOINTS ====================
+
+@app.route('/admin')
+def admin_dashboard():
+    """Admin dashboard for backup management"""
+    return render_template('admin_dashboard.html')
+
+
+@app.route('/api/backup/create', methods=['POST'])
+def create_backup():
+    """Create a new backup"""
+    backup_manager = get_backup_manager()
+    
+    if backup_manager is None:
+        return jsonify({'error': 'Backup manager not initialized'}), 500
+    
+    data = request.get_json() or {}
+    description = data.get('description', 'Manual backup')
+    
+    result = backup_manager.create_backup(description)
+    
+    if result:
+        return jsonify({
+            'success': True,
+            'message': 'Backup created successfully',
+            'backup': result
+        })
+    else:
+        return jsonify({
+            'success': False,
+            'message': 'Backup creation failed'
+        }), 500
+
+
+@app.route('/api/backup/list')
+def list_backups():
+    """Get list of all backups"""
+    backup_manager = get_backup_manager()
+    
+    if backup_manager is None:
+        return jsonify({'error': 'Backup manager not initialized'}), 500
+    
+    backups = backup_manager.get_backup_list()
+    
+    return jsonify({
+        'success': True,
+        'backups': backups,
+        'total_count': len(backups)
+    })
+
+
+@app.route('/api/backup/statistics')
+def backup_statistics():
+    """Get backup system statistics"""
+    backup_manager = get_backup_manager()
+    
+    if backup_manager is None:
+        return jsonify({'error': 'Backup manager not initialized'}), 500
+    
+    stats = backup_manager.get_statistics()
+    
+    return jsonify({
+        'success': True,
+        'statistics': stats
+    })
+
+
+@app.route('/api/backup/restore/<timestamp>', methods=['POST'])
+def restore_backup(timestamp):
+    """Restore database from backup"""
+    backup_manager = get_backup_manager()
+    
+    if backup_manager is None:
+        return jsonify({'error': 'Backup manager not initialized'}), 500
+    
+    result = backup_manager.restore_backup(timestamp)
+    
+    return jsonify(result)
+
+
+@app.route('/api/backup/log')
+def backup_log():
+    """Get backup log entries"""
+    backup_manager = get_backup_manager()
+    
+    if backup_manager is None:
+        return jsonify({'error': 'Backup manager not initialized'}), 500
+    
+    lines = request.args.get('lines', 50, type=int)
+    log_entries = backup_manager.get_log(lines)
+    
+    return jsonify({
+        'success': True,
+        'log': [entry.rstrip() for entry in log_entries]
+    })
 
 
 import socket
@@ -534,6 +673,151 @@ def show_macos_gatekeeper_popup():
         root.destroy()
     except Exception:
         pass
+
+
+# ==================== Question & Answer Management Endpoints ====================
+
+@app.route('/api/case/<int:case_id>/questions', methods=['GET'])
+def get_case_questions(case_id):
+    """Get all questions for a case"""
+    case = Case.query.get(case_id)
+    if not case:
+        return jsonify({'error': 'Case not found'}), 404
+    
+    questions = Question.query.filter_by(case_id=case_id).order_by(Question.question_number).all()
+    return jsonify([{
+        'id': q.id,
+        'number': q.question_number,
+        'text': q.question_text
+    } for q in questions])
+
+
+@app.route('/api/case/<int:case_id>/answers', methods=['GET'])
+def get_case_answers(case_id):
+    """Get all answers for a case"""
+    case = Case.query.get(case_id)
+    if not case:
+        return jsonify({'error': 'Case not found'}), 404
+    
+    answers = Answer.query.filter_by(case_id=case_id).order_by(Answer.answer_number).all()
+    return jsonify([{
+        'id': a.id,
+        'number': a.answer_number,
+        'text': a.answer_text
+    } for a in answers])
+
+
+@app.route('/api/question/<int:question_id>', methods=['PUT'])
+def update_question(question_id):
+    """Update a single question's text"""
+    question = Question.query.get(question_id)
+    if not question:
+        return jsonify({'error': 'Question not found'}), 404
+    
+    data = request.get_json()
+    question.question_text = data.get('text', '').strip()
+    db.session.commit()
+    
+    return jsonify({'success': True, 'message': 'Question updated'})
+
+
+@app.route('/api/answer/<int:answer_id>', methods=['PUT'])
+def update_answer(answer_id):
+    """Update a single answer's text"""
+    answer = Answer.query.get(answer_id)
+    if not answer:
+        return jsonify({'error': 'Answer not found'}), 404
+    
+    data = request.get_json()
+    answer.answer_text = data.get('text', '').strip()
+    db.session.commit()
+    
+    return jsonify({'success': True, 'message': 'Answer updated'})
+
+
+@app.route('/api/case/<int:case_id>/qa-pairs', methods=['GET'])
+def get_case_qa_pairs(case_id):
+    """Get Q&A pairs for a case"""
+    case = Case.query.get(case_id)
+    if not case:
+        return jsonify({'error': 'Case not found'}), 404
+    
+    questions = Question.query.filter_by(case_id=case_id).order_by(Question.question_number).all()
+    answers = Answer.query.filter_by(case_id=case_id).order_by(Answer.answer_number).all()
+    
+    pairs = []
+    max_pairs = max(len(questions), len(answers))
+    
+    for i in range(max_pairs):
+        pair = {
+            'number': i + 1,
+            'question': {
+                'id': questions[i].id,
+                'text': questions[i].question_text
+            } if i < len(questions) else {'id': None, 'text': ''},
+            'answer': {
+                'id': answers[i].id,
+                'text': answers[i].answer_text
+            } if i < len(answers) else {'id': None, 'text': ''}
+        }
+        pairs.append(pair)
+    
+    return jsonify(pairs)
+
+
+# ==================== SIMPLIFIED Q&A ENDPOINTS ====================
+
+@app.route('/api/case/<int:case_id>/qa-pairs', methods=['PUT'])
+def update_case_qa_pairs(case_id):
+    """
+    Simplified endpoint to update all Q&A pairs for a case in one request.
+    Deletes old pairs and creates new ones based on provided data.
+    """
+    case = Case.query.get(case_id)
+    if not case:
+        return jsonify({'error': 'Case not found'}), 404
+    
+    data = request.get_json()
+    pairs = data.get('pairs', [])
+    
+    if not isinstance(pairs, list):
+        return jsonify({'error': 'pairs must be an array'}), 400
+    
+    try:
+        # Delete all existing Q&A pairs
+        Question.query.filter_by(case_id=case_id).delete()
+        Answer.query.filter_by(case_id=case_id).delete()
+        
+        # Create new pairs
+        for index, pair in enumerate(pairs, start=1):
+            question_text = (pair.get('question_text') or '').strip()
+            answer_text = (pair.get('answer_text') or '').strip()
+            
+            # Only create if at least one has content
+            if question_text or answer_text:
+                if question_text:
+                    question = Question(
+                        case_id=case_id,
+                        question_number=index,
+                        question_text=question_text
+                    )
+                    db.session.add(question)
+                
+                if answer_text:
+                    answer = Answer(
+                        case_id=case_id,
+                        answer_number=index,
+                        answer_text=answer_text
+                    )
+                    db.session.add(answer)
+        
+        db.session.commit()
+        return jsonify({'success': True, 'message': f'Updated {len(pairs)} Q&A pairs'})
+    
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
 
 if __name__ == '__main__':
     if sys.platform == 'darwin':

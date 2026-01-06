@@ -8,32 +8,65 @@
             <a href="/" class="btn btn-secondary">← Back to Home</a>
         </div>
         
-        {% if exam %}
+        {% if exams %}
+        <!-- Select Exam Session -->
         <div class="card mb-4">
             <div class="card-header bg-success text-white">
-                <h5 class="mb-0">Current Exam Session</h5>
+                <h5 class="mb-0">Select Exam Session</h5>
             </div>
             <div class="card-body">
-                <p><strong>Session Name:</strong> {{ exam.session_name }}</p>
-                <p><strong>Exam Date:</strong> {{ exam.exam_date.strftime('%Y-%m-%d') }}</p>
-                <p><strong>Exam Time:</strong> {{ exam.exam_time }}</p>
-            </div>
-        </div>
-
-        <div class="card">
-            <div class="card-header bg-primary text-white">
-                <h5 class="mb-0">Select Candidate</h5>
-            </div>
-            <div class="card-body">
-                <p>Please select a candidate to begin their examination:</p>
-                <div id="candidatesContainer" class="row">
-                    <!-- Candidates will be loaded here -->
+                <p>Choose an exam session to continue:</p>
+                <div class="row">
+                    {% for exam in exams %}
+                    <div class="col-md-6 mb-3">
+                        <div class="card h-100 cursor-pointer" onclick="selectSession({{ exam.id }})" style="cursor: pointer; transition: all 0.3s ease;">
+                            <div class="card-body">
+                                <h5 class="card-title">{{ exam.session_name }}</h5>
+                                <p class="card-text mb-2">
+                                    <strong>Date:</strong> {{ exam.exam_date.strftime('%Y-%m-%d') }}<br>
+                                    <strong>Time:</strong> {{ exam.exam_time }}<br>
+                                    <strong>Candidates:</strong> <span id="count-{{ exam.id }}" class="badge bg-info">0</span>
+                                </p>
+                                <button class="btn btn-primary btn-sm" onclick="selectSession({{ exam.id }}); event.stopPropagation();">
+                                    <i class="fas fa-arrow-right me-1"></i>Select Session
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
                 </div>
             </div>
         </div>
+
+        <!-- Selected Session Details & Candidates -->
+        <div id="sessionDetailsContainer" style="display: none;">
+            <div class="card mb-4">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">Current Session</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>Session Name:</strong> <span id="selectedSessionName"></span></p>
+                    <p><strong>Exam Date:</strong> <span id="selectedSessionDate"></span></p>
+                    <p><strong>Exam Time:</strong> <span id="selectedSessionTime"></span></p>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Select Candidate</h5>
+                </div>
+                <div class="card-body">
+                    <p>Please select a candidate to begin their examination:</p>
+                    <div id="candidatesContainer" class="row">
+                        <!-- Candidates will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+        
         {% else %}
         <div class="alert alert-warning">
-            <h4>No Exam Session Found</h4>
+            <h4>No Exam Sessions Found</h4>
             <p>Please create an exam session first by going to the "Prepare for Exam" tab.</p>
             <a href="/" class="btn btn-primary">Go Back</a>
         </div>
@@ -44,13 +77,58 @@
 
 {% block scripts %}
 <script>
+let currentExamId = null;
+
 document.addEventListener('DOMContentLoaded', function() {
-    loadCandidates();
+    // Load candidate counts for all sessions
+    {% if exams %}
+    {% for exam in exams %}
+    loadCandidateCount({{ exam.id }});
+    {% endfor %}
+    {% endif %}
 });
 
-function loadCandidates() {
-    const examId = {{ exam.id }};
+function loadCandidateCount(examId) {
+    fetch(`/api/candidates/${examId}`)
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById(`count-${examId}`).textContent = data.length;
+        })
+        .catch(error => console.error('Error:', error));
+}
+
+function selectSession(examId) {
+    currentExamId = examId;
     
+    // Get session details from the data
+    const sessions = {
+        {% for exam in exams %}
+        {{ exam.id }}: {
+            name: "{{ exam.session_name }}",
+            date: "{{ exam.exam_date.strftime('%Y-%m-%d') }}",
+            time: "{{ exam.exam_time }}"
+        }{{ "," if not loop.last else "" }}
+        {% endfor %}
+    };
+    
+    const session = sessions[examId];
+    
+    // Update session details
+    document.getElementById('selectedSessionName').textContent = session.name;
+    document.getElementById('selectedSessionDate').textContent = session.date;
+    document.getElementById('selectedSessionTime').textContent = session.time;
+    
+    // Show session details
+    document.getElementById('sessionDetailsContainer').style.display = 'block';
+    
+    // Load candidates
+    loadCandidates(examId);
+    
+    // Scroll to candidates
+    document.getElementById('sessionDetailsContainer').scrollIntoView({ behavior: 'smooth' });
+}
+
+function loadCandidates(examId) {
     fetch(`/api/candidates/${examId}`)
     .then(response => response.json())
     .then(data => {
@@ -69,7 +147,7 @@ function loadCandidates() {
                                 <strong>Packet #:</strong> ${candidate.packet_number}
                             </p>
                             <a href="/view-packet/${candidate.id}" class="btn btn-primary btn-sm">
-                                View Packet
+                                <i class="fas fa-play me-1"></i>Start Exam
                             </a>
                         </div>
                     </div>

@@ -37,14 +37,42 @@ class Case(db.Model):
     packet_id = db.Column(db.Integer, db.ForeignKey('packet.id'), nullable=False)
     case_number = db.Column(db.Integer, nullable=False)  # 1-3 per packet
     diagnosis = db.Column(db.Text, nullable=False)
-    questions = db.Column(db.Text, nullable=False)  # Can contain multiple questions
-    answers = db.Column(db.Text, nullable=False)  # Can contain multiple answers
+    questions = db.Column(db.Text, nullable=False)  # Legacy - for backward compatibility
+    answers = db.Column(db.Text, nullable=False)  # Legacy - for backward compatibility
     discussion = db.Column(db.Text)  # Optional discussion/comments
     
     images = db.relationship('CaseImage', backref='case', lazy=True, cascade='all, delete-orphan')
+    question_items = db.relationship('Question', backref='case', lazy=True, cascade='all, delete-orphan')
+    answer_items = db.relationship('Answer', backref='case', lazy=True, cascade='all, delete-orphan')
     
     def __repr__(self):
         return f'<Case {self.case_number} - {self.diagnosis}>'
+
+
+class Question(db.Model):
+    """Store individual questions for a case"""
+    id = db.Column(db.Integer, primary_key=True)
+    case_id = db.Column(db.Integer, db.ForeignKey('case.id'), nullable=False)
+    question_number = db.Column(db.Integer, nullable=False)  # Order: 1, 2, 3...
+    question_text = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    def __repr__(self):
+        return f'<Question {self.question_number} for Case {self.case_id}>'
+
+
+class Answer(db.Model):
+    """Store individual answers for a case"""
+    id = db.Column(db.Integer, primary_key=True)
+    case_id = db.Column(db.Integer, db.ForeignKey('case.id'), nullable=False)
+    answer_number = db.Column(db.Integer, nullable=False)  # Order: 1, 2, 3...
+    answer_text = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    def __repr__(self):
+        return f'<Answer {self.answer_number} for Case {self.case_id}>'
 
 
 class CaseImage(db.Model):
