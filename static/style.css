@@ -496,6 +496,65 @@ pre {
     color: #333;
 }
 
+/* Image Modal Styling */
+.modal {
+    --bs-modal-bg: #000;
+}
+
+.modal-content {
+    background-color: #000 !important;
+    border: 2px solid #8bb8d9 !important;
+    box-shadow: 0 0 30px rgba(139, 184, 217, 0.3);
+}
+
+.modal-header {
+    background-color: #1a1a1a !important;
+    border-bottom: 1px solid #8bb8d9 !important;
+}
+
+.modal-header .modal-title {
+    color: #c8e6d9 !important;
+    font-weight: 600;
+}
+
+.modal-header .btn-close {
+    filter: invert(1) !important;
+}
+
+.modal-body {
+    background-color: #000 !important;
+    padding: 2rem 1rem !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 400px;
+}
+
+.modal-body img {
+    box-shadow: 0 0 20px rgba(139, 184, 217, 0.2) !important;
+    border-radius: 0.5rem;
+}
+
+.modal-footer {
+    background-color: #1a1a1a !important;
+    border-top: 1px solid #8bb8d9 !important;
+}
+
+.modal-footer .btn {
+    background-color: #8bb8d9;
+    color: white;
+    border: none;
+}
+
+.modal-footer .btn:hover {
+    background-color: #a8d5a8;
+    color: white;
+}
+
+.modal-footer .text-muted {
+    color: #a8d5a8 !important;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
     .hero-title {
