@@ -109,10 +109,25 @@
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body text-center" style="background: #000000; padding: 2rem 1rem;">
+            <div class="modal-body text-center" style="background: #000000; padding: 2rem 1rem; position: relative;">
+                <!-- Previous Image Button -->
+                <button id="prevImageBtn" class="image-nav-btn image-nav-prev" onclick="navigateImage('prev')" aria-label="Previous image">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                
                 <!-- Image -->
                 <div style="margin-bottom: 1.5rem; padding: 1rem; background: #000000; border-radius: 12px; border: 3px solid #333333; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);">
                     <img id="modalImageDisplay" src="" alt="Image" style="max-width: 100%; max-height: 55vh; object-fit: contain; border-radius: 8px;">
+                </div>
+                
+                <!-- Next Image Button -->
+                <button id="nextImageBtn" class="image-nav-btn image-nav-next" onclick="navigateImage('next')" aria-label="Next image">
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+                
+                <!-- Image Counter -->
+                <div id="imageCounter" class="image-counter" style="position: absolute; bottom: 1rem; left: 50%; transform: translateX(-50%); color: #fff; background: rgba(0,0,0,0.7); padding: 0.5rem 1rem; border-radius: 20px; font-size: 0.9rem;">
+                    <span id="currentImageNum">1</span> / <span id="totalImageNum">1</span>
                 </div>
             </div>
             <div class="modal-footer" style="background: #c8e6f5; border-top: 2px solid #9ecae1;">
@@ -255,6 +270,79 @@
     .discussion-text a:hover {
         color: #138496 !important;
         text-decoration: underline !important;
+    }
+    
+    /* Image Navigation Buttons */
+    .image-nav-btn {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        background: rgba(255, 255, 255, 0.9);
+        border: none;
+        border-radius: 50%;
+        width: 50px;
+        height: 50px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        z-index: 10;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    }
+    
+    .image-nav-btn:hover {
+        background: rgba(255, 255, 255, 1);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+        transform: translateY(-50%) scale(1.1);
+    }
+    
+    .image-nav-btn:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+    }
+    
+    .image-nav-btn:disabled:hover {
+        transform: translateY(-50%);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    }
+    
+    .image-nav-prev {
+        left: 1rem;
+    }
+    
+    .image-nav-next {
+        right: 1rem;
+    }
+    
+    .image-nav-btn i {
+        font-size: 1.5rem;
+        color: #333;
+    }
+    
+    .image-counter {
+        font-weight: 500;
+        letter-spacing: 0.5px;
+    }
+    
+    /* Mobile adjustments */
+    @media (max-width: 768px) {
+        .image-nav-btn {
+            width: 40px;
+            height: 40px;
+        }
+        
+        .image-nav-btn i {
+            font-size: 1.2rem;
+        }
+        
+        .image-nav-prev {
+            left: 0.5rem;
+        }
+        
+        .image-nav-next {
+            right: 0.5rem;
+        }
     }
 </style>
 
@@ -513,6 +601,12 @@
         // Display the image
         document.getElementById('modalImageDisplay').src = `/api/case-image/${imageId}`;
         
+        // Update counter
+        updateImageCounter();
+        
+        // Update navigation button states
+        updateNavigationButtons();
+        
         // Load image description from API
         fetch(`/api/case/${caseId}/images`)
             .then(response => response.json())
@@ -535,6 +629,39 @@
         
         // Show modal
         imageModal.show();
+    }
+    
+    // Update image counter display
+    function updateImageCounter() {
+        const currentNum = document.getElementById('currentImageNum');
+        const totalNum = document.getElementById('totalImageNum');
+        const counter = document.getElementById('imageCounter');
+        
+        if (currentImages && currentImages.length > 0) {
+            currentNum.textContent = currentImageIndex + 1;
+            totalNum.textContent = currentImages.length;
+            
+            // Hide counter if only one image
+            counter.style.display = currentImages.length > 1 ? 'block' : 'none';
+        }
+    }
+    
+    // Update navigation button states
+    function updateNavigationButtons() {
+        const prevBtn = document.getElementById('prevImageBtn');
+        const nextBtn = document.getElementById('nextImageBtn');
+        
+        if (currentImages && currentImages.length > 1) {
+            // Show buttons when multiple images exist
+            prevBtn.style.display = 'flex';
+            nextBtn.style.display = 'flex';
+            prevBtn.disabled = false;
+            nextBtn.disabled = false;
+        } else {
+            // Hide buttons when single image
+            prevBtn.style.display = 'none';
+            nextBtn.style.display = 'none';
+        }
     }
 
     function showStatus(element, message, type) {
@@ -569,7 +696,20 @@
         }
         
         const image = currentImages[currentImageIndex];
-        viewImageFullSize(image.id, image.filename);
+        
+        // Update image display
+        document.getElementById('modalImageDisplay').src = `/api/case-image/${image.id}`;
+        
+        // Update counter
+        updateImageCounter();
+        
+        // Load description for new image
+        const descriptionDisplay = document.getElementById('imageDescriptionDisplay');
+        if (image.description && image.description.trim()) {
+            descriptionDisplay.textContent = image.description;
+        } else {
+            descriptionDisplay.textContent = 'No description';
+        }
     }
 </script>
 <script src="/static/edit-case-modal.js"></script>
