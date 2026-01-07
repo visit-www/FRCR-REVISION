@@ -269,6 +269,28 @@ def profile():
     return render_template('profile.html', user=current_user)
 
 
+@auth_bp.route('/test-email', methods=['GET'])
+def test_email():
+    """Test email configuration"""
+    try:
+        import requests
+        resend_key = os.getenv('RESEND_API_KEY')
+        
+        result = {
+            'resend_key_set': bool(resend_key),
+            'resend_key_length': len(resend_key) if resend_key else 0,
+            'requests_available': True,
+            'app_url': os.getenv('APP_URL', 'https://frcr-examiner.vercel.app'),
+            'email_from': os.getenv('EMAIL_FROM', 'onboarding@resend.dev')
+        }
+        
+        return jsonify(result), 200
+    except ImportError as e:
+        return jsonify({'error': f'Import error: {str(e)}', 'requests_available': False}), 500
+    except Exception as e:
+        return jsonify({'error': f'Error: {str(e)}'}), 500
+
+
 @auth_bp.route('/debug', methods=['GET'])
 def debug_auth():
     """Debug authentication status"""
