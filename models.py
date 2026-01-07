@@ -1,11 +1,65 @@
 from flask_sqlalchemy import SQLAlchemy
-from datetime import datetime
+from datetime import datetime, timedelta
+from werkzeug.security import generate_password_hash, check_password_hash
+import secrets
 
 db = SQLAlchemy()
+
+class User(db.Model):
+    """Store user account information"""
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(120), unique=True, nullable=False, index=True)
+    password_hash = db.Column(db.String(255), nullable=False)
+    full_name = db.Column(db.String(120), nullable=False)
+    is_active = db.Column(db.Boolean, default=True)
+    
+    # Password recovery
+    recovery_token = db.Column(db.String(255), unique=True, nullable=True)
+    recovery_token_expires = db.Column(db.DateTime, nullable=True)
+    
+    # Timestamps
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    last_login = db.Column(db.DateTime, nullable=True)
+    
+    # Relationships
+    exam_sessions = db.relationship('ExamSession', backref='creator', lazy=True, cascade='all, delete-orphan')
+    
+    def set_password(self, password):
+        """Hash and set password"""
+        self.password_hash = generate_password_hash(password)
+    
+    def check_password(self, password):
+        """Verify password against hash"""
+        return check_password_hash(self.password_hash, password)
+    
+    def generate_recovery_token(self):
+        """Generate unique token for password recovery"""
+        token = secrets.token_urlsafe(32)
+        self.recovery_token = token
+        self.recovery_token_expires = datetime.utcnow() + timedelta(hours=24)
+        return token
+    
+    def verify_recovery_token(self, token):
+        """Verify recovery token is valid and not expired"""
+        if not self.recovery_token or self.recovery_token != token:
+            return False
+        if self.recovery_token_expires < datetime.utcnow():
+            return False
+        return True
+    
+    def clear_recovery_token(self):
+        """Clear recovery token after use"""
+        self.recovery_token = None
+        self.recovery_token_expires = None
+    
+    def __repr__(self):
+        return f'<User {self.email}>'
+
 
 class ExamSession(db.Model):
     """Store exam session details"""
     id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     exam_date = db.Column(db.Date, nullable=False)
     exam_time = db.Column(db.String(10), nullable=False)
     session_name = db.Column(db.String(100), nullable=False)

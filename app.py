@@ -1,7 +1,9 @@
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session, send_file
 from flask_cors import CORS
-from models import db, ExamSession, Packet, Case, Candidate, CaseImage, Question, Answer
+from flask_login import LoginManager, login_required, current_user
+from models import db, User, ExamSession, Packet, Case, Candidate, CaseImage, Question, Answer
 from backup_manager import init_backup_manager, get_backup_manager
+from auth import auth_bp
 from datetime import datetime
 import os
 from io import BytesIO
@@ -45,6 +47,16 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 # Initialize database
 db.init_app(app)
 
+# Initialize Flask-Login
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'auth.login'
+login_manager.login_message = 'Please log in to continue'
+
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
+
 with app.app_context():
     try:
         db.create_all()
@@ -58,6 +70,8 @@ with app.app_context():
         print(f"Error initializing database: {e}")
         raise
 
+# Register blueprints
+app.register_blueprint(auth_bp)
 
 # ==================== BACKUP HOOKS ====================
 
@@ -77,25 +91,28 @@ atexit.register(backup_on_shutdown)
 
 @app.route('/')
 def index():
-    """Smart dashboard - entry point for all workflows"""
+    """Smart dashboard - entry point for all workflows - PUBLIC"""
     return render_template('dashboard.html')
 
 
 # ==================== SETUP WORKFLOW ====================
 
 @app.route('/setup/sessions')
+@login_required
 def setup_sessions():
     """Manage exam sessions"""
     return render_template('setup_sessions.html')
 
 
 @app.route('/setup/cases')
+@login_required
 def setup_cases():
     """Case bank management"""
     return render_template('setup_cases.html')
 
 
 @app.route('/setup/candidates')
+@login_required
 def setup_candidates():
     """Candidate management"""
     return render_template('setup_candidates.html')
@@ -104,21 +121,24 @@ def setup_candidates():
 # ==================== EXAM WORKFLOW ====================
 
 @app.route('/exam/start')
+@login_required
 def exam_start():
     """Start exam - select candidate"""
     return render_template('exam_start.html')
 
 
 @app.route('/prepare-exam')
+@login_required
 def prepare_exam():
     """Deprecated - redirects to new setup"""
     return redirect(url_for('setup_sessions'))
 
 
 @app.route('/api/exam/sessions')
+@login_required
 def get_exam_sessions():
     """Get all exam sessions"""
-    sessions = ExamSession.query.order_by(ExamSession.created_at.desc()).all()
+    sessions = ExamSession.query.filter_by(user_id=current_user.id).order_by(ExamSession.created_at.desc()).all()
     return jsonify([{
         'id': s.id,
         'session_name': s.session_name,
@@ -129,6 +149,7 @@ def get_exam_sessions():
 
 
 @app.route('/api/exam/create', methods=['POST'])
+@login_required
 def create_exam():
     """Create a new exam session"""
     data = request.get_json()
@@ -146,6 +167,7 @@ def create_exam():
     session_name = f"{date_str} {time_str} Exam Session"
     
     exam = ExamSession(
+        user_id=current_user.id,
         exam_date=exam_date,
         exam_time=exam_time,
         session_name=session_name
@@ -161,6 +183,7 @@ def create_exam():
 
 
 @app.route('/api/packet/create', methods=['POST'])
+@login_required
 def create_packet():
     """Create a new packet"""
     data = request.get_json()

@@ -1,0 +1,199 @@
+"""
+User authentication module
+Handles login, signup, password recovery, and session management
+"""
+from flask import Blueprint, render_template, request, jsonify, redirect, url_for, session, flash
+from flask_login import LoginManager, login_user, logout_user, login_required, current_user
+from models import db, User
+from datetime import datetime
+import os
+import secrets
+
+auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
+
+def send_recovery_email(email, token):
+    """
+    Send password recovery email using free service
+    Using Resend.com (free tier) or fallback to console for development
+    """
+    recovery_url = os.getenv('APP_URL', 'http://localhost:5001') + url_for('auth.reset_password', token=token, _external=False)
+    
+    # For development, just log it
+    if os.getenv('FLASK_ENV') == 'development':
+        print(f"\n📧 Password Recovery Email:")
+        print(f"   To: {email}")
+        print(f"   Reset Link: {recovery_url}\n")
+        return True
+    
+    # For production, use Resend (free tier: 100 emails/day)
+    try:
+        import requests
+        resend_key = os.getenv('RESEND_API_KEY')
+        
+        if not resend_key:
+            print("Warning: RESEND_API_KEY not set, recovery email not sent")
+            return False
+        
+        response = requests.post(
+            "https://api.resend.com/emails",
+            headers={"Authorization": f"Bearer {resend_key}"},
+            json={
+                "from": "noreply@frcr-examiner.com",
+                "to": email,
+                "subject": "Reset Your FRCR Examiner Password",
+                "html": f"""
+                <h2>Password Reset Request</h2>
+                <p>We received a request to reset your password.</p>
+                <p><a href="{recovery_url}" style="background-color: #896b90; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
+                    Reset Password
+                </a></p>
+                <p>If you didn't request this, you can ignore this email.</p>
+                <p><small>Link expires in 24 hours</small></p>
+                """
+            }
+        )
+        
+        return response.status_code == 200
+    except Exception as e:
+        print(f"Error sending email: {e}")
+        return False
+
+
+@auth_bp.route('/register', methods=['GET', 'POST'])
+def register():
+    """User registration"""
+    if request.method == 'POST':
+        data = request.get_json() if request.is_json else request.form
+        email = data.get('email', '').strip().lower()
+        password = data.get('password', '')
+        full_name = data.get('full_name', '').strip()
+        
+        # Validation
+        if not all([email, password, full_name]):
+            return jsonify({'error': 'All fields required'}), 400
+        
+        if len(password) < 8:
+            return jsonify({'error': 'Password must be at least 8 characters'}), 400
+        
+        # Check if user exists
+        existing_user = User.query.filter_by(email=email).first()
+        if existing_user:
+            return jsonify({'error': 'Email already registered'}), 409
+        
+        # Create user
+        user = User(email=email, full_name=full_name)
+        user.set_password(password)
+        
+        db.session.add(user)
+        db.session.commit()
+        
+        login_user(user)
+        return jsonify({'success': True, 'message': 'Registration successful'}), 201
+    
+    return render_template('register.html')
+
+
+@auth_bp.route('/login', methods=['GET', 'POST'])
+def login():
+    """User login"""
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard'))
+    
+    if request.method == 'POST':
+        data = request.get_json() if request.is_json else request.form
+        email = data.get('email', '').strip().lower()
+        password = data.get('password', '')
+        remember = data.get('remember', False)
+        
+        if not email or not password:
+            return jsonify({'error': 'Email and password required'}), 400
+        
+        user = User.query.filter_by(email=email).first()
+        
+        if not user or not user.check_password(password):
+            return jsonify({'error': 'Invalid email or password'}), 401
+        
+        if not user.is_active:
+            return jsonify({'error': 'Account is disabled'}), 403
+        
+        # Update last login
+        user.last_login = datetime.utcnow()
+        db.session.commit()
+        
+        login_user(user, remember=remember)
+        return jsonify({'success': True, 'message': 'Login successful'}), 200
+    
+    return render_template('login.html')
+
+
+@auth_bp.route('/logout', methods=['POST'])
+@login_required
+def logout():
+    """User logout"""
+    logout_user()
+    return jsonify({'success': True, 'message': 'Logged out'}), 200
+
+
+@auth_bp.route('/forgot-password', methods=['GET', 'POST'])
+def forgot_password():
+    """Request password recovery"""
+    if request.method == 'POST':
+        data = request.get_json() if request.is_json else request.form
+        email = data.get('email', '').strip().lower()
+        
+        if not email:
+            return jsonify({'error': 'Email required'}), 400
+        
+        user = User.query.filter_by(email=email).first()
+        
+        if user:
+            # Generate recovery token
+            token = user.generate_recovery_token()
+            db.session.commit()
+            
+            # Send email
+            send_recovery_email(email, token)
+        
+        # Always return success (don't reveal if email exists)
+        return jsonify({'success': True, 'message': 'Check your email for recovery link'}), 200
+    
+    return render_template('forgot_password.html')
+
+
+@auth_bp.route('/reset-password/<token>', methods=['GET', 'POST'])
+def reset_password(token):
+    """Reset password with token"""
+    user = User.query.filter_by(recovery_token=token).first()
+    
+    if not user or not user.verify_recovery_token(token):
+        return render_template('reset_password_expired.html'), 401
+    
+    if request.method == 'POST':
+        data = request.get_json() if request.is_json else request.form
+        new_password = data.get('password', '')
+        
+        if not new_password or len(new_password) < 8:
+            return jsonify({'error': 'Password must be at least 8 characters'}), 400
+        
+        # Set new password
+        user.set_password(new_password)
+        user.clear_recovery_token()
+        db.session.commit()
+        
+        login_user(user)
+        return jsonify({'success': True, 'message': 'Password reset successful'}), 200
+    
+    return render_template('reset_password.html', token=token)
+
+
+@auth_bp.route('/profile', methods=['GET'])
+@login_required
+def profile():
+    """Get current user profile"""
+    return jsonify({
+        'id': current_user.id,
+        'email': current_user.email,
+        'full_name': current_user.full_name,
+        'created_at': current_user.created_at.isoformat(),
+        'last_login': current_user.last_login.isoformat() if current_user.last_login else None
+    }), 200
