@@ -331,6 +331,7 @@ def create_packet():
 @login_required
 def create_case():
     """Create a new case"""
+    import json
     data = request.get_json()
     
     # Extract questions and answers from pairs
@@ -349,18 +350,25 @@ def create_case():
     if 'answers' in data:
         answers = data['answers']
     
-    case = Case(
-        packet_id=data['packet_id'],
-        case_number=data['case_number'],
-        diagnosis=data['diagnosis'],
-        questions=questions or [],
-        answers=answers or [],
-        discussion=data.get('discussion', '')
-    )
-    db.session.add(case)
-    db.session.commit()
-    
-    return jsonify({'success': True, 'id': case.id, 'case_id': case.id, 'message': 'Case created'})
+    # Convert lists to JSON strings for TEXT fields
+    try:
+        case = Case(
+            packet_id=data['packet_id'],
+            case_number=data['case_number'],
+            diagnosis=data['diagnosis'],
+            questions=json.dumps(questions or []),
+            answers=json.dumps(answers or []),
+            discussion=data.get('discussion', '')\n        )
+        db.session.add(case)
+        db.session.commit()
+        
+        return jsonify({'success': True, 'id': case.id, 'case_id': case.id, 'message': 'Case created'})
+    except Exception as e:
+        db.session.rollback()
+        print(f"[CASE] Error creating case: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': f'Failed to create case: {str(e)}'}), 500
 
 
 @app.route('/api/candidate/create', methods=['POST'])
@@ -649,12 +657,9 @@ def update_packet(packet_id):
 def delete_case(case_id):
     """Delete a case"""
     # Verify user ownership
-    obj = verify_case_ownership(delete_id)
-    if not obj:
+    case = verify_case_ownership(case_id)
+    if not case:
         return jsonify({"error": "Unauthorized"}), 403
-    
-    """Delete a case"""
-    case = Case.query.get(case_id)
     
     if not case:
         return jsonify({'error': 'Case not found'}), 404
@@ -670,12 +675,9 @@ def delete_case(case_id):
 def upload_case_image(case_id):
     """Upload an image for a case"""
     # Verify user ownership
-    obj = verify_case_ownership(delete_id)
-    if not obj:
+    case = verify_case_ownership(case_id)
+    if not case:
         return jsonify({"error": "Unauthorized"}), 403
-    
-    """Upload an image for a case"""
-    case = Case.query.get(case_id)
     
     if not case:
         return jsonify({'error': 'Case not found'}), 404
@@ -708,22 +710,29 @@ def upload_case_image(case_id):
     # Get description from form data
     description = request.form.get('description', '')
     
-    case_image = CaseImage(
-        case_id=case_id,
-        image_data=image_data,
-        image_filename=file.filename,
-        image_type=file_type,
-        image_description=description
-    )
-    
-    db.session.add(case_image)
-    db.session.commit()
-    
-    return jsonify({
-        'image_id': case_image.id,
-        'filename': case_image.image_filename,
-        'message': 'Image uploaded successfully'
-    })
+    try:
+        case_image = CaseImage(
+            case_id=case_id,
+            image_data=image_data,
+            image_filename=file.filename,
+            image_type=file_type,
+            image_description=description
+        )
+        
+        db.session.add(case_image)
+        db.session.commit()
+        
+        return jsonify({
+            'image_id': case_image.id,
+            'filename': case_image.image_filename,
+            'message': 'Image uploaded successfully'
+        })
+    except Exception as e:
+        db.session.rollback()
+        print(f"[IMAGE] Error uploading image: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': f'Database error: {str(e)}'}), 500
 
 
 @app.route('/api/case/<int:case_id>/images')
@@ -731,11 +740,9 @@ def upload_case_image(case_id):
 def get_case_images(case_id):
     """Get all images for a case"""
     # Verify user ownership
-    obj = verify_case_ownership(delete_id)
-    if not obj:
+    case = verify_case_ownership(case_id)
+    if not case:
         return jsonify({"error": "Unauthorized"}), 403
-    
-    """Get all images for a case"""
     images = CaseImage.query.filter_by(case_id=case_id).order_by(CaseImage.created_at).all()
     return jsonify([{
         'id': img.id,
@@ -1003,14 +1010,9 @@ def show_macos_gatekeeper_popup():
 def get_case_questions(case_id):
     """Get all questions for a case"""
     # Verify user ownership
-    obj = verify_case_ownership(delete_id)
-    if not obj:
-        return jsonify({"error": "Unauthorized"}), 403
-    
-    """Get all questions for a case"""
-    case = Case.query.get(case_id)
+    case = verify_case_ownership(case_id)
     if not case:
-        return jsonify({'error': 'Case not found'}), 404
+        return jsonify({"error": "Unauthorized"}), 403
     
     questions = Question.query.filter_by(case_id=case_id).order_by(Question.question_number).all()
     return jsonify([{
@@ -1025,14 +1027,9 @@ def get_case_questions(case_id):
 def get_case_answers(case_id):
     """Get all answers for a case"""
     # Verify user ownership
-    obj = verify_case_ownership(delete_id)
-    if not obj:
-        return jsonify({"error": "Unauthorized"}), 403
-    
-    """Get all answers for a case"""
-    case = Case.query.get(case_id)
+    case = verify_case_ownership(case_id)
     if not case:
-        return jsonify({'error': 'Case not found'}), 404
+        return jsonify({"error": "Unauthorized"}), 403
     
     answers = Answer.query.filter_by(case_id=case_id).order_by(Answer.answer_number).all()
     return jsonify([{
@@ -1075,14 +1072,9 @@ def update_answer(answer_id):
 def get_case_qa_pairs(case_id):
     """Get Q&A pairs for a case"""
     # Verify user ownership
-    obj = verify_case_ownership(delete_id)
-    if not obj:
-        return jsonify({"error": "Unauthorized"}), 403
-    
-    """Get Q&A pairs for a case"""
-    case = Case.query.get(case_id)
+    case = verify_case_ownership(case_id)
     if not case:
-        return jsonify({'error': 'Case not found'}), 404
+        return jsonify({"error": "Unauthorized"}), 403
     
     questions = Question.query.filter_by(case_id=case_id).order_by(Question.question_number).all()
     answers = Answer.query.filter_by(case_id=case_id).order_by(Answer.answer_number).all()
