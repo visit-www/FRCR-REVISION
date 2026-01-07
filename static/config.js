@@ -18,8 +18,6 @@ const API_BASE_URL = (() => {
   return 'http://localhost:5000';
 })();
 
-console.log(`📡 API Backend URL: ${API_BASE_URL}`);
-
 // Export for use in other scripts
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = { API_BASE_URL };

@@ -2,7 +2,6 @@ from flask import Flask, render_template, request, jsonify, redirect, url_for, s
 from flask_cors import CORS
 from flask_login import LoginManager, login_required, current_user
 from models import db, User, ExamSession, Packet, Case, Candidate, CaseImage, Question, Answer
-from backup_manager import init_backup_manager, get_backup_manager
 from auth import auth_bp
 from backup_routes import backup_bp
 from datetime import datetime
@@ -10,7 +9,6 @@ from sqlalchemy.pool import NullPool
 import os
 from io import BytesIO
 import mimetypes
-import atexit
 
 app = Flask(__name__, 
     template_folder=os.path.join(os.path.dirname(__file__), 'templates'),
@@ -182,12 +180,6 @@ def verify_candidate_ownership(candidate_id):
 with app.app_context():
     try:
         db.create_all()
-        # Initialize backup manager and create startup backup (optional for serverless)
-        try:
-            backup_manager = init_backup_manager(app)
-        except Exception as e:
-            print(f"Warning: Could not initialize backup manager: {e}")
-            backup_manager = None
     except Exception as e:
         print(f"Error initializing database: {e}")
         raise
@@ -196,17 +188,6 @@ with app.app_context():
 app.register_blueprint(auth_bp)
 app.register_blueprint(backup_bp)
 
-# ==================== BACKUP HOOKS ====================
-
-def backup_on_shutdown():
-    """Create backup when application shuts down"""
-    try:
-        backup_manager = get_backup_manager()
-        if backup_manager:
-            backup_manager.create_backup(description="Auto backup on app shutdown")
-    except Exception as e:
-        print(f"Warning: Could not create shutdown backup: {e}")
-
 
 # Register shutdown backup
 atexit.register(backup_on_shutdown)
@@ -214,15 +195,18 @@ atexit.register(backup_on_shutdown)
 
 @app.route('/')
 def index():
-    """Smart dashboard - entry point for all workflows - PUBLIC"""
-    # Debug session on home page
-    from flask import session, request
-    print(f"[INDEX] User authenticated: {current_user.is_authenticated}")
-    print(f"[INDEX] Session ID: {session.get('_id', 'NO SESSION')}")
-    print(f"[INDEX] Cookies received: {list(request.cookies.keys())}")
-    print(f"[INDEX] Current user ID: {current_user.get_id() if current_user.is_authenticated else 'NOT AUTH'}")
-    
+    """Smart dashboard - entry point for all workflows"""
     return render_template('dashboard.html')
+
+
+@app.route('/admin')
+@login_required
+def admin_dashboard():
+    """Admin dashboard - redirects to backup manager"""
+    first_user = User.query.order_by(User.id).first()
+    if not current_user.is_authenticated or not first_user or current_user.id != first_user.id:
+        return redirect(url_for('index'))
+    return render_template('backup_manager.html')
 
 
 # ==================== SETUP WORKFLOW ====================
@@ -904,107 +888,7 @@ def delete_candidate(candidate_id):
     return jsonify({'message': 'Candidate deleted successfully'})
 
 
-# ==================== BACKUP MANAGEMENT ENDPOINTS ====================
-
-@app.route('/admin')
-@login_required
-def admin_dashboard():
-    """Backup manager page (admin dashboard)"""
-    # Check if user is admin (first registered user)
-    first_user = User.query.order_by(User.id).first()
-    if not current_user.is_authenticated or not first_user or current_user.id != first_user.id:
-        return redirect(url_for('index'))
-    return render_template('backup_manager.html')
-
-
-@app.route('/api/backup/create', methods=['POST'])
-def create_backup():
-    """Create a new backup"""
-    backup_manager = get_backup_manager()
-    
-    if backup_manager is None:
-        return jsonify({'error': 'Backup manager not initialized'}), 500
-    
-    data = request.get_json() or {}
-    description = data.get('description', 'Manual backup')
-    
-    result = backup_manager.create_backup(description)
-    
-    if result:
-        return jsonify({
-            'success': True,
-            'message': 'Backup created successfully',
-            'backup': result
-        })
-    else:
-        return jsonify({
-            'success': False,
-            'message': 'Backup creation failed'
-        }), 500
-
-
-@app.route('/api/backup/list')
-def list_backups():
-    """Get list of all backups"""
-    backup_manager = get_backup_manager()
-    
-    if backup_manager is None:
-        return jsonify({'error': 'Backup manager not initialized'}), 500
-    
-    backups = backup_manager.get_backup_list()
-    
-    return jsonify({
-        'success': True,
-        'backups': backups,
-        'total_count': len(backups)
-    })
-
-
-@app.route('/api/backup/statistics')
-def backup_statistics():
-    """Get backup system statistics"""
-    backup_manager = get_backup_manager()
-    
-    if backup_manager is None:
-        return jsonify({'error': 'Backup manager not initialized'}), 500
-    
-    stats = backup_manager.get_statistics()
-    
-    return jsonify({
-        'success': True,
-        'statistics': stats
-    })
-
-
-@app.route('/api/backup/restore/<timestamp>', methods=['POST'])
-def restore_backup(timestamp):
-    """Restore database from backup"""
-    backup_manager = get_backup_manager()
-    
-    if backup_manager is None:
-        return jsonify({'error': 'Backup manager not initialized'}), 500
-    
-    result = backup_manager.restore_backup(timestamp)
-    
-    return jsonify(result)
-
-
-@app.route('/api/backup/log')
-def backup_log():
-    """Get backup log entries"""
-    backup_manager = get_backup_manager()
-    
-    if backup_manager is None:
-        return jsonify({'error': 'Backup manager not initialized'}), 500
-    
-    lines = request.args.get('lines', 50, type=int)
-    log_entries = backup_manager.get_log(lines)
-    
-    return jsonify({
-        'success': True,
-        'log': [entry.rstrip() for entry in log_entries]
-    })
-
+# ==================== UTILITY FUNCTIONS ====================
 
 import socket
 

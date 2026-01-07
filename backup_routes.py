@@ -20,7 +20,6 @@ def check_admin():
         first_user = User.query.order_by(User.id).first()
         return first_user and current_user.id == first_user.id
     except Exception as e:
-        print(f"[BACKUP] Admin check error: {e}")
         return False
 
 @backup_bp.route('/download', methods=['GET'])
@@ -152,9 +151,6 @@ def download_backup():
         )
         
     except Exception as e:
-        print(f"[BACKUP] Error creating backup: {str(e)}")
-        import traceback
-        traceback.print_exc()
         return jsonify({'error': f'Backup failed: {str(e)}'}), 500
 
 
@@ -188,9 +184,6 @@ def restore_backup():
         if not request.form.get('confirm_overwrite'):
             return jsonify({'error': 'Please confirm data overwrite'}), 400
         
-        # Start restoration
-        print("[RESTORE] Starting database restoration...")
-        
         # Clear all tables (in correct order to respect foreign keys)
         Answer.query.delete()
         Question.query.delete()
@@ -202,7 +195,6 @@ def restore_backup():
         # Don't delete users - keep existing users
         
         db.session.commit()
-        print("[RESTORE] Cleared existing data")
         
         # Restore exam sessions
         for session_data in backup_data.get('exam_sessions', []):
@@ -216,7 +208,6 @@ def restore_backup():
             db.session.add(session)
         
         db.session.flush()
-        print(f"[RESTORE] Restored {len(backup_data.get('exam_sessions', []))} exam sessions")
         
         # Restore packets
         for packet_data in backup_data.get('packets', []):
@@ -229,7 +220,6 @@ def restore_backup():
             db.session.add(packet)
         
         db.session.flush()
-        print(f"[RESTORE] Restored {len(backup_data.get('packets', []))} packets")
         
         # Restore cases
         for case_data in backup_data.get('cases', []):
@@ -245,7 +235,6 @@ def restore_backup():
             db.session.add(case)
         
         db.session.flush()
-        print(f"[RESTORE] Restored {len(backup_data.get('cases', []))} cases")
         
         # Restore candidates
         for candidate_data in backup_data.get('candidates', []):
@@ -259,7 +248,6 @@ def restore_backup():
             db.session.add(candidate)
         
         db.session.flush()
-        print(f"[RESTORE] Restored {len(backup_data.get('candidates', []))} candidates")
         
         # Restore case images
         import base64
@@ -275,7 +263,6 @@ def restore_backup():
             db.session.add(image)
         
         db.session.flush()
-        print(f"[RESTORE] Restored {len(backup_data.get('case_images', []))} images")
         
         # Restore questions
         for question_data in backup_data.get('questions', []):
@@ -288,7 +275,6 @@ def restore_backup():
             db.session.add(question)
         
         db.session.flush()
-        print(f"[RESTORE] Restored {len(backup_data.get('questions', []))} questions")
         
         # Restore answers
         for answer_data in backup_data.get('answers', []):
@@ -301,17 +287,13 @@ def restore_backup():
             db.session.add(answer)
         
         db.session.flush()
-        print(f"[RESTORE] Restored {len(backup_data.get('answers', []))} answers")
         
         # Commit all changes
         db.session.commit()
         
         # Reset sequences for PostgreSQL to avoid ID conflicts on next insert
         if 'postgresql' in str(db.engine.url):
-            print("[RESTORE] Resetting PostgreSQL sequences...")
             try:
-                # Reset sequences using proper PostgreSQL syntax
-                # PostgreSQL auto-generates sequence names as tablename_columnname_seq
                 sequences_to_reset = [
                     'exam_session',
                     'packet', 
@@ -324,25 +306,15 @@ def restore_backup():
                 
                 for table in sequences_to_reset:
                     try:
-                        # Get max ID from table
                         result = db.session.execute(db.text(f"SELECT MAX(id) FROM {table}"))
                         max_id = result.scalar() or 0
-                        
-                        # Reset the sequence to max_id + 1
                         db.session.execute(db.text(f"ALTER SEQUENCE {table}_id_seq RESTART WITH {max_id + 1}"))
-                        print(f"[RESTORE] Reset {table}_id_seq to {max_id + 1}")
                     except Exception as seq_error:
-                        print(f"[RESTORE] Warning: Could not reset {table}_id_seq: {seq_error}")
+                        pass
                 
                 db.session.commit()
-                print("[RESTORE] All sequences reset successfully")
             except Exception as e:
-                print(f"[RESTORE] Warning: Error during sequence reset: {e}")
-                import traceback
-                traceback.print_exc()
-                # Continue anyway - this is a minor issue
-        
-        print("[RESTORE] Database restoration completed successfully")
+                pass
         
         return jsonify({
             'success': True,
@@ -360,9 +332,6 @@ def restore_backup():
         
     except Exception as e:
         db.session.rollback()
-        print(f"[RESTORE] Error restoring backup: {str(e)}")
-        import traceback
-        traceback.print_exc()
         return jsonify({'error': f'Restore failed: {str(e)}'}), 500
 
 
