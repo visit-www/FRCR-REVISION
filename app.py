@@ -5,6 +5,7 @@ from models import db, User, ExamSession, Packet, Case, Candidate, CaseImage, Qu
 from backup_manager import init_backup_manager, get_backup_manager
 from auth import auth_bp
 from datetime import datetime
+from sqlalchemy.pool import NullPool
 import os
 from io import BytesIO
 import mimetypes
@@ -35,7 +36,8 @@ except Exception as e:
 # Configuration
 # Use PostgreSQL on production (Vercel), SQLite locally
 # Vercel Supabase integration uses DATABASE_POSTGRES_URL_NON_POOLING for direct connection
-DATABASE_URL = os.getenv('DATABASE_URL') or os.getenv('DATABASE_POSTGRES_URL_NON_POOLING') or os.getenv('DATABASE_POSTGRES_URL')
+# Priority: Use non-pooling URL first for serverless environments
+DATABASE_URL = os.getenv('DATABASE_POSTGRES_URL_NON_POOLING') or os.getenv('DATABASE_URL') or os.getenv('DATABASE_POSTGRES_URL')
 
 if DATABASE_URL:
     # PostgreSQL on Vercel or external
@@ -73,6 +75,15 @@ if DATABASE_URL:
         print(f"[DB] Warning: Could not parse URL parameters: {e}")
     
     app.config['SQLALCHEMY_DATABASE_URI'] = db_uri
+    
+    # For serverless environments (Vercel), disable connection pooling
+    # Each function invocation should create and close its own connection
+    if os.getenv('VERCEL'):
+        print("[DB] Serverless environment detected - using NullPool")
+        app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+            'poolclass': NullPool,  # No connection pooling for serverless
+            'pool_pre_ping': True,  # Verify connections before using
+        }
 else:
     # SQLite for local development
     print(f"[DB] Using SQLite: {instance_path}/frcr_examiner.db")
