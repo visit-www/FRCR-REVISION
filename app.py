@@ -189,10 +189,6 @@ app.register_blueprint(auth_bp)
 app.register_blueprint(backup_bp)
 
 
-# Register shutdown backup
-atexit.register(backup_on_shutdown)
-
-
 @app.route('/')
 def index():
     """Smart dashboard - entry point for all workflows"""
