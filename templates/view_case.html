@@ -277,18 +277,20 @@
         position: absolute;
         top: 50%;
         transform: translateY(-50%);
-        background: #ffffff;
-        border: 2px solid #e0e0e0;
+        background: #ffffff !important;
+        border: 2px solid #e0e0e0 !important;
         border-radius: 50%;
         width: 50px;
         height: 50px;
-        display: flex;
+        display: flex !important;
         align-items: center;
         justify-content: center;
         cursor: pointer;
-        z-index: 10;
+        z-index: 9999 !important;
         transition: all 0.3s ease;
         box-shadow: 0 4px 12px rgba(255, 255, 255, 0.3);
+        visibility: visible !important;
+        opacity: 1 !important;
     }
     
     .image-nav-btn:hover {
@@ -652,20 +654,16 @@
         const prevBtn = document.getElementById('prevImageBtn');
         const nextBtn = document.getElementById('nextImageBtn');
         
-        console.log('Updating nav buttons. Image count:', currentImages.length);
-        
         if (currentImages && currentImages.length > 1) {
             // Show buttons when multiple images exist
             prevBtn.style.display = 'flex';
             nextBtn.style.display = 'flex';
             prevBtn.disabled = false;
             nextBtn.disabled = false;
-            console.log('Buttons should be visible');
         } else {
             // Hide buttons when single image
             prevBtn.style.display = 'none';
             nextBtn.style.display = 'none';
-            console.log('Buttons hidden (single image)');
         }
     }
 
