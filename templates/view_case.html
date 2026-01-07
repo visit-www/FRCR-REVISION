@@ -60,7 +60,7 @@
                     <!-- Discussion/Comments -->
                     <div class="detail-section discussion-section mb-5 p-4 rounded-3" style="background: linear-gradient(135deg, #f0f8fc 0%, #f5fbff 100%); border-left: 5px solid #17a2b8;">
                         <label class="detail-label fw-bold text-secondary mb-3 d-block"><i class="fas fa-comments-dollar me-2" style="color: #17a2b8;"></i>Discussion & Comments</label>
-                        <div class="detail-content discussion-text" style="line-height: 1.8; color: #2c3e50; text-align: left;">
+                        <div id="discussionText" class="detail-content discussion-text" style="line-height: 1.8; color: #2c3e50; text-align: left;">
                             {% if case.discussion %}{{ case.discussion }}{% else %}<em class="text-muted"><i class="fas fa-info-circle me-2"></i>No discussion provided.</em>{% endif %}
                         </div>
                     </div>
@@ -243,6 +243,19 @@
     .alert-info {
         font-size: 0.9rem;
     }
+    
+    /* Links in discussion */
+    .discussion-text a {
+        color: #17a2b8 !important;
+        text-decoration: underline !important;
+        font-weight: 500 !important;
+        transition: color 0.2s ease;
+    }
+    
+    .discussion-text a:hover {
+        color: #138496 !important;
+        text-decoration: underline !important;
+    }
 </style>
 
 <script>
@@ -257,7 +270,33 @@
             keyboard: true
         });
         loadImages();
+        linkifyDiscussion();
     });
+    
+    // Convert URLs in discussion to clickable links
+    function linkifyDiscussion() {
+        const discussionDiv = document.getElementById('discussionText');
+        if (!discussionDiv) return;
+        
+        let text = discussionDiv.innerHTML;
+        
+        // Skip if already has links or is empty message
+        if (text.includes('<a ') || text.includes('<em')) return;
+        
+        // URL regex pattern
+        const urlPattern = /(https?:\/\/[^\s<]+)/g;
+        
+        // Replace URLs with clickable links
+        text = text.replace(urlPattern, function(url) {
+            // Remove trailing punctuation
+            let cleanUrl = url.replace(/[.,;:!?)]+$/, '');
+            let punctuation = url.substring(cleanUrl.length);
+            
+            return `<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer" style="color: #17a2b8; text-decoration: underline; font-weight: 500;">${cleanUrl}</a>${punctuation}`;
+        });
+        
+        discussionDiv.innerHTML = text;
+    }
     
     // Load Q&A pairs from API
     function loadQAPairs() {
