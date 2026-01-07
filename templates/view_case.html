@@ -261,6 +261,8 @@
 <script>
     const caseId = {{ case.id }};
     let imageModal;
+    let currentImages = [];
+    let currentImageIndex = 0;
     
     // Load Q&A pairs on page load
     document.addEventListener('DOMContentLoaded', function() {
@@ -271,17 +273,18 @@
         });
         loadImages();
         linkifyDiscussion();
+        setupKeyboardNavigation();
     });
     
-    // Convert URLs in discussion to clickable links
+    // Convert URLs in discussion to clickable links and support basic HTML
     function linkifyDiscussion() {
         const discussionDiv = document.getElementById('discussionText');
         if (!discussionDiv) return;
         
         let text = discussionDiv.innerHTML;
         
-        // Skip if already has links or is empty message
-        if (text.includes('<a ') || text.includes('<em')) return;
+        // Skip if already processed (has linkified URLs) or is empty state
+        if (text.includes('target="_blank"') || text.includes('No discussion provided')) return;
         
         // URL regex pattern
         const urlPattern = /(https?:\/\/[^\s<]+)/g;
@@ -309,21 +312,76 @@
                     container.innerHTML = '<p class="text-info">No Q&A pairs added yet. Click Edit Case to add them.</p>';
                     return;
                 }
-                const html = `
-                    <div class="qa-cards-container">
+                
+                // Desktop: Table view with questions and answers in columns
+                const desktopHtml = `
+                    <div class="qa-table-container d-none d-md-block">
+                        <div class="card shadow-sm">
+                            <div class="card-body p-0">
+                                <div class="row g-0">
+                                    <!-- Questions Column -->
+                                    <div class="col-6">
+                                        <div class="qa-column-header text-center p-3" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+                                            <h5 class="mb-0"><i class="fas fa-question-circle me-2"></i>Questions</h5>
+                                        </div>
+                                        <div class="qa-items-list">
+                                            ${pairs.map((pair, index) => {
+                                                let questionText = (pair.question.text || '').trim().replace(/\n/g, '<br>');
+                                                questionText = questionText.replace(/^Question\s+\d+:\s*/i, '');
+                                                
+                                                return `
+                                                <div class="qa-item qa-question-item ${index % 2 === 0 ? 'qa-even' : 'qa-odd'}">
+                                                    <div class="qa-item-number"><i class="fas fa-circle me-2" style="font-size: 0.5rem;"></i>${pair.number}</div>
+                                                    <div class="qa-item-text">${questionText || '<em class="text-muted">No question text</em>'}</div>
+                                                </div>
+                                                `;
+                                            }).join('')}
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Vertical Separator -->
+                                    <div class="qa-vertical-separator"></div>
+                                    
+                                    <!-- Answers Column -->
+                                    <div class="col-6">
+                                        <div class="qa-column-header text-center p-3" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white;">
+                                            <h5 class="mb-0"><i class="fas fa-check-circle me-2"></i>Answers</h5>
+                                        </div>
+                                        <div class="qa-items-list">
+                                            ${pairs.map((pair, index) => {
+                                                let answerText = (pair.answer.text || '').trim().replace(/\n/g, '<br>');
+                                                answerText = answerText.replace(/^Answer\s+\d+:\s*/i, '');
+                                                
+                                                return `
+                                                <div class="qa-item qa-answer-item ${index % 2 === 0 ? 'qa-even' : 'qa-odd'}">
+                                                    <div class="qa-item-number"><i class="fas fa-circle me-2" style="font-size: 0.5rem;"></i>${pair.number}</div>
+                                                    <div class="qa-item-text">${answerText || '<em class="text-muted">No answer text</em>'}</div>
+                                                </div>
+                                                `;
+                                            }).join('')}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                // Mobile: Card view (existing)
+                const mobileHtml = `
+                    <div class="qa-cards-container d-md-none">
                         ${pairs.map((pair, index) => {
                             let questionText = (pair.question.text || '').trim().replace(/\n/g, '<br>');
                             let answerText = (pair.answer.text || '').trim().replace(/\n/g, '<br>');
                             
-                            // Remove "Question X:" or "Answer X:" from the beginning if present
                             questionText = questionText.replace(/^Question\s+\d+:\s*/i, '');
                             answerText = answerText.replace(/^Answer\s+\d+:\s*/i, '');
                             
                             return `
                             <div class="qa-cards-row mb-4">
-                                <div class="row g-md-3 g-2">
+                                <div class="row g-2">
                                     <!-- Question Card -->
-                                    <div class="col-md-6 col-12 d-flex">
+                                    <div class="col-12 d-flex">
                                         <div class="qa-card qa-question-card-display w-100">
                                             <div class="qa-card-header">
                                                 <div class="qa-card-number">
@@ -339,7 +397,7 @@
                                     </div>
                                     
                                     <!-- Answer Card -->
-                                    <div class="col-md-6 col-12 d-flex">
+                                    <div class="col-12 d-flex">
                                         <div class="qa-card qa-answer-card-display w-100">
                                             <div class="qa-card-header">
                                                 <div class="qa-card-number">
@@ -361,7 +419,7 @@
                     </div>
                 `;
                 
-                container.innerHTML = html;
+                container.innerHTML = desktopHtml + mobileHtml;
             })
             .catch(error => {
                 console.error('Error loading Q&A pairs:', error);
@@ -406,12 +464,15 @@
                 const container = document.getElementById('imagesList');
                 container.innerHTML = '';
                 
+                // Store images for keyboard navigation
+                currentImages = images || [];
+                
                 if (!images || images.length === 0) {
                     container.innerHTML = '<em class="text-muted">No images uploaded yet</em>';
                     return;
                 }
                 
-                images.forEach(image => {
+                images.forEach((image, index) => {
                     const div = document.createElement('div');
                     div.className = 'image-thumbnail';
                     div.innerHTML = `
@@ -420,6 +481,7 @@
                     `;
                     div.addEventListener('click', function(e) {
                         if (!e.target.classList.contains('image-delete')) {
+                            currentImageIndex = index;
                             viewImageFullSize(image.id, image.filename);
                         }
                     });
@@ -483,6 +545,37 @@
 
     function showStatus(element, message, type) {
         element.innerHTML = `<div class="alert alert-${type} mb-0" role="alert">${message}</div>`;
+    }
+    
+    // Setup keyboard navigation for image viewer
+    function setupKeyboardNavigation() {
+        document.addEventListener('keydown', function(e) {
+            // Only handle arrow keys when modal is visible
+            const modalElement = document.getElementById('imageModal');
+            if (!modalElement.classList.contains('show')) return;
+            
+            if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                navigateImage('prev');
+            } else if (e.key === 'ArrowRight') {
+                e.preventDefault();
+                navigateImage('next');
+            }
+        });
+    }
+    
+    // Navigate to previous/next image
+    function navigateImage(direction) {
+        if (!currentImages || currentImages.length === 0) return;
+        
+        if (direction === 'prev') {
+            currentImageIndex = (currentImageIndex - 1 + currentImages.length) % currentImages.length;
+        } else if (direction === 'next') {
+            currentImageIndex = (currentImageIndex + 1) % currentImages.length;
+        }
+        
+        const image = currentImages[currentImageIndex];
+        viewImageFullSize(image.id, image.filename);
     }
 </script>
 <script src="/static/edit-case-modal.js"></script>
