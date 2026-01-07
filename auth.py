@@ -135,7 +135,12 @@ def login():
         db.session.commit()
         
         login_user(user, remember=remember)
+        
+        # Debug session creation
         print(f"[AUTH] Successful login: {email}")
+        print(f"[AUTH] Session created - User ID: {user.id}, Email: {user.email}")
+        print(f"[AUTH] Remember: {remember}")
+        
         return jsonify({'success': True, 'message': 'Login successful'}), 200
     
     return render_template('login.html')
@@ -217,3 +222,17 @@ def profile():
     
     # Return HTML profile page
     return render_template('profile.html', user=current_user)
+
+
+@auth_bp.route('/debug', methods=['GET'])
+def debug_auth():
+    """Debug authentication status"""
+    from flask import session
+    return jsonify({
+        'is_authenticated': current_user.is_authenticated,
+        'user_id': current_user.id if current_user.is_authenticated else None,
+        'email': current_user.email if current_user.is_authenticated else None,
+        'session_id': session.get('_id', 'No session'),
+        'session_keys': list(session.keys())
+    }), 200
+
