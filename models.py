@@ -1,11 +1,12 @@
 from flask_sqlalchemy import SQLAlchemy
+from flask_login import UserMixin
 from datetime import datetime, timedelta
 from werkzeug.security import generate_password_hash, check_password_hash
 import secrets
 
 db = SQLAlchemy()
 
-class User(db.Model):
+class User(UserMixin, db.Model):
     """Store user account information"""
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(120), unique=True, nullable=False, index=True)

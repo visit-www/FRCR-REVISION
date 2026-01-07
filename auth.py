@@ -97,7 +97,7 @@ def register():
 def login():
     """User login"""
     if current_user.is_authenticated:
-        return redirect(url_for('dashboard'))
+        return redirect(url_for('index'))
     
     if request.method == 'POST':
         data = request.get_json() if request.is_json else request.form

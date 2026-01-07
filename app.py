@@ -1030,19 +1030,11 @@ def get_case_qa_pairs(case_id):
 @app.route('/api/case/<int:case_id>/qa-pairs', methods=['PUT'])
 @login_required
 def update_case_qa_pairs(case_id):
-    """
+    """Simplified endpoint to update all Q&A pairs for a case in one request"""
     # Verify user ownership
-    obj = verify_case_ownership(delete_id)
-    if not obj:
-        return jsonify({"error": "Unauthorized"}), 403
-    
-    """
-    Simplified endpoint to update all Q&A pairs for a case in one request.
-    Deletes old pairs and creates new ones based on provided data.
-    """
-    case = Case.query.get(case_id)
+    case = verify_case_ownership(case_id)
     if not case:
-        return jsonify({'error': 'Case not found'}), 404
+        return jsonify({"error": "Unauthorized"}), 403
     
     data = request.get_json()
     pairs = data.get('pairs', [])
