@@ -670,11 +670,27 @@ pre {
 
     .breadcrumb-custom {
         border-bottom: 1px solid #e0e0e0;
+        padding: 0.5rem 0 !important;
+    }
+    
+    .breadcrumb-custom .breadcrumb {
+        display: flex;
+        flex-wrap: wrap;
+        margin-bottom: 0;
     }
 
     .quick-nav-group {
-        width: 100%;
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: wrap !important;
+        gap: 0.5rem !important;
+        justify-content: flex-start !important;
         margin-bottom: 1rem;
+    }
+    
+    .quick-nav-group .btn {
+        flex: 0 0 auto !important;
+        white-space: nowrap !important;
     }
 
     .footer-content {
@@ -705,16 +721,25 @@ pre {
     }
 
     .breadcrumb-custom .breadcrumb-item {
-        font-size: 0.85rem;
+        font-size: 0.8rem;
     }
 
+    .quick-nav-group {
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: wrap !important;
+        gap: 0.4rem !important;
+    }
+    
     .quick-nav-group .btn {
-        font-size: 0.75rem;
-        padding: 0.3rem 0.7rem;
+        font-size: 0.7rem !important;
+        padding: 0.3rem 0.6rem !important;
+        flex: 0 0 auto !important;
     }
 
     .quick-nav-group .btn i {
-        display: none;
+        font-size: 0.7rem;
+        margin-right: 0.2rem;
     }
 
     h1, h2, h3 {
