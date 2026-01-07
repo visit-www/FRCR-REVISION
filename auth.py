@@ -31,17 +31,26 @@ def send_recovery_email(email, token):
         resend_key = os.getenv('RESEND_API_KEY')
         
         if not resend_key:
-            print(f"[EMAIL] WARNING: RESEND_API_KEY not set. Email not sent to {email}")
+            print(f"[EMAIL] ERROR: RESEND_API_KEY not set. Email not sent to {email}")
             print(f"[EMAIL] Recovery link (for debugging): {recovery_url}")
             return False
         
         print(f"[EMAIL] Sending recovery email to {email}")
+        print(f"[EMAIL] Recovery URL: {recovery_url}")
+        
+        # Use onboarding@resend.dev for testing (Resend's test domain)
+        # For production, replace with your verified domain
+        from_email = os.getenv('EMAIL_FROM', 'onboarding@resend.dev')
+        
         response = requests.post(
             "https://api.resend.com/emails",
-            headers={"Authorization": f"Bearer {resend_key}"},
+            headers={
+                "Authorization": f"Bearer {resend_key}",
+                "Content-Type": "application/json"
+            },
             json={
-                "from": "noreply@frcr-examiner.com",
-                "to": email,
+                "from": from_email,
+                "to": [email],
                 "subject": "Reset Your FRCR Examiner Password",
                 "html": f"""
                 <h2>Password Reset Request</h2>
@@ -52,16 +61,24 @@ def send_recovery_email(email, token):
                 <p>If you didn't request this, you can ignore this email.</p>
                 <p><small>Link expires in 24 hours</small></p>
                 """
-            }
+            },
+            timeout=10
         )
         
         print(f"[EMAIL] Response status: {response.status_code}")
-        if response.status_code != 200:
-            print(f"[EMAIL] Error response: {response.text}")
+        print(f"[EMAIL] Response body: {response.text}")
         
-        return response.status_code == 200
+        if response.status_code != 200:
+            print(f"[EMAIL] ERROR: Failed to send email. Status: {response.status_code}")
+            return False
+        
+        print(f"[EMAIL] SUCCESS: Email sent to {email}")
+        return True
+        
     except Exception as e:
-        print(f"[EMAIL] Error sending email: {e}")
+        print(f"[EMAIL] EXCEPTION: Error sending email: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return False
 
 
@@ -196,9 +213,13 @@ def forgot_password():
             db.session.commit()
             
             # Send email
-            send_recovery_email(email, token)
+            email_sent = send_recovery_email(email, token)
+            
+            if not email_sent:
+                print(f"[AUTH] Failed to send recovery email to {email}")
+                return jsonify({'error': 'Failed to send recovery email. Please try again or contact support.'}), 500
         
-        # Always return success (don't reveal if email exists)
+        # Return success if user exists and email sent (don't reveal if email doesn't exist)
         return jsonify({'success': True, 'message': 'Check your email for recovery link'}), 200
     
     return render_template('forgot_password.html')
