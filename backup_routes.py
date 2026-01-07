@@ -306,6 +306,30 @@ def restore_backup():
         # Commit all changes
         db.session.commit()
         
+        # Reset sequences for PostgreSQL to avoid ID conflicts on next insert
+        if 'postgresql' in str(db.engine.url):
+            print("[RESTORE] Resetting PostgreSQL sequences...")
+            try:
+                # Get the max ID for each table and reset the sequence
+                tables_to_reset = [
+                    ('exam_session', 'exam_session_id_seq'),
+                    ('packet', 'packet_id_seq'),
+                    ('case', 'case_id_seq'),
+                    ('candidate', 'candidate_id_seq'),
+                    ('case_image', 'case_image_id_seq'),
+                    ('question', 'question_id_seq'),
+                    ('answer', 'answer_id_seq')
+                ]
+                
+                for table_name, sequence_name in tables_to_reset:
+                    db.session.execute(db.text(f"SELECT setval('{sequence_name}', (SELECT COALESCE(MAX(id), 0) + 1 FROM {table_name}), false)"))
+                
+                db.session.commit()
+                print("[RESTORE] Sequences reset successfully")
+            except Exception as e:
+                print(f"[RESTORE] Warning: Could not reset sequences: {e}")
+                # Continue anyway - this is a minor issue
+        
         print("[RESTORE] Database restoration completed successfully")
         
         return jsonify({
