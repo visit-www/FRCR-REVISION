@@ -337,8 +337,11 @@ def create_case():
     # Extract questions and answers from pairs
     questions = []
     answers = []
+    pairs = []
+    
     if 'pairs' in data:
-        for pair in data['pairs']:
+        pairs = data['pairs']
+        for pair in pairs:
             if pair.get('question_text'):
                 questions.append({'question_text': pair['question_text']})
             if pair.get('answer_text'):
@@ -350,7 +353,7 @@ def create_case():
     if 'answers' in data:
         answers = data['answers']
     
-    # Convert lists to JSON strings for TEXT fields
+    # Convert lists to JSON strings for TEXT fields (legacy support)
     try:
         case = Case(
             packet_id=data['packet_id'],
@@ -361,6 +364,32 @@ def create_case():
             discussion=data.get('discussion', '')
         )
         db.session.add(case)
+        db.session.flush()  # Get the case ID
+        
+        # Create Question and Answer entries in their respective tables
+        if pairs:
+            for index, pair in enumerate(pairs, start=1):
+                question_text = (pair.get('question_text') or '').strip()
+                answer_text = (pair.get('answer_text') or '').strip()
+                
+                # Create question if it has content
+                if question_text:
+                    question = Question(
+                        case_id=case.id,
+                        question_number=index,
+                        question_text=question_text
+                    )
+                    db.session.add(question)
+                
+                # Create answer if it has content
+                if answer_text:
+                    answer = Answer(
+                        case_id=case.id,
+                        answer_number=index,
+                        answer_text=answer_text
+                    )
+                    db.session.add(answer)
+        
         db.session.commit()
         
         return jsonify({'success': True, 'id': case.id, 'case_id': case.id, 'message': 'Case created'})
