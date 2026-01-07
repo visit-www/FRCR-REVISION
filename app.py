@@ -828,22 +828,29 @@ def delete_case_image(image_id):
 @app.route('/api/case-image/<int:image_id>/description', methods=['PUT'])
 def update_image_description(image_id):
     """Update image description"""
-    image = CaseImage.query.get(image_id)
-    
-    if not image:
-        return jsonify({'error': 'Image not found'}), 404
-    
-    data = request.get_json()
-    description = data.get('description', '')
-    
-    image.image_description = description
-    db.session.commit()
-    
-    return jsonify({
-        'image_id': image.id,
-        'description': image.image_description,
-        'message': 'Description updated successfully'
-    })
+    try:
+        image = CaseImage.query.get(image_id)
+        
+        if not image:
+            return jsonify({'error': 'Image not found'}), 404
+        
+        data = request.get_json()
+        description = data.get('description', '')
+        
+        image.image_description = description
+        db.session.commit()
+        
+        return jsonify({
+            'image_id': image.id,
+            'description': image.image_description,
+            'message': 'Description updated successfully'
+        })
+    except Exception as e:
+        db.session.rollback()
+        print(f"[ERROR] Update image description failed: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': f'Failed to update description: {str(e)}'}), 500
 
 
 
