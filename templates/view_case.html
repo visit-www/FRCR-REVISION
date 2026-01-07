@@ -14,16 +14,10 @@
         </nav>
 
         <!-- Quick Navigation -->
-        <div class="quick-nav-section mb-4 d-flex flex-wrap gap-2 justify-content-between align-items-center">
+        <div class="quick-nav-section mb-4">
             <div class="quick-nav-group">
-                <a href="/" class="btn btn-sm btn-outline-primary rounded-pill" title="Go back to Home">
-                    <i class="fas fa-home me-1"></i>Home
-                </a>
-                <a href="/select-candidate" class="btn btn-sm btn-outline-secondary rounded-pill" title="View all candidates">
-                    <i class="fas fa-users me-1"></i>Candidates
-                </a>
                 <a href="/view-packet/{{ case.packet.id }}" class="btn btn-sm btn-outline-secondary rounded-pill" title="Back to packet">
-                    <i class="fas fa-arrow-left me-1"></i>Back
+                    <i class="fas fa-arrow-left me-1"></i>Back to Packet
                 </a>
             </div>
         </div>
@@ -83,12 +77,10 @@
 
                 <!-- Action Buttons - Professional Layout -->
                 <div class="action-buttons mt-5 pt-4 border-top d-flex flex-wrap gap-2 justify-content-between align-items-center">
-                    <div class="btn-group-primary">
+                    <div class="btn-group-actions d-flex flex-wrap gap-2">
                         <button class="btn btn-warning btn-sm rounded-pill px-4" onclick="openCaseEditModal({{ case.id }})">
                             <i class="fas fa-edit me-2"></i>Edit Case
                         </button>
-                    </div>
-                    <div class="btn-group-secondary d-flex gap-2">
                         <a href="/view-packet/{{ case.packet.id }}" class="btn btn-outline-secondary btn-sm rounded-pill px-3" title="Return to packet cases">
                             <i class="fas fa-arrow-left me-1"></i>Back
                         </a>
