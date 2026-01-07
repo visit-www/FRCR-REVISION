@@ -1446,6 +1446,147 @@ pre {
 
 /* Mobile: Stacked layout */
 @media (max-width: 767px) {
+    /* Mobile Q&A Cards - Grey Color Scheme matching desktop philosophy */
+    .qa-cards-container {
+        width: 100%;
+    }
+    
+    .qa-cards-row {
+        margin-bottom: 0;
+        border-radius: 8px;
+        overflow: hidden;
+        border: 1px solid #d0d0d0;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+        transition: all 0.2s ease;
+    }
+    
+    /* Zebra striping for mobile blocks - alternating grey shades */
+    .qa-cards-row:nth-child(even) {
+        background-color: #f5f5f5;
+    }
+    
+    .qa-cards-row:nth-child(odd) {
+        background-color: #e8e8e8;
+    }
+    
+    /* Active/Focus state for mobile blocks */
+    .qa-cards-row:active,
+    .qa-cards-row:focus-within {
+        background-color: #d4d4d4 !important;
+        border-left: 4px solid #4a4a4a;
+        box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
+    }
+    
+    /* Remove gap between question and answer in same block */
+    .qa-cards-row .row {
+        gap: 0 !important;
+        margin: 0;
+    }
+    
+    .qa-cards-row .col-12 {
+        padding: 0;
+    }
+    
+    /* Mobile Q&A Cards - Grey styling */
+    .qa-card {
+        background: transparent;
+        border: none;
+        border-radius: 0;
+        box-shadow: none;
+        margin: 0;
+        min-height: auto;
+    }
+    
+    .qa-card:hover {
+        transform: none;
+        box-shadow: none;
+        border-color: transparent;
+    }
+    
+    /* Question card styling */
+    .qa-question-card-display {
+        border-top: 3px solid #6a6a6a;
+        border-bottom: 1px solid #b0b0b0;
+        background: rgba(255, 255, 255, 0.4);
+    }
+    
+    /* Answer card styling */
+    .qa-answer-card-display {
+        border-top: none;
+        border-bottom: none;
+        background: rgba(255, 255, 255, 0.2);
+    }
+    
+    /* Card Header - Grey theme */
+    .qa-card-header {
+        padding: 0.75rem 1rem;
+        background: linear-gradient(90deg, rgba(74, 74, 74, 0.1) 0%, transparent 100%);
+        border-bottom: 1px solid #c0c0c0;
+    }
+    
+    /* Card Number - Dark grey */
+    .qa-card-number {
+        color: #2c2c2c;
+        font-weight: 700;
+        font-size: 0.9rem;
+        letter-spacing: 0.3px;
+    }
+    
+    .qa-card-number i {
+        color: #4a4a4a;
+        font-size: 1rem;
+    }
+    
+    /* Card Body */
+    .qa-card-body {
+        padding: 1rem;
+        min-height: 60px;
+    }
+    
+    /* Card Text - Dark grey for readability */
+    .qa-card-text {
+        color: #2c2c2c !important;
+        font-size: 0.95rem;
+        line-height: 1.7;
+        font-weight: 400;
+    }
+    
+    /* Question text - slightly bolder for distinction */
+    .qa-question-card-display .qa-card-text {
+        color: #1a1a1a !important;
+        font-weight: 500;
+    }
+    
+    /* Answer text - normal weight */
+    .qa-answer-card-display .qa-card-text {
+        color: #2c2c2c !important;
+        font-weight: 400;
+    }
+    
+    /* Ensure good contrast for muted text */
+    .qa-card-text em.text-muted {
+        color: #666666 !important;
+    }
+    
+    /* Pair divider between blocks - grey instead of gold */
+    .qa-pair-divider {
+        height: 8px;
+        background: linear-gradient(90deg, 
+            transparent 0%, 
+            #b0b0b0 20%, 
+            #b0b0b0 80%, 
+            transparent 100%);
+        margin: 1rem 0;
+        opacity: 0.8;
+        border-radius: 0;
+    }
+    
+    /* Ensure tap targets are adequate */
+    .qa-cards-row {
+        min-height: 44px;
+        cursor: pointer;
+    }
+}
     .qa-cards-row .row {
         gap: 1rem !important;
         align-items: stretch;
