@@ -1296,43 +1296,152 @@ pre {
     }
 }
 
-/* Desktop Q&A Row Layout - Each pair in its own row */
-.qa-table-desktop {
+/* Desktop Q&A Table Layout - Grey Color Scheme with Zebra Striping */
+.qa-table-wrapper {
     width: 100%;
+    overflow-x: auto;
+    margin-bottom: 2rem;
 }
 
-.qa-row-desktop {
-    margin-bottom: 0;
-}
-
-.qa-row-desktop .row {
+.qa-table-container {
     width: 100%;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    border: 1px solid #d0d0d0;
 }
 
-.qa-row-desktop .col-6 {
-    padding: 0;
+.qa-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
 }
 
-.qa-golden-separator {
-    height: 3px;
-    background: linear-gradient(90deg, transparent 0%, #FFD700 20%, #FFD700 80%, transparent 100%);
-    margin: 1.5rem 0;
-    box-shadow: 0 1px 3px rgba(255, 215, 0, 0.3);
+/* Table Header - Dark Grey */
+.qa-table thead {
+    background: linear-gradient(135deg, #4a4a4a 0%, #2d2d2d 100%);
+    color: #ffffff;
 }
 
-.qa-row-desktop .qa-card {
-    border-radius: 0;
-    margin: 0;
+.qa-table-header {
+    padding: 1rem 1.5rem;
+    font-weight: 600;
+    font-size: 1.1rem;
+    text-align: left;
+    border-bottom: 3px solid #1a1a1a;
+    letter-spacing: 0.5px;
 }
 
-.qa-row-desktop .col-6:first-child .qa-card {
-    border-top-left-radius: 8px;
-    border-bottom-left-radius: 8px;
+.qa-table-header:first-child {
+    width: 50%;
 }
 
-.qa-row-desktop .col-6:last-child .qa-card {
-    border-top-right-radius: 8px;
-    border-bottom-right-radius: 8px;
+.qa-table-header:last-child {
+    width: 50%;
+}
+
+/* Table Rows - Zebra Striping with Light/Dark Grey */
+.qa-table-row {
+    transition: all 0.2s ease;
+    border-left: 4px solid transparent;
+    cursor: pointer;
+}
+
+/* Even rows - Light Grey */
+.qa-row-even {
+    background-color: #f5f5f5;
+}
+
+/* Odd rows - Lighter Grey */
+.qa-row-odd {
+    background-color: #e8e8e8;
+}
+
+/* Hover state - Darker emphasis */
+.qa-table-row:hover {
+    background-color: #d4d4d4 !important;
+    border-left-color: #4a4a4a;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Focus state for keyboard navigation - Accessibility */
+.qa-table-row:focus {
+    outline: none;
+    background-color: #c8c8c8 !important;
+    border-left-color: #2d2d2d;
+    box-shadow: 0 0 0 3px rgba(74, 74, 74, 0.3);
+}
+
+/* Table Cells */
+.qa-table-cell {
+    padding: 1.25rem 1.5rem;
+    vertical-align: top;
+    border-bottom: 1px solid #d0d0d0;
+    color: #2c2c2c;
+    font-size: 0.95rem;
+    line-height: 1.7;
+}
+
+.qa-table-row:last-child .qa-table-cell {
+    border-bottom: none;
+}
+
+/* Cell separator */
+.qa-question-cell {
+    border-right: 2px solid #b0b0b0;
+}
+
+/* Cell Number Badge */
+.qa-cell-number {
+    display: inline-block;
+    background: linear-gradient(135deg, #6a6a6a 0%, #4a4a4a 100%);
+    color: #ffffff;
+    padding: 0.25rem 0.75rem;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    margin-bottom: 0.75rem;
+    letter-spacing: 0.5px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+/* Cell Content */
+.qa-cell-content {
+    color: #2c2c2c;
+    text-align: left;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+
+/* High contrast for better readability */
+.qa-cell-content em {
+    color: #666666;
+}
+
+/* Responsive scaling for large screens */
+@media (min-width: 1200px) {
+    .qa-table-header {
+        font-size: 1.2rem;
+        padding: 1.25rem 2rem;
+    }
+    
+    .qa-table-cell {
+        padding: 1.5rem 2rem;
+        font-size: 1rem;
+    }
+}
+
+/* iPad and medium screens */
+@media (min-width: 768px) and (max-width: 1199px) {
+    .qa-table-header {
+        padding: 1rem 1.25rem;
+        font-size: 1.05rem;
+    }
+    
+    .qa-table-cell {
+        padding: 1.125rem 1.25rem;
+        font-size: 0.925rem;
+    }
 }
 
 /* Mobile: Stacked layout */

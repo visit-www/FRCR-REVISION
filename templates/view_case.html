@@ -313,59 +313,55 @@
                     return;
                 }
                 
-                // Desktop: Table rows with question and answer side by side
+                // Desktop: Semantic table structure with grey color scheme
                 const desktopHtml = `
-                    <div class="qa-table-desktop d-none d-md-block">
-                        ${pairs.map((pair, index) => {
-                            let questionText = (pair.question.text || '').trim().replace(/\n/g, '<br>');
-                            let answerText = (pair.answer.text || '').trim().replace(/\n/g, '<br>');
-                            
-                            questionText = questionText.replace(/^Question\s+\d+:\s*/i, '');
-                            answerText = answerText.replace(/^Answer\s+\d+:\s*/i, '');
-                            
-                            return `
-                            <div class="qa-row-desktop">
-                                <div class="row g-0">
-                                    <!-- Question Column -->
-                                    <div class="col-6">
-                                        <div class="qa-card qa-question-card-display h-100">
-                                            <div class="qa-card-header">
-                                                <div class="qa-card-number">
-                                                    <i class="fas fa-question-circle me-2"></i>Question ${pair.number}
-                                                </div>
-                                            </div>
-                                            <div class="qa-card-body">
-                                                <div class="qa-card-text text-warning" style="text-align: left !important; text-indent: 0 !important; white-space: normal !important;">
+                    <div class="qa-table-wrapper d-none d-md-block" role="table" aria-label="Questions and Answers">
+                        <div class="qa-table-container">
+                            <table class="qa-table" role="table">
+                                <thead role="rowgroup">
+                                    <tr role="row">
+                                        <th role="columnheader" class="qa-table-header" scope="col">
+                                            <i class="fas fa-question-circle me-2"></i>Question
+                                        </th>
+                                        <th role="columnheader" class="qa-table-header" scope="col">
+                                            <i class="fas fa-check-circle me-2"></i>Answer
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody role="rowgroup">
+                                    ${pairs.map((pair, index) => {
+                                        let questionText = (pair.question.text || '').trim().replace(/\n/g, '<br>');
+                                        let answerText = (pair.answer.text || '').trim().replace(/\n/g, '<br>');
+                                        
+                                        questionText = questionText.replace(/^Question\s+\d+:\s*/i, '');
+                                        answerText = answerText.replace(/^Answer\s+\d+:\s*/i, '');
+                                        
+                                        const rowClass = index % 2 === 0 ? 'qa-row-even' : 'qa-row-odd';
+                                        
+                                        return `
+                                        <tr role="row" class="qa-table-row ${rowClass}" tabindex="0">
+                                            <td role="cell" class="qa-table-cell qa-question-cell">
+                                                <div class="qa-cell-number">Q${pair.number}</div>
+                                                <div class="qa-cell-content">
                                                     ${questionText || '<em class="text-muted">No question text</em>'}
                                                 </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    
-                                    <!-- Answer Column -->
-                                    <div class="col-6">
-                                        <div class="qa-card qa-answer-card-display h-100">
-                                            <div class="qa-card-header">
-                                                <div class="qa-card-number">
-                                                    <i class="fas fa-check-circle me-2"></i>Answer ${pair.number}
-                                                </div>
-                                            </div>
-                                            <div class="qa-card-body">
-                                                <div class="qa-card-text text-white" style="text-align: left !important; text-indent: 0 !important; white-space: normal !important;">
+                                            </td>
+                                            <td role="cell" class="qa-table-cell qa-answer-cell">
+                                                <div class="qa-cell-number">A${pair.number}</div>
+                                                <div class="qa-cell-content">
                                                     ${answerText || '<em class="text-muted">No answer text</em>'}
                                                 </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                ${index < pairs.length - 1 ? '<div class="qa-golden-separator"></div>' : ''}
-                            </div>
-                        `;
-                        }).join('')}
+                                            </td>
+                                        </tr>
+                                        `;
+                                    }).join('')}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 `;
                 
-                // Mobile: Card view (existing)
+                // Mobile: Card view (unchanged)
                 const mobileHtml = `
                     <div class="qa-cards-container d-md-none">
                         ${pairs.map((pair, index) => {
