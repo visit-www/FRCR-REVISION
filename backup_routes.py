@@ -310,24 +310,36 @@ def restore_backup():
         if 'postgresql' in str(db.engine.url):
             print("[RESTORE] Resetting PostgreSQL sequences...")
             try:
-                # Get the max ID for each table and reset the sequence
-                tables_to_reset = [
-                    ('exam_session', 'exam_session_id_seq'),
-                    ('packet', 'packet_id_seq'),
-                    ('case', 'case_id_seq'),
-                    ('candidate', 'candidate_id_seq'),
-                    ('case_image', 'case_image_id_seq'),
-                    ('question', 'question_id_seq'),
-                    ('answer', 'answer_id_seq')
+                # Reset sequences using proper PostgreSQL syntax
+                # PostgreSQL auto-generates sequence names as tablename_columnname_seq
+                sequences_to_reset = [
+                    'exam_session',
+                    'packet', 
+                    'case',
+                    'candidate',
+                    'case_image',
+                    'question',
+                    'answer'
                 ]
                 
-                for table_name, sequence_name in tables_to_reset:
-                    db.session.execute(db.text(f"SELECT setval('{sequence_name}', (SELECT COALESCE(MAX(id), 0) + 1 FROM {table_name}), false)"))
+                for table in sequences_to_reset:
+                    try:
+                        # Get max ID from table
+                        result = db.session.execute(db.text(f"SELECT MAX(id) FROM {table}"))
+                        max_id = result.scalar() or 0
+                        
+                        # Reset the sequence to max_id + 1
+                        db.session.execute(db.text(f"ALTER SEQUENCE {table}_id_seq RESTART WITH {max_id + 1}"))
+                        print(f"[RESTORE] Reset {table}_id_seq to {max_id + 1}")
+                    except Exception as seq_error:
+                        print(f"[RESTORE] Warning: Could not reset {table}_id_seq: {seq_error}")
                 
                 db.session.commit()
-                print("[RESTORE] Sequences reset successfully")
+                print("[RESTORE] All sequences reset successfully")
             except Exception as e:
-                print(f"[RESTORE] Warning: Could not reset sequences: {e}")
+                print(f"[RESTORE] Warning: Error during sequence reset: {e}")
+                import traceback
+                traceback.print_exc()
                 # Continue anyway - this is a minor issue
         
         print("[RESTORE] Database restoration completed successfully")
