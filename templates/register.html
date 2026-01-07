@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - FRCR Examiner</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #896b90;
+            --secondary-color: #6b5b7a;
+            --success-color: #28a745;
+            --danger-color: #dc3545;
+            --warning-color: #ffc107;
+            --light-bg: #f8f9fa;
+            --border-color: #dee2e6;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .register-container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            max-width: 450px;
+            width: 100%;
+            padding: 40px;
+        }
+
+        .register-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .register-header h1 {
+            color: var(--primary-color);
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .register-header p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            color: #333;
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        input[type="email"],
+        input[type="text"],
+        input[type="password"] {
+            width: 100%;
+            padding: 12px 14px;
+            border: 2px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            background-color: #fff;
+        }
+
+        input[type="email"]:focus,
+        input[type="text"]:focus,
+        input[type="password"]:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(137, 107, 144, 0.1);
+            background-color: #fff;
+        }
+
+        .password-strength {
+            margin-top: 8px;
+            height: 4px;
+            background-color: var(--border-color);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .strength-bar {
+            height: 100%;
+            width: 0%;
+            transition: width 0.3s ease, background-color 0.3s ease;
+            background-color: var(--danger-color);
+        }
+
+        .strength-text {
+            font-size: 12px;
+            margin-top: 6px;
+            color: #666;
+        }
+
+        .requirements {
+            background-color: var(--light-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 12px;
+            margin-top: 8px;
+            font-size: 13px;
+        }
+
+        .requirement {
+            display: flex;
+            align-items: center;
+            padding: 6px 0;
+            color: #666;
+        }
+
+        .requirement-icon {
+            width: 16px;
+            height: 16px;
+            border: 2px solid #ccc;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 8px;
+            font-size: 10px;
+            font-weight: bold;
+            color: #ccc;
+            flex-shrink: 0;
+            transition: all 0.3s ease;
+        }
+
+        .requirement.met .requirement-icon {
+            border-color: var(--success-color);
+            background-color: var(--success-color);
+            color: white;
+        }
+
+        .requirement.met {
+            color: var(--success-color);
+        }
+
+        .btn-register {
+            width: 100%;
+            padding: 12px 20px;
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 20px;
+            position: relative;
+        }
+
+        .btn-register:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(137, 107, 144, 0.3);
+        }
+
+        .btn-register:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .btn-register.loading {
+            color: transparent;
+        }
+
+        .btn-register.loading::after {
+            content: '';
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            top: 50%;
+            left: 50%;
+            margin-left: -8px;
+            margin-top: -8px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .login-link {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .login-link a {
+            color: var(--primary-color);
+            text-decoration: none;
+            font-weight: 600;
+            transition: color 0.3s ease;
+        }
+
+        .login-link a:hover {
+            color: var(--secondary-color);
+            text-decoration: underline;
+        }
+
+        .alert {
+            border-radius: 6px;
+            border: none;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        .alert-success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+
+        .alert-danger {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+
+        .alert-warning {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+
+        @media (max-width: 576px) {
+            .register-container {
+                padding: 30px 20px;
+            }
+
+            .register-header h1 {
+                font-size: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="register-container">
+        <div class="register-header">
+            <h1>Create Account</h1>
+            <p>Join FRCR Examiner to manage your exams</p>
+        </div>
+
+        <!-- Alert Messages -->
+        <div id="alerts"></div>
+
+        <form id="registerForm" method="POST" action="/auth/register">
+            <!-- Email Field -->
+            <div class="form-group">
+                <label for="email">Email Address</label>
+                <input 
+                    type="email" 
+                    id="email" 
+                    name="email" 
+                    required 
+                    placeholder="your@email.com"
+                    autocomplete="email"
+                >
+            </div>
+
+            <!-- Full Name Field -->
+            <div class="form-group">
+                <label for="full_name">Full Name</label>
+                <input 
+                    type="text" 
+                    id="full_name" 
+                    name="full_name" 
+                    required 
+                    placeholder="John Doe"
+                    autocomplete="name"
+                >
+            </div>
+
+            <!-- Password Field -->
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input 
+                    type="password" 
+                    id="password" 
+                    name="password" 
+                    required 
+                    placeholder="Create a strong password"
+                    autocomplete="new-password"
+                >
+                <div class="password-strength">
+                    <div class="strength-bar" id="strengthBar"></div>
+                </div>
+                <div class="strength-text" id="strengthText"></div>
+                
+                <!-- Requirements Checklist -->
+                <div class="requirements">
+                    <div class="requirement" id="req-length">
+                        <span class="requirement-icon">✓</span>
+                        <span>At least 8 characters</span>
+                    </div>
+                    <div class="requirement" id="req-uppercase">
+                        <span class="requirement-icon">✓</span>
+                        <span>At least one uppercase letter</span>
+                    </div>
+                    <div class="requirement" id="req-lowercase">
+                        <span class="requirement-icon">✓</span>
+                        <span>At least one lowercase letter</span>
+                    </div>
+                    <div class="requirement" id="req-number">
+                        <span class="requirement-icon">✓</span>
+                        <span>At least one number</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Confirm Password Field -->
+            <div class="form-group">
+                <label for="confirm_password">Confirm Password</label>
+                <input 
+                    type="password" 
+                    id="confirm_password" 
+                    name="confirm_password" 
+                    required 
+                    placeholder="Re-enter your password"
+                    autocomplete="new-password"
+                >
+            </div>
+
+            <!-- Register Button -->
+            <button type="submit" class="btn-register" id="registerBtn">
+                Create Account
+            </button>
+        </form>
+
+        <!-- Login Link -->
+        <div class="login-link">
+            Already have an account? <a href="/auth/login">Log in here</a>
+        </div>
+    </div>
+
+    <script>
+        const passwordInput = document.getElementById('password');
+        const confirmPasswordInput = document.getElementById('confirm_password');
+        const strengthBar = document.getElementById('strengthBar');
+        const strengthText = document.getElementById('strengthText');
+        const registerBtn = document.getElementById('registerBtn');
+        const registerForm = document.getElementById('registerForm');
+        const alertsContainer = document.getElementById('alerts');
+
+        // Password requirement checkers
+        function checkPasswordStrength(password) {
+            const requirements = {
+                length: password.length >= 8,
+                uppercase: /[A-Z]/.test(password),
+                lowercase: /[a-z]/.test(password),
+                number: /[0-9]/.test(password)
+            };
+
+            // Update requirement indicators
+            document.getElementById('req-length').classList.toggle('met', requirements.length);
+            document.getElementById('req-uppercase').classList.toggle('met', requirements.uppercase);
+            document.getElementById('req-lowercase').classList.toggle('met', requirements.lowercase);
+            document.getElementById('req-number').classList.toggle('met', requirements.number);
+
+            // Calculate strength
+            const metRequirements = Object.values(requirements).filter(Boolean).length;
+            
+            // Update strength bar
+            const strengthPercentage = (metRequirements / 4) * 100;
+            strengthBar.style.width = strengthPercentage + '%';
+
+            // Update strength color and text
+            if (strengthPercentage === 0) {
+                strengthBar.style.backgroundColor = '#ccc';
+                strengthText.textContent = '';
+            } else if (strengthPercentage < 50) {
+                strengthBar.style.backgroundColor = '#dc3545';
+                strengthText.textContent = 'Weak password';
+            } else if (strengthPercentage < 100) {
+                strengthBar.style.backgroundColor = '#ffc107';
+                strengthText.textContent = 'Medium strength';
+            } else {
+                strengthBar.style.backgroundColor = '#28a745';
+                strengthText.textContent = 'Strong password';
+            }
+
+            return requirements;
+        }
+
+        // Check if all requirements are met
+        function areRequirementsMet() {
+            const password = passwordInput.value;
+            const requirements = {
+                length: password.length >= 8,
+                uppercase: /[A-Z]/.test(password),
+                lowercase: /[a-z]/.test(password),
+                number: /[0-9]/.test(password)
+            };
+            return Object.values(requirements).every(Boolean);
+        }
+
+        // Check if passwords match
+        function doPasswordsMatch() {
+            return passwordInput.value === confirmPasswordInput.value && 
+                   passwordInput.value.length > 0;
+        }
+
+        // Update form validation
+        function updateFormValidation() {
+            const hasEmail = document.getElementById('email').value.trim() !== '';
+            const hasName = document.getElementById('full_name').value.trim() !== '';
+            const requirementsMet = areRequirementsMet();
+            const passwordsMatch = doPasswordsMatch();
+
+            registerBtn.disabled = !(hasEmail && hasName && requirementsMet && passwordsMatch);
+        }
+
+        // Password input listeners
+        passwordInput.addEventListener('input', () => {
+            checkPasswordStrength(passwordInput.value);
+            updateFormValidation();
+        });
+
+        confirmPasswordInput.addEventListener('input', updateFormValidation);
+        document.getElementById('email').addEventListener('input', updateFormValidation);
+        document.getElementById('full_name').addEventListener('input', updateFormValidation);
+
+        // Form submission
+        registerForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            // Client-side validation
+            if (!areRequirementsMet()) {
+                showAlert('Password does not meet all requirements', 'danger');
+                return;
+            }
+
+            if (!doPasswordsMatch()) {
+                showAlert('Passwords do not match', 'danger');
+                return;
+            }
+
+            registerBtn.classList.add('loading');
+            registerBtn.disabled = true;
+
+            try {
+                const response = await fetch('/auth/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email: document.getElementById('email').value,
+                        full_name: document.getElementById('full_name').value,
+                        password: passwordInput.value
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showAlert('Account created successfully! Redirecting to login...', 'success');
+                    setTimeout(() => {
+                        window.location.href = '/auth/login';
+                    }, 1500);
+                } else {
+                    showAlert(data.error || 'Registration failed', 'danger');
+                    registerBtn.classList.remove('loading');
+                    registerBtn.disabled = false;
+                }
+            } catch (error) {
+                showAlert('An error occurred. Please try again.', 'danger');
+                registerBtn.classList.remove('loading');
+                registerBtn.disabled = false;
+            }
+        });
+
+        function showAlert(message, type) {
+            const alertHtml = `<div class="alert alert-${type}">${message}</div>`;
+            alertsContainer.innerHTML = alertHtml;
+            alertsContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        // Initial validation
+        updateFormValidation();
+    </script>
+</body>
+</html>

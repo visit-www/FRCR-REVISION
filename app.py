@@ -57,6 +57,52 @@ login_manager.login_message = 'Please log in to continue'
 def load_user(user_id):
     return User.query.get(int(user_id))
 
+
+# ==================== HELPER FUNCTIONS ====================
+
+def verify_exam_ownership(exam_id):
+    """Verify that current user owns this exam session"""
+    exam = ExamSession.query.get(exam_id)
+    if not exam or exam.user_id != current_user.id:
+        return None
+    return exam
+
+
+def verify_packet_ownership(packet_id):
+    """Verify that current user owns the exam containing this packet"""
+    packet = Packet.query.get(packet_id)
+    if not packet:
+        return None
+    exam = ExamSession.query.get(packet.exam_id)
+    if not exam or exam.user_id != current_user.id:
+        return None
+    return packet
+
+
+def verify_case_ownership(case_id):
+    """Verify that current user owns the exam containing this case"""
+    case = Case.query.get(case_id)
+    if not case:
+        return None
+    packet = Packet.query.get(case.packet_id)
+    if not packet:
+        return None
+    exam = ExamSession.query.get(packet.exam_id)
+    if not exam or exam.user_id != current_user.id:
+        return None
+    return case
+
+
+def verify_candidate_ownership(candidate_id):
+    """Verify that current user owns the exam containing this candidate"""
+    candidate = Candidate.query.get(candidate_id)
+    if not candidate:
+        return None
+    exam = ExamSession.query.get(candidate.exam_id)
+    if not exam or exam.user_id != current_user.id:
+        return None
+    return candidate
+
 with app.app_context():
     try:
         db.create_all()
@@ -200,6 +246,7 @@ def create_packet():
 
 
 @app.route('/api/case/create', methods=['POST'])
+@login_required
 def create_case():
     """Create a new case"""
     data = request.get_json()
@@ -235,6 +282,7 @@ def create_case():
 
 
 @app.route('/api/candidate/create', methods=['POST'])
+@login_required
 def create_candidate():
     """Create a new candidate"""
     data = request.get_json()
@@ -275,8 +323,14 @@ def select_candidate():
 
 
 @app.route('/api/candidates/<int:exam_id>')
+@login_required
 def get_candidates(exam_id):
     """Get all candidates for an exam"""
+    # Verify ownership
+    exam = verify_exam_ownership(exam_id)
+    if not exam:
+        return jsonify({'error': 'Unauthorized'}), 403
+    
     candidates = Candidate.query.filter_by(exam_id=exam_id).all()
     return jsonify([{
         'id': c.id,
@@ -307,8 +361,14 @@ def view_packet(candidate_id):
 
 
 @app.route('/api/packet/<int:packet_id>/cases')
+@login_required
 def get_packet_cases(packet_id):
     """Get all cases for a packet"""
+    # Verify ownership
+    packet = verify_packet_ownership(packet_id)
+    if not packet:
+        return jsonify({'error': 'Unauthorized'}), 403
+    
     cases = Case.query.filter_by(packet_id=packet_id).order_by(Case.case_number).all()
     return jsonify([{
         'id': c.id,
@@ -361,12 +421,13 @@ def edit_case():
 
 
 @app.route('/api/case/<int:case_id>', methods=['GET', 'PUT'])
+@login_required
 def get_case(case_id):
     """Get case details as JSON or update case"""
-    case = Case.query.get(case_id)
-    
+    # Verify ownership
+    case = verify_case_ownership(case_id)
     if not case:
-        return jsonify({'error': 'Case not found'}), 404
+        return jsonify({'error': 'Unauthorized'}), 403
     
     # Handle GET request
     if request.method == 'GET':
@@ -451,7 +512,14 @@ def get_session_packets(session_id):
 
 
 @app.route('/api/packet/<int:packet_id>', methods=['DELETE'])
+@login_required
 def delete_packet(packet_id):
+    """Delete a packet and all its cases"""
+    # Verify user ownership
+    obj = verify_packet_ownership(delete_id)
+    if not obj:
+        return jsonify({"error": "Unauthorized"}), 403
+    
     """Delete a packet and all its cases"""
     packet = Packet.query.get(packet_id)
     
@@ -468,7 +536,14 @@ def delete_packet(packet_id):
 
 
 @app.route('/api/packet/<int:packet_id>', methods=['PUT'])
+@login_required
 def update_packet(packet_id):
+    """Update a packet"""
+    # Verify user ownership
+    obj = verify_packet_ownership(delete_id)
+    if not obj:
+        return jsonify({"error": "Unauthorized"}), 403
+    
     """Update a packet"""
     packet = Packet.query.get(packet_id)
     
@@ -488,7 +563,14 @@ def update_packet(packet_id):
 
 
 @app.route('/api/case/<int:case_id>', methods=['DELETE'])
+@login_required
 def delete_case(case_id):
+    """Delete a case"""
+    # Verify user ownership
+    obj = verify_case_ownership(delete_id)
+    if not obj:
+        return jsonify({"error": "Unauthorized"}), 403
+    
     """Delete a case"""
     case = Case.query.get(case_id)
     
@@ -502,7 +584,14 @@ def delete_case(case_id):
 
 
 @app.route('/api/case/<int:case_id>/image', methods=['POST'])
+@login_required
 def upload_case_image(case_id):
+    """Upload an image for a case"""
+    # Verify user ownership
+    obj = verify_case_ownership(delete_id)
+    if not obj:
+        return jsonify({"error": "Unauthorized"}), 403
+    
     """Upload an image for a case"""
     case = Case.query.get(case_id)
     
@@ -556,7 +645,14 @@ def upload_case_image(case_id):
 
 
 @app.route('/api/case/<int:case_id>/images')
+@login_required
 def get_case_images(case_id):
+    """Get all images for a case"""
+    # Verify user ownership
+    obj = verify_case_ownership(delete_id)
+    if not obj:
+        return jsonify({"error": "Unauthorized"}), 403
+    
     """Get all images for a case"""
     images = CaseImage.query.filter_by(case_id=case_id).order_by(CaseImage.created_at).all()
     return jsonify([{
@@ -568,6 +664,7 @@ def get_case_images(case_id):
 
 
 @app.route('/api/case-image/<int:image_id>')
+@login_required
 def get_case_image(image_id):
     """Retrieve a case image by ID"""
     image = CaseImage.query.get(image_id)
@@ -584,7 +681,17 @@ def get_case_image(image_id):
 
 
 @app.route('/api/case-image/<int:image_id>', methods=['DELETE'])
+@login_required
 def delete_case_image(image_id):
+    """Delete a case image"""
+    # Verify user ownership of the case image
+    image = CaseImage.query.get(image_id)
+    if not image:
+        return jsonify({"error": "Unauthorized"}), 403
+    case = verify_case_ownership(image.case_id)
+    if not case:
+        return jsonify({"error": "Unauthorized"}), 403
+    
     """Delete a case image"""
     image = CaseImage.query.get(image_id)
     
@@ -622,7 +729,14 @@ def update_image_description(image_id):
 
 
 @app.route('/api/candidate/<int:candidate_id>', methods=['PUT'])
+@login_required
 def update_candidate(candidate_id):
+    """Update a candidate"""
+    # Verify user ownership
+    obj = verify_candidate_ownership(update_id)
+    if not obj:
+        return jsonify({"error": "Unauthorized"}), 403
+    
     """Update a candidate"""
     candidate = Candidate.query.get(candidate_id)
     
@@ -642,7 +756,14 @@ def update_candidate(candidate_id):
 
 
 @app.route('/api/candidate/<int:candidate_id>', methods=['DELETE'])
+@login_required
 def delete_candidate(candidate_id):
+    """Delete a candidate"""
+    # Verify user ownership
+    obj = verify_candidate_ownership(update_id)
+    if not obj:
+        return jsonify({"error": "Unauthorized"}), 403
+    
     """Delete a candidate"""
     candidate = Candidate.query.get(candidate_id)
     
@@ -796,7 +917,14 @@ def show_macos_gatekeeper_popup():
 # ==================== Question & Answer Management Endpoints ====================
 
 @app.route('/api/case/<int:case_id>/questions', methods=['GET'])
+@login_required
 def get_case_questions(case_id):
+    """Get all questions for a case"""
+    # Verify user ownership
+    obj = verify_case_ownership(delete_id)
+    if not obj:
+        return jsonify({"error": "Unauthorized"}), 403
+    
     """Get all questions for a case"""
     case = Case.query.get(case_id)
     if not case:
@@ -811,7 +939,14 @@ def get_case_questions(case_id):
 
 
 @app.route('/api/case/<int:case_id>/answers', methods=['GET'])
+@login_required
 def get_case_answers(case_id):
+    """Get all answers for a case"""
+    # Verify user ownership
+    obj = verify_case_ownership(delete_id)
+    if not obj:
+        return jsonify({"error": "Unauthorized"}), 403
+    
     """Get all answers for a case"""
     case = Case.query.get(case_id)
     if not case:
@@ -854,7 +989,14 @@ def update_answer(answer_id):
 
 
 @app.route('/api/case/<int:case_id>/qa-pairs', methods=['GET'])
+@login_required
 def get_case_qa_pairs(case_id):
+    """Get Q&A pairs for a case"""
+    # Verify user ownership
+    obj = verify_case_ownership(delete_id)
+    if not obj:
+        return jsonify({"error": "Unauthorized"}), 403
+    
     """Get Q&A pairs for a case"""
     case = Case.query.get(case_id)
     if not case:
@@ -886,7 +1028,14 @@ def get_case_qa_pairs(case_id):
 # ==================== SIMPLIFIED Q&A ENDPOINTS ====================
 
 @app.route('/api/case/<int:case_id>/qa-pairs', methods=['PUT'])
+@login_required
 def update_case_qa_pairs(case_id):
+    """
+    # Verify user ownership
+    obj = verify_case_ownership(delete_id)
+    if not obj:
+        return jsonify({"error": "Unauthorized"}), 403
+    
     """
     Simplified endpoint to update all Q&A pairs for a case in one request.
     Deletes old pairs and creates new ones based on provided data.

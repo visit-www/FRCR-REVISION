@@ -2,6 +2,19 @@
 
 {% block content %}
 <div class="container py-2">
+    <!-- User Info Section (if authenticated) -->
+    {% if current_user.is_authenticated %}
+    <div class="alert alert-info border-0 mb-4 p-3 rounded-lg" style="background-color: rgba(137, 107, 144, 0.1); border-left: 4px solid #896b90;">
+        <div class="d-flex align-items-center">
+            <i class="fas fa-user-circle me-3" style="font-size: 1.8rem; color: #896b90;"></i>
+            <div>
+                <h5 class="mb-0" style="color: #896b90; font-weight: 600;">Welcome, {{ current_user.full_name }}</h5>
+                <small class="text-muted">{{ current_user.email }} • Account created {{ current_user.created_at.strftime('%B %d, %Y') }}</small>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Main Action Cards -->
     <div class="row g-4 mb-5">
         <!-- Setup Workflow Card -->
@@ -53,6 +66,29 @@
         </div>
     </div>
 
+    <!-- Recent Sessions Section (if authenticated) -->
+    {% if current_user.is_authenticated %}
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-light border-0 py-3">
+                    <h5 class="mb-0">
+                        <i class="fas fa-history me-2" style="color: #896b90;"></i>Your Recent Exam Sessions
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div id="sessionsContainer" class="row g-3">
+                        <div class="text-center py-5">
+                            <i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: #896b90;"></i>
+                            <p class="text-muted mt-3">Loading your sessions...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
 </div>
 
 <style>
@@ -69,11 +105,86 @@
     .btn-group-vertical .btn {
         border-radius: 6px;
     }
+    
+    .session-card {
+        border-left: 4px solid #896b90;
+        transition: all 0.3s ease;
+    }
+    
+    .session-card:hover {
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    
+    .no-sessions {
+        text-align: center;
+        padding: 40px 20px;
+        color: #999;
+    }
+    
+    .no-sessions i {
+        font-size: 3rem;
+        color: #ddd;
+        margin-bottom: 15px;
+    }
 </style>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Dashboard ready
+    // Load user's exam sessions
+    const sessionsContainer = document.getElementById('sessionsContainer');
+    
+    if (sessionsContainer) {
+        fetch('/api/exam/sessions')
+            .then(response => response.json())
+            .then(sessions => {
+                if (!sessions || sessions.length === 0) {
+                    sessionsContainer.innerHTML = `
+                        <div class="no-sessions col-12">
+                            <i class="fas fa-inbox"></i>
+                            <p><strong>No exam sessions yet</strong></p>
+                            <p class="small mb-3">Get started by creating your first exam session</p>
+                            <a href="/setup/sessions" class="btn btn-primary btn-sm">
+                                <i class="fas fa-plus me-1"></i>Create Session
+                            </a>
+                        </div>
+                    `;
+                } else {
+                    sessionsContainer.innerHTML = sessions.map(session => `
+                        <div class="col-md-6 col-lg-4">
+                            <div class="card session-card h-100 border-0 shadow-sm">
+                                <div class="card-body">
+                                    <h5 class="card-title" style="color: #896b90;">
+                                        <i class="fas fa-clipboard-list me-2"></i>${session.session_name}
+                                    </h5>
+                                    <div class="small text-muted mb-3">
+                                        <p class="mb-1">
+                                            <i class="far fa-calendar me-2"></i>${new Date(session.exam_date).toLocaleDateString()}
+                                        </p>
+                                        <p class="mb-1">
+                                            <i class="far fa-clock me-2"></i>${session.exam_time}
+                                        </p>
+                                        <p class="mb-0">
+                                            <i class="fas fa-plus me-2"></i>Created ${new Date(session.created_at).toLocaleDateString()}
+                                        </p>
+                                    </div>
+                                    <a href="/setup/sessions" class="btn btn-sm btn-outline-primary w-100">
+                                        <i class="fas fa-edit me-1"></i>View Details
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            })
+            .catch(error => {
+                console.error('Error loading sessions:', error);
+                sessionsContainer.innerHTML = `
+                    <div class="no-sessions col-12">
+                        <p class="text-danger"><i class="fas fa-exclamation-circle me-2"></i>Failed to load sessions</p>
+                    </div>
+                `;
+            });
+    }
 });
 </script>
 {% endblock %}
