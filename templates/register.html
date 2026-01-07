@@ -474,10 +474,10 @@
                 const data = await response.json();
 
                 if (response.ok) {
-                    showAlert('Account created successfully! Redirecting to login...', 'success');
+                    showAlert('Account created successfully! Redirecting...', 'success');
                     setTimeout(() => {
-                        window.location.href = '/auth/login';
-                    }, 1500);
+                        window.location.href = '/';  // Redirect to dashboard (user is already logged in)
+                    }, 1000);
                 } else {
                     showAlert(data.error || 'Registration failed', 'danger');
                     registerBtn.classList.remove('loading');
