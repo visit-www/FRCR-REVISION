@@ -16,7 +16,7 @@ def send_recovery_email(email, token):
     Send password recovery email using free service
     Using Resend.com (free tier) or fallback to console for development
     """
-    recovery_url = os.getenv('APP_URL', 'http://localhost:5001') + url_for('auth.reset_password', token=token, _external=False)
+    recovery_url = os.getenv('APP_URL', 'https://frcr-examiner.vercel.app') + url_for('auth.reset_password', token=token, _external=False)
     
     # For development, just log it
     if os.getenv('FLASK_ENV') == 'development':
@@ -31,9 +31,11 @@ def send_recovery_email(email, token):
         resend_key = os.getenv('RESEND_API_KEY')
         
         if not resend_key:
-            print("Warning: RESEND_API_KEY not set, recovery email not sent")
+            print(f"[EMAIL] WARNING: RESEND_API_KEY not set. Email not sent to {email}")
+            print(f"[EMAIL] Recovery link (for debugging): {recovery_url}")
             return False
         
+        print(f"[EMAIL] Sending recovery email to {email}")
         response = requests.post(
             "https://api.resend.com/emails",
             headers={"Authorization": f"Bearer {resend_key}"},
@@ -53,9 +55,13 @@ def send_recovery_email(email, token):
             }
         )
         
+        print(f"[EMAIL] Response status: {response.status_code}")
+        if response.status_code != 200:
+            print(f"[EMAIL] Error response: {response.text}")
+        
         return response.status_code == 200
     except Exception as e:
-        print(f"Error sending email: {e}")
+        print(f"[EMAIL] Error sending email: {e}")
         return False
 
 
@@ -110,7 +116,15 @@ def login():
         
         user = User.query.filter_by(email=email).first()
         
-        if not user or not user.check_password(password):
+        if not user:
+            print(f"[AUTH] User not found: {email}")
+            return jsonify({'error': 'Invalid email or password'}), 401
+        
+        # Debug password check
+        password_valid = user.check_password(password)
+        print(f"[AUTH] Login attempt - Email: {email}, Password valid: {password_valid}, User active: {user.is_active}")
+        
+        if not password_valid:
             return jsonify({'error': 'Invalid email or password'}), 401
         
         if not user.is_active:
@@ -121,6 +135,7 @@ def login():
         db.session.commit()
         
         login_user(user, remember=remember)
+        print(f"[AUTH] Successful login: {email}")
         return jsonify({'success': True, 'message': 'Login successful'}), 200
     
     return render_template('login.html')
@@ -190,10 +205,15 @@ def reset_password(token):
 @login_required
 def profile():
     """Get current user profile"""
-    return jsonify({
-        'id': current_user.id,
-        'email': current_user.email,
-        'full_name': current_user.full_name,
-        'created_at': current_user.created_at.isoformat(),
-        'last_login': current_user.last_login.isoformat() if current_user.last_login else None
-    }), 200
+    # Return HTML page if requested via browser, JSON for API
+    if request.headers.get('Accept') == 'application/json':
+        return jsonify({
+            'id': current_user.id,
+            'email': current_user.email,
+            'full_name': current_user.full_name,
+            'created_at': current_user.created_at.isoformat(),
+            'last_login': current_user.last_login.isoformat() if current_user.last_login else None
+        }), 200
+    
+    # Return HTML profile page
+    return render_template('profile.html', user=current_user)

@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+
+{% block title %}My Profile - FRCR Examiner{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <!-- Profile Card -->
+            <div class="card shadow-lg">
+                <div class="card-header bg-gradient" style="background: linear-gradient(135deg, #896b90 0%, #6b5a7a 100%);">
+                    <h2 class="card-title mb-0 text-white">
+                        <i class="fas fa-user-circle me-2"></i>My Profile
+                    </h2>
+                </div>
+
+                <div class="card-body p-4">
+                    <!-- Profile Information -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="profile-item mb-3">
+                                <label class="text-muted small">Email Address</label>
+                                <p class="h5 mb-0">{{ user.email }}</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="profile-item mb-3">
+                                <label class="text-muted small">Full Name</label>
+                                <p class="h5 mb-0">{{ user.full_name }}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Account Details -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="profile-item mb-3">
+                                <label class="text-muted small">Account Created</label>
+                                <p class="mb-0">
+                                    {% if user.created_at %}
+                                        {{ user.created_at.strftime('%B %d, %Y') }}
+                                        <br><small class="text-muted">{{ user.created_at.strftime('%I:%M %p') }}</small>
+                                    {% else %}
+                                        Unknown
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="profile-item mb-3">
+                                <label class="text-muted small">Last Login</label>
+                                <p class="mb-0">
+                                    {% if user.last_login %}
+                                        {{ user.last_login.strftime('%B %d, %Y') }}
+                                        <br><small class="text-muted">{{ user.last_login.strftime('%I:%M %p') }}</small>
+                                    {% else %}
+                                        <span class="text-muted">This is your first login</span>
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Account Status -->
+                    <div class="row mb-4">
+                        <div class="col-md-12">
+                            <div class="profile-item">
+                                <label class="text-muted small">Account Status</label>
+                                <p class="mb-0">
+                                    {% if user.is_active %}
+                                        <span class="badge bg-success">
+                                            <i class="fas fa-check-circle me-1"></i>Active
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-danger">
+                                            <i class="fas fa-times-circle me-1"></i>Inactive
+                                        </span>
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <!-- Action Buttons -->
+                    <div class="d-flex gap-2">
+                        <a href="/auth/forgot-password" class="btn btn-outline-primary">
+                            <i class="fas fa-key me-2"></i>Change Password
+                        </a>
+                        <a href="/" class="btn btn-outline-secondary">
+                            <i class="fas fa-home me-2"></i>Back to Home
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Additional Info -->
+            <div class="card mt-4">
+                <div class="card-body p-4">
+                    <h5 class="card-title">Account Security</h5>
+                    <p class="text-muted">
+                        <i class="fas fa-shield-alt text-success me-2"></i>
+                        Your account is protected with encrypted passwords and secure sessions.
+                    </p>
+                    <p class="text-muted mb-0">
+                        <i class="fas fa-lock text-success me-2"></i>
+                        All your exam data is private and only visible to you.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .bg-gradient {
+        background: linear-gradient(135deg, #896b90 0%, #6b5a7a 100%);
+    }
+
+    .profile-item label {
+        font-weight: 600;
+        display: block;
+        margin-bottom: 0.5rem;
+    }
+
+    .card {
+        border: none;
+        border-radius: 10px;
+    }
+
+    .badge {
+        padding: 0.5rem 1rem;
+        font-size: 0.9rem;
+    }
+</style>
+{% endblock %}
