@@ -745,21 +745,42 @@ pre {
     /* Bottom action buttons - horizontal on mobile */
     .action-buttons {
         justify-content: center !important;
+        padding: 1rem 0.5rem !important;
     }
     
     .btn-group-actions {
         display: flex !important;
         flex-direction: row !important;
         flex-wrap: wrap !important;
-        gap: 0.4rem !important;
+        gap: 0.5rem !important;
         justify-content: center !important;
         width: 100% !important;
     }
     
     .btn-group-actions .btn {
-        font-size: 0.7rem !important;
-        padding: 0.3rem 0.6rem !important;
-        flex: 0 0 auto !important;
+        font-size: 0.8rem !important;
+        padding: 0.5rem 1rem !important;
+        flex: 0 1 auto !important;
+        min-width: 110px !important;
+        border-radius: 25px !important;
+        font-weight: 500 !important;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
+    }
+    
+    .btn-group-actions .btn i {
+        font-size: 0.85rem;
+    }
+    
+    .btn-group-actions .btn-warning {
+        background: linear-gradient(135deg, #ffc107 0%, #ffb300 100%) !important;
+        border: none !important;
+        color: #000 !important;
+    }
+    
+    .btn-group-actions .btn-danger {
+        background: linear-gradient(135deg, #dc3545 0%, #c82333 100%) !important;
+        border: none !important;
+        color: #fff !important;
     }
 
     h1, h2, h3 {
@@ -1055,6 +1076,37 @@ pre {
 .action-buttons {
     padding-top: 1.5rem !important;
     border-top: 2px solid #e8d4f0 !important;
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+}
+
+.btn-group-actions {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.btn-group-actions .btn {
+    font-weight: 600;
+    transition: all 0.3s ease;
+    border: none;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.btn-group-actions .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.btn-group-actions .btn-warning {
+    background: linear-gradient(135deg, #ffc107 0%, #ffb300 100%);
+    color: #000;
+}
+
+.btn-group-actions .btn-danger {
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+    color: #fff;
 }
 
 .btn-group-primary {

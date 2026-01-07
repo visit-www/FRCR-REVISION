@@ -76,14 +76,14 @@
                 </div>
 
                 <!-- Action Buttons - Professional Layout -->
-                <div class="action-buttons mt-5 pt-4 border-top d-flex flex-wrap gap-2 justify-content-between align-items-center">
-                    <div class="btn-group-actions d-flex flex-wrap gap-2">
-                        <button class="btn btn-warning btn-sm rounded-pill px-4" onclick="openCaseEditModal({{ case.id }})">
+                <div class="action-buttons mt-5 pt-4 border-top">
+                    <div class="btn-group-actions">
+                        <button class="btn btn-warning rounded-pill px-4 py-2" onclick="openCaseEditModal({{ case.id }})">
                             <i class="fas fa-edit me-2"></i>Edit Case
                         </button>
                 
-                        <button class="btn btn-outline-danger btn-sm rounded-pill px-3" onclick="deleteCase({{ case.id }})" title="Delete this case permanently">
-                            <i class="fas fa-trash me-1"></i>Delete
+                        <button class="btn btn-danger rounded-pill px-4 py-2" onclick="deleteCase({{ case.id }})" title="Delete this case permanently">
+                            <i class="fas fa-trash me-2"></i>Delete
                         </button>
                     </div>
                 </div>
