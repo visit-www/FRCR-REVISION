@@ -63,6 +63,17 @@ login_manager.login_message = 'Please log in to continue'
 def load_user(user_id):
     return User.query.get(int(user_id))
 
+@login_manager.unauthorized_handler
+def unauthorized():
+    """Handle unauthorized access - redirect to login"""
+    print(f"[AUTH] Unauthorized access attempt. Redirecting to login.")
+    from flask import redirect, url_for, request
+    # If it's an AJAX request, return JSON
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return jsonify({'error': 'Login required'}), 401
+    # Otherwise redirect to login
+    return redirect(url_for('auth.login'))
+
 
 # ==================== HELPER FUNCTIONS ====================
 
