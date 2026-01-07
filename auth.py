@@ -69,29 +69,47 @@ def send_recovery_email(email, token):
 def register():
     """User registration"""
     if request.method == 'POST':
-        data = request.get_json() if request.is_json else request.form
-        email = data.get('email', '').strip().lower()
-        password = data.get('password', '')
-        full_name = data.get('full_name', '').strip()
-        
-        # Validation
-        if not all([email, password, full_name]):
-            return jsonify({'error': 'All fields required'}), 400
-        
-        if len(password) < 8:
-            return jsonify({'error': 'Password must be at least 8 characters'}), 400
-        
-        # Check if user exists
-        existing_user = User.query.filter_by(email=email).first()
-        if existing_user:
-            return jsonify({'error': 'Email already registered'}), 409
-        
-        # Create user
-        user = User(email=email, full_name=full_name)
-        user.set_password(password)
-        
-        db.session.add(user)
-        db.session.commit()
+        try:
+            data = request.get_json() if request.is_json else request.form
+            email = data.get('email', '').strip().lower()
+            password = data.get('password', '')
+            full_name = data.get('full_name', '').strip()
+            
+            # Validation
+            if not all([email, password, full_name]):
+                return jsonify({'error': 'All fields required'}), 400
+            
+            if len(password) < 8:
+                return jsonify({'error': 'Password must be at least 8 characters'}), 400
+            
+            # Check if user exists
+            print(f"[REGISTER] Checking for existing user: {email}")
+            existing_user = User.query.filter_by(email=email).first()
+            if existing_user:
+                print(f"[REGISTER] User already exists: {email}")
+                return jsonify({'error': 'Email already registered'}), 409
+            
+            # Create user
+            print(f"[REGISTER] Creating new user: {email}")
+            user = User(email=email, full_name=full_name)
+            user.set_password(password)
+            
+            db.session.add(user)
+            print(f"[REGISTER] User added to session")
+            
+            db.session.commit()
+            print(f"[REGISTER] User committed to database - ID: {user.id}")
+            
+            login_user(user)
+            print(f"[REGISTER] User logged in: {email}")
+            return jsonify({'success': True, 'message': 'Registration successful'}), 201
+            
+        except Exception as e:
+            print(f"[REGISTER] ERROR: {e}")
+            import traceback
+            traceback.print_exc()
+            db.session.rollback()
+            return jsonify({'error': f'Registration failed: {str(e)}'}), 500
         
         login_user(user)
         return jsonify({'success': True, 'message': 'Registration successful'}), 201
