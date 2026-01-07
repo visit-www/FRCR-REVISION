@@ -4,6 +4,7 @@ from flask_login import LoginManager, login_required, current_user
 from models import db, User, ExamSession, Packet, Case, Candidate, CaseImage, Question, Answer
 from backup_manager import init_backup_manager, get_backup_manager
 from auth import auth_bp
+from backup_routes import backup_bp
 from datetime import datetime
 from sqlalchemy.pool import NullPool
 import os
@@ -193,6 +194,7 @@ with app.app_context():
 
 # Register blueprints
 app.register_blueprint(auth_bp)
+app.register_blueprint(backup_bp)
 
 # ==================== BACKUP HOOKS ====================
 
@@ -898,9 +900,14 @@ def delete_candidate(candidate_id):
 # ==================== BACKUP MANAGEMENT ENDPOINTS ====================
 
 @app.route('/admin')
+@login_required
 def admin_dashboard():
-    """Admin dashboard for backup management"""
-    return render_template('admin_dashboard.html')
+    """Backup manager page (admin dashboard)"""
+    # Check if user is admin (first registered user)
+    first_user = User.query.order_by(User.id).first()
+    if not current_user.is_authenticated or not first_user or current_user.id != first_user.id:
+        return redirect(url_for('index'))
+    return render_template('backup_manager.html')
 
 
 @app.route('/api/backup/create', methods=['POST'])

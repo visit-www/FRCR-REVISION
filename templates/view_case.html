@@ -81,12 +81,7 @@
                         <button class="btn btn-warning btn-sm rounded-pill px-4" onclick="openCaseEditModal({{ case.id }})">
                             <i class="fas fa-edit me-2"></i>Edit Case
                         </button>
-                        <a href="/view-packet/{{ case.packet.id }}" class="btn btn-outline-secondary btn-sm rounded-pill px-3" title="Return to packet cases">
-                            <i class="fas fa-arrow-left me-1"></i>Back
-                        </a>
-                        <a href="/" class="btn btn-outline-primary btn-sm rounded-pill px-3" title="Go to home">
-                            <i class="fas fa-home me-1"></i>Home
-                        </a>
+                
                         <button class="btn btn-outline-danger btn-sm rounded-pill px-3" onclick="deleteCase({{ case.id }})" title="Delete this case permanently">
                             <i class="fas fa-trash me-1"></i>Delete
                         </button>

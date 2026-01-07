@@ -35,23 +35,42 @@ That's it!
 - 🏥 Medical case management with images
 - 💬 Q&A pairs for each case
 - 📊 Session analytics
-- 💾 Automatic database backups (every 24h)
+- 💾 **NEW! Web-based backup system** with download & restore
+- ⏰ **NEW! Automatic 24-hour backup reminders**
+- 🔄 **NEW! One-click database restore**
 
-All data stored locally. Nothing goes to the cloud.
+All data stored locally or in your database. You control your backups.
+
+## 🆕 Backup System (v1.0)
+
+The app now includes a comprehensive web-based backup and restore system:
+
+- **Download Backups**: One-click download of your entire database as JSON
+- **Auto Reminders**: Get notified every 24 hours to backup your data
+- **Easy Restore**: Upload any backup file to restore your database
+- **Local Management**: Python script to manage your downloaded backups (keep last 5)
+
+📖 **Full documentation**: See [BACKUP_SYSTEM.md](BACKUP_SYSTEM.md) for complete guide
+
+**Quick Access**: Admin → Web Backup Manager
 
 ## Project Structure
 
 ```
-├── app.py                 # Flask application
-├── models.py              # Database models (SQLAlchemy)
-├── run.py                 # Entry point
-├── startup.sh             # Startup script
-├── requirements.txt       # Python dependencies
-├── templates/             # HTML templates
-├── static/                # CSS, JavaScript, images
-├── backup_manager.py      # Auto-backup system
-├── backup_scheduler.py    # Backup scheduling
-└── venv/                  # Virtual environment
+├── app.py                     # Flask application
+├── models.py                  # Database models (SQLAlchemy)
+├── backup_routes.py           # NEW! Web backup API endpoints
+├── manage_local_backups.py    # NEW! Local backup manager script
+├── run.py                     # Entry point
+├── startup.sh                 # Startup script
+├── requirements.txt           # Python dependencies
+├── templates/                 # HTML templates
+│   └── backup_manager.html    # NEW! Backup manager page
+├── static/                    # CSS, JavaScript, images
+│   └── backup-reminder.js     # NEW! Backup reminder system
+├── backup_manager.py          # Legacy auto-backup system
+├── backup_scheduler.py        # Legacy backup scheduling
+└── venv/                      # Virtual environment
 ```
 
 ## Dependencies
@@ -77,9 +96,31 @@ python3 run.py
 
 ## Database
 
-SQLite database stored in `instance/frcr_examiner.db`
+- **Local**: SQLite database stored in `instance/frcr_examiner.db`
+- **Production**: PostgreSQL via Supabase (Vercel deployment)
+- **Backups**: Web-based JSON backups (download to your computer)
+- **Legacy Backups**: Old SQLite backups in `backups/` directory
 
-Automatic backups created in `backups/` directory
+### Managing Backups
+
+**Web Interface** (Recommended):
+1. Go to Admin → Web Backup Manager
+2. Click "Download Backup Now"
+3. Store safely on your computer
+
+**Command Line** (Optional):
+```bash
+# Manage your downloaded backups
+python manage_local_backups.py ~/Downloads
+
+# Keep only last 5 backups
+python manage_local_backups.py ~/Downloads cleanup
+
+# Verify a backup file
+python manage_local_backups.py ~/Downloads/backup.json verify
+```
+
+See [BACKUP_SYSTEM.md](BACKUP_SYSTEM.md) for complete documentation.
 
 ## License
 

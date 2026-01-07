@@ -1,0 +1,357 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-5">
+    <h1><i class="fas fa-database"></i> Database Backup Manager</h1>
+    
+    <!-- Backup Status Card -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="fas fa-info-circle"></i> Backup Status</h5>
+        </div>
+        <div class="card-body">
+            <div id="backup-status">
+                <div class="text-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Download Backup Card -->
+    <div class="card mb-4">
+        <div class="card-header bg-success text-white">
+            <h5 class="mb-0"><i class="fas fa-download"></i> Download Backup</h5>
+        </div>
+        <div class="card-body">
+            <p>Download a complete backup of your database to your computer. This includes:</p>
+            <ul>
+                <li>All exam sessions and packets</li>
+                <li>All cases, questions, and answers</li>
+                <li>All candidates</li>
+                <li>All case images</li>
+            </ul>
+            <button id="download-backup-btn" class="btn btn-success btn-lg">
+                <i class="fas fa-download"></i> Download Backup Now
+            </button>
+            <div id="download-status" class="mt-3"></div>
+        </div>
+    </div>
+    
+    <!-- Restore Backup Card -->
+    <div class="card mb-4">
+        <div class="card-header bg-warning text-dark">
+            <h5 class="mb-0"><i class="fas fa-upload"></i> Restore from Backup</h5>
+        </div>
+        <div class="card-body">
+            <div class="alert alert-danger">
+                <strong><i class="fas fa-exclamation-triangle"></i> Warning:</strong> 
+                Restoring from a backup will <strong>overwrite all current data</strong> (except user accounts). 
+                Make sure you have a recent backup before proceeding!
+            </div>
+            
+            <form id="restore-form">
+                <div class="mb-3">
+                    <label for="backup-file" class="form-label">Select Backup File (.json)</label>
+                    <input type="file" class="form-control" id="backup-file" accept=".json" required>
+                </div>
+                
+                <div class="form-check mb-3">
+                    <input class="form-check-input" type="checkbox" id="confirm-overwrite" required>
+                    <label class="form-check-label" for="confirm-overwrite">
+                        <strong>I understand this will overwrite my current data</strong>
+                    </label>
+                </div>
+                
+                <button type="submit" class="btn btn-warning btn-lg">
+                    <i class="fas fa-upload"></i> Restore Database
+                </button>
+            </form>
+            
+            <div id="restore-status" class="mt-3"></div>
+        </div>
+    </div>
+    
+    <!-- Backup Tips Card -->
+    <div class="card mb-4">
+        <div class="card-header bg-info text-white">
+            <h5 class="mb-0"><i class="fas fa-lightbulb"></i> Backup Best Practices</h5>
+        </div>
+        <div class="card-body">
+            <ul>
+                <li><strong>Daily Backups:</strong> Download a backup daily to keep your data safe</li>
+                <li><strong>Keep 5 Backups:</strong> Store the last 5 backups on your computer</li>
+                <li><strong>Safe Storage:</strong> Keep backups in a secure location (cloud storage, external drive)</li>
+                <li><strong>Test Restores:</strong> Occasionally test restoring from a backup to ensure it works</li>
+                <li><strong>Before Major Changes:</strong> Always download a backup before making significant changes</li>
+            </ul>
+        </div>
+    </div>
+    
+    <div class="mb-3">
+        <a href="/" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Dashboard
+        </a>
+    </div>
+</div>
+
+<!-- Backup Reminder Modal -->
+<div class="modal fade" id="backup-reminder-modal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title"><i class="fas fa-clock"></i> Backup Reminder</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>It's been more than 24 hours since your last backup!</p>
+                <p>To keep your data safe, please download a backup now.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Remind Me Later</button>
+                <button type="button" class="btn btn-success" id="backup-from-modal">
+                    <i class="fas fa-download"></i> Download Backup
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Load backup status
+    loadBackupStatus();
+    
+    // Download backup button
+    document.getElementById('download-backup-btn').addEventListener('click', downloadBackup);
+    document.getElementById('backup-from-modal').addEventListener('click', function() {
+        bootstrap.Modal.getInstance(document.getElementById('backup-reminder-modal')).hide();
+        downloadBackup();
+    });
+    
+    // Restore form
+    document.getElementById('restore-form').addEventListener('submit', restoreBackup);
+});
+
+async function loadBackupStatus() {
+    try {
+        const response = await fetch('/api/backup/status');
+        const data = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(data.error || 'Failed to load status');
+        }
+        
+        const statusHtml = `
+            <div class="row">
+                <div class="col-md-6">
+                    <h6>Last Backup</h6>
+                    <p class="fs-5">${formatBackupTime(data.last_backup_time, data.hours_since_backup)}</p>
+                </div>
+                <div class="col-md-6">
+                    <h6>Backup Needed</h6>
+                    <p class="fs-5">
+                        ${data.needs_backup ? 
+                            '<span class="badge bg-danger">Yes - Please backup now!</span>' : 
+                            '<span class="badge bg-success">No - Up to date</span>'}
+                    </p>
+                </div>
+            </div>
+            <hr>
+            <div class="row">
+                <div class="col-md-12">
+                    <h6>Database Statistics</h6>
+                    <div class="row">
+                        <div class="col-6 col-md-4 mb-2">
+                            <small>Sessions:</small> <strong>${data.stats.total_sessions}</strong>
+                        </div>
+                        <div class="col-6 col-md-4 mb-2">
+                            <small>Packets:</small> <strong>${data.stats.total_packets}</strong>
+                        </div>
+                        <div class="col-6 col-md-4 mb-2">
+                            <small>Cases:</small> <strong>${data.stats.total_cases}</strong>
+                        </div>
+                        <div class="col-6 col-md-4 mb-2">
+                            <small>Candidates:</small> <strong>${data.stats.total_candidates}</strong>
+                        </div>
+                        <div class="col-6 col-md-4 mb-2">
+                            <small>Images:</small> <strong>${data.stats.total_images}</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.getElementById('backup-status').innerHTML = statusHtml;
+        
+        // Show reminder modal if backup needed
+        if (data.needs_backup) {
+            const modal = new bootstrap.Modal(document.getElementById('backup-reminder-modal'));
+            modal.show();
+        }
+        
+    } catch (error) {
+        console.error('Error loading backup status:', error);
+        document.getElementById('backup-status').innerHTML = `
+            <div class="alert alert-danger">
+                Error loading backup status: ${error.message}
+            </div>
+        `;
+    }
+}
+
+function formatBackupTime(backupTime, hoursSince) {
+    if (!backupTime) {
+        return 'Never (Please create your first backup!)';
+    }
+    
+    const date = new Date(backupTime);
+    const formatted = date.toLocaleString();
+    
+    if (hoursSince !== null && hoursSince !== undefined) {
+        const hours = Math.floor(hoursSince);
+        if (hours < 1) {
+            return `${formatted} (Less than 1 hour ago)`;
+        } else if (hours < 24) {
+            return `${formatted} (${hours} hours ago)`;
+        } else {
+            const days = Math.floor(hours / 24);
+            return `${formatted} (${days} days ago)`;
+        }
+    }
+    
+    return formatted;
+}
+
+async function downloadBackup() {
+    const btn = document.getElementById('download-backup-btn');
+    const statusDiv = document.getElementById('download-status');
+    
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Creating backup...';
+    statusDiv.innerHTML = '<div class="alert alert-info">Creating backup file...</div>';
+    
+    try {
+        const response = await fetch('/api/backup/download');
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Download failed');
+        }
+        
+        // Get filename from Content-Disposition header
+        const contentDisposition = response.headers.get('Content-Disposition');
+        let filename = 'backup.json';
+        if (contentDisposition) {
+            const match = contentDisposition.match(/filename="?(.+)"?/);
+            if (match) filename = match[1];
+        }
+        
+        // Download the file
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        
+        statusDiv.innerHTML = `
+            <div class="alert alert-success">
+                <i class="fas fa-check-circle"></i> Backup downloaded successfully as <strong>${filename}</strong>
+                <br><small>Keep this file safe! You can use it to restore your database.</small>
+            </div>
+        `;
+        
+        // Reload status
+        setTimeout(loadBackupStatus, 1000);
+        
+    } catch (error) {
+        console.error('Download error:', error);
+        statusDiv.innerHTML = `
+            <div class="alert alert-danger">
+                <i class="fas fa-times-circle"></i> Download failed: ${error.message}
+            </div>
+        `;
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-download"></i> Download Backup Now';
+    }
+}
+
+async function restoreBackup(event) {
+    event.preventDefault();
+    
+    const fileInput = document.getElementById('backup-file');
+    const confirmCheck = document.getElementById('confirm-overwrite');
+    const statusDiv = document.getElementById('restore-status');
+    
+    if (!fileInput.files[0]) {
+        statusDiv.innerHTML = '<div class="alert alert-danger">Please select a backup file</div>';
+        return;
+    }
+    
+    if (!confirmCheck.checked) {
+        statusDiv.innerHTML = '<div class="alert alert-danger">Please confirm that you understand the data will be overwritten</div>';
+        return;
+    }
+    
+    statusDiv.innerHTML = '<div class="alert alert-info"><span class="spinner-border spinner-border-sm"></span> Restoring database...</div>';
+    
+    try {
+        const formData = new FormData();
+        formData.append('backup_file', fileInput.files[0]);
+        formData.append('confirm_overwrite', 'true');
+        
+        const response = await fetch('/api/backup/restore', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(data.error || 'Restore failed');
+        }
+        
+        statusDiv.innerHTML = `
+            <div class="alert alert-success">
+                <h5><i class="fas fa-check-circle"></i> Database Restored Successfully!</h5>
+                <p>Restored:</p>
+                <ul>
+                    <li>${data.stats.exam_sessions} exam sessions</li>
+                    <li>${data.stats.packets} packets</li>
+                    <li>${data.stats.cases} cases</li>
+                    <li>${data.stats.candidates} candidates</li>
+                    <li>${data.stats.images} images</li>
+                    <li>${data.stats.questions} questions</li>
+                    <li>${data.stats.answers} answers</li>
+                </ul>
+                <p><strong>Please refresh the page to see your restored data.</strong></p>
+            </div>
+        `;
+        
+        // Clear form
+        document.getElementById('restore-form').reset();
+        
+        // Reload status after 2 seconds
+        setTimeout(() => {
+            loadBackupStatus();
+            window.location.reload();
+        }, 3000);
+        
+    } catch (error) {
+        console.error('Restore error:', error);
+        statusDiv.innerHTML = `
+            <div class="alert alert-danger">
+                <i class="fas fa-times-circle"></i> Restore failed: ${error.message}
+                <br><small>Please check that you selected a valid backup file.</small>
+            </div>
+        `;
+    }
+}
+</script>
+{% endblock %}
