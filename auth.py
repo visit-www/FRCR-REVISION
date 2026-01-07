@@ -291,6 +291,50 @@ def test_email():
         return jsonify({'error': f'Error: {str(e)}'}), 500
 
 
+@auth_bp.route('/test-send-email', methods=['GET'])
+def test_send_email():
+    """Actually try to send a test email and return full response"""
+    try:
+        import requests
+        resend_key = os.getenv('RESEND_API_KEY')
+        
+        if not resend_key:
+            return jsonify({'error': 'RESEND_API_KEY not set'}), 500
+        
+        from_email = os.getenv('EMAIL_FROM', 'onboarding@resend.dev')
+        test_to = 'test@example.com'  # Use a test email
+        
+        response = requests.post(
+            "https://api.resend.com/emails",
+            headers={
+                "Authorization": f"Bearer {resend_key}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "from": from_email,
+                "to": [test_to],
+                "subject": "Test Email from FRCR Examiner",
+                "html": "<h1>Test Email</h1><p>This is a test email.</p>"
+            },
+            timeout=10
+        )
+        
+        return jsonify({
+            'status_code': response.status_code,
+            'response_text': response.text,
+            'response_json': response.json() if response.headers.get('content-type', '').startswith('application/json') else None,
+            'from_email': from_email,
+            'to_email': test_to
+        }), 200
+        
+    except Exception as e:
+        import traceback
+        return jsonify({
+            'error': str(e),
+            'traceback': traceback.format_exc()
+        }), 500
+
+
 @auth_bp.route('/debug', methods=['GET'])
 def debug_auth():
     """Debug authentication status"""
