@@ -1095,6 +1095,21 @@ def update_case_qa_pairs(case_id):
         return jsonify({'error': str(e)}), 500
 
 
+# ==================== ADMIN ENDPOINTS ====================
+
+@app.route('/api/admin/migrate-db', methods=['POST'])
+def migrate_db():
+    """Create database tables if they don't exist"""
+    try:
+        print("[ADMIN] Running database migration...")
+        db.create_all()
+        print("[ADMIN] Database migration complete")
+        return jsonify({'success': True, 'message': 'Database tables created'}), 200
+    except Exception as e:
+        print(f"[ADMIN] Migration error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
 if __name__ == '__main__':
     if sys.platform == 'darwin':
         show_macos_gatekeeper_popup()
