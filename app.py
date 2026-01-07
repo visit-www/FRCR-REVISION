@@ -34,17 +34,44 @@ except Exception as e:
 
 # Configuration
 # Use PostgreSQL on production (Vercel), SQLite locally
-# Vercel Supabase integration uses DATABASE_POSTGRES_URL, not DATABASE_URL
-DATABASE_URL = os.getenv('DATABASE_URL') or os.getenv('DATABASE_POSTGRES_URL')
+# Vercel Supabase integration uses DATABASE_POSTGRES_URL_NON_POOLING for direct connection
+DATABASE_URL = os.getenv('DATABASE_URL') or os.getenv('DATABASE_POSTGRES_URL_NON_POOLING') or os.getenv('DATABASE_POSTGRES_URL')
 
 if DATABASE_URL:
     # PostgreSQL on Vercel or external
     print(f"[DB] Using PostgreSQL: {DATABASE_URL[:60]}...")
     # Handle both postgres:// and postgresql:// schemes
     db_uri = DATABASE_URL.replace('postgres://', 'postgresql://')
-    # Remove unsupported pgbouncer parameter if present
-    if 'pgbouncer=true' in db_uri:
-        db_uri = db_uri.replace('&pgbouncer=true', '').replace('?pgbouncer=true&', '?').replace('?pgbouncer=true', '')
+    
+    # Remove unsupported query parameters (pgbouncer, supa, etc.) that cause psycopg2 errors
+    # These are often added by Supabase but not recognized by psycopg2
+    from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
+    
+    try:
+        parsed = urlparse(db_uri)
+        if parsed.query:
+            # Parse query parameters
+            params = parse_qs(parsed.query, keep_blank_values=True)
+            # Remove unsupported parameters
+            unsupported_params = ['supa', 'pgbouncer', 'supabase']
+            for param in unsupported_params:
+                params.pop(param, None)
+            
+            # Rebuild query string
+            new_query = urlencode(params, doseq=True) if params else ''
+            # Rebuild URL
+            db_uri = urlunparse((
+                parsed.scheme,
+                parsed.netloc,
+                parsed.path,
+                parsed.params,
+                new_query,
+                parsed.fragment
+            ))
+            print(f"[DB] Cleaned query parameters from connection string")
+    except Exception as e:
+        print(f"[DB] Warning: Could not parse URL parameters: {e}")
+    
     app.config['SQLALCHEMY_DATABASE_URI'] = db_uri
 else:
     # SQLite for local development

@@ -48,6 +48,30 @@ def migrate_to_postgres(data):
     # Convert postgres:// to postgresql:// for SQLAlchemy
     db_url = DATABASE_URL.replace('postgres://', 'postgresql://')
     
+    # Remove unsupported query parameters that cause psycopg2 errors
+    from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
+    
+    try:
+        parsed = urlparse(db_url)
+        if parsed.query:
+            params = parse_qs(parsed.query, keep_blank_values=True)
+            # Remove unsupported parameters
+            unsupported_params = ['supa', 'pgbouncer', 'supabase']
+            for param in unsupported_params:
+                params.pop(param, None)
+            
+            new_query = urlencode(params, doseq=True) if params else ''
+            db_url = urlunparse((
+                parsed.scheme,
+                parsed.netloc,
+                parsed.path,
+                parsed.params,
+                new_query,
+                parsed.fragment
+            ))
+    except Exception as e:
+        print(f"Warning: Could not parse URL parameters: {e}")
+    
     try:
         conn = psycopg2.connect(db_url)
         cursor = conn.cursor()
