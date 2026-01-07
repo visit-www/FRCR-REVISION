@@ -34,12 +34,21 @@ except Exception as e:
 
 # Configuration
 # Use PostgreSQL on production (Vercel), SQLite locally
-DATABASE_URL = os.getenv('DATABASE_URL')
+# Vercel Supabase integration uses DATABASE_POSTGRES_URL, not DATABASE_URL
+DATABASE_URL = os.getenv('DATABASE_URL') or os.getenv('DATABASE_POSTGRES_URL')
+
 if DATABASE_URL:
     # PostgreSQL on Vercel or external
-    app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL.replace('postgres://', 'postgresql://')
+    print(f"[DB] Using PostgreSQL: {DATABASE_URL[:60]}...")
+    # Handle both postgres:// and postgresql:// schemes
+    db_uri = DATABASE_URL.replace('postgres://', 'postgresql://')
+    # Remove unsupported pgbouncer parameter if present
+    if 'pgbouncer=true' in db_uri:
+        db_uri = db_uri.replace('&pgbouncer=true', '').replace('?pgbouncer=true&', '?').replace('?pgbouncer=true', '')
+    app.config['SQLALCHEMY_DATABASE_URI'] = db_uri
 else:
     # SQLite for local development
+    print(f"[DB] Using SQLite: {instance_path}/frcr_examiner.db")
     app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(instance_path, "frcr_examiner.db")}'
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-secret-key-change-in-production')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
