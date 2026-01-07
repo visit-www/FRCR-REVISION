@@ -1296,100 +1296,43 @@ pre {
     }
 }
 
-/* Desktop Q&A Table Layout */
-.qa-table-container {
-    margin-bottom: 2rem;
+/* Desktop Q&A Row Layout - Each pair in its own row */
+.qa-table-desktop {
+    width: 100%;
 }
 
-.qa-table-container .card {
-    border-radius: 12px;
-    overflow: hidden;
-    border: none;
+.qa-row-desktop {
+    margin-bottom: 0;
 }
 
-.qa-column-header {
-    font-weight: 600;
-    border-bottom: 2px solid rgba(255, 255, 255, 0.3);
+.qa-row-desktop .row {
+    width: 100%;
 }
 
-.qa-vertical-separator {
-    width: 3px;
-    background: linear-gradient(180deg, #e0e0e0 0%, #bdbdbd 50%, #e0e0e0 100%);
-    position: absolute;
-    top: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    height: 100%;
-    z-index: 1;
+.qa-row-desktop .col-6 {
+    padding: 0;
 }
 
-.qa-items-list {
-    max-height: 600px;
-    overflow-y: auto;
+.qa-golden-separator {
+    height: 3px;
+    background: linear-gradient(90deg, transparent 0%, #FFD700 20%, #FFD700 80%, transparent 100%);
+    margin: 1.5rem 0;
+    box-shadow: 0 1px 3px rgba(255, 215, 0, 0.3);
 }
 
-.qa-item {
-    padding: 1.25rem 1.5rem;
-    border-bottom: 1px solid #e9ecef;
-    transition: background-color 0.2s ease;
+.qa-row-desktop .qa-card {
+    border-radius: 0;
+    margin: 0;
 }
 
-.qa-item:last-child {
-    border-bottom: none;
+.qa-row-desktop .col-6:first-child .qa-card {
+    border-top-left-radius: 8px;
+    border-bottom-left-radius: 8px;
 }
 
-.qa-item.qa-even {
-    background-color: #f8f9fa;
-}
-
-.qa-item.qa-odd {
-    background-color: #ffffff;
-}
-
-.qa-item:hover {
-    background-color: #e3f2fd;
-}
-
-.qa-item-number {
-    font-size: 0.85rem;
-    font-weight: 700;
-    color: #495057;
-    margin-bottom: 0.5rem;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.qa-question-item .qa-item-number {
-    color: #667eea;
-}
-
-.qa-answer-item .qa-item-number {
-    color: #f5576c;
-}
-
-.qa-item-text {
-    line-height: 1.7;
-    color: #2c3e50;
-    font-size: 0.95rem;
-    text-align: left;
-}
-
-/* Scrollbar styling for Q&A lists */
-.qa-items-list::-webkit-scrollbar {
-    width: 8px;
-}
-
-.qa-items-list::-webkit-scrollbar-track {
-    background: #f1f1f1;
-}
-
-.qa-items-list::-webkit-scrollbar-thumb {
-    background: #888;
-    border-radius: 4px;
-}
-
-.qa-items-list::-webkit-scrollbar-thumb:hover {
-    background: #555;
+.qa-row-desktop .col-6:last-child .qa-card {
+    border-top-right-radius: 8px;
+    border-bottom-right-radius: 8px;
 }
 
 /* Mobile: Stacked layout */
