@@ -44,11 +44,22 @@ else:
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-secret-key-change-in-production')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# Session configuration for production
-app.config['SESSION_COOKIE_SECURE'] = True  # HTTPS only
+# Session configuration
+# Check if SECRET_KEY is set
+if not os.getenv('SECRET_KEY'):
+    print("[WARNING] SECRET_KEY not set! Using default insecure key")
+else:
+    print("[OK] SECRET_KEY is set")
+
+# Only set SECURE in production (HTTPS)
+is_production = os.getenv('VERCEL_ENV') == 'production' or 'vercel.app' in os.getenv('VERCEL_URL', '')
+app.config['SESSION_COOKIE_SECURE'] = is_production  # HTTPS only in production
 app.config['SESSION_COOKIE_HTTPONLY'] = True  # No JavaScript access
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # CSRF protection
+app.config['SESSION_COOKIE_NAME'] = 'frcr_session'  # Explicit name
 app.config['PERMANENT_SESSION_LIFETIME'] = 86400  # 24 hours
+
+print(f"[SESSION] SECURE={app.config['SESSION_COOKIE_SECURE']}, HTTPONLY={app.config['SESSION_COOKIE_HTTPONLY']}, SAMESITE={app.config['SESSION_COOKIE_SAMESITE']}")
 
 # Initialize database
 db.init_app(app)
@@ -155,6 +166,13 @@ atexit.register(backup_on_shutdown)
 @app.route('/')
 def index():
     """Smart dashboard - entry point for all workflows - PUBLIC"""
+    # Debug session on home page
+    from flask import session, request
+    print(f"[INDEX] User authenticated: {current_user.is_authenticated}")
+    print(f"[INDEX] Session ID: {session.get('_id', 'NO SESSION')}")
+    print(f"[INDEX] Cookies received: {list(request.cookies.keys())}")
+    print(f"[INDEX] Current user ID: {current_user.get_id() if current_user.is_authenticated else 'NOT AUTH'}")
+    
     return render_template('dashboard.html')
 
 

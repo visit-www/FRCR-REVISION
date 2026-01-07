@@ -102,6 +102,12 @@ def register():
             
             login_user(user)
             print(f"[REGISTER] User logged in: {email}")
+            
+            # Debug session creation
+            from flask import session as flask_session
+            print(f"[REGISTER] Session ID after login: {flask_session.get('_id', 'NO SESSION')}")
+            print(f"[REGISTER] Current user authenticated: {current_user.is_authenticated}")
+            
             return jsonify({'success': True, 'message': 'Registration successful'}), 201
             
         except Exception as e:
