@@ -1512,7 +1512,7 @@ pre {
     
     /* Answer card styling - More distinct with darker background and border */
     .qa-answer-card-display {
-        border-top: 2px dashed #909090;
+        border-top: none;
         border-bottom: none;
         background: rgba(200, 200, 200, 0.3);
         border-left: 3px solid #5a5a5a;
@@ -1592,11 +1592,11 @@ pre {
         font-size: 0.96rem;
     }
     
-    /* Answer text - normal weight with italic style for clear differentiation */
+    /* Answer text - normal weight for clear differentiation */
     .qa-answer-card-display .qa-card-text {
         color: #3a3a3a !important;
         font-weight: 400;
-        font-style: italic;
+        font-style: normal;
         font-size: 0.94rem;
     }
     
@@ -1605,17 +1605,9 @@ pre {
         color: #666666 !important;
     }
     
-    /* Pair divider between blocks - grey instead of gold */
+    /* Pair divider between blocks - removed for cleaner look */
     .qa-pair-divider {
-        height: 8px;
-        background: linear-gradient(90deg, 
-            transparent 0%, 
-            #b0b0b0 20%, 
-            #b0b0b0 80%, 
-            transparent 100%);
-        margin: 1rem 0;
-        opacity: 0.8;
-        border-radius: 0;
+        display: none;
     }
     
     /* Ensure tap targets are adequate */
