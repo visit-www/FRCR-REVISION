@@ -59,14 +59,14 @@ def download_backup():
             })
         
         # Export exam sessions
-        for session in ExamSession.query.all():
+        for exam_session in ExamSession.query.all():
             backup_data['exam_sessions'].append({
-                'id': session.id,
-                'user_id': session.user_id,
-                'exam_date': session.exam_date.isoformat() if session.exam_date else None,
-                'exam_time': session.exam_time,
-                'session_name': session.session_name,
-                'created_at': session.created_at.isoformat() if session.created_at else None
+                'id': exam_session.id,
+                'user_id': exam_session.user_id,
+                'exam_date': exam_session.exam_date.isoformat() if exam_session.exam_date else None,
+                'exam_time': exam_session.exam_time,
+                'session_name': exam_session.session_name,
+                'created_at': exam_session.created_at.isoformat() if exam_session.created_at else None
             })
         
         # Export packets
