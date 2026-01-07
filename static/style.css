@@ -1506,15 +1506,16 @@ pre {
     /* Question card styling */
     .qa-question-card-display {
         border-top: 3px solid #6a6a6a;
-        border-bottom: 1px solid #b0b0b0;
+        border-bottom: 2px solid #b0b0b0;
         background: rgba(255, 255, 255, 0.4);
     }
     
-    /* Answer card styling */
+    /* Answer card styling - More distinct with darker background and border */
     .qa-answer-card-display {
-        border-top: none;
+        border-top: 2px dashed #909090;
         border-bottom: none;
-        background: rgba(255, 255, 255, 0.2);
+        background: rgba(200, 200, 200, 0.3);
+        border-left: 3px solid #5a5a5a;
     }
     
     /* Card Header - Grey theme */
@@ -1522,6 +1523,16 @@ pre {
         padding: 0.75rem 1rem;
         background: linear-gradient(90deg, rgba(74, 74, 74, 0.1) 0%, transparent 100%);
         border-bottom: 1px solid #c0c0c0;
+    }
+    
+    /* Question header - lighter */
+    .qa-question-card-display .qa-card-header {
+        background: linear-gradient(90deg, rgba(106, 106, 106, 0.15) 0%, transparent 100%);
+    }
+    
+    /* Answer header - slightly darker with icon color */
+    .qa-answer-card-display .qa-card-header {
+        background: linear-gradient(90deg, rgba(90, 90, 90, 0.2) 0%, transparent 100%);
     }
     
     /* Card Number - Dark grey */
@@ -1532,8 +1543,20 @@ pre {
         letter-spacing: 0.3px;
     }
     
-    .qa-card-number i {
+    /* Question icon - dark grey */
+    .qa-question-card-display .qa-card-number i {
         color: #4a4a4a;
+        font-size: 1rem;
+    }
+    
+    /* Answer icon - distinctive color for easy recognition */
+    .qa-answer-card-display .qa-card-number {
+        color: #1a1a1a;
+        font-weight: 700;
+    }
+    
+    .qa-answer-card-display .qa-card-number i {
+        color: #5a5a5a;
         font-size: 1rem;
     }
     
@@ -1541,6 +1564,17 @@ pre {
     .qa-card-body {
         padding: 1rem;
         min-height: 60px;
+    }
+    
+    /* Question body - regular padding */
+    .qa-question-card-display .qa-card-body {
+        padding: 1rem;
+    }
+    
+    /* Answer body - indented for visual distinction */
+    .qa-answer-card-display .qa-card-body {
+        padding: 1rem 1rem 1rem 1.25rem;
+        background: rgba(0, 0, 0, 0.02);
     }
     
     /* Card Text - Dark grey for readability */
@@ -1554,13 +1588,16 @@ pre {
     /* Question text - slightly bolder for distinction */
     .qa-question-card-display .qa-card-text {
         color: #1a1a1a !important;
-        font-weight: 500;
+        font-weight: 600;
+        font-size: 0.96rem;
     }
     
-    /* Answer text - normal weight */
+    /* Answer text - normal weight with italic style for clear differentiation */
     .qa-answer-card-display .qa-card-text {
-        color: #2c2c2c !important;
+        color: #3a3a3a !important;
         font-weight: 400;
+        font-style: italic;
+        font-size: 0.94rem;
     }
     
     /* Ensure good contrast for muted text */
