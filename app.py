@@ -358,7 +358,8 @@ def create_case():
             diagnosis=data['diagnosis'],
             questions=json.dumps(questions or []),
             answers=json.dumps(answers or []),
-            discussion=data.get('discussion', '')\n        )
+            discussion=data.get('discussion', '')
+        )
         db.session.add(case)
         db.session.commit()
         
