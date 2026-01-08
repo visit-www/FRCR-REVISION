@@ -7,15 +7,13 @@ const API_BASE_URL = (() => {
     return 'http://localhost:5000';
   }
   
-  // If running on Vercel, use localhost (still the local machine running Flask)
-  // You can also set FLASK_BACKEND_URL in your environment if needed
+  // If running on Vercel deployment, use the same origin (API routes are on same domain)
   if (window.location.hostname.includes('vercel.app')) {
-    // For local network access, use: http://192.168.1.X:5000 (replace X with your IP)
-    // For remote access via ngrok, use the ngrok URL: https://xxxx-xxxx-xxxx-xxxx.ngrok.io
-    return process.env.REACT_APP_FLASK_BACKEND || 'http://localhost:5000';
+    return window.location.origin; // Use current domain for API calls
   }
   
-  return 'http://localhost:5000';
+  // Default fallback
+  return window.location.origin;
 })();
 
 // Export for use in other scripts
