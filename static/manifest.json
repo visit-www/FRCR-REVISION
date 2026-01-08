@@ -1,0 +1,52 @@
+{
+  "name": "FRCR Examiner",
+  "short_name": "FRCR",
+  "description": "Professional tool for FRCR examinationexaminers to prepare and manage exam sessions efficiently.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#007bff",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/static/images/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/static/images/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["medical", "education", "FRCR", "examination", "FRCR Viva"],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Start Exam",
+      "short_name": "Exam",
+      "description": "Start a new examination session",
+      "url": "/exam/start",
+      "icons": [
+        {
+          "src": "/static/images/icon-192x192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Prepare for Exam",
+      "short_name": "Prepare",
+      "description": "Create session and add case packets, candidates and cases",
+      "url": "/setup/sessions",
+      "icons": [
+        {
+          "src": "/static/images/icon-192x192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ]
+}
