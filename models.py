@@ -3,8 +3,55 @@ from flask_login import UserMixin
 from datetime import datetime, timedelta
 from werkzeug.security import generate_password_hash, check_password_hash
 import secrets
+import enum
 
 db = SQLAlchemy()
+
+# FRCR Module Enum
+class FRCRModule(enum.Enum):
+    """FRCR examination modules"""
+    CARDIOTHORACIC_VASCULAR = "Cardiothoracic and Vascular"
+    MUSCULOSKELETAL_TRAUMA = "Musculoskeletal and Trauma"
+    GASTROINTESTINAL = "Gastro-intestinal (liver, biliary, pancreas, spleen)"
+    GENITOURINARY_BREAST = "Genito-urinary, Adrenal, Obstetrics & Gynaecology, and Breast"
+    PAEDIATRIC = "Paediatric"
+    CNS_HEAD_NECK = "Central Nervous System and Head & Neck"
+
+# Body Part Enum
+class BodyPart(enum.Enum):
+    """Body parts for case categorization"""
+    # CNS and Head & Neck
+    BRAIN = "Brain"
+    SPINE = "Spine"
+    HEAD_NECK = "Head & Neck"
+    
+    # Cardiothoracic and Vascular
+    THORAX = "Thorax"
+    CARDIOVASCULAR = "Cardiovascular"
+    CHEST_WALL = "Chest wall"
+    
+    # Musculoskeletal
+    UPPER_LIMB = "Upper limb"
+    LOWER_LIMB = "Lower limb"
+    
+    # Gastrointestinal
+    ABDOMEN_BOWEL = "Abdomen and bowel"
+    LIVER = "Liver"
+    GALLBLADDER = "Gallbladder"
+    BILIARY_TREE = "Biliary tree"
+    PANCREAS = "Pancreas"
+    SPLEEN = "Spleen"
+    
+    # Genitourinary and Breast
+    URINARY_SYSTEM = "Urinary system"
+    REPRODUCTIVE_SYSTEM = "Reproductive system"
+    BREAST = "Breast"
+    
+    # Paediatric (system-wide)
+    PAEDIATRIC_GENERAL = "Paediatric - General"
+    PAEDIATRIC_SKELETON = "Paediatric - Growing skeleton"
+    PAEDIATRIC_CHEST = "Paediatric - Neonatal chest"
+    PAEDIATRIC_CONGENITAL = "Paediatric - Congenital anomalies"
 
 class User(UserMixin, db.Model):
     """Store user account information"""
@@ -13,6 +60,7 @@ class User(UserMixin, db.Model):
     password_hash = db.Column(db.Text, nullable=False)  # Use Text instead of String for better compatibility
     full_name = db.Column(db.String(120), nullable=False)
     is_active = db.Column(db.Boolean, default=True)
+    is_admin = db.Column(db.Boolean, default=False)  # Admin flag for first user
     
     # Password recovery
     recovery_token = db.Column(db.String(255), unique=True, nullable=True)
@@ -24,6 +72,8 @@ class User(UserMixin, db.Model):
     
     # Relationships
     exam_sessions = db.relationship('ExamSession', backref='creator', lazy=True, cascade='all, delete-orphan')
+    candidate_notes = db.relationship('CandidateNote', backref='author', lazy=True, cascade='all, delete-orphan')
+    highlights = db.relationship('TextHighlight', backref='author', lazy=True, cascade='all, delete-orphan')
     
     def set_password(self, password):
         """Hash and set password"""
@@ -89,16 +139,26 @@ class Packet(db.Model):
 class Case(db.Model):
     """Store case information"""
     id = db.Column(db.Integer, primary_key=True)
-    packet_id = db.Column(db.Integer, db.ForeignKey('packet.id'), nullable=False)
-    case_number = db.Column(db.Integer, nullable=False)  # 1-3 per packet
+    packet_id = db.Column(db.Integer, db.ForeignKey('packet.id'), nullable=True)  # Nullable for standalone cases
+    case_number = db.Column(db.Integer, nullable=True)  # Legacy field - nullable for non-packet cases
     diagnosis = db.Column(db.Text, nullable=False)
     questions = db.Column(db.Text, nullable=False)  # Legacy - for backward compatibility
     answers = db.Column(db.Text, nullable=False)  # Legacy - for backward compatibility
     discussion = db.Column(db.Text)  # Optional discussion/comments
     
+    # New fields for FRCR Revision
+    module = db.Column(db.Enum(FRCRModule), nullable=True, index=True)  # FRCR module categorization
+    body_part = db.Column(db.Enum(BodyPart), nullable=True, index=True)  # Body part categorization
+    is_public = db.Column(db.Boolean, default=False, index=True)  # Admin approval for visibility to students
+    created_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)  # Track who created the case
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
     images = db.relationship('CaseImage', backref='case', lazy=True, cascade='all, delete-orphan')
     question_items = db.relationship('Question', backref='case', lazy=True, cascade='all, delete-orphan')
     answer_items = db.relationship('Answer', backref='case', lazy=True, cascade='all, delete-orphan')
+    candidate_notes = db.relationship('CandidateNote', backref='case', lazy=True, cascade='all, delete-orphan')
+    highlights = db.relationship('TextHighlight', backref='case', lazy=True, cascade='all, delete-orphan')
     
     def __repr__(self):
         return f'<Case {self.case_number} - {self.diagnosis}>'
@@ -154,3 +214,41 @@ class Candidate(db.Model):
     
     def __repr__(self):
         return f'<Candidate {self.candidate_name} ({self.candidate_number})>'
+
+
+class CandidateNote(db.Model):
+    """Store student/candidate notes for cases"""
+    id = db.Column(db.Integer, primary_key=True)
+    case_id = db.Column(db.Integer, db.ForeignKey('case.id'), nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+    note_text = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Composite index for efficient lookups
+    __table_args__ = (
+        db.Index('idx_case_user', 'case_id', 'user_id'),
+    )
+    
+    def __repr__(self):
+        return f'<CandidateNote Case:{self.case_id} User:{self.user_id}>'
+
+
+class TextHighlight(db.Model):
+    """Store text highlights for search and personalization"""
+    id = db.Column(db.Integer, primary_key=True)
+    case_id = db.Column(db.Integer, db.ForeignKey('case.id'), nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+    text_content = db.Column(db.Text, nullable=False)  # The highlighted text
+    highlight_color = db.Column(db.String(20), nullable=False)  # yellow, green, pink, blue
+    field_name = db.Column(db.String(50), nullable=False)  # question, answer, discussion, notes
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Composite index for efficient lookups
+    __table_args__ = (
+        db.Index('idx_case_user_highlight', 'case_id', 'user_id'),
+        db.Index('idx_text_search', 'text_content'),  # For keyword search
+    )
+    
+    def __repr__(self):
+        return f'<TextHighlight Case:{self.case_id} User:{self.user_id} Color:{self.highlight_color}>'

@@ -1,11 +1,11 @@
 {
-  "name": "FRCR Examiner",
-  "short_name": "FRCR",
-  "description": "Professional tool for FRCR examinationexaminers to prepare and manage exam sessions efficiently.",
+  "name": "FRCR Revision",
+  "short_name": "FRCR Revision",
+  "description": "Your companion app for FRCR exam preparation - practice cases, take notes, and build confidence for success.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#007bff",
+  "theme_color": "#FF8C42",
   "orientation": "portrait-primary",
   "icons": [
     {
@@ -25,10 +25,10 @@
   "screenshots": [],
   "shortcuts": [
     {
-      "name": "Start Exam",
-      "short_name": "Exam",
-      "description": "Start a new examination session",
-      "url": "/exam/start",
+      "name": "Browse Modules",
+      "short_name": "Modules",
+      "description": "Select a module to practice",
+      "url": "/modules",
       "icons": [
         {
           "src": "/static/images/icon-192x192.png",
@@ -37,10 +37,10 @@
       ]
     },
     {
-      "name": "Prepare for Exam",
-      "short_name": "Prepare",
-      "description": "Create session and add case packets, candidates and cases",
-      "url": "/setup/sessions",
+      "name": "All Cases",
+      "short_name": "Cases",
+      "description": "Browse and search all revision cases",
+      "url": "/cases",
       "icons": [
         {
           "src": "/static/images/icon-192x192.png",

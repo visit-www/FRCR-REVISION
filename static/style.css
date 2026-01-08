@@ -1,35 +1,40 @@
-/* FRCR Examiner Tool Styles - Soft Pastel Theme */
+/* FRCR Revision - Confidence & Success Theme */
 
 :root {
-    /* Soft Dark Palette - Muted tones */
-    --soft-slate-blue: #5c7d9e;
-    --soft-ocean-blue: #4a8ba6;
-    --soft-sage-green: #6b9080;
-    --soft-forest-green: #4a7860;
-    --soft-burnt-orange: #c67d56;
-    --soft-coral-orange: #d68c6f;
+    /* Warm Confidence Palette - Orange, Green, Yellow */
+    --primary-orange: #FF8C42;      /* Main warm orange - confidence */
+    --soft-orange: #FFB366;         /* Lighter orange */
+    --deep-orange: #FF6B1A;         /* Darker orange for accents */
+    
+    --soft-green: #90C695;          /* Pastel green - growth */
+    --deep-green: #6B9080;          /* Darker green */
+    
+    --pastel-yellow: #FFE66D;       /* Soft yellow - clarity */
+    --light-yellow: #FFF4CC;        /* Very light yellow for highlights */
+    
+    /* Neutral grays - unchanged from original */
     --soft-charcoal: #4a505a;
     --soft-gray: #6b7280;
     --soft-light-gray: #9ca3af;
     
-    /* Soft dark backgrounds */
+    /* Backgrounds */
     --soft-bg-dark: #2c3138;
     --soft-bg-darker: #23272e;
     --soft-bg-slate: #374151;
     --soft-bg-card: #f8f9fa;
     --soft-bg-hover: #e9ecef;
     
-    /* Legacy colors mapped to new palette */
-    --primary-color: #5c7d9e;
-    --success-color: #6b9080;
+    /* Legacy color mappings - use warm palette for hero/banners */
+    --primary-color: #FF8C42;
+    --success-color: #90C695;
     --danger-color: #c67d56;
-    --warning-color: #d68c6f;
+    --warning-color: #FFE66D;
     --light-bg: #f8f9fa;
 }
 
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 50%, #ced4da 100%);
+    background: linear-gradient(135deg, #fff8f0 0%, #ffe8d6 50%, #ffd9bf 100%);
     background-attachment: fixed;
     padding: 0;
     margin: 0;
@@ -38,10 +43,10 @@ body {
     min-height: 100vh;
 }
 
-/* Navigation Bar */
+/* Navigation Bar - Warm Orange Theme */
 .navbar {
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
-    background: linear-gradient(90deg, #4a505a 0%, #374151 100%) !important;
+    box-shadow: 0 2px 12px rgba(255, 140, 66, 0.2);
+    background: linear-gradient(90deg, #FF8C42 0%, #FF6B1A 100%) !important;
     padding: 1rem 0;
 }
 
@@ -70,14 +75,14 @@ body {
 }
 
 .breadcrumb-custom .breadcrumb-item a {
-    color: #5c7d9e;
+    color: #FF8C42;
     text-decoration: none;
     transition: color 0.2s ease;
     font-weight: 500;
 }
 
 .breadcrumb-custom .breadcrumb-item a:hover {
-    color: #4a8ba6;
+    color: #FF6B1A;
     text-decoration: underline;
 }
 
@@ -87,7 +92,7 @@ body {
 }
 
 .breadcrumb-custom i {
-    color: #6b9080;
+    color: #90C695;
 }
 
 /* Quick Navigation Group */

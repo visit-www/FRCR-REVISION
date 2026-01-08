@@ -1,10 +1,10 @@
-# FRCR Examiner
+# FRCR Revision
 
-A comprehensive web application for managing FRCR (Fellowship of the Royal College of Radiologists) examination sessions, medical cases, and candidate assessments.
+Your companion app for FRCR exam preparation. Practice with real cases, take notes, highlight key points, and build confidence for success in the Fellowship of the Royal College of Radiologists examination.
 
 ## 🌐 Production Deployment
 
-**Live Application**: [https://frcr-examiner.vercel.app](https://frcr-examiner.vercel.app)
+**Live Application**: TBD (Coming Soon)
 
 ## ✨ Features
 
