@@ -111,6 +111,15 @@ def register():
             user = User(email=email, full_name=full_name)
             user.set_password(password)
             
+            # Check if this is the first user - make them admin
+            user_count = User.query.count()
+            if user_count == 0:
+                user.is_admin = True
+                print(f"[REGISTER] First user - granting admin privileges")
+            else:
+                user.is_admin = False
+                print(f"[REGISTER] Regular student user")
+            
             db.session.add(user)
             print(f"[REGISTER] User added to session")
             
@@ -132,7 +141,8 @@ def register():
             import traceback
             traceback.print_exc()
             db.session.rollback()
-            return jsonify({'error': f'Registration failed: {str(e)}'}), 500
+            # Don't expose database errors to users
+            return jsonify({'error': 'Registration failed. Please contact administrator or check logs.'}), 500
         
         login_user(user)
         return jsonify({'success': True, 'message': 'Registration successful'}), 201
@@ -171,18 +181,26 @@ def login():
         if not user.is_active:
             return jsonify({'error': 'Account is disabled'}), 403
         
-        # Update last login
-        user.last_login = datetime.utcnow()
-        db.session.commit()
+        try:
+            # Update last login
+            user.last_login = datetime.utcnow()
+            db.session.commit()
+            
+            login_user(user, remember=remember)
+            
+            # Debug session creation
+            print(f"[AUTH] Successful login: {email}")
+            print(f"[AUTH] Session created - User ID: {user.id}, Email: {user.email}")
+            print(f"[AUTH] Remember: {remember}")
+            
+            return jsonify({'success': True, 'message': 'Login successful'}), 200
         
-        login_user(user, remember=remember)
-        
-        # Debug session creation
-        print(f"[AUTH] Successful login: {email}")
-        print(f"[AUTH] Session created - User ID: {user.id}, Email: {user.email}")
-        print(f"[AUTH] Remember: {remember}")
-        
-        return jsonify({'success': True, 'message': 'Login successful'}), 200
+        except Exception as e:
+            print(f"[LOGIN] ERROR: {e}")
+            import traceback
+            traceback.print_exc()
+            db.session.rollback()
+            return jsonify({'error': 'Login failed. Please contact administrator or check logs.'}), 500
     
     return render_template('login.html')
 
@@ -347,3 +365,53 @@ def debug_auth():
         'session_keys': list(session.keys())
     }), 200
 
+
+# ==================== ADMIN USER MANAGEMENT ====================
+
+@auth_bp.route('/admin/promote-user', methods=['POST'])
+@login_required
+def promote_user():
+    """Promote a user to admin - only accessible by existing admins"""
+    if not current_user.is_admin:
+        return jsonify({'error': 'Admin access required'}), 403
+    
+    data = request.get_json()
+    user_email = data.get('email', '').strip().lower()
+    
+    if not user_email:
+        return jsonify({'error': 'Email required'}), 400
+    
+    user = User.query.filter_by(email=user_email).first()
+    
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+    
+    if user.is_admin:
+        return jsonify({'message': 'User is already an admin'}), 200
+    
+    user.is_admin = True
+    db.session.commit()
+    
+    print(f"[ADMIN] User promoted to admin: {user_email} by {current_user.email}")
+    
+    return jsonify({'success': True, 'message': f'User {user_email} promoted to admin'}), 200
+
+
+@auth_bp.route('/admin/list-users', methods=['GET'])
+@login_required  
+def list_users():
+    """List all users with their admin status - admin only"""
+    if not current_user.is_admin:
+        return jsonify({'error': 'Admin access required'}), 403
+    
+    users = User.query.order_by(User.created_at).all()
+    
+    return jsonify({
+        'users': [{
+            'id': u.id,
+            'email': u.email,
+            'full_name': u.full_name,
+            'is_admin': u.is_admin,
+            'created_at': u.created_at.isoformat() if u.created_at else None
+        } for u in users]
+    }), 200
