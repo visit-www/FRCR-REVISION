@@ -355,6 +355,11 @@ function saveEditedCase() {
     const diagnosis = document.getElementById('editCaseDiagnosis').value.trim();
     const discussion = document.getElementById('editCaseDiscussion').value.trim();
     
+    // Get FRCR Revision fields
+    const module = document.getElementById('editCaseModule')?.value || null;
+    const bodyPart = document.getElementById('editCaseBodyPart')?.value || null;
+    const isPublic = document.getElementById('editCaseIsPublic')?.checked || false;
+    
     // Validate required fields
     if (!caseNumber) {
         alert('Case number is required');
@@ -385,6 +390,9 @@ function saveEditedCase() {
         case_number: caseNumber,
         diagnosis: diagnosis,
         discussion: discussion || null,
+        module: module,
+        body_part: bodyPart,
+        is_public: isPublic,
         pairs: pairs
     };
     

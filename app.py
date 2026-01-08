@@ -508,6 +508,8 @@ def create_packet():
 def create_case():
     """Create a new case"""
     import json
+    from models import FRCRModule, BodyPart
+    
     data = request.get_json()
     
     # Extract questions and answers from pairs
@@ -529,15 +531,34 @@ def create_case():
     if 'answers' in data:
         answers = data['answers']
     
+    # Parse module and body_part enums
+    module_enum = None
+    if data.get('module'):
+        try:
+            module_enum = FRCRModule[data['module']]
+        except KeyError:
+            pass
+    
+    body_part_enum = None
+    if data.get('body_part'):
+        try:
+            body_part_enum = BodyPart[data['body_part']]
+        except KeyError:
+            pass
+    
     # Convert lists to JSON strings for TEXT fields (legacy support)
     try:
         case = Case(
-            packet_id=data['packet_id'],
-            case_number=data['case_number'],
+            packet_id=data.get('packet_id'),  # Nullable for standalone cases
+            case_number=data.get('case_number'),
             diagnosis=data['diagnosis'],
             questions=json.dumps(questions or []),
             answers=json.dumps(answers or []),
-            discussion=data.get('discussion', '')
+            discussion=data.get('discussion', ''),
+            module=module_enum,
+            body_part=body_part_enum,
+            is_public=data.get('is_public', False),
+            created_by_user_id=current_user.id
         )
         db.session.add(case)
         db.session.flush()  # Get the case ID
@@ -744,11 +765,16 @@ def get_case(case_id):
             'diagnosis': case.diagnosis,
             'questions': [{'question_text': q.question_text, 'id': q.id} for q in case.question_items],
             'answers': [{'answer_text': a.answer_text, 'id': a.id} for a in case.answer_items],
-            'discussion': case.discussion
+            'discussion': case.discussion,
+            'module': case.module.name if case.module else None,
+            'body_part': case.body_part.name if case.body_part else None,
+            'is_public': case.is_public
         })
     
     # Handle PUT request - update case
     data = request.get_json()
+    
+    from models import FRCRModule, BodyPart
     
     try:
         # Update basic case fields
@@ -758,6 +784,31 @@ def get_case(case_id):
             case.discussion = data['discussion'].strip() if data['discussion'] else None
         if 'case_number' in data:
             case.case_number = data['case_number']
+        
+        # Update FRCR Revision fields
+        if 'module' in data:
+            if data['module']:
+                try:
+                    case.module = FRCRModule[data['module']]
+                except KeyError:
+                    case.module = None
+            else:
+                case.module = None
+        
+        if 'body_part' in data:
+            if data['body_part']:
+                try:
+                    case.body_part = BodyPart[data['body_part']]
+                except KeyError:
+                    case.body_part = None
+            else:
+                case.body_part = None
+        
+        if 'is_public' in data:
+            case.is_public = data['is_public']
+        
+        # Update timestamp
+        case.updated_at = datetime.utcnow()
         
         # Handle Q&A pairs if provided
         if 'pairs' in data:
