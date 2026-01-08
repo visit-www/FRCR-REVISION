@@ -677,18 +677,29 @@ def get_packet_cases(packet_id):
 
 
 @app.route('/view-case/<int:case_id>')
+@login_required
 def view_case(case_id):
     """View a specific case"""
+    from models import CandidateNote
+    
     case = Case.query.get(case_id)
     
     if not case:
-        return redirect(url_for('start_exam'))
+        return redirect(url_for('dashboard'))
     
-    packet = Packet.query.get(case.packet_id)
+    # Get packet and candidate info (legacy from examiner app)
+    packet = Packet.query.get(case.packet_id) if case.packet_id else None
     candidate_id = session.get('current_candidate_id')
     candidate = Candidate.query.get(candidate_id) if candidate_id else None
     
-    return render_template('view_case.html', case=case, packet=packet, candidate=candidate)
+    # Get user's note for this case
+    user_note = CandidateNote.query.filter_by(case_id=case_id, user_id=current_user.id).first()
+    
+    return render_template('view_case.html', 
+                         case=case, 
+                         packet=packet, 
+                         candidate=candidate,
+                         user_note=user_note)
 
 
 @app.route('/edit-case')
@@ -1268,6 +1279,163 @@ def update_case_qa_pairs(case_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
+
+
+# ==================== CANDIDATE NOTES API ====================
+
+@app.route('/api/case/<int:case_id>/note', methods=['GET'])
+@login_required
+def get_candidate_note(case_id):
+    """Get user's note for a specific case"""
+    from models import CandidateNote
+    
+    note = CandidateNote.query.filter_by(case_id=case_id, user_id=current_user.id).first()
+    
+    if not note:
+        return jsonify({'note_text': ''}), 200
+    
+    return jsonify({
+        'id': note.id,
+        'note_text': note.note_text,
+        'created_at': note.created_at.isoformat() if note.created_at else None,
+        'updated_at': note.updated_at.isoformat() if note.updated_at else None
+    })
+
+
+@app.route('/api/case/<int:case_id>/note', methods=['POST', 'PUT'])
+@login_required
+def save_candidate_note(case_id):
+    """Save or update user's note for a case"""
+    from models import CandidateNote
+    
+    data = request.get_json()
+    note_text = data.get('note_text', '').strip()
+    
+    # Find existing note
+    note = CandidateNote.query.filter_by(case_id=case_id, user_id=current_user.id).first()
+    
+    if note:
+        # Update existing note
+        if note_text:
+            note.note_text = note_text
+            note.updated_at = datetime.utcnow()
+        else:
+            # If empty text, delete the note
+            db.session.delete(note)
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'Note updated'})
+    else:
+        # Create new note
+        if note_text:
+            note = CandidateNote(
+                case_id=case_id,
+                user_id=current_user.id,
+                note_text=note_text
+            )
+            db.session.add(note)
+            db.session.commit()
+            return jsonify({'success': True, 'message': 'Note created'})
+    
+    return jsonify({'success': True, 'message': 'Note saved'})
+
+
+@app.route('/api/case/<int:case_id>/note', methods=['DELETE'])
+@login_required
+def delete_candidate_note(case_id):
+    """Delete user's note for a case"""
+    from models import CandidateNote
+    
+    note = CandidateNote.query.filter_by(case_id=case_id, user_id=current_user.id).first()
+    
+    if note:
+        db.session.delete(note)
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'Note deleted'})
+    
+    return jsonify({'error': 'Note not found'}), 404
+
+
+# ==================== TEXT HIGHLIGHTS API ====================
+
+@app.route('/api/case/<int:case_id>/highlights', methods=['GET'])
+@login_required
+def get_highlights(case_id):
+    """Get all highlights for a case by current user"""
+    from models import TextHighlight
+    
+    highlights = TextHighlight.query.filter_by(case_id=case_id, user_id=current_user.id).all()
+    
+    return jsonify({
+        'highlights': [{
+            'id': h.id,
+            'text_content': h.text_content,
+            'highlight_color': h.highlight_color,
+            'field_name': h.field_name,
+            'created_at': h.created_at.isoformat() if h.created_at else None
+        } for h in highlights]
+    })
+
+
+@app.route('/api/case/<int:case_id>/highlight', methods=['POST'])
+@login_required
+def add_highlight(case_id):
+    """Add a new text highlight"""
+    from models import TextHighlight
+    
+    data = request.get_json()
+    text_content = data.get('text_content', '').strip()
+    highlight_color = data.get('highlight_color', 'yellow')
+    field_name = data.get('field_name', 'discussion')
+    
+    if not text_content:
+        return jsonify({'error': 'Text content required'}), 400
+    
+    # Validate color
+    valid_colors = ['yellow', 'green', 'pink', 'blue']
+    if highlight_color not in valid_colors:
+        return jsonify({'error': 'Invalid color'}), 400
+    
+    highlight = TextHighlight(
+        case_id=case_id,
+        user_id=current_user.id,
+        text_content=text_content,
+        highlight_color=highlight_color,
+        field_name=field_name
+    )
+    
+    db.session.add(highlight)
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'highlight': {
+            'id': highlight.id,
+            'text_content': highlight.text_content,
+            'highlight_color': highlight.highlight_color,
+            'field_name': highlight.field_name
+        }
+    })
+
+
+@app.route('/api/highlight/<int:highlight_id>', methods=['DELETE'])
+@login_required
+def delete_highlight(highlight_id):
+    """Delete a highlight"""
+    from models import TextHighlight
+    
+    highlight = TextHighlight.query.get(highlight_id)
+    
+    if not highlight:
+        return jsonify({'error': 'Highlight not found'}), 404
+    
+    # Verify ownership
+    if highlight.user_id != current_user.id:
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    db.session.delete(highlight)
+    db.session.commit()
+    
+    return jsonify({'success': True, 'message': 'Highlight deleted'})
 
 
 # ==================== ADMIN ENDPOINTS ====================

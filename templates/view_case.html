@@ -6,36 +6,49 @@
         <!-- Breadcrumb Navigation -->
         <nav aria-label="breadcrumb" class="mb-4">
             <ol class="breadcrumb breadcrumb-custom">
-                <li class="breadcrumb-item"><a href="/"><i class="fas fa-home me-1"></i>Home</a></li>
-                <li class="breadcrumb-item"><a href="/select-candidate"><i class="fas fa-users me-1"></i>Candidates</a></li>
-                <li class="breadcrumb-item"><a href="/view-packet/{{ case.packet.id }}"><i class="fas fa-folder me-1"></i>Packet {{ packet.packet_id if packet else 'N/A' }}</a></li>
-                <li class="breadcrumb-item active"><i class="fas fa-file-medical me-1"></i>Case {{ case.case_number }}</li>
+                <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}"><i class="fas fa-home me-1"></i>Home</a></li>
+                {% if case.module %}
+                <li class="breadcrumb-item"><a href="{{ url_for('modules_view') }}"><i class="fas fa-th-large me-1"></i>Modules</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('cases_by_module', module=case.module.name) }}"><i class="fas fa-folder me-1"></i>{{ case.module.value }}</a></li>
+                {% else %}
+                <li class="breadcrumb-item"><a href="{{ url_for('all_cases_view') }}"><i class="fas fa-folder-open me-1"></i>All Cases</a></li>
+                {% endif %}
+                <li class="breadcrumb-item active"><i class="fas fa-file-medical me-1"></i>Case #{{ case.id }}</li>
             </ol>
         </nav>
 
         <!-- Quick Navigation -->
         <div class="quick-nav-section mb-4">
             <div class="quick-nav-group">
-                <a href="/view-packet/{{ case.packet.id }}" class="btn btn-sm btn-outline-secondary rounded-pill" title="Back to packet">
-                    <i class="fas fa-arrow-left me-1"></i>Back to Packet
+                {% if case.module %}
+                <a href="{{ url_for('cases_by_module', module=case.module.name) }}" class="btn btn-sm btn-outline-secondary rounded-pill" title="Back to module">
+                    <i class="fas fa-arrow-left me-1"></i>Back to {{ case.module.value }}
                 </a>
+                {% else %}
+                <a href="{{ url_for('all_cases_view') }}" class="btn btn-sm btn-outline-secondary rounded-pill" title="Back to all cases">
+                    <i class="fas fa-arrow-left me-1"></i>Back to All Cases
+                </a>
+                {% endif %}
             </div>
         </div>
 
         {% if case %}
         <div class="case-card mb-4 card border-0 shadow-lg">
-            <div class="case-card-header bg-gradient-success text-white py-4 px-4 px-md-5">
+            <div class="case-card-header py-4 px-4 px-md-5" style="background: linear-gradient(90deg, #FF8C42 0%, #FFB366 100%);">
                 <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
                     <div>
-                        <h3 class="mb-2 fw-bold" style="font-size: 2rem; letter-spacing: -0.5px;">Case {{ case.case_number }}</h3>
-                        <p class="mb-0 fs-6 opacity-90"><i class="fas fa-folder-open me-2"></i>Packet {{ packet.packet_id if packet else '' }}</p>
+                        <h3 class="mb-2 fw-bold text-white" style="font-size: 2rem; letter-spacing: -0.5px;">Case #{{ case.id }}</h3>
+                        {% if case.module %}
+                        <p class="mb-0 fs-6 text-white opacity-90">
+                            <i class="fas fa-layer-group me-2"></i>{{ case.module.value }}
+                            {% if case.body_part %} • {{ case.body_part.value }}{% endif %}
+                        </p>
+                        {% endif %}
                     </div>
                     <div class="text-end">
-                        <small class="d-block opacity-75 mb-2">Candidate</small>
-                        <p class="mb-0 fw-bold text-white">
-                            {{ candidate.candidate_name if candidate else 'N/A' }}
-                        </p>
-                        <small class="text-white-50">#{{ candidate.candidate_number if candidate else 'N/A' }}</small>
+                        <span class="badge bg-light text-dark px-3 py-2">
+                            <i class="fas fa-images me-1"></i>{{ case.images|length }} Images
+                        </span>
                     </div>
                 </div>
             </div>
@@ -61,7 +74,36 @@
                     <div class="detail-section discussion-section mb-5 p-4 rounded-3" style="background: linear-gradient(135deg, #f0f8fc 0%, #f5fbff 100%); border-left: 5px solid #17a2b8;">
                         <label class="detail-label fw-bold text-secondary mb-3 d-block"><i class="fas fa-comments-dollar me-2" style="color: #17a2b8;"></i>Discussion & Comments</label>
                         <div id="discussionText" class="detail-content discussion-text" style="line-height: 1.8; color: #2c3e50; text-align: left;">
-                            {% if case.discussion %}{{ case.discussion|safe }}{% else %}<em class="text-muted"><i class="fas fa-info-circle me-2"></i>No discussion provided.</em>{% endif %}
+            {% if case.discussion %}{{ case.discussion|safe }}{% else %}<em class="text-muted"><i class="fas fa-info-circle me-2"></i>No discussion provided.</em>{% endif %}
+                        </div>
+                    </div>
+
+                    <!-- My Notes Section (Student Notes) -->
+                    <div class="detail-section notes-section mb-5 p-4 rounded-3" style="background: linear-gradient(135deg, #FFF4CC 0%, #FFFBF0 100%); border-left: 5px solid #FFE66D;">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <label class="detail-label fw-bold text-secondary mb-0">
+                                <i class="fas fa-sticky-note me-2" style="color: #FFB84D;"></i>My Notes
+                            </label>
+                            <small class="text-muted">
+                                <i class="fas fa-save me-1"></i>Auto-saved
+                            </small>
+                        </div>
+                        <textarea id="candidateNoteText" 
+                                  class="form-control" 
+                                  rows="6" 
+                                  placeholder="Type your notes here... They are private and will be auto-saved."
+                                  style="background-color: #FFFEF8; border: 2px solid #FFE66D; font-family: 'Courier New', monospace; line-height: 1.6; resize: vertical;">{% if user_note %}{{ user_note.note_text }}{% endif %}</textarea>
+                        <div class="mt-2 d-flex justify-content-between align-items-center">
+                            <small class="text-muted" id="noteSaveStatus">
+                                {% if user_note %}
+                                <i class="fas fa-check-circle text-success me-1"></i>Last saved {{ user_note.updated_at.strftime('%b %d, %Y at %I:%M %p') if user_note.updated_at else 'recently' }}
+                                {% else %}
+                                <i class="fas fa-info-circle me-1"></i>No notes yet
+                                {% endif %}
+                            </small>
+                            <button class="btn btn-sm btn-outline-secondary" onclick="clearNotes()" title="Clear all notes">
+                                <i class="fas fa-times me-1"></i>Clear
+                            </button>
                         </div>
                     </div>
 
@@ -75,7 +117,8 @@
                     </div>
                 </div>
 
-                <!-- Action Buttons - Professional Layout -->
+                <!-- Action Buttons - Admin Only -->
+                {% if current_user.is_admin %}
                 <div class="action-buttons mt-5 pt-4 border-top">
                     <div class="btn-group-actions">
                         <button class="btn btn-warning rounded-pill px-4 py-2" onclick="openCaseEditModal({{ case.id }})">
@@ -87,6 +130,7 @@
                         </button>
                     </div>
                 </div>
+                {% endif %}
             </div>
         </div>
         {% else %}
@@ -686,6 +730,66 @@
                 navigateImage('next');
             }
         });
+    }
+    
+    // ==================== CANDIDATE NOTES AUTO-SAVE ====================
+    
+    let notesSaveTimeout = null;
+    const notesTextarea = document.getElementById('candidateNoteText');
+    const noteSaveStatus = document.getElementById('noteSaveStatus');
+    
+    // Auto-save notes after 2 seconds of inactivity
+    if (notesTextarea) {
+        notesTextarea.addEventListener('input', function() {
+            // Clear existing timeout
+            if (notesSaveTimeout) {
+                clearTimeout(notesSaveTimeout);
+            }
+            
+            // Show "typing..." status
+            noteSaveStatus.innerHTML = '<i class="fas fa-pencil-alt text-muted me-1"></i>Typing...';
+            
+            // Set new timeout to save
+            notesSaveTimeout = setTimeout(function() {
+                saveNotes();
+            }, 2000);  // 2 seconds delay
+        });
+    }
+    
+    function saveNotes() {
+        const noteText = notesTextarea.value.trim();
+        const caseId = {{ case.id }};
+        
+        fetch(`/api/case/${caseId}/note`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                note_text: noteText
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const now = new Date();
+                const timeStr = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+                noteSaveStatus.innerHTML = `<i class="fas fa-check-circle text-success me-1"></i>Saved at ${timeStr}`;
+            } else {
+                noteSaveStatus.innerHTML = '<i class="fas fa-exclamation-circle text-danger me-1"></i>Error saving';
+            }
+        })
+        .catch(error => {
+            console.error('Error saving notes:', error);
+            noteSaveStatus.innerHTML = '<i class="fas fa-exclamation-circle text-danger me-1"></i>Error saving';
+        });
+    }
+    
+    function clearNotes() {
+        if (confirm('Are you sure you want to clear all notes for this case?')) {
+            notesTextarea.value = '';
+            saveNotes();
+        }
     }
     
     // Navigate to previous/next image
