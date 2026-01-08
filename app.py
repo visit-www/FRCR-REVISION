@@ -191,50 +191,244 @@ app.register_blueprint(backup_bp)
 
 @app.route('/')
 def index():
-    """Smart dashboard - entry point for all workflows"""
-    return render_template('dashboard.html')
+    """Smart dashboard - students see student dashboard, admins can access admin features"""
+    if current_user.is_authenticated:
+        return redirect(url_for('dashboard'))
+    return redirect(url_for('auth.login'))
+
+
+@app.route('/dashboard')
+@login_required
+def dashboard():
+    """Main dashboard for students"""
+    from models import CandidateNote, TextHighlight, Case
+    
+    # Get user statistics
+    notes_count = CandidateNote.query.filter_by(user_id=current_user.id).count()
+    highlights_count = TextHighlight.query.filter_by(user_id=current_user.id).count()
+    
+    # Count of cases with notes (reviewed cases)
+    reviewed_count = db.session.query(CandidateNote.case_id).filter_by(user_id=current_user.id).distinct().count()
+    
+    # Total public cases
+    case_count = Case.query.filter_by(is_public=True).count()
+    
+    return render_template('student_dashboard.html',
+                         notes_count=notes_count,
+                         highlights_count=highlights_count,
+                         reviewed_count=reviewed_count,
+                         case_count=case_count)
+
+
+@app.route('/modules')
+@login_required
+def modules_view():
+    """Display all FRCR modules"""
+    from models import FRCRModule, Case
+    
+    # Prepare module data with case counts
+    modules_data = []
+    module_icons = {
+        'CARDIOTHORACIC_VASCULAR': 'fas fa-heart',
+        'MUSCULOSKELETAL_TRAUMA': 'fas fa-bone',
+        'GASTROINTESTINAL': 'fas fa-stomach',
+        'GENITOURINARY_BREAST': 'fas fa-venus',
+        'PAEDIATRIC': 'fas fa-baby',
+        'CNS_HEAD_NECK': 'fas fa-brain'
+    }
+    
+    module_descriptions = {
+        'CARDIOTHORACIC_VASCULAR': 'Heart, lungs, chest, and vascular imaging',
+        'MUSCULOSKELETAL_TRAUMA': 'Bones, joints, and trauma imaging',
+        'GASTROINTESTINAL': 'Abdominal organs, liver, biliary, pancreas',
+        'GENITOURINARY_BREAST': 'Urinary, reproductive, and breast imaging',
+        'PAEDIATRIC': 'Neonatal and paediatric cases',
+        'CNS_HEAD_NECK': 'Brain, spine, and head & neck imaging'
+    }
+    
+    for module in FRCRModule:
+        case_count = Case.query.filter_by(module=module, is_public=True).count()
+        modules_data.append({
+            'value': module.name,
+            'display_name': module.value,
+            'icon': module_icons.get(module.name, 'fas fa-folder'),
+            'description': module_descriptions.get(module.name, ''),
+            'case_count': case_count
+        })
+    
+    return render_template('modules_view.html', modules=modules_data)
+
+
+@app.route('/modules/<module>')
+@login_required
+def cases_by_module(module):
+    """Show cases filtered by module"""
+    from models import FRCRModule, BodyPart, Case
+    
+    # Validate module
+    try:
+        module_enum = FRCRModule[module]
+    except KeyError:
+        return redirect(url_for('modules_view'))
+    
+    # Get filters from query params
+    body_part_filter = request.args.get('body_part', '')
+    search_query = request.args.get('q', '')
+    
+    # Build query
+    query = Case.query.filter_by(module=module_enum, is_public=True)
+    
+    if body_part_filter:
+        try:
+            body_part_enum = BodyPart[body_part_filter]
+            query = query.filter_by(body_part=body_part_enum)
+        except KeyError:
+            pass
+    
+    if search_query:
+        query = query.filter(Case.diagnosis.ilike(f'%{search_query}%'))
+    
+    cases = query.order_by(Case.id).all()
+    
+    # Prepare case data
+    cases_data = []
+    for case in cases:
+        # Check if user has notes
+        has_notes = CandidateNote.query.filter_by(case_id=case.id, user_id=current_user.id).first() is not None
+        
+        cases_data.append({
+            'id': case.id,
+            'diagnosis': case.diagnosis,
+            'module_display': case.module.value if case.module else 'N/A',
+            'body_part_display': case.body_part.value if case.body_part else 'N/A',
+            'image_count': len(case.images),
+            'has_notes': has_notes
+        })
+    
+    # Get all body parts for filter
+    body_parts = [{'value': bp.name, 'display_name': bp.value} for bp in BodyPart]
+    
+    return render_template('cases_list.html',
+                         cases=cases_data,
+                         module_filter=module_enum.value,
+                         body_parts=body_parts,
+                         body_part_selected=body_part_filter,
+                         search_query=search_query)
+
+
+@app.route('/cases')
+@login_required
+def all_cases_view():
+    """Show all public cases with filters"""
+    from models import FRCRModule, BodyPart, Case, CandidateNote
+    
+    # Get filters from query params
+    module_filter = request.args.get('module', '')
+    body_part_filter = request.args.get('body_part', '')
+    search_query = request.args.get('q', '')
+    
+    # Build query
+    query = Case.query.filter_by(is_public=True)
+    
+    if module_filter:
+        try:
+            module_enum = FRCRModule[module_filter]
+            query = query.filter_by(module=module_enum)
+        except KeyError:
+            pass
+    
+    if body_part_filter:
+        try:
+            body_part_enum = BodyPart[body_part_filter]
+            query = query.filter_by(body_part=body_part_enum)
+        except KeyError:
+            pass
+    
+    if search_query:
+        query = query.filter(Case.diagnosis.ilike(f'%{search_query}%'))
+    
+    cases = query.order_by(Case.id).all()
+    
+    # Prepare case data
+    cases_data = []
+    for case in cases:
+        # Check if user has notes
+        has_notes = CandidateNote.query.filter_by(case_id=case.id, user_id=current_user.id).first() is not None
+        
+        cases_data.append({
+            'id': case.id,
+            'diagnosis': case.diagnosis,
+            'module_display': case.module.value if case.module else 'N/A',
+            'body_part_display': case.body_part.value if case.body_part else 'N/A',
+            'image_count': len(case.images),
+            'has_notes': has_notes
+        })
+    
+    # Get all modules and body parts for filters
+    all_modules = [{'value': m.name, 'display_name': m.value} for m in FRCRModule]
+    body_parts = [{'value': bp.name, 'display_name': bp.value} for bp in BodyPart]
+    
+    return render_template('cases_list.html',
+                         cases=cases_data,
+                         all_modules=all_modules,
+                         body_parts=body_parts,
+                         module_selected=module_filter,
+                         body_part_selected=body_part_filter,
+                         search_query=search_query)
+
+
+@app.route('/profile')
+@login_required
+def student_profile():
+    """Student profile page"""
+    return render_template('profile.html')
 
 
 @app.route('/admin')
 @login_required
 def admin_dashboard():
-    """Admin dashboard - redirects to backup manager"""
-    first_user = User.query.order_by(User.id).first()
-    if not current_user.is_authenticated or not first_user or current_user.id != first_user.id:
-        return redirect(url_for('index'))
-    return render_template('backup_manager.html')
+    """Admin dashboard - only accessible to admins"""
+    if not current_user.is_admin:
+        return redirect(url_for('dashboard'))
+    return render_template('admin_dashboard.html')
 
 
-# ==================== SETUP WORKFLOW ====================
+# ==================== SETUP WORKFLOW (ADMIN ONLY) ====================
 
 @app.route('/setup/sessions')
 @login_required
 def setup_sessions():
-    """Manage exam sessions"""
+    """Manage exam sessions - ADMIN ONLY (Legacy from examiner app)"""
+    if not current_user.is_admin:
+        return redirect(url_for('dashboard'))
     return render_template('setup_sessions.html')
 
 
 @app.route('/setup/cases')
 @login_required
 def setup_cases():
-    """Case bank management"""
+    """Case bank management - ADMIN ONLY"""
+    if not current_user.is_admin:
+        return redirect(url_for('dashboard'))
     return render_template('setup_cases.html')
 
 
-@app.route('/setup/candidates')
-@login_required
-def setup_candidates():
-    """Candidate management"""
-    return render_template('setup_candidates.html')
+# DISABLED: Candidate management not needed for student app
+# @app.route('/setup/candidates')
+# @login_required
+# def setup_candidates():
+#     """Candidate management"""
+#     return render_template('setup_candidates.html')
 
 
-# ==================== EXAM WORKFLOW ====================
+# ==================== EXAM WORKFLOW (DISABLED FOR STUDENT APP) ====================
 
-@app.route('/exam/start')
-@login_required
-def exam_start():
-    """Start exam - select candidate"""
-    return render_template('exam_start.html')
+# DISABLED: Start exam feature not needed for student app
+# @app.route('/exam/start')
+# @login_required
+# def exam_start():
+#     """Start exam - select candidate"""
+#     return render_template('exam_start.html')
 
 
 @app.route('/prepare-exam')

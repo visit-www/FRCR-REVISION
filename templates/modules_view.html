@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="breadcrumb-custom mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}"><i class="fas fa-home"></i> Home</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Modules</li>
+        </ol>
+    </nav>
+
+    <!-- Page Header -->
+    <div class="mb-4">
+        <h2 class="mb-2">
+            <i class="fas fa-th-large me-2" style="color: #90C695;"></i>
+            Select a Module
+        </h2>
+        <p class="text-muted">
+            Choose from the 6 core FRCR examination modules to begin your revision
+        </p>
+    </div>
+
+    <!-- Module Cards Grid -->
+    <div class="row g-4">
+        {% for module in modules %}
+        <div class="col-lg-4 col-md-6">
+            <div class="card h-100 shadow-sm border-0 module-card" 
+                 onclick="window.location.href='{{ url_for('cases_by_module', module=module.value) }}'"
+                 style="cursor: pointer; transition: all 0.2s ease;">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-start mb-3">
+                        <div class="module-icon me-3">
+                            <i class="{{ module.icon }}"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <h5 class="card-title mb-1">{{ module.display_name }}</h5>
+                            <span class="badge bg-light text-dark">
+                                {{ module.case_count }} cases
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <p class="card-text text-muted small">
+                        {{ module.description }}
+                    </p>
+                    
+                    <div class="mt-3">
+                        <a href="{{ url_for('cases_by_module', module=module.value) }}" 
+                           class="btn btn-sm w-100" 
+                           style="background-color: #90C695; color: white;">
+                            Start Practicing
+                            <i class="fas fa-arrow-right ms-2"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<style>
+.module-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15) !important;
+}
+
+.module-icon {
+    font-size: 2.5rem;
+    color: #FF8C42;
+    width: 60px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #FFE66D 0%, #FFB366 100%);
+    border-radius: 12px;
+}
+
+.module-icon i {
+    color: white;
+}
+</style>
+{% endblock %}
