@@ -3,14 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FRCR Examiner - Login</title>
+    <title>FRCR Revision - Login</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
-            --primary: #896b90;
-            --secondary: #6c5b7f;
-            --light-bg: #f8f7fa;
+            --primary: #FF8C42;
+            --secondary: #FFB366;
+            --accent: #90C695;
+            --light-bg: #fff8f0;
         }
 
         body {
@@ -50,12 +51,18 @@
 
         .logo-section i {
             font-size: 48px;
-            color: var(--primary);
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
             margin-bottom: 15px;
         }
 
         .logo-section h1 {
-            color: var(--primary);
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
             font-size: 28px;
             font-weight: 700;
             margin: 0;
@@ -72,7 +79,7 @@
         }
 
         .form-label {
-            color: var(--secondary);
+            color: #666;
             font-weight: 600;
             margin-bottom: 8px;
             font-size: 14px;
@@ -88,7 +95,7 @@
 
         .form-control:focus {
             border-color: var(--primary);
-            box-shadow: 0 0 0 0.2rem rgba(137, 107, 144, 0.25);
+            box-shadow: 0 0 0 0.2rem rgba(255, 140, 66, 0.25);
             outline: none;
         }
 
@@ -130,7 +137,7 @@
 
         .btn-login:hover {
             transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(137, 107, 144, 0.3);
+            box-shadow: 0 8px 20px rgba(255, 140, 66, 0.4);
             color: white;
         }
 
@@ -208,9 +215,9 @@
     <div class="login-container">
         <!-- Logo Section -->
         <div class="logo-section">
-            <i class="fas fa-stethoscope"></i>
-            <h1>FRCR Examiner</h1>
-            <p>Professional Exam Management</p>
+            <i class="fas fa-graduation-cap"></i>
+            <h1>FRCR Revision</h1>
+            <p>Your Path to Fellowship Success</p>
         </div>
 
         <!-- Alert Messages -->
