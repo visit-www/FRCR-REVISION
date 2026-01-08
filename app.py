@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session, send_file
 from flask_cors import CORS
 from flask_login import LoginManager, login_required, current_user
+from flask_migrate import Migrate
 from models import db, User, ExamSession, Packet, Case, Candidate, CaseImage, Question, Answer
 from auth import auth_bp
 from backup_routes import backup_bp
@@ -109,6 +110,9 @@ print(f"[SESSION] SECURE={app.config['SESSION_COOKIE_SECURE']}, HTTPONLY={app.co
 
 # Initialize database
 db.init_app(app)
+
+# Initialize Flask-Migrate for Alembic migrations
+migrate = Migrate(app, db)
 
 # Initialize Flask-Login
 login_manager = LoginManager()
