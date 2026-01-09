@@ -1,5 +1,10 @@
 {% extends "base.html" %}
 
+{% block head %}
+<!-- TinyMCE Rich Text Editor for table support -->
+<script src="https://cdn.tiny.cloud/1/no-api-key/tinymce/6/tinymce.min.js"></script>
+{% endblock %}
+
 {% block content %}
 <div class="row">
     <div class="col-12 px-2 px-md-5">
@@ -136,6 +141,9 @@
                     </h5>
                 </div>
                 <div class="card-body p-4">
+                    <div class="alert alert-info" role="alert">
+                        <i class="fas fa-lightbulb me-2"></i><strong>Rich Text Support:</strong> Answers support formatted text, tables, lists, and more. Use the editor toolbar to format your content.
+                    </div>
                     <div id="qaPairsContainer">
                         <p class="text-muted text-center py-5">Loading Q&A pairs...</p>
                     </div>
@@ -148,7 +156,7 @@
                 </div>
             </div>
 
-            <!-- Section 3: Discussion/Comments -->
+            <!-- Section 3: Discussion/Comments (comes after Q&A) -->
             <div class="card shadow-sm mb-5 border-0">
                 <div class="card-header bg-gradient text-white" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%);">
                     <h5 class="mb-0">
@@ -157,7 +165,10 @@
                 </div>
                 <div class="card-body p-4">
                     <label class="form-label fw-bold text-secondary mb-3">Add Detailed Notes</label>
-                    <textarea class="form-control form-control-lg" id="editCaseDiscussion" rows="6" placeholder="Add any discussion, clinical findings, differential diagnosis, teaching points, or additional comments about this case..."></textarea>
+                    <div class="alert alert-info" role="alert">
+                        <i class="fas fa-lightbulb me-2"></i><strong>Rich Text Support:</strong> Discussion supports formatted text, tables, lists, images, and more.
+                    </div>
+                    <textarea class="form-control form-control-lg rich-editor" id="editCaseDiscussion" rows="8" placeholder="Add any discussion, clinical findings, differential diagnosis, teaching points, or additional comments about this case..."></textarea>
                     <small class="text-muted d-block mt-2">Optional field for comprehensive case discussion</small>
                 </div>
             </div>
@@ -282,6 +293,43 @@
         background-attachment: fixed;
     }
 
+    /* Rich Text Editor styling */
+    .tox {
+        background-color: #ffffff !important;
+    }
+
+    .tox .tox-toolbar {
+        background-color: #f8f9fa !important;
+        border-color: #dee2e6 !important;
+    }
+
+    .tox .tox-tbtn {
+        color: #495057 !important;
+    }
+
+    .tox .tox-tbtn:hover,
+    .tox .tox-tbtn:focus {
+        background-color: #e9ecef !important;
+    }
+
+    .tox .tox-tbtn--enabled {
+        background-color: #667eea !important;
+        color: white !important;
+    }
+
+    .tox .tox-tinymce {
+        border: 1px solid #dee2e6 !important;
+        border-radius: 0.25rem !important;
+    }
+
+    .tox .tox-edit-area {
+        background-color: #ffffff !important;
+    }
+
+    .rich-editor {
+        display: none;
+    }
+
     /* Responsive adjustments */
     @media (max-width: 768px) {
         .col-12 {
@@ -301,17 +349,78 @@
             padding: 0.5rem 1rem;
             font-size: 0.95rem;
         }
+
+        .tox .tox-toolbar {
+            flex-wrap: wrap;
+        }
     }
 </style>
 
 <script src="/static/edit-case-modal.js"></script>
 <script>
+// Initialize TinyMCE for Discussion field
+function initializeDiscussionEditor() {
+    if (typeof tinymce === 'undefined') {
+        console.warn('TinyMCE not loaded yet, retrying in 500ms...');
+        setTimeout(initializeDiscussionEditor, 500);
+        return;
+    }
+    
+    tinymce.init({
+        selector: '#editCaseDiscussion',
+        height: 400,
+        menubar: 'edit view insert format tools',
+        toolbar: 'undo redo | blocks | bold italic underline strikethrough | numlist bullist indent outdent | table link image code removeformat',
+        plugins: 'table link image code',
+        table_advtab: false,
+        table_cell_advtab: false,
+        table_default_attributes: {
+            border: '1',
+            class: 'table table-sm table-bordered'
+        },
+        table_toolbar: 'tableprops tabledelete | tableinsertrowbefore tableinsertrowafter tabledeleterow | tableinsertcolbefore tableinsertcolafter tabledeletecol | tablemerge',
+        image_advtab: true,
+        link_assume_external_targets: true,
+        content_css: 'default',
+        skin: 'oxide',
+        content_style: `
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+                font-size: 14px;
+                line-height: 1.6;
+            }
+            table {
+                border-collapse: collapse;
+                width: 100%;
+                margin: 1rem 0;
+            }
+            th, td {
+                border: 1px solid #ddd;
+                padding: 8px;
+                text-align: left;
+            }
+            th {
+                background-color: #f8f9fa;
+                font-weight: 600;
+            }
+        `,
+        setup: function(editor) {
+            editor.on('change', function() {
+                tinymce.triggerSave();
+            });
+        }
+    });
+}
+
 // Load case data when page loads
 document.addEventListener('DOMContentLoaded', function() {
     const params = new URLSearchParams(window.location.search);
     const caseId = params.get('id');
     const isNew = params.get('new') === 'true';
     const packetId = params.get('packetId');
+    
+    // Initialize discussion editor
+    initializeDiscussionEditor();
     
     if (isNew && packetId) {
         // Initialize for creating a new case
@@ -365,7 +474,15 @@ function loadCaseForEdit(caseId) {
         // Populate form fields
         document.getElementById('editCaseNumber').value = caseData.case_number || '';
         document.getElementById('editCaseDiagnosis').value = caseData.diagnosis || '';
-        document.getElementById('editCaseDiscussion').value = caseData.discussion || '';
+        
+        // Populate discussion field
+        setTimeout(() => {
+            if (typeof tinymce !== 'undefined' && tinymce.get('editCaseDiscussion')) {
+                tinymce.get('editCaseDiscussion').setContent(caseData.discussion || '');
+            } else {
+                document.getElementById('editCaseDiscussion').value = caseData.discussion || '';
+            }
+        }, 500);
         
         // Populate FRCR categorization fields
         if (document.getElementById('editCaseModule')) {

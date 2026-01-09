@@ -66,10 +66,11 @@ function populateQAPairs(caseData) {
     }
 }
 
-// Add Q&A pair row (new or existing)
+// Add Q&A pair row (new or existing) with TinyMCE for answers
 function addQAPairRow(questionText = '', answerText = '') {
     const container = document.getElementById('qaPairsContainer');
     const pairNum = container.querySelectorAll('.qa-pair-row').length + 1;
+    const uniqueId = 'qa-answer-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
     
     const row = document.createElement('div');
     row.className = 'qa-pair-row p-3 mb-3 border rounded bg-light';
@@ -82,22 +83,90 @@ function addQAPairRow(questionText = '', answerText = '') {
         </div>
         <div class="row g-2">
             <div class="col-md-6">
-                <label class="form-label small text-info">Question</label>
+                <label class="form-label small text-info"><i class="fas fa-question-circle me-1"></i>Question</label>
                 <textarea class="form-control qa-question-text" rows="4" placeholder="Enter question">${escapeHtml(questionText)}</textarea>
+                <small class="text-muted d-block mt-1">Plain text question</small>
             </div>
             <div class="col-md-6">
-                <label class="form-label small text-success">Answer</label>
-                <textarea class="form-control qa-answer-text" rows="4" placeholder="Enter answer">${escapeHtml(answerText)}</textarea>
+                <label class="form-label small text-success"><i class="fas fa-edit me-1"></i>Answer (Rich Text)</label>
+                <textarea class="form-control qa-answer-text qa-rich-editor" id="${uniqueId}" data-qa-answer="true" placeholder="Enter answer with optional formatting, tables, lists...">${escapeHtml(answerText)}</textarea>
+                <small class="text-muted d-block mt-1">Supports tables, lists, formatting</small>
             </div>
         </div>
     `;
     
     container.appendChild(row);
+    
+    // Initialize TinyMCE for the answer field
+    initializeTinyMCE(uniqueId);
+}
+
+// Initialize TinyMCE editor for a specific field
+function initializeTinyMCE(elementId) {
+    if (typeof tinymce === 'undefined') {
+        console.error('TinyMCE is not loaded');
+        return;
+    }
+    
+    tinymce.init({
+        selector: '#' + elementId,
+        height: 300,
+        menubar: false,
+        toolbar: 'undo redo | blocks | bold italic underline strikethrough | numlist bullist indent outdent | table link image code removeformat',
+        plugins: 'table link image code',
+        table_advtab: false,
+        table_cell_advtab: false,
+        table_default_attributes: {
+            border: '1',
+            class: 'table table-sm table-bordered'
+        },
+        table_toolbar: 'tableprops tabledelete | tableinsertrowbefore tableinsertrowafter tabledeleterow | tableinsertcolbefore tableinsertcolafter tabledeletecol | tablemerge',
+        image_advtab: true,
+        link_assume_external_targets: true,
+        content_css: 'default',
+        skin: 'oxide',
+        content_style: `
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+                font-size: 14px;
+                line-height: 1.6;
+            }
+            table {
+                border-collapse: collapse;
+                width: 100%;
+                margin: 1rem 0;
+            }
+            th, td {
+                border: 1px solid #ddd;
+                padding: 8px;
+                text-align: left;
+            }
+            th {
+                background-color: #f8f9fa;
+                font-weight: 600;
+            }
+        `,
+        setup: function(editor) {
+            editor.on('change', function() {
+                tinymce.triggerSave();
+            });
+        }
+    });
 }
 
 // Remove Q&A pair row
 function removeQAPair(button) {
-    button.closest('.qa-pair-row').remove();
+    const row = button.closest('.qa-pair-row');
+    
+    // Destroy TinyMCE instances in this row before removing
+    const textareas = row.querySelectorAll('textarea.qa-rich-editor');
+    textareas.forEach(textarea => {
+        if (textarea.id && typeof tinymce !== 'undefined' && tinymce.get(textarea.id)) {
+            tinymce.get(textarea.id).remove();
+        }
+    });
+    
+    row.remove();
 }
 
 // Add new Q&A pair
@@ -353,11 +422,19 @@ function saveEditedCase() {
     const caseIdField = document.getElementById('editCaseId').value;
     const caseNumber = document.getElementById('editCaseNumber').value.trim();
     const diagnosis = document.getElementById('editCaseDiagnosis').value.trim();
-    const discussion = document.getElementById('editCaseDiscussion').value.trim();
+    
+    // Get discussion from TinyMCE or fallback to textarea
+    let discussion = '';
+    if (typeof tinymce !== 'undefined' && tinymce.get('editCaseDiscussion')) {
+        discussion = tinymce.get('editCaseDiscussion').getContent().trim();
+    } else {
+        discussion = document.getElementById('editCaseDiscussion').value.trim();
+    }
     
     // Get FRCR Revision fields
     const module = document.getElementById('editCaseModule')?.value || null;
     const bodyPart = document.getElementById('editCaseBodyPart')?.value || null;
+    const ageGroup = document.getElementById('editCaseAgeGroup')?.value || null;
     const isPublic = document.getElementById('editCaseIsPublic')?.checked || false;
     
     // Validate required fields
@@ -374,7 +451,15 @@ function saveEditedCase() {
     const pairs = [];
     document.querySelectorAll('.qa-pair-row').forEach((row, index) => {
         const questionText = row.querySelector('.qa-question-text').value.trim();
-        const answerText = row.querySelector('.qa-answer-text').value.trim();
+        let answerText = '';
+        
+        // Get answer from TinyMCE editor if available
+        const answerField = row.querySelector('.qa-answer-text');
+        if (answerField.id && typeof tinymce !== 'undefined' && tinymce.get(answerField.id)) {
+            answerText = tinymce.get(answerField.id).getContent().trim();
+        } else {
+            answerText = answerField.value.trim();
+        }
         
         // Only add pairs that have at least a question or answer
         if (questionText || answerText) {
@@ -392,6 +477,7 @@ function saveEditedCase() {
         discussion: discussion || null,
         module: module,
         body_part: bodyPart,
+        age_group: ageGroup,
         is_public: isPublic,
         pairs: pairs
     };
