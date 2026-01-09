@@ -21,11 +21,6 @@
             </button>
         </li>
         <li class="nav-item" role="presentation">
-            <button class="nav-link" id="cases-tab" data-bs-toggle="tab" data-bs-target="#cases-content" type="button" role="tab" aria-controls="cases-content" aria-selected="false">
-                <i class="fas fa-flask"></i> Case Management
-            </button>
-        </li>
-        <li class="nav-item" role="presentation">
             <button class="nav-link" id="backups-tab" data-bs-toggle="tab" data-bs-target="#backups-content" type="button" role="tab" aria-controls="backups-content" aria-selected="false">
                 <i class="fas fa-database"></i> Backup Management
             </button>
@@ -42,11 +37,6 @@
         <!-- User Management Tab -->
         <div class="tab-pane fade show active" id="users-content" role="tabpanel" aria-labelledby="users-tab">
             {% include 'user-management-tab.html' %}
-        </div>
-
-        <!-- Case Management Tab -->
-        <div class="tab-pane fade" id="cases-content" role="tabpanel" aria-labelledby="cases-tab">
-            {% include 'case-management-tab.html' %}
         </div>
 
         <!-- Backup Management Tab -->
@@ -288,7 +278,6 @@
                                 <a href="/admin" class="btn btn-primary btn-lg">
                                     <i class="fas fa-tasks"></i> Go to Case Management
                                 </a>
-                                <small style="color: #888; display: block; margin-top: 10px;">Switch to the "Case Management" tab to view pending cases and enrich them</small>
                             </div>
                         </div>
                     </div>
