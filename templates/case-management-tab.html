@@ -402,7 +402,10 @@
                     </td>
                     <td><small>${c.created_by_name || 'Unknown'}</small></td>
                     <td>
-                        <a href="#" class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); caseMgmt.deleteCase(${c.id}); return false;">
+                        <a href="#" class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); window.location.href='/edit-case?id=${c.id}'; return false;" title="Edit case">
+                            <i class="fas fa-edit"></i> Edit
+                        </a>
+                        <a href="#" class="btn btn-sm btn-outline-danger ms-2" onclick="event.stopPropagation(); caseMgmt.deleteCase(${c.id}); return false;" title="Delete case">
                             <i class="fas fa-trash"></i>
                         </a>
                     </td>
