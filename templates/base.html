@@ -53,12 +53,14 @@
                         </a>
                     </li>
                     
-                    <!-- Backup Manager -->
+                    <!-- Admin Dashboard (ADMIN ONLY) -->
+                    {% if current_user.is_admin %}
                     <li class="nav-item">
-                        <a class="nav-link" href="/admin" title="Database backup and restore">
-                            <i class="fas fa-database me-1"></i>Backup
+                        <a class="nav-link" href="/admin" title="Admin Dashboard - Backup & Database Management">
+                            <i class="fas fa-cog me-1"></i>Admin
                         </a>
                     </li>
+                    {% endif %}
                     
                     <!-- User Dropdown -->
                     <li class="nav-item dropdown">
