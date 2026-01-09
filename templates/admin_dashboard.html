@@ -30,6 +30,11 @@
                 <i class="fas fa-database"></i> Backup Management
             </button>
         </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="import-tab" data-bs-toggle="tab" data-bs-target="#import-content" type="button" role="tab" aria-controls="import-content" aria-selected="false">
+                <i class="fas fa-file-import"></i> Data Import
+            </button>
+        </li>
     </ul>
 
     <!-- Tab Content -->
@@ -160,6 +165,136 @@
                     <div id="backup-log" class="mt-4" style="background: #1f2229; padding: 15px; border-radius: 5px; font-family: monospace; font-size: 12px; color: #c8e6d9; max-height: 400px; overflow-y: auto;"></div>
                 </div>
             </div>
+        </div>
+    </div>
+
+        <!-- Data Import Tab -->
+        <div class="tab-pane fade" id="import-content" role="tabpanel" aria-labelledby="import-tab">
+            <h2 class="mb-5"><i class="fas fa-file-import"></i> Data Import from FRCR-Examiner</h2>
+
+            <!-- Import Instructions -->
+            <div class="row mb-5">
+                <div class="col-md-12">
+                    <div class="card" style="background: #f0f7ff; border-left: 4px solid #0066cc;">
+                        <div class="card-body">
+                            <h5 class="card-title"><i class="fas fa-info-circle"></i> Import Guide</h5>
+                            <ol class="mb-0">
+                                <li>Export a backup from FRCR-Examiner (JSON format)</li>
+                                <li>Upload the backup file below</li>
+                                <li>System will check for duplicate cases</li>
+                                <li>Review and resolve conflicts if any</li>
+                                <li>Enrich imported cases with module/body part/age group</li>
+                                <li>Approve and promote cases to production</li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- File Upload Section -->
+            <div class="row mb-5">
+                <div class="col-md-12">
+                    <div class="card" style="background: #2a2d35; border: 1px solid #3a3d45;">
+                        <div class="card-body">
+                            <h5 class="card-title" style="color: #8bb8d9;"><i class="fas fa-upload"></i> Upload Backup File</h5>
+                            
+                            <div class="mt-4">
+                                <label style="color: #c8e6d9;">Select FRCR-Examiner Backup File (JSON)</label>
+                                <div class="input-group input-group-lg mb-3">
+                                    <input type="file" id="backup-file-input" class="form-control" accept=".json,.zip" style="background: #353841; color: #c8e6d9; border-color: #4a4d55;">
+                                    <button class="btn btn-primary" onclick="checkDuplicates()">
+                                        <i class="fas fa-search"></i> Check for Duplicates
+                                    </button>
+                                </div>
+                                <small style="color: #888;">Supported formats: JSON backup export, ZIP archive</small>
+                            </div>
+
+                            <div id="import-status" class="mt-3" style="color: #c8e6d9;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Duplicate Check Results -->
+            <div class="row mb-5" id="duplicate-results" style="display: none;">
+                <div class="col-md-12">
+                    <div class="card" style="background: #2a2d35; border: 1px solid #3a3d45;">
+                        <div class="card-body">
+                            <h5 class="card-title" style="color: #8bb8d9;"><i class="fas fa-check-circle"></i> Duplicate Check Results</h5>
+                            
+                            <div class="row mt-4">
+                                <div class="col-md-4">
+                                    <div style="background: #353841; padding: 15px; border-radius: 5px; text-align: center; border-left: 3px solid #28a745;">
+                                        <h4 id="result-new-cases" style="color: #28a745; margin: 0;">-</h4>
+                                        <small style="color: #c8e6d9;">New Cases (Ready to Import)</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div style="background: #353841; padding: 15px; border-radius: 5px; text-align: center; border-left: 3px solid #ffc107;">
+                                        <h4 id="result-staging-duplicates" style="color: #ffc107; margin: 0;">-</h4>
+                                        <small style="color: #c8e6d9;">Staging Duplicates</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div style="background: #353841; padding: 15px; border-radius: 5px; text-align: center; border-left: 3px solid #dc3545;">
+                                        <h4 id="result-production-duplicates" style="color: #dc3545; margin: 0;">-</h4>
+                                        <small style="color: #c8e6d9;">Production Duplicates</small>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mt-4">
+                                <button class="btn btn-success btn-lg" onclick="importCases()">
+                                    <i class="fas fa-download"></i> Import Cases to Staging
+                                </button>
+                                <button class="btn btn-secondary btn-lg" onclick="resetImport()">
+                                    <i class="fas fa-times"></i> Clear Selection
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Import Progress -->
+            <div class="row mb-5" id="import-progress" style="display: none;">
+                <div class="col-md-12">
+                    <div class="card" style="background: #2a2d35; border: 1px solid #3a3d45;">
+                        <div class="card-body">
+                            <h5 class="card-title" style="color: #8bb8d9;"><i class="fas fa-spinner fa-spin"></i> Import in Progress</h5>
+                            <div class="progress mt-4" style="height: 30px;">
+                                <div id="import-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%;">
+                                    <span id="import-progress-text">0%</span>
+                                </div>
+                            </div>
+                            <p id="import-progress-message" style="color: #c8e6d9; margin-top: 15px;"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Enrichment Section -->
+            <div class="row mb-5" id="enrichment-section" style="display: none;">
+                <div class="col-md-12">
+                    <div class="card" style="background: #2a2d35; border: 1px solid #3a3d45;">
+                        <div class="card-body">
+                            <h5 class="card-title" style="color: #8bb8d9;"><i class="fas fa-magic"></i> Enrich Imported Cases</h5>
+                            
+                            <div class="alert alert-info mt-3" role="alert" style="background: #1a3a4a; border-color: #4a7a9a; color: #c8e6d9;">
+                                <i class="fas fa-lightbulb"></i> <strong>Next Step:</strong> Review and enrich the imported cases by adding FRCR Module, Body Part, and Age Group classification.
+                            </div>
+
+                            <div class="mt-4">
+                                <a href="/admin" class="btn btn-primary btn-lg">
+                                    <i class="fas fa-tasks"></i> Go to Case Management
+                                </a>
+                                <small style="color: #888; display: block; margin-top: 10px;">Switch to the "Case Management" tab to view pending cases and enrich them</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
 </div>
@@ -420,6 +555,116 @@
         }
     `;
     document.head.appendChild(style);
+
+    // ============ DATA IMPORT FUNCTIONS ============
+    
+    function checkDuplicates() {
+        const fileInput = document.getElementById('backup-file-input');
+        const file = fileInput.files[0];
+        
+        if (!file) {
+            showToast('Please select a file', 'error');
+            return;
+        }
+        
+        const statusDiv = document.getElementById('import-status');
+        statusDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking for duplicates...';
+        
+        const formData = new FormData();
+        formData.append('backup_file', file);
+        
+        fetch('/api/admin/enrichment/check-duplicates', {
+            method: 'POST',
+            body: formData
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success || data.new_cases !== undefined) {
+                // Show results
+                document.getElementById('result-new-cases').textContent = data.new_cases || 0;
+                document.getElementById('result-staging-duplicates').textContent = data.duplicates_in_staging || 0;
+                document.getElementById('result-production-duplicates').textContent = data.duplicates_in_production || 0;
+                document.getElementById('duplicate-results').style.display = 'block';
+                
+                statusDiv.innerHTML = '<span style="color: #28a745;"><i class="fas fa-check"></i> Duplicate check complete!</span>';
+                
+                // Store data for import
+                window.importData = data;
+            } else {
+                statusDiv.innerHTML = '<span style="color: #dc3545;"><i class="fas fa-exclamation"></i> Error: ' + (data.error || 'Unknown error') + '</span>';
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            statusDiv.innerHTML = '<span style="color: #dc3545;"><i class="fas fa-exclamation"></i> Error checking duplicates</span>';
+        });
+    }
+    
+    function importCases() {
+        if (!window.importData) {
+            showToast('Please check duplicates first', 'error');
+            return;
+        }
+        
+        const fileInput = document.getElementById('backup-file-input');
+        const file = fileInput.files[0];
+        
+        if (!file) {
+            showToast('File not found', 'error');
+            return;
+        }
+        
+        document.getElementById('duplicate-results').style.display = 'none';
+        document.getElementById('import-progress').style.display = 'block';
+        
+        const formData = new FormData();
+        formData.append('backup_file', file);
+        
+        fetch('/api/admin/enrichment/import', {
+            method: 'POST',
+            body: formData
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success || data.import_batch_id) {
+                updateProgressBar(100);
+                document.getElementById('import-progress-text').textContent = '100%';
+                document.getElementById('import-progress-message').innerHTML = 
+                    '<span style="color: #28a745;"><i class="fas fa-check-circle"></i> Import completed! ' + 
+                    (data.imported_count || 0) + ' cases imported to staging.</span>';
+                
+                setTimeout(() => {
+                    document.getElementById('import-progress').style.display = 'none';
+                    document.getElementById('enrichment-section').style.display = 'block';
+                    showToast('Cases imported successfully!', 'success');
+                }, 2000);
+            } else {
+                document.getElementById('import-progress-message').innerHTML = 
+                    '<span style="color: #dc3545;"><i class="fas fa-exclamation"></i> Error: ' + (data.error || 'Import failed') + '</span>';
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            document.getElementById('import-progress-message').innerHTML = 
+                '<span style="color: #dc3545;"><i class="fas fa-exclamation"></i> Error during import</span>';
+        });
+    }
+    
+    function updateProgressBar(percentage) {
+        const bar = document.getElementById('import-progress-bar');
+        bar.style.width = percentage + '%';
+        document.getElementById('import-progress-text').textContent = percentage + '%';
+    }
+    
+    function resetImport() {
+        document.getElementById('backup-file-input').value = '';
+        document.getElementById('import-status').innerHTML = '';
+        document.getElementById('duplicate-results').style.display = 'none';
+        document.getElementById('import-progress').style.display = 'none';
+        document.getElementById('enrichment-section').style.display = 'none';
+        window.importData = null;
+    }
+
 </script>
         </div>
     </div>
