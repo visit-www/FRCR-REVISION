@@ -1,0 +1,328 @@
+<!-- User Management Tab for Admin Dashboard -->
+<!-- Add this to templates/admin_dashboard.html in the tabcontent div -->
+
+<div id="userManagementTab" class="tab-pane admin-dashboard-container">
+    <div class="container-fluid py-4">
+        <h2><i class="fas fa-users"></i> User Management</h2>
+        
+        <!-- Search and Filters -->
+        <div class="card search-filter-card">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label fw-bold"><i class="fas fa-magnifying-glass" style="font-size: 0.95em; opacity: 0.85;"></i> Search</label>
+                    <div class="search-group">
+                        <div class="search-input-group">
+                            <input 
+                                type="text" 
+                                id="userSearch" 
+                                class="form-control rounded-4 me-1" 
+                                placeholder="Email or name..."
+                                title="Press Enter to search"
+                            >
+                            <button class="btn btn-clear-search rounded-start-3 " onclick="userMgmt.loadUsers()" title="Search users">
+                                <i class="fas fa-search "></i>
+                            </button>
+                        </div>
+                        <button id="clearSearchBtn" class="btn btn-clear-search" title="Clear search">
+                            <i class="fas fa-eraser"></i>
+                        </button>
+                    </div>
+                    <small class="text-muted d-block mt-1"><span class="golden-enter-key">⏎</span>Press Enter or click search. Click eraser (<i class="fas fa-eraser mt-1"></i>) to clear.</small>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold"><i class="fas fa-user-tag"></i> Role</label>
+                    <select id="userRoleFilter" class="form-select rounded-4" title="Filter by role (immediate)">
+                        <option value="">All Roles</option>
+                        <option value="student">Student</option>
+                        <option value="content_manager">Content Manager</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                    <small class="text-muted d-block mt-1">⚡ Filters apply instantly</small>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold"><i class="fas fa-credit-card"></i> Subscription</label>
+                    <select id="userSubscriptionFilter" class="form-select rounded-4" title="Filter by subscription (immediate)">
+                        <option value="">All Subscriptions</option>
+                        <option value="free">Free</option>
+                        <option value="paid">Paid</option>
+                        <option value="canceled">Canceled</option>
+                    </select>
+                    <small class="text-muted d-block mt-1">⚡ Filters apply instantly</small>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-bold rounded-4" style="opacity:0;">Space</label>
+                    <button id="resetFiltersBtn" class="btn btn-secondary w-100" title="Clear all filters">
+                        <i class="fas fa-redo"></i> Reset
+                    </button>
+    
+                </div>
+            </div>
+        </div>
+        
+        <!-- Users Table -->
+        <div class="card users-table-card">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th><i class="fas fa-envelope"></i> Email</th>
+                            <th><i class="fas fa-user"></i> Full Name</th>
+                            <th><i class="fas fa-user-tag"></i> Role</th>
+                            <th><i class="fas fa-credit-card"></i> Subscription</th>
+                            <th><i class="fas fa-check-circle"></i> Status</th>
+                            <th><i class="fas fa-cogs"></i> Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="userTableBody">
+                        <tr>
+                            <td colspan="6" class="text-center py-4">
+                                <div class="spinner-border" role="status" style="color: #e96304;">
+                                    <span class="sr-only">Loading...</span>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Pagination -->
+            <div class="pagination-footer">
+                <button id="prevPage" class="btn-pagination">
+                    <i class="fas fa-chevron-left"></i> Previous
+                </button>
+                <span class="page-info" id="pageInfo">Page 1 of 1</span>
+                <button id="nextPage" class="btn-pagination">
+                    Next <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- User Detail Modal -->
+<div id="userDetailModal" class="modal fade" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-user-circle"></i> User Details</h5>
+                <button id="closeUserModal" type="button" class="btn-close" aria-label="Close"></button>
+            </div>
+            <div id="userModalContent">
+                <!-- Content loaded dynamically -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="closeUserModal2" data-dismiss="modal">
+                    <i class="fas fa-times"></i> Close
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CSS for Modal and UI -->
+<style>
+    .modal.show {
+        display: block;
+        background: rgba(0, 0, 0, 0.5);
+    }
+    
+    .modal-backdrop {
+        display: none;
+    }
+    
+    .modal.show ~ .modal-backdrop {
+        display: block;
+    }
+    
+    /* User Details Section */
+    .modal-header-section {
+        border-bottom: 2px solid #007bff;
+        padding-bottom: 1rem;
+    }
+    
+    .modal-header-section h3 {
+        margin: 0;
+        color: #333;
+    }
+    
+    .modal-header-section .text-muted {
+        font-size: 0.9rem;
+        margin: 0.5rem 0;
+    }
+    
+    .modal-header-section small {
+        display: inline-block;
+        margin-top: 0.5rem;
+        font-size: 0.75rem;
+    }
+    
+    .user-details {
+        background: #f8f9fa;
+        padding: 1.5rem;
+        border-radius: 0.5rem;
+        border-left: 4px solid #007bff;
+    }
+    
+    .detail-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid #e9ecef;
+    }
+    
+    .detail-row:last-child {
+        border-bottom: none;
+    }
+    
+    .detail-row label {
+        font-weight: 600;
+        min-width: 150px;
+        color: #555;
+    }
+    
+    .detail-row span,
+    .detail-row select {
+        color: #333;
+    }
+    
+    .detail-row select {
+        padding: 0.375rem 0.75rem;
+        border: 1px solid #ced4da;
+        border-radius: 0.25rem;
+        min-width: 200px;
+    }
+    
+    /* Badges */
+    .badge {
+        display: inline-block;
+        padding: 0.4em 0.8em;
+        font-size: 0.8rem;
+        font-weight: 700;
+        line-height: 1;
+        text-align: center;
+        white-space: nowrap;
+        vertical-align: baseline;
+        border-radius: 0.35rem;
+    }
+    
+    .badge-danger { background-color: #dc3545; color: white; }
+    .badge-warning { background-color: #ffc107; color: black; }
+    .badge-info { background-color: #17a2b8; color: white; }
+    .badge-success { background-color: #28a745; color: white; }
+    .badge-secondary { background-color: #6c757d; color: white; }
+    .badge-light { background-color: #e2e3e5; color: black; }
+    
+    /* Actions Section */
+    .modal-actions {
+        margin-top: 2rem;
+        padding-top: 1.5rem;
+        border-top: 2px solid #eee;
+    }
+    
+    .btn-group-vertical {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .btn-group-vertical .btn {
+        text-align: left;
+        padding: 0.75rem 1rem;
+        margin-bottom: 0.5rem;
+        border-radius: 0.35rem;
+    }
+    
+    .btn-group-vertical .btn div {
+        margin: 0;
+    }
+    
+    .btn-group-vertical .btn small {
+        display: block;
+        opacity: 0.8;
+        margin-top: 0.25rem;
+    }
+    
+    /* Delete Options */
+    #deleteOptionsDiv {
+        background: #fff3cd;
+        border-left: 4px solid #ffc107;
+    }
+    
+    #deleteOptionsDiv h5 {
+        color: #856404;
+        margin-bottom: 0.5rem;
+    }
+    
+    #deleteOptionsDiv .text-muted {
+        color: #856404 !important;
+    }
+    
+    /* Table Styling */
+    .table-hover tbody tr:hover {
+        background-color: #f5f5f5;
+    }
+    
+    .opacity-50 {
+        opacity: 0.5;
+    }
+    
+    /* Alerts */
+    .alert {
+        padding: 1rem;
+        margin-bottom: 1rem;
+        border: 1px solid transparent;
+        border-radius: 0.35rem;
+    }
+    
+    .alert-success {
+        color: #155724;
+        background-color: #d4edda;
+        border-color: #c3e6cb;
+    }
+    
+    .alert-danger {
+        color: #721c24;
+        background-color: #f8d7da;
+        border-color: #f5c6cb;
+    }
+    
+    .alert-dismissible .close {
+        position: absolute;
+        right: 1rem;
+        top: 1rem;
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+    }
+    
+    /* Action Buttons */
+    .btn {
+        font-weight: 500;
+        transition: all 0.2s ease;
+    }
+    
+    .btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    }
+    
+    .btn-sm {
+        padding: 0.35rem 0.75rem;
+        font-size: 0.875rem;
+    }
+    
+    .btn-info {
+        background-color: #17a2b8;
+        border-color: #17a2b8;
+        color: white;
+    }
+    
+    .btn-info:hover {
+        background-color: #138496;
+        border-color: #117a8b;
+    }
+</style>
+
+<!-- Load user-management.js -->
+<script src="{{ url_for('static', filename='user-management.js') }}"></script>

@@ -6,6 +6,8 @@ from models import db, User, ExamSession, Packet, Case, Candidate, CaseImage, Qu
 from models import RevisionSession, RevisionHistory  # STUDENT REVISION: New models for balanced revision
 from auth import auth_bp
 from backup_routes import backup_bp
+from admin_routes import admin_bp
+from admin_enrichment_routes import enrichment_bp
 from datetime import datetime
 from sqlalchemy.pool import NullPool
 import os
@@ -192,6 +194,8 @@ with app.app_context():
 # Register blueprints
 app.register_blueprint(auth_bp)
 app.register_blueprint(backup_bp)
+app.register_blueprint(admin_bp)  # Sprint 2: Admin user management
+app.register_blueprint(enrichment_bp)  # Data migration: Import, enrich, promote cases
 
 
 @app.route('/')

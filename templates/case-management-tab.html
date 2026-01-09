@@ -1,0 +1,480 @@
+<!-- Case Management Tab for Admin Dashboard -->
+
+<div id="caseManagementTab" class="tab-pane admin-dashboard-container">
+    <div class="container-fluid py-4">
+        <h2><i class="fas fa-flask"></i> Case Management</h2>
+        
+        <!-- Create Case Form -->
+        <div class="card shadow-sm mb-5 border-0">
+            <div class="card-header bg-gradient text-white" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <h5 class="mb-0">
+                    <i class="fas fa-plus-circle me-2"></i>Create New Case
+                </h5>
+            </div>
+            <div class="card-body p-4">
+                <form id="createCaseForm">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-4">
+                                <label class="form-label fw-bold text-secondary">Case Diagnosis <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control form-control-lg" id="caseDiagnosis" placeholder="e.g., Pneumonia with complications" required>
+                                <small class="text-muted d-block mt-2">Primary diagnosis for this case</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-4">
+                                <label class="form-label fw-bold text-secondary">Case Number</label>
+                                <input type="number" class="form-control form-control-lg" id="caseNumber" placeholder="e.g., 001">
+                                <small class="text-muted d-block mt-2">Unique identifier for this case</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-4">
+                                <label class="form-label fw-bold text-secondary">
+                                    <i class="fas fa-layer-group me-1" style="color: #90C695;"></i>Module
+                                </label>
+                                <select class="form-select form-select-lg" id="caseModule">
+                                    <option value="">Select Module...</option>
+                                    <option value="GENERAL_RADIOGRAPHY">General Radiography</option>
+                                    <option value="FLUOROSCOPY">Fluoroscopy</option>
+                                    <option value="TOMOSYNTHESIS">Tomosynthesis</option>
+                                    <option value="CT">CT</option>
+                                    <option value="MRI">MRI</option>
+                                    <option value="ULTRASOUND">Ultrasound</option>
+                                    <option value="NUCLEAR">Nuclear Medicine</option>
+                                </select>
+                                <small class="text-muted d-block mt-2">FRCR examination module</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-4">
+                                <label class="form-label fw-bold text-secondary">
+                                    <i class="fas fa-user-injured me-1" style="color: #FF8C42;"></i>Body Part
+                                </label>
+                                <select class="form-select form-select-lg" id="caseBodyPart">
+                                    <option value="">Select Body Part...</option>
+                                    <option value="CHEST">Chest</option>
+                                    <option value="ABDOMEN">Abdomen</option>
+                                    <option value="PELVIS">Pelvis</option>
+                                    <option value="SPINE">Spine</option>
+                                    <option value="LIMBS">Limbs</option>
+                                    <option value="HEAD">Head</option>
+                                    <option value="NECK">Neck</option>
+                                    <option value="BREAST">Breast</option>
+                                </select>
+                                <small class="text-muted d-block mt-2">Anatomical region</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Discussion & Clinical Notes -->
+                    <div class="card shadow-sm mb-5 border-0">
+                        <div class="card-header bg-gradient text-white" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%);">
+                            <h5 class="mb-0">
+                                <i class="fas fa-sticky-note me-2"></i>Discussion & Clinical Notes
+                            </h5>
+                        </div>
+                        <div class="card-body p-4">
+                            <label class="form-label fw-bold text-secondary mb-3">Add Detailed Notes</label>
+                            <textarea class="form-control form-control-lg" id="caseDiscussion" rows="6" placeholder="Add any discussion, clinical findings, differential diagnosis, teaching points, or additional comments about this case..."></textarea>
+                            <small class="text-muted d-block mt-2">Optional field for comprehensive case discussion</small>
+                        </div>
+                    </div>
+
+                    <!-- Questions & Answers -->
+                    <div class="card shadow-sm mb-5 border-0">
+                        <div class="card-header bg-gradient text-white" style="background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);">
+                            <h5 class="mb-0">
+                                <i class="fas fa-comments me-2"></i>Questions & Answers
+                            </h5>
+                        </div>
+                        <div class="card-body p-4">
+                            <div id="questionAnswerPairs">
+                                <!-- Pairs will be added here dynamically -->
+                            </div>
+                            <div class="border-top pt-3 mt-3">
+                                <button type="button" class="btn btn-success w-100" id="addPairBtn">
+                                    <i class="fas fa-plus me-2"></i>Add Q&A Pair
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Public Visibility Toggle -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="caseIsPublic" style="width: 3rem; height: 1.5rem; cursor: pointer;">
+                                <label class="form-check-label ms-2 fw-bold text-secondary" for="caseIsPublic" style="cursor: pointer;">
+                                    <i class="fas fa-eye me-1" style="color: #90C695;"></i>
+                                    Make visible to students
+                                </label>
+                                <small class="text-muted d-block ms-5 ps-3 mt-1">Only public cases are visible in the student app</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="d-flex gap-2 justify-content-end">
+                        <button type="reset" class="btn btn-lg btn-outline-secondary">
+                            <i class="fas fa-redo me-2"></i>Clear Form
+                        </button>
+                        <button type="submit" class="btn btn-lg btn-primary" id="submitCaseBtn">
+                            <i class="fas fa-save me-2"></i>Create Case
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Cases List Section -->
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-gradient text-white" style="background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);">
+                <h5 class="mb-0">
+                    <i class="fas fa-list me-2"></i>Cases List
+                </h5>
+            </div>
+            <div class="card-body p-4">
+                <!-- Search and Filters -->
+                <div class="row mb-4">
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold"><i class="fas fa-magnifying-glass me-1"></i>Search</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-white">
+                                <i class="fas fa-search"></i>
+                            </span>
+                            <input type="text" id="caseSearch" class="form-control" placeholder="Search by diagnosis...">
+                            <button class="btn btn-secondary" onclick="caseMgmt.loadCases()">
+                                <i class="fas fa-search"></i> Go
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold"><i class="fas fa-filter me-1"></i>Module</label>
+                        <select id="caseModuleFilter" class="form-select">
+                            <option value="">All Modules</option>
+                            <option value="GENERAL_RADIOGRAPHY">General Radiography</option>
+                            <option value="FLUOROSCOPY">Fluoroscopy</option>
+                            <option value="TOMOSYNTHESIS">Tomosynthesis</option>
+                            <option value="CT">CT</option>
+                            <option value="MRI">MRI</option>
+                            <option value="ULTRASOUND">Ultrasound</option>
+                            <option value="NUCLEAR">Nuclear Medicine</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold"><i class="fas fa-body me-1"></i>Body Part</label>
+                        <select id="caseBodyPartFilter" class="form-select">
+                            <option value="">All Body Parts</option>
+                            <option value="CHEST">Chest</option>
+                            <option value="ABDOMEN">Abdomen</option>
+                            <option value="PELVIS">Pelvis</option>
+                            <option value="SPINE">Spine</option>
+                            <option value="LIMBS">Limbs</option>
+                            <option value="HEAD">Head</option>
+                            <option value="NECK">Neck</option>
+                            <option value="BREAST">Breast</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Cases Table -->
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead style="background-color: #f8f9fa;">
+                            <tr>
+                                <th style="width: 8%;">#</th>
+                                <th style="width: 35%;">Diagnosis</th>
+                                <th style="width: 20%;">Module</th>
+                                <th style="width: 15%;">Body Part</th>
+                                <th style="width: 12%;">Created By</th>
+                                <th style="width: 10%;"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="casesList">
+                            <tr>
+                                <td colspan="6" class="text-center text-muted py-4">Loading cases...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                <nav aria-label="Cases pagination" class="mt-4">
+                    <ul class="pagination justify-content-center" id="casesPagination">
+                        <!-- Pagination will be added here -->
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Case Management Module
+    const caseMgmt = {
+        currentPage: 1,
+        currentSearch: '',
+        currentModuleFilter: '',
+        currentBodyPartFilter: '',
+
+        init() {
+            this.loadCases();
+            this.setupEventListeners();
+            this.addInitialPair();
+        },
+
+        setupEventListeners() {
+            // Form submission
+            document.getElementById('createCaseForm').addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.submitCase();
+            });
+
+            // Add pair button
+            document.getElementById('addPairBtn').addEventListener('click', () => {
+                this.addPairRow();
+            });
+
+            // Filters
+            document.getElementById('caseSearch').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') this.loadCases();
+            });
+            document.getElementById('caseModuleFilter').addEventListener('change', () => this.loadCases());
+            document.getElementById('caseBodyPartFilter').addEventListener('change', () => this.loadCases());
+        },
+
+        addInitialPair() {
+            const container = document.getElementById('questionAnswerPairs');
+            if (container.children.length === 0) {
+                this.addPairRow();
+            }
+        },
+
+        addPairRow() {
+            const container = document.getElementById('questionAnswerPairs');
+            const pairCount = container.children.length + 1;
+            
+            const pairHtml = `
+                <div class="pair-row mb-3 p-4" style="background-color: #f8f9fa; border-left: 5px solid #764ba2; border-radius: 4px;">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-secondary">Question ${pairCount}</label>
+                            <textarea class="form-control pair-question" rows="4" placeholder="Enter question text..." style="min-height: 120px;"></textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-secondary">Answer ${pairCount}</label>
+                            <textarea class="form-control pair-answer" rows="4" placeholder="Enter answer text..." style="min-height: 120px;"></textarea>
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-danger mt-3" onclick="caseMgmt.removePairRow(this)">
+                        <i class="fas fa-trash me-1"></i> Remove Pair
+                    </button>
+                </div>
+            `;
+            
+            container.insertAdjacentHTML('beforeend', pairHtml);
+        },
+
+        removePairRow(btn) {
+            btn.closest('.pair-row').remove();
+        },
+
+        async submitCase() {
+            const diagnosis = document.getElementById('caseDiagnosis').value.trim();
+            
+            if (!diagnosis) {
+                this.showToast('Please enter a diagnosis', 'error');
+                return;
+            }
+
+            const pairs = [];
+            document.querySelectorAll('.pair-row').forEach(row => {
+                const question = row.querySelector('.pair-question').value.trim();
+                const answer = row.querySelector('.pair-answer').value.trim();
+                
+                if (question || answer) {
+                    pairs.push({
+                        question_text: question || '',
+                        answer_text: answer || ''
+                    });
+                }
+            });
+
+            const caseData = {
+                diagnosis: diagnosis,
+                case_number: document.getElementById('caseNumber').value || undefined,
+                module: document.getElementById('caseModule').value || undefined,
+                body_part: document.getElementById('caseBodyPart').value || undefined,
+                discussion: document.getElementById('caseDiscussion').value.trim(),
+                is_public: document.getElementById('caseIsPublic').checked,
+                pairs: pairs
+            };
+
+            try {
+                document.getElementById('submitCaseBtn').disabled = true;
+                document.getElementById('submitCaseBtn').innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating...';
+
+                const response = await fetch('/api/case/create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(caseData)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    this.showToast('Case created successfully!', 'success');
+                    document.getElementById('createCaseForm').reset();
+                    document.getElementById('questionAnswerPairs').innerHTML = '';
+                    this.addInitialPair();
+                    this.loadCases();
+                } else {
+                    this.showToast(result.error || 'Failed to create case', 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                this.showToast('Error creating case: ' + error.message, 'error');
+            } finally {
+                document.getElementById('submitCaseBtn').disabled = false;
+                document.getElementById('submitCaseBtn').innerHTML = '<i class="fas fa-save"></i> Create Case';
+            }
+        },
+
+        async loadCases() {
+            this.currentPage = 1;
+            this.currentSearch = document.getElementById('caseSearch').value.trim();
+            this.currentModuleFilter = document.getElementById('caseModuleFilter').value;
+            this.currentBodyPartFilter = document.getElementById('caseBodyPartFilter').value;
+
+            const params = new URLSearchParams({
+                page: this.currentPage,
+                per_page: 10,
+                search: this.currentSearch,
+                module: this.currentModuleFilter,
+                body_part: this.currentBodyPartFilter
+            });
+
+            try {
+                const response = await fetch(`/api/admin/cases?${params}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    this.renderCasesList(data.cases);
+                    this.renderPagination(data.total, data.pages);
+                } else {
+                    document.getElementById('casesList').innerHTML = 
+                        '<tr><td colspan="7" class="text-center text-muted">Error loading cases</td></tr>';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('casesList').innerHTML = 
+                    '<tr><td colspan="7" class="text-center text-muted">Error loading cases</td></tr>';
+            }
+        },
+
+        renderCasesList(cases) {
+            const tbody = document.getElementById('casesList');
+            
+            if (cases.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-5"><i class="fas fa-folder-open fa-3x mb-3 d-block" style="opacity: 0.3;"></i><p class="mb-0">No cases found matching your criteria</p><small>Try adjusting your filters or search term</small></td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = cases.map(c => `
+                <tr class="case-row" style="cursor: pointer;" onclick="caseMgmt.viewCase(${c.id})">
+                    <td class="fw-bold text-muted">#${c.id}</td>
+                    <td>
+                        <div class="fw-bold">${c.diagnosis}</div>
+                    </td>
+                    <td>
+                        <span class="badge" style="background-color: #a8d5ba;">
+                            ${c.module ? c.module.replace(/_/g, ' ') : '-'}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="badge bg-light text-dark">
+                            ${c.body_part ? c.body_part.replace(/_/g, ' ') : '-'}
+                        </span>
+                    </td>
+                    <td><small>${c.created_by_name || 'Unknown'}</small></td>
+                    <td>
+                        <a href="#" class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); caseMgmt.deleteCase(${c.id}); return false;">
+                            <i class="fas fa-trash"></i>
+                        </a>
+                    </td>
+                </tr>
+            `).join('');
+        },
+
+        renderPagination(total, pages) {
+            const pagination = document.getElementById('casesPagination');
+            if (pages <= 1) {
+                pagination.innerHTML = '';
+                return;
+            }
+
+            let html = '';
+            for (let i = 1; i <= pages; i++) {
+                html += `
+                    <li class="page-item ${i === this.currentPage ? 'active' : ''}">
+                        <a class="page-link" href="#" onclick="caseMgmt.goToPage(${i}); return false;">
+                            ${i}
+                        </a>
+                    </li>
+                `;
+            }
+
+            pagination.innerHTML = html;
+        },
+
+        goToPage(page) {
+            this.currentPage = page;
+            this.loadCases();
+        },
+
+        viewCase(caseId) {
+            window.location.href = `/view-case/${caseId}`;
+        },
+
+        async deleteCase(caseId) {
+            if (!confirm('Are you sure you want to delete this case?')) return;
+
+            try {
+                const response = await fetch(`/api/admin/cases/${caseId}`, { method: 'DELETE' });
+                const result = await response.json();
+
+                if (result.success) {
+                    this.showToast('Case deleted successfully', 'success');
+                    this.loadCases();
+                } else {
+                    this.showToast(result.error || 'Failed to delete case', 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                this.showToast('Error deleting case', 'error');
+            }
+        },
+
+        showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            toast.className = `alert alert-${type === 'error' ? 'danger' : type} alert-dismissible fade show`;
+            toast.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+            toast.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            document.body.appendChild(toast);
+
+            setTimeout(() => toast.remove(), 5000);
+        }
+    };
+
+    // Initialize when tab is visible
+    document.addEventListener('DOMContentLoaded', () => {
+        caseMgmt.init();
+    });
+</script>

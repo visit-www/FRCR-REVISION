@@ -463,3 +463,79 @@ class RevisionHistory(db.Model):
     
     def __repr__(self):
         return f'<RevisionHistory User:{self.user_id} Case:{self.case_id} Module:{self.module.value} Seen:{self.times_seen}x>'
+
+
+# ==================== DATA IMPORT & ENRICHMENT MODELS ====================
+# These models support importing cases from external sources (e.g., FRCR-Examiner)
+# and enriching them with metadata before promoting to production
+
+class ImportedCaseStaging(db.Model):
+    """
+    Temporary storage for cases being imported and enriched.
+    Cases move to production (Case model) after admin approval.
+    Supports duplicate detection and conflict resolution.
+    """
+    __tablename__ = 'imported_case_staging'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    
+    # ===== RAW DATA FROM IMPORT =====
+    original_id = db.Column(db.Integer, nullable=True, index=True)  # ID from source system
+    case_number = db.Column(db.Integer, nullable=True)
+    diagnosis = db.Column(db.Text, nullable=False)
+    questions = db.Column(db.Text, nullable=False)
+    answers = db.Column(db.Text, nullable=False)
+    discussion = db.Column(db.Text, nullable=True)
+    
+    # ===== ENRICHED METADATA (Admin-added) =====
+    module = db.Column(db.Enum(FRCRModule), nullable=True, index=True)
+    body_part = db.Column(db.Enum(BodyPart), nullable=True, index=True)
+    age_group = db.Column(db.Enum(AgeGroup), nullable=True, index=True)
+    is_public = db.Column(db.Boolean, default=False, index=True)
+    
+    # ===== ENRICHMENT TRACKING =====
+    enrichment_status = db.Column(
+        db.String(20),
+        default='pending',
+        index=True
+    )  # pending, in_progress, enriched, rejected, promoted
+    
+    enriched_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    enriched_at = db.Column(db.DateTime, nullable=True)
+    enrichment_notes = db.Column(db.Text, nullable=True)
+    
+    # ===== APPROVAL WORKFLOW =====
+    approved_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    approved_at = db.Column(db.DateTime, nullable=True)
+    approval_notes = db.Column(db.Text, nullable=True)
+    
+    # ===== DUPLICATE & PROMOTION TRACKING =====
+    promoted_to_case_id = db.Column(db.Integer, db.ForeignKey('case.id'), nullable=True, index=True)
+    promoted_at = db.Column(db.DateTime, nullable=True)
+    
+    # Tracks previous versions if re-imported
+    previous_staging_id = db.Column(db.Integer, db.ForeignKey('imported_case_staging.id'), nullable=True)
+    is_replacement = db.Column(db.Boolean, default=False)  # TRUE if updating previous import
+    
+    # ===== IMPORT TRACKING =====
+    import_batch_id = db.Column(db.String(50), nullable=False, index=True)  # UUID for batch
+    source_system = db.Column(db.String(50), default='frcr_examiner', index=True)
+    import_timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    enriched_by = db.relationship('User', foreign_keys=[enriched_by_user_id])
+    approved_by = db.relationship('User', foreign_keys=[approved_by_user_id])
+    promoted_to_case = db.relationship('Case', foreign_keys=[promoted_to_case_id])
+    previous_staging = db.relationship('ImportedCaseStaging', remote_side=[id], foreign_keys=[previous_staging_id])
+    
+    # Indexes for efficient duplicate detection
+    __table_args__ = (
+        db.Index('idx_original_id_batch', 'source_system', 'original_id', 'import_batch_id'),
+        db.Index('idx_promoted_case', 'promoted_to_case_id'),
+        db.Index('idx_enrichment_status', 'enrichment_status'),
+    )
+    
+    def __repr__(self):
+        return f'<ImportedCaseStaging {self.case_number} Status:{self.enrichment_status}>'

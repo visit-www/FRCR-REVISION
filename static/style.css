@@ -2045,3 +2045,692 @@ pre {
 .start-exam-page .alert-warning .btn-primary {
     background: linear-gradient(135deg, #5c7d9e 0%, #4a6b85 100%);
 }
+/* ============================================================================ */
+/* ADMIN DASHBOARD - "Confident Calm" Theme Styling */
+/* ============================================================================ */
+
+/* Admin Dashboard Container */
+.admin-dashboard-container {
+    padding: 2rem 0;
+}
+
+/* Breadcrumb Admin Styling */
+.admin-dashboard-container .breadcrumb {
+    background: linear-gradient(90deg, #fdfdfb 0%, #f8f8f6 100%);
+    border-bottom: 2px solid #a8d5ba;
+    padding: 1rem 0 1.5rem 0;
+}
+
+.admin-dashboard-container .breadcrumb-item a {
+    color: #e96304;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    text-decoration: none;
+}
+
+.admin-dashboard-container .breadcrumb-item a:hover {
+    color: #c75002;
+    text-decoration: underline;
+}
+
+.admin-dashboard-container .breadcrumb-item.active {
+    color: #5a6270;
+    font-weight: 600;
+}
+
+/* Admin Title & Heading */
+.admin-dashboard-container h1 {
+    color: #2c2c2c;
+    font-weight: 700;
+    margin-bottom: 2rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.admin-dashboard-container h1 i {
+    color: #e96304;
+    font-size: 1.8rem;
+}
+
+.admin-dashboard-container h2 {
+    color: #3a424e;
+    font-weight: 700;
+    margin-bottom: 1.5rem;
+}
+
+/* Tab Navigation - Pill Shaped with Green Gradient */
+.admin-dashboard-container .nav-tabs {
+    border-bottom: none;
+    gap: 1rem;
+    background: transparent;
+}
+
+.admin-dashboard-container .nav-tabs .nav-item {
+    margin-bottom: 0;
+}
+
+.admin-dashboard-container .nav-tabs .nav-link {
+    color: #5a6270;
+    font-weight: 600;
+    border: 2px solid #a8d5ba;
+    border-bottom: 2px solid #a8d5ba;
+    padding: 0.75rem 1.5rem;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    border-radius: 50px;
+    background-color: #f5f5f3;
+}
+
+.admin-dashboard-container .nav-tabs .nav-link i {
+    color: #8bc9a3;
+    font-size: 1.1rem;
+}
+
+.admin-dashboard-container .nav-tabs .nav-link:hover {
+    color: #8bc9a3;
+    background-color: #e8f1ed;
+    border-color: #8bc9a3;
+    transform: translateY(-2px);
+}
+
+.admin-dashboard-container .nav-tabs .nav-link.active {
+    color: white;
+    background: linear-gradient(135deg, #a8d5ba 0%, #8bc9a3 100%);
+    border-color: #6b9080;
+    box-shadow: 0 4px 12px rgba(168, 213, 186, 0.4);
+    transform: translateY(-2px);
+}
+
+/* Search & Filter Card */
+.admin-dashboard-container .search-filter-card {
+    background: linear-gradient(135deg, #fdfdfb 0%, #f8f8f6 100%);
+    border: 1px solid #a8d5ba;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.admin-dashboard-container .search-filter-card .form-control,
+.admin-dashboard-container .search-filter-card .form-select {
+    border: 2px solid #c5cad1;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    padding: 0.75rem 1rem;
+    transition: all 0.2s ease;
+}
+
+.admin-dashboard-container .search-filter-card .form-control:focus,
+.admin-dashboard-container .search-filter-card .form-select:focus {
+    border-color: #e96304;
+    box-shadow: 0 0 0 3px rgba(233, 99, 4, 0.1);
+}
+
+.admin-dashboard-container .search-filter-card .form-control::placeholder {
+    color: #8b94a3;
+}
+
+/* Input Group for search */
+.admin-dashboard-container .input-group {
+    display: flex;
+    gap: 0;
+}
+
+.admin-dashboard-container .search-group {
+    display: flex;
+    gap: 0.5rem;
+    align-items: stretch;
+}
+
+.admin-dashboard-container .search-input-group {
+    display: flex;
+    gap: 0;
+    flex: 1;
+}
+
+.admin-dashboard-container .search-input-group .form-control {
+    border-right: none;
+    border-radius: 8px 0 0 8px;
+    border: 2px solid #c5cad1;
+}
+
+.admin-dashboard-container .search-input-group .form-control:focus {
+    border-color: #e96304;
+    box-shadow: none;
+}
+
+.admin-dashboard-container .search-input-group .btn-search {
+    border-radius: 0 8px 8px 0;
+    padding: 0.75rem 1rem;
+    border: 2px solid #e96304;
+    border-left: none;
+    background: linear-gradient(135deg, #e96304 0%, #c75002 100%);
+    color: white;
+    transition: all 0.2s ease;
+}
+
+.admin-dashboard-container .search-input-group .btn-search:hover {
+    background: linear-gradient(135deg, #c75002 0%, #a64001 100%);
+    box-shadow: 0 2px 8px rgba(233, 99, 4, 0.3);
+}
+
+.admin-dashboard-container .search-input-group .btn-search i {
+    font-size: 1.1rem;
+}
+
+.admin-dashboard-container .btn-clear-search {
+    border: 2px solid #c5cad1;
+    border-radius: 8px;
+    padding: 0.75rem 0.85rem;
+    color: #5a6270;
+    background-color: white;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.admin-dashboard-container .btn-clear-search:hover {
+    background-color: #f5f5f3;
+    border-color: #8b94a3;
+    color: #e96304;
+    box-shadow: 0 2px 8px rgba(233, 99, 4, 0.2);
+}
+
+.admin-dashboard-container .btn-clear-search i {
+    font-size: 1.2rem;
+}
+
+/* Search filter card helper text */
+.admin-dashboard-container .search-filter-card small {
+    font-size: 0.8rem;
+}
+
+
+
+/* Search Button - Brand Color */
+.admin-dashboard-container .btn-search {
+    background: linear-gradient(135deg, #e96304 0%, #c75002 100%);
+    border: none;
+    color: white;
+    font-weight: 600;
+    border-radius: 8px;
+    padding: 0.75rem 1.5rem;
+    transition: all 0.3s ease;
+}
+
+.admin-dashboard-container .btn-search:hover {
+    background: linear-gradient(135deg, #c75002 0%, #a64001 100%);
+    box-shadow: 0 4px 12px rgba(233, 99, 4, 0.3);
+    transform: translateY(-2px);
+}
+
+/* Users Table Card */
+.admin-dashboard-container .users-table-card {
+    background: white;
+    border: 1px solid #c5cad1;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    overflow: hidden;
+}
+
+.admin-dashboard-container .table {
+    margin-bottom: 0;
+}
+
+.admin-dashboard-container .table thead {
+    background: linear-gradient(135deg, #e96304 0%, #c75002 100%);
+    color: white;
+}
+
+.admin-dashboard-container .table thead th {
+    font-weight: 700;
+    border: none;
+    padding: 1rem 0.75rem;
+    text-align: left;
+    font-size: 0.95rem;
+}
+
+.admin-dashboard-container .table tbody tr {
+    border-bottom: 1px solid #e0e0e0;
+    transition: all 0.2s ease;
+}
+
+.admin-dashboard-container .table tbody tr:hover {
+    background-color: #f9f9f8;
+    box-shadow: inset 0 0 5px rgba(233, 99, 4, 0.05);
+}
+
+.admin-dashboard-container .table tbody td {
+    padding: 1rem 0.75rem;
+    vertical-align: middle;
+    color: #3a424e;
+}
+
+/* Badge Styling */
+.admin-dashboard-container .badge {
+    font-weight: 600;
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
+}
+
+.admin-dashboard-container .badge-admin {
+    background: linear-gradient(135deg, #e96304 0%, #c75002 100%);
+    color: white;
+}
+
+.admin-dashboard-container .badge-content_manager {
+    background: linear-gradient(135deg, #ffc107 0%, #ffcd39 100%);
+    color: #333;
+}
+
+.admin-dashboard-container .badge-student {
+    background: linear-gradient(135deg, #a8d5ba 0%, #8bc9a3 100%);
+    color: #2c2c2c;
+}
+
+.admin-dashboard-container .badge-paid {
+    background: linear-gradient(135deg, #a8d5ba 0%, #8bc9a3 100%);
+    color: white;
+}
+
+.admin-dashboard-container .badge-free {
+    background: #c5cad1;
+    color: #3a424e;
+}
+
+.admin-dashboard-container .badge-canceled {
+    background: #6c757d;
+    color: white;
+}
+
+/* Action Buttons in Table */
+.admin-dashboard-container .action-buttons {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.admin-dashboard-container .btn-view,
+.admin-dashboard-container .btn-edit {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.85rem;
+    border-radius: 6px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    border: none;
+}
+
+.admin-dashboard-container .btn-view {
+    background-color: #5a6270;
+    color: white;
+}
+
+.admin-dashboard-container .btn-view:hover {
+    background-color: #3a424e;
+    transform: translateY(-2px);
+    box-shadow: 0 2px 8px rgba(90, 98, 112, 0.3);
+}
+
+.admin-dashboard-container .btn-edit {
+    background: linear-gradient(135deg, #ffc107 0%, #ffcd39 100%);
+    color: #333;
+}
+
+.admin-dashboard-container .btn-edit:hover {
+    background: linear-gradient(135deg, #ffcd39 0%, #ffb302 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 2px 8px rgba(255, 193, 7, 0.3);
+}
+
+/* Pagination */
+.admin-dashboard-container .pagination-footer {
+    background: #f5f5f3;
+    border-top: 1px solid #c5cad1;
+    padding: 1rem 0.75rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.admin-dashboard-container .btn-pagination {
+    background: #5a6270;
+    color: white;
+    border: none;
+    padding: 0.5rem 1.2rem;
+    border-radius: 6px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.admin-dashboard-container .btn-pagination:hover:not(:disabled) {
+    background: #e96304;
+    transform: translateY(-2px);
+    box-shadow: 0 2px 8px rgba(233, 99, 4, 0.3);
+}
+
+.admin-dashboard-container .btn-pagination:disabled {
+    background: #c5cad1;
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.admin-dashboard-container .page-info {
+    color: #5a6270;
+    font-weight: 600;
+}
+
+/* ============================================================================ */
+/* MODAL - User Detail/Edit Modal */
+/* ============================================================================ */
+
+.modal-content {
+    border: 1px solid #a8d5ba;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.modal-header {
+    background: linear-gradient(135deg, #e96304 0%, #c75002 100%);
+    color: white;
+    border: none;
+    border-radius: 12px 12px 0 0;
+    padding: 1.5rem;
+}
+
+.modal-header .modal-title {
+    font-weight: 700;
+    font-size: 1.3rem;
+}
+
+.modal-body {
+    padding: 2rem;
+    background: #fdfdfb;
+}
+
+.modal-footer {
+    background: #f5f5f3;
+    border-top: 1px solid #c5cad1;
+    border-radius: 0 0 12px 12px;
+    padding: 1rem 2rem;
+}
+
+/* User Detail Header */
+.user-detail-header {
+    background: linear-gradient(135deg, #ffc107 0%, #ffcd39 100%);
+    padding: 1.5rem;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+}
+
+.user-detail-header h3 {
+    color: #2c2c2c;
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+}
+
+.user-detail-header p {
+    color: #5a6270;
+    margin-bottom: 0.5rem;
+}
+
+.user-detail-header .mode-indicator {
+    display: inline-block;
+    background: rgba(255, 255, 255, 0.7);
+    padding: 0.25rem 0.75rem;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #e96304;
+}
+
+/* Detail Rows */
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.detail-row:last-child {
+    border-bottom: none;
+}
+
+.detail-row label {
+    font-weight: 700;
+    color: #5a6270;
+    min-width: 120px;
+}
+
+.detail-row span,
+.detail-row select {
+    color: #2c2c2c;
+    font-weight: 500;
+}
+
+.detail-row select.form-select {
+    border: 2px solid #e96304;
+    border-radius: 6px;
+    padding: 0.5rem 0.75rem;
+    background: linear-gradient(to right, white 0%, white calc(100% - 2rem), #e96304 calc(100% - 2rem));
+    color: #2c2c2c;
+}
+
+.detail-row select.form-select:focus {
+    border-color: #c75002;
+    box-shadow: 0 0 0 3px rgba(233, 99, 4, 0.1);
+}
+
+/* Modal Action Buttons */
+.modal-actions {
+    padding-top: 1.5rem;
+    border-top: 2px solid #e0e0e0;
+}
+
+.modal-actions .btn {
+    padding: 0.75rem 1.5rem;
+    font-weight: 600;
+    border: none;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    gap: 0.5rem;
+}
+
+.modal-actions .btn-edit {
+    background: linear-gradient(135deg, #ffc107 0%, #ffcd39 100%);
+    color: #333;
+}
+
+.modal-actions .btn-edit:hover {
+    background: linear-gradient(135deg, #ffcd39 0%, #ffb302 100%);
+    box-shadow: 0 4px 12px rgba(255, 193, 7, 0.3);
+}
+
+.modal-actions .btn-delete {
+    background: linear-gradient(135deg, #e89580 0%, #d97d66 100%);
+    color: white;
+}
+
+.modal-actions .btn-delete:hover {
+    background: linear-gradient(135deg, #d97d66 0%, #c86850 100%);
+    box-shadow: 0 4px 12px rgba(232, 149, 128, 0.3);
+}
+
+.modal-actions .btn-success {
+    background: linear-gradient(135deg, #a8d5ba 0%, #8bc9a3 100%);
+    color: white;
+}
+
+.modal-actions .btn-success:hover {
+    background: linear-gradient(135deg, #8bc9a3 0%, #7abc95 100%);
+    box-shadow: 0 4px 12px rgba(168, 213, 186, 0.3);
+}
+
+.modal-actions .btn-secondary {
+    background: #6c757d;
+    color: white;
+}
+
+.modal-actions .btn-secondary:hover {
+    background: #5a6270;
+    box-shadow: 0 4px 12px rgba(108, 117, 125, 0.3);
+}
+
+/* Delete Options Section */
+.delete-options-section {
+    background: linear-gradient(135deg, #f9ede8 0%, #f8ebe7 100%);
+    border: 2px solid #e89580;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-top: 1.5rem;
+}
+
+.delete-options-section h5 {
+    color: #e89580;
+    font-weight: 700;
+    margin-bottom: 0.75rem;
+}
+
+.delete-options-section p {
+    color: #5a6270;
+    margin-bottom: 1rem;
+}
+
+.delete-option-button {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+    border: 2px solid transparent;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.delete-option-button.soft-delete {
+    background: linear-gradient(135deg, #ffc107 0%, #ffcd39 100%);
+    color: #333;
+    border-color: #ffb302;
+}
+
+.delete-option-button.soft-delete:hover {
+    background: linear-gradient(135deg, #ffcd39 0%, #ffb302 100%);
+    box-shadow: 0 4px 12px rgba(255, 193, 7, 0.3);
+    transform: translateY(-2px);
+}
+
+.delete-option-button.permanent-delete {
+    background: linear-gradient(135deg, #e89580 0%, #d97d66 100%);
+    color: white;
+    border-color: #d97d66;
+}
+
+.delete-option-button.permanent-delete:hover {
+    background: linear-gradient(135deg, #d97d66 0%, #c86850 100%);
+    box-shadow: 0 4px 12px rgba(232, 149, 128, 0.3);
+    transform: translateY(-2px);
+}
+
+.delete-option-button .btn-title {
+    display: block;
+    font-size: 1rem;
+    margin-bottom: 0.25rem;
+}
+
+.delete-option-button .btn-description {
+    display: block;
+    font-size: 0.85rem;
+    opacity: 0.9;
+    font-weight: 400;
+}
+
+/* Soft Delete Info */
+.soft-delete-info {
+    background: #f5f5f3;
+    border-left: 4px solid #a8d5ba;
+    padding: 1rem;
+    border-radius: 4px;
+    margin-top: 1rem;
+}
+
+.soft-delete-info strong {
+    color: #5a6270;
+    font-weight: 700;
+}
+
+.soft-delete-info small {
+    color: #8b94a3;
+    display: block;
+    margin-top: 0.25rem;
+}
+
+/* Restore Button */
+.btn-restore {
+    background: linear-gradient(135deg, #a8d5ba 0%, #8bc9a3 100%);
+    color: white;
+    font-weight: 600;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.btn-restore:hover {
+    background: linear-gradient(135deg, #8bc9a3 0%, #7abc95 100%);
+    box-shadow: 0 4px 12px rgba(168, 213, 186, 0.3);
+    transform: translateY(-2px);
+}
+
+/* Alerts */
+.admin-dashboard-container .alert {
+    border-radius: 8px;
+    border: none;
+    padding: 1rem 1.5rem;
+    font-weight: 500;
+}
+
+.admin-dashboard-container .alert-success {
+    background: linear-gradient(135deg, #a8d5ba 0%, #8bc9a3 100%);
+    color: white;
+}
+
+.admin-dashboard-container .alert-danger {
+    background: linear-gradient(135deg, #e89580 0%, #d97d66 100%);
+    color: white;
+}
+
+.admin-dashboard-container .alert-warning {
+    background: linear-gradient(135deg, #ffc107 0%, #ffcd39 100%);
+    color: #333;
+}
+
+/* Status Active/Inactive */
+.status-active {
+    color: #8bc9a3;
+    font-weight: 700;
+}
+
+.status-inactive {
+    color: #e89580;
+    font-weight: 700;
+}
+
+.status-deleted {
+    color: #6c757d;
+    font-weight: 700;
+    opacity: 0.7;
+}
+
+.golden-enter-key {
+  font-weight: 700;
+  background: linear-gradient(135deg, #ffdf85, #f2b705, #d49a00);
+  -webkit-background-clip: text;
+  margin-inline-end:2px;
+  -webkit-text-fill-color: transparent;
+}

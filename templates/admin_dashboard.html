@@ -1,26 +1,52 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container mt-5 mb-5">
+<div class="admin-dashboard-container container mt-5 mb-5">
     <!-- Breadcrumb Navigation -->
     <nav aria-label="breadcrumb" class="mb-4">
-        <ol class="breadcrumb" style="background-color: transparent; border-bottom: 2px solid #c8e6d9; padding-bottom: 10px;">
-            <li class="breadcrumb-item"><a href="/" style="color: #8bb8d9;"><i class="fas fa-home"></i> Home</a></li>
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="/"><i class="fas fa-home"></i> Home</a></li>
             <li class="breadcrumb-item active" aria-current="page"><i class="fas fa-cog"></i> Admin Dashboard</li>
         </ol>
     </nav>
 
-    <!-- Quick Navigation -->
-    <div class="mb-4 d-flex gap-2 flex-wrap">
-        <a href="/" class="btn btn-sm btn-outline-primary rounded-pill" style="border-color: #8bb8d9; color: #8bb8d9;">
-            <i class="fas fa-home"></i> Home
-        </a>
-        <a href="/admin/backup" class="btn btn-sm btn-outline-success rounded-pill" style="border-color: #8bb8d9; color: #8bb8d9;">
-            <i class="fas fa-database"></i> Web Backup Manager (New!)
-        </a>
-    </div>
 
-    <h1 class="mb-5"><i class="fas fa-shield-alt"></i> Database Backup Management</h1>
+    <h1 class="mb-5 justify-content-center"><i class="fas fa-shield-alt"></i> Admin Dashboard</h1>
+
+    <!-- Tab Navigation -->
+    <ul class="nav nav-tabs mb-4 p-5 bg-opacity-100 bg-gradient bg- bg-success-subtle justify-content-between rounded-4" id="adminTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="users-tab" data-bs-toggle="tab" data-bs-target="#users-content" type="button" role="tab" aria-controls="users-content" aria-selected="true">
+                <i class="fas fa-users"></i> User Management
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="cases-tab" data-bs-toggle="tab" data-bs-target="#cases-content" type="button" role="tab" aria-controls="cases-content" aria-selected="false">
+                <i class="fas fa-flask"></i> Case Management
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="backups-tab" data-bs-toggle="tab" data-bs-target="#backups-content" type="button" role="tab" aria-controls="backups-content" aria-selected="false">
+                <i class="fas fa-database"></i> Backup Management
+            </button>
+        </li>
+    </ul>
+
+    <!-- Tab Content -->
+    <div class="tab-content" id="adminTabContent">
+        <!-- User Management Tab -->
+        <div class="tab-pane fade show active" id="users-content" role="tabpanel" aria-labelledby="users-tab">
+            {% include 'user-management-tab.html' %}
+        </div>
+
+        <!-- Case Management Tab -->
+        <div class="tab-pane fade" id="cases-content" role="tabpanel" aria-labelledby="cases-tab">
+            {% include 'case-management-tab.html' %}
+        </div>
+
+        <!-- Backup Management Tab -->
+        <div class="tab-pane fade" id="backups-content" role="tabpanel" aria-labelledby="backups-tab">
+            <h2 class="mb-5"><i class="fas fa-database"></i> Database Backup Management</h2>
 
     <!-- Statistics Card -->
     <div class="row mb-5">
@@ -395,4 +421,7 @@
     `;
     document.head.appendChild(style);
 </script>
+        </div>
+    </div>
+</div>
 {% endblock %}
