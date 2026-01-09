@@ -46,82 +46,82 @@
                             </div>
                         </div>
                     </div>
-                    
-                    <!-- FRCR Revision Fields: Module and Body Part -->
+
+                    <!-- FRCR Module, Body Part, and Age Group Selection -->
                     <div class="row mt-3">
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <div class="mb-4">
                                 <label class="form-label fw-bold text-secondary">
-                                    <i class="fas fa-layer-group me-1" style="color: #90C695;"></i>Module
+                                    <i class="fas fa-layer-group me-1" style="color: #667eea;"></i>Module
                                 </label>
                                 <select class="form-select form-select-lg" id="editCaseModule">
                                     <option value="">Select Module...</option>
                                     <option value="CARDIOTHORACIC_VASCULAR">Cardiothoracic and Vascular</option>
                                     <option value="MUSCULOSKELETAL_TRAUMA">Musculoskeletal and Trauma</option>
-                                    <option value="GASTROINTESTINAL">Gastro-intestinal (liver, biliary, pancreas, spleen)</option>
-                                    <option value="GENITOURINARY_BREAST">Genito-urinary, Adrenal, Obstetrics & Gynaecology, and Breast</option>
+                                    <option value="GASTROINTESTINAL">Gastro-intestinal (incl. liver, biliary, pancreas, spleen)</option>
+                                    <option value="GENITOURINARY_BREAST">Genito-urinary, Adrenal, O&G and Breast</option>
                                     <option value="PAEDIATRIC">Paediatric</option>
-                                    <option value="CNS_HEAD_NECK">Central Nervous System and Head & Neck</option>
+                                    <option value="CNS_HEAD_NECK">CNS and Head & Neck (incl. spine, eyes, ENT, salivary, dental)</option>
                                 </select>
                                 <small class="text-muted d-block mt-2">FRCR examination module</small>
                             </div>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <div class="mb-4">
                                 <label class="form-label fw-bold text-secondary">
                                     <i class="fas fa-user-injured me-1" style="color: #FF8C42;"></i>Body Part
                                 </label>
                                 <select class="form-select form-select-lg" id="editCaseBodyPart">
                                     <option value="">Select Body Part...</option>
-                                    <optgroup label="CNS and Head & Neck">
-                                        <option value="BRAIN">Brain</option>
-                                        <option value="SPINE">Spine</option>
-                                        <option value="HEAD_NECK">Head & Neck</option>
-                                    </optgroup>
-                                    <optgroup label="Cardiothoracic and Vascular">
-                                        <option value="THORAX">Thorax</option>
+                                    <optgroup label="Cardiovascular">
                                         <option value="CARDIOVASCULAR">Cardiovascular</option>
-                                        <option value="CHEST_WALL">Chest wall</option>
                                     </optgroup>
-                                    <optgroup label="Musculoskeletal">
-                                        <option value="UPPER_LIMB">Upper limb</option>
-                                        <option value="LOWER_LIMB">Lower limb</option>
+                                    <optgroup label="Lung and Thorax">
+                                        <option value="LUNG_MEDIASTINUM">Lung and Mediastinum</option>
+                                        <option value="CHEST_WALL">Chest Wall</option>
                                     </optgroup>
                                     <optgroup label="Gastrointestinal">
-                                        <option value="ABDOMEN_BOWEL">Abdomen and bowel</option>
-                                        <option value="LIVER">Liver</option>
-                                        <option value="GALLBLADDER">Gallbladder</option>
-                                        <option value="BILIARY_TREE">Biliary tree</option>
-                                        <option value="PANCREAS">Pancreas</option>
-                                        <option value="SPLEEN">Spleen</option>
+                                        <option value="GASTROINTESTINAL">Gastrointestinal</option>
+                                        <option value="HEPATOPANCREATICOBILIARY">Hepatopancreaticobiliary</option>
                                     </optgroup>
-                                    <optgroup label="Genitourinary and Breast">
-                                        <option value="URINARY_SYSTEM">Urinary system</option>
-                                        <option value="REPRODUCTIVE_SYSTEM">Reproductive system</option>
+                                    <optgroup label="Genitourinary and Endocrine">
+                                        <option value="ADRENAL">Adrenal</option>
+                                        <option value="THYROID_PARATHYROID">Thyroid and Parathyroid</option>
+                                        <option value="SPLEEN">Spleen</option>
+                                        <option value="KUB">KUB</option>
+                                    </optgroup>
+                                    <optgroup label="Gynaecology and Breast">
+                                        <option value="GYNAECOLOGY">Gynaecology</option>
                                         <option value="BREAST">Breast</option>
                                     </optgroup>
-                                    <optgroup label="Paediatric">
-                                        <option value="PAEDIATRIC_GENERAL">Paediatric - General</option>
-                                        <option value="PAEDIATRIC_SKELETON">Paediatric - Growing skeleton</option>
-                                        <option value="PAEDIATRIC_CHEST">Paediatric - Neonatal chest</option>
-                                        <option value="PAEDIATRIC_CONGENITAL">Paediatric - Congenital anomalies</option>
+                                    <optgroup label="Musculoskeletal">
+                                        <option value="UPPER_LIMB">Upper Limb</option>
+                                        <option value="LOWER_LIMB">Lower Limb</option>
+                                        <option value="BONES">Bones</option>
+                                    </optgroup>
+                                    <optgroup label="CNS and Head & Neck">
+                                        <option value="BRAIN_PITUITARY">Brain and Pituitary</option>
+                                        <option value="SPINE">Spine</option>
+                                        <option value="HEAD_NECK">Head and Neck</option>
+                                    </optgroup>
+                                    <optgroup label="Multi-system">
+                                        <option value="MULTISYSTEM">Multisystem</option>
                                     </optgroup>
                                 </select>
                                 <small class="text-muted d-block mt-2">Anatomical region</small>
                             </div>
                         </div>
-                    </div>
-                    
-                    <!-- Public Visibility Toggle -->
-                    <div class="row mt-3">
-                        <div class="col-12">
-                            <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" id="editCaseIsPublic" style="width: 3rem; height: 1.5rem; cursor: pointer;">
-                                <label class="form-check-label ms-2 fw-bold text-secondary" for="editCaseIsPublic" style="cursor: pointer;">
-                                    <i class="fas fa-eye me-1" style="color: #90C695;"></i>
-                                    Make visible to students
+                        <div class="col-md-4">
+                            <div class="mb-4">
+                                <label class="form-label fw-bold text-secondary">
+                                    <i class="fas fa-child me-1" style="color: #90C695;"></i>Age Group
                                 </label>
-                                <small class="text-muted d-block ms-5 ps-3 mt-1">Only public cases are visible in the student app</small>
+                                <select class="form-select form-select-lg" id="editCaseAgeGroup">
+                                    <option value="">Select Age Group...</option>
+                                    <option value="ADULT">Adult</option>
+                                    <option value="PEDIATRIC">Pediatric</option>
+                                </select>
+                                <small class="text-muted d-block mt-2">Patient age category</small>
                             </div>
                         </div>
                     </div>
@@ -367,15 +367,15 @@ function loadCaseForEdit(caseId) {
         document.getElementById('editCaseDiagnosis').value = caseData.diagnosis || '';
         document.getElementById('editCaseDiscussion').value = caseData.discussion || '';
         
-        // Populate FRCR Revision fields
+        // Populate FRCR categorization fields
         if (document.getElementById('editCaseModule')) {
             document.getElementById('editCaseModule').value = caseData.module || '';
         }
         if (document.getElementById('editCaseBodyPart')) {
             document.getElementById('editCaseBodyPart').value = caseData.body_part || '';
         }
-        if (document.getElementById('editCaseIsPublic')) {
-            document.getElementById('editCaseIsPublic').checked = caseData.is_public || false;
+        if (document.getElementById('editCaseAgeGroup')) {
+            document.getElementById('editCaseAgeGroup').value = caseData.age_group || '';
         }
         
         // Populate Q&A pairs

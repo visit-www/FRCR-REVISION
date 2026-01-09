@@ -7,51 +7,91 @@ import enum
 
 db = SQLAlchemy()
 
-# FRCR Module Enum
+# ==================== ENUMS ====================
+
+# User Role Enum
+class UserRole(enum.Enum):
+    """Three-tier role system for access control"""
+    STUDENT = "student"              # Default: limited to 2 cases/module if free
+    CONTENT_MANAGER = "content_manager"  # Can create/edit cases
+    ADMIN = "admin"                  # Full system control
+
+# Subscription Status Enum
+class SubscriptionStatus(enum.Enum):
+    """User subscription tier"""
+    FREE = "free"                    # Limited to 2 cases per module
+    PAID = "paid"                    # Unlimited access
+    CANCELED = "canceled"            # Was paid, now canceled
+
+# Payment Status Enum
+class PaymentStatus(enum.Enum):
+    """Payment tracking status"""
+    NO_SUBSCRIPTION = "no_subscription"  # Never subscribed
+    ACTIVE = "active"                # Currently paid
+    PAST_DUE = "past_due"            # Payment failed
+    CANCELED = "canceled"            # Subscription ended
+
+# Case Status Enum
+class CaseStatus(enum.Enum):
+    """Case lifecycle states"""
+    DRAFT = "draft"                  # Created but not ready for review
+    PENDING_REVIEW = "pending_review"  # Waiting for admin approval
+    PUBLISHED = "published"          # Approved and visible to users
+    PRIVATE = "private"              # Hidden from students (admin only)
+    ARCHIVED = "archived"            # Old cases, hidden from view
+
+# FRCR Module Enum (FRCR-aligned modules)
 class FRCRModule(enum.Enum):
     """FRCR examination modules"""
     CARDIOTHORACIC_VASCULAR = "Cardiothoracic and Vascular"
     MUSCULOSKELETAL_TRAUMA = "Musculoskeletal and Trauma"
-    GASTROINTESTINAL = "Gastro-intestinal (liver, biliary, pancreas, spleen)"
-    GENITOURINARY_BREAST = "Genito-urinary, Adrenal, Obstetrics & Gynaecology, and Breast"
+    GASTROINTESTINAL = "Gastro-intestinal (incl. liver, biliary, pancreas, spleen)"
+    GENITOURINARY_BREAST = "Genito-urinary, Adrenal, O&G and Breast"
     PAEDIATRIC = "Paediatric"
-    CNS_HEAD_NECK = "Central Nervous System and Head & Neck"
+    CNS_HEAD_NECK = "CNS and Head & Neck (incl. spine, eyes, ENT, salivary, dental)"
 
-# Body Part Enum
+# Body Part Enum (Comprehensive anatomical regions)
 class BodyPart(enum.Enum):
     """Body parts for case categorization"""
-    # CNS and Head & Neck
-    BRAIN = "Brain"
-    SPINE = "Spine"
-    HEAD_NECK = "Head & Neck"
-    
-    # Cardiothoracic and Vascular
-    THORAX = "Thorax"
+    # Cardiovascular
     CARDIOVASCULAR = "Cardiovascular"
-    CHEST_WALL = "Chest wall"
     
-    # Musculoskeletal
-    UPPER_LIMB = "Upper limb"
-    LOWER_LIMB = "Lower limb"
+    # Lung and Thorax
+    LUNG_MEDIASTINUM = "Lung and Mediastinum"
+    CHEST_WALL = "Chest Wall"
     
     # Gastrointestinal
-    ABDOMEN_BOWEL = "Abdomen and bowel"
-    LIVER = "Liver"
-    GALLBLADDER = "Gallbladder"
-    BILIARY_TREE = "Biliary tree"
-    PANCREAS = "Pancreas"
-    SPLEEN = "Spleen"
+    GASTROINTESTINAL = "Gastrointestinal"
+    HEPATOPANCREATICOBILIARY = "Hepatopancreaticobiliary"
     
-    # Genitourinary and Breast
-    URINARY_SYSTEM = "Urinary system"
-    REPRODUCTIVE_SYSTEM = "Reproductive system"
+    # Genitourinary and Endocrine
+    ADRENAL = "Adrenal"
+    THYROID_PARATHYROID = "Thyroid and Parathyroid"
+    SPLEEN = "Spleen"
+    KUB = "KUB"
+    
+    # Gynaecology and Breast
+    GYNAECOLOGY = "Gynaecology"
     BREAST = "Breast"
     
-    # Paediatric (system-wide)
-    PAEDIATRIC_GENERAL = "Paediatric - General"
-    PAEDIATRIC_SKELETON = "Paediatric - Growing skeleton"
-    PAEDIATRIC_CHEST = "Paediatric - Neonatal chest"
-    PAEDIATRIC_CONGENITAL = "Paediatric - Congenital anomalies"
+    # Musculoskeletal
+    UPPER_LIMB = "Upper Limb"
+    LOWER_LIMB = "Lower Limb"
+    BONES = "Bones"
+    
+    # CNS and Head & Neck
+    BRAIN_PITUITARY = "Brain and Pituitary"
+    SPINE = "Spine"
+    HEAD_NECK = "Head and Neck"
+    
+    # Multi-system
+    MULTISYSTEM = "Multisystem"
+
+# Age Group Enum
+class AgeGroup(enum.Enum):
+    """Patient age category for cases"""
+    ADULT = "Adult"
+    PEDIATRIC = "Pediatric"
 
 class User(UserMixin, db.Model):
     """Store user account information"""
@@ -61,7 +101,25 @@ class User(UserMixin, db.Model):
     full_name = db.Column(db.String(120), nullable=False)
     profile_picture = db.Column(db.Text, nullable=True)  # Base64 encoded image or URL
     is_active = db.Column(db.Boolean, default=True)
-    is_admin = db.Column(db.Boolean, default=False)  # Admin flag for first user
+    is_admin = db.Column(db.Boolean, default=False)  # Admin flag for first user (DEPRECATED: use 'role' field)
+    
+    # === NEW FIELDS: ROLE-BASED ACCESS CONTROL ===
+    role = db.Column(db.Enum(UserRole), default=UserRole.STUDENT, nullable=False, index=True)
+    
+    # === NEW FIELDS: SUBSCRIPTION & PAYMENT ===
+    subscription_status = db.Column(db.Enum(SubscriptionStatus), default=SubscriptionStatus.FREE, nullable=False, index=True)
+    payment_status = db.Column(db.Enum(PaymentStatus), default=PaymentStatus.NO_SUBSCRIPTION, nullable=False)
+    subscription_start_date = db.Column(db.DateTime, nullable=True)  # When user subscribed
+    subscription_end_date = db.Column(db.DateTime, nullable=True)    # When subscription expires
+    
+    # === NEW FIELDS: SOFT DELETE ===
+    is_deleted = db.Column(db.Boolean, default=False, index=True)  # Soft delete flag
+    deleted_at = db.Column(db.DateTime, nullable=True)  # When was user deleted
+    deleted_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)  # Who deleted this user
+    
+    # === NEW FIELDS: AUDIT TRACKING ===
+    last_case_viewed = db.Column(db.DateTime, nullable=True)  # When did user last view a case
+    last_case_viewed_id = db.Column(db.Integer, nullable=True)  # Which case was viewed
     
     # Password recovery
     recovery_token = db.Column(db.String(255), unique=True, nullable=True)
@@ -75,6 +133,10 @@ class User(UserMixin, db.Model):
     exam_sessions = db.relationship('ExamSession', backref='creator', lazy=True, cascade='all, delete-orphan')
     candidate_notes = db.relationship('CandidateNote', backref='author', lazy=True, cascade='all, delete-orphan')
     highlights = db.relationship('TextHighlight', backref='author', lazy=True, cascade='all, delete-orphan')
+    created_cases = db.relationship('Case', foreign_keys='Case.created_by_user_id', backref='created_by', lazy=True)
+    approved_cases = db.relationship('Case', foreign_keys='Case.approved_by_user_id', backref='approved_by', lazy=True)
+    audit_logs = db.relationship('CaseAuditLog', backref='user', lazy=True, foreign_keys='CaseAuditLog.user_id')
+    case_views = db.relationship('CaseViewLog', backref='user', lazy=True)
     
     # STUDENT REVISION: Track revision sessions
     revision_sessions = db.relationship('RevisionSession', backref='student', lazy=True, cascade='all, delete-orphan')
@@ -87,6 +149,11 @@ class User(UserMixin, db.Model):
     def check_password(self, password):
         """Verify password against hash"""
         return check_password_hash(self.password_hash, password)
+    
+    @property
+    def is_admin_property(self):
+        """Property: is_admin is True if role is ADMIN (for consistency)"""
+        return self.role == UserRole.ADMIN
     
     def generate_recovery_token(self):
         """Generate unique token for password recovery"""
@@ -151,11 +218,18 @@ class Case(db.Model):
     answers = db.Column(db.Text, nullable=False)  # Legacy - for backward compatibility
     discussion = db.Column(db.Text)  # Optional discussion/comments
     
-    # New fields for FRCR Revision
+    # === EXISTING FIELDS ===
     module = db.Column(db.Enum(FRCRModule), nullable=True, index=True)  # FRCR module categorization
     body_part = db.Column(db.Enum(BodyPart), nullable=True, index=True)  # Body part categorization
-    is_public = db.Column(db.Boolean, default=False, index=True)  # Admin approval for visibility to students
-    created_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)  # Track who created the case
+    age_group = db.Column(db.Enum(AgeGroup), nullable=True, index=True)  # Patient age category (Adult/Pediatric)
+    is_public = db.Column(db.Boolean, default=False, index=True)  # DEPRECATED: use 'status' field instead
+    
+    # === NEW FIELDS: CASE WORKFLOW ===
+    status = db.Column(db.Enum(CaseStatus), default=CaseStatus.DRAFT, nullable=False, index=True)  # Case lifecycle state
+    created_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)  # Who created this case
+    approved_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)  # Who approved this case
+    approved_at = db.Column(db.DateTime, nullable=True)  # When was it approved
+    
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
@@ -164,6 +238,9 @@ class Case(db.Model):
     answer_items = db.relationship('Answer', backref='case', lazy=True, cascade='all, delete-orphan')
     candidate_notes = db.relationship('CandidateNote', backref='case', lazy=True, cascade='all, delete-orphan')
     highlights = db.relationship('TextHighlight', backref='case', lazy=True, cascade='all, delete-orphan')
+    audit_logs = db.relationship('CaseAuditLog', backref='case', lazy=True, cascade='all, delete-orphan')
+    view_logs = db.relationship('CaseViewLog', backref='case', lazy=True, cascade='all, delete-orphan')
+    approval_queue = db.relationship('CaseApprovalQueue', backref='case', lazy=True, cascade='all, delete-orphan', uselist=False)
     
     def __repr__(self):
         return f'<Case {self.case_number} - {self.diagnosis}>'
@@ -257,6 +334,58 @@ class TextHighlight(db.Model):
     
     def __repr__(self):
         return f'<TextHighlight Case:{self.case_id} User:{self.user_id} Color:{self.highlight_color}>'
+
+
+# ==================== AUDIT & TRACKING MODELS ====================
+
+class CaseAuditLog(db.Model):
+    """Audit trail for case creation, edits, approvals"""
+    __tablename__ = 'case_audit_log'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    case_id = db.Column(db.Integer, db.ForeignKey('case.id'), nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+    action = db.Column(db.String(50), nullable=False)  # 'created', 'edited', 'approved', 'rejected', 'deleted'
+    changes = db.Column(db.JSON, nullable=True)  # What changed: {field: {old: value, new: value}}
+    notes = db.Column(db.Text, nullable=True)  # Optional admin notes
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    
+    def __repr__(self):
+        return f'<CaseAuditLog Case:{self.case_id} User:{self.user_id} Action:{self.action}>'
+
+
+class CaseViewLog(db.Model):
+    """Track case views for student randomization and analytics"""
+    __tablename__ = 'case_view_log'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    case_id = db.Column(db.Integer, db.ForeignKey('case.id'), nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+    viewed_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    time_spent_seconds = db.Column(db.Integer, nullable=True)  # How long user spent on case
+    
+    __table_args__ = (
+        db.Index('idx_user_case_view', 'user_id', 'case_id', 'viewed_at'),
+    )
+    
+    def __repr__(self):
+        return f'<CaseViewLog Case:{self.case_id} User:{self.user_id} Viewed:{self.viewed_at}>'
+
+
+class CaseApprovalQueue(db.Model):
+    """Queue for cases pending admin approval"""
+    __tablename__ = 'case_approval_queue'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    case_id = db.Column(db.Integer, db.ForeignKey('case.id'), nullable=False, unique=True, index=True)
+    submitted_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    submitted_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    admin_notes = db.Column(db.Text, nullable=True)
+    
+    submitted_by_user = db.relationship('User', backref='submitted_cases')
+    
+    def __repr__(self):
+        return f'<CaseApprovalQueue Case:{self.case_id} Submitted:{self.submitted_at}>'
 
 
 # ==================== STUDENT REVISION MODELS ====================
