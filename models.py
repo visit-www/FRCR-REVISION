@@ -59,6 +59,7 @@ class User(UserMixin, db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False, index=True)
     password_hash = db.Column(db.Text, nullable=False)  # Use Text instead of String for better compatibility
     full_name = db.Column(db.String(120), nullable=False)
+    profile_picture = db.Column(db.Text, nullable=True)  # Base64 encoded image or URL
     is_active = db.Column(db.Boolean, default=True)
     is_admin = db.Column(db.Boolean, default=False)  # Admin flag for first user
     
@@ -74,6 +75,10 @@ class User(UserMixin, db.Model):
     exam_sessions = db.relationship('ExamSession', backref='creator', lazy=True, cascade='all, delete-orphan')
     candidate_notes = db.relationship('CandidateNote', backref='author', lazy=True, cascade='all, delete-orphan')
     highlights = db.relationship('TextHighlight', backref='author', lazy=True, cascade='all, delete-orphan')
+    
+    # STUDENT REVISION: Track revision sessions
+    revision_sessions = db.relationship('RevisionSession', backref='student', lazy=True, cascade='all, delete-orphan')
+    revision_history = db.relationship('RevisionHistory', backref='student', lazy=True, cascade='all, delete-orphan')
     
     def set_password(self, password):
         """Hash and set password"""
@@ -252,3 +257,80 @@ class TextHighlight(db.Model):
     
     def __repr__(self):
         return f'<TextHighlight Case:{self.case_id} User:{self.user_id} Color:{self.highlight_color}>'
+
+
+# ==================== STUDENT REVISION MODELS ====================
+# These models support the balanced revision feature for students
+# CRITICAL: Do NOT mix with examiner ExamSession/Packet/Candidate models
+
+class RevisionSession(db.Model):
+    """
+    Tracks a student's balanced revision session.
+    Each session contains 6 cases from each FRCR module (36 total).
+    """
+    __tablename__ = 'revision_session'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+    
+    # Session metadata
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    completed_at = db.Column(db.DateTime, nullable=True)  # NULL if in progress
+    
+    # Store selected case IDs as JSON array (locked once created)
+    # Format: [case_id1, case_id2, ...]
+    case_ids = db.Column(db.Text, nullable=False)  # JSON array of integers
+    
+    # Track progress through the session
+    current_case_index = db.Column(db.Integer, default=0)  # 0-based index into case_ids
+    
+    # Statistics
+    total_cases = db.Column(db.Integer, default=36)  # 6 per module × 6 modules
+    
+    def __repr__(self):
+        return f'<RevisionSession {self.id} User:{self.user_id} Progress:{self.current_case_index}/{self.total_cases}>'
+    
+    def get_case_ids_list(self):
+        """Parse JSON case_ids into Python list"""
+        import json
+        return json.loads(self.case_ids) if self.case_ids else []
+    
+    def set_case_ids_list(self, case_list):
+        """Convert Python list to JSON and store"""
+        import json
+        self.case_ids = json.dumps(case_list)
+        self.total_cases = len(case_list)
+
+
+class RevisionHistory(db.Model):
+    """
+    Tracks which cases each user has seen during revision.
+    Purpose: Prevent repetition and enable smart case selection.
+    """
+    __tablename__ = 'revision_history'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+    case_id = db.Column(db.Integer, db.ForeignKey('case.id'), nullable=False, index=True)
+    
+    # Module reference (denormalized for faster queries)
+    module = db.Column(db.Enum(FRCRModule), nullable=False, index=True)
+    
+    # Tracking timestamps
+    first_seen_at = db.Column(db.DateTime, default=datetime.utcnow)
+    last_seen_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, index=True)
+    times_seen = db.Column(db.Integer, default=1)  # Increment on each view
+    
+    # Optional: Link to specific revision session
+    revision_session_id = db.Column(db.Integer, db.ForeignKey('revision_session.id'), nullable=True)
+    
+    # Composite indexes for efficient queries
+    __table_args__ = (
+        # Ensure one history record per user-case pair
+        db.UniqueConstraint('user_id', 'case_id', name='unique_user_case'),
+        # Fast lookup: "which cases has this user seen in this module?"
+        db.Index('idx_user_module_lastseen', 'user_id', 'module', 'last_seen_at'),
+    )
+    
+    def __repr__(self):
+        return f'<RevisionHistory User:{self.user_id} Case:{self.case_id} Module:{self.module.value} Seen:{self.times_seen}x>'

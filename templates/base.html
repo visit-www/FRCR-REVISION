@@ -13,7 +13,7 @@
     <link rel="shortcut icon" type="image/png" href="{{ url_for('static', filename='images/icon-192x192.png') }}">
     
     <!-- PWA Theme Color (warm orange for confidence and success) -->
-    <meta name="theme-color" content="#FF8C42">
+    <meta name="theme-color" content="#ffc107">
     
     <!-- Apple iOS Specific PWA Meta Tags -->
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -35,7 +35,7 @@
         <div class="container-fluid">
             <!-- Logo & Home -->
             <a class="navbar-brand fw-bold" href="/" style="font-size: 1.3rem;">
-                <i class="fas fa-stethoscope me-2" style="color: #896b90ff;"></i>FRCR Examiner
+                <i class="fas fa-graduation-cap me-2" style="color: #ffffff;"></i>FRCR Revision Companion
             </a>
             
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
@@ -53,20 +53,6 @@
                         </a>
                     </li>
                     
-                    <!-- Setup Workflow -->
-                    <li class="nav-item">
-                        <a class="nav-link" href="/setup/sessions" title="Manage exam sessions">
-                            <i class="fas fa-cog me-1"></i>Manage Sessions
-                        </a>
-                    </li>
-                    
-                    <!-- Exam Workflow -->
-                    <li class="nav-item">
-                        <a class="nav-link" href="/exam/start" title="Start examining a candidate">
-                            <i class="fas fa-play me-1"></i>Exam
-                        </a>
-                    </li>
-                    
                     <!-- Backup Manager -->
                     <li class="nav-item">
                         <a class="nav-link" href="/admin" title="Database backup and restore">
@@ -76,8 +62,13 @@
                     
                     <!-- User Dropdown -->
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="fas fa-user-circle me-1"></i>{{ current_user.email }}
+                        <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            {% if current_user.profile_picture %}
+                                <img src="{{ current_user.profile_picture }}" alt="Profile" class="rounded-circle me-2" style="width: 32px; height: 32px; object-fit: cover; border: 2px solid #a8d5ba;">
+                            {% else %}
+                                <i class="fas fa-user-circle me-1"></i>
+                            {% endif %}
+                            {{ current_user.email }}
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
                             <li><a class="dropdown-item" href="/auth/profile"><i class="fas fa-user me-2"></i>Profile</a></li>
@@ -110,8 +101,8 @@
             <div class="container h-100">
                 <div class="row h-100 align-items-center">
                     <div class="col-lg-8 mx-auto text-center">
-                        <h1 class="hero-title">FRCR Examiner's tools</h1>
-                        <p class="hero-subtitle">The app that helps Examiners to prepare for FRCR viva exams</p>
+                        <h1 class="hero-title">FRCR Revsion Companion</h1>
+                        <p class="hero-subtitle">Your compansion for quick and efficient revsion for FRCR2B</p>
                     </div>
                 </div>
             </div>

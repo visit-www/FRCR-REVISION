@@ -34,7 +34,7 @@ def upgrade():
         batch_op.create_index(batch_op.f('ix_case_body_part'), ['body_part'], unique=False)
         batch_op.create_index(batch_op.f('ix_case_is_public'), ['is_public'], unique=False)
         batch_op.create_index(batch_op.f('ix_case_module'), ['module'], unique=False)
-        batch_op.create_foreign_key(None, 'user', ['created_by_user_id'], ['id'])
+        batch_op.create_foreign_key('fk_case_created_by_user', 'user', ['created_by_user_id'], ['id'])
 
     with op.batch_alter_table('user', schema=None) as batch_op:
         batch_op.alter_column('password_hash',
@@ -54,7 +54,7 @@ def downgrade():
                existing_nullable=False)
 
     with op.batch_alter_table('case', schema=None) as batch_op:
-        batch_op.drop_constraint(None, type_='foreignkey')
+        batch_op.drop_constraint('fk_case_created_by_user', type_='foreignkey')
         batch_op.drop_index(batch_op.f('ix_case_module'))
         batch_op.drop_index(batch_op.f('ix_case_is_public'))
         batch_op.drop_index(batch_op.f('ix_case_body_part'))

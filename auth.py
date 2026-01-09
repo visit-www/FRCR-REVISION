@@ -415,3 +415,113 @@ def list_users():
             'created_at': u.created_at.isoformat() if u.created_at else None
         } for u in users]
     }), 200
+
+# ==================== PROFILE MANAGEMENT ====================
+
+@auth_bp.route('/profile/picture', methods=['POST'])
+@login_required
+def upload_profile_picture():
+    """Upload profile picture"""
+    try:
+        data = request.get_json()
+        picture_base64 = data.get('picture')
+        
+        if not picture_base64:
+            return jsonify({'error': 'No picture provided'}), 400
+        
+        # Validate base64 format
+        if not picture_base64.startswith('data:image/'):
+            return jsonify({'error': 'Invalid image format'}), 400
+        
+        # Store base64 in database
+        current_user.profile_picture = picture_base64
+        db.session.commit()
+        
+        print(f"[PROFILE] Picture updated for user: {current_user.email}")
+        return jsonify({'success': True, 'message': 'Profile picture updated'}), 200
+        
+    except Exception as e:
+        print(f"[PROFILE] Error uploading picture: {e}")
+        db.session.rollback()
+        return jsonify({'error': 'Failed to upload picture'}), 500
+
+
+@auth_bp.route('/profile/picture', methods=['DELETE'])
+@login_required
+def remove_profile_picture():
+    """Remove profile picture"""
+    try:
+        current_user.profile_picture = None
+        db.session.commit()
+        
+        print(f"[PROFILE] Picture removed for user: {current_user.email}")
+        return jsonify({'success': True, 'message': 'Profile picture removed'}), 200
+        
+    except Exception as e:
+        print(f"[PROFILE] Error removing picture: {e}")
+        db.session.rollback()
+        return jsonify({'error': 'Failed to remove picture'}), 500
+
+
+@auth_bp.route('/profile/update', methods=['POST'])
+@login_required
+def update_profile():
+    """Update user profile (name and email)"""
+    try:
+        data = request.get_json()
+        full_name = data.get('full_name', '').strip()
+        email = data.get('email', '').strip().lower()
+        
+        if not full_name or not email:
+            return jsonify({'error': 'Name and email are required'}), 400
+        
+        # Check if email is already taken by another user
+        if email != current_user.email:
+            existing = User.query.filter_by(email=email).first()
+            if existing:
+                return jsonify({'error': 'Email already in use'}), 409
+        
+        current_user.full_name = full_name
+        current_user.email = email
+        db.session.commit()
+        
+        print(f"[PROFILE] Profile updated for user: {email}")
+        return jsonify({'success': True, 'message': 'Profile updated'}), 200
+        
+    except Exception as e:
+        print(f"[PROFILE] Error updating profile: {e}")
+        db.session.rollback()
+        return jsonify({'error': 'Failed to update profile'}), 500
+
+
+@auth_bp.route('/profile/password', methods=['POST'])
+@login_required
+def change_password():
+    """Change user password"""
+    try:
+        data = request.get_json()
+        current_password = data.get('current_password')
+        new_password = data.get('new_password')
+        
+        if not current_password or not new_password:
+            return jsonify({'error': 'Current and new password required'}), 400
+        
+        # Verify current password
+        if not current_user.check_password(current_password):
+            return jsonify({'error': 'Current password is incorrect'}), 401
+        
+        # Validate new password
+        if len(new_password) < 8:
+            return jsonify({'error': 'New password must be at least 8 characters'}), 400
+        
+        # Update password
+        current_user.set_password(new_password)
+        db.session.commit()
+        
+        print(f"[PROFILE] Password changed for user: {current_user.email}")
+        return jsonify({'success': True, 'message': 'Password updated'}), 200
+        
+    except Exception as e:
+        print(f"[PROFILE] Error changing password: {e}")
+        db.session.rollback()
+        return jsonify({'error': 'Failed to change password'}), 500

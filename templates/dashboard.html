@@ -17,33 +17,49 @@
 
     <!-- Main Action Cards -->
     <div class="row g-4 mb-5">
-        <!-- Setup Workflow Card -->
+        <!-- FEATURED: Balanced Revision Card -->
         <div class="col-lg-6 col-xl-4">
-            <div class="card h-100 shadow-sm border-0 hover-card" style="transition: all 0.3s ease;">
+            <div class="card h-100 shadow-sm border-0 hover-card" style="transition: all 0.3s ease; background-color: #e9630494;">
                 <div class="card-body d-flex flex-column">
-                    <div class="mb-3" style="font-size: 2.5rem; color: #3498db;">
-                        <i class="fas fa-cog"></i>
+                    <div class="mb-3" style="font-size: 2.5rem; color: white;">
+                        <i class="fas fa-graduation-cap"></i>
                     </div>
-                    <h4 class="card-title mb-2">Setup & Prepare</h4>
-                    <p class="card-text text-muted flex-grow-1">Create exam sessions, add cases, and register candidates for your exams.</p>
-                    <a href="/setup/sessions" class="btn btn-primary mt-auto w-100">
-                        <i class="fas fa-cog me-2"></i>Get Started
+                    <h4 class="card-title mb-2">Balanced Revision Mode</h4>
+                    <p class="card-text text-muted flex-grow-1">Smart case selection across all FRCR modules.</p>
+                    <a href="/revision/start-balanced" class="btn btn-warning mt-auto w-100">
+                        <i class="fas fa-play me-2 "></i>Start Revision
                     </a>
                 </div>
             </div>
         </div>
 
-        <!-- Exam Workflow Card -->
+        <!-- Study Modules Card -->
         <div class="col-lg-6 col-xl-4">
             <div class="card h-100 shadow-sm border-0 hover-card" style="transition: all 0.3s ease;">
                 <div class="card-body d-flex flex-column">
-                    <div class="mb-3" style="font-size: 2.5rem; color: #27ae60;">
-                        <i class="fas fa-play-circle"></i>
+                    <div class="mb-3" style="font-size: 2.5rem; color: #a8d5ba;">
+                        <i class="fas fa-book"></i>
                     </div>
-                    <h4 class="card-title mb-2">Start Exam</h4>
-                    <p class="card-text text-muted flex-grow-1">Begin examining a candidate by selecting from your prepared candidates.</p>
-                    <a href="/exam/start" class="btn btn-success mt-auto">
-                        <i class="fas fa-play me-2"></i>Start Examination
+                    <h4 class="card-title mb-2">Study Modules</h4>
+                    <p class="card-text text-muted flex-grow-1">Browse cases organized by body systems and modules.</p>
+                    <a href="/modules" class="btn btn-primary mt-auto w-100">
+                        <i class="fas fa-book me-2"></i>Browse Modules
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- All Cases Card -->
+        <div class="col-lg-6 col-xl-4">
+            <div class="card h-100 shadow-sm border-0 hover-card" style="transition: all 0.3s ease;">
+                <div class="card-body d-flex flex-column">
+                    <div class="mb-3" style="font-size: 2.5rem; color: #ffc107;">
+                        <i class="fas fa-file-medical"></i>
+                    </div>
+                    <h4 class="card-title mb-2">All Cases</h4>
+                    <p class="card-text text-muted flex-grow-1">View and study all available cases in one place.</p>
+                    <a href="/cases" class="btn btn-success mt-auto">
+                        <i class="fas fa-list me-2"></i>View Cases
                     </a>
                 </div>
             </div>
@@ -65,29 +81,6 @@
             </div>
         </div>
     </div>
-
-    <!-- Recent Sessions Section (if authenticated) -->
-    {% if current_user.is_authenticated %}
-    <div class="row">
-        <div class="col-12">
-            <div class="card shadow-sm border-0">
-                <div class="card-header bg-light border-0 py-3">
-                    <h5 class="mb-0">
-                        <i class="fas fa-history me-2" style="color: #896b90;"></i>Your Recent Exam Sessions
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <div id="sessionsContainer" class="row g-3">
-                        <div class="text-center py-5">
-                            <i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: #896b90;"></i>
-                            <p class="text-muted mt-3">Loading your sessions...</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    {% endif %}
 
 </div>
 
@@ -128,63 +121,4 @@
     }
 </style>
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Load user's exam sessions
-    const sessionsContainer = document.getElementById('sessionsContainer');
-    
-    if (sessionsContainer) {
-        fetch('/api/exam/sessions')
-            .then(response => response.json())
-            .then(sessions => {
-                if (!sessions || sessions.length === 0) {
-                    sessionsContainer.innerHTML = `
-                        <div class="no-sessions col-12">
-                            <i class="fas fa-inbox"></i>
-                            <p><strong>No exam sessions yet</strong></p>
-                            <p class="small mb-3">Get started by creating your first exam session</p>
-                            <a href="/setup/sessions" class="btn btn-primary btn-sm">
-                                <i class="fas fa-plus me-1"></i>Create Session
-                            </a>
-                        </div>
-                    `;
-                } else {
-                    sessionsContainer.innerHTML = sessions.map(session => `
-                        <div class="col-md-6 col-lg-4">
-                            <div class="card session-card h-100 border-0 shadow-sm">
-                                <div class="card-body">
-                                    <h5 class="card-title" style="color: #896b90;">
-                                        <i class="fas fa-clipboard-list me-2"></i>${session.session_name}
-                                    </h5>
-                                    <div class="small text-muted mb-3">
-                                        <p class="mb-1">
-                                            <i class="far fa-calendar me-2"></i>${new Date(session.exam_date).toLocaleDateString()}
-                                        </p>
-                                        <p class="mb-1">
-                                            <i class="far fa-clock me-2"></i>${session.exam_time}
-                                        </p>
-                                        <p class="mb-0">
-                                            <i class="fas fa-plus me-2"></i>Created ${new Date(session.created_at).toLocaleDateString()}
-                                        </p>
-                                    </div>
-                                    <a href="/setup/sessions" class="btn btn-sm btn-outline-primary w-100">
-                                        <i class="fas fa-edit me-1"></i>View Details
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
-                    `).join('');
-                }
-            })
-            .catch(error => {
-                console.error('Error loading sessions:', error);
-                sessionsContainer.innerHTML = `
-                    <div class="no-sessions col-12">
-                        <p class="text-danger"><i class="fas fa-exclamation-circle me-2"></i>Failed to load sessions</p>
-                    </div>
-                `;
-            });
-    }
-});
-</script>
 {% endblock %}

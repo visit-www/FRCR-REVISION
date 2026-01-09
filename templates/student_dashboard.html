@@ -2,96 +2,74 @@
 
 {% block content %}
 <div class="container py-4">
-    <!-- Welcome Banner -->
-    <div class="mb-4 p-4 rounded-3 shadow-sm" style="background: linear-gradient(135deg, #FF8C42 0%, #FFB366 100%);">
-        <div class="row align-items-center">
-            <div class="col-md-9">
-                <h2 class="text-white mb-2">
-                    <i class="fas fa-book-medical me-2"></i>Welcome, {{ current_user.full_name }}
-                </h2>
-                <p class="text-white mb-0 opacity-90">
-                    <i class="fas fa-lightbulb me-2"></i>
-                    Build your confidence with structured FRCR case practice
-                </p>
-            </div>
-            <div class="col-md-3 text-md-end mt-3 mt-md-0">
-                <a href="{{ url_for('student_profile') }}" class="btn btn-light btn-sm">
-                    <i class="fas fa-user-circle me-1"></i>My Profile
-                </a>
-            </div>
-        </div>
-    </div>
-
     <!-- Main Action Cards -->
     <div class="row g-4">
+        <!-- FEATURED: Balanced Revision Card -->
+        <div class="col-lg-4">
+            <div class="card h-100 shadow-sm border-0 hover-card" 
+                 style="transition: transform 0.2s ease; cursor: pointer;"
+                 onclick="window.location.href='/revision/start-balanced'">
+                <div class="card-body d-flex flex-column p-4">
+                    <div class="mb-3 text-center">
+                        <i class="fas fa-shuffle" style="font-size: 3rem; color: #a8d5ba;"></i>
+                        <h3 class="mt-2 mb-1" style="font-weight: 600; font-size: 1.3rem;">Balanced Revision</h3>
+                        <p class="mb-0 text-muted small">Smart case selection</p>
+                    </div>
+                    <p class="small text-muted flex-grow-1">
+                        <i class="fas fa-check-circle me-1" style="color: #a8d5ba;"></i>6 cases - one from each module<br>
+                        <i class="fas fa-check-circle me-1" style="color: #a8d5ba;"></i>Prioritizes unseen cases<br>
+                        <i class="fas fa-check-circle me-1" style="color: #a8d5ba;"></i>Balanced coverage
+                    </p>
+                    <a href="/revision/start-balanced" class="btn btn-warning w-100 mt-auto">
+                        <i class="fas fa-play me-2"></i>Start Revision
+                    </a>
+                </div>
+            </div>
+        </div>
         <!-- Module Selection Card -->
-        <div class="col-lg-6">
+        <div class="col-lg-4">
             <div class="card h-100 shadow-sm border-0 hover-card" 
                  style="transition: transform 0.2s ease; cursor: pointer;"
                  onclick="window.location.href='{{ url_for('modules_view') }}'">
                 <div class="card-body d-flex flex-column p-4">
-                    <div class="mb-3 d-flex align-items-center">
-                        <div class="me-3" style="font-size: 3rem; color: #90C695;">
-                            <i class="fas fa-th-large"></i>
-                        </div>
-                        <div>
-                            <h3 class="card-title mb-1">Select Module to Revise</h3>
-                            <p class="text-muted mb-0 small">
-                                Practice by FRCR module category
-                            </p>
-                        </div>
+                    <div class="mb-3 text-center">
+                        <i class="fas fa-th-large" style="font-size: 3rem; color: #a8d5ba;"></i>
+                        <h3 class="mt-2 mb-1" style="font-weight: 600; font-size: 1.3rem;">Select Module to Revise</h3>
+                        <p class="mb-0 text-muted small">Practice by FRCR module category</p>
                     </div>
                     
-                    <p class="card-text text-muted flex-grow-1">
+                    <p class="small text-muted flex-grow-1">
                         Choose from 6 core FRCR modules: Cardiothoracic, Musculoskeletal, 
                         Gastrointestinal, Genitourinary, Paediatric, or CNS & Head & Neck.
                     </p>
                     
-                    <div class="mt-3 d-flex justify-content-between align-items-center">
-                        <span class="badge bg-success px-3 py-2">
-                            <i class="fas fa-layer-group me-1"></i>6 Modules
-                        </span>
-                        <a href="{{ url_for('modules_view') }}" class="btn btn-success">
-                            Browse Modules
-                            <i class="fas fa-arrow-right ms-2"></i>
-                        </a>
-                    </div>
+                    <a href="{{ url_for('modules_view') }}" class="btn btn-success w-100 mt-auto">
+                        <i class="fas fa-layer-group me-2"></i>Browse Modules
+                    </a>
                 </div>
             </div>
         </div>
 
         <!-- All Cases Card -->
-        <div class="col-lg-6">
+        <div class="col-lg-4">
             <div class="card h-100 shadow-sm border-0 hover-card" 
                  style="transition: transform 0.2s ease; cursor: pointer;"
                  onclick="window.location.href='{{ url_for('all_cases_view') }}'">
                 <div class="card-body d-flex flex-column p-4">
-                    <div class="mb-3 d-flex align-items-center">
-                        <div class="me-3" style="font-size: 3rem; color: #FF8C42;">
-                            <i class="fas fa-folder-open"></i>
-                        </div>
-                        <div>
-                            <h3 class="card-title mb-1">Browse All Cases</h3>
-                            <p class="text-muted mb-0 small">
-                                Search and filter the complete case library
-                            </p>
-                        </div>
+                    <div class="mb-3 text-center">
+                        <i class="fas fa-folder-open" style="font-size: 3rem; color: #6c757d;"></i>
+                        <h3 class="mt-2 mb-1" style="font-weight: 600; font-size: 1.3rem;">Browse All Cases</h3>
+                        <p class="mb-0 text-muted small">Search and filter the complete case library</p>
                     </div>
                     
-                    <p class="card-text text-muted flex-grow-1">
+                    <p class="small text-muted flex-grow-1">
                         Access all available cases with advanced search by diagnosis, 
                         keywords, body part, and module. Track your progress with notes and highlights.
                     </p>
                     
-                    <div class="mt-3 d-flex justify-content-between align-items-center">
-                        <span class="badge px-3 py-2" style="background-color: #FF8C42;">
-                            <i class="fas fa-book-medical me-1"></i>{{ case_count }} Cases
-                        </span>
-                        <a href="{{ url_for('all_cases_view') }}" class="btn" style="background-color: #FF8C42; color: white;">
-                            View All Cases
-                            <i class="fas fa-arrow-right ms-2"></i>
-                        </a>
-                    </div>
+                    <a href="{{ url_for('all_cases_view') }}" class="btn btn-secondary w-100 mt-auto">
+                        <i class="fas fa-book-medical me-2"></i>View All Cases
+                    </a>
                 </div>
             </div>
         </div>
@@ -102,7 +80,7 @@
         <div class="col-md-4">
             <div class="card border-0 shadow-sm">
                 <div class="card-body text-center">
-                    <div style="font-size: 2rem; color: #FFE66D;">
+                    <div style="font-size: 2rem; color: #e96304;">
                         <i class="fas fa-sticky-note"></i>
                     </div>
                     <h4 class="mt-2 mb-1">{{ notes_count }}</h4>
@@ -114,7 +92,7 @@
         <div class="col-md-4">
             <div class="card border-0 shadow-sm">
                 <div class="card-body text-center">
-                    <div style="font-size: 2rem; color: #90C695;">
+                    <div style="font-size: 2rem; color: #a8d5ba;">
                         <i class="fas fa-highlighter"></i>
                     </div>
                     <h4 class="mt-2 mb-1">{{ highlights_count }}</h4>
@@ -126,7 +104,7 @@
         <div class="col-md-4">
             <div class="card border-0 shadow-sm">
                 <div class="card-body text-center">
-                    <div style="font-size: 2rem; color: #FF8C42;">
+                    <div style="font-size: 2rem;">
                         <i class="fas fa-check-circle"></i>
                     </div>
                     <h4 class="mt-2 mb-1">{{ reviewed_count }}</h4>

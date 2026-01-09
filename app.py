@@ -1,8 +1,9 @@
-from flask import Flask, render_template, request, jsonify, redirect, url_for, session, send_file
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session, send_file, flash
 from flask_cors import CORS
 from flask_login import LoginManager, login_required, current_user
 from flask_migrate import Migrate
 from models import db, User, ExamSession, Packet, Case, Candidate, CaseImage, Question, Answer
+from models import RevisionSession, RevisionHistory  # STUDENT REVISION: New models for balanced revision
 from auth import auth_bp
 from backup_routes import backup_bp
 from datetime import datetime
@@ -224,6 +225,196 @@ def dashboard():
                          case_count=case_count)
 
 
+# ==================== STUDENT REVISION: BALANCED REVISION ====================
+# This section implements the balanced revision feature for students
+# CRITICAL: Does NOT interfere with examiner workflows
+
+@app.route('/revision/start-balanced')
+@login_required
+def start_balanced_revision():
+    """
+    Start a new balanced revision session.
+    Selects 6 random cases from each FRCR module (36 total cases).
+    Prioritizes cases the user hasn't seen or has seen least recently.
+    """
+    from models import FRCRModule, Case, RevisionSession, RevisionHistory
+    import json
+    from sqlalchemy import func
+    
+    print(f"[REVISION] User {current_user.id} starting balanced revision session")
+    
+    try:
+        # Get all FRCR modules
+        all_modules = list(FRCRModule)
+        selected_case_ids = []
+        
+        # For each module, select 6 cases
+        for module in all_modules:
+            print(f"[REVISION] Selecting cases for module: {module.value}")
+            
+            # Strategy: Get cases with LEFT JOIN to revision_history
+            # Priority: unseen > least recently seen > random
+            
+            # Subquery: Get last_seen_at for each case for this user
+            seen_subquery = db.session.query(
+                RevisionHistory.case_id,
+                func.max(RevisionHistory.last_seen_at).label('last_seen')
+            ).filter(
+                RevisionHistory.user_id == current_user.id
+            ).group_by(RevisionHistory.case_id).subquery()
+            
+            # Main query: Get public cases for this module
+            # LEFT JOIN with history to get seen status
+            # Order by: NULL last_seen first (unseen), then oldest last_seen, then random
+            cases = db.session.query(Case).filter(
+                Case.is_public == True,
+                Case.module == module
+            ).outerjoin(
+                seen_subquery,
+                Case.id == seen_subquery.c.case_id
+            ).order_by(
+                seen_subquery.c.last_seen.asc().nullsfirst(),  # Unseen first
+                func.random()  # Then random among same category
+            ).limit(6).all()
+            
+            case_ids_for_module = [c.id for c in cases]
+            selected_case_ids.extend(case_ids_for_module)
+            
+            print(f"[REVISION] Selected {len(case_ids_for_module)} cases from {module.value}: {case_ids_for_module}")
+            
+            # Handle insufficient cases in module
+            if len(cases) < 6:
+                print(f"[REVISION] WARNING: Only {len(cases)} cases available in {module.value} (need 6)")
+        
+        # Check if we have enough cases
+        if len(selected_case_ids) == 0:
+            flash('Enough public cases not available for revision at presemt.', 'warning')
+            return redirect(url_for('dashboard'))
+        
+        # Show warning if we have fewer than expected
+        if len(selected_case_ids) < 36:
+            flash(f'Started revision with {len(selected_case_ids)} available cases. Some modules need more cases for full coverage.', 'info')
+        
+        print(f"[REVISION] Total selected cases: {len(selected_case_ids)}")
+        
+        # Create new revision session
+        revision_session = RevisionSession(
+            user_id=current_user.id,
+            case_ids='[]',  # Will be set below
+            current_case_index=0
+        )
+        revision_session.set_case_ids_list(selected_case_ids)
+        
+        db.session.add(revision_session)
+        db.session.commit()
+        
+        print(f"[REVISION] Created session {revision_session.id} with {len(selected_case_ids)} cases")
+        
+        # Redirect to first case
+        if selected_case_ids:
+            first_case_id = selected_case_ids[0]
+            flash(f'Started balanced revision session with {len(selected_case_ids)} cases!', 'success')
+            return redirect(url_for('view_revision_case', session_id=revision_session.id, case_index=0))
+        else:
+            flash('No cases available for revision.', 'warning')
+            return redirect(url_for('dashboard'))
+    
+    except Exception as e:
+        db.session.rollback()
+        print(f"[REVISION] Error starting session: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        flash(f'Error starting revision session: {str(e)}', 'danger')
+        return redirect(url_for('dashboard'))
+
+
+@app.route('/revision/session/<int:session_id>/case/<int:case_index>')
+@login_required
+def view_revision_case(session_id, case_index):
+    """
+    View a case within a revision session.
+    Tracks case viewing in revision history.
+    """
+    from models import RevisionSession, RevisionHistory, Case, FRCRModule
+    
+    # Get the revision session
+    revision_session = RevisionSession.query.filter_by(
+        id=session_id,
+        user_id=current_user.id  # Security: ensure user owns this session
+    ).first()
+    
+    if not revision_session:
+        flash('Revision session not found or access denied.', 'danger')
+        return redirect(url_for('dashboard'))
+    
+    # Get case IDs from session
+    case_ids = revision_session.get_case_ids_list()
+    
+    # Validate case_index
+    if case_index < 0 or case_index >= len(case_ids):
+        flash('Invalid case index.', 'danger')
+        return redirect(url_for('dashboard'))
+    
+    # Get the case
+    case_id = case_ids[case_index]
+    case = Case.query.get(case_id)
+    
+    if not case:
+        flash('Case not found.', 'danger')
+        return redirect(url_for('dashboard'))
+    
+    # Update revision session progress
+    revision_session.current_case_index = case_index
+    
+    # Track in revision history (create or update)
+    history = RevisionHistory.query.filter_by(
+        user_id=current_user.id,
+        case_id=case_id
+    ).first()
+    
+    if history:
+        # Update existing history
+        history.last_seen_at = datetime.utcnow()
+        history.times_seen += 1
+    else:
+        # Create new history entry
+        history = RevisionHistory(
+            user_id=current_user.id,
+            case_id=case_id,
+            module=case.module,
+            revision_session_id=session_id,
+            times_seen=1
+        )
+        db.session.add(history)
+    
+    db.session.commit()
+    
+    print(f"[REVISION] User {current_user.id} viewing case {case_id} (index {case_index}/{len(case_ids)-1}) in session {session_id}")
+    
+    # Calculate navigation info
+    has_previous = case_index > 0
+    has_next = case_index < len(case_ids) - 1
+    progress_percent = int((case_index + 1) / len(case_ids) * 100)
+    
+    # Prepare navigation URLs
+    previous_url = url_for('view_revision_case', session_id=session_id, case_index=case_index-1) if has_previous else None
+    next_url = url_for('view_revision_case', session_id=session_id, case_index=case_index+1) if has_next else None
+    
+    # Reuse existing view_case template with additional context
+    return render_template('view_case.html',
+                         case=case,
+                         # Revision session context
+                         revision_mode=True,
+                         revision_session_id=session_id,
+                         case_index=case_index,
+                         total_cases=len(case_ids),
+                         progress_percent=progress_percent,
+                         has_previous=has_previous,
+                         has_next=has_next,
+                         previous_url=previous_url,
+                         next_url=next_url)
+
+
 @app.route('/modules')
 @login_required
 def modules_view():
@@ -399,13 +590,14 @@ def admin_dashboard():
 
 # ==================== SETUP WORKFLOW (ADMIN ONLY) ====================
 
-@app.route('/setup/sessions')
-@login_required
-def setup_sessions():
-    """Manage exam sessions - ADMIN ONLY (Legacy from examiner app)"""
-    if not current_user.is_admin:
-        return redirect(url_for('dashboard'))
-    return render_template('setup_sessions.html')
+# REMOVED: Session management not needed for student revision app
+# @app.route('/setup/sessions')
+# @login_required
+# def setup_sessions():
+#     """Manage exam sessions - ADMIN ONLY (Legacy from examiner app)"""
+#     if not current_user.is_admin:
+#         return redirect(url_for('dashboard'))
+#     return render_template('setup_sessions.html')
 
 
 @app.route('/setup/cases')
@@ -417,7 +609,7 @@ def setup_cases():
     return render_template('setup_cases.html')
 
 
-# DISABLED: Candidate management not needed for student app
+# REMOVED: Not needed for student app
 # @app.route('/setup/candidates')
 # @login_required
 # def setup_candidates():
@@ -425,86 +617,82 @@ def setup_cases():
 #     return render_template('setup_candidates.html')
 
 
-# ==================== EXAM WORKFLOW (DISABLED FOR STUDENT APP) ====================
+# ==================== EXAM WORKFLOW (REMOVED FOR STUDENT APP) ====================
 
-# DISABLED: Start exam feature not needed for student app
+# REMOVED: Exam session/candidate/packet management not needed
 # @app.route('/exam/start')
 # @login_required
 # def exam_start():
 #     """Start exam - select candidate"""
 #     return render_template('exam_start.html')
 
+# @app.route('/prepare-exam')
+# @login_required
+# def prepare_exam():
+#     """Deprecated - redirects to new setup"""
+#     return redirect(url_for('setup_sessions'))
 
-@app.route('/prepare-exam')
-@login_required
-def prepare_exam():
-    """Deprecated - redirects to new setup"""
-    return redirect(url_for('setup_sessions'))
+# @app.route('/api/exam/sessions')
+# @login_required
+# def get_exam_sessions():
+#     """Get all exam sessions"""
+#     sessions = ExamSession.query.filter_by(user_id=current_user.id).order_by(ExamSession.created_at.desc()).all()
+#     return jsonify([{
+#         'id': s.id,
+#         'session_name': s.session_name,
+#         'exam_date': s.exam_date.strftime('%Y-%m-%d'),
+#         'exam_time': s.exam_time,
+#         'created_at': s.created_at.strftime('%Y-%m-%d %H:%M:%S')
+#     } for s in sessions])
 
+# @app.route('/api/exam/create', methods=['POST'])
+# @login_required
+# def create_exam():
+#     """Create a new exam session"""
+#     data = request.get_json()
+#     
+#     exam_date = datetime.strptime(data['exam_date'], '%Y-%m-%d').date()
+#     exam_time = data['exam_time']
+#     
+#     # Format session name: "05 Jan 2026 1:30 PM Exam Session"
+#     date_str = exam_date.strftime('%d %b %Y')
+#     
+#     # Convert 24-hour time to 12-hour format with AM/PM
+#     time_obj = datetime.strptime(exam_time, '%H:%M').time()
+#     time_str = time_obj.strftime('%I:%M %p')
+#     
+#     session_name = f"{date_str} {time_str} Exam Session"
+#     
+#     exam = ExamSession(
+#         user_id=current_user.id,
+#         exam_date=exam_date,
+#         exam_time=exam_time,
+#         session_name=session_name
+#     )
+#     db.session.add(exam)
+#     db.session.commit()
+#     
+#     return jsonify({
+#         'exam_id': exam.id,
+#         'session_name': session_name,
+#         'message': f'Exam session "{session_name}" created'
+#     })
 
-@app.route('/api/exam/sessions')
-@login_required
-def get_exam_sessions():
-    """Get all exam sessions"""
-    sessions = ExamSession.query.filter_by(user_id=current_user.id).order_by(ExamSession.created_at.desc()).all()
-    return jsonify([{
-        'id': s.id,
-        'session_name': s.session_name,
-        'exam_date': s.exam_date.strftime('%Y-%m-%d'),
-        'exam_time': s.exam_time,
-        'created_at': s.created_at.strftime('%Y-%m-%d %H:%M:%S')
-    } for s in sessions])
-
-
-@app.route('/api/exam/create', methods=['POST'])
-@login_required
-def create_exam():
-    """Create a new exam session"""
-    data = request.get_json()
-    
-    exam_date = datetime.strptime(data['exam_date'], '%Y-%m-%d').date()
-    exam_time = data['exam_time']
-    
-    # Format session name: "05 Jan 2026 1:30 PM Exam Session"
-    date_str = exam_date.strftime('%d %b %Y')
-    
-    # Convert 24-hour time to 12-hour format with AM/PM
-    time_obj = datetime.strptime(exam_time, '%H:%M').time()
-    time_str = time_obj.strftime('%I:%M %p')
-    
-    session_name = f"{date_str} {time_str} Exam Session"
-    
-    exam = ExamSession(
-        user_id=current_user.id,
-        exam_date=exam_date,
-        exam_time=exam_time,
-        session_name=session_name
-    )
-    db.session.add(exam)
-    db.session.commit()
-    
-    return jsonify({
-        'exam_id': exam.id,
-        'session_name': session_name,
-        'message': f'Exam session "{session_name}" created'
-    })
-
-
-@app.route('/api/packet/create', methods=['POST'])
-@login_required
-def create_packet():
-    """Create a new packet"""
-    data = request.get_json()
-    
-    packet = Packet(
-        exam_id=data['exam_id'],
-        packet_number=data['packet_number'],
-        packet_id=data['packet_id']
-    )
-    db.session.add(packet)
-    db.session.commit()
-    
-    return jsonify({'packet_id': packet.id, 'message': 'Packet created'})
+# @app.route('/api/packet/create', methods=['POST'])
+# @login_required
+# def create_packet():
+#     """Create a new packet"""
+#     data = request.get_json()
+#     
+#     packet = Packet(
+#         exam_id=data['exam_id'],
+#         packet_number=data['packet_number'],
+#         packet_id=data['packet_id']
+#     )
+#     db.session.add(packet)
+#     db.session.commit()
+#     
+#     return jsonify({'packet_id': packet.id, 'message': 'Packet created'})
 
 
 @app.route('/api/case/create', methods=['POST'])
@@ -602,103 +790,95 @@ def create_case():
         return jsonify({'error': f'Failed to create case: {str(e)}'}), 500
 
 
-@app.route('/api/candidate/create', methods=['POST'])
-@login_required
-def create_candidate():
-    """Create a new candidate"""
-    data = request.get_json()
-    
-    candidate = Candidate(
-        exam_id=data['exam_id'],
-        candidate_name=data['candidate_name'],
-        candidate_number=data['candidate_number'],
-        packet_number=data['candidate_number']  # Candidate number maps to packet number
-    )
-    db.session.add(candidate)
-    db.session.commit()
-    
-    return jsonify({'candidate_id': candidate.id, 'message': 'Candidate created'})
+# REMOVED: Candidate/packet management not needed for student app
+# @app.route('/api/candidate/create', methods=['POST'])
+# @login_required
+# def create_candidate():
+#     """Create a new candidate"""
+#     data = request.get_json()
+#     
+#     candidate = Candidate(
+#         exam_id=data['exam_id'],
+#         candidate_name=data['candidate_name'],
+#         candidate_number=data['candidate_number'],
+#         packet_number=data['candidate_number']
+#     )
+#     db.session.add(candidate)
+#     db.session.commit()
+#     
+#     return jsonify({'candidate_id': candidate.id, 'message': 'Candidate created'})
 
+# @app.route('/start-exam')
+# def start_exam():
+#     """Deprecated - redirects to new exam start"""
+#     return redirect(url_for('exam_start'))
 
-@app.route('/start-exam')
-def start_exam():
-    """Deprecated - redirects to new exam start"""
-    return redirect(url_for('exam_start'))
+# @app.route('/exam/select-candidate')
+# def exam_select_candidate():
+#     """Select candidate from session"""
+#     exam_sessions = ExamSession.query.order_by(ExamSession.created_at.desc()).all()
+#     
+#     if not exam_sessions:
+#         return redirect(url_for('setup_sessions'))
+#     
+#     return render_template('start_exam.html', exams=exam_sessions)
 
+# @app.route('/select-candidate')
+# def select_candidate():
+#     """Deprecated - redirects to new workflow"""
+#     return redirect(url_for('exam_select_candidate'))
 
-@app.route('/exam/select-candidate')
-def exam_select_candidate():
-    """Select candidate from session"""
-    exam_sessions = ExamSession.query.order_by(ExamSession.created_at.desc()).all()
-    
-    if not exam_sessions:
-        return redirect(url_for('setup_sessions'))
-    
-    return render_template('start_exam.html', exams=exam_sessions)
+# @app.route('/api/candidates/<int:exam_id>')
+# @login_required
+# def get_candidates(exam_id):
+#     """Get all candidates for an exam"""
+#     exam = verify_exam_ownership(exam_id)
+#     if not exam:
+#         return jsonify({'error': 'Unauthorized'}), 403
+#     
+#     candidates = Candidate.query.filter_by(exam_id=exam_id).all()
+#     return jsonify([{
+#         'id': c.id,
+#         'candidate_name': c.candidate_name,
+#         'candidate_number': c.candidate_number,
+#         'packet_number': c.packet_number
+#     } for c in candidates])
 
+# @app.route('/view-packet/<int:candidate_id>')
+# def view_packet(candidate_id):
+#     """View packet for a specific candidate"""
+#     candidate = Candidate.query.get(candidate_id)
+#     
+#     if not candidate:
+#         return redirect(url_for('start_exam'))
+#     
+#     packet = Packet.query.filter_by(
+#         exam_id=candidate.exam_id,
+#         packet_number=candidate.packet_number
+#     ).first()
+#     
+#     session['current_candidate_id'] = candidate_id
+#     session['current_packet_id'] = packet.id if packet else None
+#     
+#     return render_template('view_packet.html', candidate=candidate, packet=packet)
 
-@app.route('/select-candidate')
-def select_candidate():
-    """Deprecated - redirects to new workflow"""
-    return redirect(url_for('exam_select_candidate'))
-
-
-@app.route('/api/candidates/<int:exam_id>')
-@login_required
-def get_candidates(exam_id):
-    """Get all candidates for an exam"""
-    # Verify ownership
-    exam = verify_exam_ownership(exam_id)
-    if not exam:
-        return jsonify({'error': 'Unauthorized'}), 403
-    
-    candidates = Candidate.query.filter_by(exam_id=exam_id).all()
-    return jsonify([{
-        'id': c.id,
-        'candidate_name': c.candidate_name,
-        'candidate_number': c.candidate_number,
-        'packet_number': c.packet_number
-    } for c in candidates])
-
-
-@app.route('/view-packet/<int:candidate_id>')
-def view_packet(candidate_id):
-    """View packet for a specific candidate"""
-    candidate = Candidate.query.get(candidate_id)
-    
-    if not candidate:
-        return redirect(url_for('start_exam'))
-    
-    # Get the packet corresponding to the candidate's packet number
-    packet = Packet.query.filter_by(
-        exam_id=candidate.exam_id,
-        packet_number=candidate.packet_number
-    ).first()
-    
-    session['current_candidate_id'] = candidate_id
-    session['current_packet_id'] = packet.id if packet else None
-    
-    return render_template('view_packet.html', candidate=candidate, packet=packet)
-
-
-@app.route('/api/packet/<int:packet_id>/cases')
-@login_required
-def get_packet_cases(packet_id):
-    """Get all cases for a packet"""
-    # Verify ownership
-    packet = verify_packet_ownership(packet_id)
-    if not packet:
-        return jsonify({'error': 'Unauthorized'}), 403
-    
-    cases = Case.query.filter_by(packet_id=packet_id).order_by(Case.case_number).all()
-    return jsonify([{
-        'id': c.id,
-        'case_number': c.case_number,
-        'diagnosis': c.diagnosis,
-        'questions': c.questions,
-        'answers': c.answers,
-        'discussion': c.discussion
-    } for c in cases])
+# @app.route('/api/packet/<int:packet_id>/cases')
+# @login_required
+# def get_packet_cases(packet_id):
+#     """Get all cases for a packet"""
+#     packet = verify_packet_ownership(packet_id)
+#     if not packet:
+#         return jsonify({'error': 'Unauthorized'}), 403
+#     
+#     cases = Case.query.filter_by(packet_id=packet_id).order_by(Case.case_number).all()
+#     return jsonify([{
+#         'id': c.id,
+#         'case_number': c.case_number,
+#         'diagnosis': c.diagnosis,
+#         'questions': c.questions,
+#         'answers': c.answers,
+#         'discussion': c.discussion
+#     } for c in cases])
 
 
 @app.route('/view-case/<int:case_id>')
@@ -850,78 +1030,80 @@ def get_case(case_id):
         return jsonify({'error': str(e)}), 500
 
 
-@app.route('/manage-session/<int:session_id>')
-def manage_session(session_id):
-    """Manage exam session - edit packets and candidates"""
-    exam = ExamSession.query.get(session_id)
-    
-    if not exam:
-        return redirect(url_for('index'))
-    
-    session['current_exam_id'] = session_id
-    return render_template('manage_session.html', session=exam)
+# REMOVED: Session management routes (examiner-specific)
+# @app.route('/manage-session/<int:session_id>')
+# def manage_session(session_id):
+#     """Manage exam session - edit packets and candidates"""
+#     exam = ExamSession.query.get(session_id)
+#     
+#     if not exam:
+#         return redirect(url_for('index'))
+#     
+#     session['current_exam_id'] = session_id
+#     return render_template('manage_session.html', session=exam)
 
 
-@app.route('/api/session/<int:session_id>/packets')
-def get_session_packets(session_id):
-    """Get all packets for a session"""
-    packets = Packet.query.filter_by(exam_id=session_id).all()
-    return jsonify([{
-        'id': p.id,
-        'packet_number': p.packet_number,
-        'packet_id': p.packet_id
-    } for p in packets])
+# @app.route('/api/session/<int:session_id>/packets')
+# def get_session_packets(session_id):
+#     """Get all packets for a session"""
+#     packets = Packet.query.filter_by(exam_id=session_id).all()
+#     return jsonify([{
+#         'id': p.id,
+#         'packet_number': p.packet_number,
+#         'packet_id': p.packet_id
+#     } for p in packets])
 
 
-@app.route('/api/packet/<int:packet_id>', methods=['DELETE'])
-@login_required
-def delete_packet(packet_id):
-    """Delete a packet and all its cases"""
-    # Verify user ownership
-    obj = verify_packet_ownership(delete_id)
-    if not obj:
-        return jsonify({"error": "Unauthorized"}), 403
-    
-    """Delete a packet and all its cases"""
-    packet = Packet.query.get(packet_id)
-    
-    if not packet:
-        return jsonify({'error': 'Packet not found'}), 404
-    
-    # Delete all cases in this packet
-    Case.query.filter_by(packet_id=packet_id).delete()
-    
-    db.session.delete(packet)
-    db.session.commit()
-    
-    return jsonify({'message': 'Packet deleted successfully'})
+# REMOVED: Packet management routes (examiner-specific)
+# @app.route('/api/packet/<int:packet_id>', methods=['DELETE'])
+# @login_required
+# def delete_packet(packet_id):
+#     """Delete a packet and all its cases"""
+#     # Verify user ownership
+#     obj = verify_packet_ownership(delete_id)
+#     if not obj:
+#         return jsonify({"error": "Unauthorized"}), 403
+#     
+#     """Delete a packet and all its cases"""
+#     packet = Packet.query.get(packet_id)
+#     
+#     if not packet:
+#         return jsonify({'error': 'Packet not found'}), 404
+#     
+#     # Delete all cases in this packet
+#     Case.query.filter_by(packet_id=packet_id).delete()
+#     
+#     db.session.delete(packet)
+#     db.session.commit()
+#     
+#     return jsonify({'message': 'Packet deleted successfully'})
 
 
-@app.route('/api/packet/<int:packet_id>', methods=['PUT'])
-@login_required
-def update_packet(packet_id):
-    """Update a packet"""
-    # Verify user ownership
-    obj = verify_packet_ownership(delete_id)
-    if not obj:
-        return jsonify({"error": "Unauthorized"}), 403
-    
-    """Update a packet"""
-    packet = Packet.query.get(packet_id)
-    
-    if not packet:
-        return jsonify({'error': 'Packet not found'}), 404
-    
-    data = request.get_json()
-    
-    if 'packet_number' in data:
-        packet.packet_number = data['packet_number']
-    if 'packet_id' in data:
-        packet.packet_id = data['packet_id']
-    
-    db.session.commit()
-    
-    return jsonify({'message': 'Packet updated successfully'})
+# @app.route('/api/packet/<int:packet_id>', methods=['PUT'])
+# @login_required
+# def update_packet(packet_id):
+#     """Update a packet"""
+#     # Verify user ownership
+#     obj = verify_packet_ownership(delete_id)
+#     if not obj:
+#         return jsonify({"error": "Unauthorized"}), 403
+#     
+#     """Update a packet"""
+#     packet = Packet.query.get(packet_id)
+#     
+#     if not packet:
+#         return jsonify({'error': 'Packet not found'}), 404
+#     
+#     data = request.get_json()
+#     
+#     if 'packet_number' in data:
+#         packet.packet_number = data['packet_number']
+#     if 'packet_id' in data:
+#         packet.packet_id = data['packet_id']
+#     
+#     db.session.commit()
+#     
+#     return jsonify({'message': 'Packet updated successfully'})
 
 
 @app.route('/api/case/<int:case_id>', methods=['DELETE'])
@@ -1095,53 +1277,53 @@ def update_image_description(image_id):
 
 
 
+# REMOVED: Candidate management routes (examiner-specific)
+# @app.route('/api/candidate/<int:candidate_id>', methods=['PUT'])
+# @login_required
+# def update_candidate(candidate_id):
+#     """Update a candidate"""
+#     # Verify user ownership
+#     obj = verify_candidate_ownership(update_id)
+#     if not obj:
+#         return jsonify({"error": "Unauthorized"}), 403
+#     
+#     """Update a candidate"""
+#     candidate = Candidate.query.get(candidate_id)
+#     
+#     if not candidate:
+#         return jsonify({'error': 'Candidate not found'}), 404
+#     
+#     data = request.get_json()
+#     
+#     if 'candidate_name' in data:
+#         candidate.candidate_name = data['candidate_name']
+#     if 'candidate_number' in data:
+#         candidate.candidate_number = data['candidate_number']
+#     
+#     db.session.commit()
+#     
+#     return jsonify({'message': 'Candidate updated successfully'})
 
-@app.route('/api/candidate/<int:candidate_id>', methods=['PUT'])
-@login_required
-def update_candidate(candidate_id):
-    """Update a candidate"""
-    # Verify user ownership
-    obj = verify_candidate_ownership(update_id)
-    if not obj:
-        return jsonify({"error": "Unauthorized"}), 403
-    
-    """Update a candidate"""
-    candidate = Candidate.query.get(candidate_id)
-    
-    if not candidate:
-        return jsonify({'error': 'Candidate not found'}), 404
-    
-    data = request.get_json()
-    
-    if 'candidate_name' in data:
-        candidate.candidate_name = data['candidate_name']
-    if 'candidate_number' in data:
-        candidate.candidate_number = data['candidate_number']
-    
-    db.session.commit()
-    
-    return jsonify({'message': 'Candidate updated successfully'})
 
-
-@app.route('/api/candidate/<int:candidate_id>', methods=['DELETE'])
-@login_required
-def delete_candidate(candidate_id):
-    """Delete a candidate"""
-    # Verify user ownership
-    obj = verify_candidate_ownership(update_id)
-    if not obj:
-        return jsonify({"error": "Unauthorized"}), 403
-    
-    """Delete a candidate"""
-    candidate = Candidate.query.get(candidate_id)
-    
-    if not candidate:
-        return jsonify({'error': 'Candidate not found'}), 404
-    
-    db.session.delete(candidate)
-    db.session.commit()
-    
-    return jsonify({'message': 'Candidate deleted successfully'})
+# @app.route('/api/candidate/<int:candidate_id>', methods=['DELETE'])
+# @login_required
+# def delete_candidate(candidate_id):
+#     """Delete a candidate"""
+#     # Verify user ownership
+#     obj = verify_candidate_ownership(update_id)
+#     if not obj:
+#         return jsonify({"error": "Unauthorized"}), 403
+#     
+#     """Delete a candidate"""
+#     candidate = Candidate.query.get(candidate_id)
+#     
+#     if not candidate:
+#         return jsonify({'error': 'Candidate not found'}), 404
+#     
+#     db.session.delete(candidate)
+#     db.session.commit()
+#     
+#     return jsonify({'message': 'Candidate deleted successfully'})
 
 
 # ==================== UTILITY FUNCTIONS ====================

@@ -3,11 +3,31 @@
 {% block content %}
 <div class="row">
     <div class="col-12 px-2 px-md-4">
+        <!-- REVISION MODE: Progress Bar -->
+        {% if revision_mode %}
+        <div class="alert alert-info border-0 mb-4" style="background: linear-gradient(135deg, #7FB685 0%, #88C298 100%); color: white;">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="mb-1"><i class="fas fa-graduation-cap me-2"></i>Balanced Revision Mode</h5>
+                    <small>Case {{ case_index + 1 }} of {{ total_cases }}</small>
+                </div>
+                <div class="text-end">
+                    <strong>{{ progress_percent }}%</strong>
+                </div>
+            </div>
+            <div class="progress mt-2" style="height: 8px; background-color: rgba(255,255,255,0.3);">
+                <div class="progress-bar bg-light" role="progressbar" style="width: {{ progress_percent }}%;" aria-valuenow="{{ progress_percent }}" aria-valuemin="0" aria-valuemax="100"></div>
+            </div>
+        </div>
+        {% endif %}
+
         <!-- Breadcrumb Navigation -->
         <nav aria-label="breadcrumb" class="mb-4">
             <ol class="breadcrumb breadcrumb-custom">
                 <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}"><i class="fas fa-home me-1"></i>Home</a></li>
-                {% if case.module %}
+                {% if revision_mode %}
+                <li class="breadcrumb-item"><i class="fas fa-graduation-cap me-1"></i>Balanced Revision</li>
+                {% elif case.module %}
                 <li class="breadcrumb-item"><a href="{{ url_for('modules_view') }}"><i class="fas fa-th-large me-1"></i>Modules</a></li>
                 <li class="breadcrumb-item"><a href="{{ url_for('cases_by_module', module=case.module.name) }}"><i class="fas fa-folder me-1"></i>{{ case.module.value }}</a></li>
                 {% else %}
@@ -20,7 +40,25 @@
         <!-- Quick Navigation -->
         <div class="quick-nav-section mb-4">
             <div class="quick-nav-group">
-                {% if case.module %}
+                {% if revision_mode %}
+                    {% if has_previous %}
+                    <a href="{{ previous_url }}" class="btn btn-sm btn-outline-primary rounded-pill">
+                        <i class="fas fa-arrow-left me-1"></i>Previous Case
+                    </a>
+                    {% endif %}
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-sm btn-outline-secondary rounded-pill">
+                        <i class="fas fa-times me-1"></i>Exit Revision
+                    </a>
+                    {% if has_next %}
+                    <a href="{{ next_url }}" class="btn btn-sm btn-primary rounded-pill">
+                        Next Case<i class="fas fa-arrow-right ms-1"></i>
+                    </a>
+                    {% else %}
+                    <span class="badge bg-success px-3 py-2">
+                        <i class="fas fa-check-circle me-1"></i>Last Case!
+                    </span>
+                    {% endif %}
+                {% elif case.module %}
                 <a href="{{ url_for('cases_by_module', module=case.module.name) }}" class="btn btn-sm btn-outline-secondary rounded-pill" title="Back to module">
                     <i class="fas fa-arrow-left me-1"></i>Back to {{ case.module.value }}
                 </a>
@@ -34,7 +72,7 @@
 
         {% if case %}
         <div class="case-card mb-4 card border-0 shadow-lg">
-            <div class="case-card-header py-4 px-4 px-md-5" style="background: linear-gradient(90deg, #FF8C42 0%, #FFB366 100%);">
+            <div class="case-card-header py-4 px-4 px-md-5" style="background: linear-gradient(90deg, #E8744F 0%, #F4A261 100%);" >
                 <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
                     <div>
                         <h3 class="mb-2 fw-bold text-white" style="font-size: 2rem; letter-spacing: -0.5px;">Case #{{ case.id }}</h3>
@@ -79,7 +117,7 @@
                     </div>
 
                     <!-- My Notes Section (Student Notes) -->
-                    <div class="detail-section notes-section mb-5 p-4 rounded-3" style="background: linear-gradient(135deg, #FFF4CC 0%, #FFFBF0 100%); border-left: 5px solid #FFE66D;">
+                    <div class="detail-section notes-section mb-5 p-4 rounded-3" style="background: linear-gradient(135deg, #FFF8E7 0%, #FFFCF3 100%); border-left: 5px solid #F2CC8F;">
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <label class="detail-label fw-bold text-secondary mb-0">
                                 <i class="fas fa-sticky-note me-2" style="color: #FFB84D;"></i>My Notes
@@ -92,7 +130,7 @@
                                   class="form-control" 
                                   rows="6" 
                                   placeholder="Type your notes here... They are private and will be auto-saved."
-                                  style="background-color: #FFFEF8; border: 2px solid #FFE66D; font-family: 'Courier New', monospace; line-height: 1.6; resize: vertical;">{% if user_note %}{{ user_note.note_text }}{% endif %}</textarea>
+                                  style="background-color: #FFFEF8; border: 2px solid #F2CC8F; font-family: 'Courier New', monospace; line-height: 1.6; resize: vertical;">{% if user_note %}{{ user_note.note_text }}{% endif %}</textarea>
                         <div class="mt-2 d-flex justify-content-between align-items-center">
                             <small class="text-muted" id="noteSaveStatus">
                                 {% if user_note %}
@@ -137,7 +175,7 @@
         <div class="alert alert-danger">
             <h4>Error</h4>
             <p>Could not load case information.</p>
-            <a href="/start-exam" class="btn btn-primary btn-sm">Back to Exam</a>
+            <a href="/cases" class="btn btn-primary btn-sm">Back to Cases</a>
         </div>
         {% endif %}
     </div>

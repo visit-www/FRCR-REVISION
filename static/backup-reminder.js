@@ -75,7 +75,7 @@ class BackupReminder {
         const reminder = document.createElement('div');
         reminder.className = 'backup-reminder-toast';
         reminder.innerHTML = `
-            <div class="toast-header bg-warning text-dark">
+            <div class="toast-header bg-peachy-orange text-dark">
                 <i class="bi fas fa-exclamation-triangle me-2"></i>
                 <strong class="me-auto">Backup Reminder</strong>
                 <button type="button" class="btn-close" data-dismiss="reminder"></button>
