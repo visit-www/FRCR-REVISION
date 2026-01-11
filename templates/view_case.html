@@ -97,7 +97,14 @@
                     <!-- Diagnosis - Featured -->
                     <div class="detail-section diagnosis-section mb-5 p-4 rounded-3" style="background: linear-gradient(135deg, #fff8f0 0%, #fffbf5 100%); border-left: 5px solid #FFD700;">
                         <label class="detail-label fw-bold text-secondary mb-3 d-block"><i class="fas fa-stethoscope me-2" style="color: #FFC107;"></i>Diagnosis</label>
-                        <div class="detail-content diagnosis-text" style="line-height: 1.8; font-size: 1.05rem; color: #2c3e50; text-align: left;">{{ case.diagnosis }}</div>
+                        <div id="diagnosisText" class="detail-content diagnosis-text highlightable-text" data-field="diagnosis" style="line-height: 1.8; font-size: 1.05rem; color: #2c3e50; text-align: left; {% if current_user.is_authenticated and current_user.role and current_user.role.value == 'student' %}user-select: text; cursor: text;{% endif %}">{{ case.diagnosis }}</div>
+                        {% if current_user.is_authenticated and current_user.role and current_user.role.value == 'student' %}
+                        <div class="mt-3 p-3 rounded" style="background: #f8f9fa; border-left: 3px solid #667eea;">
+                            <small class="text-muted" style="font-size: 0.85rem;">
+                                <i class="fas fa-highlighter me-1" style="color: #667eea;"></i>Select text to highlight with your choice of color. Your highlights are private.
+                            </small>
+                        </div>
+                        {% endif %}
                     </div>
 
                     <!-- Question & Answer Section - Separate Pairs -->
@@ -111,12 +118,20 @@
                     <!-- Discussion/Comments -->
                     <div class="detail-section discussion-section mb-5 p-4 rounded-3" style="background: linear-gradient(135deg, #f0f8fc 0%, #f5fbff 100%); border-left: 5px solid #17a2b8;">
                         <label class="detail-label fw-bold text-secondary mb-3 d-block"><i class="fas fa-comments-dollar me-2" style="color: #17a2b8;"></i>Discussion & Comments</label>
-                        <div id="discussionText" class="detail-content discussion-text" style="line-height: 1.8; color: #2c3e50; text-align: left;">
+                        <div id="discussionText" class="detail-content discussion-text highlightable-text" data-field="discussion" style="line-height: 1.8; color: #2c3e50; text-align: left; {% if current_user.is_authenticated and current_user.role and current_user.role.value == 'student' %}user-select: text; cursor: text;{% endif %}">
             {% if case.discussion %}{{ case.discussion|safe }}{% else %}<em class="text-muted"><i class="fas fa-info-circle me-2"></i>No discussion provided.</em>{% endif %}
                         </div>
+                        {% if current_user.is_authenticated and current_user.role and current_user.role.value == 'student' %}
+                        <div class="mt-3 p-3 rounded" style="background: #f8f9fa; border-left: 3px solid #667eea;">
+                            <small class="text-muted" style="font-size: 0.85rem;">
+                                <i class="fas fa-highlighter me-1" style="color: #667eea;"></i>Select text to highlight with your choice of color. Your highlights are private.
+                            </small>
+                        </div>
+                        {% endif %}
                     </div>
 
-                    <!-- My Notes Section (Student Notes) -->
+                    <!-- My Notes Section (Student Notes - STUDENTS ONLY) -->
+                    {% if current_user.is_authenticated and current_user.role and current_user.role.value == 'student' %}
                     <div class="detail-section notes-section mb-5 p-4 rounded-3" style="background: linear-gradient(135deg, #FFF8E7 0%, #FFFCF3 100%); border-left: 5px solid #F2CC8F;">
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <label class="detail-label fw-bold text-secondary mb-0">
@@ -144,6 +159,7 @@
                             </button>
                         </div>
                     </div>
+                    {% endif %}
 
                     <!-- Case Images Section -->
                     <div class="detail-section images-section mb-5">
@@ -155,8 +171,8 @@
                     </div>
                 </div>
 
-                <!-- Action Buttons - Admin Only -->
-                {% if current_user.is_admin %}
+                <!-- Action Buttons - Admin/Content Manager Only -->
+                {% if current_user.is_authenticated and current_user.role and (current_user.role.value == 'admin' or current_user.role.value == 'content_manager') %}
                 <div class="action-buttons mt-5 pt-4 border-top">
                     <div class="btn-group-actions">
                         <button class="btn btn-warning rounded-pill px-4 py-2" onclick="openCaseEditModal({{ case.id }})">
@@ -171,6 +187,37 @@
                 {% endif %}
             </div>
         </div>
+        
+        {% if current_user.is_authenticated and current_user.role and current_user.role.value == 'student' %}
+        <!-- Floating Highlight Button -->
+        <div class="floating-highlight-btn" id="floatingHighlightBtn" style="display: none;">
+            <div class="btn-group dropup">
+                <button type="button" class="btn btn-primary btn-lg rounded-circle shadow-lg" id="highlightBtnFloating" data-bs-toggle="dropdown" aria-expanded="false" title="Highlight text">
+                    <i class="fas fa-highlighter"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end" id="highlightColorMenuFloating">
+                    <li><h6 class="dropdown-header">Select Color</h6></li>
+                    <li><a class="dropdown-item highlight-color-option" href="#" data-color="yellow" style="background-color: #FFEB3B; color: #333;">
+                        <i class="fas fa-highlighter me-2"></i>Yellow
+                    </a></li>
+                    <li><a class="dropdown-item highlight-color-option" href="#" data-color="green" style="background-color: #4CAF50; color: white;">
+                        <i class="fas fa-highlighter me-2"></i>Green
+                    </a></li>
+                    <li><a class="dropdown-item highlight-color-option" href="#" data-color="pink" style="background-color: #E91E63; color: white;">
+                        <i class="fas fa-highlighter me-2"></i>Pink
+                    </a></li>
+                    <li><a class="dropdown-item highlight-color-option" href="#" data-color="blue" style="background-color: #2196F3; color: white;">
+                        <i class="fas fa-highlighter me-2"></i>Blue
+                    </a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item text-danger" href="#" id="cancelHighlightBtnFloating" style="display: none;">
+                        <i class="fas fa-times me-2"></i>Cancel Highlight
+                    </a></li>
+                </ul>
+            </div>
+        </div>
+        {% endif %}
+        
         {% else %}
         <div class="alert alert-danger">
             <h4>Error</h4>
@@ -272,6 +319,90 @@
     #imagesContainer {
         display: block !important;
         width: 100% !important;
+    }
+    
+    /* Floating Highlight Button */
+    .floating-highlight-btn {
+        position: fixed;
+        bottom: 30px;
+        right: 30px;
+        z-index: 1000;
+        animation: fadeIn 0.3s ease-in;
+    }
+    
+    #highlightBtnFloating {
+        width: 60px;
+        height: 60px;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        transition: all 0.3s ease;
+        border: none;
+    }
+    
+    #highlightBtnFloating:hover {
+        transform: scale(1.1);
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+    }
+    
+    #highlightBtnFloating.active {
+        background-color: #667eea !important;
+        animation: pulse 2s infinite;
+    }
+    
+    #highlightColorMenuFloating {
+        min-width: 200px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        border: none;
+        border-radius: 8px;
+        margin-bottom: 10px;
+    }
+    
+    #highlightColorMenuFloating .highlight-color-option {
+        padding: 10px 15px;
+        font-weight: 500;
+        transition: all 0.2s;
+    }
+    
+    #highlightColorMenuFloating .highlight-color-option:hover {
+        transform: translateX(5px);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
+    @keyframes pulse {
+        0%, 100% {
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        50% {
+            box-shadow: 0 4px 20px rgba(102, 126, 234, 0.6);
+        }
+    }
+    
+    @media (max-width: 768px) {
+        .floating-highlight-btn {
+            bottom: 20px;
+            right: 20px;
+        }
+        
+        #highlightBtnFloating {
+            width: 55px;
+            height: 55px;
+            font-size: 1.3rem;
+        }
     }
     
     #imageInput {
@@ -433,6 +564,7 @@
 
 <script>
     const caseId = {{ case.id }};
+    const isStudent = {% if current_user.is_authenticated and current_user.role and current_user.role.value == 'student' %}true{% else %}false{% endif %};
     let imageModal;
     let currentImages = [];
     let currentImageIndex = 0;
@@ -477,7 +609,15 @@
     // Load Q&A pairs from API
     function loadQAPairs() {
         fetch(`/api/case/${caseId}/qa-pairs`)
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    // If response is not OK, try to get error message
+                    return response.json().then(data => {
+                        throw new Error(data.error || `HTTP ${response.status}: ${response.statusText}`);
+                    });
+                }
+                return response.json();
+            })
             .then(pairs => {
                 const container = document.getElementById('qaContainer');
                 
@@ -515,13 +655,13 @@
                                         <tr role="row" class="qa-table-row ${rowClass}" tabindex="0">
                                             <td role="cell" class="qa-table-cell qa-question-cell">
                                                 <div class="qa-cell-number">Q${pair.number}</div>
-                                                <div class="qa-cell-content">
+                                                <div class="qa-cell-content highlightable-text qa-question" data-field="question_${pair.number}" ${isStudent ? 'style="user-select: text; cursor: text;"' : ''}>
                                                     ${questionText || '<em class="text-muted">No question text</em>'}
                                                 </div>
                                             </td>
                                             <td role="cell" class="qa-table-cell qa-answer-cell">
                                                 <div class="qa-cell-number">A${pair.number}</div>
-                                                <div class="qa-cell-content">
+                                                <div class="qa-cell-content highlightable-text qa-answer" data-field="answer_${pair.number}" ${isStudent ? 'style="user-select: text; cursor: text;"' : ''}>
                                                     ${answerText || '<em class="text-muted">No answer text</em>'}
                                                 </div>
                                             </td>
@@ -556,7 +696,7 @@
                                                 </div>
                                             </div>
                                             <div class="qa-card-body">
-                                                <div class="qa-card-text text-warning" style="text-align: left !important; text-indent: 0 !important; white-space: normal !important;">
+                                                <div class="qa-card-text qa-question highlightable-text" data-field="question_${pair.number}" style="${isStudent ? 'user-select: text; cursor: text; ' : ''}text-align: left !important; text-indent: 0 !important; white-space: normal !important;">
                                                     ${questionText || '<em class="text-muted">No question text</em>'}
                                                 </div>
                                             </div>
@@ -572,7 +712,7 @@
                                                 </div>
                                             </div>
                                             <div class="qa-card-body">
-                                                <div class="qa-card-text text-white" style="text-align: left !important; text-indent: 0 !important; white-space: normal !important;">
+                                                <div class="qa-card-text qa-answer highlightable-text" data-field="answer_${pair.number}" style="${isStudent ? 'user-select: text; cursor: text; ' : ''}text-align: left !important; text-indent: 0 !important; white-space: normal !important;">
                                                     ${answerText || '<em class="text-muted">No answer text</em>'}
                                                 </div>
                                             </div>
@@ -587,10 +727,18 @@
                 `;
                 
                 container.innerHTML = desktopHtml + mobileHtml;
+                
+                // Reload highlights to apply to newly loaded Q&A
+                if (isStudent && typeof loadHighlights === 'function') {
+                    setTimeout(loadHighlights, 100);
+                }
             })
             .catch(error => {
                 console.error('Error loading Q&A pairs:', error);
-                document.getElementById('qaContainer').innerHTML = '<p class="text-danger">Error loading Q&A pairs</p>';
+                const container = document.getElementById('qaContainer');
+                if (container) {
+                    container.innerHTML = `<p class="text-danger">Error loading Q&A pairs: ${error.message || 'Unknown error'}</p>`;
+                }
             });
     }
     
@@ -700,11 +848,11 @@
                 const descriptionDisplay = document.getElementById('imageDescriptionDisplay');
                 
                 if (image && image.description && image.description.trim()) {
-                    // Show description if it exists
-                    descriptionDisplay.textContent = image.description;
+                    // Show description if it exists (render as HTML)
+                    descriptionDisplay.innerHTML = image.description;
                 } else {
                     // Show default text if no description
-                    descriptionDisplay.textContent = 'No description';
+                    descriptionDisplay.innerHTML = 'No description';
                 }
             })
             .catch(error => {
@@ -776,8 +924,8 @@
     const notesTextarea = document.getElementById('candidateNoteText');
     const noteSaveStatus = document.getElementById('noteSaveStatus');
     
-    // Auto-save notes after 2 seconds of inactivity
-    if (notesTextarea) {
+    // Auto-save notes after 2 seconds of inactivity (students only)
+    if (notesTextarea && isStudent) {
         notesTextarea.addEventListener('input', function() {
             // Clear existing timeout
             if (notesSaveTimeout) {
@@ -855,6 +1003,513 @@
         } else {
             descriptionDisplay.textContent = 'No description';
         }
+    }
+    
+    // ==================== INLINE TEXT HIGHLIGHTING (STUDENTS ONLY) ====================
+    let selectedText = '';
+    let highlightMenu = null;
+    let highlightMode = false;
+    let selectedHighlightColor = null;
+    let currentHighlightField = null;
+    
+    // Initialize highlighting for students only
+    function initHighlighting() {
+        if (!isStudent) return;
+        
+        // Load existing highlights
+        loadHighlights();
+        
+        // Setup highlight toolbars
+        setupHighlightToolbars();
+        
+        // Add mouseup listener for text selection when in highlight mode
+        document.addEventListener('mouseup', handleTextSelection);
+    }
+    
+    function setupHighlightToolbars() {
+        if (!isStudent) return;
+        
+        // Show floating highlight button
+        const floatingBtn = document.getElementById('floatingHighlightBtn');
+        if (floatingBtn) {
+            floatingBtn.style.display = 'block';
+        }
+        
+        const highlightBtn = document.getElementById('highlightBtnFloating');
+        const cancelBtn = document.getElementById('cancelHighlightBtnFloating');
+        const colorMenu = document.getElementById('highlightColorMenuFloating');
+        
+        if (highlightBtn && colorMenu) {
+            // Handle color selection from dropdown
+            colorMenu.querySelectorAll('.highlight-color-option').forEach(function(item) {
+                item.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    const color = this.getAttribute('data-color');
+                    selectedHighlightColor = color;
+                    highlightMode = true;
+                    currentHighlightField = null; // Will be determined by text selection
+                    
+                    // Update button to show selected color
+                    highlightBtn.style.backgroundColor = getColorHex(color);
+                    highlightBtn.classList.add('active');
+                    
+                    // Show cancel option in dropdown
+                    if (cancelBtn) cancelBtn.style.display = 'block';
+                    
+                    // Close dropdown
+                    const dropdown = bootstrap.Dropdown.getInstance(highlightBtn);
+                    if (dropdown) dropdown.hide();
+                    
+                    // Show feedback
+                    showHighlightModeFeedback();
+                });
+            });
+            
+            // Cancel button in dropdown
+            if (cancelBtn) {
+                cancelBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    exitHighlightMode('');
+                    
+                    // Close dropdown
+                    const dropdown = bootstrap.Dropdown.getInstance(highlightBtn);
+                    if (dropdown) dropdown.hide();
+                });
+            }
+        }
+    }
+    
+    function getColorHex(colorName) {
+        const colors = {
+            'yellow': '#FFEB3B',
+            'green': '#4CAF50',
+            'pink': '#E91E63',
+            'blue': '#2196F3'
+        };
+        return colors[colorName] || '#FFEB3B';
+    }
+    
+    function exitHighlightMode(prefix) {
+        highlightMode = false;
+        selectedHighlightColor = null;
+        currentHighlightField = null;
+        
+        // Reset floating highlight button
+        const highlightBtn = document.getElementById('highlightBtnFloating');
+        if (highlightBtn) {
+            highlightBtn.style.backgroundColor = '';
+            highlightBtn.classList.remove('active');
+        }
+        
+        // Hide cancel option in dropdown
+        const cancelBtn = document.getElementById('cancelHighlightBtnFloating');
+        if (cancelBtn) {
+            cancelBtn.style.display = 'none';
+        }
+        
+        // Remove feedback
+        hideHighlightModeFeedback();
+    }
+    
+    function showHighlightModeFeedback() {
+        // Remove existing feedback
+        hideHighlightModeFeedback();
+        
+        // Add visual feedback that highlight mode is active
+        const feedback = document.createElement('div');
+        feedback.id = 'highlightModeFeedback';
+        feedback.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #667eea;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            z-index: 9999;
+            font-size: 0.9rem;
+            font-weight: 500;
+            animation: slideIn 0.3s ease-out;
+        `;
+        feedback.innerHTML = `<i class="fas fa-highlighter me-2"></i>Highlight mode active: Select text to highlight`;
+        document.body.appendChild(feedback);
+    }
+    
+    function hideHighlightModeFeedback() {
+        const feedback = document.getElementById('highlightModeFeedback');
+        if (feedback) feedback.remove();
+    }
+    
+    function loadHighlights() {
+        if (!isStudent) return;
+        
+        fetch(`/api/case/${caseId}/highlights`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.highlights) {
+                    renderHighlights(data.highlights);
+                }
+            })
+            .catch(error => {
+                console.error('Error loading highlights:', error);
+            });
+    }
+    
+    function handleTextSelection(e) {
+        // Only process if in highlight mode
+        if (!highlightMode || !selectedHighlightColor) return;
+        
+        // Don't process if clicking on floating highlight button or dropdown menu
+        if (e.target.closest('.floating-highlight-btn') || e.target.closest('.dropdown-menu')) return;
+        
+        // Small delay to ensure selection is complete
+        setTimeout(function() {
+            const selection = window.getSelection();
+            const text = selection.toString().trim();
+            
+            if (text.length > 0) {
+                selectedText = text;
+                
+                try {
+                    const range = selection.getRangeAt(0);
+                    const fieldElement = e.target.closest('.highlightable-text') || e.target.closest('[data-field]');
+                    const fieldName = fieldElement ? (fieldElement.dataset.field || 'discussion') : currentHighlightField || 'discussion';
+                    
+                    // Create highlight with selected color
+                    createHighlight(text, selectedHighlightColor, fieldName);
+                    
+                    // Clear selection
+                    selection.removeAllRanges();
+                    
+                    // Exit highlight mode after creating highlight
+                    exitHighlightMode('');
+                } catch (err) {
+                    console.error('Error in handleTextSelection:', err);
+                }
+            }
+        }, 50);
+    }
+    
+    function showHighlightMenu(x, y, fieldName, range) {
+        // Remove existing menu
+        if (highlightMenu) {
+            highlightMenu.remove();
+        }
+        
+        // Calculate position to avoid screen edges
+        const menuWidth = 320; // Approximate width
+        const menuHeight = 80;
+        const padding = 10;
+        let menuX = x;
+        let menuY = y - menuHeight - 15;
+        
+        // Adjust if too close to right edge
+        if (menuX + menuWidth > window.innerWidth - padding) {
+            menuX = window.innerWidth - menuWidth - padding;
+        }
+        // Adjust if too close to left edge
+        if (menuX < padding) {
+            menuX = padding;
+        }
+        // Adjust if too close to top
+        if (menuY < padding) {
+            menuY = y + 25;
+        }
+        
+        // Create menu container
+        highlightMenu = document.createElement('div');
+        highlightMenu.className = 'highlight-menu';
+        highlightMenu.style.cssText = `
+            position: fixed;
+            left: ${menuX}px;
+            top: ${menuY}px;
+            background: white;
+            border: 2px solid #667eea;
+            border-radius: 12px;
+            padding: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+            z-index: 10000;
+            min-width: 300px;
+            animation: slideDown 0.2s ease-out;
+        `;
+        
+        // Add animation keyframes if not already added
+        if (!document.getElementById('highlightMenuStyles')) {
+            const style = document.createElement('style');
+            style.id = 'highlightMenuStyles';
+            style.textContent = `
+                @keyframes slideDown {
+                    from {
+                        opacity: 0;
+                        transform: translateY(-10px);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateY(0);
+                    }
+                }
+                .highlight-menu {
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+                }
+                .highlight-color-btn {
+                    transition: all 0.2s ease;
+                    border: 2px solid transparent !important;
+                }
+                .highlight-color-btn:hover {
+                    transform: scale(1.1);
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                    border-color: rgba(0,0,0,0.2) !important;
+                }
+                .highlight-color-btn:active {
+                    transform: scale(0.95);
+                }
+            `;
+            document.head.appendChild(style);
+        }
+        
+        // Add title
+        const title = document.createElement('div');
+        title.style.cssText = 'font-weight: 600; color: #333; margin-bottom: 10px; font-size: 0.9rem; display: flex; align-items: center; gap: 6px;';
+        title.innerHTML = '<i class="fas fa-highlighter" style="color: #667eea;"></i>Highlight Text';
+        highlightMenu.appendChild(title);
+        
+        // Color buttons container
+        const colorContainer = document.createElement('div');
+        colorContainer.style.cssText = 'display: flex; gap: 8px; flex-wrap: wrap; align-items: center;';
+        
+        const colors = [
+            { name: 'yellow', color: '#FFEB3B', label: 'Yellow', icon: '🟡' },
+            { name: 'green', color: '#4CAF50', label: 'Green', icon: '🟢' },
+            { name: 'pink', color: '#E91E63', label: 'Pink', icon: '🔴' },
+            { name: 'blue', color: '#2196F3', label: 'Blue', icon: '🔵' }
+        ];
+        
+        colors.forEach(function(color) {
+            const btnWrapper = document.createElement('div');
+            btnWrapper.style.cssText = 'display: flex; flex-direction: column; align-items: center; gap: 4px;';
+            
+            const btn = document.createElement('button');
+            btn.className = 'highlight-color-btn';
+            btn.setAttribute('data-color', color.name);
+            btn.style.cssText = `
+                background: ${color.color};
+                color: ${color.name === 'yellow' ? '#333' : '#fff'};
+                border: 2px solid transparent;
+                padding: 8px 12px;
+                border-radius: 8px;
+                cursor: pointer;
+                font-weight: 600;
+                font-size: 0.85rem;
+                min-width: 60px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 6px;
+                box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+            `;
+            btn.innerHTML = `<i class="fas fa-highlighter"></i> ${color.label}`;
+            btn.title = `Highlight with ${color.label}`;
+            btn.onclick = function() {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+                createHighlight(selectedText, color.name, fieldName);
+                hideHighlightMenu();
+                window.getSelection().removeAllRanges();
+            };
+            
+            btnWrapper.appendChild(btn);
+            colorContainer.appendChild(btnWrapper);
+        });
+        
+        highlightMenu.appendChild(colorContainer);
+        
+        // Close button (subtle)
+        const closeBtn = document.createElement('button');
+        closeBtn.style.cssText = `
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: transparent;
+            border: none;
+            color: #999;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        `;
+        closeBtn.innerHTML = '<i class="fas fa-times"></i>';
+        closeBtn.title = 'Cancel';
+        closeBtn.onmouseover = function() { this.style.background = '#f0f0f0'; this.style.color = '#333'; };
+        closeBtn.onmouseout = function() { this.style.background = 'transparent'; this.style.color = '#999'; };
+        closeBtn.onclick = hideHighlightMenu;
+        highlightMenu.appendChild(closeBtn);
+        
+        document.body.appendChild(highlightMenu);
+        
+        // Click outside to close
+        setTimeout(function() {
+            const closeHandler = function(e) {
+                if (highlightMenu && !highlightMenu.contains(e.target)) {
+                    const selection = window.getSelection();
+                    if (!selection.toString().trim()) {
+                        hideHighlightMenu();
+                        document.removeEventListener('click', closeHandler);
+                    }
+                }
+            };
+            document.addEventListener('click', closeHandler);
+            
+            // Also close on Escape key
+            const escapeHandler = function(e) {
+                if (e.key === 'Escape' && highlightMenu) {
+                    hideHighlightMenu();
+                    document.removeEventListener('keydown', escapeHandler);
+                }
+            };
+            document.addEventListener('keydown', escapeHandler);
+        }, 100);
+    }
+    
+    function hideHighlightMenu() {
+        if (highlightMenu) {
+            highlightMenu.remove();
+            highlightMenu = null;
+        }
+        selectedText = '';
+    }
+    
+    function createHighlight(text, color, fieldName) {
+        if (!isStudent) return;
+        
+        fetch(`/api/case/${caseId}/highlight`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                text_content: text,
+                highlight_color: color,
+                field_name: fieldName
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Reload highlights to show new one
+                loadHighlights();
+            } else {
+                alert('Failed to create highlight: ' + (data.error || 'Unknown error'));
+            }
+        })
+        .catch(error => {
+            console.error('Error creating highlight:', error);
+            alert('Failed to create highlight');
+        });
+    }
+    
+    function renderHighlights(highlights) {
+        // Remove existing highlights (preserve text)
+        document.querySelectorAll('.text-highlight').forEach(function(el) {
+            const text = el.textContent;
+            el.outerHTML = text;
+        });
+        
+        // Apply highlights to each field
+        highlights.forEach(function(highlight) {
+            let fieldElement = document.querySelector(`[data-field="${highlight.field_name}"]`);
+            
+            // Fallback for discussion and diagnosis
+            if (!fieldElement) {
+                if (highlight.field_name === 'discussion') {
+                    fieldElement = document.getElementById('discussionText');
+                } else if (highlight.field_name === 'diagnosis') {
+                    fieldElement = document.getElementById('diagnosisText');
+                }
+            }
+            
+            // Also check Q&A fields (question_1, answer_1, etc.)
+            if (!fieldElement && highlight.field_name.startsWith('question_')) {
+                const qaElements = document.querySelectorAll('.qa-question');
+                // Try to find matching question element
+                qaElements.forEach(function(el) {
+                    if (el.textContent.includes(highlight.text_content) && !el.querySelector('.text-highlight')) {
+                        fieldElement = el;
+                    }
+                });
+            } else if (!fieldElement && highlight.field_name.startsWith('answer_')) {
+                const qaElements = document.querySelectorAll('.qa-answer');
+                qaElements.forEach(function(el) {
+                    if (el.textContent.includes(highlight.text_content) && !el.querySelector('.text-highlight')) {
+                        fieldElement = el;
+                    }
+                });
+            }
+            
+            if (fieldElement && fieldElement.textContent.includes(highlight.text_content)) {
+                const colorMap = {
+                    'yellow': '#FFEB3B',
+                    'green': '#4CAF50',
+                    'pink': '#E91E63',
+                    'blue': '#2196F3'
+                };
+                
+                // Use textContent for matching, then apply to innerHTML to preserve formatting
+                const textContent = fieldElement.textContent || fieldElement.innerText;
+                if (textContent.includes(highlight.text_content)) {
+                    const regex = new RegExp(escapeRegex(highlight.text_content), 'gi');
+                    const html = fieldElement.innerHTML;
+                    // Only replace if not already highlighted
+                    if (!html.includes(`data-highlight-id="${highlight.id}"`)) {
+                        const highlighted = html.replace(regex, function(match) {
+                            const color = colorMap[highlight.highlight_color] || '#FFEB3B';
+                            return `<mark class="text-highlight" data-highlight-id="${highlight.id}" style="background-color: ${color}; cursor: pointer; padding: 2px 4px; border-radius: 3px; transition: all 0.2s;" onmouseover="this.style.boxShadow='0 2px 4px rgba(0,0,0,0.2)'; this.style.opacity='0.9';" onmouseout="this.style.boxShadow='none'; this.style.opacity='1';" onclick="deleteHighlight(${highlight.id}); event.stopPropagation();" title="Click to remove highlight"><span style="position: relative;">${match}<i class="fas fa-times" style="font-size: 0.7em; margin-left: 4px; opacity: 0.6;"></i></span></mark>`;
+                        });
+                        fieldElement.innerHTML = highlighted;
+                    }
+                }
+            }
+        });
+    }
+    
+    function deleteHighlight(highlightId) {
+        if (confirm('Remove this highlight?')) {
+            fetch(`/api/highlight/${highlightId}`, {
+                method: 'DELETE'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    loadHighlights(); // Reload to remove highlight
+                } else {
+                    alert('Failed to delete highlight');
+                }
+            })
+            .catch(error => {
+                console.error('Error deleting highlight:', error);
+                alert('Failed to delete highlight');
+            });
+        }
+    }
+    
+    function escapeRegex(str) {
+        return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+    
+    // Initialize highlighting when page loads (students only)
+    if (isStudent) {
+        document.addEventListener('DOMContentLoaded', function() {
+            initHighlighting();
+            // Re-initialize after Q&A loads
+            setTimeout(initHighlighting, 1000);
+        });
     }
 </script>
 <script src="/static/edit-case-modal.js"></script>
