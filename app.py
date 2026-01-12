@@ -951,7 +951,7 @@ def cases_by_module(module):
     else:
         # Admins/Content Managers: prepare case data for admin template
         for case in cases:
-        has_notes = CandidateNote.query.filter_by(case_id=case.id, user_id=current_user.id).first() is not None
+            has_notes = CandidateNote.query.filter_by(case_id=case.id, user_id=current_user.id).first() is not None
         cases_data.append({
             'id': case.id,
             'diagnosis': case.diagnosis,
