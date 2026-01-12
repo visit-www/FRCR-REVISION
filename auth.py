@@ -87,6 +87,17 @@ def register():
     """User registration"""
     if request.method == 'POST':
         try:
+            # Verify database connection is working
+            try:
+                # Simple query to test database connection
+                test_count = User.query.limit(1).count()
+                print(f"[REGISTER] Database connection verified (user count check)")
+            except Exception as db_error:
+                print(f"[REGISTER] Database connection error: {db_error}")
+                import traceback
+                traceback.print_exc()
+                return jsonify({'error': 'Database connection failed. Please try again later.'}), 503
+            
             data = request.get_json() if request.is_json else request.form
             email = data.get('email', '').strip().lower()
             password = data.get('password', '')
@@ -106,26 +117,55 @@ def register():
                 print(f"[REGISTER] User already exists: {email}")
                 return jsonify({'error': 'Email already registered'}), 409
             
+            # Check if this is the first user - make them admin
+            user_count = User.query.count()
+            is_first_user = user_count == 0
+            
             # Create user
             print(f"[REGISTER] Creating new user: {email}")
             user = User(email=email, full_name=full_name)
             user.set_password(password)
             
-            # Check if this is the first user - make them admin
-            user_count = User.query.count()
-            if user_count == 0:
+            if is_first_user:
                 user.is_admin = True
                 print(f"[REGISTER] First user - granting admin privileges")
             else:
                 user.is_admin = False
                 print(f"[REGISTER] Regular student user")
             
+            # Add user to session
             db.session.add(user)
             print(f"[REGISTER] User added to session")
             
-            db.session.commit()
-            print(f"[REGISTER] User committed to database - ID: {user.id}")
+            # Flush to get the user ID before commit (important for serverless)
+            db.session.flush()
+            user_id = user.id
+            print(f"[REGISTER] User flushed - ID: {user_id}")
             
+            # Commit transaction - ensure it completes
+            try:
+                db.session.commit()
+                print(f"[REGISTER] User committed to database - ID: {user_id}")
+            except Exception as commit_error:
+                print(f"[REGISTER] Commit failed: {commit_error}")
+                db.session.rollback()
+                raise
+            
+            # Verify user was saved by querying it back in a fresh query
+            # This ensures the transaction was actually persisted to the database
+            # Use a new query to bypass any session caching
+            db.session.expire_all()  # Clear session cache
+            verified_user = User.query.filter_by(id=user_id).first()
+            if not verified_user:
+                print(f"[REGISTER] ERROR: User was not saved! ID: {user_id}")
+                return jsonify({'error': 'Registration failed. User was not saved to database.'}), 500
+            
+            print(f"[REGISTER] User verified in database - ID: {verified_user.id}, Email: {verified_user.email}")
+            
+            # Refresh the user object from the verified query
+            user = verified_user
+            
+            # Login user after successful save
             login_user(user)
             print(f"[REGISTER] User logged in: {email}")
             
@@ -134,18 +174,18 @@ def register():
             print(f"[REGISTER] Session ID after login: {flask_session.get('_id', 'NO SESSION')}")
             print(f"[REGISTER] Current user authenticated: {current_user.is_authenticated}")
             
-            return jsonify({'success': True, 'message': 'Registration successful'}), 201
+            return jsonify({'success': True, 'message': 'Registration successful', 'user_id': user.id}), 201
             
         except Exception as e:
             print(f"[REGISTER] ERROR: {e}")
             import traceback
             traceback.print_exc()
             db.session.rollback()
-            # Don't expose database errors to users
-            return jsonify({'error': 'Registration failed. Please contact administrator or check logs.'}), 500
-        
-        login_user(user)
-        return jsonify({'success': True, 'message': 'Registration successful'}), 201
+            # Return more detailed error in development, generic in production
+            error_msg = 'Registration failed. Please contact administrator or check logs.'
+            if os.getenv('FLASK_ENV') == 'development':
+                error_msg = f'Registration failed: {str(e)}'
+            return jsonify({'error': error_msg}), 500
     
     return render_template('register.html')
 
