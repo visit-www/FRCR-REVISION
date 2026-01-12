@@ -979,7 +979,7 @@ def cases_by_module(module):
                              all_modules=all_modules,
                              search_query=search_query)
     else:
-    return render_template('cases_list.html',
+        return render_template('cases_list.html',
                          cases=cases_data,
                          module_filter=module_enum.value,
                          body_parts=body_parts,
