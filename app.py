@@ -148,6 +148,348 @@ def unauthorized():
     # Otherwise redirect to login
     return redirect(url_for('auth.login'))
 
+# ==================== SAFE HTML RENDERING ====================
+def convert_pipe_table_to_html(text):
+    """
+    Convert pipe-separated text to HTML table.
+    
+    Example:
+    Header 1 | Header 2 | Header 3
+    Row 1 Col 1 | Row 1 Col 2 | Row 1 Col 3
+    
+    Returns HTML table or original text if no pipe table detected.
+    """
+    if not text or '|' not in text:
+        return text
+    
+    lines = text.strip().split('\n')
+    if len(lines) < 2:
+        return text
+    
+    # Check if first line looks like a header (contains |)
+    first_line = lines[0].strip()
+    if '|' not in first_line:
+        return text
+    
+    # Parse header row
+    headers = [cell.strip() for cell in first_line.split('|')]
+    if len(headers) < 2:
+        return text
+    
+    # Build table HTML
+    table_html = '<table><thead><tr>'
+    for header in headers:
+        table_html += f'<th>{header}</th>'
+    table_html += '</tr></thead><tbody>'
+    
+    # Parse data rows
+    for line in lines[1:]:
+        line = line.strip()
+        if not line:  # Skip empty lines
+            continue
+        if '|' not in line:
+            continue  # Skip lines without pipes
+        
+        cells = [cell.strip() for cell in line.split('|')]
+        # Pad or trim to match header count
+        while len(cells) < len(headers):
+            cells.append('')
+        cells = cells[:len(headers)]
+        
+        table_html += '<tr>'
+        for cell in cells:
+            table_html += f'<td>{cell}</td>'
+        table_html += '</tr>'
+    
+    table_html += '</tbody></table>'
+    return table_html
+
+def preserve_text_structure(text):
+    """
+    Preserve line breaks, bullets, and indentation in plain text.
+    Converts plain text formatting to HTML before sanitization.
+    
+    Handles:
+    - Newlines (\n) → <br>
+    - Double newlines (\n\n) → paragraph breaks
+    - Bullet points (•, -, *) → HTML list items
+    - Indentation → preserved with &nbsp; or <br>
+    """
+    if not text:
+        return ''
+    
+    # Check if text already contains HTML tags
+    if '<' in text and '>' in text:
+        import re
+        # Check for complex HTML structures (tables, divs, etc.) that should be preserved as-is
+        has_complex_html = (
+            re.search(r'<table[^>]*>', text, re.IGNORECASE) or 
+            re.search(r'<thead[^>]*>', text, re.IGNORECASE) or
+            re.search(r'<tbody[^>]*>', text, re.IGNORECASE) or
+            re.search(r'<div[^>]*>', text, re.IGNORECASE) or
+            re.search(r'<span[^>]*>', text, re.IGNORECASE)
+        )
+        
+        # Check if content already has structure tags (p, ul, li, br) - means it's already formatted
+        has_structure_tags = (
+            re.search(r'<p[^>]*>', text, re.IGNORECASE) or
+            re.search(r'<ul[^>]*>', text, re.IGNORECASE) or
+            re.search(r'<ol[^>]*>', text, re.IGNORECASE) or
+            re.search(r'<li[^>]*>', text, re.IGNORECASE) or
+            re.search(r'<br\s*/?>', text, re.IGNORECASE)
+        )
+        
+        # If it has complex HTML (tables) OR already has structure tags, return as-is
+        # This preserves HTML tables and already-formatted content from TinyMCE
+        if has_complex_html or has_structure_tags:
+            return text
+        
+        # Has simple HTML tags (like <b>, <i>, <mark>) but no structure - process to add structure
+        # Convert <p> tags to newlines (preserve content)
+        text = re.sub(r'<p[^>]*>', '\n', text)
+        text = re.sub(r'</p>', '\n', text)
+        # Convert <br> and <br/> to newlines
+        text = re.sub(r'<br\s*/?>', '\n', text, flags=re.IGNORECASE)
+        # Convert <li> items to bullet format for processing
+        text = re.sub(r'<li[^>]*>', '• ', text)
+        text = re.sub(r'</li>', '\n', text)
+        # Remove other HTML tags but preserve their text content
+        # Formatting tags (mark, hr, b, i, u, strong, em) will be preserved by bleach sanitizer
+        text = re.sub(r'<[^>]+>', '', text)
+        # Decode HTML entities
+        import html
+        text = html.unescape(text)
+        # Now process as plain text (fall through to plain text processing below)
+    
+    # Plain text processing
+    # First, normalize tabs to spaces (4 spaces per tab)
+    text = text.replace('\t', '    ')
+    lines = text.split('\n')
+    processed_lines = []
+    in_list = False
+    
+    for i, line in enumerate(lines):
+        # Calculate indentation (spaces at start)
+        original_indent = len(line) - len(line.lstrip())
+        stripped = line.strip()
+        
+        if not stripped:
+            # Empty line - close list if open, then add break
+            if in_list:
+                processed_lines.append('</ul>')
+                in_list = False
+            processed_lines.append('<br>')
+            continue
+        
+        # Detect bullet points (•, -, *, or numbered ONLY if indented or part of a list)
+        is_bullet = False
+        bullet_text = stripped
+        
+        # Check for bullet characters (•, *, -)
+        if stripped.startswith('•') or stripped.startswith('*') or (stripped.startswith('-') and len(stripped) > 1 and stripped[1] != '-'):
+            is_bullet = True
+            bullet_text = stripped[1:].strip()
+        # Check for numbered bullets (1., 2., etc.) - ONLY if indented (part of a sub-list)
+        # Numbered items at start of line (no indent) are section headers, not bullets
+        elif original_indent > 0 and len(stripped) > 2:
+            # Check if it's a numbered list item (digit followed by . or ) and space)
+            if stripped[0].isdigit():
+                # Check for pattern like "1. " or "1) "
+                match_pos = -1
+                if len(stripped) > 2 and stripped[1] in ['.', ')']:
+                    if len(stripped) > 3 and stripped[2] == ' ':
+                        # Pattern: "1. text" or "1) text"
+                        is_bullet = True
+                        bullet_text = stripped[3:].strip()
+                    elif len(stripped) == 3:
+                        # Pattern: "1. " (just number and punctuation)
+                        is_bullet = True
+                        bullet_text = ''
+        
+        # Handle bullet points - collect into lists
+        if is_bullet:
+            if not in_list:
+                processed_lines.append('<ul>')
+                in_list = True
+            # Add list item with preserved indentation
+            # For nested bullets, preserve some indentation
+            indent_spaces = ''
+            if original_indent > 0:
+                # Convert indent to non-breaking spaces (approximate: 2 spaces = 1 &nbsp;)
+                indent_count = min(original_indent // 2, 10)
+                indent_spaces = '&nbsp;' * indent_count
+            processed_lines.append(f'<li>{indent_spaces}{bullet_text}</li>')
+        else:
+            # Not a bullet point
+            if in_list:
+                processed_lines.append('</ul>')
+                in_list = False
+            
+            # Regular text line - always create a new paragraph (don't merge)
+            # Preserve indentation if present
+            indent_spaces = ''
+            if original_indent > 0:
+                indent_count = min(original_indent, 20)
+                indent_spaces = '&nbsp;' * indent_count
+            
+            processed_lines.append(f'<p>{indent_spaces}{stripped}</p>')
+    
+    # Close any open list
+    if in_list:
+        processed_lines.append('</ul>')
+    
+    result = ''.join(processed_lines)
+    
+    # Clean up: convert double breaks to paragraph breaks
+    result = result.replace('</p><br><p>', '</p><p>')
+    result = result.replace('<br><br>', '</p><p>')
+    
+    return result
+
+def sanitize_html_for_saving(html_content):
+    """
+    Sanitize HTML content for safe saving to database.
+    Handles both HTML from TinyMCE and plain text.
+    
+    For HTML content: Sanitizes safely while preserving structure
+    For plain text: Saves as-is (no conversion to HTML) - formatting preserved via CSS
+    
+    This is used when SAVING content (from TinyMCE editor or form inputs).
+    """
+    if not html_content:
+        return ''
+    
+    import bleach
+    import re
+    
+    # Step 1: Convert pipe tables to HTML (if any)
+    html_content = convert_pipe_table_to_html(html_content)
+    
+    # Step 2: Check if content is already HTML (from TinyMCE) or plain text
+    # First, decode any HTML entities that might have been escaped
+    import html as html_module
+    # If content looks like it might be escaped HTML (has &lt; or &gt;), decode it
+    if '&lt;' in html_content or '&gt;' in html_content:
+        # Try to decode HTML entities
+        html_content = html_module.unescape(html_content)
+    
+    has_html_tags = '<' in html_content and '>' in html_content
+    
+    if has_html_tags:
+        # Content is HTML (from TinyMCE) - sanitize it safely
+        # Convert ALLOWED_TAGS to list if it's a frozenset (newer bleach versions)
+        base_tags = list(bleach.sanitizer.ALLOWED_TAGS) if isinstance(bleach.sanitizer.ALLOWED_TAGS, frozenset) else bleach.sanitizer.ALLOWED_TAGS
+        
+        # Allowed tags for rich text formatting (unified across all fields)
+        allowed_tags = base_tags + [
+            'p', 'br', 'hr',  # Paragraphs, line breaks, horizontal rules
+            'b', 'strong', 'i', 'em', 'u', 'mark',  # Text formatting
+            'ul', 'ol', 'li',  # Lists
+            'sup', 'sub',  # Superscript/subscript
+            'blockquote',  # Quotes
+            'h1', 'h2', 'h3', 'h4',  # Headings
+            'table', 'thead', 'tbody', 'tr', 'th', 'td',  # Tables
+            'span', 'div',  # Containers
+            'img', 'a'  # Media and links
+        ]
+        
+        # Allowed attributes
+        allowed_attributes = {
+            '*': ['class'],  # All elements can have class
+            'img': ['src', 'alt', 'title', 'width', 'height'],
+            'a': ['href', 'title', 'target'],
+            'table': ['border', 'cellpadding', 'cellspacing', 'style', 'width', 'class'],
+            'thead': ['style', 'class'],
+            'tbody': ['style', 'class'],
+            'tr': ['style', 'class'],
+            'th': ['colspan', 'rowspan', 'style', 'class'],
+            'td': ['colspan', 'rowspan', 'style', 'class']
+        }
+        
+        # Allowed URL protocols
+        allowed_protocols = ['http', 'https', 'data']
+        
+        # Sanitize HTML
+        cleaned = bleach.clean(
+            html_content,
+            tags=allowed_tags,
+            attributes=allowed_attributes,
+            protocols=allowed_protocols,
+            strip=True
+        )
+        
+        return cleaned
+    else:
+        # Plain text - save as-is (no conversion to HTML)
+        # Formatting (line breaks, bullets, indentation) will be preserved via CSS
+        # Just escape any potential XSS characters
+        import html
+        # Escape HTML entities to prevent XSS, but keep the text structure intact
+        return html.escape(html_content)
+
+
+def sanitize_html_for_display(html_content):
+    """
+    Sanitize HTML content for safe display.
+    Content is already saved in database with structure preserved.
+    This just ensures it's safe to render (prevents XSS).
+    
+    This is used when DISPLAYING content (from database).
+    """
+    if not html_content:
+        return ''
+    
+    import bleach
+    
+    # Convert ALLOWED_TAGS to list if it's a frozenset (newer bleach versions)
+    base_tags = list(bleach.sanitizer.ALLOWED_TAGS) if isinstance(bleach.sanitizer.ALLOWED_TAGS, frozenset) else bleach.sanitizer.ALLOWED_TAGS
+    
+    # Allowed tags for rich text formatting (unified across all fields)
+    allowed_tags = base_tags + [
+        'p', 'br', 'hr',  # Paragraphs, line breaks, horizontal rules
+        'b', 'strong', 'i', 'em', 'u', 'mark',  # Text formatting
+        'ul', 'ol', 'li',  # Lists
+        'sup', 'sub',  # Superscript/subscript
+        'blockquote',  # Quotes
+        'h1', 'h2', 'h3', 'h4',  # Headings
+        'table', 'thead', 'tbody', 'tr', 'th', 'td',  # Tables
+        'span', 'div',  # Containers
+        'img', 'a'  # Media and links
+    ]
+    
+    # Allowed attributes
+    allowed_attributes = {
+        '*': ['class'],  # All elements can have class
+        'img': ['src', 'alt', 'title', 'width', 'height'],
+        'a': ['href', 'title', 'target'],
+        'td': ['colspan', 'rowspan'],
+        'th': ['colspan', 'rowspan']
+    }
+    
+    # Allowed URL protocols
+    allowed_protocols = ['http', 'https', 'data']
+    
+    # Sanitize HTML (content is already formatted, just ensure safety)
+    cleaned = bleach.clean(
+        html_content,
+        tags=allowed_tags,
+        attributes=allowed_attributes,
+        protocols=allowed_protocols,
+        strip=True
+    )
+    
+    return cleaned
+
+@app.template_filter('safe_html')
+def safe_html_filter(html_content):
+    """
+    Jinja2 filter for safe HTML rendering.
+    Usage: {{ case.discussion|safe_html }}
+    """
+    from markupsafe import Markup
+    sanitized = sanitize_html_for_display(html_content)
+    return Markup(sanitized)  # Mark as safe so Jinja2 doesn't escape it
+
 
 # ==================== HELPER FUNCTIONS ====================
 
@@ -552,16 +894,16 @@ def cases_by_module(module):
         # Admins/Content Managers: prepare case data for admin template
         for case in cases:
             has_notes = CandidateNote.query.filter_by(case_id=case.id, user_id=current_user.id).first() is not None
-        cases_data.append({
-            'id': case.id,
-            'diagnosis': case.diagnosis,
-            'module_display': case.module.value if case.module else 'N/A',
-            'body_part_display': case.body_part.value if case.body_part else 'N/A',
+            cases_data.append({
+                'id': case.id,
+                'diagnosis': case.diagnosis,
+                'module_display': case.module.value if case.module else 'N/A',
+                'body_part_display': case.body_part.value if case.body_part else 'N/A',
                 'age_group_display': case.age_group.value if case.age_group else 'N/A',
-            'image_count': len(case.images),
-            'has_notes': has_notes,
-            'is_public': case.is_public
-        })
+                'image_count': len(case.images),
+                'has_notes': has_notes,
+                'is_public': case.is_public
+            })
     
     # Get all body parts and age groups for filters
     body_parts = [{'value': bp.name, 'display_name': bp.value} for bp in BodyPart]
@@ -659,6 +1001,10 @@ def all_cases_view():
     body_parts = [{'value': bp.name, 'display_name': bp.value} for bp in BodyPart]
     age_groups = [{'value': ag.name, 'display_name': ag.value} for ag in AgeGroup]
     
+    # Get count of pending staging cases for badge
+    from models import ImportedCaseStaging
+    pending_staging_count = ImportedCaseStaging.query.filter_by(enrichment_status='pending').count()
+    
     return render_template('cases_list.html',
                          cases=cases_data,
                          module_filter=None,  # No module filter at top level
@@ -668,7 +1014,8 @@ def all_cases_view():
                          all_modules=all_modules,
                          age_groups=age_groups,
                          age_group_selected=age_group_filter,
-                         search_query=search_query)
+                         search_query=search_query,
+                         pending_staging_count=pending_staging_count)
 
 
 @app.route('/student/cases')
@@ -1103,17 +1450,36 @@ def create_case():
         
         case_number = f"{prefix}{max_num + 1:03d}"
     
+    # Parse status (default to DRAFT)
+    from models import CaseStatus, AgeGroup
+    status_enum = CaseStatus.DRAFT
+    if data.get('status'):
+        try:
+            status_enum = CaseStatus[data['status']]
+        except (KeyError, AttributeError):
+            pass
+    
+    # Parse age_group if provided
+    age_group_enum = None
+    if data.get('age_group'):
+        try:
+            age_group_enum = AgeGroup[data['age_group']]
+        except (KeyError, AttributeError):
+            pass
+    
     # Create case - NO LONGER storing Q&A in legacy JSON fields
     # All Q&A data is stored in Question and Answer tables only
     try:
         case = Case(
             packet_id=data.get('packet_id'),  # Nullable for standalone cases
             case_number=case_number,
-            diagnosis=data['diagnosis'],
-            discussion=data.get('discussion', ''),
+            diagnosis=sanitize_html_for_saving(data.get('diagnosis', '')),
+            discussion=sanitize_html_for_saving(data.get('discussion', '')),
             module=module_enum,
             body_part=body_part_enum,
-            is_public=data.get('is_public', False),
+            age_group=age_group_enum,
+            status=status_enum,
+            is_public=data.get('is_public', False),  # Legacy field, status takes precedence
             created_by_user_id=current_user.id
         )
         db.session.add(case)
@@ -1127,19 +1493,21 @@ def create_case():
                 
                 # Create question if it has content
                 if question_text:
+                    # Sanitize question text for safe saving
                     question = Question(
                         case_id=case.id,
                         question_number=index,
-                        question_text=question_text
+                        question_text=sanitize_html_for_saving(question_text)
                     )
                     db.session.add(question)
                 
                 # Create answer if it has content
                 if answer_text:
+                    # Sanitize answer text for safe saving (handles HTML from TinyMCE + plain text)
                     answer = Answer(
                         case_id=case.id,
                         answer_number=index,
-                        answer_text=answer_text
+                        answer_text=sanitize_html_for_saving(answer_text)
                     )
                     db.session.add(answer)
         
@@ -1170,12 +1538,131 @@ def view_case(case_id):
                          user_note=user_note)
 
 
+@app.route('/admin/staging-cases')
+@login_required
+def review_staging_cases():
+    """List staging cases for review and enrichment"""
+    from models import ImportedCaseStaging
+    from access_control import has_case_edit_permission
+    
+    if not has_case_edit_permission(None, current_user):
+        flash('Admin access required to review staging cases', 'danger')
+        return redirect(url_for('dashboard'))
+    
+    # Get filter parameters
+    status_filter = request.args.get('status', 'pending')  # pending, enriched, rejected
+    batch_id = request.args.get('batch_id', '')
+    
+    # Build query
+    query = ImportedCaseStaging.query
+    
+    if status_filter == 'pending':
+        query = query.filter(ImportedCaseStaging.enrichment_status == 'pending')
+    elif status_filter == 'enriched':
+        query = query.filter(ImportedCaseStaging.enrichment_status == 'enriched')
+    elif status_filter == 'rejected':
+        query = query.filter(ImportedCaseStaging.enrichment_status == 'rejected')
+    
+    if batch_id:
+        query = query.filter(ImportedCaseStaging.import_batch_id == batch_id)
+    
+    # Order by most recent first
+    staging_cases = query.order_by(ImportedCaseStaging.created_at.desc()).all()
+    
+    # Get counts for all statuses
+    pending_count = ImportedCaseStaging.query.filter_by(enrichment_status='pending').count()
+    enriched_count = ImportedCaseStaging.query.filter_by(enrichment_status='enriched').count()
+    rejected_count = ImportedCaseStaging.query.filter_by(enrichment_status='rejected').count()
+    
+    # Prepare data for template
+    cases_data = []
+    for staging in staging_cases:
+        missing_fields = []
+        if not staging.module:
+            missing_fields.append('Module')
+        if not staging.body_part:
+            missing_fields.append('Body Part')
+        if not staging.age_group:
+            missing_fields.append('Age Group')
+        
+        cases_data.append({
+            'id': staging.id,
+            'case_number': staging.case_number or 'N/A',
+            'diagnosis': staging.diagnosis or 'N/A',
+            'module': staging.module.value if staging.module else None,
+            'body_part': staging.body_part.value if staging.body_part else None,
+            'age_group': staging.age_group.value if staging.age_group else None,
+            'status': staging.enrichment_status,
+            'missing_fields': missing_fields,
+            'created_at': staging.created_at.strftime('%Y-%m-%d %H:%M:%S') if staging.created_at else 'N/A',
+            'import_batch_id': staging.import_batch_id,
+        })
+    
+    return render_template('staging_cases_list.html',
+                         cases=cases_data,
+                         status_filter=status_filter,
+                         batch_id=batch_id,
+                         pending_count=pending_count,
+                         enriched_count=enriched_count,
+                         rejected_count=rejected_count)
+
+
 @app.route('/edit-case')
+@login_required
 def edit_case():
-    """Full-page edit interface for a case"""
+    """Full-page edit interface for a case or staging case"""
     case_id = request.args.get('id', type=int)
+    staging_id = request.args.get('staging_id', type=int)
     is_new = request.args.get('new', 'false').lower() == 'true'
     return_to = request.args.get('returnTo', url_for('dashboard'))
+    
+    # Check permissions for editing cases (admins and content managers only)
+    from access_control import has_case_edit_permission
+    
+    # For new cases, check if user has permission to create
+    if is_new:
+        if not has_case_edit_permission(None, current_user):
+            flash('You do not have permission to create cases', 'danger')
+            return redirect(url_for('dashboard'))
+    
+    # For existing cases, check permissions
+    if case_id and not is_new:
+        case = Case.query.get(case_id)
+        if case and not has_case_edit_permission(case, current_user):
+            flash('You do not have permission to edit this case', 'danger')
+            return redirect(url_for('view_case', case_id=case_id))
+    
+    # Handle staging case review
+    if staging_id:
+        from models import ImportedCaseStaging
+        from access_control import has_case_edit_permission
+        
+        if not has_case_edit_permission(None, current_user):
+            flash('Admin access required to review staging cases', 'danger')
+            return redirect(url_for('dashboard'))
+        
+        staging = ImportedCaseStaging.query.get(staging_id)
+        if not staging:
+            flash('Staging case not found', 'danger')
+            return redirect(url_for('dashboard'))
+        
+        # Check for missing critical fields
+        missing_fields = []
+        if not staging.module:
+            missing_fields.append('module')
+        if not staging.body_part:
+            missing_fields.append('body_part')
+        if not staging.age_group:
+            missing_fields.append('age_group')
+        
+        return render_template('edit_case.html', 
+                             is_new=False,
+                             is_staging=True,
+                             staging=staging,
+                             missing_fields=missing_fields,
+                             return_to=return_to)
+    
+    # Handle regular case editing
     if not is_new and not case_id:
         return redirect(url_for('dashboard'))
     case = Case.query.get(case_id) if case_id else None
@@ -1183,6 +1670,7 @@ def edit_case():
         return redirect(url_for('dashboard'))
     return render_template('edit_case.html', 
                          is_new=is_new,
+                         is_staging=False,
                          return_to=return_to,
                          case=case)
 
@@ -1406,35 +1894,33 @@ def delete_case_image(image_id):
     return jsonify({'message': 'Image deleted successfully'})
 
 
-@app.route('/api/case-image/<int:image_id>/description', methods=['PUT'])
-def update_image_description(image_id):
-    """Update image description"""
+@app.route('/api/case-image/<int:image_id>/description', methods=['GET', 'PUT'])
+@login_required
+def image_description(image_id):
+    """Get or update image description"""
     try:
         image = CaseImage.query.get(image_id)
         
         if not image:
             return jsonify({'error': 'Image not found'}), 404
         
-        import bleach
+        # Verify user has permission to edit the case this image belongs to
+        case = verify_case_ownership(image.case_id)
+        if not case:
+            return jsonify({"error": "Unauthorized"}), 403
+        
+        # Handle GET request - return current description
+        if request.method == 'GET':
+            return jsonify({
+                'image_id': image.id,
+                'description': image.image_description or ''
+            })
+        
+        # Handle PUT request - update description
         data = request.get_json()
         description = data.get('description', '')
-        # Sanitize HTML for image description
-        allowed_tags = bleach.sanitizer.ALLOWED_TAGS + [
-            'p', 'br', 'span', 'div', 'ul', 'ol', 'li', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'strong', 'em', 'u', 'b', 'i', 'a'
-        ]
-        allowed_attributes = {
-            '*': ['style', 'class'],
-            'a': ['href', 'title', 'target', 'rel'],
-            'td': ['colspan', 'rowspan'],
-            'th': ['colspan', 'rowspan']
-        }
-        cleaned = bleach.clean(
-            description,
-            tags=allowed_tags,
-            attributes=allowed_attributes,
-            strip=True
-        )
-        image.image_description = cleaned
+        # Sanitize HTML for image description for safe saving (handles HTML + plain text)
+        image.image_description = sanitize_html_for_saving(description) if description else ''
         db.session.commit()
         return jsonify({
             'image_id': image.id,
@@ -1443,7 +1929,7 @@ def update_image_description(image_id):
         })
     except Exception as e:
         db.session.rollback()
-        print(f"[ERROR] Update image description failed: {str(e)}")
+        print(f"[ERROR] Image description operation failed: {str(e)}")
         import traceback
         traceback.print_exc()
         return jsonify({'error': f'Failed to update description: {str(e)}'}), 500
@@ -1623,15 +2109,23 @@ def get_case_qa_pairs(case_id):
     max_pairs = max(len(questions), len(answers))
     
     for i in range(max_pairs):
+        # Process question and answer text through safe_html filter to preserve structure
+        question_text = questions[i].question_text if i < len(questions) else ''
+        answer_text = answers[i].answer_text if i < len(answers) else ''
+        
+        # Apply structure preservation and sanitization
+        question_text_processed = sanitize_html_for_display(question_text) if question_text else ''
+        answer_text_processed = sanitize_html_for_display(answer_text) if answer_text else ''
+        
         pair = {
             'number': i + 1,
             'question': {
                 'id': questions[i].id,
-                'text': questions[i].question_text
+                'text': question_text_processed
             } if i < len(questions) else {'id': None, 'text': ''},
             'answer': {
                 'id': answers[i].id,
-                'text': answers[i].answer_text
+                'text': answer_text_processed
             } if i < len(answers) else {'id': None, 'text': ''}
         }
         pairs.append(pair)
@@ -1669,18 +2163,20 @@ def update_case_qa_pairs(case_id):
             # Only create if at least one has content
             if question_text or answer_text:
                 if question_text:
+                    # Sanitize question text for safe saving
                     question = Question(
                         case_id=case_id,
                         question_number=index,
-                        question_text=question_text
+                        question_text=sanitize_html_for_saving(question_text)
                     )
                     db.session.add(question)
                 
                 if answer_text:
+                    # Sanitize answer text for safe saving (handles HTML from TinyMCE + plain text)
                     answer = Answer(
                         case_id=case_id,
                         answer_number=index,
-                        answer_text=answer_text
+                        answer_text=sanitize_html_for_saving(answer_text)
                     )
                     db.session.add(answer)
         
@@ -1811,9 +2307,13 @@ def get_case(case_id):
             return jsonify({'error': 'No data provided'}), 400
         # Update fields if present
         if 'diagnosis' in data:
-            case.diagnosis = data['diagnosis']
+            # Sanitize diagnosis for safe saving (handles HTML + plain text)
+            diagnosis_content = data.get('diagnosis', '')
+            case.diagnosis = sanitize_html_for_saving(diagnosis_content) if diagnosis_content else ''
         if 'discussion' in data:
-            case.discussion = data['discussion']
+            # Sanitize discussion content for safe saving (handles HTML + plain text)
+            discussion_content = data.get('discussion', '')
+            case.discussion = sanitize_html_for_saving(discussion_content) if discussion_content else ''
         if 'module' in data:
             from models import FRCRModule
             try:
@@ -1832,6 +2332,12 @@ def get_case(case_id):
                 case.age_group = AgeGroup[data['age_group']] if data['age_group'] else None
             except Exception:
                 pass
+        if 'status' in data:
+            from models import CaseStatus
+            try:
+                case.status = CaseStatus[data['status']] if data['status'] else CaseStatus.DRAFT
+            except (KeyError, AttributeError):
+                pass
         if 'is_public' in data:
             val = data['is_public']
             if isinstance(val, bool):
@@ -1842,6 +2348,12 @@ def get_case(case_id):
                 case.is_public = val == 1
             else:
                 case.is_public = False
+            # Sync status with is_public if status not explicitly set
+            if 'status' not in data:
+                if case.is_public:
+                    case.status = CaseStatus.PUBLISHED
+                else:
+                    case.status = CaseStatus.DRAFT
         # Optionally update Q&A pairs if present
         if 'pairs' in data:
             # Remove old Q&A
@@ -1852,10 +2364,12 @@ def get_case(case_id):
                 question_text = (pair.get('question_text') or '').strip()
                 answer_text = (pair.get('answer_text') or '').strip()
                 if question_text:
-                    q = Question(case_id=case.id, question_number=index, question_text=question_text)
+                    # Sanitize question text for safe saving
+                    q = Question(case_id=case.id, question_number=index, question_text=sanitize_html_for_saving(question_text))
                     db.session.add(q)
                 if answer_text:
-                    a = Answer(case_id=case.id, answer_number=index, answer_text=answer_text)
+                    # Sanitize answer text for safe saving (handles HTML from TinyMCE + plain text)
+                    a = Answer(case_id=case.id, answer_number=index, answer_text=sanitize_html_for_saving(answer_text))
                     db.session.add(a)
         try:
             db.session.commit()

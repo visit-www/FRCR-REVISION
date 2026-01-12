@@ -42,18 +42,123 @@ class ImportService:
             
             for case_data in cases_data:
                 try:
+                    # Convert case_number to FRCR-Revision format if body_part is available
+                    # Format: bodypart-00<number> (e.g., chest-0042, brain-0123)
+                    case_number = case_data.get('case_number')
+                    body_part = case_data.get('body_part')
+                    
+                    # If body_part is available, convert case_number format
+                    if body_part and case_number:
+                        try:
+                            # Extract body part name and convert to lowercase short form
+                            # Handle both enum values and string values
+                            if hasattr(body_part, 'value'):
+                                body_part_name = body_part.value.lower()
+                            else:
+                                body_part_name = str(body_part).lower()
+                            
+                            body_part_name = body_part_name.replace('_', '').replace(' ', '')
+                            # Take first 6 chars for readability
+                            body_part_short = body_part_name[:6]
+                            
+                            # Extract number from case_number (handle both string and int)
+                            case_num_str = str(case_number)
+                            # Try to extract trailing number
+                            import re
+                            num_match = re.search(r'(\d+)$', case_num_str)
+                            if num_match:
+                                num = int(num_match.group(1))
+                                # Format as bodypart-00<number>
+                                case_number = f"{body_part_short}-{num:03d}"
+                            else:
+                                # If no number found, use original
+                                case_number = str(case_number) if case_number else None
+                        except Exception as e:
+                            # If conversion fails, keep original as string
+                            print(f"[IMPORT] Warning: Could not convert case_number format: {e}")
+                            case_number = str(case_data.get('case_number')) if case_data.get('case_number') else None
+                    else:
+                        # Convert to string even if no body_part
+                        case_number = str(case_number) if case_number else None
+                    
+                    # Convert questions/answers to JSON format if they're lists
+                    questions_json = case_data.get('questions', '')
+                    if isinstance(questions_json, list):
+                        questions_json = json.dumps(questions_json)
+                    elif not questions_json:
+                        questions_json = '[]'
+                    
+                    answers_json = case_data.get('answers', '')
+                    if isinstance(answers_json, list):
+                        answers_json = json.dumps(answers_json)
+                    elif not answers_json:
+                        answers_json = '[]'
+                    
+                    # Note: case_number is stored as Integer in ImportedCaseStaging model
+                    # We'll convert to string format during promotion
+                    # For now, try to extract numeric part if it's a string
+                    case_number_int = None
+                    if case_number:
+                        try:
+                            # Extract numeric part from formatted string (e.g., "chest-042" -> 42)
+                            import re
+                            num_match = re.search(r'(\d+)$', str(case_number))
+                            if num_match:
+                                case_number_int = int(num_match.group(1))
+                            elif str(case_number).isdigit():
+                                case_number_int = int(case_number)
+                        except (ValueError, AttributeError):
+                            pass
+                    
                     staging = ImportedCaseStaging(
                         original_id=case_data.get('id'),
-                        case_number=case_data.get('case_number'),
+                        case_number=case_number_int,  # Store as int (model requirement), format string stored separately
                         diagnosis=case_data.get('diagnosis', ''),
-                        questions=case_data.get('questions', ''),
-                        answers=case_data.get('answers', ''),
+                        questions=questions_json,
+                        answers=answers_json,
                         discussion=case_data.get('discussion'),
                         enrichment_status='pending',
                         import_batch_id=import_batch_id,
                         source_system=source_system,
                     )
+                    
+                    # Store formatted case_number string in enrichment_notes for promotion
+                    if case_number and isinstance(case_number, str) and '-' in case_number:
+                        if staging.enrichment_notes:
+                            staging.enrichment_notes = f"[CASE_NUMBER_FORMATTED]{case_number}[/CASE_NUMBER_FORMATTED]\n{staging.enrichment_notes}"
+                        else:
+                            staging.enrichment_notes = f"[CASE_NUMBER_FORMATTED]{case_number}[/CASE_NUMBER_FORMATTED]"
                     db.session.add(staging)
+                    db.session.flush()  # Get staging ID for image import
+                    
+                    # Import images if present - store as JSON in enrichment_notes temporarily
+                    images_data = case_data.get('images', [])
+                    if images_data:
+                        import base64
+                        
+                        # Store images as JSON in enrichment_notes (temporary until we add proper field)
+                        images_json = []
+                        for img_data in images_data:
+                            try:
+                                if img_data.get('image_data'):
+                                    # Store base64 encoded image data
+                                    images_json.append({
+                                        'filename': img_data.get('filename', 'image'),
+                                        'image_type': img_data.get('image_type', 'image/jpeg'),
+                                        'description': img_data.get('description', ''),
+                                        'image_data': img_data['image_data']  # Keep as base64 string
+                                    })
+                            except Exception as img_err:
+                                errors.append(f"Failed to process image for case {case_number}: {str(img_err)}")
+                        
+                        # Store images JSON in enrichment_notes with special marker
+                        if images_json:
+                            images_json_str = json.dumps(images_json)
+                            if staging.enrichment_notes:
+                                staging.enrichment_notes = f"[IMAGES_JSON]{images_json_str}[/IMAGES_JSON]\n{staging.enrichment_notes}"
+                            else:
+                                staging.enrichment_notes = f"[IMAGES_JSON]{images_json_str}[/IMAGES_JSON]"
+                    
                     imported_count += 1
                 except Exception as e:
                     errors.append(f"Failed to import case {case_data.get('case_number')}: {str(e)}")
@@ -395,13 +500,14 @@ class PromotionService:
     """Handles promotion of enriched cases from staging to production"""
     
     @staticmethod
-    def promote_case(staging_case_id, created_by_user_id=None):
+    def promote_case(staging_case_id, created_by_user_id=None, target_status=None):
         """
         Promote enriched case from staging to production
         
         Args:
             staging_case_id: ID of ImportedCaseStaging record
             created_by_user_id: User ID creating the case
+            target_status: CaseStatus enum value (default: PUBLISHED if is_public, else DRAFT)
             
         Returns:
             {success, message, case_id}
@@ -411,23 +517,55 @@ class PromotionService:
             if not staging:
                 return {'success': False, 'message': 'Staging case not found'}
             
-            if staging.enrichment_status != 'enriched' or not staging.approved_at:
+            # Allow promotion if enriched (approval can be bypassed for direct enrich-and-promote)
+            if staging.enrichment_status != 'enriched':
                 return {
                     'success': False,
-                    'message': 'Case must be enriched and approved before promotion'
+                    'message': 'Case must be enriched before promotion'
                 }
+            
+            # Convert case_number to proper format if needed
+            case_number = staging.case_number
+            
+            # Check if formatted case_number is stored in enrichment_notes
+            import re
+            formatted_match = re.search(r'\[CASE_NUMBER_FORMATTED\](.*?)\[/CASE_NUMBER_FORMATTED\]', staging.enrichment_notes or '', re.DOTALL)
+            if formatted_match:
+                case_number = formatted_match.group(1).strip()
+            elif staging.body_part:
+                # Ensure case_number is in format: bodypart-00<number>
+                if isinstance(case_number, int) or (isinstance(case_number, str) and case_number.isdigit()):
+                    # Extract number
+                    num = int(case_number) if isinstance(case_number, str) else case_number
+                    # Get body part short name
+                    body_part_name = staging.body_part.value.lower().replace('_', '').replace(' ', '')
+                    body_part_short = body_part_name[:6]
+                    # Format as bodypart-00<number>
+                    case_number = f"{body_part_short}-{num:03d}"
+                elif isinstance(case_number, str) and '-' not in case_number:
+                    # If it's a string without dash, try to format it
+                    try:
+                        num = int(case_number)
+                        body_part_name = staging.body_part.value.lower().replace('_', '').replace(' ', '')
+                        body_part_short = body_part_name[:6]
+                        case_number = f"{body_part_short}-{num:03d}"
+                    except ValueError:
+                        pass  # Keep original if conversion fails
+            else:
+                # Convert to string if it's an integer
+                case_number = str(case_number) if case_number else None
             
             # Create production case
             # Legacy questions/answers columns removed - data migrated to Question/Answer tables below
             case = Case(
-                case_number=staging.case_number,
+                case_number=case_number,
                 diagnosis=staging.diagnosis,
                 discussion=staging.discussion,
                 module=staging.module,
                 body_part=staging.body_part,
                 age_group=staging.age_group,
                 is_public=staging.is_public,
-                status=CaseStatus.PUBLISHED if staging.is_public else CaseStatus.DRAFT,
+                status=target_status if target_status else (CaseStatus.PUBLISHED if staging.is_public else CaseStatus.DRAFT),
                 created_by_user_id=created_by_user_id,
             )
             
@@ -470,6 +608,40 @@ class PromotionService:
                                 db.session.add(answer)
             except (json.JSONDecodeError, AttributeError, TypeError) as e:
                 print(f"[PROMOTION] Warning: Could not parse staging answers: {e}")
+            
+            # Migrate images if stored in enrichment_notes (temporary storage)
+            # Format: [IMAGES_JSON]{...}[/IMAGES_JSON] in enrichment_notes
+            from models import CaseImage
+            import base64
+            import re
+            
+            if staging.enrichment_notes:
+                # Extract images JSON from enrichment_notes
+                images_match = re.search(r'\[IMAGES_JSON\](.*?)\[/IMAGES_JSON\]', staging.enrichment_notes, re.DOTALL)
+                if images_match:
+                    try:
+                        images_json_str = images_match.group(1)
+                        images_data = json.loads(images_json_str)
+                        
+                        for img_data in images_data:
+                            try:
+                                if img_data.get('image_data'):
+                                    # Decode base64 image data
+                                    image_data_binary = base64.b64decode(img_data['image_data'])
+                                    
+                                    # Create CaseImage
+                                    case_image = CaseImage(
+                                        case_id=case.id,
+                                        image_filename=img_data.get('filename', 'image'),
+                                        image_type=img_data.get('image_type', 'image/jpeg'),
+                                        image_description=img_data.get('description', ''),
+                                        image_data=image_data_binary
+                                    )
+                                    db.session.add(case_image)
+                            except Exception as img_err:
+                                print(f"[PROMOTION] Warning: Failed to migrate image: {img_err}")
+                    except (json.JSONDecodeError, Exception) as e:
+                        print(f"[PROMOTION] Warning: Could not parse images JSON: {e}")
             
             # Update staging record
             staging.promoted_to_case_id = case.id

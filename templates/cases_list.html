@@ -23,9 +23,20 @@
                 {% if module_filter %}{{ module_filter }}{% else %}All Cases{% endif %}
             </h2>
             {% if current_user.is_authenticated and (current_user.role.value == 'admin' or current_user.role.value == 'content_manager') %}
-            <a href="/edit-case?new=true" class="btn btn-success btn-sm">
-                <i class="fas fa-plus me-2"></i>Create New Case
-            </a>
+            <div class="d-flex gap-2 flex-wrap">
+                <a href="/edit-case?new=true" class="btn btn-success btn-sm">
+                    <i class="fas fa-plus me-2"></i>Create New Case
+                </a>
+                <a href="/admin/staging-cases" class="btn btn-warning btn-sm position-relative">
+                    <i class="fas fa-clipboard-list me-2"></i>Review Staging Cases
+                    {% if pending_staging_count and pending_staging_count > 0 %}
+                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                        {{ pending_staging_count }}
+                        <span class="visually-hidden">pending cases</span>
+                    </span>
+                    {% endif %}
+                </a>
+            </div>
             {% endif %}
             <p class="text-muted mb-0 mt-2">
                 {% if module_filter %}

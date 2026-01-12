@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="breadcrumb-custom mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}"><i class="fas fa-home"></i> Home</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('admin_dashboard') }}">Admin Dashboard</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Staging Cases Review</li>
+        </ol>
+    </nav>
+
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col-lg-8">
+            <h2 class="mb-2">
+                <i class="fas fa-clipboard-list me-2" style="color: #ffc107;"></i>
+                Staging Cases Review
+            </h2>
+            <p class="text-muted mb-0 mt-2">
+                Review and enrich imported cases by adding missing metadata (Module, Body Part, Age Group)
+            </p>
+        </div>
+        <div class="col-lg-4 mt-3 mt-lg-0 text-end">
+            <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary btn-sm">
+                <i class="fas fa-arrow-left me-2"></i>Back to Admin Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Status Filter -->
+    <div class="row mb-3">
+        <div class="col-md-12">
+            <div class="btn-group" role="group">
+                <a href="/admin/staging-cases?status=pending" 
+                   class="btn btn-{{ 'primary' if status_filter == 'pending' else 'outline-primary' }}">
+                    <i class="fas fa-clock"></i> Pending ({{ pending_count }})
+                </a>
+                <a href="/admin/staging-cases?status=enriched" 
+                   class="btn btn-{{ 'success' if status_filter == 'enriched' else 'outline-success' }}">
+                    <i class="fas fa-check-circle"></i> Enriched ({{ enriched_count }})
+                </a>
+                <a href="/admin/staging-cases?status=rejected" 
+                   class="btn btn-{{ 'danger' if status_filter == 'rejected' else 'outline-danger' }}">
+                    <i class="fas fa-times-circle"></i> Rejected ({{ rejected_count }})
+                </a>
+                <a href="/admin/staging-cases" 
+                   class="btn btn-outline-secondary">
+                    <i class="fas fa-list"></i> All ({{ pending_count + enriched_count + rejected_count }})
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cases Table -->
+    {% if cases %}
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Case Number</th>
+                            <th>Diagnosis</th>
+                            <th>Module</th>
+                            <th>Body Part</th>
+                            <th>Age Group</th>
+                            <th>Missing Fields</th>
+                            <th>Status</th>
+                            <th>Created</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for case in cases %}
+                        <tr>
+                            <td><strong>{{ case.case_number }}</strong></td>
+                            <td>{{ case.diagnosis[:50] }}{% if case.diagnosis|length > 50 %}...{% endif %}</td>
+                            <td>
+                                {% if case.module %}
+                                    <span class="badge bg-success">{{ case.module }}</span>
+                                {% else %}
+                                    <span class="badge bg-warning">Missing</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if case.body_part %}
+                                    <span class="badge bg-success">{{ case.body_part }}</span>
+                                {% else %}
+                                    <span class="badge bg-warning">Missing</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if case.age_group %}
+                                    <span class="badge bg-success">{{ case.age_group }}</span>
+                                {% else %}
+                                    <span class="badge bg-warning">Missing</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if case.missing_fields %}
+                                    {% for field in case.missing_fields %}
+                                        <span class="badge bg-danger">{{ field }}</span>
+                                    {% endfor %}
+                                {% else %}
+                                    <span class="badge bg-success">Complete</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if case.status == 'pending' %}
+                                    <span class="badge bg-warning">Pending</span>
+                                {% elif case.status == 'enriched' %}
+                                    <span class="badge bg-info">Enriched</span>
+                                {% elif case.status == 'rejected' %}
+                                    <span class="badge bg-danger">Rejected</span>
+                                {% endif %}
+                            </td>
+                            <td><small>{{ case.created_at }}</small></td>
+                            <td>
+                                <div class="btn-group" role="group">
+                                    <a href="/edit-case?staging_id={{ case.id }}&returnTo=/admin/staging-cases" 
+                                       class="btn btn-sm btn-primary" title="Review & Enrich">
+                                        <i class="fas fa-edit"></i> Review
+                                    </a>
+                                    <button type="button" 
+                                            class="btn btn-sm btn-danger" 
+                                            onclick="deleteStagingCase({{ case.id }})"
+                                            title="Delete Staging Case">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="alert alert-info">
+        <i class="fas fa-info-circle me-2"></i>
+        No staging cases found{% if status_filter != 'pending' %} with status "{{ status_filter }}"{% endif %}.
+        {% if status_filter != 'pending' %}
+        <a href="/admin/staging-cases?status=pending" class="alert-link">View pending cases</a>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+
+<script>
+function deleteStagingCase(stagingId) {
+    if (!confirm('Are you sure you want to delete this staging case? This will not affect the source FRCR-Examiner database.')) {
+        return;
+    }
+    
+    fetch(`/api/admin/enrichment/${stagingId}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Staging case deleted successfully');
+            // Reload the page to refresh the list
+            window.location.reload();
+        } else {
+            alert('Error: ' + (data.error || 'Failed to delete staging case'));
+        }
+    })
+    .catch(error => {
+        console.error('Error deleting staging case:', error);
+        alert('Error deleting staging case: ' + error.message);
+    });
+}
+</script>
+{% endblock %}

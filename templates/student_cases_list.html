@@ -187,7 +187,7 @@
 
 <script>
 // Search box: submit on Enter
-document.getElementById('caseSearch').addEventListener('keydown', function(e) {
+ document.getElementById('caseSearch').addEventListener('keydown', function(e) {
     if (e.key === 'Enter') {
         applyFilters();
     }
@@ -218,14 +218,14 @@ function applyFilters() {
     else searchParams.delete('q');
 
     window.location.search = searchParams.toString();
-}
+    }
 
 function clearFilters() {
     window.location.href = window.location.pathname;
 }
 
 // Flag/unflag AJAX
-document.querySelectorAll('.flag-btn').forEach(function(btn) {
+ document.querySelectorAll('.flag-btn').forEach(function(btn) {
     btn.addEventListener('click', function(e) {
         const caseId = btn.getAttribute('data-case-id');
         const icon = document.getElementById('flagIcon' + caseId);
@@ -251,7 +251,7 @@ document.querySelectorAll('.flag-btn').forEach(function(btn) {
             btn.disabled = false;
         });
     });
-});
+ });
 </script>
 
 <style>

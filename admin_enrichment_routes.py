@@ -73,6 +73,10 @@ def import_cases():
             result = ImportService.import_from_backup(tmp.name)
             os.unlink(tmp.name)
         
+        # Ensure response includes imported_count for UI
+        if 'total_imported' in result:
+            result['imported_count'] = result['total_imported']
+        
         return jsonify(result), 200 if result['success'] else 400
         
     except Exception as e:
@@ -151,9 +155,12 @@ def get_case_details(case_id):
     """Get full details of a case for enrichment"""
     case = ImportedCaseStaging.query.get_or_404(case_id)
     
+    # Convert case_number to string if it's an integer
+    case_number_str = str(case.case_number) if case.case_number else None
+    
     return jsonify({
         'id': case.id,
-        'case_number': case.case_number,
+        'case_number': case_number_str,
         'diagnosis': case.diagnosis,
         'questions': case.questions,
         'answers': case.answers,
@@ -165,6 +172,57 @@ def get_case_details(case_id):
         'enrichment_status': case.enrichment_status,
         'enrichment_notes': case.enrichment_notes,
     }), 200
+
+
+@enrichment_bp.route('/<int:case_id>/public', methods=['PATCH'])
+def toggle_staging_case_public(case_id):
+    """
+    Toggle the public/private status of a staging case
+    
+    Body: { is_public: true/false }
+    Returns: { success: bool, is_public: bool }
+    """
+    staging = ImportedCaseStaging.query.get_or_404(case_id)
+    data = request.get_json()
+    is_public = data.get('is_public')
+    
+    # Robustly handle boolean and string values
+    if isinstance(is_public, str):
+        is_public = is_public.lower() == 'true'
+    else:
+        is_public = bool(is_public)
+    
+    try:
+        staging.is_public = is_public
+        db.session.commit()
+        return jsonify({'success': True, 'is_public': staging.is_public}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': 'Database error', 'details': str(e)}), 500
+
+
+@enrichment_bp.route('/<int:case_id>', methods=['DELETE'])
+def delete_staging_case(case_id):
+    """
+    Delete a staging case (does not affect source database)
+    
+    Returns: { success: bool, message: str }
+    """
+    staging = ImportedCaseStaging.query.get_or_404(case_id)
+    
+    try:
+        db.session.delete(staging)
+        db.session.commit()
+        return jsonify({
+            'success': True,
+            'message': 'Staging case deleted successfully'
+        }), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'error': f'Failed to delete staging case: {str(e)}'
+        }), 500
 
 
 @enrichment_bp.route('/<int:case_id>/enrich', methods=['PUT'])
@@ -241,6 +299,182 @@ def approve_case(case_id):
         
     except Exception as e:
         db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@enrichment_bp.route('/<int:case_id>/enrich-and-promote', methods=['PUT'])
+def enrich_and_promote_case(case_id):
+    """
+    Update staging case with enrichment metadata and immediately promote to production
+    Used when admin completes missing fields during import review
+    
+    Body: {
+        module: str (enum value),
+        body_part: str (enum value),
+        age_group: str (enum value),
+        is_public: bool,
+        status: str (DRAFT, PUBLISHED, etc.),
+        case_number: str,
+        diagnosis: str,
+        discussion: str,
+        pairs: [{'question_text': str, 'answer_text': str}]
+    }
+    """
+    from models import Case, Question, Answer, CaseStatus
+    import json
+    
+    staging = ImportedCaseStaging.query.get_or_404(case_id)
+    data = request.get_json()
+    
+    try:
+        # Update enums
+        if data.get('module'):
+            staging.module = FRCRModule(data['module'])
+        
+        if data.get('body_part'):
+            staging.body_part = BodyPart(data['body_part'])
+        
+        if data.get('age_group'):
+            staging.age_group = AgeGroup(data['age_group'])
+        
+        # Update other fields
+        if data.get('case_number'):
+            staging.case_number = data['case_number']
+        if data.get('diagnosis'):
+            staging.diagnosis = data['diagnosis']
+        if data.get('discussion') is not None:
+            staging.discussion = data['discussion']
+        
+        staging.is_public = data.get('is_public', False)
+        staging.enrichment_status = 'enriched'
+        staging.enriched_by_user_id = current_user.id
+        staging.enriched_at = datetime.utcnow()
+        
+        # Convert case_number to proper format if body_part is set
+        case_number = data.get('case_number') or staging.case_number
+        if data.get('body_part') and case_number:
+            try:
+                body_part_enum = BodyPart(data['body_part'])
+                # If case_number is numeric, convert to bodypart-00<number> format
+                if isinstance(case_number, int) or (isinstance(case_number, str) and case_number.replace('-', '').isdigit()):
+                    # Extract number (handle both "123" and "chest-123")
+                    import re
+                    num_match = re.search(r'(\d+)$', str(case_number))
+                    if num_match:
+                        num = int(num_match.group(1))
+                        body_part_name = body_part_enum.value.lower().replace('_', '').replace(' ', '')
+                        body_part_short = body_part_name[:6]
+                        case_number_formatted = f"{body_part_short}-{num:03d}"
+                        # Store formatted version in enrichment_notes (staging.case_number is Integer)
+                        if staging.enrichment_notes:
+                            staging.enrichment_notes = f"[CASE_NUMBER_FORMATTED]{case_number_formatted}[/CASE_NUMBER_FORMATTED]\n{staging.enrichment_notes}"
+                        else:
+                            staging.enrichment_notes = f"[CASE_NUMBER_FORMATTED]{case_number_formatted}[/CASE_NUMBER_FORMATTED]"
+                        # Also store numeric part in case_number field
+                        staging.case_number = num
+            except (ValueError, AttributeError) as e:
+                print(f"[ENRICH] Warning: Could not convert case_number format: {e}")
+        
+        # Promote to production (bypass approval requirement for direct enrich-and-promote)
+        # Temporarily mark as approved if not already
+        if not staging.approved_at:
+            staging.approved_by_user_id = current_user.id
+            staging.approved_at = datetime.utcnow()
+            staging.approval_notes = 'Auto-approved during enrich-and-promote'
+        
+        # Ensure status is enriched
+        if staging.enrichment_status != 'enriched':
+            staging.enrichment_status = 'enriched'
+        
+        db.session.flush()
+        
+        # Get target status from request or default
+        target_status = CaseStatus.DRAFT
+        if data.get('status'):
+            try:
+                target_status = CaseStatus[data['status']]
+            except (KeyError, AttributeError):
+                target_status = CaseStatus.DRAFT if not staging.is_public else CaseStatus.PUBLISHED
+        
+        result = PromotionService.promote_case(case_id, created_by_user_id=current_user.id, target_status=target_status)
+        
+        if not result['success']:
+            return jsonify({'error': result.get('error', 'Promotion failed')}), 400
+        
+        promoted_case_id = result['case_id']
+        
+        # Update Q&A pairs if provided
+        if data.get('pairs'):
+            # Delete existing Q&A for the promoted case
+            Question.query.filter_by(case_id=promoted_case_id).delete()
+            Answer.query.filter_by(case_id=promoted_case_id).delete()
+            
+            # Add new Q&A pairs
+            for idx, pair in enumerate(data['pairs'], 1):
+                if pair.get('question_text'):
+                    question = Question(
+                        case_id=promoted_case_id,
+                        question_number=idx,
+                        question_text=pair['question_text']
+                    )
+                    db.session.add(question)
+                
+                if pair.get('answer_text'):
+                    answer = Answer(
+                        case_id=promoted_case_id,
+                        answer_number=idx,
+                        answer_text=pair['answer_text']
+                    )
+                    db.session.add(answer)
+        
+        # Handle images from backup if stored in staging enrichment_notes
+        # Format: [IMAGES_JSON]{...}[/IMAGES_JSON] in enrichment_notes
+        from models import CaseImage
+        import base64
+        import re
+        
+        if staging.enrichment_notes:
+            # Extract images JSON from enrichment_notes
+            images_match = re.search(r'\[IMAGES_JSON\](.*?)\[/IMAGES_JSON\]', staging.enrichment_notes, re.DOTALL)
+            if images_match:
+                try:
+                    images_json_str = images_match.group(1)
+                    images_data = json.loads(images_json_str)
+                    
+                    for img_data in images_data:
+                        try:
+                            if img_data.get('image_data'):
+                                # Decode base64 image data
+                                image_data_binary = base64.b64decode(img_data['image_data'])
+                                
+                                # Create CaseImage
+                                case_image = CaseImage(
+                                    case_id=promoted_case_id,
+                                    image_filename=img_data.get('filename', 'image'),
+                                    image_type=img_data.get('image_type', 'image/jpeg'),
+                                    image_description=img_data.get('description', ''),
+                                    image_data=image_data_binary
+                                )
+                                db.session.add(case_image)
+                        except Exception as img_err:
+                            print(f"[ENRICH] Warning: Failed to migrate image: {img_err}")
+                except (json.JSONDecodeError, Exception) as e:
+                    print(f"[ENRICH] Warning: Could not parse images JSON: {e}")
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Case enriched and promoted to production',
+            'case_id': promoted_case_id,
+            'id': promoted_case_id  # Also include 'id' for compatibility
+        }), 200
+        
+    except ValueError as e:
+        return jsonify({'error': f'Invalid enum value: {str(e)}'}), 400
+    except Exception as e:
+        db.session.rollback()
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 

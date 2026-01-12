@@ -6,7 +6,7 @@ Provides CRUD operations for user management and case management with role-based
 from flask import Blueprint, request, jsonify
 from flask_login import login_required, current_user
 from models import db, User, UserRole, SubscriptionStatus, CaseAuditLog, Case
-from access_control import require_admin, soft_delete_user, upgrade_to_paid, downgrade_to_free
+from access_control import require_admin, require_role, soft_delete_user, upgrade_to_paid, downgrade_to_free
 from datetime import datetime
 from sqlalchemy import or_, and_
 import logging
@@ -587,7 +587,7 @@ def delete_case(case_id):
 # ============================================================================
 
 @admin_bp.route('/cases/<int:case_id>/public', methods=['PATCH'])
-@require_admin
+@require_role(UserRole.ADMIN, UserRole.CONTENT_MANAGER)
 def toggle_case_public(case_id):
     """
     Toggle the public/private status of a case robustly.
@@ -617,11 +617,12 @@ def toggle_case_public(case_id):
 
 
 @admin_bp.route('/cases/<int:case_id>', methods=['GET'])
-@require_admin
+@require_role(UserRole.ADMIN, UserRole.CONTENT_MANAGER)
 def get_case(case_id):
     """
-    Get a single case by ID (for UI refresh after toggle)
+    Get a single case by ID (for editing)
     Returns: { id, is_public, ... }
+    Allows both admins and content managers to access case data for editing
     """
     case = Case.query.get(case_id)
     if not case:

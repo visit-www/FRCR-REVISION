@@ -1,11 +1,58 @@
 {% extends "base.html" %}
 
-{% block head %}
-<!-- TinyMCE Rich Text Editor for table support -->
-<script src="https://cdn.jsdelivr.net/npm/tinymce@6/tinymce.min.js"></script>
-{% endblock %}
-
 {% block content %}
+<!-- TinyMCE Rich Text Editor - loaded at top of content block -->
+<script src="{{ url_for('static', filename='tinymce.min.js') }}"></script>
+<script>
+console.log('[TinyMCE Loader] Script tag executed - checking if TinyMCE loaded...');
+console.log('[TinyMCE Loader] Script URL was:', "{{ url_for('static', filename='tinymce.min.js') }}");
+
+// Wait for TinyMCE to be available
+(function() {
+    function checkAndInit(retryCount = 0) {
+        const MAX_RETRIES = 50;
+        
+        console.log('[TinyMCE Loader] Check attempt', retryCount + 1, '- typeof window.tinymce:', typeof window.tinymce);
+        
+        if (typeof window.tinymce !== 'undefined' && typeof window.tinymce.init === 'function') {
+            console.log('[TinyMCE Loader] ✅ TinyMCE API is available!');
+            window.tinyMCELoaded = true;
+            
+            // Initialize when DOM is ready
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', function() {
+                    console.log('[TinyMCE Loader] DOM ready, initializing...');
+                    if (typeof initializeDiscussionEditor === 'function') {
+                        initializeDiscussionEditor();
+                    } else {
+                        console.error('[TinyMCE Loader] initializeDiscussionEditor not found');
+                    }
+                });
+            } else {
+                console.log('[TinyMCE Loader] DOM already ready, initializing...');
+                if (typeof initializeDiscussionEditor === 'function') {
+                    initializeDiscussionEditor();
+                } else {
+                    console.error('[TinyMCE Loader] initializeDiscussionEditor not found');
+                }
+            }
+        } else if (retryCount < MAX_RETRIES) {
+            setTimeout(() => checkAndInit(retryCount + 1), 100);
+        } else {
+            console.error('[TinyMCE Loader] ❌ TinyMCE failed to load after', MAX_RETRIES, 'retries');
+            console.log('[TinyMCE Loader] Debug:', {
+                'window.tinymce': typeof window.tinymce,
+                'window.tinyMCE': typeof window.tinyMCE,
+                'document.readyState': document.readyState
+            });
+        }
+    }
+    
+    // Start checking after a short delay
+    setTimeout(() => checkAndInit(), 100);
+})();
+</script>
+
 <div class="row">
     <div class="col-12 px-2 px-md-5">
         <!-- Back Button -->
@@ -16,11 +63,86 @@
         </div>
 
         <!-- Page Header -->
-        <div class="mb-5 pb-4 border-bottom">
+        <div class="mb-4 pb-4 border-bottom">
             <h1 class="display-6 mb-2">
-                <i class="fas fa-edit me-3" style="color: #667eea;"></i>Edit Case
+                <i class="fas fa-edit me-3" style="color: #667eea;"></i>
+                {% if is_staging %}
+                <i class="fas fa-exclamation-triangle text-warning me-2"></i>Review Imported Case
+                {% else %}
+                Edit Case
+                {% endif %}
             </h1>
             <p class="text-muted" id="pageSubtitle">Loading case details...</p>
+            {% if is_staging and missing_fields %}
+            <div class="alert alert-warning mt-3">
+                <h6 class="alert-heading"><i class="fas fa-exclamation-circle me-2"></i>Missing Required Fields</h6>
+                <p class="mb-2">This case was imported but is missing the following critical fields. Please complete them before saving:</p>
+                <ul class="mb-0">
+                    {% for field in missing_fields %}
+                    <li><strong>{{ field|title|replace('_', ' ') }}</strong></li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Formatting Instructions Panel -->
+        <div class="card shadow-sm mb-4 border-0" style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border-left: 4px solid #667eea !important;">
+            <div class="card-body p-4">
+                <div class="d-flex align-items-start">
+                    <div class="me-3" style="font-size: 2rem; color: #667eea;">
+                        <i class="fas fa-magic"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        <h5 class="mb-3" style="color: #495057;">
+                            <i class="fas fa-info-circle me-2" style="color: #667eea;"></i>Rich Text Formatting Guide
+                        </h5>
+                        <p class="mb-3 text-muted" style="line-height: 1.6;">
+                            You can use <strong>HTML tags</strong> or the editor toolbar to format your content. All formatting works in <strong>Questions</strong>, <strong>Answers</strong>, <strong>Discussion</strong>, and <strong>Image Descriptions</strong>.
+                        </p>
+                        
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <div class="p-3 rounded" style="background: white; border-left: 3px solid #28a745;">
+                                    <h6 class="mb-2" style="color: #28a745;">
+                                        <i class="fas fa-tags me-2"></i>Supported HTML Tags
+                                    </h6>
+                                    <div class="small text-muted">
+                                        <code>&lt;b&gt;</code>, <code>&lt;strong&gt;</code>, <code>&lt;i&gt;</code>, <code>&lt;em&gt;</code>, <code>&lt;u&gt;</code><br>
+                                        <code>&lt;mark&gt;</code>, <code>&lt;hr&gt;</code>, <code>&lt;br&gt;</code>, <code>&lt;p&gt;</code><br>
+                                        <code>&lt;ul&gt;</code>, <code>&lt;ol&gt;</code>, <code>&lt;li&gt;</code><br>
+                                        <code>&lt;h1&gt;</code> to <code>&lt;h4&gt;</code>, <code>&lt;blockquote&gt;</code>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="p-3 rounded" style="background: white; border-left: 3px solid #17a2b8;">
+                                    <h6 class="mb-2" style="color: #17a2b8;">
+                                        <i class="fas fa-table me-2"></i>Table Formats
+                                    </h6>
+                                    <div class="small text-muted">
+                                        <strong>Option 1:</strong> Pipe format (auto-converted)<br>
+                                        <code>Header 1 | Header 2 | Header 3</code><br>
+                                        <code>Row 1 Col 1 | Row 1 Col 2 | Row 1 Col 3</code><br><br>
+                                        <strong>Option 2:</strong> HTML format<br>
+                                        <code>&lt;table&gt;&lt;tr&gt;&lt;td&gt;...&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;</code>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="alert alert-light border mb-0" style="background: white;">
+                            <div class="d-flex align-items-start">
+                                <i class="fas fa-lightbulb text-warning me-2 mt-1"></i>
+                                <div class="small">
+                                    <strong>Tip:</strong> Use the editor toolbar buttons for quick formatting, or type HTML tags directly. 
+                                    Pipe tables are automatically converted to HTML tables when you save.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Form Container -->
@@ -54,6 +176,21 @@
                     <div class="row">
                         <div class="col-md-4">
                             <div class="mb-4">
+                                <label class="form-label fw-bold text-secondary">
+                                    <i class="fas fa-file-alt me-1" style="color: #667eea;"></i>Case Status *
+                                </label>
+                                <select class="form-select form-select-lg" id="editCaseStatus" required>
+                                    <option value="DRAFT">Draft (Not ready for review)</option>
+                                    <option value="PENDING_REVIEW">Pending Review (Waiting for approval)</option>
+                                    <option value="PUBLISHED">Published (Visible to users)</option>
+                                    <option value="PRIVATE">Private (Admin/Content Manager only)</option>
+                                    <option value="ARCHIVED">Archived (Hidden from view)</option>
+                                </select>
+                                <small class="text-muted d-block mt-2">Case lifecycle status</small>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-4">
                                 <label class="form-label fw-bold text-secondary" id="publicStatusLabel">
                                     <i id="publicEyeIcon" class="fas fa-eye me-1" style="color: #28a745;"></i>
                                     <span id="publicStatusText">Publicly Visible</span>
@@ -62,8 +199,7 @@
                                     <input class="form-check-input" type="checkbox" id="editCaseIsPublic">
                                     <label class="form-check-label" for="editCaseIsPublic" id="publicCheckboxLabel">This case is visible to all users</label>
                                 </div>
-                                <small class="text-muted d-block mt-2">Toggle to make this case public or private</small>
-                            </div>
+                                <small class="text-muted d-block mt-2">Legacy field (status takes precedence)</small>
                         </div>
                         </div>
                     </div>
@@ -157,8 +293,8 @@
                     </h5>
                 </div>
                 <div class="card-body p-4">
-                    <div class="alert alert-info" role="alert">
-                        <i class="fas fa-lightbulb me-2"></i><strong>Rich Text Support:</strong> Answers support formatted text, tables, lists, and more. Use the editor toolbar to format your content.
+                    <div class="alert alert-info border-0" role="alert" style="background: linear-gradient(135deg, #e7f3ff 0%, #d0e7ff 100%);">
+                        <i class="fas fa-lightbulb me-2"></i><strong>Formatting:</strong> Use HTML tags or the editor toolbar. Pipe tables (<code>Col 1 | Col 2 | Col 3</code>) are automatically converted to HTML tables.
                     </div>
                     <div id="qaPairsContainer">
                         <p class="text-muted text-center py-5">Loading Q&A pairs...</p>
@@ -181,8 +317,8 @@
                 </div>
                 <div class="card-body p-4">
                     <label class="form-label fw-bold text-secondary mb-3">Add Detailed Notes</label>
-                    <div class="alert alert-info" role="alert">
-                        <i class="fas fa-lightbulb me-2"></i><strong>Rich Text Support:</strong> Discussion supports formatted text, tables, lists, images, and more.
+                    <div class="alert alert-info border-0" role="alert" style="background: linear-gradient(135deg, #e7f3ff 0%, #d0e7ff 100%);">
+                        <i class="fas fa-lightbulb me-2"></i><strong>Formatting:</strong> Use HTML tags or the editor toolbar. Pipe tables (<code>Col 1 | Col 2 | Col 3</code>) are automatically converted to HTML tables.
                     </div>
                     <textarea class="form-control form-control-lg rich-editor" id="editCaseDiscussion" rows="8" placeholder="Add any discussion, clinical findings, differential diagnosis, teaching points, or additional comments about this case..."></textarea>
                     <small class="text-muted d-block mt-2">Optional field for comprehensive case discussion</small>
@@ -224,7 +360,7 @@
                     <button type="button" class="btn btn-lg btn-outline-secondary" onclick="window.history.back()">
                         <i class="fas fa-times me-2"></i>Cancel
                     </button>
-                    <button type="button" class="btn btn-lg btn-primary" onclick="saveEditedCase(event)">
+                    <button type="button" class="btn btn-lg btn-primary" id="saveCaseButton" onclick="handleSaveCase(event)">
                         <i class="fas fa-save me-2"></i>Save All Changes
                     </button>
                 </div>
@@ -372,15 +508,96 @@
     }
 </style>
 
+<script>
+// Global handler for save button - ensures function exists
+function handleSaveCase(event) {
+    if (typeof saveEditedCase === 'function') {
+        saveEditedCase(event);
+    } else if (window.saveEditedCase && typeof window.saveEditedCase === 'function') {
+        window.saveEditedCase(event);
+    } else {
+        alert('Save function not loaded. Please refresh the page.');
+        console.error('saveEditedCase function not found. Available functions:', Object.keys(window).filter(k => k.includes('save') || k.includes('Save')));
+    }
+}
+</script>
 <script src="/static/edit-case-modal.js"></script>
 <script>
+// Expose functions globally after edit-case-modal.js loads
+(function() {
+    function exposeFunctions() {
+        if (typeof saveEditedCase !== 'undefined') {
+            window.saveEditedCase = saveEditedCase;
+        }
+        if (typeof populateQAPairs !== 'undefined') {
+            window.populateQAPairs = populateQAPairs;
+        }
+        if (typeof populateImages !== 'undefined') {
+            window.populateImages = populateImages;
+        }
+        if (typeof addQAPairRow !== 'undefined') {
+            window.addQAPairRow = addQAPairRow;
+        }
+        if (typeof saveImageDescription !== 'undefined') {
+            window.saveImageDescription = saveImageDescription;
+        }
+        if (typeof editImageDescription !== 'undefined') {
+            window.editImageDescription = editImageDescription;
+        }
+    }
+    
+    // Try immediately and after delays
+    exposeFunctions();
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', exposeFunctions);
+    } else {
+        setTimeout(exposeFunctions, 100);
+        setTimeout(exposeFunctions, 500);
+    }
+})();
+
 // Initialize TinyMCE for Discussion field
+let tinyMCERetryCount = 0;
+const MAX_TINYMCE_RETRIES = 20; // Max 10 seconds of retries (increased for slower connections)
+
 function initializeDiscussionEditor() {
-    if (typeof tinymce === 'undefined') {
-        console.warn('TinyMCE not loaded yet, retrying in 500ms...');
-        setTimeout(initializeDiscussionEditor, 500);
+    // Check if TinyMCE is loaded and ready
+    if (typeof tinymce === 'undefined' || !tinymce.init) {
+        // Check if TinyMCE is being loaded (from the loader script)
+        if (window.tinyMCELoaded === true) {
+            // TinyMCE should be available soon, wait a bit more
+            tinyMCERetryCount++;
+            if (tinyMCERetryCount < MAX_TINYMCE_RETRIES) {
+                setTimeout(initializeDiscussionEditor, 200);
+            } else {
+                console.error('TinyMCE marked as loaded but API not available. Using textarea fallback.');
+                const discussionTextarea = document.getElementById('editCaseDiscussion');
+                if (discussionTextarea) {
+                    discussionTextarea.placeholder = 'Rich text editor failed to load. You can still edit as plain text.';
+                }
+            }
+            return;
+        }
+        
+        // TinyMCE not loaded yet, retry
+        tinyMCERetryCount++;
+        if (tinyMCERetryCount < MAX_TINYMCE_RETRIES) {
+            console.warn(`TinyMCE not loaded yet, retrying in 500ms... (${tinyMCERetryCount}/${MAX_TINYMCE_RETRIES})`);
+            setTimeout(initializeDiscussionEditor, 500);
+        } else {
+            console.error('TinyMCE failed to load after maximum retries. Using textarea fallback.');
+            // Show user-friendly message
+            const discussionTextarea = document.getElementById('editCaseDiscussion');
+            if (discussionTextarea) {
+                discussionTextarea.placeholder = 'Rich text editor failed to load. You can still edit as plain text.';
+            }
+        }
         return;
     }
+    
+    // Reset retry count on success
+    tinyMCERetryCount = 0;
+    console.log('[TinyMCE Loader] initializeDiscussionEditor called - TinyMCE is ready');
     
     tinymce.init({
         selector: '#editCaseDiscussion',
@@ -388,6 +605,8 @@ function initializeDiscussionEditor() {
         menubar: 'edit view insert format tools',
         toolbar: 'undo redo | blocks | bold italic underline strikethrough | numlist bullist indent outdent | table link image code removeformat',
         plugins: 'table link image code',
+        // Use CDN for assets (themes, skins, etc.) since we only have the minified JS locally
+        base_url: 'https://cdn.jsdelivr.net/npm/tinymce@6',
         table_advtab: false,
         table_cell_advtab: false,
         table_default_attributes: {
@@ -450,11 +669,28 @@ async function generateCaseNumber(bodyPart) {
 document.addEventListener('DOMContentLoaded', function() {
     const params = new URLSearchParams(window.location.search);
     const caseId = params.get('id');
+    const stagingId = params.get('staging_id');
     const isNew = params.get('new') === 'true';
     const packetId = params.get('packetId');
     
-    // Initialize discussion editor
-    initializeDiscussionEditor();
+    // Initialize discussion editor - TinyMCE loader script will handle it
+    // But also try here as fallback (in case script loaded before DOMContentLoaded)
+    if (window.tinyMCELoaded && typeof tinymce !== 'undefined' && tinymce.init) {
+        // Script already loaded, initialize now
+        console.log('[TinyMCE Loader] TinyMCE ready in DOMContentLoaded, initializing...');
+        setTimeout(function() {
+            if (typeof initializeDiscussionEditor === 'function') {
+                initializeDiscussionEditor();
+            }
+        }, 100);
+    } else {
+        // TinyMCE loader script will handle initialization, but try as fallback
+        setTimeout(function() {
+            if (typeof initializeDiscussionEditor === 'function') {
+                initializeDiscussionEditor();
+            }
+        }, 500);
+    }
     
     // Add body part change listener for auto-generating case number (only for new cases)
     const bodyPartSelect = document.getElementById('editCaseBodyPart');
@@ -466,7 +702,10 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
-    if (isNew && packetId) {
+    if (stagingId) {
+        // Load staging case for review
+        loadStagingCaseForEdit(stagingId);
+    } else if (isNew && packetId) {
         // Initialize for creating a new case
         initializeNewCase(packetId);
     } else if (isNew) {
@@ -537,10 +776,31 @@ function initializeNewCase(packetId) {
 // Load case data for editing
 function loadCaseForEdit(caseId) {
     Promise.all([
-        fetch(`/api/admin/cases/${caseId}`).then(r => r.json()),
-        fetch(`/api/case/${caseId}/images`).then(r => r.json())
+        fetch(`/api/admin/cases/${caseId}`).then(r => {
+            if (!r.ok) {
+                return r.json().then(err => {
+                    throw new Error(err.error || `HTTP ${r.status}: ${r.statusText}`);
+                });
+            }
+            return r.json();
+        }),
+        fetch(`/api/case/${caseId}/images`).then(r => {
+            if (!r.ok) {
+                return r.json().then(err => {
+                    throw new Error(err.error || `HTTP ${r.status}: ${r.statusText}`);
+                });
+            }
+            return r.json();
+        }),
+        fetch(`/api/case/${caseId}/qa-pairs`).then(r => {
+            if (!r.ok) {
+                // Q&A pairs are optional, return empty array if not found
+                return [];
+            }
+            return r.json();
+        })
     ])
-    .then(([caseData, images]) => {
+    .then(([caseData, images, qaPairs]) => {
         document.getElementById('editCaseId').value = caseData.id;
         const subtitle = document.getElementById('pageSubtitle');
         if (subtitle) {
@@ -574,15 +834,193 @@ function loadCaseForEdit(caseId) {
         if (document.getElementById('editCaseAgeGroup')) {
             document.getElementById('editCaseAgeGroup').value = caseData.age_group || '';
         }
-        populateQAPairs(caseData);
-        populateImages(images);
+        
+        // Format Q&A pairs for populateQAPairs function
+        // The function expects: { questions: [{question_text: ...}], answers: [{answer_text: ...}] }
+        const formattedQAData = {
+            questions: qaPairs.map(pair => ({
+                question_text: pair.question ? pair.question.text : ''
+            })),
+            answers: qaPairs.map(pair => ({
+                answer_text: pair.answer ? pair.answer.text : ''
+            }))
+        };
+        
+        // Wait for functions to be available, then populate Q&A
+        function populateQADataWithRetry(retries = 0) {
+            if (retries > 20) {
+                console.error('populateQAPairs function not available after retries');
+                // Fallback: manually populate Q&A pairs
+                const container = document.getElementById('qaPairsContainer');
+                if (container && qaPairs.length > 0) {
+                    container.innerHTML = '';
+                    qaPairs.forEach(pair => {
+                        if (typeof addQAPairRow === 'function') {
+                            addQAPairRow(
+                                pair.question ? pair.question.text : '',
+                                pair.answer ? pair.answer.text : ''
+                            );
+                        }
+                    });
+                }
+                return;
+            }
+            
+            if (typeof populateQAPairs === 'function') {
+                populateQAPairs(formattedQAData);
+            } else if (typeof addQAPairRow === 'function' && qaPairs.length > 0) {
+                // Fallback: manually populate Q&A pairs
+                const container = document.getElementById('qaPairsContainer');
+                if (container) {
+                    container.innerHTML = '';
+                    qaPairs.forEach(pair => {
+                        addQAPairRow(
+                            pair.question ? pair.question.text : '',
+                            pair.answer ? pair.answer.text : ''
+                        );
+                    });
+                }
+            } else {
+                setTimeout(() => populateQADataWithRetry(retries + 1), 100);
+            }
+        }
+        populateQADataWithRetry();
+        
+        // Wait for functions to be available, then populate images
+        function populateImagesWithRetry(retries = 0) {
+            if (retries > 20) {
+                console.error('populateImages function not available after retries');
+                // Fallback: manually show images
+                const container = document.getElementById('editImagesContainer');
+                if (container) {
+                    if (images && images.length > 0) {
+                        container.innerHTML = '<p class="text-muted">Images loaded but editor not ready. Please refresh.</p>';
+                    } else {
+                        container.innerHTML = '<p class="text-muted text-center py-3">No images uploaded yet</p>';
+                    }
+                }
+                return;
+            }
+            
+            if (typeof populateImages === 'function') {
+                // Normalize image data format for populateImages
+                const normalizedImages = images.map(img => ({
+                    id: img.id,
+                    filename: img.filename || img.image_filename || 'image.jpg',
+                    description: img.description || img.image_description || ''
+                }));
+                populateImages(normalizedImages);
+            } else {
+                setTimeout(() => populateImagesWithRetry(retries + 1), 100);
+            }
+        }
+        populateImagesWithRetry();
     })
     .catch(error => {
         console.error('Error loading case:', error);
-        alert('Error loading case data');
+        const errorMsg = error.message || 'Unknown error';
+        alert(`Error loading case data: ${errorMsg}\n\nPlease ensure you have permission to edit this case.`);
         window.history.back();
     });
 }
+
+// Load staging case data for review
+function loadStagingCaseForEdit(stagingId) {
+    fetch(`/api/admin/enrichment/${stagingId}`)
+        .then(r => r.json())
+        .then(stagingData => {
+            // Mark as staging case
+            document.getElementById('editCaseId').value = `staging-${stagingId}`;
+            
+            const subtitle = document.getElementById('pageSubtitle');
+            if (subtitle) {
+                subtitle.textContent = `Reviewing imported case - ${stagingData.diagnosis || 'Untitled'}`;
+            }
+            
+            document.getElementById('editCaseNumber').value = stagingData.case_number || '';
+            document.getElementById('editCaseDiagnosis').value = stagingData.diagnosis || '';
+            
+            // Set is_public checkbox
+            const isPublicCheckbox = document.getElementById('editCaseIsPublic');
+            if (isPublicCheckbox) {
+                isPublicCheckbox.checked = !!stagingData.is_public;
+            }
+            
+            // Set discussion
+            setTimeout(() => {
+                if (typeof tinymce !== 'undefined' && tinymce.get('editCaseDiscussion')) {
+                    tinymce.get('editCaseDiscussion').setContent(stagingData.discussion || '');
+                } else {
+                    document.getElementById('editCaseDiscussion').value = stagingData.discussion || '';
+                }
+            }, 500);
+            
+            // Set module, body_part, age_group (may be empty for missing fields)
+            if (document.getElementById('editCaseModule')) {
+                document.getElementById('editCaseModule').value = stagingData.module || '';
+            }
+            if (document.getElementById('editCaseBodyPart')) {
+                document.getElementById('editCaseBodyPart').value = stagingData.body_part || '';
+            }
+            if (document.getElementById('editCaseAgeGroup')) {
+                document.getElementById('editCaseAgeGroup').value = stagingData.age_group || '';
+            }
+            
+            // Set status (default to DRAFT for staging cases)
+            if (document.getElementById('editCaseStatus')) {
+                document.getElementById('editCaseStatus').value = 'DRAFT';
+            }
+            
+            // Parse and populate Q&A from legacy JSON format
+            let questions = [];
+            let answers = [];
+            try {
+                if (stagingData.questions) {
+                    questions = typeof stagingData.questions === 'string' 
+                        ? JSON.parse(stagingData.questions) 
+                        : stagingData.questions;
+                }
+                if (stagingData.answers) {
+                    answers = typeof stagingData.answers === 'string' 
+                        ? JSON.parse(stagingData.answers) 
+                        : stagingData.answers;
+                }
+            } catch (e) {
+                console.error('Error parsing Q&A:', e);
+            }
+            
+            // Populate Q&A pairs
+            const container = document.getElementById('qaPairsContainer');
+            if (container) {
+                container.innerHTML = '';
+                
+                if (questions.length > 0 || answers.length > 0) {
+                    const maxLen = Math.max(questions.length, answers.length);
+                    for (let i = 0; i < maxLen; i++) {
+                        const qText = questions[i]?.question_text || questions[i]?.text || '';
+                        const aText = answers[i]?.answer_text || answers[i]?.text || '';
+                        // Use addQAPairRow from edit-case-modal.js
+                        if (typeof addQAPairRow === 'function') {
+                            addQAPairRow(qText, aText);
+                        }
+                    }
+                } else {
+                    container.innerHTML = '<p class="text-muted mb-3">No Q&A pairs yet. Add one below.</p>';
+                }
+            }
+            
+            // No images for staging cases (will be added on promotion)
+            const imagesContainer = document.getElementById('editImagesContainer');
+            if (imagesContainer) {
+                imagesContainer.innerHTML = '<p class="text-muted">Images will be available after promotion to production.</p>';
+            }
+        })
+        .catch(error => {
+            console.error('Error loading staging case:', error);
+            alert('Failed to load staging case data');
+        });
+}
+
 // Prevent form submission - all saves are handled via AJAX
 document.addEventListener('DOMContentLoaded', function() {
     const caseEditForm = document.getElementById('caseEditForm');
@@ -634,31 +1072,72 @@ document.addEventListener('DOMContentLoaded', function() {
         const originalChecked = e.target.checked;
         isPublicCheckbox.disabled = true;
 
-        fetch(`/api/admin/cases/${caseId}/public`, {
+        // Check if this is a staging case
+        const isStaging = caseId && caseId.toString().startsWith('staging-');
+        const stagingId = isStaging ? caseId.toString().replace('staging-', '') : null;
+        
+        // Use appropriate endpoint
+        let endpoint, fetchEndpoint;
+        if (isStaging && stagingId) {
+            // Staging case - update staging record
+            endpoint = `/api/admin/enrichment/${stagingId}/public`;
+            fetchEndpoint = `/api/admin/enrichment/${stagingId}`;
+        } else {
+            // Production case
+            endpoint = `/api/admin/cases/${caseId}/public`;
+            fetchEndpoint = `/api/admin/cases/${caseId}`;
+        }
+
+        fetch(endpoint, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ is_public: originalChecked })
         })
-        .then(response => response.json())
+        .then(async response => {
+            // Check if response is OK before parsing JSON
+            if (!response.ok) {
+                const errorText = await response.text();
+                let errorMsg = `HTTP ${response.status}`;
+                try {
+                    const errorData = JSON.parse(errorText);
+                    errorMsg = errorData.error || errorData.details || errorMsg;
+                } catch (e) {
+                    errorMsg = errorText || errorMsg;
+                }
+                throw new Error(errorMsg);
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
                 // Always fetch the latest state from backend
-                return fetch(`/api/admin/cases/${caseId}`)
-                    .then(res => res.json())
+                return fetch(fetchEndpoint)
+                    .then(res => {
+                        if (!res.ok) {
+                            throw new Error(`HTTP ${res.status}`);
+                        }
+                        return res.json();
+                    })
                     .then(caseData => {
                         isPublicCheckbox.checked = !!caseData.is_public;
                         updatePublicUI(!!caseData.is_public);
                         isPublicCheckbox.disabled = false;
                     });
             } else {
-                throw new Error(data.error || 'Unknown error');
+                throw new Error(data.error || data.details || 'Unknown error');
             }
         })
         .catch(err => {
             // Revert checkbox and show error
+            console.error('[TOGGLE] Error updating public/private status:', err);
             isPublicCheckbox.checked = !originalChecked;
             isPublicCheckbox.disabled = false;
-            alert('Failed to update public/private status: ' + err.message);
+            // Extract clean error message
+            let errorMsg = err.message;
+            if (errorMsg.includes('string did not match')) {
+                errorMsg = 'Invalid case ID format. Please refresh the page and try again.';
+            }
+            alert('Failed to update public/private status: ' + errorMsg);
         });
     });
 });

@@ -107,18 +107,42 @@ function addQAPairRow(questionText = '', answerText = '') {
 }
 
 // Initialize TinyMCE editor for a specific field
-function initializeTinyMCE(elementId) {
-    if (typeof tinymce === 'undefined') {
-        console.error('TinyMCE is not loaded');
+function initializeTinyMCE(elementId, retryCount = 0) {
+    const MAX_RETRIES = 20; // Max 10 seconds of retries
+    
+    if (typeof tinymce === 'undefined' || !tinymce.init) {
+        if (retryCount < MAX_RETRIES) {
+            console.log(`TinyMCE not loaded yet for ${elementId}, retrying... (${retryCount + 1}/${MAX_RETRIES})`);
+            setTimeout(() => initializeTinyMCE(elementId, retryCount + 1), 500);
+            return;
+        } else {
+            console.error('TinyMCE failed to load after maximum retries for', elementId);
+            return;
+        }
+    }
+    
+    // Check if element exists
+    const element = document.getElementById(elementId);
+    if (!element) {
+        console.warn(`Element ${elementId} not found, cannot initialize TinyMCE`);
         return;
     }
     
+    // Check if already initialized
+    if (tinymce.get(elementId)) {
+        console.log(`TinyMCE already initialized for ${elementId}`);
+        return;
+    }
+    
+    console.log(`Initializing TinyMCE for ${elementId}`);
     tinymce.init({
         selector: '#' + elementId,
         height: 300,
         menubar: false,
         toolbar: 'undo redo | blocks | bold italic underline strikethrough | numlist bullist indent outdent | table link image code removeformat',
         plugins: 'table link image code',
+        // Use CDN for assets (themes, skins, etc.) since we only have the minified JS locally
+        base_url: 'https://cdn.jsdelivr.net/npm/tinymce@6',
         table_advtab: false,
         table_cell_advtab: false,
         table_default_attributes: {
@@ -197,18 +221,22 @@ function populateImages(images) {
         col.className = 'col-md-4';
         col.id = `image-card-${image.id}`;
         
+        // Handle both filename and image_filename formats
+        const imageFilename = image.filename || image.image_filename || 'image.jpg';
+        const imageDescription = image.description || image.image_description || '';
+        
         col.innerHTML = `
             <div class="card image-card h-100 shadow-sm">
-                <img src="/api/case-image/${image.id}" alt="${escapeHtml(image.filename)}" 
+                <img src="/api/case-image/${image.id}" alt="${escapeHtml(imageFilename)}" 
                      class="card-img-top" style="height: 180px; object-fit: cover; cursor: pointer;"
                      onclick="viewImageFull('${image.id}')" title="Click to view full size">
                 <div class="card-body p-3">
-                    <small class="text-muted d-block text-truncate mb-2" title="${escapeHtml(image.filename)}">
-                        📁 ${escapeHtml(image.filename)}
+                    <small class="text-muted d-block text-truncate mb-2" title="${escapeHtml(imageFilename)}">
+                        📁 ${escapeHtml(imageFilename)}
                     </small>
                     <div class="description-section mb-2">
                         <small class="text-secondary d-block" id="desc-${image.id}" style="min-height: 40px; word-wrap: break-word;">
-                            ${image.description ? escapeHtml(image.description) : '<em class="text-muted">No description</em>'}
+                            ${(image.description || image.image_description) ? escapeHtml(image.description || image.image_description) : '<em class="text-muted">No description</em>'}
                         </small>
                     </div>
                     <div class="mt-2 d-flex gap-1">
@@ -232,67 +260,156 @@ function populateImages(images) {
 
 // Edit image description - improved with modal dialog
 function editImageDescription(imageId) {
-    // Get current description (HTML)
-    const descElement = document.getElementById(`desc-${imageId}`);
-    const currentDescription = descElement.innerHTML.trim() === '<em class="text-muted">No description</em>' ? '' : descElement.innerHTML;
-
-    // Create a modal for editing description with TinyMCE
-    const modal = document.createElement('div');
-    modal.className = 'modal fade';
-    modal.id = 'descriptionModal';
-    modal.innerHTML = `
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header bg-info text-white">
-                    <h5 class="modal-title">Edit Image Description</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+    // Fetch the original description from the API to get the unescaped version
+    fetch(`/api/case-image/${imageId}/description`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to fetch image description');
+            }
+            return response.json();
+        })
+        .then(data => {
+            // Get the original description from the API response
+            const currentDescription = data.description || '';
+            
+            // Create a modal for editing description with TinyMCE
+            const modal = document.createElement('div');
+            modal.className = 'modal fade';
+            modal.id = 'descriptionModal';
+            modal.innerHTML = `
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header bg-info text-white">
+                            <h5 class="modal-title">Edit Image Description</h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <textarea class="form-control rich-editor" id="descriptionInput" rows="6" placeholder="Enter image description..."></textarea>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="button" class="btn btn-info" onclick="saveImageDescription(${imageId})">Save</button>
+                        </div>
+                    </div>
                 </div>
-                <div class="modal-body">
-                    <textarea class="form-control rich-editor" id="descriptionInput" rows="6" placeholder="Enter image description..."></textarea>
+            `;
+
+            // Remove old modal if exists
+            const oldModal = document.getElementById('descriptionModal');
+            if (oldModal) oldModal.remove();
+
+            document.body.appendChild(modal);
+            const bsModal = new bootstrap.Modal(modal);
+            bsModal.show();
+
+            // Initialize TinyMCE for the description textarea after modal is shown
+            setTimeout(() => {
+                if (typeof tinymce !== 'undefined' && tinymce.init) {
+                    tinymce.init({
+                        selector: '#descriptionInput',
+                        height: 250,
+                        menubar: false,
+                        toolbar: 'undo redo | bold italic underline | numlist bullist | table link code removeformat',
+                        plugins: 'table link code',
+                        // Use CDN for assets (themes, skins, etc.) since we only have the minified JS locally
+                        base_url: 'https://cdn.jsdelivr.net/npm/tinymce@6',
+                        content_css: 'default',
+                        skin: 'oxide',
+                        setup: function(editor) {
+                            editor.on('init', function() {
+                                // Set the original description content
+                                editor.setContent(currentDescription);
+                            });
+                        }
+                    });
+                } else {
+                    // Fallback if TinyMCE not loaded - set textarea value directly
+                    const textarea = document.getElementById('descriptionInput');
+                    if (textarea) {
+                        textarea.value = currentDescription;
+                    }
+                }
+            }, 300);
+
+            // Clean up after modal closes
+            modal.addEventListener('hidden.bs.modal', () => {
+                if (typeof tinymce !== 'undefined' && tinymce.get('descriptionInput')) {
+                    tinymce.get('descriptionInput').remove();
+                }
+                modal.remove();
+            });
+        })
+        .catch(error => {
+            console.error('Error fetching image description:', error);
+            // Fallback: try to get from DOM element
+            const descElement = document.getElementById(`desc-${imageId}`);
+            let currentDescription = '';
+            if (descElement) {
+                const innerHTML = descElement.innerHTML.trim();
+                if (innerHTML !== '<em class="text-muted">No description</em>') {
+                    // Try to decode HTML entities
+                    const textarea = document.createElement('textarea');
+                    textarea.innerHTML = innerHTML;
+                    currentDescription = textarea.value;
+                }
+            }
+            
+            // Create modal with fallback description
+            const modal = document.createElement('div');
+            modal.className = 'modal fade';
+            modal.id = 'descriptionModal';
+            modal.innerHTML = `
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header bg-info text-white">
+                            <h5 class="modal-title">Edit Image Description</h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <textarea class="form-control rich-editor" id="descriptionInput" rows="6" placeholder="Enter image description...">${currentDescription}</textarea>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button type="button" class="btn btn-info" onclick="saveImageDescription(${imageId})">Save</button>
+                        </div>
+                    </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-info" onclick="saveImageDescription(${imageId})">Save</button>
-                </div>
-            </div>
-        </div>
-    `;
+            `;
 
-    // Remove old modal if exists
-    const oldModal = document.getElementById('descriptionModal');
-    if (oldModal) oldModal.remove();
+            const oldModal = document.getElementById('descriptionModal');
+            if (oldModal) oldModal.remove();
+            document.body.appendChild(modal);
+            const bsModal = new bootstrap.Modal(modal);
+            bsModal.show();
 
-    document.body.appendChild(modal);
-    const bsModal = new bootstrap.Modal(modal);
-    bsModal.show();
-
-    // Initialize TinyMCE for the description textarea after modal is shown
-    setTimeout(() => {
-        if (typeof tinymce !== 'undefined') {
-            tinymce.init({
-                selector: '#descriptionInput',
-                height: 250,
-                menubar: false,
-                toolbar: 'undo redo | bold italic underline | numlist bullist | table link code removeformat',
-                plugins: 'table link code',
-                content_css: 'default',
-                skin: 'oxide',
-                setup: function(editor) {
-                    editor.on('init', function() {
-                        editor.setContent(currentDescription);
+            setTimeout(() => {
+                if (typeof tinymce !== 'undefined' && tinymce.init) {
+                    tinymce.init({
+                        selector: '#descriptionInput',
+                        height: 250,
+                        menubar: false,
+                        toolbar: 'undo redo | bold italic underline | numlist bullist | table link code removeformat',
+                        plugins: 'table link code',
+                        // Use CDN for assets (themes, skins, etc.) since we only have the minified JS locally
+                        base_url: 'https://cdn.jsdelivr.net/npm/tinymce@6',
+                        content_css: 'default',
+                        skin: 'oxide',
+                        setup: function(editor) {
+                            editor.on('init', function() {
+                                editor.setContent(currentDescription);
+                            });
+                        }
                     });
                 }
-            });
-        }
-    }, 300);
+            }, 300);
 
-    // Clean up after modal closes
-    modal.addEventListener('hidden.bs.modal', () => {
-        if (typeof tinymce !== 'undefined' && tinymce.get('descriptionInput')) {
-            tinymce.get('descriptionInput').remove();
-        }
-        modal.remove();
-    });
+            modal.addEventListener('hidden.bs.modal', () => {
+                if (typeof tinymce !== 'undefined' && tinymce.get('descriptionInput')) {
+                    tinymce.get('descriptionInput').remove();
+                }
+                modal.remove();
+            });
+        });
 }
 
 // Save image description
@@ -309,20 +426,32 @@ function saveImageDescription(imageId) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ description: newDescription })
     })
-    .then(r => r.json())
+    .then(r => {
+        if (!r.ok) {
+            return r.json().then(err => {
+                throw new Error(err.error || `HTTP ${r.status}: ${r.statusText}`);
+            });
+        }
+        return r.json();
+    })
     .then(data => {
         const modal = bootstrap.Modal.getInstance(document.getElementById('descriptionModal'));
-        modal.hide();
+        if (modal) {
+            modal.hide();
+        }
 
-        // Update the description on the page
+        // Update the description on the page - use the cleaned description from server
         const descElement = document.getElementById(`desc-${imageId}`);
         if (descElement) {
-            descElement.innerHTML = newDescription ? newDescription : '<em class="text-muted">No description</em>';
+            const savedDescription = data.description || newDescription;
+            descElement.innerHTML = savedDescription ? savedDescription : '<em class="text-muted">No description</em>';
         }
+        
+        console.log('Image description saved successfully');
     })
     .catch(error => {
         console.error('Error updating description:', error);
-        alert('Error updating description');
+        alert('Error updating description: ' + error.message);
     });
 }
 
@@ -475,6 +604,7 @@ function saveEditedCase(event) {
     const module = document.getElementById('editCaseModule')?.value || null;
     const bodyPart = document.getElementById('editCaseBodyPart')?.value || null;
     const ageGroup = document.getElementById('editCaseAgeGroup')?.value || null;
+    const status = document.getElementById('editCaseStatus')?.value || 'DRAFT';
     const isPublic = document.getElementById('editCaseIsPublic')?.checked || false;
     
     // Validate required fields (case_number is optional - auto-generated from body_part)
@@ -516,6 +646,10 @@ function saveEditedCase(event) {
         }
     });
     
+    // Check if this is a staging case
+    const isStagingCase = caseIdField && caseIdField.toString().startsWith('staging-');
+    const stagingId = isStagingCase ? caseIdField.toString().replace('staging-', '') : null;
+    
     // Prepare data payload (case_number can be empty - server will auto-generate from body_part)
     const payload = {
         case_number: caseNumber || null,
@@ -524,7 +658,8 @@ function saveEditedCase(event) {
         module: module,
         body_part: bodyPart,
         age_group: ageGroup,
-        is_public: isPublic,
+        status: status,
+        is_public: isPublic,  // Legacy field, status takes precedence
         pairs: pairs
     };
     
@@ -549,7 +684,11 @@ function saveEditedCase(event) {
     let endpoint = '';
     let method = '';
     
-    if (isNew) {
+    if (isStagingCase && stagingId) {
+        // Updating staging case and promoting to production
+        endpoint = `/api/admin/enrichment/${stagingId}/enrich-and-promote`;
+        method = 'PUT';
+    } else if (isNew) {
         // Creating new case (with or without packet)
         endpoint = '/api/case/create';
         method = 'POST';
@@ -568,39 +707,84 @@ function saveEditedCase(event) {
     }
     
     // Send request to server
+    console.log('[SAVE] Sending request to:', endpoint, 'Method:', method, 'Payload:', payload);
+    
     fetch(endpoint, {
         method: method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
     })
-    .then(r => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return r.json();
+    .then(async r => {
+        const responseText = await r.text();
+        console.log('[SAVE] Response status:', r.status, 'Response:', responseText);
+        
+        if (!r.ok) {
+            let errorMsg = `HTTP ${r.status}`;
+            try {
+                const errorData = JSON.parse(responseText);
+                errorMsg = errorData.error || errorMsg;
+            } catch (e) {
+                errorMsg = responseText || errorMsg;
+            }
+            throw new Error(errorMsg);
+        }
+        
+        try {
+            return JSON.parse(responseText);
+        } catch (e) {
+            console.error('[SAVE] Failed to parse JSON response:', responseText);
+            throw new Error('Invalid response from server');
+        }
     })
     .then(data => {
-        if (data.success || data.id) {
-            alert('Case saved successfully!');
-            
-            // Determine redirect destination
-            let redirectUrl = '/start-exam';
-            if (returnTo) {
-                redirectUrl = returnTo;
-            } else if (isNew) {
-                redirectUrl = `/view-case/${data.id || data.case_id}`;
+        console.log('[SAVE] Parsed response data:', data);
+        
+        if (data.success || data.id || data.case_id) {
+            if (isStagingCase) {
+                alert('Case reviewed and promoted to production successfully!');
             } else {
-                redirectUrl = `/view-case/${caseIdField}`;
+                alert('Case saved successfully!');
             }
             
+            // Determine redirect destination
+            let redirectUrl = '/dashboard';
+            if (returnTo) {
+                redirectUrl = returnTo;
+            } else if (isStagingCase) {
+                // Redirect to the promoted case view
+                const promotedId = data.case_id || data.id;
+                if (promotedId) {
+                    redirectUrl = `/view-case/${promotedId}`;
+                } else {
+                    redirectUrl = '/admin/staging-cases';
+                }
+            } else if (isNew) {
+                const newId = data.id || data.case_id;
+                if (newId) {
+                    redirectUrl = `/view-case/${newId}`;
+                } else {
+                    redirectUrl = '/cases';
+                }
+            } else if (caseIdField && !caseIdField.toString().startsWith('staging-') && !caseIdField.toString().startsWith('new')) {
+                redirectUrl = `/view-case/${caseIdField}`;
+            } else {
+                // Default fallback
+                redirectUrl = '/cases';
+            }
+            
+            console.log('[SAVE] Redirecting to:', redirectUrl);
             window.location.href = redirectUrl;
         } else {
-            alert('Error: ' + (data.error || 'Failed to save case'));
+            const errorMsg = data.error || 'Failed to save case';
+            console.error('[SAVE] Save failed:', data);
+            alert('Error: ' + errorMsg);
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = originalText;
         }
     })
     .catch(error => {
-        console.error('Error saving case:', error);
+        console.error('[SAVE] Error saving case:', error);
         alert('Error saving case: ' + error.message);
-    })
-    .finally(() => {
         saveBtn.disabled = false;
         saveBtn.innerHTML = originalText;
     });

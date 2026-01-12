@@ -1508,6 +1508,15 @@ pre {
     overflow-wrap: break-word;
 }
 
+/* Plain text formatting - preserves line breaks, bullets, indentation */
+.qa-cell-content.plain-text-formatted,
+.qa-card-text.plain-text-formatted,
+.discussion-text.plain-text-formatted,
+#imageDescriptionDisplay.plain-text-formatted {
+    white-space: pre-wrap !important;
+    font-family: inherit;
+}
+
 /* High contrast for better readability */
 .qa-cell-content em {
     color: #666666;

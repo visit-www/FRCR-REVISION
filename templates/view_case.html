@@ -118,8 +118,9 @@
                     <!-- Discussion/Comments -->
                     <div class="detail-section discussion-section mb-5 p-4 rounded-3" style="background: linear-gradient(135deg, #f0f8fc 0%, #f5fbff 100%); border-left: 5px solid #17a2b8;">
                         <label class="detail-label fw-bold text-secondary mb-3 d-block"><i class="fas fa-comments-dollar me-2" style="color: #17a2b8;"></i>Discussion & Comments</label>
-                        <div id="discussionText" class="detail-content discussion-text highlightable-text" data-field="discussion" style="line-height: 1.8; color: #2c3e50; text-align: left; {% if current_user.is_authenticated and current_user.role and current_user.role.value == 'student' %}user-select: text; cursor: text;{% endif %}">
-            {% if case.discussion %}{{ case.discussion|safe }}{% else %}<em class="text-muted"><i class="fas fa-info-circle me-2"></i>No discussion provided.</em>{% endif %}
+                        <div id="discussionText" class="detail-content discussion-text highlightable-text" data-field="discussion" style="line-height: 1.8; color: #2c3e50; text-align: left; {% if current_user.is_authenticated and current_user.role and current_user.role.value == 'student' %}user-select: text; cursor: text;{% endif %}" data-raw-discussion="{{ case.discussion|e if case.discussion else '' }}">
+            <!-- Content will be rendered client-side using renderSafeHTML() for consistency -->
+            <em class="text-muted"><i class="fas fa-spinner fa-spin me-2"></i>Loading...</em>
                         </div>
                         {% if current_user.is_authenticated and current_user.role and current_user.role.value == 'student' %}
                         <div class="mt-3 p-3 rounded" style="background: #f8f9fa; border-left: 3px solid #667eea;">
@@ -175,9 +176,11 @@
                 {% if current_user.is_authenticated and current_user.role and (current_user.role.value == 'admin' or current_user.role.value == 'content_manager') %}
                 <div class="action-buttons mt-5 pt-4 border-top">
                     <div class="btn-group-actions">
-                        <button class="btn btn-warning rounded-pill px-4 py-2" onclick="openCaseEditModal({{ case.id }})">
+                        <a href="/edit-case?id={{ case.id }}" 
+                           class="btn btn-warning rounded-pill px-4 py-2"
+                           id="editCaseButton">
                             <i class="fas fa-edit me-2"></i>Edit Case
-                        </button>
+                        </a>
                 
                         <button class="btn btn-danger rounded-pill px-4 py-2" onclick="deleteCase({{ case.id }})" title="Delete this case permanently">
                             <i class="fas fa-trash me-2"></i>Delete
@@ -574,6 +577,229 @@
     let currentImages = [];
     let currentImageIndex = 0;
     
+    /**
+     * Convert pipe-separated text to HTML table (client-side, matches server-side logic)
+     */
+    function convertPipeTableToHTML(text) {
+        if (!text || !text.includes('|')) {
+            return text;
+        }
+        
+        const lines = text.trim().split('\n');
+        if (lines.length < 2) {
+            return text;
+        }
+        
+        const firstLine = lines[0].trim();
+        if (!firstLine.includes('|')) {
+            return text;
+        }
+        
+        // Parse header row
+        const headers = firstLine.split('|').map(cell => cell.trim());
+        if (headers.length < 2) {
+            return text;
+        }
+        
+        // Build table HTML
+        let tableHTML = '<table><thead><tr>';
+        headers.forEach(header => {
+            tableHTML += `<th>${header}</th>`;
+        });
+        tableHTML += '</tr></thead><tbody>';
+        
+        // Parse data rows
+        for (let i = 1; i < lines.length; i++) {
+            const line = lines[i].trim();
+            if (!line || !line.includes('|')) {
+                continue;
+            }
+            
+            const cells = line.split('|').map(cell => cell.trim());
+            // Pad or trim to match header count
+            while (cells.length < headers.length) {
+                cells.push('');
+            }
+            cells.splice(headers.length);
+            
+            tableHTML += '<tr>';
+            cells.forEach(cell => {
+                tableHTML += `<td>${cell}</td>`;
+            });
+            tableHTML += '</tr>';
+        }
+        
+        tableHTML += '</tbody></table>';
+        return tableHTML;
+    }
+    
+    /**
+     * Preserve text structure (line breaks, bullets, indentation) - client-side version
+     * Matches server-side preserve_text_structure logic
+     */
+    function preserveTextStructure(text) {
+        if (!text) return '';
+        
+        // Check if text already contains HTML tags
+        if (text.includes('<') && text.includes('>')) {
+            // Has HTML - minimal processing, just ensure newlines in text parts are handled
+            return text;
+        }
+        
+        // Normalize tabs to spaces (4 spaces per tab)
+        text = text.replace(/\t/g, '    ');
+        
+        // Plain text processing - convert structure to HTML
+        const lines = text.split('\n');
+        const processedParts = [];
+        let inList = false;
+        
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            const originalIndent = line.length - line.trimStart().length;
+            let stripped = line.trim();
+            
+            if (!stripped) {
+                // Empty line - close list if open, then add break
+                if (inList) {
+                    processedParts.push('</ul>');
+                    inList = false;
+                }
+                processedParts.push('<br>');
+                continue;
+            }
+            
+            // Detect bullet points (•, -, *, or numbered ONLY if indented)
+            let isBullet = false;
+            let bulletText = stripped;
+            
+            // Check for bullet characters (•, *, -)
+            if (stripped.startsWith('•') || stripped.startsWith('*') || 
+                (stripped.startsWith('-') && stripped.length > 1 && stripped[1] !== '-')) {
+                isBullet = true;
+                bulletText = stripped.substring(1).trim();
+            }
+            // Check for numbered bullets (1., 2., etc.) - ONLY if indented (part of a sub-list)
+            // Numbered items at start of line (no indent) are section headers, not bullets
+            else if (originalIndent > 0 && stripped.length > 2) {
+                if (/^\d/.test(stripped)) {
+                    // Check for pattern like "1. " or "1) "
+                    if (stripped.length > 2 && (stripped[1] === '.' || stripped[1] === ')')) {
+                        if (stripped.length > 3 && stripped[2] === ' ') {
+                            // Pattern: "1. text" or "1) text"
+                            isBullet = true;
+                            bulletText = stripped.substring(3).trim();
+                        } else if (stripped.length === 3) {
+                            // Pattern: "1. " (just number and punctuation)
+                            isBullet = true;
+                            bulletText = '';
+                        }
+                    }
+                }
+            }
+            
+            // Handle bullet points
+            if (isBullet) {
+                if (!inList) {
+                    processedParts.push('<ul>');
+                    inList = true;
+                }
+                
+                // Preserve indentation for nested bullets
+                let indentSpaces = '';
+                if (originalIndent > 0) {
+                    const indentCount = Math.min(Math.floor(originalIndent / 2), 10);
+                    indentSpaces = '&nbsp;'.repeat(indentCount);
+                }
+                processedParts.push(`<li>${indentSpaces}${bulletText}</li>`);
+            } else {
+                // Not a bullet point
+                if (inList) {
+                    processedParts.push('</ul>');
+                    inList = false;
+                }
+                
+                // Regular text line - always create a new paragraph (don't merge)
+                let indentSpaces = '';
+                if (originalIndent > 0) {
+                    const indentCount = Math.min(originalIndent, 20);
+                    indentSpaces = '&nbsp;'.repeat(indentCount);
+                }
+                processedParts.push(`<p>${indentSpaces}${stripped}</p>`);
+            }
+        }
+        
+        // Close any open list
+        if (inList) {
+            processedParts.push('</ul>');
+        }
+        
+        let result = processedParts.join('');
+        
+        // Clean up double breaks
+        result = result.replace(/<\/p><br><p>/g, '</p><p>');
+        result = result.replace(/<br><br>/g, '</p><p>');
+        
+        return result;
+    }
+    
+    /**
+     * Render safe HTML content (content is already sanitized server-side)
+     * This function ensures HTML is rendered correctly while maintaining safety
+     * Unified rendering for all fields: discussion, questions, answers, image descriptions
+     * 
+     * Plain text is preserved as plain text (not converted to HTML) - formatting via CSS
+     * HTML content is rendered as HTML
+     */
+    function renderSafeHTML(htmlContent) {
+        if (!htmlContent) return '';
+        
+        // Check if content already has HTML tags BEFORE any processing
+        // If it has HTML tags, it's already sanitized HTML from server - use as-is
+        if (htmlContent.includes('<') && htmlContent.includes('>')) {
+            // Already contains HTML tags, render as-is (already sanitized server-side)
+            // Convert pipe tables to HTML first (in case there are pipe tables mixed with HTML)
+            let processed = convertPipeTableToHTML(htmlContent);
+            return processed;
+        }
+        
+        // Plain text - browser already decoded HTML entities from data attribute
+        // No need to decode again (which could lose structure)
+        // Just convert pipe tables and return (caller will wrap with CSS formatting)
+        let processed = convertPipeTableToHTML(htmlContent);
+        return processed;  // Return as-is, structure (newlines, bullets) preserved
+    }
+    
+    /**
+     * Render plain text with CSS formatting (preserves line breaks, bullets, indentation)
+     * Returns HTML element with appropriate CSS class
+     */
+    /**
+     * Escape HTML entities for plain text (preserves \n for CSS white-space: pre-wrap)
+     * Returns escaped text that should be inserted into an element with white-space: pre-wrap
+     */
+    function renderPlainTextWithFormatting(text) {
+        if (!text) return '';
+        // Escape HTML to prevent XSS, but preserve \n characters
+        // The container element will use CSS white-space: pre-wrap to render line breaks
+        const escaped = text
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+        return escaped;
+    }
+    
+    /**
+     * Check if content is plain text (no HTML tags)
+     */
+    function isPlainText(content) {
+        if (!content) return true;
+        // Check if content contains HTML tags
+        return !content.includes('<') || !content.includes('>');
+    }
+    
     // Load Q&A pairs on page load
     document.addEventListener('DOMContentLoaded', function() {
         loadQAPairs();
@@ -582,25 +808,44 @@
             keyboard: true
         });
         loadImages();
-        linkifyDiscussion();
+        renderDiscussion(); // Use unified renderer instead of linkifyDiscussion
         setupKeyboardNavigation();
     });
     
-    // Convert URLs in discussion to clickable links and support basic HTML
-    function linkifyDiscussion() {
+    // Render discussion using the same pipeline as Questions/Answers/Image descriptions
+    // This ensures unified rendering: HTML tags + plain-text formatting (line breaks, bullets, indentation)
+    function renderDiscussion() {
         const discussionDiv = document.getElementById('discussionText');
         if (!discussionDiv) return;
         
-        let text = discussionDiv.innerHTML;
+        // Get raw discussion content from data attribute (server-side rendered, but we'll re-render client-side)
+        const rawDiscussion = discussionDiv.getAttribute('data-raw-discussion') || '';
         
-        // Skip if already processed (has linkified URLs) or is empty state
-        if (text.includes('target="_blank"') || text.includes('No discussion provided')) return;
+        if (!rawDiscussion || !rawDiscussion.trim()) {
+            discussionDiv.innerHTML = '<em class="text-muted"><i class="fas fa-info-circle me-2"></i>No discussion provided.</em>';
+            return;
+        }
         
-        // URL regex pattern
+        // Use the same renderSafeHTML function used for Questions/Answers/Image descriptions
+        // Plain text is preserved as plain text (not converted to HTML) - formatting via CSS
+        let renderedContent = renderSafeHTML(rawDiscussion);
+        
+        // Check if content is plain text (no HTML tags)
+        const isPlainTextContent = isPlainText(renderedContent);
+        
+        // If plain text, escape HTML and add CSS class for formatting
+        if (isPlainTextContent) {
+            renderedContent = renderPlainTextWithFormatting(renderedContent);
+            // Add CSS class to container for plain text formatting
+            discussionDiv.classList.add('plain-text-formatted');
+        } else {
+            // Remove class if it was previously added
+            discussionDiv.classList.remove('plain-text-formatted');
+        }
+        
+        // After rendering, linkify URLs (same as before, but on the rendered content)
         const urlPattern = /(https?:\/\/[^\s<]+)/g;
-        
-        // Replace URLs with clickable links
-        text = text.replace(urlPattern, function(url) {
+        renderedContent = renderedContent.replace(urlPattern, function(url) {
             // Remove trailing punctuation
             let cleanUrl = url.replace(/[.,;:!?)]+$/, '');
             let punctuation = url.substring(cleanUrl.length);
@@ -608,7 +853,7 @@
             return `<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer" style="color: #17a2b8; text-decoration: underline; font-weight: 500;">${cleanUrl}</a>${punctuation}`;
         });
         
-        discussionDiv.innerHTML = text;
+        discussionDiv.innerHTML = renderedContent;
     }
     
     // Load Q&A pairs from API
@@ -648,11 +893,27 @@
                                 </thead>
                                 <tbody role="rowgroup">
                                     ${pairs.map((pair, index) => {
-                                        let questionText = (pair.question.text || '').trim().replace(/\n/g, '<br>');
-                                        let answerText = (pair.answer.text || '').trim().replace(/\n/g, '<br>');
+                                        let questionText = (pair.question.text || '').trim();
+                                        let answerText = (pair.answer.text || '').trim();
                                         
                                         questionText = questionText.replace(/^Question\s+\d+:\s*/i, '');
                                         answerText = answerText.replace(/^Answer\s+\d+:\s*/i, '');
+                                        
+                                        // Render safe HTML (content is already sanitized server-side)
+                                        questionText = renderSafeHTML(questionText);
+                                        answerText = renderSafeHTML(answerText);
+                                        
+                                        // Check if content is plain text (no HTML tags)
+                                        const isQuestionPlainText = isPlainText(questionText);
+                                        const isAnswerPlainText = isPlainText(answerText);
+                                        
+                                        // If plain text, escape HTML and add CSS class for formatting
+                                        if (isQuestionPlainText) {
+                                            questionText = renderPlainTextWithFormatting(questionText);
+                                        }
+                                        if (isAnswerPlainText) {
+                                            answerText = renderPlainTextWithFormatting(answerText);
+                                        }
                                         
                                         const rowClass = index % 2 === 0 ? 'qa-row-even' : 'qa-row-odd';
                                         
@@ -660,13 +921,13 @@
                                         <tr role="row" class="qa-table-row ${rowClass}" tabindex="0">
                                             <td role="cell" class="qa-table-cell qa-question-cell">
                                                 <div class="qa-cell-number">Q${pair.number}</div>
-                                                <div class="qa-cell-content highlightable-text qa-question" data-field="question_${pair.number}" ${isStudent ? 'style="user-select: text; cursor: text;"' : ''}>
+                                                <div class="qa-cell-content highlightable-text qa-question ${isQuestionPlainText ? 'plain-text-formatted' : ''}" data-field="question_${pair.number}" ${isStudent ? 'style="user-select: text; cursor: text;"' : ''}>
                                                     ${questionText || '<em class="text-muted">No question text</em>'}
                                                 </div>
                                             </td>
                                             <td role="cell" class="qa-table-cell qa-answer-cell">
                                                 <div class="qa-cell-number">A${pair.number}</div>
-                                                <div class="qa-cell-content highlightable-text qa-answer" data-field="answer_${pair.number}" ${isStudent ? 'style="user-select: text; cursor: text;"' : ''}>
+                                                <div class="qa-cell-content highlightable-text qa-answer ${isAnswerPlainText ? 'plain-text-formatted' : ''}" data-field="answer_${pair.number}" ${isStudent ? 'style="user-select: text; cursor: text;"' : ''}>
                                                     ${answerText || '<em class="text-muted">No answer text</em>'}
                                                 </div>
                                             </td>
@@ -683,11 +944,27 @@
                 const mobileHtml = `
                     <div class="qa-cards-container d-md-none">
                         ${pairs.map((pair, index) => {
-                            let questionText = (pair.question.text || '').trim().replace(/\n/g, '<br>');
-                            let answerText = (pair.answer.text || '').trim().replace(/\n/g, '<br>');
+                            let questionText = (pair.question.text || '').trim();
+                            let answerText = (pair.answer.text || '').trim();
                             
                             questionText = questionText.replace(/^Question\s+\d+:\s*/i, '');
                             answerText = answerText.replace(/^Answer\s+\d+:\s*/i, '');
+                            
+                            // Render safe HTML (content is already sanitized server-side)
+                            questionText = renderSafeHTML(questionText);
+                            answerText = renderSafeHTML(answerText);
+                            
+                            // Check if content is plain text (no HTML tags)
+                            const isQuestionPlainText = isPlainText(questionText);
+                            const isAnswerPlainText = isPlainText(answerText);
+                            
+                            // If plain text, escape HTML and add CSS class for formatting
+                            if (isQuestionPlainText) {
+                                questionText = renderPlainTextWithFormatting(questionText);
+                            }
+                            if (isAnswerPlainText) {
+                                answerText = renderPlainTextWithFormatting(answerText);
+                            }
                             
                             return `
                             <div class="qa-cards-row mb-4">
@@ -701,7 +978,7 @@
                                                 </div>
                                             </div>
                                             <div class="qa-card-body">
-                                                <div class="qa-card-text qa-question highlightable-text" data-field="question_${pair.number}" style="${isStudent ? 'user-select: text; cursor: text; ' : ''}text-align: left !important; text-indent: 0 !important; white-space: normal !important;">
+                                                <div class="qa-card-text qa-question highlightable-text ${isQuestionPlainText ? 'plain-text-formatted' : ''}" data-field="question_${pair.number}" style="${isStudent ? 'user-select: text; cursor: text; ' : ''}text-align: left !important; text-indent: 0 !important;">
                                                     ${questionText || '<em class="text-muted">No question text</em>'}
                                                 </div>
                                             </div>
@@ -717,7 +994,7 @@
                                                 </div>
                                             </div>
                                             <div class="qa-card-body">
-                                                <div class="qa-card-text qa-answer highlightable-text" data-field="answer_${pair.number}" style="${isStudent ? 'user-select: text; cursor: text; ' : ''}text-align: left !important; text-indent: 0 !important; white-space: normal !important;">
+                                                <div class="qa-card-text qa-answer highlightable-text ${isAnswerPlainText ? 'plain-text-formatted' : ''}" data-field="answer_${pair.number}" style="${isStudent ? 'user-select: text; cursor: text; ' : ''}text-align: left !important; text-indent: 0 !important;">
                                                     ${answerText || '<em class="text-muted">No answer text</em>'}
                                                 </div>
                                             </div>
@@ -853,8 +1130,18 @@
                 const descriptionDisplay = document.getElementById('imageDescriptionDisplay');
                 
                 if (image && image.description && image.description.trim()) {
-                    // Show description if it exists (render as HTML)
-                    descriptionDisplay.innerHTML = image.description;
+                    // Show description if it exists (render as safe HTML - already sanitized server-side)
+                    let desc = renderSafeHTML(image.description);
+                    // Check if content is plain text (no HTML tags)
+                    const isPlainTextDesc = isPlainText(desc);
+                    // If plain text, escape HTML and add CSS class for formatting
+                    if (isPlainTextDesc) {
+                        desc = renderPlainTextWithFormatting(desc);
+                        descriptionDisplay.classList.add('plain-text-formatted');
+                    } else {
+                        descriptionDisplay.classList.remove('plain-text-formatted');
+                    }
+                    descriptionDisplay.innerHTML = desc;
                 } else {
                     // Show default text if no description
                     descriptionDisplay.innerHTML = 'No description';
@@ -1004,9 +1291,20 @@
         // Load description for new image
         const descriptionDisplay = document.getElementById('imageDescriptionDisplay');
         if (image.description && image.description.trim()) {
-            descriptionDisplay.textContent = image.description;
+            // Render as safe HTML (already sanitized server-side)
+            let desc = renderSafeHTML(image.description);
+            // Check if content is plain text (no HTML tags)
+            const isPlainTextDesc = isPlainText(desc);
+            // If plain text, escape HTML and add CSS class for formatting
+            if (isPlainTextDesc) {
+                desc = renderPlainTextWithFormatting(desc);
+                descriptionDisplay.classList.add('plain-text-formatted');
+            } else {
+                descriptionDisplay.classList.remove('plain-text-formatted');
+            }
+            descriptionDisplay.innerHTML = desc;
         } else {
-            descriptionDisplay.textContent = 'No description';
+            descriptionDisplay.innerHTML = 'No description';
         }
     }
     
@@ -1566,6 +1864,19 @@
             setTimeout(initHighlighting, 1000);
         });
     }
+    
+    // Ensure edit button works reliably
+    document.addEventListener('DOMContentLoaded', function() {
+        const editButton = document.getElementById('editCaseButton');
+        if (editButton) {
+            editButton.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                const caseId = {{ case.id }};
+                window.location.href = `/edit-case?id=${caseId}`;
+            });
+        }
+    });
 </script>
 <script src="/static/edit-case-modal.js"></script>
 {% endblock %}
