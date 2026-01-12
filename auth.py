@@ -4,7 +4,7 @@ Handles login, signup, password recovery, and session management
 """
 from flask import Blueprint, render_template, request, jsonify, redirect, url_for, session, flash
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
-from models import db, User
+from models import db, User, UserRole
 from datetime import datetime
 import os
 import secrets
@@ -128,10 +128,12 @@ def register():
             
             if is_first_user:
                 user.is_admin = True
-                print(f"[REGISTER] First user - granting admin privileges")
+                user.role = UserRole.ADMIN  # Set role to ADMIN for first user
+                print(f"[REGISTER] First user - granting admin privileges (is_admin=True, role=ADMIN)")
             else:
                 user.is_admin = False
-                print(f"[REGISTER] Regular student user")
+                user.role = UserRole.STUDENT  # Explicitly set role to STUDENT
+                print(f"[REGISTER] Regular student user (role=STUDENT)")
             
             # Add user to session
             db.session.add(user)
