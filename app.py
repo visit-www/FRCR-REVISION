@@ -568,6 +568,30 @@ app.register_blueprint(backup_bp)
 app.register_blueprint(admin_bp)  # Sprint 2: Admin user management
 app.register_blueprint(enrichment_bp)  # Data migration: Import, enrich, promote cases
 
+# Handle favicon requests to prevent 404 errors
+@app.route('/favicon.ico')
+@app.route('/favicon.png')
+def favicon():
+    """Handle favicon requests - return existing icon or 204 No Content"""
+    try:
+        # Try to return the existing icon
+        return send_file('static/images/icon-192x192.png', mimetype='image/png')
+    except Exception:
+        # If icon doesn't exist, return 204 No Content (standard for missing favicons)
+        return '', 204
+
+# Handle favicon requests to prevent 404 errors
+@app.route('/favicon.ico')
+@app.route('/favicon.png')
+def favicon():
+    """Handle favicon requests - return existing icon or 204 No Content"""
+    try:
+        # Try to return the existing icon
+        return send_file('static/images/icon-192x192.png', mimetype='image/png')
+    except Exception:
+        # If icon doesn't exist, return 204 No Content (standard for missing favicons)
+        return '', 204
+
 
 @app.route('/')
 def index():
