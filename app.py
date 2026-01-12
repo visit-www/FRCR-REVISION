@@ -744,7 +744,7 @@ def start_balanced_revision():
         flash(' '.join(message_parts), 'success')
         
         # Redirect to first case
-            return redirect(url_for('view_revision_case', session_id=revision_session.id, case_index=0))
+        return redirect(url_for('view_revision_case', session_id=revision_session.id, case_index=0))
     
     except Exception as e:
         db.session.rollback()
