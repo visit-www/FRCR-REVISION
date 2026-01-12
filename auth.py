@@ -457,6 +457,58 @@ def debug_auth():
     }), 200
 
 
+@auth_bp.route('/debug/verify-db-users', methods=['GET'])
+@login_required
+def verify_db_users():
+    """
+    Verify that users and password hashes are stored in the database.
+    Admin only - shows user info but NOT full password hashes (security).
+    """
+    if not current_user.is_admin:
+        return jsonify({'error': 'Admin access required'}), 403
+    
+    try:
+        # Query all users from database
+        users = User.query.all()
+        
+        users_data = []
+        for user in users:
+            # Check if password_hash exists and get its length (don't expose the hash itself)
+            password_hash_exists = bool(user.password_hash)
+            password_hash_length = len(user.password_hash) if user.password_hash else 0
+            
+            # Show first 20 chars of hash for verification (not the full hash)
+            password_hash_preview = user.password_hash[:20] + '...' if user.password_hash and len(user.password_hash) > 20 else (user.password_hash if user.password_hash else None)
+            
+            users_data.append({
+                'id': user.id,
+                'email': user.email,
+                'full_name': user.full_name,
+                'is_admin': user.is_admin,
+                'is_active': user.is_active,
+                'created_at': user.created_at.isoformat() if user.created_at else None,
+                'last_login': user.last_login.isoformat() if user.last_login else None,
+                # Password hash verification (safe to expose - it's a hash, not the password)
+                'password_hash_exists': password_hash_exists,
+                'password_hash_length': password_hash_length,
+                'password_hash_preview': password_hash_preview,  # First 20 chars only
+                'has_valid_password_hash': password_hash_exists and password_hash_length > 50  # Valid hashes are usually 100+ chars
+            })
+        
+        return jsonify({
+            'success': True,
+            'total_users': len(users_data),
+            'users': users_data,
+            'message': f'Found {len(users_data)} user(s) in database. Password hashes are stored in the "password_hash" column.'
+        }), 200
+        
+    except Exception as e:
+        print(f"[DEBUG] Error verifying users: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': f'Error querying database: {str(e)}'}), 500
+
+
 # ==================== ADMIN USER MANAGEMENT ====================
 
 @auth_bp.route('/admin/promote-user', methods=['POST'])

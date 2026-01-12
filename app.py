@@ -121,6 +121,13 @@ app.config['PERMANENT_SESSION_LIFETIME'] = 86400  # 24 hours
 
 # For serverless (Vercel), don't set cookie domain to allow cross-subdomain cookies
 # This ensures cookies work across *.vercel.app subdomains
+# 
+# IMPORTANT: We are NOT storing credentials in cookies!
+# - Credentials (password hashes) are stored in the DATABASE only
+# - The cookie only stores a SESSION IDENTIFIER (user_id) to track "who is logged in"
+# - Flask-Login stores minimal data: just the user ID (e.g., {"user_id": 1})
+# - On each request, the server reads the user_id from the cookie, then looks up the user in the database
+# - This is necessary in serverless because we can't use in-memory session storage
 if os.getenv('VERCEL'):
     app.config['SESSION_COOKIE_DOMAIN'] = None  # Use default (current domain)
     print("[SESSION] Serverless environment detected - using default cookie domain")
@@ -692,7 +699,7 @@ def start_balanced_revision():
         flash(' '.join(message_parts), 'success')
         
         # Redirect to first case
-        return redirect(url_for('view_revision_case', session_id=revision_session.id, case_index=0))
+            return redirect(url_for('view_revision_case', session_id=revision_session.id, case_index=0))
     
     except Exception as e:
         db.session.rollback()
@@ -851,7 +858,7 @@ def cases_by_module(module):
     
     if is_student:
         # Students: only public cases, use student template
-        query = Case.query.filter_by(module=module_enum, is_public=True)
+    query = Case.query.filter_by(module=module_enum, is_public=True)
     else:
         # Admins/Content Managers: all cases
         query = Case.query.filter_by(module=module_enum)
@@ -884,7 +891,7 @@ def cases_by_module(module):
         )
         
         # Prepare case data for student template - match admin template structure
-        for case in cases:
+    for case in cases:
             cases_data.append({
                 'id': case.id,
                 'diagnosis': case.diagnosis,
@@ -899,17 +906,17 @@ def cases_by_module(module):
     else:
         # Admins/Content Managers: prepare case data for admin template
         for case in cases:
-            has_notes = CandidateNote.query.filter_by(case_id=case.id, user_id=current_user.id).first() is not None
-            cases_data.append({
-                'id': case.id,
-                'diagnosis': case.diagnosis,
-                'module_display': case.module.value if case.module else 'N/A',
-                'body_part_display': case.body_part.value if case.body_part else 'N/A',
+        has_notes = CandidateNote.query.filter_by(case_id=case.id, user_id=current_user.id).first() is not None
+        cases_data.append({
+            'id': case.id,
+            'diagnosis': case.diagnosis,
+            'module_display': case.module.value if case.module else 'N/A',
+            'body_part_display': case.body_part.value if case.body_part else 'N/A',
                 'age_group_display': case.age_group.value if case.age_group else 'N/A',
-                'image_count': len(case.images),
-                'has_notes': has_notes,
-                'is_public': case.is_public
-            })
+            'image_count': len(case.images),
+            'has_notes': has_notes,
+            'is_public': case.is_public
+        })
     
     # Get all body parts and age groups for filters
     body_parts = [{'value': bp.name, 'display_name': bp.value} for bp in BodyPart]
@@ -927,7 +934,7 @@ def cases_by_module(module):
                              all_modules=all_modules,
                              search_query=search_query)
     else:
-        return render_template('cases_list.html',
+    return render_template('cases_list.html',
                          cases=cases_data,
                          module_filter=module_enum.value,
                          body_parts=body_parts,
