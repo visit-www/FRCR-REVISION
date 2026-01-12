@@ -551,7 +551,7 @@ with app.app_context():
         except Exception as query_error:
             # Tables don't exist, create them
             print("[DB] Tables not found, creating database schema...")
-        db.create_all()
+            db.create_all()
             print("[DB] Database schema created successfully")
     except Exception as e:
         print(f"[DB] Error initializing database: {e}")
@@ -744,7 +744,7 @@ def start_balanced_revision():
         flash(' '.join(message_parts), 'success')
         
         # Redirect to first case
-            return redirect(url_for('view_revision_case', session_id=revision_session.id, case_index=0))
+        return redirect(url_for('view_revision_case', session_id=revision_session.id, case_index=0))
     
     except Exception as e:
         db.session.rollback()
@@ -903,7 +903,7 @@ def cases_by_module(module):
     
     if is_student:
         # Students: only public cases, use student template
-    query = Case.query.filter_by(module=module_enum, is_public=True)
+        query = Case.query.filter_by(module=module_enum, is_public=True)
     else:
         # Admins/Content Managers: all cases
         query = Case.query.filter_by(module=module_enum)
