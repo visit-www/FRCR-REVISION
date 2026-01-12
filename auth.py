@@ -188,12 +188,16 @@ def register():
             user = verified_user
             
             # Login user after successful save
-            login_user(user)
+            # Mark session as permanent for serverless environments (Vercel)
+            # This ensures the session cookie persists across function invocations
+            from flask import session as flask_session
+            flask_session.permanent = True
+            login_user(user, remember=True)
             print(f"[REGISTER] User logged in: {email}")
             
             # Debug session creation
-            from flask import session as flask_session
             print(f"[REGISTER] Session ID after login: {flask_session.get('_id', 'NO SESSION')}")
+            print(f"[REGISTER] Session permanent: {flask_session.permanent}")
             print(f"[REGISTER] Current user authenticated: {current_user.is_authenticated}")
             
             return jsonify({'success': True, 'message': 'Registration successful', 'user_id': user.id}), 201
@@ -268,12 +272,17 @@ def login():
             user.last_login = datetime.utcnow()
             db.session.commit()
             
-            login_user(user, remember=remember)
+            # Mark session as permanent for serverless environments (Vercel)
+            # This ensures the session cookie persists across function invocations
+            from flask import session as flask_session
+            flask_session.permanent = True
+            login_user(user, remember=True)  # Always remember in serverless
             
             # Debug session creation
             print(f"[AUTH] Successful login: {email}")
             print(f"[AUTH] Session created - User ID: {user.id}, Email: {user.email}")
-            print(f"[AUTH] Remember: {remember}")
+            print(f"[AUTH] Session permanent: {flask_session.permanent}")
+            print(f"[AUTH] Remember: True (forced for serverless)")
             
             return jsonify({'success': True, 'message': 'Login successful'}), 200
         

@@ -119,6 +119,12 @@ app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # CSRF protection
 app.config['SESSION_COOKIE_NAME'] = 'frcr_session'  # Explicit name
 app.config['PERMANENT_SESSION_LIFETIME'] = 86400  # 24 hours
 
+# For serverless (Vercel), don't set cookie domain to allow cross-subdomain cookies
+# This ensures cookies work across *.vercel.app subdomains
+if os.getenv('VERCEL'):
+    app.config['SESSION_COOKIE_DOMAIN'] = None  # Use default (current domain)
+    print("[SESSION] Serverless environment detected - using default cookie domain")
+
 print(f"[SESSION] SECURE={app.config['SESSION_COOKIE_SECURE']}, HTTPONLY={app.config['SESSION_COOKIE_HTTPONLY']}, SAMESITE={app.config['SESSION_COOKIE_SAMESITE']}")
 
 # Initialize database
