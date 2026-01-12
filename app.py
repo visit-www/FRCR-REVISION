@@ -2628,7 +2628,10 @@ def delete_highlight(highlight_id):
 @login_required
 def migrate_db():
     """Create database tables if they don't exist - Admin only"""
-    if not current_user.is_admin:
+    # Check both is_admin flag and role for compatibility
+    is_admin = (hasattr(current_user, 'is_admin') and current_user.is_admin) or \
+               (hasattr(current_user, 'role') and current_user.role == UserRole.ADMIN)
+    if not is_admin:
         return jsonify({'error': 'Admin access required'}), 403
     
     try:
