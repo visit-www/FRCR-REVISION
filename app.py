@@ -148,7 +148,21 @@ login_manager.login_message = 'Please log in to continue'
 
 @login_manager.user_loader
 def load_user(user_id):
-    return User.query.get(int(user_id))
+    """Load user from database by ID"""
+    try:
+        user = User.query.get(int(user_id))
+        if user:
+            # Ensure role is set if user has is_admin but no role
+            if user.is_admin and user.role != UserRole.ADMIN:
+                print(f"[AUTH] Fixing user {user_id} role: is_admin=True but role={user.role}, setting to ADMIN")
+                user.role = UserRole.ADMIN
+                db.session.commit()
+        return user
+    except Exception as e:
+        print(f"[AUTH] Error loading user {user_id}: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
 
 @login_manager.unauthorized_handler
 def unauthorized():
