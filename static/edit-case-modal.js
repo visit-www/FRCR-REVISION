@@ -22,10 +22,7 @@ function populateEditModal(caseData, images) {
     document.getElementById('editCaseNumber').value = caseData.case_number || '';
     document.getElementById('editCaseDiagnosis').value = caseData.diagnosis || '';
     document.getElementById('editCaseDiscussion').value = caseData.discussion || '';
-        // Populate is_public toggle
-        if (typeof caseData.is_public !== 'undefined') {
-            document.getElementById('editCaseIsPublic').checked = !!caseData.is_public;
-        }
+        // Status is now the source of truth for visibility (is_public is auto-synced)
     
     // Update header info
     const headerInfo = document.getElementById('editCaseHeaderInfo');
@@ -303,31 +300,29 @@ function editImageDescription(imageId) {
             bsModal.show();
 
             // Initialize TinyMCE for the description textarea after modal is shown
+            // Use the same initialization function as Q&A answers for consistency
             setTimeout(() => {
-                if (typeof tinymce !== 'undefined' && tinymce.init) {
-                    tinymce.init({
-                        selector: '#descriptionInput',
-                        height: 250,
-                        menubar: false,
-                        toolbar: 'undo redo | bold italic underline | numlist bullist | table link code removeformat',
-                        plugins: 'table link code',
-                        // Use CDN for assets (themes, skins, etc.) since we only have the minified JS locally
-                        base_url: 'https://cdn.jsdelivr.net/npm/tinymce@6',
-                        content_css: 'default',
-                        skin: 'oxide',
-                        setup: function(editor) {
-                            editor.on('init', function() {
-                                // Set the original description content
-                                editor.setContent(currentDescription);
-                            });
+                const textarea = document.getElementById('descriptionInput');
+                if (textarea) {
+                    // Set value first as fallback
+                    textarea.value = currentDescription;
+                    
+                    // Initialize TinyMCE with retry logic (same as Q&A answers)
+                    initializeTinyMCE('descriptionInput', 0);
+                    
+                    // Wait for TinyMCE to initialize, then set content
+                    function setContentWhenReady(retries = 0) {
+                        if (retries > 20) {
+                            console.warn('TinyMCE not ready for image description, using textarea fallback');
+                            return;
                         }
-                    });
-                } else {
-                    // Fallback if TinyMCE not loaded - set textarea value directly
-                    const textarea = document.getElementById('descriptionInput');
-                    if (textarea) {
-                        textarea.value = currentDescription;
+                        if (typeof tinymce !== 'undefined' && tinymce.get('descriptionInput')) {
+                            tinymce.get('descriptionInput').setContent(currentDescription);
+                        } else {
+                            setTimeout(() => setContentWhenReady(retries + 1), 100);
+                        }
                     }
+                    setContentWhenReady();
                 }
             }, 300);
 
@@ -605,7 +600,8 @@ function saveEditedCase(event) {
     const bodyPart = document.getElementById('editCaseBodyPart')?.value || null;
     const ageGroup = document.getElementById('editCaseAgeGroup')?.value || null;
     const status = document.getElementById('editCaseStatus')?.value || 'DRAFT';
-    const isPublic = document.getElementById('editCaseIsPublic')?.checked || false;
+    // Automatically set is_public based on status: PUBLISHED = true, all others = false
+    const isPublic = status === 'PUBLISHED';
     
     // Validate required fields (case_number is optional - auto-generated from body_part)
     if (!module) {
@@ -748,16 +744,22 @@ function saveEditedCase(event) {
             
             // Determine redirect destination
             let redirectUrl = '/dashboard';
-            if (returnTo) {
-                redirectUrl = returnTo;
-            } else if (isStagingCase) {
-                // Redirect to the promoted case view
-                const promotedId = data.case_id || data.id;
+            
+            // Priority: For staging cases, always go to view case (ignore returnTo if it's staging list)
+            if (isStagingCase) {
+                // Redirect to the promoted case view with from_staging parameter
+                // Try multiple possible field names from the response
+                const promotedId = data.case_id || data.id || data.promoted_case_id;
+                console.log('[SAVE] Staging case - promoted ID:', promotedId, 'from data:', data);
                 if (promotedId) {
-                    redirectUrl = `/view-case/${promotedId}`;
+                    redirectUrl = `/view-case/${promotedId}?from_staging=true`;
                 } else {
+                    console.warn('[SAVE] No promoted case ID found in response, redirecting to staging list');
                     redirectUrl = '/admin/staging-cases';
                 }
+            } else if (returnTo && !returnTo.includes('staging-cases')) {
+                // Only use returnTo if it's not staging cases
+                redirectUrl = returnTo;
             } else if (isNew) {
                 const newId = data.id || data.case_id;
                 if (newId) {

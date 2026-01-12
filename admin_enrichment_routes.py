@@ -168,6 +168,7 @@ def get_case_details(case_id):
         'module': case.module.value if case.module else None,
         'body_part': case.body_part.value if case.body_part else None,
         'age_group': case.age_group.value if case.age_group else None,
+        'status': getattr(case, 'status', None) and case.status.name if hasattr(case, 'status') and case.status else 'DRAFT',
         'is_public': case.is_public,
         'enrichment_status': case.enrichment_status,
         'enrichment_notes': case.enrichment_notes,
@@ -326,15 +327,27 @@ def enrich_and_promote_case(case_id):
     data = request.get_json()
     
     try:
-        # Update enums
+        # Update enums (form sends enum names, not values)
         if data.get('module'):
-            staging.module = FRCRModule(data['module'])
+            try:
+                staging.module = FRCRModule[data['module']]  # Access by enum name
+            except (KeyError, AttributeError) as e:
+                print(f"[ENRICH] Error setting module '{data['module']}': {e}")
+                raise ValueError(f"Invalid module value: '{data['module']}'. Valid values: {[m.name for m in FRCRModule]}")
         
         if data.get('body_part'):
-            staging.body_part = BodyPart(data['body_part'])
+            try:
+                staging.body_part = BodyPart[data['body_part']]  # Access by enum name
+            except (KeyError, AttributeError) as e:
+                print(f"[ENRICH] Error setting body_part '{data['body_part']}': {e}")
+                raise ValueError(f"Invalid body_part value: '{data['body_part']}'. Valid values: {[bp.name for bp in BodyPart]}")
         
         if data.get('age_group'):
-            staging.age_group = AgeGroup(data['age_group'])
+            try:
+                staging.age_group = AgeGroup[data['age_group']]  # Access by enum name
+            except (KeyError, AttributeError) as e:
+                print(f"[ENRICH] Error setting age_group '{data['age_group']}': {e}")
+                raise ValueError(f"Invalid age_group value: '{data['age_group']}'. Valid values: {[ag.name for ag in AgeGroup]}")
         
         # Update other fields
         if data.get('case_number'):
@@ -353,7 +366,10 @@ def enrich_and_promote_case(case_id):
         case_number = data.get('case_number') or staging.case_number
         if data.get('body_part') and case_number:
             try:
-                body_part_enum = BodyPart(data['body_part'])
+                # body_part was already set above using BodyPart[data['body_part']]
+                body_part_enum = staging.body_part
+                if not body_part_enum:
+                    body_part_enum = BodyPart[data['body_part']]
                 # If case_number is numeric, convert to bodypart-00<number> format
                 if isinstance(case_number, int) or (isinstance(case_number, str) and case_number.replace('-', '').isdigit()):
                     # Extract number (handle both "123" and "chest-123")

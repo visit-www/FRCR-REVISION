@@ -86,61 +86,13 @@ console.log('[TinyMCE Loader] Script URL was:', "{{ url_for('static', filename='
             {% endif %}
         </div>
 
-        <!-- Formatting Instructions Panel -->
-        <div class="card shadow-sm mb-4 border-0" style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border-left: 4px solid #667eea !important;">
-            <div class="card-body p-4">
-                <div class="d-flex align-items-start">
-                    <div class="me-3" style="font-size: 2rem; color: #667eea;">
-                        <i class="fas fa-magic"></i>
-                    </div>
-                    <div class="flex-grow-1">
-                        <h5 class="mb-3" style="color: #495057;">
-                            <i class="fas fa-info-circle me-2" style="color: #667eea;"></i>Rich Text Formatting Guide
-                        </h5>
-                        <p class="mb-3 text-muted" style="line-height: 1.6;">
-                            You can use <strong>HTML tags</strong> or the editor toolbar to format your content. All formatting works in <strong>Questions</strong>, <strong>Answers</strong>, <strong>Discussion</strong>, and <strong>Image Descriptions</strong>.
-                        </p>
-                        
-                        <div class="row g-3 mb-3">
-                            <div class="col-md-6">
-                                <div class="p-3 rounded" style="background: white; border-left: 3px solid #28a745;">
-                                    <h6 class="mb-2" style="color: #28a745;">
-                                        <i class="fas fa-tags me-2"></i>Supported HTML Tags
-                                    </h6>
-                                    <div class="small text-muted">
-                                        <code>&lt;b&gt;</code>, <code>&lt;strong&gt;</code>, <code>&lt;i&gt;</code>, <code>&lt;em&gt;</code>, <code>&lt;u&gt;</code><br>
-                                        <code>&lt;mark&gt;</code>, <code>&lt;hr&gt;</code>, <code>&lt;br&gt;</code>, <code>&lt;p&gt;</code><br>
-                                        <code>&lt;ul&gt;</code>, <code>&lt;ol&gt;</code>, <code>&lt;li&gt;</code><br>
-                                        <code>&lt;h1&gt;</code> to <code>&lt;h4&gt;</code>, <code>&lt;blockquote&gt;</code>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="p-3 rounded" style="background: white; border-left: 3px solid #17a2b8;">
-                                    <h6 class="mb-2" style="color: #17a2b8;">
-                                        <i class="fas fa-table me-2"></i>Table Formats
-                                    </h6>
-                                    <div class="small text-muted">
-                                        <strong>Option 1:</strong> Pipe format (auto-converted)<br>
-                                        <code>Header 1 | Header 2 | Header 3</code><br>
-                                        <code>Row 1 Col 1 | Row 1 Col 2 | Row 1 Col 3</code><br><br>
-                                        <strong>Option 2:</strong> HTML format<br>
-                                        <code>&lt;table&gt;&lt;tr&gt;&lt;td&gt;...&lt;/td&gt;&lt;/tr&gt;&lt;/table&gt;</code>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="alert alert-light border mb-0" style="background: white;">
-                            <div class="d-flex align-items-start">
-                                <i class="fas fa-lightbulb text-warning me-2 mt-1"></i>
-                                <div class="small">
-                                    <strong>Tip:</strong> Use the editor toolbar buttons for quick formatting, or type HTML tags directly. 
-                                    Pipe tables are automatically converted to HTML tables when you save.
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+        <!-- Formatting Tip -->
+        <div class="alert alert-info mb-4 border-0" style="background: linear-gradient(135deg, #e3f2fd 0%, #f5f5f5 100%); border-left: 4px solid #2196F3 !important;">
+            <div class="d-flex align-items-start">
+                <i class="fas fa-lightbulb text-warning me-2 mt-1" style="font-size: 1.2rem;"></i>
+                <div class="small mb-0">
+                    <strong>Tip:</strong> Use the editor toolbar buttons for quick formatting, or type HTML tags directly. 
+                    Pipe tables are automatically converted to HTML tables when you save.
                 </div>
             </div>
         </div>
@@ -180,26 +132,26 @@ console.log('[TinyMCE Loader] Script URL was:', "{{ url_for('static', filename='
                                     <i class="fas fa-file-alt me-1" style="color: #667eea;"></i>Case Status *
                                 </label>
                                 <select class="form-select form-select-lg" id="editCaseStatus" required>
-                                    <option value="DRAFT">Draft (Not ready for review)</option>
-                                    <option value="PENDING_REVIEW">Pending Review (Waiting for approval)</option>
-                                    <option value="PUBLISHED">Published (Visible to users)</option>
-                                    <option value="PRIVATE">Private (Admin/Content Manager only)</option>
-                                    <option value="ARCHIVED">Archived (Hidden from view)</option>
+                                    <option value="DRAFT">Draft (Not ready for review - Private)</option>
+                                    <option value="PENDING_REVIEW">Pending Review (Waiting for approval - Private)</option>
+                                    <option value="PUBLISHED">Published (Visible to all users - Public)</option>
+                                    <option value="PRIVATE">Private (Admin/Content Manager only - Private)</option>
+                                    <option value="ARCHIVED">Archived (Hidden from view - Private)</option>
                                 </select>
-                                <small class="text-muted d-block mt-2">Case lifecycle status</small>
+                                <small class="text-muted d-block mt-2">Case lifecycle status (only Published cases are visible to students)</small>
                             </div>
                         </div>
                         <div class="col-md-4">
                             <div class="mb-4">
                                 <label class="form-label fw-bold text-secondary" id="publicStatusLabel">
                                     <i id="publicEyeIcon" class="fas fa-eye me-1" style="color: #28a745;"></i>
-                                    <span id="publicStatusText">Publicly Visible</span>
+                                    <span id="publicStatusText">Visibility Status</span>
                                 </label>
-                                <div class="form-check form-switch">
-                                    <input class="form-check-input" type="checkbox" id="editCaseIsPublic">
-                                    <label class="form-check-label" for="editCaseIsPublic" id="publicCheckboxLabel">This case is visible to all users</label>
+                                <div id="visibilityInfo" class="alert alert-info mb-0" style="font-size: 0.9rem;">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    <span id="visibilityDescription">Status controls visibility: Published = Public, Others = Private</span>
                                 </div>
-                                <small class="text-muted d-block mt-2">Legacy field (status takes precedence)</small>
+                                <small class="text-muted d-block mt-2">Visibility is automatically set based on case status</small>
                         </div>
                         </div>
                     </div>
@@ -293,9 +245,6 @@ console.log('[TinyMCE Loader] Script URL was:', "{{ url_for('static', filename='
                     </h5>
                 </div>
                 <div class="card-body p-4">
-                    <div class="alert alert-info border-0" role="alert" style="background: linear-gradient(135deg, #e7f3ff 0%, #d0e7ff 100%);">
-                        <i class="fas fa-lightbulb me-2"></i><strong>Formatting:</strong> Use HTML tags or the editor toolbar. Pipe tables (<code>Col 1 | Col 2 | Col 3</code>) are automatically converted to HTML tables.
-                    </div>
                     <div id="qaPairsContainer">
                         <p class="text-muted text-center py-5">Loading Q&A pairs...</p>
                     </div>
@@ -317,9 +266,6 @@ console.log('[TinyMCE Loader] Script URL was:', "{{ url_for('static', filename='
                 </div>
                 <div class="card-body p-4">
                     <label class="form-label fw-bold text-secondary mb-3">Add Detailed Notes</label>
-                    <div class="alert alert-info border-0" role="alert" style="background: linear-gradient(135deg, #e7f3ff 0%, #d0e7ff 100%);">
-                        <i class="fas fa-lightbulb me-2"></i><strong>Formatting:</strong> Use HTML tags or the editor toolbar. Pipe tables (<code>Col 1 | Col 2 | Col 3</code>) are automatically converted to HTML tables.
-                    </div>
                     <textarea class="form-control form-control-lg rich-editor" id="editCaseDiscussion" rows="8" placeholder="Add any discussion, clinical findings, differential diagnosis, teaching points, or additional comments about this case..."></textarea>
                     <small class="text-muted d-block mt-2">Optional field for comprehensive case discussion</small>
                 </div>
@@ -808,14 +754,18 @@ function loadCaseForEdit(caseId) {
         }
         document.getElementById('editCaseNumber').value = caseData.case_number || '';
         document.getElementById('editCaseDiagnosis').value = caseData.diagnosis || '';
-        // Set is_public checkbox from backend
-        const isPublicCheckbox = document.getElementById('editCaseIsPublic');
-        if (isPublicCheckbox) {
-            isPublicCheckbox.checked = !!caseData.is_public;
-            // Set row color on load
-            const cardBody = isPublicCheckbox.closest('.card-body');
-            if (cardBody) {
-                cardBody.style.backgroundColor = caseData.is_public ? '#d4edda' : '#ffe5b4';
+        // Set status from backend (status controls visibility)
+        const statusSelect = document.getElementById('editCaseStatus');
+        if (statusSelect && caseData.status) {
+            statusSelect.value = caseData.status;
+            if (typeof updateVisibilityUI === 'function') {
+                updateVisibilityUI(caseData.status);
+            }
+        } else if (statusSelect && caseData.is_public !== undefined) {
+            // Fallback: if status not available, infer from is_public
+            statusSelect.value = caseData.is_public ? 'PUBLISHED' : 'DRAFT';
+            if (typeof updateVisibilityUI === 'function') {
+                updateVisibilityUI(statusSelect.value);
             }
         }
         setTimeout(() => {
@@ -940,12 +890,6 @@ function loadStagingCaseForEdit(stagingId) {
             document.getElementById('editCaseNumber').value = stagingData.case_number || '';
             document.getElementById('editCaseDiagnosis').value = stagingData.diagnosis || '';
             
-            // Set is_public checkbox
-            const isPublicCheckbox = document.getElementById('editCaseIsPublic');
-            if (isPublicCheckbox) {
-                isPublicCheckbox.checked = !!stagingData.is_public;
-            }
-            
             // Set discussion
             setTimeout(() => {
                 if (typeof tinymce !== 'undefined' && tinymce.get('editCaseDiscussion')) {
@@ -967,8 +911,12 @@ function loadStagingCaseForEdit(stagingId) {
             }
             
             // Set status (default to DRAFT for staging cases)
-            if (document.getElementById('editCaseStatus')) {
-                document.getElementById('editCaseStatus').value = 'DRAFT';
+            const statusSelect = document.getElementById('editCaseStatus');
+            if (statusSelect) {
+                statusSelect.value = stagingData.status || 'DRAFT';
+                if (typeof updateVisibilityUI === 'function') {
+                    updateVisibilityUI(statusSelect.value);
+                }
             }
             
             // Parse and populate Q&A from legacy JSON format
@@ -1033,113 +981,66 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// Robust public/private toggle for is_public
-document.addEventListener('DOMContentLoaded', function() {
-    const isPublicCheckbox = document.getElementById('editCaseIsPublic');
-    const caseIdInput = document.getElementById('editCaseId');
-    const cardBody = isPublicCheckbox?.closest('.card-body');
-    if (!isPublicCheckbox) return;
-
-    // Helper to set row color and UI
-    function updatePublicUI(isPublic) {
+// Status-based visibility control (replaces is_public toggle)
+// Make updateVisibilityUI globally accessible so it can be called from other scripts
+function updateVisibilityUI(status) {
+    const isPublic = status === 'PUBLISHED';
+    
+    // Update ALL card backgrounds - change the entire form container
+    const formContainer = document.getElementById('caseEditForm');
+    const allCards = document.querySelectorAll('.card');
+    
+    if (formContainer) {
+        formContainer.style.backgroundColor = isPublic ? '#d4edda' : '#ffe5b4';
+        formContainer.style.transition = 'background-color 0.3s ease';
+    }
+    
+    // Also update individual card bodies for consistency
+    allCards.forEach(card => {
+        const cardBody = card.querySelector('.card-body');
         if (cardBody) {
             cardBody.style.backgroundColor = isPublic ? '#d4edda' : '#ffe5b4';
+            cardBody.style.transition = 'background-color 0.3s ease';
         }
-        // Eye icon and label
-        var eyeIcon = document.getElementById('publicEyeIcon');
-        var statusText = document.getElementById('publicStatusText');
-        var checkboxLabel = document.getElementById('publicCheckboxLabel');
-        if (eyeIcon && statusText && checkboxLabel) {
-            if (isPublic) {
-                eyeIcon.style.color = '#28a745';
-                statusText.textContent = 'Publicly Visible';
-                checkboxLabel.textContent = 'This case is visible to all users';
-            } else {
-                eyeIcon.style.color = '#dc3545';
-                statusText.textContent = 'Publicly NOT Visible';
-                checkboxLabel.textContent = 'This case is now visible only to Content Managers and Admins';
-            }
+    });
+    
+    // Update visibility info display
+    const eyeIcon = document.getElementById('publicEyeIcon');
+    const statusText = document.getElementById('publicStatusText');
+    const visibilityDescription = document.getElementById('visibilityDescription');
+    const visibilityInfo = document.getElementById('visibilityInfo');
+    
+    if (eyeIcon && statusText && visibilityDescription && visibilityInfo) {
+        if (isPublic) {
+            eyeIcon.style.color = '#28a745';
+            eyeIcon.className = 'fas fa-eye me-1';
+            statusText.textContent = 'Publicly Visible';
+            visibilityDescription.textContent = 'This case is visible to all users (students can access it)';
+            visibilityInfo.className = 'alert alert-success mb-0';
+        } else {
+            eyeIcon.style.color = '#dc3545';
+            eyeIcon.className = 'fas fa-eye-slash me-1';
+            statusText.textContent = 'Private (Not Visible)';
+            visibilityDescription.textContent = 'This case is only visible to Content Managers and Admins';
+            visibilityInfo.className = 'alert alert-warning mb-0';
         }
     }
+}
 
-    // Initial UI (if loaded from backend)
-    setTimeout(() => {
-        updatePublicUI(isPublicCheckbox.checked);
-    }, 100);
+document.addEventListener('DOMContentLoaded', function() {
+    const statusSelect = document.getElementById('editCaseStatus');
+    
+    if (!statusSelect) return;
 
-    isPublicCheckbox.addEventListener('change', function(e) {
-        const caseId = caseIdInput.value;
-        const originalChecked = e.target.checked;
-        isPublicCheckbox.disabled = true;
-
-        // Check if this is a staging case
-        const isStaging = caseId && caseId.toString().startsWith('staging-');
-        const stagingId = isStaging ? caseId.toString().replace('staging-', '') : null;
-        
-        // Use appropriate endpoint
-        let endpoint, fetchEndpoint;
-        if (isStaging && stagingId) {
-            // Staging case - update staging record
-            endpoint = `/api/admin/enrichment/${stagingId}/public`;
-            fetchEndpoint = `/api/admin/enrichment/${stagingId}`;
-        } else {
-            // Production case
-            endpoint = `/api/admin/cases/${caseId}/public`;
-            fetchEndpoint = `/api/admin/cases/${caseId}`;
-        }
-
-        fetch(endpoint, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ is_public: originalChecked })
-        })
-        .then(async response => {
-            // Check if response is OK before parsing JSON
-            if (!response.ok) {
-                const errorText = await response.text();
-                let errorMsg = `HTTP ${response.status}`;
-                try {
-                    const errorData = JSON.parse(errorText);
-                    errorMsg = errorData.error || errorData.details || errorMsg;
-                } catch (e) {
-                    errorMsg = errorText || errorMsg;
-                }
-                throw new Error(errorMsg);
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.success) {
-                // Always fetch the latest state from backend
-                return fetch(fetchEndpoint)
-                    .then(res => {
-                        if (!res.ok) {
-                            throw new Error(`HTTP ${res.status}`);
-                        }
-                        return res.json();
-                    })
-                    .then(caseData => {
-                        isPublicCheckbox.checked = !!caseData.is_public;
-                        updatePublicUI(!!caseData.is_public);
-                        isPublicCheckbox.disabled = false;
-                    });
-            } else {
-                throw new Error(data.error || data.details || 'Unknown error');
-            }
-        })
-        .catch(err => {
-            // Revert checkbox and show error
-            console.error('[TOGGLE] Error updating public/private status:', err);
-            isPublicCheckbox.checked = !originalChecked;
-            isPublicCheckbox.disabled = false;
-            // Extract clean error message
-            let errorMsg = err.message;
-            if (errorMsg.includes('string did not match')) {
-                errorMsg = 'Invalid case ID format. Please refresh the page and try again.';
-            }
-            alert('Failed to update public/private status: ' + errorMsg);
-        });
+    // Update UI when status changes
+    statusSelect.addEventListener('change', function() {
+        updateVisibilityUI(this.value);
     });
+
+    // Initial UI update
+    setTimeout(() => {
+        updateVisibilityUI(statusSelect.value);
+    }, 100);
 });
 </script>
 {% endblock %}

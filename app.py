@@ -1532,10 +1532,15 @@ def view_case(case_id):
         return redirect(url_for('dashboard'))
     # Get user's note for this case
     user_note = CandidateNote.query.filter_by(case_id=case_id, user_id=current_user.id).first()
+    
+    # Check if user came from staging cases
+    from_staging = request.args.get('from_staging', 'false').lower() == 'true'
+    
     print(f"[DEBUG] case.discussion for case_id={case_id}: {repr(case.discussion)}")
     return render_template('view_case.html', 
                          case=case, 
-                         user_note=user_note)
+                         user_note=user_note,
+                         from_staging=from_staging)
 
 
 @app.route('/admin/staging-cases')
@@ -2296,6 +2301,7 @@ def get_case(case_id):
             'discussion': case.discussion,
             'module': case.module.name if case.module else None,
             'body_part': case.body_part.name if case.body_part else None,
+            'status': case.status.name if case.status else 'DRAFT',
             'is_public': case.is_public
         })
 
@@ -2336,9 +2342,12 @@ def get_case(case_id):
             from models import CaseStatus
             try:
                 case.status = CaseStatus[data['status']] if data['status'] else CaseStatus.DRAFT
+                # Automatically sync is_public based on status: PUBLISHED = True, all others = False
+                case.is_public = (case.status == CaseStatus.PUBLISHED)
             except (KeyError, AttributeError):
                 pass
-        if 'is_public' in data:
+        elif 'is_public' in data:
+            # Legacy support: if only is_public is provided (without status), sync status
             val = data['is_public']
             if isinstance(val, bool):
                 case.is_public = val
@@ -2349,10 +2358,12 @@ def get_case(case_id):
             else:
                 case.is_public = False
             # Sync status with is_public if status not explicitly set
-            if 'status' not in data:
-                if case.is_public:
-                    case.status = CaseStatus.PUBLISHED
-                else:
+            from models import CaseStatus
+            if case.is_public:
+                case.status = CaseStatus.PUBLISHED
+            else:
+                # Only change to DRAFT if current status is PUBLISHED (preserve other statuses)
+                if case.status == CaseStatus.PUBLISHED:
                     case.status = CaseStatus.DRAFT
         # Optionally update Q&A pairs if present
         if 'pairs' in data:
