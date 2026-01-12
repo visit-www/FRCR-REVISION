@@ -574,10 +574,16 @@ app.register_blueprint(enrichment_bp)  # Data migration: Import, enrich, promote
 def favicon():
     """Handle favicon requests - return existing icon or 204 No Content"""
     try:
-        # Try to return the existing icon
-        return send_file('static/images/icon-192x192.png', mimetype='image/png')
-    except Exception:
-        # If icon doesn't exist, return 204 No Content (standard for missing favicons)
+        # Try to return the existing icon using the static folder path
+        icon_path = os.path.join(app.static_folder, 'images', 'icon-192x192.png')
+        if os.path.exists(icon_path):
+            return send_file(icon_path, mimetype='image/png')
+        else:
+            # If icon doesn't exist, return 204 No Content (standard for missing favicons)
+            return '', 204
+    except Exception as e:
+        # Log error but return 204 to prevent 404 spam
+        print(f"[FAVICON] Error serving favicon: {e}")
         return '', 204
 
 # Handle favicon requests to prevent 404 errors
