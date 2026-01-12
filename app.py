@@ -569,8 +569,8 @@ app.register_blueprint(admin_bp)  # Sprint 2: Admin user management
 app.register_blueprint(enrichment_bp)  # Data migration: Import, enrich, promote cases
 
 # Handle favicon requests to prevent 404 errors
-@app.route('/favicon.ico')
-@app.route('/favicon.png')
+@app.route('/favicon.ico', endpoint='favicon_ico')
+@app.route('/favicon.png', endpoint='favicon_png')
 def favicon():
     """Handle favicon requests - return existing icon or 204 No Content"""
     try:
