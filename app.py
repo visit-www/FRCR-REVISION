@@ -161,6 +161,37 @@ def unauthorized():
     # Otherwise redirect to login
     return redirect(url_for('auth.login'))
 
+# Ensure database tables exist before handling requests
+# This is critical for serverless environments where tables might not be created on startup
+@app.before_request
+def ensure_tables_exist():
+    """Ensure database tables exist before handling requests"""
+    try:
+        # Quick check - try to query the user table
+        # This will fail if table doesn't exist, triggering creation
+        with app.app_context():
+            try:
+                # Try a simple query to see if tables exist
+                from sqlalchemy import inspect
+                inspector = inspect(db.engine)
+                tables = inspector.get_table_names()
+                
+                if 'user' not in tables:
+                    print("[DB] User table missing - creating all tables...")
+                    db.create_all()
+                    print("[DB] All tables created successfully")
+            except Exception as check_error:
+                # If inspection fails, try creating tables anyway
+                print(f"[DB] Could not check tables, attempting to create: {check_error}")
+                try:
+                    db.create_all()
+                    print("[DB] Tables created successfully")
+                except Exception as create_error:
+                    print(f"[DB] Could not create tables: {create_error}")
+    except Exception as e:
+        # Log but don't fail the request - let the route handle it
+        print(f"[DB] Warning: Could not ensure tables exist: {e}")
+
 # ==================== SAFE HTML RENDERING ====================
 def convert_pipe_table_to_html(text):
     """
@@ -508,12 +539,26 @@ def safe_html_filter(html_content):
 
 
 
+# Initialize database tables on startup
+# In serverless (Vercel), this runs on cold start
+# If tables don't exist, they'll be created on first request via lazy initialization
 with app.app_context():
     try:
-        db.create_all()
+        # Check if user table exists by trying to query it
+        try:
+            User.query.limit(1).count()
+            print("[DB] Database tables already exist")
+        except Exception as query_error:
+            # Tables don't exist, create them
+            print("[DB] Tables not found, creating database schema...")
+            db.create_all()
+            print("[DB] Database schema created successfully")
     except Exception as e:
-        print(f"Error initializing database: {e}")
-        raise
+        print(f"[DB] Error initializing database: {e}")
+        import traceback
+        traceback.print_exc()
+        # Don't raise - allow app to start and create tables on first request
+        print("[DB] Will attempt to create tables on first database operation")
 
 # Register blueprints
 app.register_blueprint(auth_bp)
@@ -2534,15 +2579,68 @@ def delete_highlight(highlight_id):
 # ==================== ADMIN ENDPOINTS ====================
 
 @app.route('/api/admin/migrate-db', methods=['POST'])
+@login_required
 def migrate_db():
-    """Create database tables if they don't exist"""
+    """Create database tables if they don't exist - Admin only"""
+    if not current_user.is_admin:
+        return jsonify({'error': 'Admin access required'}), 403
+    
     try:
         print("[ADMIN] Running database migration...")
         db.create_all()
-        print("[ADMIN] Database migration complete")
-        return jsonify({'success': True, 'message': 'Database tables created'}), 200
+        
+        # Verify tables were created
+        from sqlalchemy import inspect
+        inspector = inspect(db.engine)
+        tables = inspector.get_table_names()
+        
+        print(f"[ADMIN] Database migration complete. Tables: {', '.join(tables)}")
+        return jsonify({
+            'success': True, 
+            'message': 'Database tables created',
+            'tables_created': tables,
+            'table_count': len(tables)
+        }), 200
     except Exception as e:
         print(f"[ADMIN] Migration error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': f'Migration failed: {str(e)}'}), 500
+
+@app.route('/api/admin/check-db', methods=['GET'])
+def check_db():
+    """Check database connection and table status - Public endpoint for diagnostics"""
+    try:
+        from sqlalchemy import inspect
+        inspector = inspect(db.engine)
+        tables = inspector.get_table_names()
+        
+        # Check if user table exists and has data
+        user_count = 0
+        if 'user' in tables:
+            try:
+                user_count = User.query.count()
+            except Exception:
+                pass
+        
+        return jsonify({
+            'success': True,
+            'database_connected': True,
+            'tables': tables,
+            'table_count': len(tables),
+            'user_table_exists': 'user' in tables,
+            'user_count': user_count,
+            'message': 'Database is accessible' if 'user' in tables else 'Database connected but tables missing'
+        }), 200
+    except Exception as e:
+        print(f"[DB] Check error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'database_connected': False,
+            'error': str(e)
+        }), 500
         return jsonify({'error': str(e)}), 500
 
 
