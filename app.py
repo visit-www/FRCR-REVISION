@@ -1,8 +1,12 @@
+
+# ==================== STUDENT CASE BROWSER ====================
+# (Moved below app initialization)
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session, send_file, flash
+from models import UserRole
 from flask_cors import CORS
 from flask_login import LoginManager, login_required, current_user
 from flask_migrate import Migrate
-from models import db, User, ExamSession, Packet, Case, Candidate, CaseImage, Question, Answer
+from models import db, User, Case, CaseImage, Question, Answer
 from models import RevisionSession, RevisionHistory  # STUDENT REVISION: New models for balanced revision
 from auth import auth_bp
 from backup_routes import backup_bp
@@ -91,15 +95,21 @@ else:
     # SQLite for local development
     print(f"[DB] Using SQLite: {instance_path}/frcr_examiner.db")
     app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(instance_path, "frcr_examiner.db")}'
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-secret-key-change-in-production')
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
-# Session configuration
-# Check if SECRET_KEY is set
-if not os.getenv('SECRET_KEY'):
-    print("[WARNING] SECRET_KEY not set! Using default insecure key")
+# SECRET_KEY is required for production security
+SECRET_KEY = os.getenv('SECRET_KEY')
+if not SECRET_KEY:
+    # In production, SECRET_KEY must be set via environment variable
+    if os.getenv('VERCEL') or os.getenv('VERCEL_ENV') == 'production':
+        raise ValueError("SECRET_KEY environment variable is required in production. Please set it in your deployment environment.")
+    # For local development only, use a default (with warning)
+    SECRET_KEY = 'dev-secret-key-change-in-production'
+    print("[WARNING] SECRET_KEY not set! Using insecure default for local development only.")
+    print("[WARNING] Set SECRET_KEY environment variable before deploying to production.")
 else:
-    print("[OK] SECRET_KEY is set")
+    print("[OK] SECRET_KEY is set from environment variable")
+
+app.config['SECRET_KEY'] = SECRET_KEY
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Only set SECURE in production (HTTPS)
 is_production = os.getenv('VERCEL_ENV') == 'production' or 'vercel.app' in os.getenv('VERCEL_URL', '')
@@ -141,48 +151,7 @@ def unauthorized():
 
 # ==================== HELPER FUNCTIONS ====================
 
-def verify_exam_ownership(exam_id):
-    """Verify that current user owns this exam session"""
-    exam = ExamSession.query.get(exam_id)
-    if not exam or exam.user_id != current_user.id:
-        return None
-    return exam
 
-
-def verify_packet_ownership(packet_id):
-    """Verify that current user owns the exam containing this packet"""
-    packet = Packet.query.get(packet_id)
-    if not packet:
-        return None
-    exam = ExamSession.query.get(packet.exam_id)
-    if not exam or exam.user_id != current_user.id:
-        return None
-    return packet
-
-
-def verify_case_ownership(case_id):
-    """Verify that current user owns the exam containing this case"""
-    case = Case.query.get(case_id)
-    if not case:
-        return None
-    packet = Packet.query.get(case.packet_id)
-    if not packet:
-        return None
-    exam = ExamSession.query.get(packet.exam_id)
-    if not exam or exam.user_id != current_user.id:
-        return None
-    return case
-
-
-def verify_candidate_ownership(candidate_id):
-    """Verify that current user owns the exam containing this candidate"""
-    candidate = Candidate.query.get(candidate_id)
-    if not candidate:
-        return None
-    exam = ExamSession.query.get(candidate.exam_id)
-    if not exam or exam.user_id != current_user.id:
-        return None
-    return candidate
 
 with app.app_context():
     try:
@@ -238,8 +207,9 @@ def dashboard():
 def start_balanced_revision():
     """
     Start a new balanced revision session.
-    Selects 6 random cases from each FRCR module (36 total cases).
+    Selects cases from each FRCR module (at least 1 per module required).
     Prioritizes cases the user hasn't seen or has seen least recently.
+    Ensures new cases are selected each time when multiple cases are available.
     """
     from models import FRCRModule, Case, RevisionSession, RevisionHistory
     import json
@@ -250,14 +220,47 @@ def start_balanced_revision():
     try:
         # Get all FRCR modules
         all_modules = list(FRCRModule)
-        selected_case_ids = []
         
-        # For each module, select 6 cases
+        # STEP 1: Check if at least one case is available in EACH module
+        module_case_counts = {}
+        modules_without_cases = []
+        
+        for module in all_modules:
+            case_count = Case.query.filter_by(
+                module=module,
+                is_public=True
+            ).count()
+            module_case_counts[module] = case_count
+            
+            if case_count == 0:
+                modules_without_cases.append(module.value)
+            
+            print(f"[REVISION] Module {module.value}: {case_count} cases available")
+        
+        # If any module has 0 cases, show error and return
+        if modules_without_cases:
+            module_list = ", ".join(modules_without_cases)
+            flash(f'Cannot start balanced revision: No cases available in {len(modules_without_cases)} module(s): {module_list}. Please try again later as we are addung new cases continuiously.', 'warning')
+            return redirect(url_for('dashboard'))
+        
+        # STEP 2: Get cases from recent sessions to exclude (ensure new cases each time)
+        # Get case IDs from user's recent sessions (last 5 sessions)
+        recent_sessions = RevisionSession.query.filter_by(
+            user_id=current_user.id
+        ).order_by(RevisionSession.created_at.desc()).limit(5).all()
+        
+        recently_used_case_ids = set()
+        for session in recent_sessions:
+            recently_used_case_ids.update(session.get_case_ids_list())
+        
+        print(f"[REVISION] Excluding {len(recently_used_case_ids)} cases from recent sessions")
+        
+        # STEP 3: Select cases from each module
+        selected_case_ids = []
+        module_selection_info = []  # Track info for user feedback
+        
         for module in all_modules:
             print(f"[REVISION] Selecting cases for module: {module.value}")
-            
-            # Strategy: Get cases with LEFT JOIN to revision_history
-            # Priority: unseen > least recently seen > random
             
             # Subquery: Get last_seen_at for each case for this user
             seen_subquery = db.session.query(
@@ -268,12 +271,25 @@ def start_balanced_revision():
             ).group_by(RevisionHistory.case_id).subquery()
             
             # Main query: Get public cases for this module
-            # LEFT JOIN with history to get seen status
-            # Order by: NULL last_seen first (unseen), then oldest last_seen, then random
-            cases = db.session.query(Case).filter(
+            # Exclude recently used cases to ensure variety
+            # Priority: unseen > least recently seen > random
+            query = db.session.query(Case).filter(
                 Case.is_public == True,
                 Case.module == module
-            ).outerjoin(
+            )
+            
+            # Exclude recently used cases if there are enough alternatives
+            total_available = Case.query.filter_by(
+                module=module,
+                is_public=True
+            ).count()
+            
+            # Only exclude recent cases if we have more than 1 case available
+            if total_available > 1 and recently_used_case_ids:
+                query = query.filter(~Case.id.in_(recently_used_case_ids))
+            
+            # Order by: NULL last_seen first (unseen), then oldest last_seen, then random
+            cases = query.outerjoin(
                 seen_subquery,
                 Case.id == seen_subquery.c.case_id
             ).order_by(
@@ -284,22 +300,23 @@ def start_balanced_revision():
             case_ids_for_module = [c.id for c in cases]
             selected_case_ids.extend(case_ids_for_module)
             
-            print(f"[REVISION] Selected {len(case_ids_for_module)} cases from {module.value}: {case_ids_for_module}")
+            # Calculate remaining cases for this module
+            remaining_in_module = total_available - len(case_ids_for_module)
             
-            # Handle insufficient cases in module
-            if len(cases) < 6:
-                print(f"[REVISION] WARNING: Only {len(cases)} cases available in {module.value} (need 6)")
+            module_selection_info.append({
+                'module': module.value,
+                'selected': len(case_ids_for_module),
+                'remaining': remaining_in_module,
+                'total': total_available
+            })
+            
+            print(f"[REVISION] Selected {len(case_ids_for_module)} cases from {module.value}: {case_ids_for_module}")
+            print(f"[REVISION] Remaining cases in {module.value}: {remaining_in_module} out of {total_available} total")
         
-        # Check if we have enough cases
+        # STEP 4: Create session and provide feedback
         if len(selected_case_ids) == 0:
-            flash('Enough public cases not available for revision at presemt.', 'warning')
+            flash('No cases available for revision.', 'warning')
             return redirect(url_for('dashboard'))
-        
-        # Show warning if we have fewer than expected
-        if len(selected_case_ids) < 36:
-            flash(f'Started revision with {len(selected_case_ids)} available cases. Some modules need more cases for full coverage.', 'info')
-        
-        print(f"[REVISION] Total selected cases: {len(selected_case_ids)}")
         
         # Create new revision session
         revision_session = RevisionSession(
@@ -314,14 +331,20 @@ def start_balanced_revision():
         
         print(f"[REVISION] Created session {revision_session.id} with {len(selected_case_ids)} cases")
         
+        # STEP 5: Create informative success message with remaining cases info
+        total_remaining = sum(info['remaining'] for info in module_selection_info)
+        total_available_all = sum(info['total'] for info in module_selection_info)
+        
+        # Build detailed message
+        message_parts = [
+            f'Started balanced revision with {len(selected_case_ids)} cases!',
+            f'Remaining cases for future revisions: {total_remaining} out of {total_available_all} total cases.'
+        ]
+        
+        flash(' '.join(message_parts), 'success')
+        
         # Redirect to first case
-        if selected_case_ids:
-            first_case_id = selected_case_ids[0]
-            flash(f'Started balanced revision session with {len(selected_case_ids)} cases!', 'success')
-            return redirect(url_for('view_revision_case', session_id=revision_session.id, case_index=0))
-        else:
-            flash('No cases available for revision.', 'warning')
-            return redirect(url_for('dashboard'))
+        return redirect(url_for('view_revision_case', session_id=revision_session.id, case_index=0))
     
     except Exception as e:
         db.session.rollback()
@@ -461,8 +484,8 @@ def modules_view():
 @app.route('/modules/<module>')
 @login_required
 def cases_by_module(module):
-    """Show cases filtered by module"""
-    from models import FRCRModule, BodyPart, Case
+    """Show cases filtered by module - different templates for students vs admins"""
+    from models import FRCRModule, BodyPart, AgeGroup, Case, CandidateNote, CaseFlag
     
     # Validate module
     try:
@@ -472,15 +495,30 @@ def cases_by_module(module):
     
     # Get filters from query params
     body_part_filter = request.args.get('body_part', '')
+    age_group_filter = request.args.get('age_group', '')
     search_query = request.args.get('q', '')
     
-    # Build query
-    query = Case.query.filter_by(module=module_enum, is_public=True)
+    # Check if user is a student - use student template
+    is_student = (hasattr(current_user, 'role') and current_user.role == UserRole.STUDENT)
+    
+    if is_student:
+        # Students: only public cases, use student template
+        query = Case.query.filter_by(module=module_enum, is_public=True)
+    else:
+        # Admins/Content Managers: all cases
+        query = Case.query.filter_by(module=module_enum)
     
     if body_part_filter:
         try:
             body_part_enum = BodyPart[body_part_filter]
             query = query.filter_by(body_part=body_part_enum)
+        except KeyError:
+            pass
+    
+    if age_group_filter:
+        try:
+            age_group_enum = AgeGroup[age_group_filter]
+            query = query.filter_by(age_group=age_group_enum)
         except KeyError:
             pass
     
@@ -491,8 +529,118 @@ def cases_by_module(module):
     
     # Prepare case data
     cases_data = []
+    if is_student:
+        # Get all flagged case IDs for this user
+        flagged_case_ids = set(
+            flag.case_id for flag in CaseFlag.query.filter_by(user_id=current_user.id).all()
+        )
+        
+        # Prepare case data for student template - match admin template structure
+        for case in cases:
+            cases_data.append({
+                'id': case.id,
+                'diagnosis': case.diagnosis,
+                'module_display': case.module.value if case.module else 'N/A',
+                'body_part_display': case.body_part.value if case.body_part else 'N/A',
+                'age_group_display': case.age_group.value if case.age_group else 'N/A',
+                'image_count': len(case.images),
+                'date': case.created_at.strftime('%Y-%m-%d') if case.created_at else 'N/A',
+                'flagged': case.id in flagged_case_ids,
+                'is_public': True
+            })
+    else:
+        # Admins/Content Managers: prepare case data for admin template
+        for case in cases:
+            has_notes = CandidateNote.query.filter_by(case_id=case.id, user_id=current_user.id).first() is not None
+        cases_data.append({
+            'id': case.id,
+            'diagnosis': case.diagnosis,
+            'module_display': case.module.value if case.module else 'N/A',
+            'body_part_display': case.body_part.value if case.body_part else 'N/A',
+                'age_group_display': case.age_group.value if case.age_group else 'N/A',
+            'image_count': len(case.images),
+            'has_notes': has_notes,
+            'is_public': case.is_public
+        })
+    
+    # Get all body parts and age groups for filters
+    body_parts = [{'value': bp.name, 'display_name': bp.value} for bp in BodyPart]
+    age_groups = [{'value': ag.name, 'display_name': ag.value} for ag in AgeGroup]
+    all_modules = [{'value': m.name, 'display_name': m.value} for m in FRCRModule]
+    
+    if is_student:
+        return render_template('student_cases_list.html',
+                             cases=cases_data,
+                             module_filter=module_enum.value,
+                             body_parts=body_parts,
+                             body_part_selected=body_part_filter,
+                             age_groups=age_groups,
+                             age_group_selected=age_group_filter,
+                             all_modules=all_modules,
+                             search_query=search_query)
+    else:
+        return render_template('cases_list.html',
+                         cases=cases_data,
+                         module_filter=module_enum.value,
+                         body_parts=body_parts,
+                         body_part_selected=body_part_filter,
+                             age_groups=age_groups,
+                             age_group_selected=age_group_filter,
+                             all_modules=all_modules,
+                         search_query=search_query)
+
+
+@app.route('/cases')
+@login_required
+def all_cases_view():
+    """Case list view - different templates for students vs admins"""
+    from models import FRCRModule, BodyPart, AgeGroup, Case, CandidateNote
+    
+    # For students: redirect to student route
+    is_student = (hasattr(current_user, 'role') and current_user.role == UserRole.STUDENT)
+    if is_student:
+        return redirect(url_for('student_cases_list'))
+    
+    # For admins: show full case management with all cases
+    # Get filters from query params
+    module_filter = request.args.get('module', '')
+    body_part_filter = request.args.get('body_part', '')
+    age_group_filter = request.args.get('age_group', '')
+    search_query = request.args.get('q', '')
+    
+    # Build query - admins see ALL cases (public and private)
+    query = Case.query
+    
+    if module_filter:
+        try:
+            module_enum = FRCRModule[module_filter]
+            query = query.filter_by(module=module_enum)
+        except KeyError:
+            pass
+    
+    if body_part_filter:
+        try:
+            body_part_enum = BodyPart[body_part_filter]
+            query = query.filter_by(body_part=body_part_enum)
+        except KeyError:
+            pass
+    
+    if age_group_filter:
+        try:
+            age_group_enum = AgeGroup[age_group_filter]
+            query = query.filter_by(age_group=age_group_enum)
+        except KeyError:
+            pass
+    
+    if search_query:
+        query = query.filter(Case.diagnosis.ilike(f'%{search_query}%'))
+    
+    cases = query.order_by(Case.id).all()
+    
+    # Prepare case data for admin template
+    cases_data = []
     for case in cases:
-        # Check if user has notes
+        # Check if user has notes (for admin's reference)
         has_notes = CandidateNote.query.filter_by(case_id=case.id, user_id=current_user.id).first() is not None
         
         cases_data.append({
@@ -500,33 +648,48 @@ def cases_by_module(module):
             'diagnosis': case.diagnosis,
             'module_display': case.module.value if case.module else 'N/A',
             'body_part_display': case.body_part.value if case.body_part else 'N/A',
+            'age_group_display': case.age_group.value if case.age_group else 'N/A',
             'image_count': len(case.images),
-            'has_notes': has_notes
+            'has_notes': has_notes,
+            'is_public': case.is_public
         })
     
-    # Get all body parts for filter
+    # Get all modules, body parts, and age groups for filters
+    all_modules = [{'value': m.name, 'display_name': m.value} for m in FRCRModule]
     body_parts = [{'value': bp.name, 'display_name': bp.value} for bp in BodyPart]
+    age_groups = [{'value': ag.name, 'display_name': ag.value} for ag in AgeGroup]
     
     return render_template('cases_list.html',
                          cases=cases_data,
-                         module_filter=module_enum.value,
+                         module_filter=None,  # No module filter at top level
                          body_parts=body_parts,
                          body_part_selected=body_part_filter,
+                         module_selected=module_filter,
+                         all_modules=all_modules,
+                         age_groups=age_groups,
+                         age_group_selected=age_group_filter,
                          search_query=search_query)
 
 
-@app.route('/cases')
+@app.route('/student/cases')
 @login_required
-def all_cases_view():
-    """Show all public cases with filters"""
-    from models import FRCRModule, BodyPart, Case, CandidateNote
+def student_cases_list():
+    """Student case list - shows only public cases, no admin controls"""
+    from models import FRCRModule, BodyPart, AgeGroup, Case, CaseFlag
+    
+    # Ensure only students can access this route
+    is_student = (hasattr(current_user, 'role') and current_user.role == UserRole.STUDENT)
+    if not is_student:
+        return redirect(url_for('all_cases_view'))
     
     # Get filters from query params
     module_filter = request.args.get('module', '')
     body_part_filter = request.args.get('body_part', '')
+    age_group_filter = request.args.get('age_group', '')
+    flagged_only = request.args.get('flagged', '').lower() == 'true'
     search_query = request.args.get('q', '')
     
-    # Build query
+    # Build query - students see ONLY public cases
     query = Case.query.filter_by(is_public=True)
     
     if module_filter:
@@ -543,37 +706,127 @@ def all_cases_view():
         except KeyError:
             pass
     
+    if age_group_filter:
+        try:
+            age_group_enum = AgeGroup[age_group_filter]
+            query = query.filter_by(age_group=age_group_enum)
+        except KeyError:
+            pass
+    
     if search_query:
         query = query.filter(Case.diagnosis.ilike(f'%{search_query}%'))
     
-    cases = query.order_by(Case.id).all()
+    # Get all flagged case IDs for this user
+    flagged_case_ids = set(
+        flag.case_id for flag in CaseFlag.query.filter_by(user_id=current_user.id).all()
+    )
     
-    # Prepare case data
+    # Filter to only flagged cases if requested
+    if flagged_only:
+        if flagged_case_ids:
+            query = query.filter(Case.id.in_(flagged_case_ids))
+            cases = query.order_by(Case.id).all()
+        else:
+            # No flagged cases, return empty result
+            cases = []
+    else:
+        cases = query.order_by(Case.id).all()
+    
+    # Prepare case data for student template - match admin template structure
     cases_data = []
     for case in cases:
-        # Check if user has notes
-        has_notes = CandidateNote.query.filter_by(case_id=case.id, user_id=current_user.id).first() is not None
-        
         cases_data.append({
             'id': case.id,
             'diagnosis': case.diagnosis,
             'module_display': case.module.value if case.module else 'N/A',
             'body_part_display': case.body_part.value if case.body_part else 'N/A',
+            'age_group_display': case.age_group.value if case.age_group else 'N/A',
             'image_count': len(case.images),
-            'has_notes': has_notes
+            'date': case.created_at.strftime('%Y-%m-%d') if case.created_at else 'N/A',
+            'flagged': case.id in flagged_case_ids,
+            'is_public': True  # Students only see public cases
         })
     
-    # Get all modules and body parts for filters
+    # Get all modules, body parts, and age groups for filters
     all_modules = [{'value': m.name, 'display_name': m.value} for m in FRCRModule]
     body_parts = [{'value': bp.name, 'display_name': bp.value} for bp in BodyPart]
+    age_groups = [{'value': ag.name, 'display_name': ag.value} for ag in AgeGroup]
     
-    return render_template('cases_list.html',
+    return render_template('student_cases_list.html',
                          cases=cases_data,
-                         all_modules=all_modules,
                          body_parts=body_parts,
-                         module_selected=module_filter,
                          body_part_selected=body_part_filter,
+                         module_selected=module_filter,
+                         all_modules=all_modules,
+                         age_groups=age_groups,
+                         age_group_selected=age_group_filter,
+                         flagged_filter=flagged_only,
                          search_query=search_query)
+
+
+@app.route('/student/cases/<int:case_id>/flag', methods=['POST'])
+@login_required
+def flag_case(case_id):
+    """Flag a case for the current student - STUDENTS ONLY"""
+    from models import Case, CaseFlag
+    
+    # Only students can flag cases
+    is_student = (hasattr(current_user, 'role') and current_user.role == UserRole.STUDENT)
+    if not is_student:
+        return jsonify({'success': False, 'error': 'Access denied. Flagging is for students only.'}), 403
+    
+    # Verify case exists and is public
+    case = Case.query.get(case_id)
+    if not case:
+        return jsonify({'success': False, 'error': 'Case not found'}), 404
+    
+    if not case.is_public:
+        return jsonify({'success': False, 'error': 'Cannot flag private cases'}), 403
+    
+    # Check if already flagged
+    existing_flag = CaseFlag.query.filter_by(
+        user_id=current_user.id,
+        case_id=case_id
+    ).first()
+    
+    if existing_flag:
+        return jsonify({'success': True, 'message': 'Case already flagged'}), 200
+    
+    # Create flag
+    flag = CaseFlag(
+        user_id=current_user.id,
+        case_id=case_id
+    )
+    db.session.add(flag)
+    db.session.commit()
+    
+    return jsonify({'success': True, 'message': 'Case flagged'}), 200
+
+
+@app.route('/student/cases/<int:case_id>/unflag', methods=['POST'])
+@login_required
+def unflag_case(case_id):
+    """Unflag a case for the current student - STUDENTS ONLY"""
+    from models import CaseFlag
+    
+    # Only students can unflag cases
+    is_student = (hasattr(current_user, 'role') and current_user.role == UserRole.STUDENT)
+    if not is_student:
+        return jsonify({'success': False, 'error': 'Access denied. Flagging is for students only.'}), 403
+    
+    # Find and delete flag
+    flag = CaseFlag.query.filter_by(
+        user_id=current_user.id,
+        case_id=case_id
+    ).first()
+    
+    if not flag:
+        return jsonify({'success': True, 'message': 'Case not flagged'}), 200
+    
+    db.session.delete(flag)
+    db.session.commit()
+    
+    return jsonify({'success': True, 'message': 'Case unflagged'}), 200
 
 
 @app.route('/profile')
@@ -590,6 +843,24 @@ def admin_dashboard():
     if not current_user.is_admin:
         return redirect(url_for('dashboard'))
     return render_template('admin_dashboard.html')
+
+
+@app.route('/case-list')
+@login_required
+def case_list():
+    """Case management page - list, create, edit, delete cases - ADMIN ONLY"""
+    # Check if user is admin or content manager
+    is_admin_or_cm = (hasattr(current_user, 'role') and 
+                      current_user.role in [UserRole.ADMIN, UserRole.CONTENT_MANAGER])
+    
+    if not is_admin_or_cm:
+        # Students should be redirected to student case list
+        if hasattr(current_user, 'role') and current_user.role == UserRole.STUDENT:
+            return redirect(url_for('student_cases_list'))
+        return redirect(url_for('dashboard'))
+    
+    # Redirect to /cases which has the proper admin case list
+    return redirect(url_for('all_cases_view'))
 
 
 # ==================== SETUP WORKFLOW (ADMIN ONLY) ====================
@@ -700,14 +971,79 @@ def admin_dashboard():
 #     return jsonify({'packet_id': packet.id, 'message': 'Packet created'})
 
 
+@app.route('/api/case/next-number', methods=['GET'])
+@login_required
+def get_next_case_number():
+    """Get the next auto-generated case number for a body part"""
+    from models import BodyPart
+    import re
+    
+    body_part = request.args.get('body_part', '')
+    
+    if not body_part:
+        return jsonify({'success': False, 'error': 'Body part is required'}), 400
+    
+    try:
+        # Validate body part
+        body_part_enum = BodyPart[body_part]
+        
+        # Create a short code from the body part name (e.g., LUNG_MEDIASTINUM -> LUNGMED)
+        # Use first part of name, max 6 chars for readability
+        short_code = body_part.replace('_', '').upper()[:6]
+        
+        # Find the highest existing case number for this body part pattern
+        # Pattern: SHORTCODE-XXX
+        prefix = f"{short_code}-"
+        
+        # Query cases with this body part and extract the highest number
+        cases_with_pattern = Case.query.filter(
+            Case.body_part == body_part_enum,
+            Case.case_number.ilike(f"{prefix}%")
+        ).all()
+        
+        max_num = 0
+        for case in cases_with_pattern:
+            if case.case_number:
+                # Extract number from pattern like "CHEST-001"
+                match = re.search(r'-(\d+)$', case.case_number)
+                if match:
+                    num = int(match.group(1))
+                    if num > max_num:
+                        max_num = num
+        
+        # Generate next number
+        next_num = max_num + 1
+        case_number = f"{prefix}{next_num:03d}"
+        
+        return jsonify({
+            'success': True,
+            'case_number': case_number,
+            'body_part': body_part_enum.value
+        })
+        
+    except KeyError:
+        return jsonify({'success': False, 'error': f'Invalid body part: {body_part}'}), 400
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @app.route('/api/case/create', methods=['POST'])
 @login_required
 def create_case():
     """Create a new case"""
     import json
+    import re
     from models import FRCRModule, BodyPart
     
     data = request.get_json()
+    
+    # Validate required fields
+    if not data.get('diagnosis'):
+        return jsonify({'error': 'Diagnosis is required'}), 400
+    if not data.get('module'):
+        return jsonify({'error': 'Module is required'}), 400
+    if not data.get('body_part'):
+        return jsonify({'error': 'Body Part is required'}), 400
     
     # Extract questions and answers from pairs
     questions = []
@@ -743,14 +1079,37 @@ def create_case():
         except KeyError:
             pass
     
-    # Convert lists to JSON strings for TEXT fields (legacy support)
+    # Auto-generate case_number if not provided and body_part is set
+    case_number = data.get('case_number')
+    if not case_number and body_part_enum:
+        # Generate case number: SHORTCODE-XXX
+        short_code = data['body_part'].replace('_', '').upper()[:6]
+        prefix = f"{short_code}-"
+        
+        # Find highest existing number for this body part
+        cases_with_pattern = Case.query.filter(
+            Case.body_part == body_part_enum,
+            Case.case_number.ilike(f"{prefix}%")
+        ).all()
+        
+        max_num = 0
+        for c in cases_with_pattern:
+            if c.case_number:
+                match = re.search(r'-(\d+)$', c.case_number)
+                if match:
+                    num = int(match.group(1))
+                    if num > max_num:
+                        max_num = num
+        
+        case_number = f"{prefix}{max_num + 1:03d}"
+    
+    # Create case - NO LONGER storing Q&A in legacy JSON fields
+    # All Q&A data is stored in Question and Answer tables only
     try:
         case = Case(
             packet_id=data.get('packet_id'),  # Nullable for standalone cases
-            case_number=data.get('case_number'),
+            case_number=case_number,
             diagnosis=data['diagnosis'],
-            questions=json.dumps(questions or []),
-            answers=json.dumps(answers or []),
             discussion=data.get('discussion', ''),
             module=module_enum,
             body_part=body_part_enum,
@@ -800,24 +1159,14 @@ def create_case():
 def view_case(case_id):
     """View a specific case"""
     from models import CandidateNote
-    
     case = Case.query.get(case_id)
-    
     if not case:
         return redirect(url_for('dashboard'))
-    
-    # Get packet and candidate info (legacy from examiner app)
-    packet = Packet.query.get(case.packet_id) if case.packet_id else None
-    candidate_id = session.get('current_candidate_id')
-    candidate = Candidate.query.get(candidate_id) if candidate_id else None
-    
     # Get user's note for this case
     user_note = CandidateNote.query.filter_by(case_id=case_id, user_id=current_user.id).first()
-    
+    print(f"[DEBUG] case.discussion for case_id={case_id}: {repr(case.discussion)}")
     return render_template('view_case.html', 
                          case=case, 
-                         packet=packet, 
-                         candidate=candidate,
                          user_note=user_note)
 
 
@@ -826,122 +1175,18 @@ def edit_case():
     """Full-page edit interface for a case"""
     case_id = request.args.get('id', type=int)
     is_new = request.args.get('new', 'false').lower() == 'true'
-    packet_id = request.args.get('packetId', type=int)
     return_to = request.args.get('returnTo', url_for('dashboard'))
-    
     if not is_new and not case_id:
         return redirect(url_for('dashboard'))
-    
-    if is_new and not packet_id:
-        return redirect(url_for('dashboard'))
-    
     case = Case.query.get(case_id) if case_id else None
     if not is_new and not case:
         return redirect(url_for('dashboard'))
-    
     return render_template('edit_case.html', 
                          is_new=is_new,
-                         packet_id=packet_id,
                          return_to=return_to,
                          case=case)
 
 
-@app.route('/api/case/<int:case_id>', methods=['GET', 'PUT'])
-@login_required
-def get_case(case_id):
-    """Get case details as JSON or update case"""
-    # Verify ownership
-    case = verify_case_ownership(case_id)
-    if not case:
-        return jsonify({'error': 'Unauthorized'}), 403
-    
-    # Handle GET request
-    if request.method == 'GET':
-        return jsonify({
-            'id': case.id,
-            'case_number': case.case_number,
-            'diagnosis': case.diagnosis,
-            'questions': [{'question_text': q.question_text, 'id': q.id} for q in case.question_items],
-            'answers': [{'answer_text': a.answer_text, 'id': a.id} for a in case.answer_items],
-            'discussion': case.discussion,
-            'module': case.module.name if case.module else None,
-            'body_part': case.body_part.name if case.body_part else None,
-            'is_public': case.is_public
-        })
-    
-    # Handle PUT request - update case
-    data = request.get_json()
-    
-    from models import FRCRModule, BodyPart
-    
-    try:
-        # Update basic case fields
-        if 'diagnosis' in data:
-            case.diagnosis = data['diagnosis'].strip()
-        if 'discussion' in data:
-            case.discussion = data['discussion'].strip() if data['discussion'] else None
-        if 'case_number' in data:
-            case.case_number = data['case_number']
-        
-        # Update FRCR Revision fields
-        if 'module' in data:
-            if data['module']:
-                try:
-                    case.module = FRCRModule[data['module']]
-                except KeyError:
-                    case.module = None
-            else:
-                case.module = None
-        
-        if 'body_part' in data:
-            if data['body_part']:
-                try:
-                    case.body_part = BodyPart[data['body_part']]
-                except KeyError:
-                    case.body_part = None
-            else:
-                case.body_part = None
-        
-        if 'is_public' in data:
-            case.is_public = data['is_public']
-        
-        # Update timestamp
-        case.updated_at = datetime.utcnow()
-        
-        # Handle Q&A pairs if provided
-        if 'pairs' in data:
-            # Delete existing pairs
-            Question.query.filter_by(case_id=case_id).delete()
-            Answer.query.filter_by(case_id=case_id).delete()
-            
-            # Create new pairs
-            for index, pair in enumerate(data['pairs'], start=1):
-                question_text = (pair.get('question_text') or '').strip()
-                answer_text = (pair.get('answer_text') or '').strip()
-                
-                if question_text or answer_text:
-                    if question_text:
-                        question = Question(
-                            case_id=case_id,
-                            question_number=index,
-                            question_text=question_text
-                        )
-                        db.session.add(question)
-                    
-                    if answer_text:
-                        answer = Answer(
-                            case_id=case_id,
-                            answer_number=index,
-                            answer_text=answer_text
-                        )
-                        db.session.add(answer)
-        
-        db.session.commit()
-        return jsonify({'success': True, 'message': 'Case updated successfully'})
-    
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': str(e)}), 500
 
 
 # REMOVED: Session management routes (examiner-specific)
@@ -1170,12 +1415,27 @@ def update_image_description(image_id):
         if not image:
             return jsonify({'error': 'Image not found'}), 404
         
+        import bleach
         data = request.get_json()
         description = data.get('description', '')
-        
-        image.image_description = description
+        # Sanitize HTML for image description
+        allowed_tags = bleach.sanitizer.ALLOWED_TAGS + [
+            'p', 'br', 'span', 'div', 'ul', 'ol', 'li', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'strong', 'em', 'u', 'b', 'i', 'a'
+        ]
+        allowed_attributes = {
+            '*': ['style', 'class'],
+            'a': ['href', 'title', 'target', 'rel'],
+            'td': ['colspan', 'rowspan'],
+            'th': ['colspan', 'rowspan']
+        }
+        cleaned = bleach.clean(
+            description,
+            tags=allowed_tags,
+            attributes=allowed_attributes,
+            strip=True
+        )
+        image.image_description = cleaned
         db.session.commit()
-        
         return jsonify({
             'image_id': image.id,
             'description': image.image_description,
@@ -1437,8 +1697,13 @@ def update_case_qa_pairs(case_id):
 @app.route('/api/case/<int:case_id>/note', methods=['GET'])
 @login_required
 def get_candidate_note(case_id):
-    """Get user's note for a specific case"""
+    """Get user's note for a specific case - STUDENTS ONLY"""
     from models import CandidateNote
+    
+    # Only students can access notes
+    is_student = (hasattr(current_user, 'role') and current_user.role == UserRole.STUDENT)
+    if not is_student:
+        return jsonify({'error': 'Access denied. Notes are for students only.'}), 403
     
     note = CandidateNote.query.filter_by(case_id=case_id, user_id=current_user.id).first()
     
@@ -1453,48 +1718,165 @@ def get_candidate_note(case_id):
     })
 
 
-@app.route('/api/case/<int:case_id>/note', methods=['POST', 'PUT'])
+@app.route('/api/case/<int:case_id>/note', methods=['POST'])
 @login_required
 def save_candidate_note(case_id):
-    """Save or update user's note for a case"""
-    from models import CandidateNote
+    """Create or update user's note for a specific case - STUDENTS ONLY"""
+    from models import CandidateNote, Case
+    
+    # Only students can create/edit notes
+    is_student = (hasattr(current_user, 'role') and current_user.role == UserRole.STUDENT)
+    if not is_student:
+        return jsonify({'error': 'Access denied. Notes are for students only.'}), 403
+    
+    # Verify case exists and is public
+    case = Case.query.get(case_id)
+    if not case:
+        return jsonify({'error': 'Case not found'}), 404
+    if not case.is_public:
+        return jsonify({'error': 'Cannot add notes to private cases'}), 403
     
     data = request.get_json()
-    note_text = data.get('note_text', '').strip()
+    note_text = (data.get('note_text') or '').strip()
     
-    # Find existing note
     note = CandidateNote.query.filter_by(case_id=case_id, user_id=current_user.id).first()
-    
     if note:
-        # Update existing note
-        if note_text:
-            note.note_text = note_text
-            note.updated_at = datetime.utcnow()
-        else:
-            # If empty text, delete the note
-            db.session.delete(note)
-        db.session.commit()
-        return jsonify({'success': True, 'message': 'Note updated'})
+        note.note_text = note_text
+        note.updated_at = datetime.utcnow()
+        action = 'updated'
     else:
-        # Create new note
-        if note_text:
-            note = CandidateNote(
-                case_id=case_id,
-                user_id=current_user.id,
-                note_text=note_text
-            )
-            db.session.add(note)
-            db.session.commit()
-            return jsonify({'success': True, 'message': 'Note created'})
+        note = CandidateNote(case_id=case_id, user_id=current_user.id, note_text=note_text, created_at=datetime.utcnow(), updated_at=datetime.utcnow())
+        db.session.add(note)
+        action = 'created'
+    try:
+        db.session.commit()
+        return jsonify({'success': True, 'message': f'Note {action}', 'note_text': note.note_text, 'updated_at': note.updated_at.isoformat() if note.updated_at else None})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+from access_control import has_case_edit_permission, has_case_view_access
+
+def verify_case_ownership(case_id):
+    """
+    Helper to check if the current user can access/edit the case.
+    Admins and content managers: can edit all cases.
+    Students: can only view published cases, never edit.
+    Returns the case if allowed, else None.
+    """
+    case = Case.query.get(case_id)
+    if not case:
+        return None
+    # Admins and content managers can edit all cases
+    if has_case_edit_permission(case):
+        return case
+    # Students: only allow view if published, never edit
+    if has_case_view_access(case):
+        # Only allow GET requests for students
+        if request.method == 'GET':
+            return case
+        else:
+            return None
+    return None
+
+@app.route('/api/case/<int:case_id>', methods=['GET', 'PUT'])
+@login_required
+def get_case(case_id):
+    """Get case details as JSON or update case"""
+    # Verify ownership
+    case = verify_case_ownership(case_id)
+    if not case:
+        return jsonify({'error': 'Unauthorized'}), 403
     
-    return jsonify({'success': True, 'message': 'Note saved'})
+    # Handle GET request
+    if request.method == 'GET':
+        return jsonify({
+            'id': case.id,
+            'case_number': case.case_number,
+            'diagnosis': case.diagnosis,
+            'questions': [{'question_text': q.question_text, 'id': q.id} for q in case.question_items],
+            'answers': [{'answer_text': a.answer_text, 'id': a.id} for a in case.answer_items],
+            'discussion': case.discussion,
+            'module': case.module.name if case.module else None,
+            'body_part': case.body_part.name if case.body_part else None,
+            'is_public': case.is_public
+        })
+
+    # Handle PUT request (update case)
+    if request.method == 'PUT':
+        data = request.get_json()
+        print(f"[DEBUG] Incoming PUT data: {data}")
+        if data is None:
+            return jsonify({'error': 'No data provided'}), 400
+        # Update fields if present
+        if 'diagnosis' in data:
+            case.diagnosis = data['diagnosis']
+        if 'discussion' in data:
+            case.discussion = data['discussion']
+        if 'module' in data:
+            from models import FRCRModule
+            try:
+                case.module = FRCRModule[data['module']] if data['module'] else None
+            except Exception:
+                pass
+        if 'body_part' in data:
+            from models import BodyPart
+            try:
+                case.body_part = BodyPart[data['body_part']] if data['body_part'] else None
+            except Exception:
+                pass
+        if 'age_group' in data:
+            from models import AgeGroup
+            try:
+                case.age_group = AgeGroup[data['age_group']] if data['age_group'] else None
+            except Exception:
+                pass
+        if 'is_public' in data:
+            val = data['is_public']
+            if isinstance(val, bool):
+                case.is_public = val
+            elif isinstance(val, str):
+                case.is_public = val.lower() == 'true'
+            elif isinstance(val, int):
+                case.is_public = val == 1
+            else:
+                case.is_public = False
+        # Optionally update Q&A pairs if present
+        if 'pairs' in data:
+            # Remove old Q&A
+            from models import Question, Answer
+            Question.query.filter_by(case_id=case.id).delete()
+            Answer.query.filter_by(case_id=case.id).delete()
+            for index, pair in enumerate(data['pairs'], start=1):
+                question_text = (pair.get('question_text') or '').strip()
+                answer_text = (pair.get('answer_text') or '').strip()
+                if question_text:
+                    q = Question(case_id=case.id, question_number=index, question_text=question_text)
+                    db.session.add(q)
+                if answer_text:
+                    a = Answer(case_id=case.id, answer_number=index, answer_text=answer_text)
+                    db.session.add(a)
+        try:
+            db.session.commit()
+            print(f"[DEBUG] Case {case.id} saved successfully.")
+            return jsonify({'success': True, 'message': 'Case updated'})
+        except Exception as e:
+            db.session.rollback()
+            print(f"[ERROR] Failed to update case: {e}")
+            return jsonify({'error': str(e)}), 500
 
 
 @app.route('/api/case/<int:case_id>/note', methods=['DELETE'])
 @login_required
 def delete_candidate_note(case_id):
-    """Delete user's note for a case"""
+    """Delete user's note for a case - STUDENTS ONLY"""
     from models import CandidateNote
+    
+    # Only students can delete notes
+    is_student = (hasattr(current_user, 'role') and current_user.role == UserRole.STUDENT)
+    if not is_student:
+        return jsonify({'error': 'Access denied. Notes are for students only.'}), 403
     
     note = CandidateNote.query.filter_by(case_id=case_id, user_id=current_user.id).first()
     
@@ -1511,8 +1893,13 @@ def delete_candidate_note(case_id):
 @app.route('/api/case/<int:case_id>/highlights', methods=['GET'])
 @login_required
 def get_highlights(case_id):
-    """Get all highlights for a case by current user"""
+    """Get all highlights for a case by current user - STUDENTS ONLY"""
     from models import TextHighlight
+    
+    # Only students can access highlights
+    is_student = (hasattr(current_user, 'role') and current_user.role == UserRole.STUDENT)
+    if not is_student:
+        return jsonify({'highlights': []}), 200  # Return empty for admins (they shouldn't see highlights)
     
     highlights = TextHighlight.query.filter_by(case_id=case_id, user_id=current_user.id).all()
     
@@ -1530,8 +1917,20 @@ def get_highlights(case_id):
 @app.route('/api/case/<int:case_id>/highlight', methods=['POST'])
 @login_required
 def add_highlight(case_id):
-    """Add a new text highlight"""
-    from models import TextHighlight
+    """Add a new text highlight - STUDENTS ONLY"""
+    from models import TextHighlight, Case
+    
+    # Only students can create highlights
+    is_student = (hasattr(current_user, 'role') and current_user.role == UserRole.STUDENT)
+    if not is_student:
+        return jsonify({'error': 'Access denied. Highlights are for students only.'}), 403
+    
+    # Verify case exists and is public
+    case = Case.query.get(case_id)
+    if not case:
+        return jsonify({'error': 'Case not found'}), 404
+    if not case.is_public:
+        return jsonify({'error': 'Cannot highlight private cases'}), 403
     
     data = request.get_json()
     text_content = data.get('text_content', '').strip()
@@ -1571,15 +1970,20 @@ def add_highlight(case_id):
 @app.route('/api/highlight/<int:highlight_id>', methods=['DELETE'])
 @login_required
 def delete_highlight(highlight_id):
-    """Delete a highlight"""
+    """Delete a highlight - STUDENTS ONLY"""
     from models import TextHighlight
+    
+    # Only students can delete highlights
+    is_student = (hasattr(current_user, 'role') and current_user.role == UserRole.STUDENT)
+    if not is_student:
+        return jsonify({'error': 'Access denied. Highlights are for students only.'}), 403
     
     highlight = TextHighlight.query.get(highlight_id)
     
     if not highlight:
         return jsonify({'error': 'Highlight not found'}), 404
     
-    # Verify ownership
+    # Verify ownership - students can only delete their own highlights
     if highlight.user_id != current_user.id:
         return jsonify({'error': 'Unauthorized'}), 403
     

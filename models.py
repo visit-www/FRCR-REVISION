@@ -1,3 +1,4 @@
+
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
 from datetime import datetime, timedelta
@@ -6,6 +7,21 @@ import secrets
 import enum
 
 db = SQLAlchemy()
+
+# ==================== CASE FLAG MODEL ====================
+class CaseFlag(db.Model):
+    """Student-specific case flagging"""
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+    case_id = db.Column(db.Integer, db.ForeignKey('case.id'), nullable=False, index=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    __table_args__ = (db.UniqueConstraint('user_id', 'case_id', name='uq_user_case_flag'),)
+
+    user = db.relationship('User', backref='case_flags', lazy=True)
+    case = db.relationship('Case', backref='flags', lazy=True)
+
+    def __repr__(self):
+        return f'<CaseFlag user={self.user_id} case={self.case_id}>'
 
 # ==================== ENUMS ====================
 
@@ -130,7 +146,7 @@ class User(UserMixin, db.Model):
     last_login = db.Column(db.DateTime, nullable=True)
     
     # Relationships
-    exam_sessions = db.relationship('ExamSession', backref='creator', lazy=True, cascade='all, delete-orphan')
+    # exam_sessions = db.relationship('ExamSession', backref='creator', lazy=True, cascade='all, delete-orphan')
     candidate_notes = db.relationship('CandidateNote', backref='author', lazy=True, cascade='all, delete-orphan')
     highlights = db.relationship('TextHighlight', backref='author', lazy=True, cascade='all, delete-orphan')
     created_cases = db.relationship('Case', foreign_keys='Case.created_by_user_id', backref='created_by', lazy=True)
@@ -148,7 +164,20 @@ class User(UserMixin, db.Model):
     
     def check_password(self, password):
         """Verify password against hash"""
-        return check_password_hash(self.password_hash, password)
+        if not self.password_hash:
+            print(f"[PASSWORD] WARNING: No password hash for user {self.email}")
+            return False
+        if not password:
+            return False
+        try:
+            # Strip any whitespace from password_hash (in case of encoding issues)
+            hash_to_check = self.password_hash.strip() if isinstance(self.password_hash, str) else self.password_hash
+            return check_password_hash(hash_to_check, password)
+        except Exception as e:
+            print(f"[PASSWORD] ERROR checking password for {self.email}: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return False
     
     @property
     def is_admin_property(self):
@@ -178,44 +207,13 @@ class User(UserMixin, db.Model):
     def __repr__(self):
         return f'<User {self.email}>'
 
-
-class ExamSession(db.Model):
-    """Store exam session details"""
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    exam_date = db.Column(db.Date, nullable=False)
-    exam_time = db.Column(db.String(10), nullable=False)
-    session_name = db.Column(db.String(100), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
-    packets = db.relationship('Packet', backref='exam', lazy=True, cascade='all, delete-orphan')
-    candidates = db.relationship('Candidate', backref='exam', lazy=True, cascade='all, delete-orphan')
-    
-    def __repr__(self):
-        return f'<ExamSession {self.session_name}>'
-
-
-class Packet(db.Model):
-    """Store packet information"""
-    id = db.Column(db.Integer, primary_key=True)
-    exam_id = db.Column(db.Integer, db.ForeignKey('exam_session.id'), nullable=False)
-    packet_number = db.Column(db.Integer, nullable=False)  # 1-4
-    packet_id = db.Column(db.String(50), nullable=False)  # e.g., FORM001, FORM002
-    
-    cases = db.relationship('Case', backref='packet', lazy=True, cascade='all, delete-orphan')
-    
-    def __repr__(self):
-        return f'<Packet {self.packet_id}>'
-
-
 class Case(db.Model):
     """Store case information"""
     id = db.Column(db.Integer, primary_key=True)
-    packet_id = db.Column(db.Integer, db.ForeignKey('packet.id'), nullable=True)  # Nullable for standalone cases
-    case_number = db.Column(db.Integer, nullable=True)  # Legacy field - nullable for non-packet cases
+    # packet_id removed (legacy examiner workflow)
+    case_number = db.Column(db.String(50), nullable=True)  # Auto-generated: BODYPART-001 format
     diagnosis = db.Column(db.Text, nullable=False)
-    questions = db.Column(db.Text, nullable=False)  # Legacy - for backward compatibility
-    answers = db.Column(db.Text, nullable=False)  # Legacy - for backward compatibility
+    # Legacy questions/answers columns removed - data now stored in Question/Answer tables only
     discussion = db.Column(db.Text)  # Optional discussion/comments
     
     # === EXISTING FIELDS ===
@@ -286,16 +284,7 @@ class CaseImage(db.Model):
         return f'<CaseImage {self.image_filename} for Case {self.case_id}>'
 
 
-class Candidate(db.Model):
-    """Store candidate information"""
-    id = db.Column(db.Integer, primary_key=True)
-    exam_id = db.Column(db.Integer, db.ForeignKey('exam_session.id'), nullable=False)
-    candidate_name = db.Column(db.String(120), nullable=False)
-    candidate_number = db.Column(db.Integer, nullable=False)  # 1-4
-    packet_number = db.Column(db.Integer, nullable=False)  # Maps to packet 1-4
-    
-    def __repr__(self):
-        return f'<Candidate {self.candidate_name} ({self.candidate_number})>'
+
 
 
 class CandidateNote(db.Model):
@@ -483,8 +472,8 @@ class ImportedCaseStaging(db.Model):
     original_id = db.Column(db.Integer, nullable=True, index=True)  # ID from source system
     case_number = db.Column(db.Integer, nullable=True)
     diagnosis = db.Column(db.Text, nullable=False)
-    questions = db.Column(db.Text, nullable=False)
-    answers = db.Column(db.Text, nullable=False)
+    questions = db.Column(db.Text, nullable=False)  # DEPRECATED: Legacy field - kept for import compatibility only. Will be migrated to Question table on promotion.
+    answers = db.Column(db.Text, nullable=False)  # DEPRECATED: Legacy field - kept for import compatibility only. Will be migrated to Answer table on promotion.
     discussion = db.Column(db.Text, nullable=True)
     
     # ===== ENRICHED METADATA (Admin-added) =====

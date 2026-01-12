@@ -98,7 +98,7 @@ def has_case_view_access(case, user=None):
     Check if user can view a case.
     Rules:
     - Admin/Content Manager: always have access to all cases
-    - Students: can only view PUBLISHED cases
+    - Students: can only view public cases (is_public=True)
     - Free users: limited to 2 cases per module
     """
     user = user or current_user
@@ -110,8 +110,9 @@ def has_case_view_access(case, user=None):
     if user.role in [UserRole.ADMIN, UserRole.CONTENT_MANAGER]:
         return True
     
-    # Only PUBLISHED cases visible to students
-    if case.status != CaseStatus.PUBLISHED:
+    # Students: only public cases visible (use is_public field, not status)
+    # The system uses is_public=True to mark cases visible to students
+    if not case.is_public:
         return False
     
     # Check subscription limits for free users

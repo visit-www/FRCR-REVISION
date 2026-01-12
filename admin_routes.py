@@ -581,6 +581,71 @@ def delete_case(case_id):
         }), 500
 
 
+
+# ============================================================================
+# CASE PUBLIC/PRIVATE TOGGLE ENDPOINTS
+# ============================================================================
+
+@admin_bp.route('/cases/<int:case_id>/public', methods=['PATCH'])
+@require_admin
+def toggle_case_public(case_id):
+    """
+    Toggle the public/private status of a case robustly.
+    Accepts: { is_public: true/false/"true"/"false" }
+    Returns: { success: bool, is_public: bool }
+    """
+    data = request.get_json()
+    is_public = data.get('is_public')
+
+    # Robustly handle boolean and string values
+    if isinstance(is_public, str):
+        is_public = is_public.lower() == 'true'
+    else:
+        is_public = bool(is_public)
+
+    case = Case.query.get(case_id)
+    if not case:
+        return jsonify({'success': False, 'error': 'Case not found'}), 404
+
+    try:
+        case.is_public = is_public
+        db.session.commit()
+        return jsonify({'success': True, 'is_public': case.is_public}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': 'Database error', 'details': str(e)}), 500
+
+
+@admin_bp.route('/cases/<int:case_id>', methods=['GET'])
+@require_admin
+def get_case(case_id):
+    """
+    Get a single case by ID (for UI refresh after toggle)
+    Returns: { id, is_public, ... }
+    """
+    case = Case.query.get(case_id)
+    if not case:
+        return jsonify({'success': False, 'error': 'Case not found'}), 404
+    creator = None
+    creator_name = 'Unknown'
+    if case.created_by_user_id:
+        creator = User.query.get(case.created_by_user_id)
+        if creator:
+            creator_name = creator.full_name
+    return jsonify({
+        'id': case.id,
+        'diagnosis': case.diagnosis,
+        'case_number': case.case_number,
+        'discussion': case.discussion,
+        'module': case.module.name if case.module else None,
+        'body_part': case.body_part.name if case.body_part else None,
+        'age_group': case.age_group.name if case.age_group else None,
+        'is_public': case.is_public,
+        'created_by_user_id': case.created_by_user_id,
+        'created_by_name': creator_name,
+        'created_at': case.created_at.isoformat() if case.created_at else None,
+    }), 200
+
 # ============================================================================
 # ERROR HANDLERS
 # ============================================================================

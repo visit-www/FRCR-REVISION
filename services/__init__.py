@@ -312,9 +312,8 @@ class ConflictResolutionService:
             production_case = Case.query.get(staging_with_production.promoted_to_case_id)
             
             # Update production case with new data
+            # Legacy questions/answers columns removed - data stored in Question/Answer tables only
             production_case.diagnosis = new_case_data.get('diagnosis', '')
-            production_case.questions = new_case_data.get('questions', '')
-            production_case.answers = new_case_data.get('answers', '')
             production_case.discussion = new_case_data.get('discussion')
             production_case.updated_at = datetime.utcnow()
             
@@ -419,11 +418,10 @@ class PromotionService:
                 }
             
             # Create production case
+            # Legacy questions/answers columns removed - data migrated to Question/Answer tables below
             case = Case(
                 case_number=staging.case_number,
                 diagnosis=staging.diagnosis,
-                questions=staging.questions,
-                answers=staging.answers,
                 discussion=staging.discussion,
                 module=staging.module,
                 body_part=staging.body_part,
@@ -435,6 +433,43 @@ class PromotionService:
             
             db.session.add(case)
             db.session.flush()
+            
+            # Migrate Q&A data from staging legacy fields to Question/Answer tables
+            # (if staging has legacy JSON data, parse and migrate it)
+            import json
+            from models import Question, Answer
+            
+            try:
+                if staging.questions and staging.questions != '[]':
+                    questions_data = json.loads(staging.questions) if isinstance(staging.questions, str) else staging.questions
+                    if isinstance(questions_data, list):
+                        for idx, q_data in enumerate(questions_data, start=1):
+                            question_text = q_data.get('question_text', '') if isinstance(q_data, dict) else str(q_data)
+                            if question_text and question_text.strip():
+                                question = Question(
+                                    case_id=case.id,
+                                    question_number=idx,
+                                    question_text=question_text.strip()
+                                )
+                                db.session.add(question)
+            except (json.JSONDecodeError, AttributeError, TypeError) as e:
+                print(f"[PROMOTION] Warning: Could not parse staging questions: {e}")
+            
+            try:
+                if staging.answers and staging.answers != '[]':
+                    answers_data = json.loads(staging.answers) if isinstance(staging.answers, str) else staging.answers
+                    if isinstance(answers_data, list):
+                        for idx, a_data in enumerate(answers_data, start=1):
+                            answer_text = a_data.get('answer_text', '') if isinstance(a_data, dict) else str(a_data)
+                            if answer_text and answer_text.strip():
+                                answer = Answer(
+                                    case_id=case.id,
+                                    answer_number=idx,
+                                    answer_text=answer_text.strip()
+                                )
+                                db.session.add(answer)
+            except (json.JSONDecodeError, AttributeError, TypeError) as e:
+                print(f"[PROMOTION] Warning: Could not parse staging answers: {e}")
             
             # Update staging record
             staging.promoted_to_case_id = case.id

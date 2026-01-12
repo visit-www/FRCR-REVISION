@@ -22,21 +22,18 @@
                 <i class="fas fa-folder-open me-2" style="color: #ffc107;"></i>
                 {% if module_filter %}{{ module_filter }}{% else %}All Cases{% endif %}
             </h2>
-            {% if current_user.is_authenticated and (current_user.role.value == 'admin' or current_user.role.value == 'content_manager') %}
-            <a href="/edit-case?new=true" class="btn btn-success btn-sm">
-                <i class="fas fa-plus me-2"></i>Create New Case
-            </a>
-            {% endif %}
             <p class="text-muted mb-0 mt-2">
                 {% if module_filter %}
                 Showing cases from {{ module_filter }} module
+                {% elif flagged_filter %}
+                Showing your flagged cases
                 {% else %}
                 Browse and search all available cases
                 {% endif %}
             </p>
         </div>
         <div class="col-lg-4 mt-3 mt-lg-0">
-            <div class="input-group">
+            <div class="input-group mb-2">
                 <span class="input-group-text bg-white">
                     <i class="fas fa-search"></i>
                 </span>
@@ -46,6 +43,15 @@
                        placeholder="Search by diagnosis or keywords..."
                        value="{{ search_query }}">
             </div>
+            {% if flagged_filter %}
+            <a href="{{ url_for('student_cases_list') }}" class="btn btn-warning btn-sm w-100">
+                <i class="fas fa-times me-2"></i>Clear Flagged Filter
+            </a>
+            {% else %}
+            <a href="{{ url_for('student_cases_list', flagged='true') }}" class="btn btn-warning btn-sm w-100">
+                <i class="fas fa-star me-2"></i>My Flagged Cases
+            </a>
+            {% endif %}
         </div>
     </div>
 
@@ -126,79 +132,47 @@
                         <th style="width: 14%;">Body Part</th>
                         <th style="width: 10%;">Age Group</th>
                         <th style="width: 6%;">Images</th>
-                        <th style="width: 10%;">Public</th>
-                        <th style="width: 12%;">Actions</th>
+                        <th style="width: 12%;">Flag</th>
                     </tr>
                 </thead>
                 <tbody id="casesTableBody">
                     {% if cases %}
                         {% for case in cases %}
-                        <tr id="caseRow{{ case.id }}" class="case-row{% if case.is_public %} case-public{% else %} case-private{% endif %}" style="cursor: pointer;" onclick="window.location.href='{{ url_for('view_case', case_id=case.id) }}'">
-                            <td class="fw-bold text-muted" style="{% if case.is_public %}background-color:#d4f8e8 !important; border-left:6px solid #28a745 !important;{% else %}background-color:#fff5e0 !important; border-left:6px solid #ff9800 !important;{% endif %}">#{{ case.id }}
+                        <tr id="caseRow{{ case.id }}" class="case-row case-public" style="cursor: pointer;" onclick="window.location.href='{{ url_for('view_case', case_id=case.id) }}'">
+                            <td class="fw-bold text-muted" style="background-color:#d4f8e8 !important; border-left:6px solid #28a745 !important;">#{{ case.id }}
                             </td>
-                            <td style="{% if case.is_public %}background-color:#d4f8e8 !important;{% else %}background-color:#fff5e0 !important;{% endif %}">
+                            <td style="background-color:#d4f8e8 !important;">
                                 <div class="fw-bold">{{ case.diagnosis }}</div>
-                                {% if case.has_notes %}
-                                <small class="text-muted">
-                                    <i class="fas fa-sticky-note me-1" style="color: #f9e5a8;"></i>Has notes
-                                </small>
-                                {% endif %}
                             </td>
-                            <td style="{% if case.is_public %}background-color:#d4f8e8 !important;{% else %}background-color:#fff5e0 !important;{% endif %}">
+                            <td style="background-color:#d4f8e8 !important;">
                                 <span class="badge" style="background-color: #a8d5ba;">
                                     {{ case.module_display }}
                                 </span>
                             </td>
-                            <td style="{% if case.is_public %}background-color:#d4f8e8 !important;{% else %}background-color:#fff5e0 !important;{% endif %}">
+                            <td style="background-color:#d4f8e8 !important;">
                                 <span class="badge bg-light text-dark">
                                     {{ case.body_part_display }}
                                 </span>
                             </td>
-                            <td style="{% if case.is_public %}background-color:#d4f8e8 !important;{% else %}background-color:#fff5e0 !important;{% endif %}">
+                            <td style="background-color:#d4f8e8 !important;">
                                 <span class="badge bg-info text-white">
                                     {{ case.age_group_display }}
                                 </span>
                             </td>
-                            <td style="{% if case.is_public %}background-color:#d4f8e8 !important;{% else %}background-color:#fff5e0 !important;{% endif %}">
+                            <td style="background-color:#d4f8e8 !important;">
                                 <i class="fas fa-images me-1" style="color: #ffc107;"></i>
                                 {{ case.image_count }}
                             </td>
-                            {% if current_user.is_authenticated and current_user.role and (current_user.role.value == 'admin' or current_user.role.value == 'content_manager') %}
-                            <td style="{% if case.is_public %}background-color:#d4f8e8 !important;{% else %}background-color:#fff5e0 !important;{% endif %}; text-align:center;">
-                                <div class="form-check form-switch d-inline-block">
-                                    <input class="form-check-input case-public-toggle" type="checkbox" id="togglePublic{{ case.id }}" data-case-id="{{ case.id }}" {% if case.is_public %}checked{% endif %} onclick="event.stopPropagation();">
-                                    <label class="form-check-label" for="togglePublic{{ case.id }}">
-                                        <span class="visually-hidden">Toggle public/private</span>
-                                    </label>
-                                </div>
-                                <span class="badge ms-2" id="publicStatus{{ case.id }}" style="background-color: {% if case.is_public %}#28a745{% else %}#dc3545{% endif %}; color: #fff;">{% if case.is_public %}Public{% else %}Private{% endif %}</span>
-                            </td>
-                            <td style="{% if case.is_public %}background-color:#d4f8e8 !important;{% else %}background-color:#fff5e0 !important;{% endif %}">
-                                <a href="/edit-case?id={{ case.id }}" 
-                                   class="btn btn-sm btn-outline-primary me-2"
-                                   title="Edit case"
-                                   onclick="event.stopPropagation();">
-                                    <i class="fas fa-edit"></i> Edit
-                                </a>
-                                <button class="btn btn-sm btn-outline-danger"
-                                        onclick="deleteCase({{ case.id }}); event.stopPropagation(); return false;"
-                                        title="Delete case">
-                                    <i class="fas fa-trash"></i> Delete
+                            <td style="background-color:#d4f8e8 !important; text-align:center;">
+                                <button class="btn btn-link p-0 flag-btn" data-case-id="{{ case.id }}" onclick="event.stopPropagation();" title="{% if case.flagged %}Unflag case{% else %}Flag case for study{% endif %}">
+                                    <i class="fas fa-star{% if case.flagged %} text-warning{% else %} text-secondary{% endif %}" id="flagIcon{{ case.id }}" style="font-size: 1.2rem;"></i>
                                 </button>
                             </td>
-                            {% else %}
-                            <td style="{% if case.is_public %}background-color:#d4f8e8 !important;{% else %}background-color:#fff5e0 !important;{% endif %}; text-align:center;">
-                                <span class="badge ms-2" style="background-color: {% if case.is_public %}#28a745{% else %}#dc3545{% endif %}; color: #fff;">{% if case.is_public %}Public{% else %}Private{% endif %}</span>
-                            </td>
-                            <td style="{% if case.is_public %}background-color:#d4f8e8 !important;{% else %}background-color:#fff5e0 !important;{% endif %}">
-                                <span class="text-muted small">View only</span>
-                            </td>
-                            {% endif %}
                         </tr>
                         {% endfor %}
                     {% else %}
                         <tr>
-                            <td colspan="8" class="text-center text-muted py-5">
+                            <td colspan="7" class="text-center text-muted py-5">
                                 <i class="fas fa-folder-open fa-3x mb-3 d-block" style="opacity: 0.3;"></i>
                                 <p class="mb-0">No cases found matching your criteria</p>
                                 <small>Try adjusting your filters or search term</small>
@@ -212,55 +186,6 @@
 </div>
 
 <script>
-// Public/private toggle for each case row
-document.querySelectorAll('.case-public-toggle').forEach(function(toggle) {
-    toggle.addEventListener('change', function(e) {
-        const caseId = e.target.getAttribute('data-case-id');
-        const isPublic = e.target.checked;
-        const statusBadge = document.getElementById('publicStatus' + caseId);
-        const row = document.getElementById('caseRow' + caseId);
-        e.target.disabled = true;
-        fetch(`/api/admin/cases/${caseId}/public`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ is_public: isPublic })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                statusBadge.textContent = isPublic ? 'Public' : 'Private';
-                statusBadge.style.backgroundColor = isPublic ? '#28a745' : '#dc3545';
-                // Update row background instantly
-                if (row) {
-                    if (isPublic) {
-                        row.classList.add('case-public');
-                        row.classList.remove('case-private');
-                    } else {
-                        row.classList.add('case-private');
-                        row.classList.remove('case-public');
-                    }
-                }
-                // Also update all cell backgrounds in the row
-                Array.from(row.children).forEach(function(cell, idx) {
-                    if (isPublic) {
-                        cell.style.backgroundColor = idx === 0 ? '#d4f8e8' : '#d4f8e8';
-                    } else {
-                        cell.style.backgroundColor = idx === 0 ? '#fff5e0' : '#fff5e0';
-                    }
-                });
-                e.target.disabled = false;
-            } else {
-                throw new Error(data.error || 'Unknown error');
-            }
-        })
-        .catch(err => {
-            e.target.checked = !isPublic;
-            e.target.disabled = false;
-            alert('Failed to update public/private status: ' + err.message);
-        });
-    });
-});
-
 // Search box: submit on Enter
 document.getElementById('caseSearch').addEventListener('keydown', function(e) {
     if (e.key === 'Enter') {
@@ -299,26 +224,34 @@ function clearFilters() {
     window.location.href = window.location.pathname;
 }
 
-function deleteCase(caseId) {
-    if (!confirm('Are you sure you want to delete this case?')) return;
-    
-    fetch(`/api/case/${caseId}`, {
-        method: 'DELETE'
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            alert('Case deleted successfully');
-            window.location.reload();
-        } else {
-            alert('Error deleting case: ' + (data.error || 'Unknown error'));
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Error deleting case');
+// Flag/unflag AJAX
+document.querySelectorAll('.flag-btn').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+        const caseId = btn.getAttribute('data-case-id');
+        const icon = document.getElementById('flagIcon' + caseId);
+        const flagged = icon.classList.contains('text-warning');
+        btn.disabled = true;
+        fetch(`/student/cases/${caseId}/${flagged ? 'unflag' : 'flag'}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                icon.classList.toggle('text-warning');
+                icon.classList.toggle('text-secondary');
+                btn.title = flagged ? 'Flag case for study' : 'Unflag case';
+            } else {
+                alert('Error: ' + (data.error || 'Unknown error'));
+            }
+            btn.disabled = false;
+        })
+        .catch(err => {
+            alert('Failed to update flag: ' + err.message);
+            btn.disabled = false;
+        });
     });
-}
+});
 </script>
 
 <style>
@@ -327,13 +260,18 @@ tr.case-row.case-public {
     border-left: 6px solid #28a745 !important;
     transition: background 0.3s;
 }
-tr.case-row.case-private {
-    background-color: #fff5e0 !important;
-    border-left: 6px solid #ff9800 !important;
-    transition: background 0.3s;
-}
 tr.case-row:hover {
     background-color: #fff8f0 !important;
+}
+.flag-btn .fa-star.text-warning { 
+    color: #ffc107 !important; 
+}
+.flag-btn .fa-star.text-secondary { 
+    color: #ccc !important; 
+}
+.flag-btn:hover .fa-star {
+    transform: scale(1.2);
+    transition: transform 0.2s;
 }
 </style>
 {% endblock %}

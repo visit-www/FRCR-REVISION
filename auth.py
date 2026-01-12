@@ -171,11 +171,19 @@ def login():
             print(f"[AUTH] User not found: {email}")
             return jsonify({'error': 'Invalid email or password'}), 401
         
-        # Debug password check
-        password_valid = user.check_password(password)
-        print(f"[AUTH] Login attempt - Email: {email}, Password valid: {password_valid}, User active: {user.is_active}")
+        # Debug password check with better error handling
+        try:
+            password_valid = user.check_password(password)
+            print(f"[AUTH] Login attempt - Email: {email}, Password valid: {password_valid}, User active: {user.is_active}")
+            print(f"[AUTH] Password hash exists: {bool(user.password_hash)}, Length: {len(user.password_hash) if user.password_hash else 0}")
+        except Exception as e:
+            print(f"[AUTH] ERROR checking password: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return jsonify({'error': 'Authentication error. Please contact administrator.'}), 500
         
         if not password_valid:
+            print(f"[AUTH] Password validation failed for: {email}")
             return jsonify({'error': 'Invalid email or password'}), 401
         
         if not user.is_active:

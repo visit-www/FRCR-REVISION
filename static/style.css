@@ -692,10 +692,6 @@ pre {
     color: white;
 }
 
-.modal-footer .text-muted {
-    color: #9ca3af !important;
-}
-
 /* Image Description Section */
 .image-description-section {
     background-color: rgba(26, 26, 26, 0.7);
@@ -2323,7 +2319,7 @@ pre {
     color: white;
 }
 
-.admin-dashboard-container .badge-content_manager {
+.admin-dashboard_container .badge-content_manager {
     background: linear-gradient(135deg, #ffc107 0%, #ffcd39 100%);
     color: #333;
 }
@@ -2734,3 +2730,17 @@ pre {
   margin-inline-end:2px;
   -webkit-text-fill-color: transparent;
 }
+
+/* --- CASE ROW PUBLIC/PRIVATE COLORS --- */
+tbody tr.case-row.case-public {
+    background-color: #d4f8e8 !important;
+    border-left: 6px solid #28a745 !important;
+}
+tbody tr.case-row.case-private {
+    background-color: #fff5e0 !important;
+    border-left: 6px solid #ff9800 !important;
+}
+tbody tr.case-row:hover {
+    background-color: #fff8f0 !important;
+}
+/* --- END CASE ROW COLORS --- */

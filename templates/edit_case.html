@@ -38,9 +38,9 @@
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-4">
-                                <label class="form-label fw-bold text-secondary">Case Number *</label>
-                                <input type="text" class="form-control form-control-lg" id="editCaseNumber" placeholder="e.g., 001" required>
-                                <small class="text-muted d-block mt-2">Unique identifier for this case</small>
+                                <label class="form-label fw-bold text-secondary">Case Number</label>
+                                <input type="text" class="form-control form-control-lg bg-light" id="editCaseNumber" placeholder="Auto-generated when body part is selected" readonly>
+                                <small class="text-muted d-block mt-2"><i class="fas fa-magic me-1"></i>Auto-assigned based on Body Part (e.g., CHEST-001)</small>
                             </div>
                         </div>
                         <div class="col-md-6">
@@ -51,15 +51,31 @@
                             </div>
                         </div>
                     </div>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="mb-4">
+                                <label class="form-label fw-bold text-secondary" id="publicStatusLabel">
+                                    <i id="publicEyeIcon" class="fas fa-eye me-1" style="color: #28a745;"></i>
+                                    <span id="publicStatusText">Publicly Visible</span>
+                                </label>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="editCaseIsPublic">
+                                    <label class="form-check-label" for="editCaseIsPublic" id="publicCheckboxLabel">This case is visible to all users</label>
+                                </div>
+                                <small class="text-muted d-block mt-2">Toggle to make this case public or private</small>
+                            </div>
+                        </div>
+                        </div>
+                    </div>
 
                     <!-- FRCR Module, Body Part, and Age Group Selection -->
                     <div class="row mt-3">
                         <div class="col-md-4">
                             <div class="mb-4">
                                 <label class="form-label fw-bold text-secondary">
-                                    <i class="fas fa-layer-group me-1" style="color: #667eea;"></i>Module
+                                    <i class="fas fa-layer-group me-1" style="color: #667eea;"></i>Module *
                                 </label>
-                                <select class="form-select form-select-lg" id="editCaseModule">
+                                <select class="form-select form-select-lg" id="editCaseModule" required>
                                     <option value="">Select Module...</option>
                                     <option value="CARDIOTHORACIC_VASCULAR">Cardiothoracic and Vascular</option>
                                     <option value="MUSCULOSKELETAL_TRAUMA">Musculoskeletal and Trauma</option>
@@ -74,9 +90,9 @@
                         <div class="col-md-4">
                             <div class="mb-4">
                                 <label class="form-label fw-bold text-secondary">
-                                    <i class="fas fa-user-injured me-1" style="color: #FF8C42;"></i>Body Part
+                                    <i class="fas fa-user-injured me-1" style="color: #FF8C42;"></i>Body Part *
                                 </label>
-                                <select class="form-select form-select-lg" id="editCaseBodyPart">
+                                <select class="form-select form-select-lg" id="editCaseBodyPart" required>
                                     <option value="">Select Body Part...</option>
                                     <optgroup label="Cardiovascular">
                                         <option value="CARDIOVASCULAR">Cardiovascular</option>
@@ -208,7 +224,7 @@
                     <button type="button" class="btn btn-lg btn-outline-secondary" onclick="window.history.back()">
                         <i class="fas fa-times me-2"></i>Cancel
                     </button>
-                    <button type="button" class="btn btn-lg btn-primary" onclick="saveEditedCase()">
+                    <button type="button" class="btn btn-lg btn-primary" onclick="saveEditedCase(event)">
                         <i class="fas fa-save me-2"></i>Save All Changes
                     </button>
                 </div>
@@ -327,7 +343,7 @@
     }
 
     .rich-editor {
-        display: none;
+        /* display: none;  Removed to ensure textarea is visible before TinyMCE loads */
     }
 
     /* Responsive adjustments */
@@ -412,6 +428,24 @@ function initializeDiscussionEditor() {
     });
 }
 
+// Auto-generate case number based on body part
+async function generateCaseNumber(bodyPart) {
+    if (!bodyPart) {
+        document.getElementById('editCaseNumber').value = '';
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/case/next-number?body_part=${encodeURIComponent(bodyPart)}`);
+        const data = await response.json();
+        if (data.success) {
+            document.getElementById('editCaseNumber').value = data.case_number;
+        }
+    } catch (error) {
+        console.error('Error generating case number:', error);
+    }
+}
+
 // Load case data when page loads
 document.addEventListener('DOMContentLoaded', function() {
     const params = new URLSearchParams(window.location.search);
@@ -422,14 +456,59 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize discussion editor
     initializeDiscussionEditor();
     
+    // Add body part change listener for auto-generating case number (only for new cases)
+    const bodyPartSelect = document.getElementById('editCaseBodyPart');
+    bodyPartSelect.addEventListener('change', function() {
+        const caseIdValue = document.getElementById('editCaseId').value;
+        // Only auto-generate for new cases (not when editing existing)
+        if (!caseIdValue || caseIdValue.startsWith('new-') || caseIdValue === '') {
+            generateCaseNumber(this.value);
+        }
+    });
+    
     if (isNew && packetId) {
         // Initialize for creating a new case
         initializeNewCase(packetId);
+    } else if (isNew) {
+        // Initialize for creating a new standalone case (from /cases)
+        initializeNewStandaloneCase();
     } else if (caseId) {
         // Load existing case for editing
         loadCaseForEdit(caseId);
     }
 });
+
+// Initialize form for creating a new standalone case (no packet)
+function initializeNewStandaloneCase() {
+    // Mark as new case
+    document.getElementById('editCaseId').value = 'new';
+    
+    // Update page title and subtitle
+    document.querySelector('h1').innerHTML = '<i class="fas fa-plus me-3" style="color: #667eea;"></i>Create New Case';
+    const subtitle = document.getElementById('pageSubtitle');
+    if (subtitle) {
+        subtitle.textContent = 'Create a new case - select a Body Part to auto-generate Case Number';
+    }
+    
+    // Initialize empty Q&A container
+    const qaPairsContainer = document.getElementById('qaPairsContainer');
+    qaPairsContainer.innerHTML = `
+        <div class="text-center py-4">
+            <p class="text-muted">No Q&A pairs yet. Click "Add Q&A Pair" to get started.</p>
+        </div>
+    `;
+    
+    // Initialize empty images container
+    const imagesContainer = document.getElementById('editImagesContainer');
+    imagesContainer.innerHTML = `
+        <div class="text-center py-4">
+            <p class="text-muted">No images yet. Upload images using the form below.</p>
+        </div>
+    `;
+    
+    // Add first Q&A pair automatically
+    addNewQAPair();
+}
 
 // Initialize form for creating a new case
 function initializeNewCase(packetId) {
@@ -458,24 +537,27 @@ function initializeNewCase(packetId) {
 // Load case data for editing
 function loadCaseForEdit(caseId) {
     Promise.all([
-        fetch(`/api/case/${caseId}`).then(r => r.json()),
+        fetch(`/api/admin/cases/${caseId}`).then(r => r.json()),
         fetch(`/api/case/${caseId}/images`).then(r => r.json())
     ])
     .then(([caseData, images]) => {
-        // Set the case ID
         document.getElementById('editCaseId').value = caseData.id;
-        
-        // Update page subtitle
         const subtitle = document.getElementById('pageSubtitle');
         if (subtitle) {
             subtitle.textContent = `Case #${caseData.case_number} - ${caseData.diagnosis}`;
         }
-        
-        // Populate form fields
         document.getElementById('editCaseNumber').value = caseData.case_number || '';
         document.getElementById('editCaseDiagnosis').value = caseData.diagnosis || '';
-        
-        // Populate discussion field
+        // Set is_public checkbox from backend
+        const isPublicCheckbox = document.getElementById('editCaseIsPublic');
+        if (isPublicCheckbox) {
+            isPublicCheckbox.checked = !!caseData.is_public;
+            // Set row color on load
+            const cardBody = isPublicCheckbox.closest('.card-body');
+            if (cardBody) {
+                cardBody.style.backgroundColor = caseData.is_public ? '#d4edda' : '#ffe5b4';
+            }
+        }
         setTimeout(() => {
             if (typeof tinymce !== 'undefined' && tinymce.get('editCaseDiscussion')) {
                 tinymce.get('editCaseDiscussion').setContent(caseData.discussion || '');
@@ -483,8 +565,6 @@ function loadCaseForEdit(caseId) {
                 document.getElementById('editCaseDiscussion').value = caseData.discussion || '';
             }
         }, 500);
-        
-        // Populate FRCR categorization fields
         if (document.getElementById('editCaseModule')) {
             document.getElementById('editCaseModule').value = caseData.module || '';
         }
@@ -494,11 +574,7 @@ function loadCaseForEdit(caseId) {
         if (document.getElementById('editCaseAgeGroup')) {
             document.getElementById('editCaseAgeGroup').value = caseData.age_group || '';
         }
-        
-        // Populate Q&A pairs
         populateQAPairs(caseData);
-        
-        // Populate images
         populateImages(images);
     })
     .catch(error => {
@@ -507,5 +583,84 @@ function loadCaseForEdit(caseId) {
         window.history.back();
     });
 }
+// Prevent form submission - all saves are handled via AJAX
+document.addEventListener('DOMContentLoaded', function() {
+    const caseEditForm = document.getElementById('caseEditForm');
+    if (caseEditForm) {
+        caseEditForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            return false;
+        });
+    }
+});
+
+// Robust public/private toggle for is_public
+document.addEventListener('DOMContentLoaded', function() {
+    const isPublicCheckbox = document.getElementById('editCaseIsPublic');
+    const caseIdInput = document.getElementById('editCaseId');
+    const cardBody = isPublicCheckbox?.closest('.card-body');
+    if (!isPublicCheckbox) return;
+
+    // Helper to set row color and UI
+    function updatePublicUI(isPublic) {
+        if (cardBody) {
+            cardBody.style.backgroundColor = isPublic ? '#d4edda' : '#ffe5b4';
+        }
+        // Eye icon and label
+        var eyeIcon = document.getElementById('publicEyeIcon');
+        var statusText = document.getElementById('publicStatusText');
+        var checkboxLabel = document.getElementById('publicCheckboxLabel');
+        if (eyeIcon && statusText && checkboxLabel) {
+            if (isPublic) {
+                eyeIcon.style.color = '#28a745';
+                statusText.textContent = 'Publicly Visible';
+                checkboxLabel.textContent = 'This case is visible to all users';
+            } else {
+                eyeIcon.style.color = '#dc3545';
+                statusText.textContent = 'Publicly NOT Visible';
+                checkboxLabel.textContent = 'This case is now visible only to Content Managers and Admins';
+            }
+        }
+    }
+
+    // Initial UI (if loaded from backend)
+    setTimeout(() => {
+        updatePublicUI(isPublicCheckbox.checked);
+    }, 100);
+
+    isPublicCheckbox.addEventListener('change', function(e) {
+        const caseId = caseIdInput.value;
+        const originalChecked = e.target.checked;
+        isPublicCheckbox.disabled = true;
+
+        fetch(`/api/admin/cases/${caseId}/public`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ is_public: originalChecked })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Always fetch the latest state from backend
+                return fetch(`/api/admin/cases/${caseId}`)
+                    .then(res => res.json())
+                    .then(caseData => {
+                        isPublicCheckbox.checked = !!caseData.is_public;
+                        updatePublicUI(!!caseData.is_public);
+                        isPublicCheckbox.disabled = false;
+                    });
+            } else {
+                throw new Error(data.error || 'Unknown error');
+            }
+        })
+        .catch(err => {
+            // Revert checkbox and show error
+            isPublicCheckbox.checked = !originalChecked;
+            isPublicCheckbox.disabled = false;
+            alert('Failed to update public/private status: ' + err.message);
+        });
+    });
+});
 </script>
 {% endblock %}

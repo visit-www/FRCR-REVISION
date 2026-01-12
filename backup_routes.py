@@ -4,7 +4,7 @@ Handles manual backup downloads and restore from uploads
 """
 from flask import Blueprint, jsonify, send_file, request, session
 from flask_login import login_required, current_user
-from models import db, User, ExamSession, Packet, Case, Candidate, CaseImage, Question, Answer
+from models import db, User, Case, CaseImage, Question, Answer
 from datetime import datetime, timedelta
 import json
 import io
@@ -38,10 +38,10 @@ def download_backup():
                 'version': '1.0'
             },
             'users': [],
-            'exam_sessions': [],
-            'packets': [],
+            # 'exam_sessions': [],
+            # 'packets': [],
             'cases': [],
-            'candidates': [],
+            # 'candidates': [],
             'case_images': [],
             'questions': [],
             'answers': []
@@ -57,46 +57,16 @@ def download_backup():
                 'created_at': user.created_at.isoformat() if user.created_at else None
             })
         
-        # Export exam sessions
-        for exam_session in ExamSession.query.all():
-            backup_data['exam_sessions'].append({
-                'id': exam_session.id,
-                'user_id': exam_session.user_id,
-                'exam_date': exam_session.exam_date.isoformat() if exam_session.exam_date else None,
-                'exam_time': exam_session.exam_time,
-                'session_name': exam_session.session_name,
-                'created_at': exam_session.created_at.isoformat() if exam_session.created_at else None
-            })
-        
-        # Export packets
-        for packet in Packet.query.all():
-            backup_data['packets'].append({
-                'id': packet.id,
-                'exam_id': packet.exam_id,
-                'packet_number': packet.packet_number,
-                'packet_id': packet.packet_id
-            })
-        
-        # Export cases
+        # Export cases (legacy questions/answers fields kept empty - data is in Question/Answer tables)
         for case in Case.query.all():
             backup_data['cases'].append({
                 'id': case.id,
-                'packet_id': case.packet_id,
+                # 'packet_id': case.packet_id,  # legacy field, can be omitted
                 'case_number': case.case_number,
                 'diagnosis': case.diagnosis,
-                'questions': case.questions,
-                'answers': case.answers,
+                'questions': '[]',  # Legacy field - no longer used, kept empty
+                'answers': '[]',   # Legacy field - no longer used, kept empty
                 'discussion': case.discussion
-            })
-        
-        # Export candidates
-        for candidate in Candidate.query.all():
-            backup_data['candidates'].append({
-                'id': candidate.id,
-                'exam_id': candidate.exam_id,
-                'candidate_name': candidate.candidate_name,
-                'candidate_number': candidate.candidate_number,
-                'packet_number': candidate.packet_number
             })
         
         # Export case images (base64 encoded)
@@ -228,8 +198,8 @@ def restore_backup():
                 packet_id=case_data['packet_id'],
                 case_number=case_data['case_number'],
                 diagnosis=case_data['diagnosis'],
-                questions=case_data['questions'],
-                answers=case_data['answers'],
+                questions='[]',  # Legacy field - no longer used, kept empty
+                answers='[]',   # Legacy field - no longer used, kept empty
                 discussion=case_data.get('discussion', '')
             )
             db.session.add(case)

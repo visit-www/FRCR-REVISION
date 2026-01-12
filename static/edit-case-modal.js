@@ -22,10 +22,15 @@ function populateEditModal(caseData, images) {
     document.getElementById('editCaseNumber').value = caseData.case_number || '';
     document.getElementById('editCaseDiagnosis').value = caseData.diagnosis || '';
     document.getElementById('editCaseDiscussion').value = caseData.discussion || '';
+        // Populate is_public toggle
+        if (typeof caseData.is_public !== 'undefined') {
+            document.getElementById('editCaseIsPublic').checked = !!caseData.is_public;
+        }
     
     // Update header info
     const headerInfo = document.getElementById('editCaseHeaderInfo');
     if (headerInfo) {
+    const isPublic = document.getElementById('editCaseIsPublic')?.checked || false;
         headerInfo.textContent = `Case #${caseData.case_number} - ${caseData.diagnosis}`;
     }
     
@@ -227,23 +232,23 @@ function populateImages(images) {
 
 // Edit image description - improved with modal dialog
 function editImageDescription(imageId) {
-    // Get current description
+    // Get current description (HTML)
     const descElement = document.getElementById(`desc-${imageId}`);
-    const currentDescription = descElement.innerText.trim() === 'No description' ? '' : descElement.innerText;
-    
-    // Create a modal for editing description
+    const currentDescription = descElement.innerHTML.trim() === '<em class="text-muted">No description</em>' ? '' : descElement.innerHTML;
+
+    // Create a modal for editing description with TinyMCE
     const modal = document.createElement('div');
     modal.className = 'modal fade';
     modal.id = 'descriptionModal';
     modal.innerHTML = `
-        <div class="modal-dialog modal-sm">
+        <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header bg-info text-white">
                     <h5 class="modal-title">Edit Image Description</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <textarea class="form-control" id="descriptionInput" rows="4" placeholder="Enter image description...">${escapeHtml(currentDescription)}</textarea>
+                    <textarea class="form-control rich-editor" id="descriptionInput" rows="6" placeholder="Enter image description..."></textarea>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -252,23 +257,53 @@ function editImageDescription(imageId) {
             </div>
         </div>
     `;
-    
+
     // Remove old modal if exists
     const oldModal = document.getElementById('descriptionModal');
     if (oldModal) oldModal.remove();
-    
+
     document.body.appendChild(modal);
     const bsModal = new bootstrap.Modal(modal);
     bsModal.show();
-    
+
+    // Initialize TinyMCE for the description textarea after modal is shown
+    setTimeout(() => {
+        if (typeof tinymce !== 'undefined') {
+            tinymce.init({
+                selector: '#descriptionInput',
+                height: 250,
+                menubar: false,
+                toolbar: 'undo redo | bold italic underline | numlist bullist | table link code removeformat',
+                plugins: 'table link code',
+                content_css: 'default',
+                skin: 'oxide',
+                setup: function(editor) {
+                    editor.on('init', function() {
+                        editor.setContent(currentDescription);
+                    });
+                }
+            });
+        }
+    }, 300);
+
     // Clean up after modal closes
-    modal.addEventListener('hidden.bs.modal', () => modal.remove());
+    modal.addEventListener('hidden.bs.modal', () => {
+        if (typeof tinymce !== 'undefined' && tinymce.get('descriptionInput')) {
+            tinymce.get('descriptionInput').remove();
+        }
+        modal.remove();
+    });
 }
 
 // Save image description
 function saveImageDescription(imageId) {
-    const newDescription = document.getElementById('descriptionInput').value.trim();
-    
+    let newDescription = '';
+    if (typeof tinymce !== 'undefined' && tinymce.get('descriptionInput')) {
+        newDescription = tinymce.get('descriptionInput').getContent();
+    } else {
+        newDescription = document.getElementById('descriptionInput').value.trim();
+    }
+
     fetch(`/api/case-image/${imageId}/description`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -278,11 +313,11 @@ function saveImageDescription(imageId) {
     .then(data => {
         const modal = bootstrap.Modal.getInstance(document.getElementById('descriptionModal'));
         modal.hide();
-        
+
         // Update the description on the page
         const descElement = document.getElementById(`desc-${imageId}`);
         if (descElement) {
-            descElement.innerHTML = newDescription ? escapeHtml(newDescription) : '<em class="text-muted">No description</em>';
+            descElement.innerHTML = newDescription ? newDescription : '<em class="text-muted">No description</em>';
         }
     })
     .catch(error => {
@@ -418,7 +453,12 @@ function uploadImage() {
 }
 
 // Save all changes - improved with validation and error handling
-function saveEditedCase() {
+function saveEditedCase(event) {
+    // Prevent any form submission
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
     const caseIdField = document.getElementById('editCaseId').value;
     const caseNumber = document.getElementById('editCaseNumber').value.trim();
     const diagnosis = document.getElementById('editCaseDiagnosis').value.trim();
@@ -437,9 +477,15 @@ function saveEditedCase() {
     const ageGroup = document.getElementById('editCaseAgeGroup')?.value || null;
     const isPublic = document.getElementById('editCaseIsPublic')?.checked || false;
     
-    // Validate required fields
-    if (!caseNumber) {
-        alert('Case number is required');
+    // Validate required fields (case_number is optional - auto-generated from body_part)
+    if (!module) {
+        alert('Module is required');
+        document.getElementById('editCaseModule')?.focus();
+        return;
+    }
+    if (!bodyPart) {
+        alert('Body Part is required');
+        document.getElementById('editCaseBodyPart')?.focus();
         return;
     }
     if (!diagnosis) {
@@ -470,9 +516,9 @@ function saveEditedCase() {
         }
     });
     
-    // Prepare data payload
+    // Prepare data payload (case_number can be empty - server will auto-generate from body_part)
     const payload = {
-        case_number: caseNumber,
+        case_number: caseNumber || null,
         diagnosis: diagnosis,
         discussion: discussion || null,
         module: module,
@@ -483,7 +529,12 @@ function saveEditedCase() {
     };
     
     // Show loading state
-    const saveBtn = event.target;
+    // Get the save button - handle both event.target and direct button lookup
+    const saveBtn = (event && event.target) || document.querySelector('button[onclick*="saveEditedCase"]') || document.querySelector('button:has(i.fa-save)');
+    if (!saveBtn) {
+        console.error('Save button not found');
+        return;
+    }
     const originalText = saveBtn.innerHTML;
     saveBtn.disabled = true;
     saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Saving...';
@@ -498,12 +549,14 @@ function saveEditedCase() {
     let endpoint = '';
     let method = '';
     
-    if (isNew && packetId) {
-        // Creating new case
+    if (isNew) {
+        // Creating new case (with or without packet)
         endpoint = '/api/case/create';
         method = 'POST';
-        payload.packet_id = packetId;
-    } else if (caseIdField && !caseIdField.startsWith('new-')) {
+        if (packetId) {
+            payload.packet_id = packetId;
+        }
+    } else if (caseIdField && !caseIdField.startsWith('new')) {
         // Editing existing case
         endpoint = `/api/case/${caseIdField}`;
         method = 'PUT';

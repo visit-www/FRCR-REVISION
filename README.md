@@ -99,12 +99,14 @@ Your companion app for FRCR exam preparation. Practice with real cases, take not
    pip install -r requirements.txt
    ```
 
-4. **Set environment variables** (optional for local development)
+4. **Set environment variables** (required for production, optional for local development)
    ```bash
-   # .env.local
+   # .env.local (for local development)
    DATABASE_URL=postgresql://...  # Optional: use PostgreSQL instead of SQLite
-   SECRET_KEY=your-secret-key     # Optional: defaults to dev key
+   SECRET_KEY=your-secret-key     # Required in production, optional for local dev
    ```
+   
+   **Important**: In production, `SECRET_KEY` must be set via environment variable. The app will fail to start if `SECRET_KEY` is not set in production environments.
 
 5. **Run the application**
    ```bash

@@ -351,6 +351,11 @@
     #highlightBtnFloating.active {
         background-color: #667eea !important;
         animation: pulse 2s infinite;
+        opacity: 1 !important;
+    }
+    
+    #highlightBtnFloating[style*="opacity: 0.7"] {
+        border: 2px solid rgba(102, 126, 234, 0.5);
     }
     
     #highlightColorMenuFloating {
@@ -1009,8 +1014,9 @@
     let selectedText = '';
     let highlightMenu = null;
     let highlightMode = false;
-    let selectedHighlightColor = null;
+    let selectedHighlightColor = null; // Persists across highlight sessions
     let currentHighlightField = null;
+    let colorMenuOpen = false; // Track if color menu is currently open
     
     // Initialize highlighting for students only
     function initHighlighting() {
@@ -1040,6 +1046,28 @@
         const colorMenu = document.getElementById('highlightColorMenuFloating');
         
         if (highlightBtn && colorMenu) {
+            // Track dropdown open/close state
+            highlightBtn.addEventListener('show.bs.dropdown', function() {
+                colorMenuOpen = true;
+                // If color is already selected, activate highlight mode when menu opens
+                if (selectedHighlightColor && !highlightMode) {
+                    highlightMode = true;
+                    highlightBtn.style.backgroundColor = getColorHex(selectedHighlightColor);
+                    highlightBtn.style.opacity = '1';
+                    highlightBtn.classList.add('active');
+                    if (cancelBtn) cancelBtn.style.display = 'block';
+                    showHighlightModeFeedback();
+                }
+            });
+            
+            highlightBtn.addEventListener('hide.bs.dropdown', function() {
+                colorMenuOpen = false;
+                // If color is selected and mode is active, keep mode active (menu just closed)
+                if (selectedHighlightColor && highlightMode) {
+                    // Mode stays active, user can now select text
+                }
+            });
+            
             // Handle color selection from dropdown
             colorMenu.querySelectorAll('.highlight-color-option').forEach(function(item) {
                 item.addEventListener('click', function(e) {
@@ -1053,6 +1081,7 @@
                     
                     // Update button to show selected color
                     highlightBtn.style.backgroundColor = getColorHex(color);
+                    highlightBtn.style.opacity = '1';
                     highlightBtn.classList.add('active');
                     
                     // Show cancel option in dropdown
@@ -1094,13 +1123,20 @@
     
     function exitHighlightMode(prefix) {
         highlightMode = false;
-        selectedHighlightColor = null;
+        // Keep selectedHighlightColor stored for next time (don't clear it)
         currentHighlightField = null;
         
-        // Reset floating highlight button
+        // Reset floating highlight button appearance (but keep color stored)
         const highlightBtn = document.getElementById('highlightBtnFloating');
         if (highlightBtn) {
-            highlightBtn.style.backgroundColor = '';
+            // Reset to default button color, but if we have a stored color, show it subtly
+            if (selectedHighlightColor) {
+                highlightBtn.style.backgroundColor = getColorHex(selectedHighlightColor);
+                highlightBtn.style.opacity = '0.7'; // Dimmed to show it's ready but not active
+            } else {
+                highlightBtn.style.backgroundColor = '';
+                highlightBtn.style.opacity = '1';
+            }
             highlightBtn.classList.remove('active');
         }
         
@@ -1121,6 +1157,7 @@
         // Add visual feedback that highlight mode is active
         const feedback = document.createElement('div');
         feedback.id = 'highlightModeFeedback';
+        const colorName = selectedHighlightColor ? selectedHighlightColor.charAt(0).toUpperCase() + selectedHighlightColor.slice(1) : 'selected';
         feedback.style.cssText = `
             position: fixed;
             top: 20px;
@@ -1135,7 +1172,7 @@
             font-weight: 500;
             animation: slideIn 0.3s ease-out;
         `;
-        feedback.innerHTML = `<i class="fas fa-highlighter me-2"></i>Highlight mode active: Select text to highlight`;
+        feedback.innerHTML = `<i class="fas fa-highlighter me-2"></i>Highlight mode: ${colorName} - Select text to highlight`;
         document.body.appendChild(feedback);
     }
     
@@ -1185,8 +1222,9 @@
                     // Clear selection
                     selection.removeAllRanges();
                     
-                    // Exit highlight mode after creating highlight
-                    exitHighlightMode('');
+                    // Keep highlight mode active after creating highlight (for quick consecutive highlights)
+                    // Only exit if user explicitly cancels
+                    // exitHighlightMode(''); // Removed - keep mode active for quick highlighting
                 } catch (err) {
                     console.error('Error in handleTextSelection:', err);
                 }
@@ -1404,7 +1442,24 @@
         .then(data => {
             if (data.success) {
                 // Reload highlights to show new one
-                loadHighlights();
+                setTimeout(() => {
+                    loadHighlights();
+                }, 200);
+                
+                // Show brief success feedback
+                const feedback = document.getElementById('highlightModeFeedback');
+                if (feedback) {
+                    const originalText = feedback.innerHTML;
+                    feedback.innerHTML = `<i class="fas fa-check me-2"></i>Highlighted! Select more text to continue`;
+                    feedback.style.background = '#4CAF50';
+                    setTimeout(() => {
+                        if (feedback && feedback.parentNode) {
+                            const colorName = selectedHighlightColor ? selectedHighlightColor.charAt(0).toUpperCase() + selectedHighlightColor.slice(1) : 'selected';
+                            feedback.innerHTML = `<i class="fas fa-highlighter me-2"></i>Highlight mode: ${colorName} - Select text to highlight`;
+                            feedback.style.background = '#667eea';
+                        }
+                    }, 1500);
+                }
             } else {
                 alert('Failed to create highlight: ' + (data.error || 'Unknown error'));
             }
