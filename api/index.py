@@ -14,6 +14,5 @@ if parent_dir not in sys.path:
 # Import Flask app
 from app import app
 
-# Export app for Vercel WSGI handler
-# Vercel will call this as the ASGI application
-
+# Export app for Vercel Python runtime
+# Vercel will automatically detect Flask app and use it as WSGI application
