@@ -166,31 +166,33 @@ def unauthorized():
 @app.before_request
 def ensure_tables_exist():
     """Ensure database tables exist before handling requests"""
+    # Skip for static files and health checks
+    if request.endpoint in ['static', None] or request.path.startswith('/static'):
+        return
+    
     try:
-        # Quick check - try to query the user table
-        # This will fail if table doesn't exist, triggering creation
-        with app.app_context():
+        # Check if tables exist using SQLAlchemy inspector
+        from sqlalchemy import inspect
+        inspector = inspect(db.engine)
+        tables = inspector.get_table_names()
+        
+        if 'user' not in tables:
+            print("[DB] User table missing - creating all tables...")
             try:
-                # Try a simple query to see if tables exist
-                from sqlalchemy import inspect
+                db.create_all()
+                # Verify tables were created
                 inspector = inspect(db.engine)
-                tables = inspector.get_table_names()
-                
-                if 'user' not in tables:
-                    print("[DB] User table missing - creating all tables...")
-                    db.create_all()
-                    print("[DB] All tables created successfully")
-            except Exception as check_error:
-                # If inspection fails, try creating tables anyway
-                print(f"[DB] Could not check tables, attempting to create: {check_error}")
-                try:
-                    db.create_all()
-                    print("[DB] Tables created successfully")
-                except Exception as create_error:
-                    print(f"[DB] Could not create tables: {create_error}")
+                new_tables = inspector.get_table_names()
+                print(f"[DB] Tables created successfully: {new_tables}")
+            except Exception as create_error:
+                print(f"[DB] ERROR creating tables: {create_error}")
+                import traceback
+                traceback.print_exc()
     except Exception as e:
         # Log but don't fail the request - let the route handle it
         print(f"[DB] Warning: Could not ensure tables exist: {e}")
+        import traceback
+        traceback.print_exc()
 
 # ==================== SAFE HTML RENDERING ====================
 def convert_pipe_table_to_html(text):
