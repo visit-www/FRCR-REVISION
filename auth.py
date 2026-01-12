@@ -153,14 +153,36 @@ def register():
             
             # Verify user was saved by querying it back in a fresh query
             # This ensures the transaction was actually persisted to the database
-            # Use a new query to bypass any session caching
-            db.session.expire_all()  # Clear session cache
+            # Expire all objects to force fresh load from database
+            db.session.expire_all()
+            
+            # Query user again to verify it was actually saved to database
+            # Use with_entities to ensure password_hash column is loaded
             verified_user = User.query.filter_by(id=user_id).first()
             if not verified_user:
                 print(f"[REGISTER] ERROR: User was not saved! ID: {user_id}")
                 return jsonify({'error': 'Registration failed. User was not saved to database.'}), 500
             
             print(f"[REGISTER] User verified in database - ID: {verified_user.id}, Email: {verified_user.email}")
+            
+            # Verify password_hash was saved correctly
+            if not verified_user.password_hash:
+                print(f"[REGISTER] ERROR: Password hash missing for verified user!")
+                return jsonify({'error': 'Registration failed. Password was not saved correctly.'}), 500
+            
+            print(f"[REGISTER] Password hash verified - Length: {len(verified_user.password_hash)}")
+            
+            # Test password verification to ensure it works immediately after save
+            try:
+                test_verify = verified_user.check_password(password)
+                print(f"[REGISTER] Password verification test: {test_verify}")
+                if not test_verify:
+                    print(f"[REGISTER] WARNING: Password verification failed immediately after save!")
+                    print(f"[REGISTER] Password hash value (first 50 chars): {verified_user.password_hash[:50] if verified_user.password_hash else 'None'}")
+            except Exception as verify_error:
+                print(f"[REGISTER] ERROR testing password verification: {verify_error}")
+                import traceback
+                traceback.print_exc()
             
             # Refresh the user object from the verified query
             user = verified_user
@@ -205,17 +227,29 @@ def login():
         if not email or not password:
             return jsonify({'error': 'Email and password required'}), 400
         
+        # Query user and ensure password_hash is loaded
         user = User.query.filter_by(email=email).first()
         
         if not user:
             print(f"[AUTH] User not found: {email}")
             return jsonify({'error': 'Invalid email or password'}), 401
         
+        # Debug: Check if user was properly loaded
+        print(f"[AUTH] User found - ID: {user.id}, Email: {user.email}, Active: {user.is_active}")
+        print(f"[AUTH] Password hash exists: {bool(user.password_hash)}, Length: {len(user.password_hash) if user.password_hash else 0}")
+        
+        # Ensure password_hash is loaded (refresh from database if needed)
+        if not user.password_hash:
+            print(f"[AUTH] WARNING: No password hash found for user {email}, refreshing from database")
+            db.session.refresh(user)
+            if not user.password_hash:
+                print(f"[AUTH] ERROR: Password hash still missing after refresh for user {email}")
+                return jsonify({'error': 'User account error. Please contact administrator.'}), 500
+        
         # Debug password check with better error handling
         try:
             password_valid = user.check_password(password)
             print(f"[AUTH] Login attempt - Email: {email}, Password valid: {password_valid}, User active: {user.is_active}")
-            print(f"[AUTH] Password hash exists: {bool(user.password_hash)}, Length: {len(user.password_hash) if user.password_hash else 0}")
         except Exception as e:
             print(f"[AUTH] ERROR checking password: {str(e)}")
             import traceback
