@@ -2058,8 +2058,8 @@ def delete_case(case_id):
         CaseImage.query.filter_by(case_id=case_id).delete()
         
         # Delete the case
-    db.session.delete(case)
-    db.session.commit()
+        db.session.delete(case)
+        db.session.commit()
     
         return jsonify({
             'success': True,
