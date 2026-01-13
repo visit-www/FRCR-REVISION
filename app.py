@@ -1076,7 +1076,7 @@ def cases_by_module(module):
     
     if is_student:
         # Students: only public cases, use student template
-    query = Case.query.filter_by(module=module_enum, is_public=True)
+        query = Case.query.filter_by(module=module_enum, is_public=True)
     else:
         # Admins/Content Managers: all cases
         query = Case.query.filter_by(module=module_enum)
