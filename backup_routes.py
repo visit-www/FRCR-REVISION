@@ -195,8 +195,13 @@ def restore_backup():
         return jsonify({'error': 'Only JSON backup files are supported'}), 400
     
     try:
-        # Read and parse JSON
+        # Read and parse JSON - IMPORTANT: Read file content ONCE and store in memory
+        # This prevents "Body is disturbed or locked" errors on PostgreSQL/Supabase
+        # which can occur if the request body stream is read multiple times
         file_content = file.read().decode('utf-8')
+        
+        # Clear the file reference to ensure we don't try to read it again
+        file = None
         
         # Handle case where file might already be a string (double-encoded)
         if isinstance(file_content, str):
@@ -207,6 +212,10 @@ def restore_backup():
                 backup_data = file_content if isinstance(file_content, dict) else json.loads(file_content)
         else:
             backup_data = file_content
+        
+        # Clear file_content from memory after parsing (for large files)
+        # Keep backup_data as it's needed for the import
+        file_content = None
         
         # Ensure backup_data is a dictionary
         if not isinstance(backup_data, dict):
@@ -398,11 +407,14 @@ def restore_backup():
                     if new_user:
                         user_id_map[old_id] = new_user.id
         
-        # Import Cases
+        # Import Cases with batch commits (every 50 cases)
         case_id_map = {}  # Map old case IDs from backup to new case IDs (production cases only)
         staging_id_map = {}  # Map old case IDs from backup to staging IDs (staging cases only)
         
-        for case_data in backup_data.get('cases', []):
+        CASE_BATCH_SIZE = 50  # Commit every 50 cases to avoid long transactions
+        cases_list = backup_data.get('cases', [])
+        
+        for case_idx, case_data in enumerate(cases_list):
             # Filter out unknown fields - only keep fields that exist in Case model
             valid_case_keys = ['case_number', 'diagnosis', 'discussion', 'module', 'body_part', 'age_group', 'is_public', 'created_by_user_id', 'created_at']
             filtered_data = {k: v for k, v in case_data.items() if k in valid_case_keys}
@@ -872,15 +884,36 @@ def restore_backup():
             # Store case ID mapping (for both new and existing cases)
             if old_case_id and new_case_id:
                 case_id_map[old_case_id] = new_case_id
+            
+            # Commit in batches to avoid long transactions
+            if (case_idx + 1) % CASE_BATCH_SIZE == 0:
+                try:
+                    db.session.commit()
+                    print(f"[IMPORT] Committed batch of {CASE_BATCH_SIZE} cases ({case_idx + 1}/{len(cases_list)})")
+                except Exception as batch_error:
+                    db.session.rollback()
+                    error_str = str(batch_error).lower()
+                    print(f"[IMPORT] ERROR during case batch commit: {batch_error}")
+                    print(f"[IMPORT] Case data that failed: case_number={filtered_data.get('case_number')}, module={filtered_data.get('module')}, body_part={filtered_data.get('body_part')}, age_group={filtered_data.get('age_group')}")
+                    import traceback
+                    traceback.print_exc()
+                    if 'timeout' in error_str or 'connection' in error_str or 'disturbed' in error_str or 'locked' in error_str:
+                        raise Exception('Database connection issue during case import. Please try again or split the import into smaller batches.')
+                    raise
         
+        # Final commit for any remaining cases
         try:
             db.session.commit()
+            print(f"[IMPORT] Final commit completed for remaining cases")
         except Exception as commit_error:
             db.session.rollback()
-            print(f"[IMPORT] ERROR during case commit: {commit_error}")
+            error_str = str(commit_error).lower()
+            print(f"[IMPORT] ERROR during final case commit: {commit_error}")
             print(f"[IMPORT] Case data that failed: case_number={filtered_data.get('case_number')}, module={filtered_data.get('module')}, body_part={filtered_data.get('body_part')}, age_group={filtered_data.get('age_group')}")
             import traceback
             traceback.print_exc()
+            if 'timeout' in error_str or 'connection' in error_str or 'disturbed' in error_str or 'locked' in error_str:
+                raise Exception('Database connection issue during case import. Please try again or split the import into smaller batches.')
             raise
         
         # Import images from separate case_images array (FRCR Examiner format)
@@ -1068,10 +1101,12 @@ def restore_backup():
                 db.session.add(flag)
                 stats['case_flags']['added'] += 1
         
-        # Import highlights
+        # Import highlights with batch commits (every 100 records)
         # For FRCR Examiner: Skip user-specific data
+        BATCH_SIZE = 100  # Commit every 100 records to avoid long transactions
         if not is_frcr_examiner:
-            for highlight_data in backup_data.get('highlights', []):
+            highlights_list = backup_data.get('highlights', [])
+            for idx, highlight_data in enumerate(highlights_list):
                 # Map user_id and case_id from backup using ID mappings
                 old_user_id = highlight_data.get('user_id')
                 old_case_id = highlight_data.get('case_id')
@@ -1102,11 +1137,25 @@ def restore_backup():
                         print(f"[IMPORT] Warning: Could not parse highlight created_at datetime: {highlight_data.get('created_at')}, error: {e}")
                 db.session.add(highlight)
                 stats['highlights']['added'] += 1
+                
+                # Commit in batches to avoid long transactions
+                if (idx + 1) % BATCH_SIZE == 0:
+                    try:
+                        db.session.commit()
+                        print(f"[IMPORT] Committed batch of {BATCH_SIZE} highlights ({idx + 1}/{len(highlights_list)})")
+                    except Exception as batch_error:
+                        db.session.rollback()
+                        error_str = str(batch_error).lower()
+                        print(f"[IMPORT] ERROR during highlights batch commit: {batch_error}")
+                        if 'timeout' in error_str or 'connection' in error_str or 'disturbed' in error_str or 'locked' in error_str:
+                            raise Exception('Database connection issue during import. Please try again or split the import into smaller batches.')
+                        raise
         
-        # Import notes
+        # Import notes with batch commits (every 100 records)
         # For FRCR Examiner: Skip user-specific data
         if not is_frcr_examiner:
-            for note_data in backup_data.get('notes', []):
+            notes_list = backup_data.get('notes', [])
+            for idx, note_data in enumerate(notes_list):
                 # Map user_id and case_id from backup using ID mappings
                 old_user_id = note_data.get('user_id')
                 old_case_id = note_data.get('case_id')
@@ -1135,21 +1184,35 @@ def restore_backup():
                         print(f"[IMPORT] Warning: Could not parse note created_at datetime: {note_data.get('created_at')}, error: {e}")
                 db.session.add(note)
                 stats['notes']['added'] += 1
+                
+                # Commit in batches to avoid long transactions
+                if (idx + 1) % BATCH_SIZE == 0:
+                    try:
+                        db.session.commit()
+                        print(f"[IMPORT] Committed batch of {BATCH_SIZE} notes ({idx + 1}/{len(notes_list)})")
+                    except Exception as batch_error:
+                        db.session.rollback()
+                        error_str = str(batch_error).lower()
+                        print(f"[IMPORT] ERROR during notes batch commit: {batch_error}")
+                        if 'timeout' in error_str or 'connection' in error_str or 'disturbed' in error_str or 'locked' in error_str:
+                            raise Exception('Database connection issue during import. Please try again or split the import into smaller batches.')
+                        raise
         
-        # Commit all notes at once (batch commit)
+        # Final commit for any remaining highlights/notes
         # For PostgreSQL/Supabase: Handle connection timeouts and transaction issues
         try:
             db.session.commit()
+            print(f"[IMPORT] Final commit completed for remaining highlights/notes")
         except Exception as commit_error:
             db.session.rollback()
             error_str = str(commit_error).lower()
-            print(f"[IMPORT] ERROR during notes batch commit: {commit_error}")
+            print(f"[IMPORT] ERROR during final commit: {commit_error}")
             import traceback
             traceback.print_exc()
             
-            # Check for PostgreSQL-specific errors
-            if 'timeout' in error_str or 'connection' in error_str:
-                raise Exception('Database connection timeout. The import may be too large. Please try importing in smaller batches.')
+            # Check for PostgreSQL-specific errors including "disturbed" or "locked"
+            if 'timeout' in error_str or 'connection' in error_str or 'disturbed' in error_str or 'locked' in error_str:
+                raise Exception('Database connection timeout or body error. The import may be too large or the connection was interrupted. Please try importing in smaller batches.')
             elif 'deadlock' in error_str or 'lock' in error_str:
                 raise Exception('Database transaction conflict. Please try again in a few moments.')
             else:
