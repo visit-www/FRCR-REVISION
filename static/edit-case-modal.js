@@ -989,61 +989,74 @@ function saveEditedCase(event) {
                                             credentials: 'same-origin', // Ensure cookies are sent
                                             signal: controller.signal
                                         })
-                                .then(async r => {
-                                    console.log('[SAVE] Upload response status:', r.status, 'for', file.name);
-                                    if (!r.ok) {
-                                        let errorMessage = r.statusText;
-                                        try {
-                                            const errorData = await r.json();
-                                            errorMessage = errorData.error || errorMessage;
-                                            console.error('[SAVE] Upload error response:', errorData);
-                                        } catch (e) {
-                                            // Not JSON, try to get text
-                                            try {
-                                                const errorText = await r.text();
-                                                errorMessage = errorText || errorMessage;
-                                            } catch (e2) {
-                                                // Can't read response
+                                        .then(async r => {
+                                            console.log('[SAVE] Upload response status:', r.status, 'for', file.name);
+                                            if (!r.ok) {
+                                                let errorMessage = r.statusText;
+                                                try {
+                                                    const errorData = await r.json();
+                                                    errorMessage = errorData.error || errorMessage;
+                                                    console.error('[SAVE] Upload error response:', errorData);
+                                                } catch (e) {
+                                                    // Not JSON, try to get text
+                                                    try {
+                                                        const errorText = await r.text();
+                                                        errorMessage = errorText || errorMessage;
+                                                    } catch (e2) {
+                                                        // Can't read response
+                                                    }
+                                                }
+                                                throw new Error(`Upload failed (${r.status}): ${errorMessage}`);
                                             }
-                                        }
-                                        throw new Error(`Upload failed (${r.status}): ${errorMessage}`);
+                                            const contentType = r.headers.get('content-type');
+                                            if (!contentType || !contentType.includes('application/json')) {
+                                                const responseText = await r.text();
+                                                console.warn('[SAVE] Non-JSON response:', responseText.substring(0, 100));
+                                                throw new Error('Server returned non-JSON response');
+                                            }
+                                            return r.json();
+                                        })
+                                        .then(data => {
+                                            clearTimeout(timeoutId);
+                                            console.log('[SAVE] Pending image uploaded successfully:', file.name, data);
+                                            resolve(data);
+                                        })
+                                        .catch(error => {
+                                            clearTimeout(timeoutId);
+                                            console.error('[SAVE] Error uploading pending image (attempt ' + (retryCount + 1) + '):', file.name, error);
+                                            
+                                            // Retry on network errors
+                                            if ((error.message.includes('Load failed') || error.message.includes('Failed to fetch') || error.name === 'TypeError') && retryCount < maxRetries) {
+                                                retryCount++;
+                                                console.log('[SAVE] Retrying upload for', file.name, '- attempt', retryCount + 1);
+                                                setTimeout(() => {
+                                                    attemptUpload();
+                                                }, 1000 * retryCount); // Exponential backoff
+                                                return;
+                                            }
+                                            
+                                            console.error('[SAVE] Error details:', {
+                                                name: error.name,
+                                                message: error.message,
+                                                stack: error.stack
+                                            });
+                                            
+                                            // Provide more specific error message
+                                            let errorMsg = error.message;
+                                            if (error.name === 'AbortError') {
+                                                errorMsg = 'Upload timeout - file may be too large or network is slow';
+                                            } else if (error.message.includes('Load failed') || error.message.includes('Failed to fetch')) {
+                                                errorMsg = 'Network error - please check your connection and try again';
+                                            }
+                                            
+                                            reject(new Error(errorMsg));
+                                        });
                                     }
-                                    const contentType = r.headers.get('content-type');
-                                    if (!contentType || !contentType.includes('application/json')) {
-                                        const responseText = await r.text();
-                                        console.warn('[SAVE] Non-JSON response:', responseText.substring(0, 100));
-                                        throw new Error('Server returned non-JSON response');
-                                    }
-                                    return r.json();
-                                })
-                                .then(data => {
-                                    clearTimeout(timeoutId);
-                                    console.log('[SAVE] Pending image uploaded successfully:', file.name, data);
-                                    resolve(data);
-                                })
-                                .catch(error => {
-                                    clearTimeout(timeoutId);
-                                    console.error('[SAVE] Error uploading pending image:', file.name, error);
-                                    console.error('[SAVE] Error details:', {
-                                        name: error.name,
-                                        message: error.message,
-                                        stack: error.stack
-                                    });
                                     
-                                    // Provide more specific error message
-                                    let errorMsg = error.message;
-                                    if (error.name === 'AbortError') {
-                                        errorMsg = 'Upload timeout - file may be too large or network is slow';
-                                    } else if (error.message.includes('Load failed') || error.message.includes('Failed to fetch')) {
-                                        errorMsg = 'Network error - please check your connection and try again';
-                                    }
-                                    
-                                    reject(new Error(errorMsg));
-                                });
-                            }, index * 300); // Stagger uploads slightly
+                                    attemptUpload();
+                                }, index * 500); // Stagger uploads more (500ms between each)
                         });
-                    });
-                    
+                        
                         // Wait for all uploads to complete before showing success message or redirecting
                         Promise.all(uploadPromises)
                         .then(results => {
