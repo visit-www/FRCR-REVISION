@@ -1088,14 +1088,16 @@ function saveEditedCase(event) {
                         })
                         .catch(error => {
                             console.error('[SAVE] Some pending images failed to upload:', error);
-                            alert('Case saved, but some images failed to upload. Please try uploading them again.');
-                            // Still redirect to view case
+                            const errorMsg = error.message || error.toString();
+                            alert(`Case saved, but some images failed to upload: ${errorMsg}\n\nPlease try uploading them again from the edit case page.`);
+                            // Still redirect to view case so user can edit and upload images
                             if (window.pendingRedirectUrl) {
                                 window.location.href = window.pendingRedirectUrl;
                             } else {
                                 window.location.href = `/view-case/${newCaseId}`;
                             }
                         });
+                    }, 500); // Wait 500ms after case creation before starting uploads
                 } else {
                     console.log('[SAVE] No pending images to upload. window.pendingImages:', window.pendingImages);
                     console.log('[SAVE] isNew:', isNew, 'newCaseId:', data.id || data.case_id);
