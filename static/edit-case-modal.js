@@ -612,9 +612,48 @@ function uploadImage() {
     
     const caseId = document.getElementById('editCaseId').value;
     
-    // Check if this is a new case (not yet saved)
+    // For new cases, store images temporarily and upload after case is saved
     if (!caseId || caseId === 'new' || caseId.startsWith('new-')) {
-        alert('Please save the case first before uploading images. After saving, you can add images.');
+        // Store image in temporary storage for upload after case creation
+        if (!window.pendingImages) {
+            window.pendingImages = [];
+        }
+        window.pendingImages.push(file);
+        
+        // Show preview of pending image
+        const container = document.getElementById('editImagesContainer');
+        if (container) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const imageCard = document.createElement('div');
+                imageCard.className = 'col-md-3 mb-3';
+                imageCard.innerHTML = `
+                    <div class="card image-card" style="opacity: 0.7;">
+                        <img src="${e.target.result}" class="card-img-top" style="height: 180px; object-fit: cover;">
+                        <div class="card-body p-2">
+                            <small class="text-muted d-block text-truncate" title="${file.name}">
+                                📁 ${file.name}
+                            </small>
+                            <small class="text-warning d-block mt-1">
+                                <i class="fas fa-clock me-1"></i>Pending upload (save case first)
+                            </small>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(imageCard);
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        // Clear input
+        input.value = '';
+        
+        // Show message
+        if (typeof showToast === 'function') {
+            showToast('Image will be uploaded after you save the case', 'info');
+        } else {
+            alert('Image added. It will be uploaded after you save the case.');
+        }
         return;
     }
     
@@ -807,9 +846,6 @@ function saveEditedCase(event) {
         // Creating new case (with or without packet)
         endpoint = '/api/case/create';
         method = 'POST';
-        if (packetId) {
-            payload.packet_id = packetId;
-        }
     } else if (caseIdField && !caseIdField.startsWith('new')) {
         // Editing existing case
         endpoint = `/api/case/${caseIdField}`;
@@ -873,11 +909,62 @@ function saveEditedCase(event) {
         console.log('[SAVE] Parsed response data:', data);
         
         if (data.success || data.id || data.case_id) {
-            // If this was a new case, update the caseId field so images can be uploaded
+            // If this was a new case, update the caseId field and upload pending images
             if (isNew && (data.id || data.case_id)) {
                 const newCaseId = data.id || data.case_id;
                 document.getElementById('editCaseId').value = newCaseId;
                 console.log('[SAVE] Updated caseId to:', newCaseId, 'for image uploads');
+                
+                // Upload any pending images that were added before saving
+                if (window.pendingImages && window.pendingImages.length > 0) {
+                    console.log('[SAVE] Uploading', window.pendingImages.length, 'pending images');
+                    const pendingImages = [...window.pendingImages]; // Copy array
+                    window.pendingImages = []; // Clear array
+                    
+                    // Upload each pending image
+                    pendingImages.forEach((file, index) => {
+                        setTimeout(() => {
+                            const formData = new FormData();
+                            formData.append('image', file);
+                            
+                            fetch(`/api/case/${newCaseId}/image`, {
+                                method: 'POST',
+                                body: formData
+                            })
+                            .then(async r => {
+                                if (!r.ok) {
+                                    let errorMessage = r.statusText;
+                                    try {
+                                        const errorData = await r.json();
+                                        errorMessage = errorData.error || errorMessage;
+                                    } catch (e) {
+                                        // Not JSON
+                                    }
+                                    throw new Error(errorMessage);
+                                }
+                                const contentType = r.headers.get('content-type');
+                                if (!contentType || !contentType.includes('application/json')) {
+                                    throw new Error('Server returned non-JSON response');
+                                }
+                                return r.json();
+                            })
+                            .then(data => {
+                                console.log('[SAVE] Pending image uploaded:', file.name);
+                                // Reload images after all are uploaded
+                                if (index === pendingImages.length - 1) {
+                                    setTimeout(() => {
+                                        if (typeof reloadImages === 'function') {
+                                            reloadImages(newCaseId);
+                                        }
+                                    }, 500);
+                                }
+                            })
+                            .catch(error => {
+                                console.error('[SAVE] Error uploading pending image:', file.name, error);
+                            });
+                        }, index * 200); // Stagger uploads slightly
+                    });
+                }
             }
             
             if (isStagingCase) {

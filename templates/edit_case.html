@@ -617,7 +617,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const caseId = params.get('id');
     const stagingId = params.get('staging_id');
     const isNew = params.get('new') === 'true';
-    const packetId = params.get('packetId');
     
     // Initialize discussion editor - TinyMCE loader script will handle it
     // But also try here as fallback (in case script loaded before DOMContentLoaded)
@@ -651,9 +650,6 @@ document.addEventListener('DOMContentLoaded', function() {
     if (stagingId) {
         // Load staging case for review
         loadStagingCaseForEdit(stagingId);
-    } else if (isNew && packetId) {
-        // Initialize for creating a new case
-        initializeNewCase(packetId);
     } else if (isNew) {
         // Initialize for creating a new standalone case (from /cases)
         initializeNewStandaloneCase();
