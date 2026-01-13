@@ -31,6 +31,7 @@ def check_admin():
     
     # Force refresh user from database to get latest role
     # Query directly from database to bypass any caching issues with PostgreSQL/Supabase
+    user_from_db = None
     try:
         # Query user directly from database to ensure we get the latest role
         # This is important for PostgreSQL where enum values might be cached
@@ -86,15 +87,37 @@ def check_admin():
             print(f"[ENRICHMENT] Could not fix role: {e}")
             return jsonify({'error': 'Access denied. Please ensure you are logged in as an admin.'}), 403
     
-    # Compare with ADMIN enum - use value comparison as fallback
+    # Compare with ADMIN enum - handle case differences between DB and Python
+    # PostgreSQL stores enum as 'ADMIN' (uppercase), Python enum value is 'admin' (lowercase)
     is_admin = False
+    
+    # Method 1: Direct enum comparison
     if isinstance(user_role, UserRole):
         is_admin = user_role == UserRole.ADMIN
-        # Also check by value as fallback
-        if not is_admin:
-            is_admin = user_role.value == UserRole.ADMIN.value
+        print(f"[ENRICHMENT] Direct enum comparison: {is_admin}")
     
-    print(f"[ENRICHMENT] Comparing: {user_role} == {UserRole.ADMIN}? Result: {is_admin}")
+    # Method 2: Value comparison (case-insensitive) - handles DB storing 'ADMIN' vs Python 'admin'
+    if not is_admin:
+        role_value = user_role.value.lower() if hasattr(user_role, 'value') and isinstance(user_role, UserRole) else str(user_role).lower()
+        admin_value = UserRole.ADMIN.value.lower()
+        is_admin = role_value == admin_value
+        print(f"[ENRICHMENT] Case-insensitive value comparison: '{role_value}' == '{admin_value}'? {is_admin}")
+    
+    # Method 3: Check raw database value (PostgreSQL stores as 'ADMIN' uppercase)
+    if not is_admin and user_from_db:
+        try:
+            from sqlalchemy import text
+            result = db.session.execute(text("SELECT role::text FROM \"user\" WHERE id = :user_id"), {"user_id": user_from_db.id})
+            db_role_raw = result.scalar()
+            if db_role_raw:
+                db_role_lower = str(db_role_raw).lower()
+                if db_role_lower == 'admin':
+                    print(f"[ENRICHMENT] Database raw value check: '{db_role_raw}' -> '{db_role_lower}' == 'admin'")
+                    is_admin = True
+        except Exception as e:
+            print(f"[ENRICHMENT] Could not check raw DB value: {e}")
+    
+    print(f"[ENRICHMENT] Final admin check result: {is_admin}")
     print(f"[ENRICHMENT] Role value: '{user_role.value if hasattr(user_role, 'value') else user_role}', ADMIN value: '{UserRole.ADMIN.value}'")
     
     if not is_admin:
