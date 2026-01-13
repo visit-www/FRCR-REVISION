@@ -1302,18 +1302,23 @@
         // Setup highlight toolbars
         setupHighlightToolbars();
         
+        // Setup visual feedback cursor for highlighting
+        setupHighlightCursor();
+        
         // Add mouseup listener for text selection when in highlight mode (desktop)
         document.addEventListener('mouseup', handleTextSelection);
+        document.addEventListener('mousemove', handleMouseMove);
         
-        // Add touchend listener for mobile devices (iPhone, iPad, etc.)
-        // Use passive to improve mobile performance and allow text selection to work naturally
-        document.addEventListener('touchend', handleTextSelection, { passive: true });
+        // Enhanced touch handlers for mobile highlighting (like sketch pen)
+        document.addEventListener('touchstart', handleTouchStart, { passive: true });
+        document.addEventListener('touchmove', handleTouchMove, { passive: true });
+        document.addEventListener('touchend', handleTouchEnd, { passive: true });
         
         // Add selectionchange listener for better mobile support
         // This fires when text selection changes, which is more reliable on mobile
         let selectionChangeTimeout = null;
         document.addEventListener('selectionchange', function() {
-            if (highlightMode && selectedHighlightColor) {
+            if (highlightMode && selectedHighlightColor && !isTouchHighlighting) {
                 // Clear any pending timeout
                 if (selectionChangeTimeout) {
                     clearTimeout(selectionChangeTimeout);
@@ -1349,8 +1354,11 @@
                                     fieldElement.hasAttribute('data-field'))) {
                                     // Prevent double-processing
                                     const currentText = selection.toString().trim();
-                                    if (currentText && currentText !== selectedText) {
+                                    const highlightKey = `${currentText}|${selectedHighlightColor}|${fieldElement.dataset?.field || 'discussion'}`;
+                                    
+                                    if (currentText && currentText !== selectedText && !processedHighlights.has(highlightKey)) {
                                         selectedText = currentText;
+                                        processedHighlights.add(highlightKey);
                                         const fieldName = fieldElement.dataset?.field || 
                                             fieldElement.getAttribute('data-field') || 
                                             currentHighlightField || 'discussion';
@@ -1358,7 +1366,7 @@
                                         // Clear selection after a brief moment to show the highlight was created
                                         setTimeout(function() {
                                             selection.removeAllRanges();
-                                        }, 100);
+                                        }, 200);
                                     }
                                 }
                             } catch (err) {
@@ -1366,7 +1374,7 @@
                             }
                         }
                     }
-                }, 500); // Longer delay for mobile to ensure selection is stable (iOS needs more time)
+                }, 300); // Shorter delay since we're using touch handlers
             }
         });
     }
@@ -1462,8 +1470,15 @@
     
     function exitHighlightMode(prefix) {
         highlightMode = false;
+        isTouchHighlighting = false;
         // Keep selectedHighlightColor stored for next time (don't clear it)
         currentHighlightField = null;
+        
+        // Clear processed highlights set when exiting mode
+        processedHighlights.clear();
+        
+        // Hide highlight cursor
+        updateHighlightCursor(0, 0, false);
         
         // Reset floating highlight button appearance (but keep color stored)
         const highlightBtn = document.getElementById('highlightBtnFloating');
@@ -1791,6 +1806,15 @@
     function createHighlight(text, color, fieldName) {
         if (!isStudent) return;
         
+        // Create unique key for duplicate checking
+        const highlightKey = `${text}|${color}|${fieldName}`;
+        
+        // Double-check we haven't already processed this (frontend duplicate prevention)
+        if (processedHighlights.has(highlightKey)) {
+            console.log('Skipping duplicate highlight:', highlightKey);
+            return;
+        }
+        
         fetch(`/api/case/${caseId}/highlight`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1803,32 +1827,47 @@
         .then(response => response.json())
         .then(data => {
             if (data.success) {
+                // Mark as processed
+                processedHighlights.add(highlightKey);
+                
                 // Reload highlights to show new one
                 setTimeout(() => {
                     loadHighlights();
                 }, 200);
                 
-                // Show brief success feedback
+                // Show brief success feedback with visual animation
                 const feedback = document.getElementById('highlightModeFeedback');
                 if (feedback) {
-                    const originalText = feedback.innerHTML;
+                    const colorName = selectedHighlightColor ? selectedHighlightColor.charAt(0).toUpperCase() + selectedHighlightColor.slice(1) : 'selected';
+                    const colorHex = getColorHex(selectedHighlightColor);
+                    
+                    // Animate success
                     feedback.innerHTML = `<i class="fas fa-check me-2"></i>Highlighted! Select more text to continue`;
-                    feedback.style.background = '#4CAF50';
+                    feedback.style.background = colorHex;
+                    feedback.style.transform = 'scale(1.1)';
+                    feedback.style.transition = 'all 0.3s ease';
+                    
                     setTimeout(() => {
                         if (feedback && feedback.parentNode) {
-                            const colorName = selectedHighlightColor ? selectedHighlightColor.charAt(0).toUpperCase() + selectedHighlightColor.slice(1) : 'selected';
                             feedback.innerHTML = `<i class="fas fa-highlighter me-2"></i>Highlight mode: ${colorName} - Select text to highlight`;
                             feedback.style.background = '#667eea';
+                            feedback.style.transform = 'scale(1)';
                         }
                     }, 1500);
                 }
             } else {
-                alert('Failed to create highlight: ' + (data.error || 'Unknown error'));
+                // If highlight already exists (backend duplicate), remove from processed set
+                if (data.message && data.message.includes('already exists')) {
+                    processedHighlights.delete(highlightKey);
+                } else {
+                    console.error('Failed to create highlight:', data.error);
+                }
             }
         })
         .catch(error => {
             console.error('Error creating highlight:', error);
-            alert('Failed to create highlight');
+            // Remove from processed set on error so user can retry
+            processedHighlights.delete(highlightKey);
         });
     }
     

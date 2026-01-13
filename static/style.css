@@ -208,6 +208,43 @@
     }
 }
 
+/* ==================== HIGHLIGHT CURSOR (SKETCH PEN EFFECT) ==================== */
+#highlightCursor {
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+    animation: highlightPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes highlightPulse {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 0.8;
+    }
+    50% {
+        transform: scale(1.1);
+        opacity: 1;
+    }
+}
+
+/* Mobile touch highlighting improvements */
+@media (max-width: 991px) {
+    .highlightable-text {
+        -webkit-tap-highlight-color: transparent; /* Remove default tap highlight */
+        touch-action: pan-y; /* Allow vertical scrolling but enable text selection */
+    }
+    
+    /* Visual feedback during touch highlighting */
+    .highlightable-text:active {
+        background-color: rgba(102, 126, 234, 0.05);
+        transition: background-color 0.2s;
+    }
+    
+    /* Ensure text selection works smoothly on mobile */
+    .highlightable-text * {
+        -webkit-user-select: text !important;
+        user-select: text !important;
+    }
+}
+
 :root {
     /* === PRIMARY ACTION COLORS === */
     /* Peachy Orange - Brand Accent */
