@@ -1501,6 +1501,11 @@
                     highlightMode = true;
                     currentHighlightField = null; // Will be determined by text selection
                     
+                    console.log('Highlight mode activated:', { color, highlightMode, selectedHighlightColor });
+                    
+                    // Clear processed highlights when starting new highlight session
+                    processedHighlights.clear();
+                    
                     // Update button to show selected color
                     highlightBtn.style.backgroundColor = getColorHex(color);
                     highlightBtn.style.opacity = '1';
