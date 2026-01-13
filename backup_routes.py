@@ -534,7 +534,7 @@ def restore_backup():
                         
                         # Update images if overwriting
                         CaseImage.query.filter_by(case_id=existing_case.id).delete()
-        import base64
+                        import base64
                         images_list = case_data.get('images', [])
                         if isinstance(images_list, list):
                             for img_data in images_list:
@@ -556,14 +556,14 @@ def restore_backup():
                                     image_description = img_data.get('image_description') or img_data.get('description', '')
                                     image_type = img_data.get('image_type', 'image/jpeg')
                                     
-            image = CaseImage(
+                                    image = CaseImage(
                                         case_id=existing_case.id,
                                         image_filename=image_filename,
                                         image_type=image_type,
                                         image_description=image_description,
                                         image_data=image_data_binary
-            )
-            db.session.add(image)
+                                    )
+                                    db.session.add(image)
                                     stats['images']['added'] += 1
                     
                     stats['cases']['updated'] += 1
@@ -826,7 +826,7 @@ def restore_backup():
                 
                 db.session.add(case)
                 try:
-        db.session.flush()
+                    db.session.flush()
                 except Exception as flush_error:
                     db.session.rollback()
                     print(f"[IMPORT] ERROR during case flush: {flush_error}")
@@ -842,12 +842,12 @@ def restore_backup():
                         if not isinstance(q_data, dict):
                             print(f"[IMPORT] Warning: Skipping invalid question data (not a dict)")
                             continue
-            question = Question(
+                        question = Question(
                             case_id=case.id,
                             question_number=q_data.get('question_number', 0),
                             question_text=q_data.get('question_text', ''),
-            )
-            db.session.add(question)
+                        )
+                        db.session.add(question)
                         stats['questions']['added'] += 1
                 
                 # Add answers
