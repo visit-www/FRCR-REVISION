@@ -2111,9 +2111,17 @@ def upload_case_image(case_id):
         return jsonify({'error': 'Only image files (JPEG, PNG, GIF, WebP) are allowed'}), 400
     
     # Read image data - ensure it's bytes for PostgreSQL BYTEA
+    # Reset file pointer to beginning (in case it was read before)
+    file.seek(0)
     image_data = file.read()
+    
+    if not image_data:
+        return jsonify({'error': 'Image file is empty'}), 400
+    
     if not isinstance(image_data, bytes):
         image_data = bytes(image_data)
+    
+    print(f"[IMAGE] Image data size: {len(image_data)} bytes, filename: {file.filename}")
     
     # Get description from form data
     description = request.form.get('description', '') or ''
