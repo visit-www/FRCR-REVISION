@@ -1,5 +1,61 @@
 {% extends "base.html" %}
 
+{% block mobile_breadcrumb %}
+    {% if revision_mode %}
+    <li class="breadcrumb-item active text-white" aria-current="page">
+        <i class="fas fa-graduation-cap me-1"></i>Balanced Revision
+    </li>
+    {% elif from_staging %}
+    <li class="breadcrumb-item">
+        <a href="{{ url_for('review_staging_cases') }}" class="text-white text-decoration-none">
+            <i class="fas fa-clipboard-list me-1"></i>Staging Cases
+        </a>
+    </li>
+    <li class="breadcrumb-item">
+        <a href="{{ url_for('modules_view') }}" class="text-white text-decoration-none">
+            <i class="fas fa-th-large me-1"></i>Modules
+        </a>
+    </li>
+    {% if case.module %}
+    <li class="breadcrumb-item">
+        <a href="{{ url_for('cases_by_module', module=case.module.name) }}" class="text-white text-decoration-none">
+            <i class="fas fa-folder me-1"></i>{{ case.module.value }}
+        </a>
+    </li>
+    {% endif %}
+    <li class="breadcrumb-item">
+        <a href="{{ url_for('all_cases_view') }}" class="text-white text-decoration-none">
+            <i class="fas fa-folder-open me-1"></i>All Cases
+        </a>
+    </li>
+    {% elif case.module %}
+    <li class="breadcrumb-item">
+        <a href="{{ url_for('modules_view') }}" class="text-white text-decoration-none">
+            <i class="fas fa-th-large me-1"></i>Modules
+        </a>
+    </li>
+    <li class="breadcrumb-item">
+        <a href="{{ url_for('cases_by_module', module=case.module.name) }}" class="text-white text-decoration-none">
+            <i class="fas fa-folder me-1"></i>{{ case.module.value }}
+        </a>
+    </li>
+    <li class="breadcrumb-item">
+        <a href="{{ url_for('all_cases_view') }}" class="text-white text-decoration-none">
+            <i class="fas fa-folder-open me-1"></i>All Cases
+        </a>
+    </li>
+    {% else %}
+    <li class="breadcrumb-item">
+        <a href="{{ url_for('all_cases_view') }}" class="text-white text-decoration-none">
+            <i class="fas fa-folder-open me-1"></i>All Cases
+        </a>
+    </li>
+    {% endif %}
+    <li class="breadcrumb-item active text-white" aria-current="page">
+        <i class="fas fa-file-medical me-1"></i>Case #{{ case.id }}
+    </li>
+{% endblock %}
+
 {% block content %}
 <div class="row">
     <div class="col-12 px-2 px-md-4">
