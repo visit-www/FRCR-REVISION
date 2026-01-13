@@ -2157,13 +2157,23 @@ def upload_case_image(case_id):
         
         # Verify the image was added correctly
         image_id = case_image.id
+        print(f"[IMAGE] Image object created with ID: {image_id}, case_id: {case_id}, filename: {filename}")
         
         db.session.commit()
+        print(f"[IMAGE] Image committed to database. ID: {image_id}")
+        
+        # Verify the image was actually saved by querying it back
+        saved_image = CaseImage.query.get(image_id)
+        if saved_image:
+            print(f"[IMAGE] Verification: Image {image_id} exists in database with {len(saved_image.image_data)} bytes")
+        else:
+            print(f"[IMAGE] ERROR: Image {image_id} was not found after commit!")
         
         return jsonify({
             'image_id': image_id,
             'filename': case_image.image_filename,
-            'message': 'Image uploaded successfully'
+            'message': 'Image uploaded successfully',
+            'success': True
         })
     except Exception as e:
         db.session.rollback()
