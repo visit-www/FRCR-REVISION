@@ -936,7 +936,9 @@ function saveEditedCase(event) {
                 if (window.pendingImages && window.pendingImages.length > 0) {
                     console.log('[SAVE] Uploading', window.pendingImages.length, 'pending images for case', newCaseId);
                     const pendingImages = [...window.pendingImages]; // Copy array
-                    window.pendingImages = []; // Clear array
+                    // Don't clear window.pendingImages yet - we need it for the redirect check
+                    // Set a flag to indicate uploads are in progress
+                    window.uploadsInProgress = true;
                     
                     // Wait a moment after case creation to ensure case is fully committed
                     console.log('[SAVE] Waiting 500ms before starting image uploads...');
@@ -1014,11 +1016,16 @@ function saveEditedCase(event) {
                                                 console.warn('[SAVE] Non-JSON response:', responseText.substring(0, 100));
                                                 throw new Error('Server returned non-JSON response');
                                             }
-                                            return r.json();
-                                        })
-                                        .then(data => {
+        return r.json();
+    })
+    .then(data => {
                                             clearTimeout(timeoutId);
                                             console.log('[SAVE] Pending image uploaded successfully:', file.name, data);
+                                            // Clear the pending image from the array after successful upload
+                                            const index = window.pendingImages.indexOf(file);
+                                            if (index > -1) {
+                                                window.pendingImages.splice(index, 1);
+                                            }
                                             resolve(data);
                                         })
                                         .catch(error => {
@@ -1062,6 +1069,10 @@ function saveEditedCase(event) {
                         .then(results => {
                             console.log('[SAVE] All pending images uploaded successfully:', results);
                             
+                            // Clear the pending images array and upload flag
+                            window.pendingImages = [];
+                            window.uploadsInProgress = false;
+                            
                             // Show success message
                             if (isStagingCase) {
                                 alert('Case reviewed and promoted to production successfully!');
@@ -1088,6 +1099,8 @@ function saveEditedCase(event) {
                         })
                         .catch(error => {
                             console.error('[SAVE] Some pending images failed to upload:', error);
+                            // Clear the upload flag even on error
+                            window.uploadsInProgress = false;
                             const errorMsg = error.message || error.toString();
                             alert(`Case saved, but some images failed to upload: ${errorMsg}\n\nPlease try uploading them again from the edit case page.`);
                             // Still redirect to view case so user can edit and upload images
@@ -1111,8 +1124,10 @@ function saveEditedCase(event) {
             let redirectUrl = '/dashboard';
             
             // For new cases with pending images, don't show alert or redirect immediately
+            // Check both pendingImages array and uploadsInProgress flag
             const hasPendingImages = window.pendingImages && window.pendingImages.length > 0;
-            const shouldWaitForImages = isNew && hasPendingImages;
+            const uploadsInProgress = window.uploadsInProgress === true;
+            const shouldWaitForImages = isNew && (hasPendingImages || uploadsInProgress);
             
             if (!shouldWaitForImages) {
                 if (isStagingCase) {
