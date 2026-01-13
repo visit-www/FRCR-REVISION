@@ -149,17 +149,24 @@ class SessionManager {
                 const timeRemaining = data.time_remaining || 0;
                 
                 // Only show warning if:
-                // 1. Time remaining is between 0 and 5 minutes
+                // 1. Time remaining is between 0 and 5 minutes (25-30 minutes of inactivity)
                 // 2. Warning hasn't been shown yet
-                // 3. Time remaining is actually decreasing (not just refreshed)
-                if (timeRemaining > 0 && timeRemaining < this.WARNING_TIME && !this.warningShown) {
+                // 3. At least 25 minutes have passed (timeRemaining <= 5 minutes = 300 seconds)
+                // 4. Not immediately after page load
+                if (timeRemaining > 0 && timeRemaining <= 300 && !this.warningShown) {
                     // Check if this is a fresh page load (don't show warning immediately)
-                    const pageLoadTime = performance.timing.navigationStart || Date.now();
+                    const pageLoadTime = performance.timing?.navigationStart || Date.now();
                     const timeSinceLoad = Date.now() - pageLoadTime;
                     
-                    // Only show warning if page has been loaded for at least 10 seconds
-                    // This prevents showing warning immediately on page refresh
-                    if (timeSinceLoad > 10000) {
+                    // Calculate how long user has been inactive
+                    // If timeRemaining is 300 seconds (5 min), that means 25 minutes (1500 seconds) have passed
+                    const inactivityMinutes = (1800 - timeRemaining) / 60; // 30 min total - remaining = inactive time
+                    
+                    // Only show warning if:
+                    // - At least 25 minutes of inactivity (timeRemaining <= 300 seconds)
+                    // - Page has been loaded for at least 2 minutes (prevents showing on refresh)
+                    // - User has actually been inactive for 25+ minutes
+                    if (inactivityMinutes >= 25 && timeSinceLoad > 120000) {
                         this.showExpirationWarning(timeRemaining);
                     }
                 }

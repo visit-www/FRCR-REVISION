@@ -4,7 +4,7 @@ Handles import, duplicate detection, enrichment, approval, and promotion
 """
 from flask import Blueprint, request, jsonify
 from flask_login import login_required, current_user
-from models import db, ImportedCaseStaging, FRCRModule, BodyPart, AgeGroup, UserRole
+from models import db, ImportedCaseStaging, FRCRModule, BodyPart, AgeGroup, UserRole, User
 from services import ImportService, DuplicateDetectionService, ConflictResolutionService, PromotionService
 from datetime import datetime
 import tempfile
@@ -30,19 +30,31 @@ def check_admin():
         return jsonify({'error': 'Unauthorized. Please log in.'}), 401
     
     # Force refresh user from database to get latest role
+    # Query directly from database to bypass any caching issues with PostgreSQL/Supabase
     try:
-        # Expire the object to force reload
+        # Query user directly from database to ensure we get the latest role
+        # This is important for PostgreSQL where enum values might be cached
+        user_from_db = User.query.get(current_user.id)
+        if not user_from_db:
+            print(f"[ENRICHMENT] ERROR: User {current_user.id} not found in database")
+            return jsonify({'error': 'User not found in database'}), 403
+        
+        # Update current_user with fresh data
         db.session.expire(current_user)
-        # Refresh from database
         db.session.refresh(current_user)
-        print(f"[ENRICHMENT] User role after refresh: {current_user.role}, type: {type(current_user.role).__name__}")
+        
+        # Use the directly queried user's role for comparison (most reliable)
+        user_role = user_from_db.role
+        
+        print(f"[ENRICHMENT] User role from DB query: {user_from_db.role}, type: {type(user_from_db.role).__name__}")
+        print(f"[ENRICHMENT] User role from current_user: {current_user.role}, type: {type(current_user.role).__name__}")
     except Exception as e:
-        print(f"[ENRICHMENT] Error refreshing user: {e}")
+        print(f"[ENRICHMENT] Error querying user from database: {e}")
         import traceback
         traceback.print_exc()
+        # Fallback to current_user
+        user_role = current_user.role
     
-    # Get role
-    user_role = current_user.role
     print(f"[ENRICHMENT] Raw role: {user_role}, type: {type(user_role).__name__}")
     
     # Handle string role (shouldn't happen but be defensive)
@@ -74,13 +86,29 @@ def check_admin():
             print(f"[ENRICHMENT] Could not fix role: {e}")
             return jsonify({'error': 'Access denied. Please ensure you are logged in as an admin.'}), 403
     
-    # Compare with ADMIN enum
-    print(f"[ENRICHMENT] Comparing: {user_role} == {UserRole.ADMIN}? Result: {user_role == UserRole.ADMIN}")
-    print(f"[ENRICHMENT] Role value: '{user_role.value}', ADMIN value: '{UserRole.ADMIN.value}'")
+    # Compare with ADMIN enum - use value comparison as fallback
+    is_admin = False
+    if isinstance(user_role, UserRole):
+        is_admin = user_role == UserRole.ADMIN
+        # Also check by value as fallback
+        if not is_admin:
+            is_admin = user_role.value == UserRole.ADMIN.value
     
-    if user_role != UserRole.ADMIN:
-        print(f"[ENRICHMENT] Access denied: role '{user_role.value}' != ADMIN '{UserRole.ADMIN.value}'")
-        return jsonify({'error': 'Access denied. Please ensure you are logged in as an admin.'}), 403
+    print(f"[ENRICHMENT] Comparing: {user_role} == {UserRole.ADMIN}? Result: {is_admin}")
+    print(f"[ENRICHMENT] Role value: '{user_role.value if hasattr(user_role, 'value') else user_role}', ADMIN value: '{UserRole.ADMIN.value}'")
+    
+    if not is_admin:
+        print(f"[ENRICHMENT] Access denied: role '{user_role.value if hasattr(user_role, 'value') else user_role}' != ADMIN '{UserRole.ADMIN.value}'")
+        # Return more detailed error for debugging
+        return jsonify({
+            'error': 'Access denied. Please ensure you are logged in as an admin.',
+            'debug': {
+                'user_email': current_user.email,
+                'role_type': type(user_role).__name__,
+                'role_value': user_role.value if hasattr(user_role, 'value') else str(user_role),
+                'expected': UserRole.ADMIN.value
+            }
+        }), 403
     
     print(f"[ENRICHMENT] ✓ Admin access granted for {current_user.email}")
 

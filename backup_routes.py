@@ -1188,17 +1188,35 @@ def restore_backup():
         error_lower = error_message.lower()
         
         # Handle PostgreSQL/Supabase specific errors
-        if 'timeout' in error_lower or 'connection' in error_lower:
+        # Check for actual PostgreSQL error codes and messages
+        if hasattr(e, 'orig') and hasattr(e.orig, 'pgcode'):
+            # PostgreSQL specific error
+            pgcode = e.orig.pgcode
+            if pgcode == '40001':  # Serialization failure
+                error_message = 'Database transaction conflict. Please try again in a few moments.'
+            elif pgcode == '40P01':  # Deadlock detected
+                error_message = 'Database deadlock detected. Please try again.'
+            elif pgcode == '23505':  # Unique violation
+                error_message = 'Duplicate entry detected. Some data may already exist in the database.'
+            elif pgcode == '23503':  # Foreign key violation
+                error_message = 'Data integrity error. The backup file may contain invalid references.'
+            elif pgcode == '23502':  # Not null violation
+                error_message = 'Missing required data. The backup file may be incomplete.'
+        
+        # Fallback to string matching
+        if 'timeout' in error_lower or 'connection' in error_lower or 'timed out' in error_lower:
             error_message = 'Database connection timeout. The import operation may be too large or taking too long. Please try importing in smaller batches or contact support.'
-        elif 'deadlock' in error_lower or 'lock' in error_lower:
+        elif 'deadlock' in error_lower or ('lock' in error_lower and 'waiting' in error_lower):
             error_message = 'Database transaction conflict. Another operation may be in progress. Please try again in a few moments.'
-        elif 'disturbed' in error_lower or 'body' in error_lower:
+        elif 'disturbed' in error_lower or 'body' in error_lower or 'request entity too large' in error_lower:
             # This might be a request body size issue or connection issue
-            error_message = 'Request body error. The backup file may be too large or the connection was interrupted. Please try a smaller backup file or check your connection.'
+            error_message = 'Request body error. The backup file may be too large (Vercel limit: 4.5MB) or the connection was interrupted. Please try a smaller backup file or split the import.'
         elif 'violates' in error_lower and 'constraint' in error_lower:
             error_message = 'Data integrity error. The backup file may contain invalid data or duplicate entries. Please verify the backup file.'
-        elif 'syntax error' in error_lower or 'invalid' in error_lower:
+        elif 'syntax error' in error_lower or 'invalid' in error_lower or 'malformed' in error_lower:
             error_message = 'Invalid data format. Please ensure the backup file is valid JSON and was exported from a compatible version.'
+        elif 'operationalerror' in error_lower or 'database' in error_lower:
+            error_message = f'Database error: {str(e)[:200]}. Please check Vercel logs for details.'
         
         print(f"[IMPORT] ERROR: {error_message}")
         print(f"[IMPORT] Original error: {str(e)}")
