@@ -1081,8 +1081,12 @@
     }
     
     // Load images on page load and display Q&A
-    function loadImages() {
-        fetch(`/api/case/${caseId}/images`)
+    function loadImages(forceRefresh = false) {
+        // Add cache-busting parameter if force refresh
+        const url = forceRefresh 
+            ? `/api/case/${caseId}/images?_t=${Date.now()}`
+            : `/api/case/${caseId}/images`;
+        fetch(url)
             .then(response => {
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);

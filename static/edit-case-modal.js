@@ -971,10 +971,6 @@ function saveEditedCase(event) {
                     Promise.all(uploadPromises)
                         .then(results => {
                             console.log('[SAVE] All pending images uploaded successfully:', results);
-                            // Reload images after all are uploaded
-                            if (typeof reloadImages === 'function') {
-                                reloadImages(newCaseId);
-                            }
                             
                             // Show success message
                             if (isStagingCase) {
@@ -983,17 +979,22 @@ function saveEditedCase(event) {
                                 alert('Case saved successfully! Images uploaded.');
                             }
                             
-                            // Redirect if there's a pending redirect URL
-                            if (window.pendingRedirectUrl) {
-                                console.log('[SAVE] Redirecting to:', window.pendingRedirectUrl);
-                                const redirectUrl = window.pendingRedirectUrl;
-                                window.pendingRedirectUrl = null;
-                                window.location.href = redirectUrl;
-                            } else {
-                                // Default: redirect to view the new case
-                                console.log('[SAVE] Redirecting to view case:', newCaseId);
-                                window.location.href = `/view-case/${newCaseId}`;
-                            }
+                            // Wait a moment to ensure database commits are fully processed
+                            // This prevents the view case page from loading before images are available
+                            setTimeout(() => {
+                                // Redirect if there's a pending redirect URL
+                                if (window.pendingRedirectUrl) {
+                                    console.log('[SAVE] Redirecting to:', window.pendingRedirectUrl);
+                                    const redirectUrl = window.pendingRedirectUrl;
+                                    window.pendingRedirectUrl = null;
+                                    // Add timestamp to force fresh load
+                                    window.location.href = redirectUrl + (redirectUrl.includes('?') ? '&' : '?') + '_t=' + Date.now();
+                                } else {
+                                    // Default: redirect to view the new case with timestamp to force fresh load
+                                    console.log('[SAVE] Redirecting to view case:', newCaseId);
+                                    window.location.href = `/view-case/${newCaseId}?_t=${Date.now()}`;
+                                }
+                            }, 1000); // Wait 1 second for database to fully commit
                         })
                         .catch(error => {
                             console.error('[SAVE] Some pending images failed to upload:', error);
