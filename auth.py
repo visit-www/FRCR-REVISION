@@ -278,6 +278,8 @@ def login():
             # This ensures the session cookie persists across function invocations
             from flask import session as flask_session
             flask_session.permanent = True
+            # Track last activity time for session timeout
+            flask_session['last_activity'] = datetime.utcnow().isoformat()
             login_user(user, remember=True)  # Always remember in serverless
             
             # Debug session creation
@@ -296,6 +298,92 @@ def login():
             return jsonify({'error': 'Login failed. Please contact administrator or check logs.'}), 500
     
     return render_template('login.html')
+
+
+@auth_bp.route('/session/refresh', methods=['POST'])
+@login_required
+def refresh_session():
+    """
+    Refresh user session and update last activity time
+    This extends the session lifetime and reloads user data from database
+    """
+    try:
+        from flask import session as flask_session
+        from datetime import datetime, timedelta
+        
+        # Update last activity time
+        flask_session['last_activity'] = datetime.utcnow().isoformat()
+        flask_session.permanent = True
+        
+        # Reload user from database to get latest role/permissions
+        db.session.refresh(current_user)
+        
+        # Check if session should expire (30 minutes of inactivity)
+        last_activity_str = flask_session.get('last_activity')
+        if last_activity_str:
+            try:
+                last_activity = datetime.fromisoformat(last_activity_str)
+                time_since_activity = datetime.utcnow() - last_activity
+                
+                # If more than 30 minutes of inactivity, expire session
+                if time_since_activity > timedelta(seconds=1800):
+                    logout_user()
+                    return jsonify({
+                        'success': False,
+                        'expired': True,
+                        'message': 'Session expired due to inactivity'
+                    }), 401
+            except (ValueError, TypeError):
+                # Invalid timestamp, reset it
+                flask_session['last_activity'] = datetime.utcnow().isoformat()
+        
+        return jsonify({
+            'success': True,
+            'user': {
+                'id': current_user.id,
+                'email': current_user.email,
+                'role': current_user.role.value if current_user.role else 'student',
+                'is_admin': current_user.role == UserRole.ADMIN if current_user.role else False
+            },
+            'last_activity': flask_session.get('last_activity')
+        }), 200
+        
+    except Exception as e:
+        print(f"[AUTH] Error refreshing session: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': 'Failed to refresh session'}), 500
+
+
+@auth_bp.route('/session/status', methods=['GET'])
+@login_required
+def session_status():
+    """Get current session status and time remaining"""
+    try:
+        from flask import session as flask_session
+        from datetime import datetime, timedelta
+        
+        last_activity_str = flask_session.get('last_activity')
+        if not last_activity_str:
+            return jsonify({
+                'authenticated': True,
+                'time_remaining': 1800,  # 30 minutes in seconds
+                'expires_at': None
+            }), 200
+        
+        last_activity = datetime.fromisoformat(last_activity_str)
+        expires_at = last_activity + timedelta(seconds=1800)
+        time_remaining = (expires_at - datetime.utcnow()).total_seconds()
+        
+        return jsonify({
+            'authenticated': True,
+            'time_remaining': max(0, int(time_remaining)),
+            'expires_at': expires_at.isoformat(),
+            'last_activity': last_activity_str
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 @auth_bp.route('/logout', methods=['POST'])

@@ -117,7 +117,10 @@ app.config['SESSION_COOKIE_SECURE'] = is_production  # HTTPS only in production
 app.config['SESSION_COOKIE_HTTPONLY'] = True  # No JavaScript access
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # CSRF protection
 app.config['SESSION_COOKIE_NAME'] = 'frcr_session'  # Explicit name
-app.config['PERMANENT_SESSION_LIFETIME'] = 86400  # 24 hours
+# Industry standard: 30 minutes session timeout (1800 seconds)
+# Sessions will expire after 30 minutes of inactivity
+app.config['PERMANENT_SESSION_LIFETIME'] = 1800  # 30 minutes
+app.config['SESSION_COOKIE_MAX_AGE'] = 1800  # Cookie expires in 30 minutes
 
 # For serverless (Vercel), don't set cookie domain to allow cross-subdomain cookies
 # This ensures cookies work across *.vercel.app subdomains
@@ -174,6 +177,59 @@ def unauthorized():
         return jsonify({'error': 'Login required'}), 401
     # Otherwise redirect to login
     return redirect(url_for('auth.login'))
+
+# Activity tracking for session timeout
+@app.before_request
+def track_activity():
+    """Track user activity to refresh session and detect inactivity"""
+    from flask import session as flask_session
+    from datetime import datetime, timedelta
+    
+    # Skip for static files, health checks, and auth endpoints
+    if (request.endpoint in ['static', None] or 
+        request.path.startswith('/static') or
+        request.path.startswith('/auth/login') or
+        request.path.startswith('/auth/register')):
+        return
+    
+    # Only track activity for authenticated users
+    if current_user.is_authenticated:
+        try:
+            # Check if session should expire
+            last_activity_str = flask_session.get('last_activity')
+            if last_activity_str:
+                try:
+                    last_activity = datetime.fromisoformat(last_activity_str)
+                    time_since_activity = datetime.utcnow() - last_activity
+                    
+                    # If more than 30 minutes of inactivity, expire session
+                    if time_since_activity > timedelta(seconds=1800):
+                        from flask_login import logout_user
+                        logout_user()
+                        if request.is_json or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                            from flask import jsonify
+                            return jsonify({'error': 'Session expired due to inactivity', 'expired': True}), 401
+                        return redirect(url_for('auth.login'))
+                except (ValueError, TypeError):
+                    # Invalid timestamp, reset it
+                    pass
+            
+            # Update last activity time on each request
+            flask_session['last_activity'] = datetime.utcnow().isoformat()
+            flask_session.permanent = True
+            
+            # Reload user from database to ensure role is up-to-date
+            # This fixes the issue where role changes don't reflect until re-login
+            try:
+                db.session.refresh(current_user)
+            except Exception:
+                # User might have been deleted, ignore
+                pass
+                
+        except Exception as e:
+            # Don't break the request if activity tracking fails
+            print(f"[SESSION] Error tracking activity: {e}")
+
 
 # Ensure database tables exist before handling requests
 # This is critical for serverless environments where tables might not be created on startup
