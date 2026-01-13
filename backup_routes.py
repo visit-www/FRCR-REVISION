@@ -434,15 +434,24 @@ def restore_backup():
                                     continue
                                 image_data_binary = None
                                 if img_data.get('image_data'):
-                                    image_data_binary = base64.b64decode(img_data['image_data'])
+                                    try:
+                                        image_data_binary = base64.b64decode(img_data['image_data'])
+                                    except Exception as e:
+                                        print(f"[IMPORT] Warning: Failed to decode image data: {e}")
+                                        continue
                                 
                                 # Only create image if we have image data
                                 if image_data_binary:
+                                    # Support both field name formats: 'image_filename'/'image_description' (FRCR Examiner) and 'filename'/'description' (FRCR Revision)
+                                    image_filename = img_data.get('image_filename') or img_data.get('filename', '')
+                                    image_description = img_data.get('image_description') or img_data.get('description', '')
+                                    image_type = img_data.get('image_type', 'image/jpeg')
+                                    
                                     image = CaseImage(
                                         case_id=existing_case.id,
-                                        image_filename=img_data.get('filename', ''),
-                                        image_type=img_data.get('image_type', 'image/jpeg'),
-                                        image_description=img_data.get('description', ''),
+                                        image_filename=image_filename,
+                                        image_type=image_type,
+                                        image_description=image_description,
                                         image_data=image_data_binary
                                     )
                                     db.session.add(image)
@@ -587,19 +596,28 @@ def restore_backup():
                             continue
                         image_data_binary = None
                         if img_data.get('image_data'):
-                            image_data_binary = base64.b64decode(img_data['image_data'])
-                    
-                    # Only create image if we have image data
-                    if image_data_binary:
-                        image = CaseImage(
-                            case_id=case.id,
-                            image_filename=img_data.get('filename', ''),
-                            image_type=img_data.get('image_type', 'image/jpeg'),
-                            image_description=img_data.get('description', ''),
-                            image_data=image_data_binary
-                        )
-                        db.session.add(image)
-                        stats['images']['added'] += 1
+                            try:
+                                image_data_binary = base64.b64decode(img_data['image_data'])
+                            except Exception as e:
+                                print(f"[IMPORT] Warning: Failed to decode image data: {e}")
+                                continue
+                        
+                        # Only create image if we have image data
+                        if image_data_binary:
+                            # Support both field name formats: 'image_filename'/'image_description' (FRCR Examiner) and 'filename'/'description' (FRCR Revision)
+                            image_filename = img_data.get('image_filename') or img_data.get('filename', '')
+                            image_description = img_data.get('image_description') or img_data.get('description', '')
+                            image_type = img_data.get('image_type', 'image/jpeg')
+                            
+                            image = CaseImage(
+                                case_id=case.id,
+                                image_filename=image_filename,
+                                image_type=image_type,
+                                image_description=image_description,
+                                image_data=image_data_binary
+                            )
+                            db.session.add(image)
+                            stats['images']['added'] += 1
                 
                 stats['cases']['added'] += 1
                 new_case_id = case.id
@@ -607,6 +625,62 @@ def restore_backup():
             # Store case ID mapping (for both new and existing cases)
             if old_case_id and new_case_id:
                 case_id_map[old_case_id] = new_case_id
+        
+        db.session.commit()
+        
+        # Import images from separate case_images array (FRCR Examiner format)
+        # This handles backups where images are stored separately, not in case['images']
+        case_images_list = backup_data.get('case_images', [])
+        if isinstance(case_images_list, list) and len(case_images_list) > 0:
+            import base64
+            print(f"[IMPORT] Found {len(case_images_list)} images in separate case_images array")
+            for img_data in case_images_list:
+                if not isinstance(img_data, dict):
+                    print(f"[IMPORT] Warning: Skipping invalid image data (not a dict)")
+                    continue
+                
+                # Map old case_id to new case_id
+                old_case_id = img_data.get('case_id')
+                if not old_case_id:
+                    print(f"[IMPORT] Warning: Skipping image without case_id")
+                    continue
+                
+                new_case_id = case_id_map.get(old_case_id)
+                if not new_case_id:
+                    print(f"[IMPORT] Warning: Skipping image for case_id {old_case_id} (case not imported)")
+                    continue
+                
+                # Check if image already exists (if overwriting)
+                if overwrite_existing:
+                    CaseImage.query.filter_by(case_id=new_case_id, image_filename=img_data.get('image_filename') or img_data.get('filename', '')).delete()
+                
+                # Handle field name mapping: FRCR Examiner uses 'image_filename' and 'image_description'
+                # Support both formats: 'image_filename'/'image_description' (FRCR Examiner) and 'filename'/'description' (FRCR Revision)
+                image_filename = img_data.get('image_filename') or img_data.get('filename', '')
+                image_description = img_data.get('image_description') or img_data.get('description', '')
+                image_type = img_data.get('image_type', 'image/jpeg')
+                
+                # Decode image data
+                image_data_binary = None
+                if img_data.get('image_data'):
+                    try:
+                        image_data_binary = base64.b64decode(img_data['image_data'])
+                    except Exception as e:
+                        print(f"[IMPORT] Warning: Failed to decode image data for {image_filename}: {e}")
+                        continue
+                
+                # Only create image if we have image data
+                if image_data_binary:
+                    image = CaseImage(
+                        case_id=new_case_id,
+                        image_filename=image_filename,
+                        image_type=image_type,
+                        image_description=image_description,
+                        image_data=image_data_binary
+                    )
+                    db.session.add(image)
+                    stats['images']['added'] += 1
+                    print(f"[IMPORT] Added image {image_filename} to case {new_case_id}")
         
         db.session.commit()
         
