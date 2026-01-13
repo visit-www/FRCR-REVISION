@@ -921,53 +921,92 @@ function saveEditedCase(event) {
                 
                 // Upload any pending images that were added before saving
                 if (window.pendingImages && window.pendingImages.length > 0) {
-                    console.log('[SAVE] Uploading', window.pendingImages.length, 'pending images');
+                    console.log('[SAVE] Uploading', window.pendingImages.length, 'pending images for case', newCaseId);
                     const pendingImages = [...window.pendingImages]; // Copy array
                     window.pendingImages = []; // Clear array
                     
-                    // Upload each pending image
-                    pendingImages.forEach((file, index) => {
-                        setTimeout(() => {
-                            const formData = new FormData();
-                            formData.append('image', file);
-                            
-                            fetch(`/api/case/${newCaseId}/image`, {
-                                method: 'POST',
-                                body: formData
-                            })
-                            .then(async r => {
-                                if (!r.ok) {
-                                    let errorMessage = r.statusText;
-                                    try {
-                                        const errorData = await r.json();
-                                        errorMessage = errorData.error || errorMessage;
-                                    } catch (e) {
-                                        // Not JSON
-                                    }
-                                    throw new Error(errorMessage);
-                                }
-                                const contentType = r.headers.get('content-type');
-                                if (!contentType || !contentType.includes('application/json')) {
-                                    throw new Error('Server returned non-JSON response');
-                                }
-                                return r.json();
-                            })
-                            .then(data => {
-                                console.log('[SAVE] Pending image uploaded:', file.name);
-                                // Reload images after all are uploaded
-                                if (index === pendingImages.length - 1) {
-                                    setTimeout(() => {
-                                        if (typeof reloadImages === 'function') {
-                                            reloadImages(newCaseId);
+                    // Upload all images and wait for them to complete before redirecting
+                    const uploadPromises = pendingImages.map((file, index) => {
+                        return new Promise((resolve, reject) => {
+                            setTimeout(() => {
+                                const formData = new FormData();
+                                formData.append('image', file);
+                                
+                                console.log('[SAVE] Uploading pending image:', file.name, 'to case', newCaseId);
+                                
+                                fetch(`/api/case/${newCaseId}/image`, {
+                                    method: 'POST',
+                                    body: formData
+                                })
+                                .then(async r => {
+                                    if (!r.ok) {
+                                        let errorMessage = r.statusText;
+                                        try {
+                                            const errorData = await r.json();
+                                            errorMessage = errorData.error || errorMessage;
+                                        } catch (e) {
+                                            // Not JSON
                                         }
-                                    }, 500);
-                                }
-                            })
-                            .catch(error => {
-                                console.error('[SAVE] Error uploading pending image:', file.name, error);
-                            });
-                        }, index * 200); // Stagger uploads slightly
+                                        throw new Error(errorMessage);
+                                    }
+                                    const contentType = r.headers.get('content-type');
+                                    if (!contentType || !contentType.includes('application/json')) {
+                                        throw new Error('Server returned non-JSON response');
+                                    }
+                                    return r.json();
+                                })
+                                .then(data => {
+                                    console.log('[SAVE] Pending image uploaded successfully:', file.name, data);
+                                    resolve(data);
+                                })
+                                .catch(error => {
+                                    console.error('[SAVE] Error uploading pending image:', file.name, error);
+                                    reject(error);
+                                });
+                            }, index * 300); // Stagger uploads slightly
+                        });
                     });
+                    
+                    // Wait for all uploads to complete before showing success message or redirecting
+                    Promise.all(uploadPromises)
+                        .then(results => {
+                            console.log('[SAVE] All pending images uploaded successfully:', results);
+                            // Reload images after all are uploaded
+                            if (typeof reloadImages === 'function') {
+                                reloadImages(newCaseId);
+                            }
+                            
+                            // Show success message
+                            if (isStagingCase) {
+                                alert('Case reviewed and promoted to production successfully!');
+                            } else {
+                                alert('Case saved successfully! Images uploaded.');
+                            }
+                            
+                            // Redirect if there's a pending redirect URL
+                            if (window.pendingRedirectUrl) {
+                                console.log('[SAVE] Redirecting to:', window.pendingRedirectUrl);
+                                const redirectUrl = window.pendingRedirectUrl;
+                                window.pendingRedirectUrl = null;
+                                window.location.href = redirectUrl;
+                            } else {
+                                // Default: redirect to view the new case
+                                console.log('[SAVE] Redirecting to view case:', newCaseId);
+                                window.location.href = `/view-case/${newCaseId}`;
+                            }
+                        })
+                        .catch(error => {
+                            console.error('[SAVE] Some pending images failed to upload:', error);
+                            alert('Case saved, but some images failed to upload. Please try uploading them again.');
+                            // Still redirect to view case
+                            if (window.pendingRedirectUrl) {
+                                window.location.href = window.pendingRedirectUrl;
+                            } else {
+                                window.location.href = `/view-case/${newCaseId}`;
+                            }
+                        });
+                } else {
+                    console.log('[SAVE] No pending images to upload');
                 }
             }
             
