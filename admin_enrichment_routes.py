@@ -401,6 +401,77 @@ def enrich_and_promote_case(case_id):
         if staging.enrichment_status != 'enriched':
             staging.enrichment_status = 'enriched'
         
+        # Check for duplicate diagnoses before promoting (unless override flag is set)
+        diagnosis = data.get('diagnosis') or staging.diagnosis
+        override_duplicate = data.get('override_duplicate', False)
+        
+        if diagnosis and not override_duplicate:
+            # Normalize diagnosis for comparison (lowercase, strip whitespace)
+            normalized_diagnosis = diagnosis.lower().strip()
+            
+            # Check for exact matches in existing cases (both public and private)
+            existing_cases = Case.query.filter(
+                db.func.lower(db.func.trim(Case.diagnosis)) == normalized_diagnosis
+            ).all()
+            
+            if existing_cases:
+                # Exact match found - return duplicate information
+                duplicate_info = []
+                for existing_case in existing_cases:
+                    duplicate_info.append({
+                        'id': existing_case.id,
+                        'diagnosis': existing_case.diagnosis,
+                        'module': existing_case.module.value if existing_case.module else 'N/A',
+                        'is_public': existing_case.is_public,
+                        'status': existing_case.status.value if hasattr(existing_case, 'status') and existing_case.status else 'N/A'
+                    })
+                
+                return jsonify({
+                    'success': False,
+                    'duplicate': True,
+                    'exact_match': True,
+                    'message': f'Exact duplicate diagnosis found: "{diagnosis}"',
+                    'existing_cases': duplicate_info,
+                    'new_diagnosis': diagnosis
+                }), 409  # 409 Conflict
+            
+            # Check for similar diagnoses (case-insensitive contains or similarity)
+            # Check if normalized diagnosis is contained in any existing diagnosis or vice versa
+            similar_cases = Case.query.filter(
+                db.or_(
+                    db.func.lower(Case.diagnosis).contains(normalized_diagnosis),
+                    db.func.lower(db.func.cast(diagnosis, db.String)).contains(db.func.lower(Case.diagnosis))
+                )
+            ).all()
+            
+            # Filter out exact matches (already handled above) and very short matches
+            similar_cases = [
+                c for c in similar_cases 
+                if c.diagnosis.lower().strip() != normalized_diagnosis 
+                and len(normalized_diagnosis) > 5  # Only flag if diagnosis is meaningful length
+            ]
+            
+            if similar_cases:
+                # Similar match found - return duplicate information for user to decide
+                similar_info = []
+                for similar_case in similar_cases:
+                    similar_info.append({
+                        'id': similar_case.id,
+                        'diagnosis': similar_case.diagnosis,
+                        'module': similar_case.module.value if similar_case.module else 'N/A',
+                        'is_public': similar_case.is_public,
+                        'status': similar_case.status.value if hasattr(similar_case, 'status') and similar_case.status else 'N/A'
+                    })
+                
+                return jsonify({
+                    'success': False,
+                    'duplicate': True,
+                    'exact_match': False,
+                    'message': f'Similar diagnosis found: "{diagnosis}"',
+                    'existing_cases': similar_info,
+                    'new_diagnosis': diagnosis
+                }), 409  # 409 Conflict
+        
         db.session.flush()
         
         # Get target status from request or default

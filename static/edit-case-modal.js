@@ -714,19 +714,34 @@ function saveEditedCase(event) {
         const responseText = await r.text();
         console.log('[SAVE] Response status:', r.status, 'Response:', responseText);
         
+        let responseData;
+        try {
+            responseData = JSON.parse(responseText);
+        } catch (e) {
+            responseData = { error: responseText || 'Unknown error' };
+        }
+        
+        // Handle duplicate detection (409 Conflict)
+        if (r.status === 409 && responseData.duplicate) {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = originalText;
+            
+            // Show duplicate handling modal
+            showDuplicateHandlingModal(responseData, diagnosis, payload, endpoint, method, saveBtn, originalText);
+            return;
+        }
+        
         if (!r.ok) {
             let errorMsg = `HTTP ${r.status}`;
-            try {
-                const errorData = JSON.parse(responseText);
-                errorMsg = errorData.error || errorMsg;
-            } catch (e) {
-                errorMsg = responseText || errorMsg;
+            if (responseData.error) {
+                errorMsg = responseData.error;
+            } else if (responseData.message) {
+                errorMsg = responseData.message;
             }
             throw new Error(errorMsg);
         }
         
-        try {
-            return JSON.parse(responseText);
+        return responseData;
         } catch (e) {
             console.error('[SAVE] Failed to parse JSON response:', responseText);
             throw new Error('Invalid response from server');
@@ -790,4 +805,348 @@ function saveEditedCase(event) {
         saveBtn.disabled = false;
         saveBtn.innerHTML = originalText;
     });
+}
+
+// Show duplicate handling modal
+function showDuplicateHandlingModal(duplicateData, currentDiagnosis, payload, endpoint, method, saveBtn, originalText) {
+    const isExactMatch = duplicateData.exact_match;
+    const existingCases = duplicateData.existing_cases || [];
+    
+    // Create modal HTML
+    let modalHtml = `
+        <div class="modal fade" id="duplicateModal" tabindex="-1" aria-labelledby="duplicateModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header ${isExactMatch ? 'bg-danger text-white' : 'bg-warning'}">
+                        <h5 class="modal-title" id="duplicateModalLabel">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            ${isExactMatch ? 'Exact Duplicate Diagnosis Found' : 'Similar Diagnosis Found'}
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="alert ${isExactMatch ? 'alert-danger' : 'alert-warning'}" role="alert">
+                            <strong>New Diagnosis:</strong> "${currentDiagnosis}"
+                        </div>
+                        
+                        <h6 class="mb-3">Existing ${isExactMatch ? 'Duplicate' : 'Similar'} Case(s):</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Diagnosis</th>
+                                        <th>Module</th>
+                                        <th>Status</th>
+                                        <th>Visibility</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+    `;
+    
+    existingCases.forEach(c => {
+        modalHtml += `
+                                    <tr>
+                                        <td>${c.id}</td>
+                                        <td><strong>${escapeHtml(c.diagnosis)}</strong></td>
+                                        <td>${escapeHtml(c.module)}</td>
+                                        <td>${escapeHtml(c.status)}</td>
+                                        <td>${c.is_public ? '<span class="badge bg-success">Public</span>' : '<span class="badge bg-secondary">Private</span>'}</td>
+                                    </tr>
+        `;
+    });
+    
+    modalHtml += `
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        ${isExactMatch ? `
+                            <div class="alert alert-danger mt-3">
+                                <strong>Exact match detected!</strong> You cannot override an exact duplicate. 
+                                Please change the diagnosis name to save this case, or delete the duplicate case.
+                            </div>
+                        ` : `
+                            <div class="alert alert-info mt-3">
+                                <strong>Similar diagnosis detected.</strong> You can override if this is a different case, 
+                                or change the diagnosis name to avoid confusion.
+                            </div>
+                        `}
+                        
+                        <div class="mb-3">
+                            <label for="newDiagnosisInput" class="form-label">Change Diagnosis Name:</label>
+                            <input type="text" class="form-control" id="newDiagnosisInput" 
+                                   value="${escapeHtml(currentDiagnosis)}" 
+                                   placeholder="Enter new diagnosis name">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        ${isExactMatch ? `
+                            <button type="button" class="btn btn-danger" onclick="deleteDuplicateCases([${existingCases.map(c => c.id).join(',')}])">
+                                <i class="fas fa-trash me-1"></i>Delete Duplicate Case(s)
+                            </button>
+                        ` : `
+                            <button type="button" class="btn btn-warning" onclick="overrideDuplicateCase()">
+                                <i class="fas fa-exclamation-circle me-1"></i>Override & Save
+                            </button>
+                        `}
+                        <button type="button" class="btn btn-primary" onclick="saveWithNewDiagnosis()">
+                            <i class="fas fa-save me-1"></i>Save with New Name
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Remove existing modal if any
+    const existingModal = document.getElementById('duplicateModal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+    
+    // Add modal to body
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    
+    // Store context for modal actions
+    window.duplicateModalContext = {
+        payload: payload,
+        endpoint: endpoint,
+        method: method,
+        saveBtn: saveBtn,
+        originalText: originalText,
+        existingCases: existingCases,
+        isExactMatch: isExactMatch
+    };
+    
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('duplicateModal'));
+    modal.show();
+}
+
+// Save with new diagnosis name
+function saveWithNewDiagnosis() {
+    const context = window.duplicateModalContext;
+    if (!context) return;
+    
+    const newDiagnosis = document.getElementById('newDiagnosisInput').value.trim();
+    if (!newDiagnosis) {
+        alert('Please enter a new diagnosis name');
+        return;
+    }
+    
+    if (newDiagnosis.toLowerCase().trim() === context.payload.diagnosis.toLowerCase().trim()) {
+        alert('Please enter a different diagnosis name');
+        return;
+    }
+    
+    // Update payload with new diagnosis
+    context.payload.diagnosis = newDiagnosis;
+    
+    // Close modal
+    const modalElement = document.getElementById('duplicateModal');
+    const modal = bootstrap.Modal.getInstance(modalElement);
+    if (modal) modal.hide();
+    
+    // Retry save with new diagnosis
+    const saveBtn = context.saveBtn;
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Saving...';
+    
+    fetch(context.endpoint, {
+        method: context.method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(context.payload)
+    })
+    .then(async r => {
+        const responseText = await r.text();
+        let responseData;
+        try {
+            responseData = JSON.parse(responseText);
+        } catch (e) {
+            responseData = { error: responseText || 'Unknown error' };
+        }
+        
+        if (!r.ok) {
+            throw new Error(responseData.error || responseData.message || `HTTP ${r.status}`);
+        }
+        
+        return responseData;
+    })
+    .then(data => {
+        if (data.success || data.id || data.case_id) {
+            alert('Case saved successfully with new diagnosis name!');
+            const promotedId = data.case_id || data.id || data.promoted_case_id;
+            if (promotedId) {
+                window.location.href = `/view-case/${promotedId}?from_staging=true`;
+            } else {
+                window.location.reload();
+            }
+        } else {
+            throw new Error(data.error || 'Failed to save case');
+        }
+    })
+    .catch(error => {
+        console.error('[SAVE] Error saving with new diagnosis:', error);
+        alert('Error saving case: ' + error.message);
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = context.originalText;
+    });
+}
+
+// Override duplicate case (only for similar, not exact matches)
+function overrideDuplicateCase() {
+    const context = window.duplicateModalContext;
+    if (!context || context.isExactMatch) {
+        alert('Cannot override exact duplicates. Please change the diagnosis name.');
+        return;
+    }
+    
+    if (!confirm('Are you sure you want to override and save this case? This will create a new case even though similar cases exist.')) {
+        return;
+    }
+    
+    // Add override flag to payload
+    context.payload.override_duplicate = true;
+    
+    // Close modal
+    const modalElement = document.getElementById('duplicateModal');
+    const modal = bootstrap.Modal.getInstance(modalElement);
+    if (modal) modal.hide();
+    
+    // Retry save with override flag
+    const saveBtn = context.saveBtn;
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Saving...';
+    
+    fetch(context.endpoint, {
+        method: context.method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(context.payload)
+    })
+    .then(async r => {
+        const responseText = await r.text();
+        let responseData;
+        try {
+            responseData = JSON.parse(responseText);
+        } catch (e) {
+            responseData = { error: responseText || 'Unknown error' };
+        }
+        
+        if (!r.ok) {
+            throw new Error(responseData.error || responseData.message || `HTTP ${r.status}`);
+        }
+        
+        return responseData;
+    })
+    .then(data => {
+        if (data.success || data.id || data.case_id) {
+            alert('Case saved successfully (override)!');
+            const promotedId = data.case_id || data.id || data.promoted_case_id;
+            if (promotedId) {
+                window.location.href = `/view-case/${promotedId}?from_staging=true`;
+            } else {
+                window.location.reload();
+            }
+        } else {
+            throw new Error(data.error || 'Failed to save case');
+        }
+    })
+    .catch(error => {
+        console.error('[SAVE] Error saving with override:', error);
+        alert('Error saving case: ' + error.message);
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = context.originalText;
+    });
+}
+
+// Delete duplicate cases
+function deleteDuplicateCases(caseIds) {
+    if (!confirm(`Are you sure you want to delete ${caseIds.length} duplicate case(s)? This action cannot be undone.`)) {
+        return;
+    }
+    
+    // Delete all duplicate cases
+    const deletePromises = caseIds.map(caseId => 
+        fetch(`/api/case/${caseId}`, { method: 'DELETE' })
+            .then(r => r.json())
+            .then(data => {
+                if (!data.success) {
+                    throw new Error(data.error || 'Failed to delete case');
+                }
+                return data;
+            })
+    );
+    
+    Promise.all(deletePromises)
+        .then(() => {
+            alert('Duplicate case(s) deleted successfully. You can now save your new case.');
+            // Close modal
+            const modalElement = document.getElementById('duplicateModal');
+            const modal = bootstrap.Modal.getInstance(modalElement);
+            if (modal) modal.hide();
+            
+            // Retry save
+            const context = window.duplicateModalContext;
+            if (context) {
+                // Remove override flag if present
+                delete context.payload.override_duplicate;
+                
+                const saveBtn = context.saveBtn;
+                saveBtn.disabled = true;
+                saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Saving...';
+                
+                fetch(context.endpoint, {
+                    method: context.method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(context.payload)
+                })
+                .then(async r => {
+                    const responseText = await r.text();
+                    let responseData;
+                    try {
+                        responseData = JSON.parse(responseText);
+                    } catch (e) {
+                        responseData = { error: responseText || 'Unknown error' };
+                    }
+                    
+                    if (!r.ok) {
+                        throw new Error(responseData.error || responseData.message || `HTTP ${r.status}`);
+                    }
+                    
+                    return responseData;
+                })
+                .then(data => {
+                    if (data.success || data.id || data.case_id) {
+                        alert('Case saved successfully!');
+                        const promotedId = data.case_id || data.id || data.promoted_case_id;
+                        if (promotedId) {
+                            window.location.href = `/view-case/${promotedId}?from_staging=true`;
+                        } else {
+                            window.location.reload();
+                        }
+                    } else {
+                        throw new Error(data.error || 'Failed to save case');
+                    }
+                })
+                .catch(error => {
+                    console.error('[SAVE] Error saving after delete:', error);
+                    alert('Error saving case: ' + error.message);
+                    saveBtn.disabled = false;
+                    saveBtn.innerHTML = context.originalText;
+                });
+            }
+        })
+        .catch(error => {
+            console.error('[DELETE] Error deleting duplicate cases:', error);
+            alert('Error deleting duplicate cases: ' + error.message);
+        });
+}
+
+// Helper function to escape HTML
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }

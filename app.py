@@ -1866,18 +1866,45 @@ def edit_case():
 @login_required
 def delete_case(case_id):
     """Delete a case"""
-    # Verify user ownership
-    case = verify_case_ownership(case_id)
-    if not case:
-        return jsonify({"error": "Unauthorized"}), 403
-    
-    if not case:
-        return jsonify({'error': 'Case not found'}), 404
-    
-    db.session.delete(case)
-    db.session.commit()
-    
-    return jsonify({'success': True, 'message': 'Case deleted successfully'})
+    try:
+        # Check if user has permission to delete
+        case = Case.query.get(case_id)
+        if not case:
+            return jsonify({
+                'success': False,
+                'error': 'Case not found'
+            }), 404
+        
+        # Check if user has delete permission (admin or content manager)
+        if not has_case_delete_permission(case):
+            return jsonify({
+                'success': False,
+                'error': 'Unauthorized - Admin or Content Manager access required'
+            }), 403
+        
+        # Delete associated questions and answers
+        Question.query.filter_by(case_id=case_id).delete()
+        Answer.query.filter_by(case_id=case_id).delete()
+        
+        # Delete associated images
+        CaseImage.query.filter_by(case_id=case_id).delete()
+        
+        # Delete the case
+        db.session.delete(case)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Case deleted successfully'
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"[DELETE] Error deleting case {case_id}: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': f'Failed to delete case: {str(e)}'
+        }), 500
 
 
 @app.route('/api/case/<int:case_id>/image', methods=['POST'])
@@ -2361,7 +2388,7 @@ def save_candidate_note(case_id):
         return jsonify({'error': str(e)}), 500
 
 
-from access_control import has_case_edit_permission, has_case_view_access
+from access_control import has_case_edit_permission, has_case_view_access, has_case_delete_permission
 
 def verify_case_ownership(case_id):
     """
