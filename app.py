@@ -2116,28 +2116,42 @@ def upload_case_image(case_id):
     description = request.form.get('description', '')
     
     try:
+        # Explicitly set created_at to avoid any datetime parsing issues with PostgreSQL
+        from datetime import datetime
         case_image = CaseImage(
             case_id=case_id,
             image_data=image_data,
             image_filename=file.filename,
             image_type=file_type,
-            image_description=description
+            image_description=description,
+            created_at=datetime.utcnow()  # Explicitly set to avoid default issues with PostgreSQL
         )
         
         db.session.add(case_image)
+        db.session.flush()  # Flush to get the ID without committing
+        
+        # Verify the image was added correctly
+        image_id = case_image.id
+        
         db.session.commit()
         
         return jsonify({
-            'image_id': case_image.id,
+            'image_id': image_id,
             'filename': case_image.image_filename,
             'message': 'Image uploaded successfully'
         })
     except Exception as e:
         db.session.rollback()
-        print(f"[IMAGE] Error uploading image: {str(e)}")
+        error_msg = str(e)
+        print(f"[IMAGE] Error uploading image: {error_msg}")
         import traceback
         traceback.print_exc()
-        return jsonify({'error': f'Database error: {str(e)}'}), 500
+        
+        # Check if it's a datetime/pattern matching error (PostgreSQL specific)
+        if 'pattern' in error_msg.lower() or 'string did not match' in error_msg.lower() or 'invalid input' in error_msg.lower():
+            return jsonify({'error': 'Database datetime error. Please try again or contact support.'}), 500
+        else:
+            return jsonify({'error': f'Database error: {error_msg}'}), 500
 
 
 @app.route('/api/case/<int:case_id>/images')
@@ -2149,12 +2163,34 @@ def get_case_images(case_id):
     if not case:
         return jsonify({"error": "Unauthorized"}), 403
     images = CaseImage.query.filter_by(case_id=case_id).order_by(CaseImage.created_at).all()
-    return jsonify([{
-        'id': img.id,
-        'filename': img.image_filename,
-        'description': img.image_description if img.image_description else '',
-        'created_at': img.created_at.strftime('%Y-%m-%d %H:%M:%S')
-    } for img in images])
+    result = []
+    for img in images:
+        try:
+            # Handle created_at safely for PostgreSQL
+            created_at_str = None
+            if img.created_at:
+                if isinstance(img.created_at, str):
+                    # Already a string, try to parse and reformat
+                    try:
+                        from datetime import datetime
+                        dt = datetime.fromisoformat(img.created_at.replace('Z', '+00:00'))
+                        created_at_str = dt.strftime('%Y-%m-%d %H:%M:%S')
+                    except (ValueError, AttributeError):
+                        created_at_str = str(img.created_at)
+                else:
+                    # It's a datetime object
+                    created_at_str = img.created_at.strftime('%Y-%m-%d %H:%M:%S')
+        except (AttributeError, ValueError, TypeError) as e:
+            print(f"[IMAGE] Warning: Could not format created_at for image {img.id}: {e}")
+            created_at_str = 'N/A'
+        
+        result.append({
+            'id': img.id,
+            'filename': img.image_filename,
+            'description': img.image_description if img.image_description else '',
+            'created_at': created_at_str
+        })
+    return jsonify(result)
 
 
 @app.route('/api/case-image/<int:image_id>')
