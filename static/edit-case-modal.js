@@ -705,12 +705,12 @@ function uploadImage() {
             input.value = '';
             // Wait a moment before reloading to ensure database is updated
             setTimeout(() => {
-                reloadImages(caseId);
+            reloadImages(caseId);
             }, 300);
             // Show success message
             if (typeof showToast === 'function') {
                 showToast('Image uploaded successfully!', 'success');
-            } else {
+        } else {
                 alert('Image uploaded successfully!');
             }
         } else {
@@ -966,9 +966,9 @@ function saveEditedCase(event) {
                                     if (!contentType || !contentType.includes('application/json')) {
                                         throw new Error('Server returned non-JSON response');
                                     }
-                                    return r.json();
-                                })
-                                .then(data => {
+        return r.json();
+    })
+    .then(data => {
                                     console.log('[SAVE] Pending image uploaded successfully:', file.name, data);
                                     resolve(data);
                                 })
@@ -1020,8 +1020,12 @@ function saveEditedCase(event) {
                             }
                         });
                 } else {
-                    console.log('[SAVE] No pending images to upload');
+                    console.log('[SAVE] No pending images to upload. window.pendingImages:', window.pendingImages);
+                    console.log('[SAVE] isNew:', isNew, 'newCaseId:', data.id || data.case_id);
                 }
+            } else {
+                console.log('[SAVE] Not a new case or no case ID. isNew:', isNew, 'case_id:', data.id || data.case_id);
+                console.log('[SAVE] caseIdField:', caseIdField);
             }
             
             // Determine redirect destination
@@ -1071,8 +1075,8 @@ function saveEditedCase(event) {
             // Only redirect if we're not waiting for pending images
             if (!shouldWaitForImages) {
                 console.log('[SAVE] Redirecting to:', redirectUrl);
-                window.location.href = redirectUrl;
-            } else {
+            window.location.href = redirectUrl;
+        } else {
                 console.log('[SAVE] Deferring redirect - waiting for pending images to upload');
                 // Store redirect URL to use after images are uploaded
                 window.pendingRedirectUrl = redirectUrl;
