@@ -853,69 +853,71 @@ function showDuplicateHandlingModal(duplicateData, currentDiagnosis, payload, en
     const existingCases = duplicateData.existing_cases || [];
     const firstExistingCase = existingCases[0] || {};
     
-    // Create modal HTML with two-column layout
+    // Create modal HTML with premium two-panel layout
     let modalHtml = `
         <div class="modal fade" id="duplicateModal" tabindex="-1" aria-labelledby="duplicateModalLabel" aria-hidden="true">
-            <div class="modal-dialog modal-xl">
-                <div class="modal-content">
-                    <div class="modal-header ${isExactMatch ? 'bg-danger text-white' : 'bg-warning'}">
-                        <h5 class="modal-title" id="duplicateModalLabel">
+            <div class="modal-dialog modal-dialog-centered duplicate-modal-dialog">
+                <div class="modal-content duplicate-modal-content">
+                    <div class="modal-header duplicate-modal-header ${isExactMatch ? 'duplicate-modal-header-danger' : 'duplicate-modal-header-warning'}">
+                        <h5 class="modal-title duplicate-modal-title" id="duplicateModalLabel">
                             <i class="fas fa-exclamation-triangle me-2"></i>
                             ${isExactMatch ? 'Exact Duplicate Diagnosis Found' : 'Similar Diagnosis Found'}
                         </h5>
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
-                    <div class="modal-body">
+                    <div class="modal-body duplicate-modal-body">
                         ${isExactMatch ? `
-                            <div class="alert alert-danger mb-4" role="alert">
+                            <div class="alert alert-danger duplicate-alert mb-4" role="alert">
                                 <strong><i class="fas fa-exclamation-circle me-2"></i>Exact match detected!</strong> 
                                 You cannot save a case with an identical diagnosis. Please choose which case to reject, or change the diagnosis name.
                             </div>
                         ` : `
-                            <div class="alert alert-info mb-4" role="alert">
+                            <div class="alert alert-info duplicate-alert mb-4" role="alert">
                                 <strong><i class="fas fa-info-circle me-2"></i>Similar diagnosis detected.</strong> 
                                 These cases may be duplicates. Please review and decide which case to keep.
                             </div>
                         `}
                         
-                        <div class="row g-4">
+                        <div class="row g-4 duplicate-comparison-row">
                             <!-- Left Column: Existing Case -->
-                            <div class="col-md-6">
-                                <div class="card border-primary h-100">
-                                    <div class="card-header bg-primary text-white">
-                                        <h6 class="mb-0"><i class="fas fa-database me-2"></i>Existing Saved Case</h6>
+                            <div class="col-lg-6">
+                                <div class="card duplicate-case-card duplicate-case-existing h-100">
+                                    <div class="card-header duplicate-case-header duplicate-case-header-existing">
+                                        <h6 class="mb-0 duplicate-case-title">
+                                            <i class="fas fa-database me-2"></i>Existing Saved Case
+                                        </h6>
                                     </div>
-                                    <div class="card-body">
-                                        <div class="mb-3">
-                                            <label class="form-label text-muted small">Case ID</label>
-                                            <div class="fw-bold">#${firstExistingCase.id || 'N/A'}</div>
+                                    <div class="card-body duplicate-case-body">
+                                        <div class="duplicate-case-field mb-3">
+                                            <label class="duplicate-case-label">Case ID</label>
+                                            <div class="duplicate-case-value duplicate-case-id">#${firstExistingCase.id || 'N/A'}</div>
                                         </div>
-                                        <div class="mb-3">
-                                            <label class="form-label text-muted small">Diagnosis</label>
-                                            <div class="fw-bold text-primary">${escapeHtml(firstExistingCase.diagnosis || 'N/A')}</div>
+                                        <div class="duplicate-case-field mb-3">
+                                            <label class="duplicate-case-label">Diagnosis</label>
+                                            <div class="duplicate-case-value duplicate-case-diagnosis">${escapeHtml(firstExistingCase.diagnosis || 'N/A')}</div>
                                         </div>
-                                        <div class="mb-3">
-                                            <label class="form-label text-muted small">Module</label>
-                                            <div>${escapeHtml(firstExistingCase.module || 'N/A')}</div>
+                                        <div class="duplicate-case-field mb-3">
+                                            <label class="duplicate-case-label">Module</label>
+                                            <div class="duplicate-case-value">${escapeHtml(firstExistingCase.module || 'N/A')}</div>
                                         </div>
-                                        <div class="mb-3">
-                                            <label class="form-label text-muted small">Status</label>
-                                            <div>
-                                                <span class="badge ${firstExistingCase.status === 'published' ? 'bg-success' : 'bg-secondary'}">
+                                        <div class="duplicate-case-field mb-3">
+                                            <label class="duplicate-case-label">Status</label>
+                                            <div class="duplicate-case-value">
+                                                <span class="badge duplicate-badge ${firstExistingCase.status === 'published' ? 'duplicate-badge-success' : 'duplicate-badge-secondary'}">
                                                     ${escapeHtml(firstExistingCase.status || 'N/A')}
                                                 </span>
                                             </div>
                                         </div>
-                                        <div class="mb-3">
-                                            <label class="form-label text-muted small">Visibility</label>
-                                            <div>
+                                        <div class="duplicate-case-field mb-3">
+                                            <label class="duplicate-case-label">Visibility</label>
+                                            <div class="duplicate-case-value">
                                                 ${firstExistingCase.is_public ? 
-                                                    '<span class="badge bg-success">Public</span>' : 
-                                                    '<span class="badge bg-secondary">Private</span>'}
+                                                    '<span class="badge duplicate-badge duplicate-badge-success">Public</span>' : 
+                                                    '<span class="badge duplicate-badge duplicate-badge-secondary">Private</span>'}
                                             </div>
                                         </div>
                                         ${isExactMatch ? `
-                                            <button type="button" class="btn btn-danger w-100 mt-3" onclick="rejectExistingCase(${firstExistingCase.id})">
+                                            <button type="button" class="btn duplicate-action-btn duplicate-btn-reject w-100 mt-3" onclick="rejectExistingCase(${firstExistingCase.id})">
                                                 <i class="fas fa-times-circle me-2"></i>Reject This Case
                                             </button>
                                         ` : ''}
@@ -924,30 +926,32 @@ function showDuplicateHandlingModal(duplicateData, currentDiagnosis, payload, en
                             </div>
                             
                             <!-- Right Column: New Incoming Case -->
-                            <div class="col-md-6">
-                                <div class="card border-warning h-100">
-                                    <div class="card-header bg-warning text-dark">
-                                        <h6 class="mb-0"><i class="fas fa-file-import me-2"></i>New Incoming Case</h6>
+                            <div class="col-lg-6">
+                                <div class="card duplicate-case-card duplicate-case-new h-100">
+                                    <div class="card-header duplicate-case-header duplicate-case-header-new">
+                                        <h6 class="mb-0 duplicate-case-title">
+                                            <i class="fas fa-file-import me-2"></i>New Incoming Case
+                                        </h6>
                                     </div>
-                                    <div class="card-body">
-                                        <div class="mb-3">
-                                            <label class="form-label text-muted small">Diagnosis</label>
-                                            <div class="fw-bold text-warning">${escapeHtml(currentDiagnosis || 'N/A')}</div>
+                                    <div class="card-body duplicate-case-body">
+                                        <div class="duplicate-case-field mb-3">
+                                            <label class="duplicate-case-label">Diagnosis</label>
+                                            <div class="duplicate-case-value duplicate-case-diagnosis duplicate-case-diagnosis-new">${escapeHtml(currentDiagnosis || 'N/A')}</div>
                                         </div>
-                                        <div class="mb-3">
-                                            <label class="form-label text-muted small">Module</label>
-                                            <div>${escapeHtml(payload.module || 'N/A')}</div>
+                                        <div class="duplicate-case-field mb-3">
+                                            <label class="duplicate-case-label">Module</label>
+                                            <div class="duplicate-case-value">${escapeHtml(payload.module || 'N/A')}</div>
                                         </div>
-                                        <div class="mb-3">
-                                            <label class="form-label text-muted small">Body Part</label>
-                                            <div>${escapeHtml(payload.body_part || 'N/A')}</div>
+                                        <div class="duplicate-case-field mb-3">
+                                            <label class="duplicate-case-label">Body Part</label>
+                                            <div class="duplicate-case-value">${escapeHtml(payload.body_part || 'N/A')}</div>
                                         </div>
-                                        <div class="mb-3">
-                                            <label class="form-label text-muted small">Age Group</label>
-                                            <div>${escapeHtml(payload.age_group || 'N/A')}</div>
+                                        <div class="duplicate-case-field mb-3">
+                                            <label class="duplicate-case-label">Age Group</label>
+                                            <div class="duplicate-case-value">${escapeHtml(payload.age_group || 'N/A')}</div>
                                         </div>
                                         ${isExactMatch ? `
-                                            <button type="button" class="btn btn-warning w-100 mt-3" onclick="rejectNewCase()">
+                                            <button type="button" class="btn duplicate-action-btn duplicate-btn-reject-new w-100 mt-3" onclick="rejectNewCase()">
                                                 <i class="fas fa-times-circle me-2"></i>Reject This Case
                                             </button>
                                         ` : ''}
@@ -957,31 +961,35 @@ function showDuplicateHandlingModal(duplicateData, currentDiagnosis, payload, en
                         </div>
                         
                         <!-- Change Diagnosis Name Section -->
-                        <div class="mt-4 pt-4 border-top">
-                            <h6 class="mb-3"><i class="fas fa-edit me-2"></i>Change Diagnosis Name</h6>
-                            <p class="text-muted small mb-3">
+                        <div class="duplicate-rename-section mt-5 pt-4">
+                            <h6 class="duplicate-section-title mb-3">
+                                <i class="fas fa-edit me-2"></i>Change Diagnosis Name
+                            </h6>
+                            <p class="duplicate-section-description mb-3">
                                 If you change the diagnosis name, the system will re-check for duplicates. 
                                 If the new name is unique, you can save normally.
                             </p>
-                            <div class="row">
+                            <div class="row g-2">
                                 <div class="col-md-8">
-                                    <input type="text" class="form-control form-control-lg" id="newDiagnosisInput" 
-                                           value="${escapeHtml(currentDiagnosis)}" 
-                                           placeholder="Enter new diagnosis name">
+                                    <input type="text" class="form-control form-control-lg duplicate-rename-input" id="newDiagnosisInput" 
+                                       value="${escapeHtml(currentDiagnosis)}" 
+                                       placeholder="Enter new diagnosis name">
                                 </div>
                                 <div class="col-md-4">
-                                    <button type="button" class="btn btn-primary w-100" onclick="saveWithNewDiagnosis()">
+                                    <button type="button" class="btn duplicate-action-btn duplicate-btn-save w-100" onclick="saveWithNewDiagnosis()">
                                         <i class="fas fa-save me-2"></i>Save with New Name
                                     </button>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <div class="modal-footer duplicate-modal-footer">
+                        <button type="button" class="btn duplicate-action-btn duplicate-btn-cancel" data-bs-dismiss="modal">
+                            <i class="fas fa-times me-2"></i>Cancel
+                        </button>
                         ${!isExactMatch ? `
-                            <button type="button" class="btn btn-warning" onclick="overrideDuplicateCase()">
-                                <i class="fas fa-exclamation-circle me-1"></i>Override & Save Anyway
+                            <button type="button" class="btn duplicate-action-btn duplicate-btn-override" onclick="overrideDuplicateCase()">
+                                <i class="fas fa-exclamation-circle me-2"></i>Override & Save Anyway
                             </button>
                         ` : ''}
                     </div>
