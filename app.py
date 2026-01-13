@@ -2625,10 +2625,10 @@ def save_candidate_note(case_id):
     if note:
         # Update existing note only if text has changed
         if note.note_text != note_text:
-        note.note_text = note_text
-        note.updated_at = datetime.utcnow()
-        action = 'updated'
-    else:
+            note.note_text = note_text
+            note.updated_at = datetime.utcnow()
+            action = 'updated'
+        else:
             # No change, return existing note
             return jsonify({
                 'success': True, 
