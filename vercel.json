@@ -3,7 +3,10 @@
   "builds": [
     {
       "src": "api/index.py",
-      "use": "@vercel/python"
+      "use": "@vercel/python",
+      "config": {
+        "maxLambdaSize": "50mb"
+      }
     }
   ],
   "rewrites": [
@@ -22,11 +25,5 @@
         }
       ]
     }
-  ],
-  "functions": {
-    "api/index.py": {
-      "maxDuration": 30,
-      "memory": 1024
-    }
-  }
+  ]
 }
