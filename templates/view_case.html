@@ -1543,10 +1543,8 @@
         if (e.target && (e.target.closest('.floating-highlight-btn') || e.target.closest('.dropdown-menu'))) return;
         
         // For touch events, don't prevent default - let text selection work naturally
-        // Only prevent if we're sure it's not a text selection gesture
-        
         // Small delay to ensure selection is complete (longer for mobile)
-        const delay = e.type === 'touchend' ? 200 : 50;
+        const delay = e.type === 'touchend' ? 300 : 50;
         setTimeout(function() {
             const selection = window.getSelection();
             const text = selection.toString().trim();
