@@ -31,7 +31,7 @@
                 Browse and search all available cases
                 {% endif %}
             </p>
-            <div class="d-flex gap-2 flex-wrap">
+            <div class="d-flex gap-2 flex-wrap mt-3">
                 {% if current_user.is_authenticated and (current_user.role.value == 'admin' or current_user.role.value == 'content_manager') %}
                     <a href="/edit-case?new=true" class="btn btn-success btn-sm shadow-sm">
                         <i class="fas fa-plus me-2"></i>Create New Case
@@ -63,15 +63,15 @@
     </div>
 
     <!-- Filters -->
-    <div class="card shadow-sm border-0 mb-4" style="background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);">
+    <div class="card filter-card shadow-sm border-0 mb-4">
         <div class="card-body p-4">
-            <div class="row g-3">
+            <div class="filter-row">
                 {% if not module_filter %}
-                <div class="col-md-3">
-                    <label class="form-label small fw-semibold text-secondary mb-2">
-                        <i class="fas fa-layer-group me-1" style="color: #a8d5ba;"></i>Module
+                <div class="filter-item">
+                    <label class="filter-label">
+                        <i class="fas fa-layer-group me-2"></i>Module
                     </label>
-                    <select class="form-select shadow-sm" id="moduleFilter">
+                    <select class="form-select filter-select" id="moduleFilter">
                         <option value="">All Modules</option>
                         {% for module in all_modules %}
                         <option value="{{ module.value }}" {% if module_selected == module.value %}selected{% endif %}>
@@ -82,11 +82,11 @@
                 </div>
                 {% endif %}
                 
-                <div class="col-md-3">
-                    <label class="form-label small fw-semibold text-secondary mb-2">
-                        <i class="fas fa-user-injured me-1" style="color: #ffc107;"></i>Body Part
+                <div class="filter-item">
+                    <label class="filter-label">
+                        <i class="fas fa-user-injured me-2"></i>Body Part
                     </label>
-                    <select class="form-select shadow-sm" id="bodyPartFilter">
+                    <select class="form-select filter-select" id="bodyPartFilter">
                         <option value="">All Body Parts</option>
                         {% for body_part in body_parts %}
                         <option value="{{ body_part.value }}" {% if body_part_selected == body_part.value %}selected{% endif %}>
@@ -96,11 +96,11 @@
                     </select>
                 </div>
                 
-                <div class="col-md-3">
-                    <label class="form-label small fw-semibold text-secondary mb-2">
-                        <i class="fas fa-user-clock me-1" style="color: #17a2b8;"></i>Age Group
+                <div class="filter-item">
+                    <label class="filter-label">
+                        <i class="fas fa-user-clock me-2"></i>Age Group
                     </label>
-                    <select class="form-select shadow-sm" id="ageGroupFilter">
+                    <select class="form-select filter-select" id="ageGroupFilter">
                         <option value="">All Age Groups</option>
                         {% for age_group in age_groups %}
                         <option value="{{ age_group.value }}" {% if age_group_selected == age_group.value %}selected{% endif %}>
@@ -110,9 +110,9 @@
                     </select>
                 </div>
                 
-                <div class="col-md-3 d-flex align-items-end">
-                    <button class="btn btn-secondary w-100 shadow-sm" onclick="clearFilters()">
-                        <i class="fas fa-times me-2"></i>Clear Filters
+                <div class="filter-item filter-button-item">
+                    <button class="btn filter-clear-btn w-100" onclick="clearFilters()">
+                        <i class="fas filter-clear-btn me-2"></i>Clear Filters
                     </button>
                 </div>
             </div>
@@ -148,11 +148,11 @@
                 <tbody id="casesTableBody">
                     {% if cases %}
                         {% for case in cases %}
-                        <tr id="caseRow{{ case.id }}" class="case-row{% if case.is_public %} case-public{% else %} case-private{% endif %}" style="cursor: pointer; transition: all 0.2s ease;" onclick="window.location.href='{{ url_for('view_case', case_id=case.id) }}'">
-                            <td class="fw-bold" style="{% if case.is_public %}background-color:#d4f8e8 !important; border-left:6px solid #28a745 !important;{% else %}background-color:#fff5e0 !important; border-left:6px solid #ff9800 !important;{% endif %} padding: 1rem 0.75rem; vertical-align: middle;">
+                        <tr id="caseCard{{ case.id }}" class="case-row{% if case.is_public %} case-public{% else %} case-private{% endif %}{% if loop.index0 % 2 == 0 %} case-row-even{% else %} case-row-odd{% endif %}" style="cursor: pointer; transition: all 0.2s ease;" onclick="window.location.href='{{ url_for('view_case', case_id=case.id) }}'">
+                            <td class="fw-bold" style="padding: 1rem 0.75rem; vertical-align: middle;">
                                 <span style="color: #495057; font-size: 0.9rem;">#{{ case.id }}</span>
                             </td>
-                            <td style="{% if case.is_public %}background-color:#d4f8e8 !important;{% else %}background-color:#fff5e0 !important;{% endif %} padding: 1rem 0.75rem; vertical-align: middle;">
+                            <td style="padding: 1rem 0.75rem; vertical-align: middle;">
                                 <div class="fw-semibold mb-1" style="color: #2c3e50; font-size: 0.95rem;">{{ case.diagnosis }}</div>
                                 {% if case.has_notes %}
                                 <small class="text-muted d-flex align-items-center" style="font-size: 0.8rem;">
@@ -160,29 +160,48 @@
                                 </small>
                                 {% endif %}
                             </td>
-                            <td style="{% if case.is_public %}background-color:#d4f8e8 !important;{% else %}background-color:#fff5e0 !important;{% endif %} padding: 1rem 0.75rem; vertical-align: middle;">
-                                <span class="badge px-3 py-2 shadow-sm" style="background: linear-gradient(135deg, #a8d5ba 0%, #88c298 100%); color: #fff; font-weight: 500; font-size: 0.8rem;">
+                            <td style="padding: 1rem 0.75rem; vertical-align: middle;">
+                                {% if case.module_display and case.module_display != 'N/A' %}
+                                    {% if 'Cardiothoracic' in case.module_display or 'Vascular' in case.module_display %}
+                                        {% set module_color = 'linear-gradient(135deg, #a8d8ea 0%, #7bb3d0 100%)' %}
+                                    {% elif 'Musculoskeletal' in case.module_display or 'Trauma' in case.module_display %}
+                                        {% set module_color = 'linear-gradient(135deg, #ffb380 0%, #ff9800 100%)' %}
+                                    {% elif 'Gastro' in case.module_display or 'intestinal' in case.module_display %}
+                                        {% set module_color = 'linear-gradient(135deg, #a8d5ba 0%, #7bb88a 100%)' %}
+                                    {% elif 'Genito' in case.module_display or 'urinary' in case.module_display or 'Breast' in case.module_display %}
+                                        {% set module_color = 'linear-gradient(135deg, #e1bee7 0%, #ce93d8 100%)' %}
+                                    {% elif 'Paediatric' in case.module_display %}
+                                        {% set module_color = 'linear-gradient(135deg, #fff9c4 0%, #fff59d 100%)' %}
+                                    {% elif 'CNS' in case.module_display or 'Head' in case.module_display or 'Neck' in case.module_display %}
+                                        {% set module_color = 'linear-gradient(135deg, #c5cae9 0%, #9fa8da 100%)' %}
+                                    {% else %}
+                                        {% set module_color = 'linear-gradient(135deg, #b0bec5 0%, #90a4ae 100%)' %}
+                                    {% endif %}
+                                {% else %}
+                                    {% set module_color = 'linear-gradient(135deg, #b0bec5 0%, #90a4ae 100%)' %}
+                                {% endif %}
+                                <span class="badge px-3 py-2 shadow-sm module-badge" style="background: {{ module_color }}; color: #fff; font-weight: 500; font-size: 0.8rem;">
                                     {{ case.module_display }}
                                 </span>
                             </td>
-                            <td style="{% if case.is_public %}background-color:#d4f8e8 !important;{% else %}background-color:#fff5e0 !important;{% endif %} padding: 1rem 0.75rem; vertical-align: middle;">
+                            <td style="padding: 1rem 0.75rem; vertical-align: middle;">
                                 <span class="badge px-3 py-2 shadow-sm bg-light text-dark" style="font-weight: 500; font-size: 0.8rem; border: 1px solid #dee2e6;">
                                     {{ case.body_part_display }}
                                 </span>
                             </td>
-                            <td style="{% if case.is_public %}background-color:#d4f8e8 !important;{% else %}background-color:#fff5e0 !important;{% endif %} padding: 1rem 0.75rem; vertical-align: middle;">
+                            <td style="padding: 1rem 0.75rem; vertical-align: middle;">
                                 <span class="badge px-3 py-2 shadow-sm bg-info text-white" style="font-weight: 500; font-size: 0.8rem;">
                                     {{ case.age_group_display }}
                                 </span>
                             </td>
-                            <td style="{% if case.is_public %}background-color:#d4f8e8 !important;{% else %}background-color:#fff5e0 !important;{% endif %} padding: 1rem 0.75rem; vertical-align: middle;">
+                            <td style="padding: 1rem 0.75rem; vertical-align: middle;">
                                 <div class="d-flex align-items-center gap-1">
                                     <i class="fas fa-images" style="color: #ffc107; font-size: 1rem;"></i>
                                     <span style="font-weight: 500; color: #495057;">{{ case.image_count }}</span>
                                 </div>
                             </td>
                             {% if current_user.is_authenticated and current_user.role and (current_user.role.value == 'admin' or current_user.role.value == 'content_manager') %}
-                            <td style="{% if case.is_public %}background-color:#d4f8e8 !important;{% else %}background-color:#fff5e0 !important;{% endif %} padding: 1rem 0.75rem; vertical-align: middle; text-align:center;">
+                            <td style="padding: 1rem 0.75rem; vertical-align: middle; text-align:center;">
                                 <div class="d-flex align-items-center justify-content-center gap-2">
                                     <div class="form-check form-switch">
                                         <input class="form-check-input case-public-toggle shadow-sm" type="checkbox" id="togglePublic{{ case.id }}" data-case-id="{{ case.id }}" {% if case.is_public %}checked{% endif %} onclick="event.stopPropagation();">
@@ -193,11 +212,11 @@
                                     <span class="badge px-2 py-1 shadow-sm" id="publicStatus{{ case.id }}" style="background-color: {% if case.is_public %}#28a745{% else %}#dc3545{% endif %}; color: #fff; font-weight: 500; font-size: 0.75rem; min-width: 60px;">{% if case.is_public %}Public{% else %}Private{% endif %}</span>
                                 </div>
                             </td>
-                            <td style="{% if case.is_public %}background-color:#d4f8e8 !important;{% else %}background-color:#fff5e0 !important;{% endif %} padding: 1rem 0.75rem; vertical-align: middle;">
+                            <td style="padding: 1rem 0.75rem; vertical-align: middle;">
                                 <div class="d-flex gap-1" onclick="event.stopPropagation();">
                                 <a href="/edit-case?id={{ case.id }}" 
-                                       class="btn btn-sm btn-outline-primary shadow-sm"
-                                       title="Edit case">
+                                       class="btn btn-sm btn-success shadow-sm"
+                                       title="Edit case" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); border: none; color: white;">
                                         <i class="fas fa-edit me-1"></i>Edit
                                 </a>
                                     <button class="btn btn-sm btn-outline-danger shadow-sm"
@@ -208,10 +227,10 @@
                                 </div>
                             </td>
                             {% else %}
-                            <td style="{% if case.is_public %}background-color:#d4f8e8 !important;{% else %}background-color:#fff5e0 !important;{% endif %} padding: 1rem 0.75rem; vertical-align: middle; text-align:center;">
+                            <td style="padding: 1rem 0.75rem; vertical-align: middle; text-align:center;">
                                 <span class="badge px-2 py-1 shadow-sm" style="background-color: {% if case.is_public %}#28a745{% else %}#dc3545{% endif %}; color: #fff; font-weight: 500; font-size: 0.75rem; min-width: 60px;">{% if case.is_public %}Public{% else %}Private{% endif %}</span>
                             </td>
-                            <td style="{% if case.is_public %}background-color:#d4f8e8 !important;{% else %}background-color:#fff5e0 !important;{% endif %} padding: 1rem 0.75rem; vertical-align: middle;">
+                            <td style="padding: 1rem 0.75rem; vertical-align: middle;">
                                 <span class="text-muted small">View only</span>
                             </td>
                             {% endif %}
@@ -235,13 +254,13 @@
 </div>
 
 <script>
-// Public/private toggle for each case row
+// Public/private toggle for each case card
 document.querySelectorAll('.case-public-toggle').forEach(function(toggle) {
     toggle.addEventListener('change', function(e) {
         const caseId = e.target.getAttribute('data-case-id');
         const isPublic = e.target.checked;
         const statusBadge = document.getElementById('publicStatus' + caseId);
-        const row = document.getElementById('caseRow' + caseId);
+        const card = document.getElementById('caseCard' + caseId);
         e.target.disabled = true;
         fetch(`/api/admin/cases/${caseId}/public`, {
             method: 'PATCH',
@@ -253,24 +272,16 @@ document.querySelectorAll('.case-public-toggle').forEach(function(toggle) {
             if (data.success) {
                 statusBadge.textContent = isPublic ? 'Public' : 'Private';
                 statusBadge.style.backgroundColor = isPublic ? '#28a745' : '#dc3545';
-                // Update row background instantly
-                if (row) {
+                // Update card classes
+                if (card) {
                     if (isPublic) {
-                        row.classList.add('case-public');
-                        row.classList.remove('case-private');
+                        card.classList.add('case-public');
+                        card.classList.remove('case-private');
                     } else {
-                        row.classList.add('case-private');
-                        row.classList.remove('case-public');
+                        card.classList.add('case-private');
+                        card.classList.remove('case-public');
                     }
                 }
-                // Also update all cell backgrounds in the row
-                Array.from(row.children).forEach(function(cell, idx) {
-                    if (isPublic) {
-                        cell.style.backgroundColor = idx === 0 ? '#d4f8e8' : '#d4f8e8';
-                    } else {
-                        cell.style.backgroundColor = idx === 0 ? '#fff5e0' : '#fff5e0';
-                    }
-                });
                 e.target.disabled = false;
             } else {
                 throw new Error(data.error || 'Unknown error');
@@ -345,25 +356,237 @@ function deleteCase(caseId) {
 </script>
 
 <style>
-tr.case-row.case-public {
-    background-color: #d4f8e8 !important;
-    border-left: 6px solid #28a745 !important;
+/* Filter Card Styling - Premium Design */
+.filter-card {
+    background: linear-gradient(135deg, #fdfdfb 0%, #f8f8f6 100%);
+    border: 1px solid #e0e0e0;
+    border-radius: 12px;
+    transition: all 0.3s ease;
+}
+
+.filter-card:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+    transform: translateY(-1px);
+}
+
+/* Filter Row - Even Distribution Using Flexbox */
+.filter-row {
+    display: flex;
+    gap: 1.25rem;
+    align-items: flex-end;
+    flex-wrap: wrap;
+}
+
+.filter-item {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.filter-button-item {
+    flex: 1;
+    min-width: 140px;
+    max-width: 220px;
+    display: flex;
+    align-items: flex-end;
+}
+
+.filter-label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #5a6270;
+    margin-bottom: 0.5rem;
+    letter-spacing: 0.3px;
+}
+
+.filter-label i {
+    color: #a8d5ba;
+    font-size: 0.9rem;
+}
+
+.filter-select {
+    border: 2px solid #c5cad1;
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    background-color: white;
+    font-size: 0.95rem;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+    width: 100%;
+}
+
+.filter-select:hover {
+    border-color: #a8d5ba;
+    box-shadow: 0 2px 8px rgba(168, 213, 186, 0.15);
+}
+
+.filter-select:focus {
+    border-color: #a8d5ba;
+    box-shadow: 0 0 0 3px rgba(168, 213, 186, 0.15);
+    background-color: white;
+    outline: none;
+}
+
+.filter-clear-btn {
+    background: linear-gradient(135deg, #8b94a3 0%, #6c757d 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 0.75rem 1.25rem;
+    font-weight: 600;
+    font-size: 0.95rem;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    letter-spacing: 0.2px;
+    white-space: nowrap;
+    width: 100%;
+}
+
+.filter-clear-btn:hover {
+    background: linear-gradient(135deg, #6c757d 0%, #5a6270 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    color: white;
+}
+
+.filter-clear-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Desktop: Even distribution for 3 or 4 items */
+@media (min-width: 992px) {
+    .filter-row {
+        gap: 1.5rem;
+    }
+    
+    .filter-item {
+        flex: 1;
+    }
+    
+    .filter-button-item {
+        flex: 1;
+        max-width: 220px;
+    }
+}
+
+/* Tablet: 2 columns */
+@media (min-width: 768px) and (max-width: 991px) {
+    .filter-row {
+        gap: 1rem;
+    }
+    
+    .filter-item {
+        flex: 0 0 calc(50% - 0.5rem);
+    }
+    
+    .filter-button-item {
+        flex: 0 0 calc(50% - 0.5rem);
+        max-width: none;
+    }
+}
+
+/* Mobile Responsive */
+@media (max-width: 767px) {
+    .filter-card .card-body {
+        padding: 1.25rem;
+    }
+    
+    .filter-row {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .filter-item {
+        flex: 1 1 100%;
+        width: 100%;
+    }
+    
+    .filter-button-item {
+        max-width: 100%;
+    }
+    
+    .filter-label {
+        font-size: 0.8rem;
+        margin-bottom: 0.4rem;
+    }
+    
+    .filter-select {
+        padding: 0.625rem 0.875rem;
+        font-size: 0.9rem;
+    }
+    
+    .filter-clear-btn {
+        padding: 0.625rem 1rem;
+        font-size: 0.9rem;
+    }
+}
+
+/* Modern Case Card Layout */
+/* Case Row Styling with Alternating Shades */
+.case-row {
     transition: all 0.2s ease;
 }
-tr.case-row.case-private {
-    background-color: #fff5e0 !important;
-    border-left: 6px solid #ff9800 !important;
-    transition: all 0.2s ease;
+
+.case-row-even {
+    background-color: #ffffff;
 }
-tr.case-row:hover {
+
+.case-row-odd {
+    background-color: #f8f9fa;
+}
+
+.case-row:hover {
+    background-color: #f0f8ff !important;
     transform: translateX(2px);
     box-shadow: 0 2px 8px rgba(0,0,0,0.08);
 }
-tr.case-row.case-public:hover {
-    background-color: #c8f0e0 !important;
+
+/* Table improvements */
+.table {
+    border-collapse: separate;
+    border-spacing: 0;
 }
-tr.case-row.case-private:hover {
-    background-color: #ffe8cc !important;
+
+.table tbody tr {
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+
+.table tbody tr:last-child {
+    border-bottom: none;
+}
+
+/* Module badge styling with color-coded modules */
+.module-badge {
+    position: relative;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+}
+
+.module-badge:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.25);
+    filter: brightness(1.1);
+}
+
+/* Green toggle switch for public/private */
+.case-public-toggle:checked {
+    background-color: #28a745 !important;
+    border-color: #28a745 !important;
+}
+
+.case-public-toggle:focus {
+    border-color: #28a745;
+    box-shadow: 0 0 0 0.25rem rgba(40, 167, 69, 0.25);
+}
+
+/* Green edit button hover effect */
+.btn-success:hover {
+    background: linear-gradient(135deg, #20c997 0%, #28a745 100%) !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(40, 167, 69, 0.3);
 }
 
 /* Improved badge styling */
@@ -394,16 +617,5 @@ tr.case-row.case-private:hover {
     box-shadow: 0 0 0 0.2rem rgba(168, 213, 186, 0.25);
 }
 
-/* Table improvements */
-.table {
-    border-collapse: separate;
-    border-spacing: 0;
-}
-.table tbody tr {
-    border-bottom: 1px solid rgba(0,0,0,0.05);
-}
-.table tbody tr:last-child {
-    border-bottom: none;
-}
 </style>
 {% endblock %}

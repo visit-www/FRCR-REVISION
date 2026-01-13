@@ -304,19 +304,22 @@ def restore_backup():
                             if key == 'role' and value:
                                 try:
                                     existing_user.role = UserRole(value)
-                                except:
+                                except (ValueError, KeyError) as e:
+                                    print(f"[IMPORT] Warning: Could not set user role to {value}: {e}")
                                     pass
                             elif key == 'subscription_status' and value:
                                 from models import SubscriptionStatus
                                 try:
                                     existing_user.subscription_status = SubscriptionStatus(value)
-                                except:
+                                except (ValueError, KeyError) as e:
+                                    print(f"[IMPORT] Warning: Could not set subscription_status to {value}: {e}")
                                     pass
                             elif key == 'payment_status' and value:
                                 from models import PaymentStatus
                                 try:
                                     existing_user.payment_status = PaymentStatus(value)
-                                except:
+                                except (ValueError, KeyError) as e:
+                                    print(f"[IMPORT] Warning: Could not set payment_status to {value}: {e}")
                                     pass
                             elif key in ['created_at', 'last_login'] and value:
                                 # Convert ISO string to datetime object for SQLite compatibility
@@ -335,21 +338,40 @@ def restore_backup():
                         stats['users']['skipped'] += 1
                 else:
                     # Create new user
+                    try:
+                        role_value = filtered_data.get('role', 'student')
+                        user_role = UserRole(role_value) if role_value else UserRole.STUDENT
+                    except (ValueError, KeyError) as e:
+                        print(f"[IMPORT] Warning: Could not set user role to {filtered_data.get('role')}, defaulting to student: {e}")
+                        user_role = UserRole.STUDENT
+                    
                     user = User(
                         email=filtered_data.get('email'),
                         password_hash=filtered_data.get('password_hash', ''),
                         full_name=filtered_data.get('full_name', ''),
-                        role=UserRole(filtered_data.get('role', 'student')),
+                        role=user_role,
                         is_active=filtered_data.get('is_active', True),
                     )
                     if filtered_data.get('subscription_status'):
                         from models import SubscriptionStatus
-                        user.subscription_status = SubscriptionStatus(filtered_data['subscription_status'])
+                        try:
+                            user.subscription_status = SubscriptionStatus(filtered_data['subscription_status'])
+                        except (ValueError, KeyError) as e:
+                            print(f"[IMPORT] Warning: Could not set subscription_status to {filtered_data.get('subscription_status')}: {e}")
                     if filtered_data.get('payment_status'):
                         from models import PaymentStatus
-                        user.payment_status = PaymentStatus(filtered_data['payment_status'])
+                        try:
+                            user.payment_status = PaymentStatus(filtered_data['payment_status'])
+                        except (ValueError, KeyError) as e:
+                            print(f"[IMPORT] Warning: Could not set payment_status to {filtered_data.get('payment_status')}: {e}")
                     if filtered_data.get('created_at'):
-                        user.created_at = datetime.fromisoformat(filtered_data['created_at'])
+                        try:
+                            if isinstance(filtered_data['created_at'], str):
+                                user.created_at = datetime.fromisoformat(filtered_data['created_at'])
+                            elif isinstance(filtered_data['created_at'], datetime):
+                                user.created_at = filtered_data['created_at']
+                        except (ValueError, TypeError) as e:
+                            print(f"[IMPORT] Warning: Could not parse user created_at datetime: {filtered_data.get('created_at')}, error: {e}")
                     db.session.add(user)
                     stats['users']['added'] += 1
             
@@ -705,34 +727,46 @@ def restore_backup():
                         old_user_id = filtered_data.get('created_by_user_id')
                         case.created_by_user_id = user_id_map.get(old_user_id, current_user.id)
                 if filtered_data.get('created_at'):
-                    case.created_at = datetime.fromisoformat(filtered_data['created_at'])
+                    try:
+                        if isinstance(filtered_data['created_at'], str):
+                            case.created_at = datetime.fromisoformat(filtered_data['created_at'])
+                        elif isinstance(filtered_data['created_at'], datetime):
+                            case.created_at = filtered_data['created_at']
+                    except (ValueError, TypeError) as e:
+                        print(f"[IMPORT] Warning: Could not parse case created_at datetime: {filtered_data.get('created_at')}, error: {e}")
                 
                 db.session.add(case)
                 db.session.flush()
                 
                 # Add Q&A
-                for q_data in case_data.get('questions', []):
-                    question = Question(
-                        case_id=case.id,
-                        question_number=q_data.get('question_number', 0),
-                        question_text=q_data.get('question_text', ''),
-                    )
-            db.session.add(question)
-            stats['questions']['added'] += 1
-        
-        answers_list = case_data.get('answers', [])
-        if isinstance(answers_list, list):
-            for a_data in answers_list:
-                if not isinstance(a_data, dict):
-                    print(f"[IMPORT] Warning: Skipping invalid answer data (not a dict)")
-                    continue
-                answer = Answer(
-                    case_id=case.id,
-                    answer_number=a_data.get('answer_number', 0),
-                    answer_text=a_data.get('answer_text', ''),
-                )
-                db.session.add(answer)
-                stats['answers']['added'] += 1
+                questions_list = case_data.get('questions', [])
+                if isinstance(questions_list, list):
+                    for q_data in questions_list:
+                        if not isinstance(q_data, dict):
+                            print(f"[IMPORT] Warning: Skipping invalid question data (not a dict)")
+                            continue
+                        question = Question(
+                            case_id=case.id,
+                            question_number=q_data.get('question_number', 0),
+                            question_text=q_data.get('question_text', ''),
+                        )
+                        db.session.add(question)
+                        stats['questions']['added'] += 1
+                
+                # Add answers
+                answers_list = case_data.get('answers', [])
+                if isinstance(answers_list, list):
+                    for a_data in answers_list:
+                        if not isinstance(a_data, dict):
+                            print(f"[IMPORT] Warning: Skipping invalid answer data (not a dict)")
+                            continue
+                        answer = Answer(
+                            case_id=case.id,
+                            answer_number=a_data.get('answer_number', 0),
+                            answer_text=a_data.get('answer_text', ''),
+                        )
+                        db.session.add(answer)
+                        stats['answers']['added'] += 1
                 
                 # Add images
                 import base64
@@ -892,7 +926,13 @@ def restore_backup():
                     rev_session.set_case_ids_list(case_ids)
                     # Set created_at if provided in backup data
                     if session_data.get('created_at'):
-                        rev_session.created_at = datetime.fromisoformat(session_data['created_at'])
+                        try:
+                            if isinstance(session_data['created_at'], str):
+                                rev_session.created_at = datetime.fromisoformat(session_data['created_at'])
+                            elif isinstance(session_data['created_at'], datetime):
+                                rev_session.created_at = session_data['created_at']
+                        except (ValueError, TypeError) as e:
+                            print(f"[IMPORT] Warning: Could not parse session created_at datetime: {session_data.get('created_at')}, error: {e}")
                     db.session.add(rev_session)
                     stats['revision_sessions']['added'] += 1
         
@@ -938,7 +978,13 @@ def restore_backup():
                     case_id=case_id,
                 )
                 if flag_data.get('created_at'):
-                    flag.created_at = datetime.fromisoformat(flag_data['created_at'])
+                    try:
+                        if isinstance(flag_data['created_at'], str):
+                            flag.created_at = datetime.fromisoformat(flag_data['created_at'])
+                        elif isinstance(flag_data['created_at'], datetime):
+                            flag.created_at = flag_data['created_at']
+                    except (ValueError, TypeError) as e:
+                        print(f"[IMPORT] Warning: Could not parse flag created_at datetime: {flag_data.get('created_at')}, error: {e}")
                 db.session.add(flag)
                 stats['case_flags']['added'] += 1
         
@@ -967,7 +1013,13 @@ def restore_backup():
                     field_name=highlight_data.get('field_name', 'discussion'),
                 )
                 if highlight_data.get('created_at'):
-                    highlight.created_at = datetime.fromisoformat(highlight_data['created_at'])
+                    try:
+                        if isinstance(highlight_data['created_at'], str):
+                            highlight.created_at = datetime.fromisoformat(highlight_data['created_at'])
+                        elif isinstance(highlight_data['created_at'], datetime):
+                            highlight.created_at = highlight_data['created_at']
+                    except (ValueError, TypeError) as e:
+                        print(f"[IMPORT] Warning: Could not parse highlight created_at datetime: {highlight_data.get('created_at')}, error: {e}")
                 db.session.add(highlight)
                 stats['highlights']['added'] += 1
         
@@ -994,7 +1046,13 @@ def restore_backup():
                     note_text=note_data.get('note_text', ''),
                 )
                 if note_data.get('created_at'):
-                    note.created_at = datetime.fromisoformat(note_data['created_at'])
+                    try:
+                        if isinstance(note_data['created_at'], str):
+                            note.created_at = datetime.fromisoformat(note_data['created_at'])
+                        elif isinstance(note_data['created_at'], datetime):
+                            note.created_at = note_data['created_at']
+                    except (ValueError, TypeError) as e:
+                        print(f"[IMPORT] Warning: Could not parse note created_at datetime: {note_data.get('created_at')}, error: {e}")
                 db.session.add(note)
                 stats['notes']['added'] += 1
                 

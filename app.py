@@ -790,7 +790,7 @@ def start_balanced_revision():
         flash(' '.join(message_parts), 'success')
         
         # Redirect to first case
-        return redirect(url_for('view_revision_case', session_id=revision_session.id, case_index=0))
+        return redirect(url_for("view_revision_case", session_id=revision_session.id, case_index=0))
     
     except Exception as e:
         db.session.rollback()
@@ -1026,8 +1026,8 @@ def cases_by_module(module):
                              search_query=search_query)
     else:
         return render_template('cases_list.html',
-                             cases=cases_data,
-                             module_filter=module_enum.value,
+                         cases=cases_data,
+                         module_filter=module_enum.value,
                          body_parts=body_parts,
                          body_part_selected=body_part_filter,
                              age_groups=age_groups,
@@ -1933,7 +1933,7 @@ def delete_case(case_id):
         # Delete the case
         db.session.delete(case)
         db.session.commit()
-        
+    
         return jsonify({
             'success': True,
             'message': 'Case deleted successfully'
@@ -2412,15 +2412,44 @@ def save_candidate_note(case_id):
     data = request.get_json()
     note_text = (data.get('note_text') or '').strip()
     
+    # Check for existing note - use filter_by to prevent duplicates
     note = CandidateNote.query.filter_by(case_id=case_id, user_id=current_user.id).first()
+    
     if note:
-        note.note_text = note_text
-        note.updated_at = datetime.utcnow()
-        action = 'updated'
+        # Update existing note only if text has changed
+        if note.note_text != note_text:
+            note.note_text = note_text
+            note.updated_at = datetime.utcnow()
+            action = 'updated'
+        else:
+            # No change, return existing note
+            return jsonify({
+                'success': True, 
+                'message': 'Note unchanged', 
+                'note_text': note.note_text, 
+                'updated_at': note.updated_at.isoformat() if note.updated_at else None
+            }), 200
     else:
+        # Check if there are any other notes with same content (duplicate prevention)
+        existing_duplicate = CandidateNote.query.filter_by(
+            case_id=case_id,
+            user_id=current_user.id,
+            note_text=note_text
+        ).first()
+        
+        if existing_duplicate:
+            # Return existing duplicate instead of creating new one
+            return jsonify({
+                'success': True,
+                'message': 'Note already exists',
+                'note_text': existing_duplicate.note_text,
+                'updated_at': existing_duplicate.updated_at.isoformat() if existing_duplicate.updated_at else None
+            }), 200
+        
         note = CandidateNote(case_id=case_id, user_id=current_user.id, note_text=note_text, created_at=datetime.utcnow(), updated_at=datetime.utcnow())
         db.session.add(note)
         action = 'created'
+    
     try:
         db.session.commit()
         return jsonify({'success': True, 'message': f'Note {action}', 'note_text': note.note_text, 'updated_at': note.updated_at.isoformat() if note.updated_at else None})
@@ -2641,6 +2670,28 @@ def add_highlight(case_id):
     valid_colors = ['yellow', 'green', 'pink', 'blue']
     if highlight_color not in valid_colors:
         return jsonify({'error': 'Invalid color'}), 400
+    
+    # Check for existing duplicate highlight (same case, user, text, color, and field)
+    existing_highlight = TextHighlight.query.filter_by(
+        case_id=case_id,
+        user_id=current_user.id,
+        text_content=text_content,
+        highlight_color=highlight_color,
+        field_name=field_name
+    ).first()
+    
+    if existing_highlight:
+        # Return existing highlight instead of creating duplicate
+        return jsonify({
+            'success': True,
+            'highlight': {
+                'id': existing_highlight.id,
+                'text_content': existing_highlight.text_content,
+                'highlight_color': existing_highlight.highlight_color,
+                'field_name': existing_highlight.field_name
+            },
+            'message': 'Highlight already exists'
+        }), 200
     
     highlight = TextHighlight(
         case_id=case_id,
