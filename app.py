@@ -694,7 +694,7 @@ with app.app_context():
         except Exception as query_error:
             # Tables don't exist, create them
             print("[DB] Tables not found, creating database schema...")
-        db.create_all()
+            db.create_all()
             print("[DB] Database schema created successfully")
     except Exception as e:
         print(f"[DB] Error initializing database: {e}")
