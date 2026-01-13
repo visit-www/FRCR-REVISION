@@ -942,15 +942,27 @@ function saveEditedCase(event) {
                     const uploadPromises = pendingImages.map((file, index) => {
                         return new Promise((resolve, reject) => {
                             setTimeout(() => {
+                                // Verify file is still valid
+                                if (!file || !(file instanceof File) && !(file instanceof Blob)) {
+                                    console.error('[SAVE] Invalid file object:', file);
+                                    reject(new Error('File object is invalid or corrupted'));
+                                    return;
+                                }
+                                
                                 const formData = new FormData();
                                 formData.append('image', file);
                                 
-                                console.log('[SAVE] Uploading pending image:', file.name, 'to case', newCaseId);
+                                console.log('[SAVE] Uploading pending image:', file.name, 'size:', file.size, 'type:', file.type, 'to case', newCaseId);
+                                
+                                // Add timeout to fetch request
+                                const controller = new AbortController();
+                                const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
                                 
                                 fetch(`/api/case/${newCaseId}/image`, {
                                     method: 'POST',
                                     body: formData,
-                                    credentials: 'same-origin' // Ensure cookies are sent
+                                    credentials: 'same-origin', // Ensure cookies are sent
+                                    signal: controller.signal
                                 })
                                 .then(async r => {
                                     console.log('[SAVE] Upload response status:', r.status, 'for', file.name);
@@ -980,17 +992,28 @@ function saveEditedCase(event) {
                                     return r.json();
                                 })
                                 .then(data => {
+                                    clearTimeout(timeoutId);
                                     console.log('[SAVE] Pending image uploaded successfully:', file.name, data);
                                     resolve(data);
                                 })
                                 .catch(error => {
+                                    clearTimeout(timeoutId);
                                     console.error('[SAVE] Error uploading pending image:', file.name, error);
                                     console.error('[SAVE] Error details:', {
                                         name: error.name,
                                         message: error.message,
                                         stack: error.stack
                                     });
-                                    reject(error);
+                                    
+                                    // Provide more specific error message
+                                    let errorMsg = error.message;
+                                    if (error.name === 'AbortError') {
+                                        errorMsg = 'Upload timeout - file may be too large or network is slow';
+                                    } else if (error.message.includes('Load failed') || error.message.includes('Failed to fetch')) {
+                                        errorMsg = 'Network error - please check your connection and try again';
+                                    }
+                                    
+                                    reject(new Error(errorMsg));
                                 });
                             }, index * 300); // Stagger uploads slightly
                         });
