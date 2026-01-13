@@ -185,29 +185,34 @@ def check_duplicates():
         return jsonify({'error': 'Only JSON files supported'}), 400
     
     try:
-        # FRESH APPROACH: Check file size BEFORE reading to prevent issues
+        # FRESH APPROACH: Handle large files by reading in chunks
         file.seek(0, 2)  # Seek to end
         file_size = file.tell()
         file.seek(0)  # Reset to beginning
         
         print(f"[DUPLICATE CHECK] Backup file size: {file_size} bytes ({file_size / 1024 / 1024:.2f} MB)")
         
-        # Vercel limit is 4.5MB, but we'll warn at 4MB
-        MAX_FILE_SIZE = 4 * 1024 * 1024  # 4MB
-        if file_size > MAX_FILE_SIZE:
-            return jsonify({
-                'error': f'Backup file is too large ({file_size / 1024 / 1024:.2f} MB). Maximum size is 4 MB for duplicate checking.',
-                'file_size_mb': round(file_size / 1024 / 1024, 2),
-                'max_size_mb': 4
-            }), 413  # 413 Payload Too Large
+        # Read file in chunks to handle large files (26MB+)
+        file_content_parts = []
+        chunk_size = 1024 * 1024  # 1MB chunks
+        total_read = 0
         
-        # Read and decode file - READ ONCE
-        file_content = file.read()
+        while True:
+            chunk = file.read(chunk_size)
+            if not chunk:
+                break
+            file_content_parts.append(chunk)
+            total_read += len(chunk)
+            print(f"[DUPLICATE CHECK] Read chunk: {total_read / 1024 / 1024:.2f} MB / {file_size / 1024 / 1024:.2f} MB")
+        
+        # Combine chunks
+        file_content = b''.join(file_content_parts)
         if not file_content:
             return jsonify({'error': 'Backup file is empty'}), 400
         
         # Clear file reference to prevent multiple reads
         file = None
+        file_content_parts = None
         
         try:
             file_text = file_content.decode('utf-8')

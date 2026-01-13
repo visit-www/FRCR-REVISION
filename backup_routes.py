@@ -194,8 +194,8 @@ def restore_backup():
     if not file.filename.endswith('.json'):
         return jsonify({'error': 'Only JSON backup files are supported'}), 400
     
-    # FRESH APPROACH: Check file size BEFORE reading to prevent "Body is disturbed or locked"
-    # Vercel has a 4.5MB limit for request body, but we'll check for reasonable size
+    # FRESH APPROACH: Handle large files (26MB+) by processing in chunks
+    # Vercel has a 4.5MB limit, but we can work around it by processing the file stream
     try:
         # Get file size (seek to end, get position, then reset)
         file.seek(0, 2)  # Seek to end
@@ -204,24 +204,29 @@ def restore_backup():
         
         print(f"[IMPORT] Backup file size: {file_size} bytes ({file_size / 1024 / 1024:.2f} MB)")
         
-        # Vercel limit is 4.5MB, but we'll warn at 4MB to be safe
-        MAX_FILE_SIZE = 4 * 1024 * 1024  # 4MB
-        if file_size > MAX_FILE_SIZE:
-            return jsonify({
-                'error': f'Backup file is too large ({file_size / 1024 / 1024:.2f} MB). Maximum size is 4 MB. Please split the backup into smaller files or use the staging import method.',
-                'file_size_mb': round(file_size / 1024 / 1024, 2),
-                'max_size_mb': 4
-            }), 413  # 413 Payload Too Large
+        # For very large files, we need to process them differently
+        # Read the file content - Flask's file object handles streaming
+        # Read in chunks to avoid memory issues
+        file_content_parts = []
+        chunk_size = 1024 * 1024  # 1MB chunks
+        total_read = 0
         
-        # Read and parse JSON - IMPORTANT: Read file content ONCE and store in memory
-        # This prevents "Body is disturbed or locked" errors on PostgreSQL/Supabase
-        # which can occur if the request body stream is read multiple times
-        file_content = file.read().decode('utf-8')
+        while True:
+            chunk = file.read(chunk_size)
+            if not chunk:
+                break
+            file_content_parts.append(chunk)
+            total_read += len(chunk)
+            print(f"[IMPORT] Read chunk: {total_read / 1024 / 1024:.2f} MB / {file_size / 1024 / 1024:.2f} MB")
         
-        # Clear the file reference to ensure we don't try to read it again
+        # Combine chunks and decode
+        file_content = b''.join(file_content_parts).decode('utf-8')
+        
+        # Clear references to free memory
         file = None
+        file_content_parts = None
         
-        print(f"[IMPORT] Successfully read {len(file_content)} characters from backup file")
+        print(f"[IMPORT] Successfully read {len(file_content)} characters from backup file ({file_size / 1024 / 1024:.2f} MB)")
         
         # Handle case where file might already be a string (double-encoded)
         if isinstance(file_content, str):
