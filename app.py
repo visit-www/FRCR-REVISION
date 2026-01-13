@@ -2037,7 +2037,7 @@ def delete_case(case_id):
     try:
         # Check if user has permission to delete
         case = Case.query.get(case_id)
-    if not case:
+        if not case:
             return jsonify({
                 'success': False,
                 'error': 'Case not found'
