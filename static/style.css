@@ -129,19 +129,28 @@
     }
     
     #descriptionModal .modal-footer {
-        flex-direction: column;
-        gap: 0.5rem;
-        padding: 1rem;
+        background-color: #212529 !important;
+        color: white !important;
+        padding: 0.75rem 1rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-direction: row;
     }
     
     #descriptionModal .modal-footer .btn {
-        width: 100%;
+        width: auto;
         margin: 0;
     }
     
-    /* Make TinyMCE editor more mobile-friendly */
+    #descriptionModal .modal-footer small {
+        color: white !important;
+        margin: 0;
+    }
+    
+    /* Make TinyMCE editor larger - full thickness */
     #descriptionModal .tox-tinymce {
-        min-height: 200px !important;
+        min-height: 400px !important;
     }
     
     /* Touch-friendly buttons in image description */

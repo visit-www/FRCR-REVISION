@@ -305,28 +305,30 @@ function editImageDescription(imageId) {
     modal.className = 'modal fade';
     modal.id = 'descriptionModal';
     modal.innerHTML = `
-        <div class="modal-dialog modal-lg">
+        <div class="modal-dialog modal-xl" style="max-width: 95vw;">
             <div class="modal-content">
-                <div class="modal-header bg-info text-white">
+                <div class="modal-header bg-info text-white" style="padding: 0.75rem 1rem;">
                     <h5 class="modal-title"><i class="fas fa-image me-2"></i>Edit Image Description</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="modal-body">
+                <div class="modal-body" style="padding: 1rem;">
                     <label for="descriptionInput" class="form-label mb-2">
                         <i class="fas fa-align-left me-2"></i>Description
                     </label>
-                    <textarea class="form-control rich-editor" id="descriptionInput" rows="6" placeholder="Enter image description..."></textarea>
-                    <small class="text-muted d-block mt-2">
+                    <textarea class="form-control rich-editor" id="descriptionInput" rows="12" placeholder="Enter image description..." style="min-height: 400px;"></textarea>
+                </div>
+                <div class="modal-footer bg-dark text-white" style="padding: 0.75rem 1rem; display: flex; justify-content: space-between; align-items: center;">
+                    <small class="text-white" style="margin: 0;">
                         <i class="fas fa-info-circle me-1"></i>You can use rich text formatting for better descriptions.
                     </small>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                        <i class="fas fa-times me-2"></i>Cancel
-                    </button>
-                    <button type="button" class="btn btn-info" onclick="saveImageDescription(${imageId})">
-                        <i class="fas fa-save me-2"></i>Save
-                    </button>
+                    <div>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                            <i class="fas fa-times me-2"></i>Cancel
+                        </button>
+                        <button type="button" class="btn btn-info" onclick="saveImageDescription(${imageId})">
+                            <i class="fas fa-save me-2"></i>Save
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -349,7 +351,26 @@ function editImageDescription(imageId) {
                     textarea.value = currentDescription;
                     
                     // Initialize TinyMCE with retry logic (same as Q&A answers)
-                    initializeTinyMCE('descriptionInput', 0);
+                    // Use custom height for image description editor
+                    setTimeout(() => {
+                        if (typeof tinymce !== 'undefined' && tinymce.init) {
+                            tinymce.init({
+                                selector: '#descriptionInput',
+                                height: 400,
+                                menubar: false,
+                                toolbar: 'undo redo | bold italic underline | numlist bullist | table link code removeformat',
+                                plugins: 'table link code',
+                                base_url: 'https://cdn.jsdelivr.net/npm/tinymce@6',
+                                content_css: 'default',
+                                skin: 'oxide',
+                                setup: function(editor) {
+                                    editor.on('init', function() {
+                                        editor.setContent(currentDescription);
+                                    });
+                                }
+                            });
+                        }
+                    }, 100);
                     
                     // Wait for TinyMCE to initialize, then set content
                     function setContentWhenReady(retries = 0) {
@@ -395,30 +416,35 @@ function editImageDescription(imageId) {
             modal.className = 'modal fade';
             modal.id = 'descriptionModal';
             modal.innerHTML = `
-                <div class="modal-dialog modal-lg">
+                <div class="modal-dialog modal-xl" style="max-width: 95vw;">
                     <div class="modal-content">
-                        <div class="modal-header bg-info text-white">
-                            <h5 class="modal-title">Edit Image Description</h5>
-                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                        </div>
-                        <div class="modal-body">
-                            <textarea class="form-control rich-editor" id="descriptionInput" rows="6" placeholder="Enter image description...">${currentDescription}</textarea>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                            <button type="button" class="btn btn-info" onclick="saveImageDescription(${imageId})">Save</button>
-                        </div>
-                    </div>
+                        <div class="modal-header bg-info text-white" style="padding: 0.75rem 1rem;">
+                    <h5 class="modal-title">Edit Image Description</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
-            `;
+                        <div class="modal-body" style="padding: 1rem;">
+                            <textarea class="form-control rich-editor" id="descriptionInput" rows="12" placeholder="Enter image description..." style="min-height: 400px;">${currentDescription}</textarea>
+                </div>
+                        <div class="modal-footer bg-dark text-white" style="padding: 0.75rem 1rem; display: flex; justify-content: space-between; align-items: center;">
+                            <small class="text-white" style="margin: 0;">
+                                <i class="fas fa-info-circle me-1"></i>You can use rich text formatting for better descriptions.
+                            </small>
+                            <div>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-info" onclick="saveImageDescription(${imageId})">Save</button>
+                            </div>
+                </div>
+            </div>
+        </div>
+    `;
 
-            const oldModal = document.getElementById('descriptionModal');
-            if (oldModal) oldModal.remove();
-            document.body.appendChild(modal);
-            const bsModal = new bootstrap.Modal(modal);
-            bsModal.show();
+    const oldModal = document.getElementById('descriptionModal');
+    if (oldModal) oldModal.remove();
+    document.body.appendChild(modal);
+    const bsModal = new bootstrap.Modal(modal);
+    bsModal.show();
 
-            setTimeout(() => {
+    setTimeout(() => {
                 if (typeof tinymce !== 'undefined' && tinymce.init) {
             tinymce.init({
                 selector: '#descriptionInput',
