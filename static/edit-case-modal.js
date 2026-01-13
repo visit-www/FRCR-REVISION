@@ -1054,8 +1054,15 @@ function saveEditedCase(event) {
                 redirectUrl = '/cases';
             }
             
-            console.log('[SAVE] Redirecting to:', redirectUrl);
-            window.location.href = redirectUrl;
+            // Only redirect if we're not waiting for pending images
+            if (!shouldWaitForImages) {
+                console.log('[SAVE] Redirecting to:', redirectUrl);
+                window.location.href = redirectUrl;
+            } else {
+                console.log('[SAVE] Deferring redirect - waiting for pending images to upload');
+                // Store redirect URL to use after images are uploaded
+                window.pendingRedirectUrl = redirectUrl;
+            }
         } else {
             const errorMsg = data.error || 'Failed to save case';
             console.error('[SAVE] Save failed:', data);
