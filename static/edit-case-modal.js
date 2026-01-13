@@ -308,15 +308,25 @@ function editImageDescription(imageId) {
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header bg-info text-white">
-                    <h5 class="modal-title">Edit Image Description</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    <h5 class="modal-title"><i class="fas fa-image me-2"></i>Edit Image Description</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
+                    <label for="descriptionInput" class="form-label mb-2">
+                        <i class="fas fa-align-left me-2"></i>Description
+                    </label>
                     <textarea class="form-control rich-editor" id="descriptionInput" rows="6" placeholder="Enter image description..."></textarea>
+                    <small class="text-muted d-block mt-2">
+                        <i class="fas fa-info-circle me-1"></i>You can use rich text formatting for better descriptions.
+                    </small>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-info" onclick="saveImageDescription(${imageId})">Save</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-2"></i>Cancel
+                    </button>
+                    <button type="button" class="btn btn-info" onclick="saveImageDescription(${imageId})">
+                        <i class="fas fa-save me-2"></i>Save
+                    </button>
                 </div>
             </div>
         </div>

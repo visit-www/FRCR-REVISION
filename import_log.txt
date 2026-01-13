@@ -1,0 +1,11 @@
+Error: Supabase postgres password is required.
+Provide it via --password flag or set POSTGRES_PASSWORD environment variable.
+
+To get your password:
+1. Go to Supabase Dashboard: https://supabase.com/dashboard
+2. Select your project
+3. Go to Settings > Database
+4. Find 'Connection string' or 'Database password'
+
+Or set environment variable:
+  export POSTGRES_PASSWORD='your_password'

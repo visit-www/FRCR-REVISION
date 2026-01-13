@@ -28,6 +28,186 @@
     }
 }
 
+/* ==================== MOBILE TABLE SCROLLING ==================== */
+/* Make tables horizontally scrollable on mobile/tablet devices */
+@media (max-width: 991px) {
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+        scrollbar-width: thin;
+        scrollbar-color: #a8d5ba #f8f9fa;
+    }
+    
+    .table-responsive::-webkit-scrollbar {
+        height: 8px;
+    }
+    
+    .table-responsive::-webkit-scrollbar-track {
+        background: #f8f9fa;
+        border-radius: 4px;
+    }
+    
+    .table-responsive::-webkit-scrollbar-thumb {
+        background: #a8d5ba;
+        border-radius: 4px;
+    }
+    
+    .table-responsive::-webkit-scrollbar-thumb:hover {
+        background: #8bc9a3;
+    }
+    
+    /* Ensure table maintains minimum width for readability */
+    .table-responsive table {
+        min-width: 800px; /* Minimum width to show all columns */
+        width: 100%;
+    }
+    
+    /* Add visual indicator for scrollable tables */
+    .table-responsive::after {
+        content: '';
+        position: absolute;
+        right: 0;
+        top: 0;
+        bottom: 0;
+        width: 30px;
+        background: linear-gradient(to right, transparent, rgba(168, 213, 186, 0.1));
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.3s;
+    }
+    
+    .table-responsive:not(:hover)::after {
+        opacity: 1;
+    }
+}
+
+/* ==================== MOBILE FILTER BUTTONS ==================== */
+/* Better layout for filter buttons on mobile */
+@media (max-width: 991px) {
+    .filter-row {
+        flex-direction: column;
+        gap: 1rem !important;
+    }
+    
+    .filter-item {
+        width: 100% !important;
+    }
+    
+    /* Make filter buttons horizontal on mobile instead of vertical stack */
+    .filter-button-item {
+        display: flex;
+        gap: 0.75rem;
+        flex-wrap: wrap;
+    }
+    
+    .filter-button-item .btn {
+        flex: 1;
+        min-width: 120px;
+    }
+    
+    /* Ensure buttons are touch-friendly */
+    .filter-button-item .btn {
+        min-height: 44px;
+        font-size: 0.95rem;
+    }
+}
+
+/* ==================== MOBILE IMAGE DESCRIPTION MODAL ==================== */
+/* Make image description modal more mobile-friendly */
+@media (max-width: 991px) {
+    .modal-dialog.modal-lg {
+        max-width: 95vw;
+        margin: 1rem auto;
+    }
+    
+    #descriptionModal .modal-dialog {
+        max-width: 95vw;
+    }
+    
+    #descriptionModal .modal-body {
+        padding: 1rem;
+    }
+    
+    #descriptionModal .modal-footer {
+        flex-direction: column;
+        gap: 0.5rem;
+        padding: 1rem;
+    }
+    
+    #descriptionModal .modal-footer .btn {
+        width: 100%;
+        margin: 0;
+    }
+    
+    /* Make TinyMCE editor more mobile-friendly */
+    #descriptionModal .tox-tinymce {
+        min-height: 200px !important;
+    }
+    
+    /* Touch-friendly buttons in image description */
+    #descriptionModal .btn {
+        min-height: 44px; /* Touch target size */
+        padding: 0.75rem 1rem;
+        font-size: 1rem;
+    }
+}
+
+/* ==================== MOBILE NAVBAR ENHANCEMENT ==================== */
+/* Enhance mobile navbar with breadcrumb navigation */
+@media (max-width: 991px) {
+    /* Hide default navbar links on mobile, show breadcrumbs instead */
+    .navbar-collapse {
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    /* Make navbar items more touch-friendly */
+    .navbar-nav .nav-link {
+        padding: 0.75rem 1rem;
+        font-size: 1rem;
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+    }
+    
+    /* Mobile breadcrumb navigation in navbar */
+    .mobile-breadcrumb-nav {
+        padding: 0.5rem 0;
+    }
+    
+    .mobile-breadcrumb-nav .breadcrumb {
+        background: transparent;
+        padding: 0;
+        margin: 0;
+        flex-wrap: wrap;
+    }
+    
+    .mobile-breadcrumb-nav .breadcrumb-item {
+        font-size: 0.9rem;
+    }
+    
+    .mobile-breadcrumb-nav .breadcrumb-item a {
+        color: rgba(255, 255, 255, 0.9);
+        text-decoration: none;
+        transition: color 0.2s;
+    }
+    
+    .mobile-breadcrumb-nav .breadcrumb-item a:hover {
+        color: rgba(255, 255, 255, 1);
+    }
+    
+    .mobile-breadcrumb-nav .breadcrumb-item.active {
+        color: rgba(255, 255, 255, 0.9);
+    }
+    
+    .mobile-breadcrumb-nav .breadcrumb-item + .breadcrumb-item::before {
+        content: "›";
+        color: rgba(255, 255, 255, 0.6);
+        padding: 0 0.5rem;
+    }
+}
+
 :root {
     /* === PRIMARY ACTION COLORS === */
     /* Peachy Orange - Brand Accent */

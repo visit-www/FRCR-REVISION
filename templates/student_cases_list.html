@@ -1,5 +1,16 @@
 {% extends "base.html" %}
 
+{% block mobile_breadcrumb %}
+    {% if module_filter %}
+    <li class="breadcrumb-item">
+        <a href="{{ url_for('modules_view') }}" class="text-white text-decoration-none">Modules</a>
+    </li>
+    <li class="breadcrumb-item active text-white" aria-current="page">{{ module_filter }}</li>
+    {% else %}
+    <li class="breadcrumb-item active text-white" aria-current="page">All Cases</li>
+    {% endif %}
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid py-4">
     <!-- Breadcrumb -->
@@ -95,22 +106,15 @@
                 </div>
                 
                 <div class="filter-item filter-button-item">
-                    <button class="btn filter-clear-btn w-100" onclick="clearFilters()">
-                        <i class="fas filter-clear-btn me-2"></i>Clear Filters
+                    <button class="btn filter-clear-btn" onclick="clearFilters()">
+                        <i class="fas fa-times me-2"></i>Clear Filters
                     </button>
-                </div>
-            </div>
-            
-            <div class="mt-3">
-                {% if flagged_filter %}
+                    {% if flagged_filter %}
                     <a href="{{ url_for('student_cases_list') }}" class="btn btn-warning btn-sm shadow-sm">
-                        <i class="fas fa-times me-2"></i>Clear Flagged Filter
+                        <i class="fas fa-times me-2"></i>Clear Flagged
                     </a>
-                    {% else %}
-                    <a href="{{ url_for('student_cases_list', flagged='true') }}" class="btn btn-warning btn-sm shadow-sm">
-                        <i class="fas fa-star me-2"></i>My Flagged Cases
-                    </a>
-                {% endif %}
+                    {% endif %}
+                </div>
             </div>
         </div>
     </div>
