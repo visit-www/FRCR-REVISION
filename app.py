@@ -1125,16 +1125,16 @@ def cases_by_module(module):
         # Admins/Content Managers: prepare case data for admin template
         for case in cases:
             has_notes = CandidateNote.query.filter_by(case_id=case.id, user_id=current_user.id).first() is not None
-        cases_data.append({
-            'id': case.id,
-            'diagnosis': case.diagnosis,
-            'module_display': case.module.value if case.module else 'N/A',
-            'body_part_display': case.body_part.value if case.body_part else 'N/A',
+            cases_data.append({
+                'id': case.id,
+                'diagnosis': case.diagnosis,
+                'module_display': case.module.value if case.module else 'N/A',
+                'body_part_display': case.body_part.value if case.body_part else 'N/A',
                 'age_group_display': case.age_group.value if case.age_group else 'N/A',
-            'image_count': len(case.images),
-            'has_notes': has_notes,
-            'is_public': case.is_public
-        })
+                'image_count': len(case.images),
+                'has_notes': has_notes,
+                'is_public': case.is_public
+            })
     
     # Get all body parts and age groups for filters
     body_parts = [{'value': bp.name, 'display_name': bp.value} for bp in BodyPart]
@@ -1152,7 +1152,7 @@ def cases_by_module(module):
                              all_modules=all_modules,
                              search_query=search_query)
     else:
-    return render_template('cases_list.html',
+        return render_template('cases_list.html',
                          cases=cases_data,
                          module_filter=module_enum.value,
                          body_parts=body_parts,
