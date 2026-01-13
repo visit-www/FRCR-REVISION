@@ -985,11 +985,15 @@ function saveEditedCase(event) {
                                     const maxRetries = 2;
                                     
                                     function attemptUpload() {
+                                        console.log('[SAVE] Starting fetch request for', file.name, 'to /api/case/' + newCaseId + '/image');
                                         fetch(`/api/case/${newCaseId}/image`, {
                                             method: 'POST',
                                             body: formData,
                                             credentials: 'same-origin', // Ensure cookies are sent
-                                            signal: controller.signal
+                                            signal: controller.signal,
+                                            headers: {
+                                                // Don't set Content-Type - let browser set it with boundary for FormData
+                                            }
                                         })
                                         .then(async r => {
                                             console.log('[SAVE] Upload response status:', r.status, 'for', file.name);
