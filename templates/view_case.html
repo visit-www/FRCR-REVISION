@@ -1366,7 +1366,15 @@
         setupHighlightCursor();
         
         // Add mouseup listener for text selection when in highlight mode (desktop)
-        document.addEventListener('mouseup', handleTextSelection);
+        // Use capture phase to ensure we catch the event before other handlers
+        document.addEventListener('mouseup', function(e) {
+            // Only process if in highlight mode
+            if (highlightMode && selectedHighlightColor) {
+                console.log('Mouseup event in highlight mode');
+                handleTextSelection(e);
+            }
+        }, true); // Use capture phase
+        
         document.addEventListener('mousemove', handleMouseMove);
         
         // Enhanced touch handlers for mobile highlighting (like sketch pen)
