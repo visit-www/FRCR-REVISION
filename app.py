@@ -1124,17 +1124,17 @@ def cases_by_module(module):
     else:
         # Admins/Content Managers: prepare case data for admin template
         for case in cases:
-        has_notes = CandidateNote.query.filter_by(case_id=case.id, user_id=current_user.id).first() is not None
-        cases_data.append({
-            'id': case.id,
-            'diagnosis': case.diagnosis,
-            'module_display': case.module.value if case.module else 'N/A',
-            'body_part_display': case.body_part.value if case.body_part else 'N/A',
+            has_notes = CandidateNote.query.filter_by(case_id=case.id, user_id=current_user.id).first() is not None
+            cases_data.append({
+                'id': case.id,
+                'diagnosis': case.diagnosis,
+                'module_display': case.module.value if case.module else 'N/A',
+                'body_part_display': case.body_part.value if case.body_part else 'N/A',
                 'age_group_display': case.age_group.value if case.age_group else 'N/A',
-            'image_count': len(case.images),
-            'has_notes': has_notes,
-            'is_public': case.is_public
-        })
+                'image_count': len(case.images),
+                'has_notes': has_notes,
+                'is_public': case.is_public
+            })
     
     # Get all body parts and age groups for filters
     body_parts = [{'value': bp.name, 'display_name': bp.value} for bp in BodyPart]
@@ -1152,11 +1152,11 @@ def cases_by_module(module):
                              all_modules=all_modules,
                              search_query=search_query)
     else:
-    return render_template('cases_list.html',
-                         cases=cases_data,
-                         module_filter=module_enum.value,
-                         body_parts=body_parts,
-                         body_part_selected=body_part_filter,
+        return render_template('cases_list.html',
+                             cases=cases_data,
+                             module_filter=module_enum.value,
+                             body_parts=body_parts,
+                             body_part_selected=body_part_filter,
                              age_groups=age_groups,
                              age_group_selected=age_group_filter,
                              all_modules=all_modules,
@@ -2037,7 +2037,7 @@ def delete_case(case_id):
     try:
         # Check if user has permission to delete
         case = Case.query.get(case_id)
-    if not case:
+        if not case:
             return jsonify({
                 'success': False,
                 'error': 'Case not found'
@@ -2058,9 +2058,9 @@ def delete_case(case_id):
         CaseImage.query.filter_by(case_id=case_id).delete()
         
         # Delete the case
-    db.session.delete(case)
-    db.session.commit()
-    
+        db.session.delete(case)
+        db.session.commit()
+        
         return jsonify({
             'success': True,
             'message': 'Case deleted successfully'
@@ -2625,10 +2625,10 @@ def save_candidate_note(case_id):
     if note:
         # Update existing note only if text has changed
         if note.note_text != note_text:
-        note.note_text = note_text
-        note.updated_at = datetime.utcnow()
-        action = 'updated'
-    else:
+            note.note_text = note_text
+            note.updated_at = datetime.utcnow()
+            action = 'updated'
+        else:
             # No change, return existing note
             return jsonify({
                 'success': True, 
