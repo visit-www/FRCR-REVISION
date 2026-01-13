@@ -838,8 +838,12 @@ function saveEditedCase(event) {
     // Get return_to parameter from URL if present
     const params = new URLSearchParams(window.location.search);
     const returnTo = params.get('returnTo');
-    const isNew = params.get('new') === 'true';
-    const packetId = params.get('packetId');
+    const urlIsNew = params.get('new') === 'true';
+    
+    // Check if this is a new case - either from URL parameter OR caseIdField is 'new' or starts with 'new-'
+    const isNew = urlIsNew || !caseIdField || caseIdField === 'new' || caseIdField.toString().startsWith('new-');
+    
+    console.log('[SAVE] Case state check - caseIdField:', caseIdField, 'urlIsNew:', urlIsNew, 'isNew:', isNew);
     
     // Determine endpoint and method
     let endpoint = '';
