@@ -608,14 +608,17 @@ function uploadImage() {
     }
     
     const caseId = document.getElementById('editCaseId').value;
+    console.log('[IMAGE] Upload attempt - caseId:', caseId, 'file:', file.name);
     
     // For new cases, store images temporarily and upload after case is saved
     if (!caseId || caseId === 'new' || caseId.startsWith('new-')) {
+        console.log('[IMAGE] New case detected - storing image as pending');
         // Store image in temporary storage for upload after case creation
         if (!window.pendingImages) {
             window.pendingImages = [];
         }
         window.pendingImages.push(file);
+        console.log('[IMAGE] Pending images count:', window.pendingImages.length);
         
         // Show preview of pending image
         const container = document.getElementById('editImagesContainer');
@@ -913,6 +916,9 @@ function saveEditedCase(event) {
         console.log('[SAVE] Parsed response data:', data);
         
         if (data.success || data.id || data.case_id) {
+            console.log('[SAVE] Case save successful. isNew:', isNew, 'data:', data);
+            console.log('[SAVE] window.pendingImages:', window.pendingImages ? window.pendingImages.length : 'undefined');
+            
             // If this was a new case, update the caseId field and upload pending images
             if (isNew && (data.id || data.case_id)) {
                 const newCaseId = data.id || data.case_id;
@@ -920,6 +926,9 @@ function saveEditedCase(event) {
                 console.log('[SAVE] Updated caseId to:', newCaseId, 'for image uploads');
                 
                 // Upload any pending images that were added before saving
+                const pendingCount = window.pendingImages ? window.pendingImages.length : 0;
+                console.log('[SAVE] Checking for pending images. Count:', pendingCount);
+                
                 if (window.pendingImages && window.pendingImages.length > 0) {
                     console.log('[SAVE] Uploading', window.pendingImages.length, 'pending images for case', newCaseId);
                     const pendingImages = [...window.pendingImages]; // Copy array
