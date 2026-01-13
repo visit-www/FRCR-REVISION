@@ -694,7 +694,7 @@ with app.app_context():
         except Exception as query_error:
             # Tables don't exist, create them
             print("[DB] Tables not found, creating database schema...")
-            db.create_all()
+        db.create_all()
             print("[DB] Database schema created successfully")
     except Exception as e:
         print(f"[DB] Error initializing database: {e}")
@@ -1076,7 +1076,7 @@ def cases_by_module(module):
     
     if is_student:
         # Students: only public cases, use student template
-        query = Case.query.filter_by(module=module_enum, is_public=True)
+    query = Case.query.filter_by(module=module_enum, is_public=True)
     else:
         # Admins/Content Managers: all cases
         query = Case.query.filter_by(module=module_enum)
@@ -1124,12 +1124,12 @@ def cases_by_module(module):
     else:
         # Admins/Content Managers: prepare case data for admin template
         for case in cases:
-            has_notes = CandidateNote.query.filter_by(case_id=case.id, user_id=current_user.id).first() is not None
-            cases_data.append({
-                'id': case.id,
-                'diagnosis': case.diagnosis,
-                'module_display': case.module.value if case.module else 'N/A',
-                'body_part_display': case.body_part.value if case.body_part else 'N/A',
+        has_notes = CandidateNote.query.filter_by(case_id=case.id, user_id=current_user.id).first() is not None
+        cases_data.append({
+            'id': case.id,
+            'diagnosis': case.diagnosis,
+            'module_display': case.module.value if case.module else 'N/A',
+            'body_part_display': case.body_part.value if case.body_part else 'N/A',
                 'age_group_display': case.age_group.value if case.age_group else 'N/A',
             'image_count': len(case.images),
             'has_notes': has_notes,
@@ -1152,11 +1152,11 @@ def cases_by_module(module):
                              all_modules=all_modules,
                              search_query=search_query)
     else:
-        return render_template('cases_list.html',
-                             cases=cases_data,
-                             module_filter=module_enum.value,
-                             body_parts=body_parts,
-                             body_part_selected=body_part_filter,
+    return render_template('cases_list.html',
+                         cases=cases_data,
+                         module_filter=module_enum.value,
+                         body_parts=body_parts,
+                         body_part_selected=body_part_filter,
                              age_groups=age_groups,
                              age_group_selected=age_group_filter,
                              all_modules=all_modules,
@@ -2037,7 +2037,7 @@ def delete_case(case_id):
     try:
         # Check if user has permission to delete
         case = Case.query.get(case_id)
-        if not case:
+    if not case:
             return jsonify({
                 'success': False,
                 'error': 'Case not found'
@@ -2058,9 +2058,9 @@ def delete_case(case_id):
         CaseImage.query.filter_by(case_id=case_id).delete()
         
         # Delete the case
-        db.session.delete(case)
-        db.session.commit()
-        
+    db.session.delete(case)
+    db.session.commit()
+    
         return jsonify({
             'success': True,
             'message': 'Case deleted successfully'
@@ -2157,24 +2157,34 @@ def upload_case_image(case_id):
     except Exception as e:
         db.session.rollback()
         error_msg = str(e)
-        print(f"[IMAGE] Error uploading image: {error_msg}")
+        error_type = type(e).__name__
+        print(f"[IMAGE] Error uploading image: {error_type}: {error_msg}")
         import traceback
         traceback.print_exc()
         
-        # Check if it's a datetime/pattern matching error (PostgreSQL specific)
-        if 'pattern' in error_msg.lower() or 'string did not match' in error_msg.lower() or 'invalid input' in error_msg.lower():
-            # This is likely a PostgreSQL type mismatch or datetime issue
-            # Return a user-friendly error message
-            return jsonify({
-                'error': 'Image upload failed due to database error. This may be a compatibility issue. Please try again or contact support.',
-                'details': 'Database pattern matching error'
-            }), 500
-        else:
-            # Return error with sanitized message (don't expose internal details)
-            return jsonify({
-                'error': 'Failed to upload image. Please try again.',
-                'details': 'Database error' if 'database' in error_msg.lower() else 'Unknown error'
-            }), 500
+        # Return detailed error for debugging (in production, you might want to sanitize this)
+        # Include error type and message for better debugging
+        error_response = {
+            'error': f'Failed to upload image: {error_msg}',
+            'error_type': error_type,
+            'details': error_msg
+        }
+        
+        # Check for specific PostgreSQL errors
+        if 'pattern' in error_msg.lower() or 'string did not match' in error_msg.lower():
+            error_response['error'] = 'Database schema error. The image table may be missing required columns.'
+            error_response['details'] = 'Pattern matching error - check database schema'
+        elif 'column' in error_msg.lower() and 'does not exist' in error_msg.lower():
+            error_response['error'] = 'Database schema error. Missing required columns in image table.'
+            error_response['details'] = error_msg
+        elif 'null value' in error_msg.lower() or 'not null' in error_msg.lower():
+            error_response['error'] = 'Database constraint error. Required fields are missing.'
+            error_response['details'] = error_msg
+        elif 'timeout' in error_msg.lower() or 'connection' in error_msg.lower():
+            error_response['error'] = 'Database connection error. Please try again.'
+            error_response['details'] = error_msg
+        
+        return jsonify(error_response), 500
 
 
 @app.route('/api/case/<int:case_id>/images')
@@ -2604,10 +2614,10 @@ def save_candidate_note(case_id):
     if note:
         # Update existing note only if text has changed
         if note.note_text != note_text:
-            note.note_text = note_text
-            note.updated_at = datetime.utcnow()
-            action = 'updated'
-        else:
+        note.note_text = note_text
+        note.updated_at = datetime.utcnow()
+        action = 'updated'
+    else:
             # No change, return existing note
             return jsonify({
                 'success': True, 

@@ -641,7 +641,19 @@ function uploadImage() {
     })
     .catch(error => {
         console.error('Error uploading image:', error);
-        const errorMsg = error.message || 'Unknown error occurred';
+        let errorMsg = 'Unknown error occurred';
+        
+        if (error.message) {
+            errorMsg = error.message;
+        } else if (error.error) {
+            errorMsg = error.error;
+        } else if (typeof error === 'string') {
+            errorMsg = error;
+        }
+        
+        // Log full error for debugging
+        console.error('Full error object:', error);
+        
         alert('Error uploading image: ' + errorMsg);
     })
     .finally(() => {
