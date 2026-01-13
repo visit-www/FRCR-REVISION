@@ -196,15 +196,35 @@ def restore_backup():
     
     try:
         # Read and parse JSON
-        backup_data = json.loads(file.read().decode('utf-8'))
+        file_content = file.read().decode('utf-8')
+        
+        # Handle case where file might already be a string (double-encoded)
+        if isinstance(file_content, str):
+            try:
+                backup_data = json.loads(file_content)
+            except json.JSONDecodeError:
+                # If it's already a dict (shouldn't happen but handle it)
+                backup_data = file_content if isinstance(file_content, dict) else json.loads(file_content)
+        else:
+            backup_data = file_content
+        
+        # Ensure backup_data is a dictionary
+        if not isinstance(backup_data, dict):
+            return jsonify({'error': f'Invalid backup file format: expected dict, got {type(backup_data).__name__}'}), 400
         
         # Validate backup structure
         if 'metadata' not in backup_data:
-            return jsonify({'error': 'Invalid backup file format'}), 400
+            return jsonify({'error': 'Invalid backup file format: missing metadata'}), 400
         
         # Check if user confirmed overwrite for existing data
-        overwrite_existing = request.form.get('overwrite_existing') == 'true'
-        confirm_overwrite = request.form.get('confirm_overwrite') == 'true'
+        # Support both form data and JSON data
+        if request.is_json:
+            json_data = request.get_json() or {}
+            overwrite_existing = json_data.get('overwrite_existing') == True or json_data.get('overwrite_existing') == 'true'
+            confirm_overwrite = json_data.get('confirm_overwrite') == True or json_data.get('confirm_overwrite') == 'true'
+        else:
+            overwrite_existing = request.form.get('overwrite_existing') == 'true'
+            confirm_overwrite = request.form.get('confirm_overwrite') == 'true'
         
         if not confirm_overwrite:
             return jsonify({'error': 'Please confirm data import'}), 400
@@ -230,7 +250,16 @@ def restore_backup():
         valid_case_fields = get_model_fields(Case)
         
         # Import Users
-        for user_data in backup_data.get('users', []):
+        users_list = backup_data.get('users', [])
+        if not isinstance(users_list, list):
+            return jsonify({'error': 'Invalid backup format: users must be a list'}), 400
+        
+        for user_data in users_list:
+            # Ensure user_data is a dictionary
+            if not isinstance(user_data, dict):
+                print(f"[IMPORT] Warning: Skipping invalid user data (not a dict): {type(user_data).__name__}")
+                continue
+            
             # Filter out unknown fields
             filtered_data = {k: v for k, v in user_data.items() if k in valid_user_fields or k in ['email', 'password_hash', 'full_name', 'role', 'is_active', 'subscription_status', 'payment_status']}
             
@@ -355,11 +384,16 @@ def restore_backup():
                         Question.query.filter_by(case_id=existing_case.id).delete()
                         Answer.query.filter_by(case_id=existing_case.id).delete()
                         # Add new Q&A
-                        for q_data in case_data.get('questions', []):
-                            question = Question(
-                                case_id=existing_case.id,
-                                question_number=q_data.get('question_number', 0),
-                                question_text=q_data.get('question_text', ''),
+                        questions_list = case_data.get('questions', [])
+                        if isinstance(questions_list, list):
+                            for q_data in questions_list:
+                                if not isinstance(q_data, dict):
+                                    print(f"[IMPORT] Warning: Skipping invalid question data (not a dict)")
+                                    continue
+                                question = Question(
+                                    case_id=existing_case.id,
+                                    question_number=q_data.get('question_number', 0),
+                                    question_text=q_data.get('question_text', ''),
                             )
                             db.session.add(question)
                             stats['questions']['added'] += 1
@@ -376,9 +410,14 @@ def restore_backup():
                         # Update images if overwriting
                         CaseImage.query.filter_by(case_id=existing_case.id).delete()
                         import base64
-                        for img_data in case_data.get('images', []):
-                            image_data_binary = None
-                            if img_data.get('image_data'):
+                        images_list = case_data.get('images', [])
+                        if isinstance(images_list, list):
+                            for img_data in images_list:
+                                if not isinstance(img_data, dict):
+                                    print(f"[IMPORT] Warning: Skipping invalid image data (not a dict)")
+                                    continue
+                                image_data_binary = None
+                                if img_data.get('image_data'):
                                 image_data_binary = base64.b64decode(img_data['image_data'])
                             
                             # Only create image if we have image data
@@ -493,11 +532,16 @@ def restore_backup():
                     db.session.add(question)
                     stats['questions']['added'] += 1
                 
-                for a_data in case_data.get('answers', []):
-                    answer = Answer(
-                        case_id=case.id,
-                        answer_number=a_data.get('answer_number', 0),
-                        answer_text=a_data.get('answer_text', ''),
+                answers_list = case_data.get('answers', [])
+                if isinstance(answers_list, list):
+                    for a_data in answers_list:
+                        if not isinstance(a_data, dict):
+                            print(f"[IMPORT] Warning: Skipping invalid answer data (not a dict)")
+                            continue
+                        answer = Answer(
+                            case_id=case.id,
+                            answer_number=a_data.get('answer_number', 0),
+                            answer_text=a_data.get('answer_text', ''),
                     )
                     db.session.add(answer)
                     stats['answers']['added'] += 1
