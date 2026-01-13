@@ -839,7 +839,20 @@
             backdrop: 'static',
             keyboard: true
         });
-        loadImages();
+        
+        // Check if we're coming from a new case creation (has _t parameter)
+        const urlParams = new URLSearchParams(window.location.search);
+        const isNewCase = urlParams.has('_t');
+        
+        // If coming from new case creation, force refresh and add small delay
+        if (isNewCase) {
+            setTimeout(() => {
+                loadImages(true); // Force refresh
+            }, 500); // Small delay to ensure DB is ready
+        } else {
+            loadImages();
+        }
+        
         renderDiscussion(); // Use unified renderer instead of linkifyDiscussion
         setupKeyboardNavigation();
     });
