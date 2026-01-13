@@ -2095,13 +2095,16 @@ def upload_case_image(case_id):
     if file.filename == '':
         return jsonify({'error': 'No file selected'}), 400
     
-    # Check file size (max 10MB)
+    # Check file size (max 4MB for Vercel compatibility, 10MB for local)
     file.seek(0, os.SEEK_END)
     file_size = file.tell()
     file.seek(0)
     
-    if file_size > 10 * 1024 * 1024:  # 10MB
-        return jsonify({'error': 'File size exceeds 10MB limit'}), 400
+    # Vercel has a 4.5MB request body limit, so we limit to 4MB to be safe
+    max_size = 4 * 1024 * 1024 if os.getenv('VERCEL') else 10 * 1024 * 1024
+    if file_size > max_size:
+        size_mb = max_size / (1024 * 1024)
+        return jsonify({'error': f'File size exceeds {size_mb}MB limit. Vercel has a 4.5MB request body limit.'}), 400
     
     # Check file type
     allowed_types = {'image/jpeg', 'image/png', 'image/gif', 'image/webp'}
