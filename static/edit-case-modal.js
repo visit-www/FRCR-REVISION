@@ -1010,14 +1010,20 @@ function saveEditedCase(event) {
                 }
             }
             
-            if (isStagingCase) {
-                alert('Case reviewed and promoted to production successfully!');
-            } else {
-            alert('Case saved successfully!');
-            }
-            
             // Determine redirect destination
             let redirectUrl = '/dashboard';
+            
+            // For new cases with pending images, don't show alert or redirect immediately
+            const hasPendingImages = window.pendingImages && window.pendingImages.length > 0;
+            const shouldWaitForImages = isNew && hasPendingImages;
+            
+            if (!shouldWaitForImages) {
+                if (isStagingCase) {
+                    alert('Case reviewed and promoted to production successfully!');
+                } else {
+                    alert('Case saved successfully!');
+                }
+            }
             
             // Priority: For staging cases, always go to view case (ignore returnTo if it's staging list)
             if (isStagingCase) {
