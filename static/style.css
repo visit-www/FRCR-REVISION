@@ -121,11 +121,22 @@
     }
     
     #descriptionModal .modal-dialog {
-        max-width: 95vw;
+        max-width: 98vw;
+        width: 98vw;
+    }
+    
+    #descriptionModal .modal-content {
+        width: 100%;
     }
     
     #descriptionModal .modal-body {
-        padding: 1rem;
+        padding: 0;
+        width: 100%;
+    }
+    
+    #descriptionModal .modal-body textarea {
+        width: 100% !important;
+        border: none !important;
     }
     
     #descriptionModal .modal-footer {
@@ -146,11 +157,26 @@
     #descriptionModal .modal-footer small {
         color: white !important;
         margin: 0;
+        font-size: 0.9rem;
     }
     
-    /* Make TinyMCE editor larger - full thickness */
+    #descriptionModal .modal-footer small strong {
+        color: #ffffff;
+        font-weight: 600;
+    }
+    
+    /* Make TinyMCE editor full width and larger */
     #descriptionModal .tox-tinymce {
         min-height: 400px !important;
+        width: 100% !important;
+    }
+    
+    #descriptionModal .tox {
+        width: 100% !important;
+    }
+    
+    #descriptionModal .tox .tox-edit-area {
+        width: 100% !important;
     }
     
     /* Touch-friendly buttons in image description */

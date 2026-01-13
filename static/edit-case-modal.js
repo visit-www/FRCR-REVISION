@@ -305,21 +305,18 @@ function editImageDescription(imageId) {
     modal.className = 'modal fade';
     modal.id = 'descriptionModal';
     modal.innerHTML = `
-        <div class="modal-dialog modal-xl" style="max-width: 95vw;">
+        <div class="modal-dialog modal-xl" style="max-width: 98vw; width: 98vw;">
             <div class="modal-content">
                 <div class="modal-header bg-info text-white" style="padding: 0.75rem 1rem;">
                     <h5 class="modal-title"><i class="fas fa-image me-2"></i>Edit Image Description</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="modal-body" style="padding: 1rem;">
-                    <label for="descriptionInput" class="form-label mb-2">
-                        <i class="fas fa-align-left me-2"></i>Description
-                    </label>
-                    <textarea class="form-control rich-editor" id="descriptionInput" rows="12" placeholder="Enter image description..." style="min-height: 400px;"></textarea>
+                <div class="modal-body" style="padding: 0;">
+                    <textarea class="form-control rich-editor" id="descriptionInput" rows="12" placeholder="Enter image description..." style="min-height: 400px; width: 100%; border: none;"></textarea>
                 </div>
                 <div class="modal-footer bg-dark text-white" style="padding: 0.75rem 1rem; display: flex; justify-content: space-between; align-items: center;">
                     <small class="text-white" style="margin: 0;">
-                        <i class="fas fa-info-circle me-1"></i>You can use rich text formatting for better descriptions.
+                        <i class="fas fa-align-left me-1"></i><strong>Description:</strong> You can use rich text formatting for better descriptions.
                     </small>
                     <div>
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
@@ -416,18 +413,18 @@ function editImageDescription(imageId) {
             modal.className = 'modal fade';
             modal.id = 'descriptionModal';
             modal.innerHTML = `
-                <div class="modal-dialog modal-xl" style="max-width: 95vw;">
+                <div class="modal-dialog modal-xl" style="max-width: 98vw; width: 98vw;">
                     <div class="modal-content">
                         <div class="modal-header bg-info text-white" style="padding: 0.75rem 1rem;">
                     <h5 class="modal-title">Edit Image Description</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
-                        <div class="modal-body" style="padding: 1rem;">
-                            <textarea class="form-control rich-editor" id="descriptionInput" rows="12" placeholder="Enter image description..." style="min-height: 400px;">${currentDescription}</textarea>
+                        <div class="modal-body" style="padding: 0;">
+                            <textarea class="form-control rich-editor" id="descriptionInput" rows="12" placeholder="Enter image description..." style="min-height: 400px; width: 100%; border: none;">${currentDescription}</textarea>
                 </div>
                         <div class="modal-footer bg-dark text-white" style="padding: 0.75rem 1rem; display: flex; justify-content: space-between; align-items: center;">
                             <small class="text-white" style="margin: 0;">
-                                <i class="fas fa-info-circle me-1"></i>You can use rich text formatting for better descriptions.
+                                <i class="fas fa-align-left me-1"></i><strong>Description:</strong> You can use rich text formatting for better descriptions.
                             </small>
                             <div>
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
