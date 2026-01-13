@@ -1554,6 +1554,113 @@
             });
     }
     
+    // Setup visual highlight cursor (sketch pen effect)
+    function setupHighlightCursor() {
+        if (highlightCursor) return;
+        
+        highlightCursor = document.createElement('div');
+        highlightCursor.id = 'highlightCursor';
+        highlightCursor.style.cssText = `
+            position: fixed;
+            width: 24px;
+            height: 24px;
+            pointer-events: none;
+            z-index: 10000;
+            opacity: 0;
+            transition: opacity 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        `;
+        highlightCursor.innerHTML = '<i class="fas fa-highlighter" style="font-size: 20px; color: #667eea;"></i>';
+        document.body.appendChild(highlightCursor);
+    }
+    
+    function updateHighlightCursor(x, y, visible) {
+        if (!highlightCursor) return;
+        highlightCursor.style.left = (x - 12) + 'px';
+        highlightCursor.style.top = (y - 12) + 'px';
+        highlightCursor.style.opacity = visible ? '0.8' : '0';
+    }
+    
+    function handleMouseMove(e) {
+        if (highlightMode && selectedHighlightColor) {
+            const target = e.target;
+            if (target && (target.closest('.highlightable-text') || target.closest('[data-field]'))) {
+                updateHighlightCursor(e.clientX, e.clientY, true);
+            } else {
+                updateHighlightCursor(e.clientX, e.clientY, false);
+            }
+        } else {
+            updateHighlightCursor(0, 0, false);
+        }
+    }
+    
+    // Touch handlers for mobile highlighting (sketch pen style)
+    function handleTouchStart(e) {
+        if (!highlightMode || !selectedHighlightColor) return;
+        
+        const touch = e.touches[0];
+        const target = document.elementFromPoint(touch.clientX, touch.clientY);
+        
+        if (target && (target.closest('.highlightable-text') || target.closest('[data-field]'))) {
+            isTouchHighlighting = true;
+            touchStartPos = { x: touch.clientX, y: touch.clientY };
+            updateHighlightCursor(touch.clientX, touch.clientY, true);
+            
+            // Change cursor to show pen is active
+            if (highlightCursor) {
+                const colorHex = getColorHex(selectedHighlightColor);
+                highlightCursor.innerHTML = `<i class="fas fa-highlighter" style="font-size: 20px; color: ${colorHex};"></i>`;
+            }
+        }
+    }
+    
+    function handleTouchMove(e) {
+        if (!isTouchHighlighting || !highlightMode || !selectedHighlightColor) return;
+        
+        const touch = e.touches[0];
+        updateHighlightCursor(touch.clientX, touch.clientY, true);
+        
+        // Try to extend selection as user moves finger
+        const selection = window.getSelection();
+        if (selection.rangeCount > 0) {
+            try {
+                const range = selection.getRangeAt(0);
+                const touchNode = document.elementFromPoint(touch.clientX, touch.clientY);
+                
+                if (touchNode && (touchNode.closest('.highlightable-text') || touchNode.closest('[data-field]'))) {
+                    // Try to extend selection to touch point
+                    const touchRange = document.caretRangeFromPoint ? document.caretRangeFromPoint(touch.clientX, touch.clientY) : null;
+                    if (touchRange) {
+                        range.setEnd(touchRange.endContainer, touchRange.endOffset);
+                        selection.removeAllRanges();
+                        selection.addRange(range);
+                    }
+                }
+            } catch (err) {
+                // Ignore errors during touch move
+            }
+        }
+    }
+    
+    function handleTouchEnd(e) {
+        if (!isTouchHighlighting) return;
+        
+        isTouchHighlighting = false;
+        updateHighlightCursor(0, 0, false);
+        
+        // Reset cursor icon
+        if (highlightCursor) {
+            highlightCursor.innerHTML = '<i class="fas fa-highlighter" style="font-size: 20px; color: #667eea;"></i>';
+        }
+        
+        // Process selection after touch ends
+        setTimeout(function() {
+            handleTextSelection(e);
+        }, 200);
+    }
+    
     function handleTextSelection(e) {
         // Only process if in highlight mode
         if (!highlightMode || !selectedHighlightColor) return;
