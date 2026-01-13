@@ -509,7 +509,33 @@
             method: 'POST',
             body: formData
         })
-        .then(r => r.json())
+        .then(async r => {
+            // Check if response is OK and is JSON
+            if (!r.ok) {
+                // Try to parse error as JSON, otherwise use status text
+                let errorMessage = r.statusText;
+                try {
+                    const errorData = await r.json();
+                    errorMessage = errorData.error || errorMessage;
+                } catch (e) {
+                    // Not JSON, use status text
+                    if (r.status === 403) {
+                        errorMessage = 'Access denied. Please ensure you are logged in as an admin.';
+                    } else if (r.status === 401) {
+                        errorMessage = 'Unauthorized. Please log in again.';
+                    }
+                }
+                throw new Error(errorMessage);
+            }
+            
+            // Check content type before parsing
+            const contentType = r.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                throw new Error('Server returned non-JSON response. Please try again.');
+            }
+            
+            return r.json();
+        })
         .then(data => {
             if (data.success || data.new_cases !== undefined) {
                 // Show results
@@ -528,7 +554,9 @@
         })
         .catch(error => {
             console.error('Error:', error);
-            statusDiv.innerHTML = '<span style="color: #dc3545;"><i class="fas fa-exclamation"></i> Error checking duplicates</span>';
+            const errorMsg = error.message || 'Error checking duplicates';
+            statusDiv.innerHTML = '<span style="color: #dc3545;"><i class="fas fa-exclamation"></i> ' + errorMsg + '</span>';
+            showToast(errorMsg, 'error');
         });
     }
     

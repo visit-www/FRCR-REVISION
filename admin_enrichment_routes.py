@@ -23,6 +23,24 @@ def check_admin():
     pass
 
 
+@enrichment_bp.errorhandler(401)
+def handle_401(error):
+    """Return JSON error for 401 Unauthorized"""
+    return jsonify({'error': 'Unauthorized. Please log in.'}), 401
+
+
+@enrichment_bp.errorhandler(403)
+def handle_403(error):
+    """Return JSON error for 403 Forbidden"""
+    return jsonify({'error': 'Access denied. Admin privileges required.'}), 403
+
+
+@enrichment_bp.errorhandler(404)
+def handle_404(error):
+    """Return JSON error for 404 Not Found"""
+    return jsonify({'error': 'Endpoint not found'}), 404
+
+
 # ============================================================================
 # IMPORT & DUPLICATE DETECTION ENDPOINTS
 # ============================================================================
@@ -44,12 +62,42 @@ def check_duplicates():
         return jsonify({'error': 'Only JSON files supported'}), 400
     
     try:
-        backup_data = json.loads(file.read().decode('utf-8'))
-        result = DuplicateDetectionService.check_duplicates(backup_data)
-        return jsonify(result), 200
+        # Read and decode file
+        file_content = file.read()
+        if not file_content:
+            return jsonify({'error': 'Backup file is empty'}), 400
+        
+        try:
+            file_text = file_content.decode('utf-8')
+        except UnicodeDecodeError as e:
+            return jsonify({'error': f'Invalid file encoding: {str(e)}'}), 400
+        
+        # Parse JSON
+        try:
+            backup_data = json.loads(file_text)
+        except json.JSONDecodeError as e:
+            return jsonify({'error': f'Invalid JSON format: {str(e)}'}), 400
+        
+        # Validate backup structure
+        if not isinstance(backup_data, dict):
+            return jsonify({'error': 'Backup file must contain a JSON object'}), 400
+        
+        if 'cases' not in backup_data:
+            return jsonify({'error': 'Backup file missing "cases" array'}), 400
+        
+        # Check for duplicates
+        try:
+            result = DuplicateDetectionService.check_duplicates(backup_data)
+            return jsonify(result), 200
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return jsonify({'error': f'Error checking duplicates: {str(e)}'}), 500
         
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': f'Unexpected error: {str(e)}'}), 500
 
 
 @enrichment_bp.route('/import', methods=['POST'])

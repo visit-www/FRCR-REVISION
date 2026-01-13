@@ -375,7 +375,14 @@ def restore_backup():
                     db.session.add(user)
                     stats['users']['added'] += 1
             
-            db.session.commit()
+            try:
+                db.session.commit()
+            except Exception as commit_error:
+                db.session.rollback()
+                print(f"[IMPORT] ERROR during user commit: {commit_error}")
+                import traceback
+                traceback.print_exc()
+                raise
             
             # Build user email to ID mapping and old ID to new ID mapping
             user_email_map = {u.email: u.id for u in User.query.all()}
@@ -413,24 +420,38 @@ def restore_backup():
                         if key in ['module', 'body_part', 'age_group'] and value:
                             from models import FRCRModule, BodyPart, AgeGroup
                             try:
+                                # Convert to string and strip whitespace
+                                enum_value_str = str(value).strip() if value is not None else None
+                                if not enum_value_str:
+                                    continue
+                                    
                                 if key == 'module':
                                     # Try by value first (export format), then by name
                                     try:
-                                        existing_case.module = FRCRModule(value)
+                                        existing_case.module = FRCRModule(enum_value_str)
                                     except (ValueError, KeyError):
-                                        existing_case.module = FRCRModule[value]
+                                        try:
+                                            existing_case.module = FRCRModule[enum_value_str]
+                                        except (ValueError, KeyError) as e:
+                                            print(f"[IMPORT] Warning: Could not set module to '{enum_value_str}' (type: {type(value).__name__}): {e}")
                                 elif key == 'body_part':
                                     try:
-                                        existing_case.body_part = BodyPart(value)
+                                        existing_case.body_part = BodyPart(enum_value_str)
                                     except (ValueError, KeyError):
-                                        existing_case.body_part = BodyPart[value]
+                                        try:
+                                            existing_case.body_part = BodyPart[enum_value_str]
+                                        except (ValueError, KeyError) as e:
+                                            print(f"[IMPORT] Warning: Could not set body_part to '{enum_value_str}' (type: {type(value).__name__}): {e}")
                                 elif key == 'age_group':
                                     try:
-                                        existing_case.age_group = AgeGroup(value)
+                                        existing_case.age_group = AgeGroup(enum_value_str)
                                     except (ValueError, KeyError):
-                                        existing_case.age_group = AgeGroup[value]
+                                        try:
+                                            existing_case.age_group = AgeGroup[enum_value_str]
+                                        except (ValueError, KeyError) as e:
+                                            print(f"[IMPORT] Warning: Could not set age_group to '{enum_value_str}' (type: {type(value).__name__}): {e}")
                             except Exception as e:
-                                print(f"[IMPORT] Warning: Could not set {key} to {value}: {e}")
+                                print(f"[IMPORT] Warning: Could not set {key} to {value} (type: {type(value).__name__}): {e}")
                                 pass
                         elif key == 'created_at' and value:
                             # Convert ISO string to datetime object for SQLite compatibility
@@ -567,7 +588,14 @@ def restore_backup():
                         enrichment_notes=f"Missing fields: {', '.join(missing_fields)}. Requires admin review.",
                     )
                     db.session.add(staging)
-                    db.session.flush()
+                    try:
+                        db.session.flush()
+                    except Exception as flush_error:
+                        db.session.rollback()
+                        print(f"[IMPORT] ERROR during staging flush: {flush_error}")
+                        import traceback
+                        traceback.print_exc()
+                        raise
                     
                     # Store images temporarily in enrichment_notes (will be migrated on promotion)
                     # Process images from separate case_images array for this staging case
@@ -692,30 +720,59 @@ def restore_backup():
                 )
                 
                 # Set enums - try by value first (export format), then by name
+                # Validate and convert to string first to avoid pattern matching errors
                 if filtered_data.get('module'):
-                    try:
-                        case.module = FRCRModule(filtered_data['module'])
-                    except (ValueError, KeyError):
+                    module_value = filtered_data['module']
+                    if module_value is not None:
                         try:
-                            case.module = FRCRModule[filtered_data['module']]
-                        except (ValueError, KeyError) as e:
-                            print(f"[IMPORT] Warning: Could not set module to {filtered_data['module']}: {e}")
+                            # Convert to string and strip whitespace
+                            module_str = str(module_value).strip()
+                            if module_str:
+                                try:
+                                    case.module = FRCRModule(module_str)
+                                except (ValueError, KeyError):
+                                    try:
+                                        case.module = FRCRModule[module_str]
+                                    except (ValueError, KeyError) as e:
+                                        print(f"[IMPORT] Warning: Could not set module to '{module_str}' (type: {type(module_value).__name__}): {e}")
+                                except Exception as e:
+                                    print(f"[IMPORT] Warning: Unexpected error setting module to '{module_str}': {e}")
+                        except Exception as e:
+                            print(f"[IMPORT] Warning: Could not process module value {module_value}: {e}")
                 if filtered_data.get('body_part'):
-                    try:
-                        case.body_part = BodyPart(filtered_data['body_part'])
-                    except (ValueError, KeyError):
+                    body_part_value = filtered_data['body_part']
+                    if body_part_value is not None:
                         try:
-                            case.body_part = BodyPart[filtered_data['body_part']]
-                        except (ValueError, KeyError) as e:
-                            print(f"[IMPORT] Warning: Could not set body_part to {filtered_data['body_part']}: {e}")
+                            body_part_str = str(body_part_value).strip()
+                            if body_part_str:
+                                try:
+                                    case.body_part = BodyPart(body_part_str)
+                                except (ValueError, KeyError):
+                                    try:
+                                        case.body_part = BodyPart[body_part_str]
+                                    except (ValueError, KeyError) as e:
+                                        print(f"[IMPORT] Warning: Could not set body_part to '{body_part_str}' (type: {type(body_part_value).__name__}): {e}")
+                                except Exception as e:
+                                    print(f"[IMPORT] Warning: Unexpected error setting body_part to '{body_part_str}': {e}")
+                        except Exception as e:
+                            print(f"[IMPORT] Warning: Could not process body_part value {body_part_value}: {e}")
                 if filtered_data.get('age_group'):
-                    try:
-                        case.age_group = AgeGroup(filtered_data['age_group'])
-                    except (ValueError, KeyError):
+                    age_group_value = filtered_data['age_group']
+                    if age_group_value is not None:
                         try:
-                            case.age_group = AgeGroup[filtered_data['age_group']]
-                        except (ValueError, KeyError) as e:
-                            print(f"[IMPORT] Warning: Could not set age_group to {filtered_data['age_group']}: {e}")
+                            age_group_str = str(age_group_value).strip()
+                            if age_group_str:
+                                try:
+                                    case.age_group = AgeGroup(age_group_str)
+                                except (ValueError, KeyError):
+                                    try:
+                                        case.age_group = AgeGroup[age_group_str]
+                                    except (ValueError, KeyError) as e:
+                                        print(f"[IMPORT] Warning: Could not set age_group to '{age_group_str}' (type: {type(age_group_value).__name__}): {e}")
+                                except Exception as e:
+                                    print(f"[IMPORT] Warning: Unexpected error setting age_group to '{age_group_str}': {e}")
+                        except Exception as e:
+                            print(f"[IMPORT] Warning: Could not process age_group value {age_group_value}: {e}")
                 
                 # Map created_by_user_id from backup using ID mapping
                 # For FRCR Examiner: Always use current_user.id
@@ -736,8 +793,16 @@ def restore_backup():
                         print(f"[IMPORT] Warning: Could not parse case created_at datetime: {filtered_data.get('created_at')}, error: {e}")
                 
                 db.session.add(case)
-                db.session.flush()
-                
+                try:
+                    db.session.flush()
+                except Exception as flush_error:
+                    db.session.rollback()
+                    print(f"[IMPORT] ERROR during case flush: {flush_error}")
+                    print(f"[IMPORT] Case data that failed: case_number={filtered_data.get('case_number')}, module={filtered_data.get('module')}, body_part={filtered_data.get('body_part')}, age_group={filtered_data.get('age_group')}")
+                    import traceback
+                    traceback.print_exc()
+                    raise
+        
                 # Add Q&A
                 questions_list = case_data.get('questions', [])
                 if isinstance(questions_list, list):
@@ -808,7 +873,15 @@ def restore_backup():
             if old_case_id and new_case_id:
                 case_id_map[old_case_id] = new_case_id
         
-        db.session.commit()
+        try:
+            db.session.commit()
+        except Exception as commit_error:
+            db.session.rollback()
+            print(f"[IMPORT] ERROR during case commit: {commit_error}")
+            print(f"[IMPORT] Case data that failed: case_number={filtered_data.get('case_number')}, module={filtered_data.get('module')}, body_part={filtered_data.get('body_part')}, age_group={filtered_data.get('age_group')}")
+            import traceback
+            traceback.print_exc()
+            raise
         
         # Import images from separate case_images array (FRCR Examiner format)
         # This handles backups where images are stored separately, not in case['images']
@@ -874,7 +947,14 @@ def restore_backup():
                     stats['images']['added'] += 1
                     print(f"[IMPORT] Added image {image_filename} to case {new_case_id}")
         
-        db.session.commit()
+        try:
+            db.session.commit()
+        except Exception as commit_error:
+            db.session.rollback()
+            print(f"[IMPORT] ERROR during image commit: {commit_error}")
+            import traceback
+            traceback.print_exc()
+            raise
         
         # Import revision sessions
         # For FRCR Examiner: Skip user-specific data (sessions, flags, highlights, notes)
@@ -1056,7 +1136,14 @@ def restore_backup():
                 db.session.add(note)
                 stats['notes']['added'] += 1
                 
-                db.session.commit()
+                try:
+                    db.session.commit()
+                except Exception as commit_error:
+                    db.session.rollback()
+                    print(f"[IMPORT] ERROR during note commit: {commit_error}")
+                    import traceback
+                    traceback.print_exc()
+                    raise
         
         # Build response message
         message_parts = ['Database imported successfully']
@@ -1086,8 +1173,17 @@ def restore_backup():
     except Exception as e:
         db.session.rollback()
         import traceback
-        traceback.print_exc()
-        return jsonify({'error': f'Import failed: {str(e)}'}), 500
+        error_traceback = traceback.format_exc()
+        print(f"[IMPORT] ERROR: {str(e)}")
+        print(f"[IMPORT] TRACEBACK:\n{error_traceback}")
+        # Log to stderr for Vercel logs
+        import sys
+        sys.stderr.write(f"[IMPORT] ERROR: {str(e)}\n")
+        sys.stderr.write(f"[IMPORT] TRACEBACK:\n{error_traceback}\n")
+        return jsonify({
+            'error': f'Import failed: {str(e)}',
+            'details': error_traceback.split('\n')[-5:] if len(error_traceback) > 0 else []
+        }), 500
 
 
 @backup_bp.route('/status', methods=['GET'])
