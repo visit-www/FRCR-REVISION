@@ -694,7 +694,7 @@ with app.app_context():
         except Exception as query_error:
             # Tables don't exist, create them
             print("[DB] Tables not found, creating database schema...")
-            db.create_all()
+        db.create_all()
             print("[DB] Database schema created successfully")
     except Exception as e:
         print(f"[DB] Error initializing database: {e}")
@@ -1076,7 +1076,7 @@ def cases_by_module(module):
     
     if is_student:
         # Students: only public cases, use student template
-        query = Case.query.filter_by(module=module_enum, is_public=True)
+    query = Case.query.filter_by(module=module_enum, is_public=True)
     else:
         # Admins/Content Managers: all cases
         query = Case.query.filter_by(module=module_enum)
@@ -1109,7 +1109,7 @@ def cases_by_module(module):
         )
         
         # Prepare case data for student template - match admin template structure
-        for case in cases:
+    for case in cases:
             cases_data.append({
                 'id': case.id,
                 'diagnosis': case.diagnosis,
@@ -1124,8 +1124,8 @@ def cases_by_module(module):
     else:
         # Admins/Content Managers: prepare case data for admin template
         for case in cases:
-            has_notes = CandidateNote.query.filter_by(case_id=case.id, user_id=current_user.id).first() is not None
-            cases_data.append({
+        has_notes = CandidateNote.query.filter_by(case_id=case.id, user_id=current_user.id).first() is not None
+        cases_data.append({
             'id': case.id,
             'diagnosis': case.diagnosis,
             'module_display': case.module.value if case.module else 'N/A',
@@ -1152,7 +1152,7 @@ def cases_by_module(module):
                              all_modules=all_modules,
                              search_query=search_query)
     else:
-        return render_template('cases_list.html',
+    return render_template('cases_list.html',
                          cases=cases_data,
                          module_filter=module_enum.value,
                          body_parts=body_parts,
@@ -2037,7 +2037,7 @@ def delete_case(case_id):
     try:
         # Check if user has permission to delete
         case = Case.query.get(case_id)
-        if not case:
+    if not case:
             return jsonify({
                 'success': False,
                 'error': 'Case not found'
@@ -2058,8 +2058,8 @@ def delete_case(case_id):
         CaseImage.query.filter_by(case_id=case_id).delete()
         
         # Delete the case
-        db.session.delete(case)
-        db.session.commit()
+    db.session.delete(case)
+    db.session.commit()
     
         return jsonify({
             'success': True,
@@ -2110,18 +2110,32 @@ def upload_case_image(case_id):
     if file_type not in allowed_types:
         return jsonify({'error': 'Only image files (JPEG, PNG, GIF, WebP) are allowed'}), 400
     
+    # Read image data - ensure it's bytes for PostgreSQL BYTEA
     image_data = file.read()
+    if not isinstance(image_data, bytes):
+        image_data = bytes(image_data)
     
     # Get description from form data
-    description = request.form.get('description', '')
+    description = request.form.get('description', '') or ''
+    
+    # Ensure filename is a string and not None
+    filename = file.filename or 'image.jpg'
+    if not isinstance(filename, str):
+        filename = str(filename)
+    
+    # Ensure file_type is a string
+    if not file_type or not isinstance(file_type, str):
+        file_type = 'image/jpeg'  # Default fallback
     
     try:
         # Explicitly set created_at to avoid any datetime parsing issues with PostgreSQL
         from datetime import datetime
+        
+        # Create the image object with explicit types
         case_image = CaseImage(
             case_id=case_id,
             image_data=image_data,
-            image_filename=file.filename,
+            image_filename=filename,
             image_type=file_type,
             image_description=description,
             created_at=datetime.utcnow()  # Explicitly set to avoid default issues with PostgreSQL
@@ -2149,9 +2163,18 @@ def upload_case_image(case_id):
         
         # Check if it's a datetime/pattern matching error (PostgreSQL specific)
         if 'pattern' in error_msg.lower() or 'string did not match' in error_msg.lower() or 'invalid input' in error_msg.lower():
-            return jsonify({'error': 'Database datetime error. Please try again or contact support.'}), 500
+            # This is likely a PostgreSQL type mismatch or datetime issue
+            # Return a user-friendly error message
+            return jsonify({
+                'error': 'Image upload failed due to database error. This may be a compatibility issue. Please try again or contact support.',
+                'details': 'Database pattern matching error'
+            }), 500
         else:
-            return jsonify({'error': f'Database error: {error_msg}'}), 500
+            # Return error with sanitized message (don't expose internal details)
+            return jsonify({
+                'error': 'Failed to upload image. Please try again.',
+                'details': 'Database error' if 'database' in error_msg.lower() else 'Unknown error'
+            }), 500
 
 
 @app.route('/api/case/<int:case_id>/images')
@@ -2185,9 +2208,9 @@ def get_case_images(case_id):
             created_at_str = 'N/A'
         
         result.append({
-            'id': img.id,
-            'filename': img.image_filename,
-            'description': img.image_description if img.image_description else '',
+        'id': img.id,
+        'filename': img.image_filename,
+        'description': img.image_description if img.image_description else '',
             'created_at': created_at_str
         })
     return jsonify(result)
@@ -2581,10 +2604,10 @@ def save_candidate_note(case_id):
     if note:
         # Update existing note only if text has changed
         if note.note_text != note_text:
-            note.note_text = note_text
-            note.updated_at = datetime.utcnow()
-            action = 'updated'
-        else:
+        note.note_text = note_text
+        note.updated_at = datetime.utcnow()
+        action = 'updated'
+    else:
             # No change, return existing note
             return jsonify({
                 'success': True, 

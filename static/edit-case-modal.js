@@ -598,18 +598,51 @@ function uploadImage() {
         method: 'POST',
         body: formData
     })
-    .then(r => r.json())
+    .then(async r => {
+        // Check if response is OK and is JSON
+        if (!r.ok) {
+            // Try to parse error as JSON, otherwise use status text
+            let errorMessage = r.statusText;
+            try {
+                const errorData = await r.json();
+                errorMessage = errorData.error || errorMessage;
+            } catch (e) {
+                // Not JSON, use status text
+                if (r.status === 403) {
+                    errorMessage = 'Access denied. Please ensure you have permission to edit this case.';
+                } else if (r.status === 401) {
+                    errorMessage = 'Unauthorized. Please log in again.';
+                } else if (r.status === 500) {
+                    errorMessage = 'Server error. Please try again or contact support.';
+                }
+            }
+            throw new Error(errorMessage);
+        }
+        
+        // Check content type before parsing
+        const contentType = r.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            throw new Error('Server returned non-JSON response. Please try again.');
+        }
+        
+        return r.json();
+    })
     .then(data => {
         if (data.image_id || data.success) {
             input.value = '';
             reloadImages(caseId);
+            // Show success message
+            if (typeof showToast === 'function') {
+                showToast('Image uploaded successfully!', 'success');
+            }
         } else {
             alert('Error: ' + (data.error || 'Upload failed'));
         }
     })
     .catch(error => {
         console.error('Error uploading image:', error);
-        alert('Error uploading image: ' + error.message);
+        const errorMsg = error.message || 'Unknown error occurred';
+        alert('Error uploading image: ' + errorMsg);
     })
     .finally(() => {
         uploadBtn.disabled = false;
