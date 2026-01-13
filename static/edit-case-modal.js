@@ -1133,12 +1133,16 @@ function saveEditedCase(event) {
             const uploadsInProgress = window.uploadsInProgress === true;
             const shouldWaitForImages = isNew && (hasPendingImages || uploadsInProgress);
             
+            console.log('[SAVE] Redirect check - hasPendingImages:', hasPendingImages, 'uploadsInProgress:', uploadsInProgress, 'shouldWaitForImages:', shouldWaitForImages);
+            
             if (!shouldWaitForImages) {
                 if (isStagingCase) {
                     alert('Case reviewed and promoted to production successfully!');
                 } else {
                     alert('Case saved successfully!');
                 }
+            } else {
+                console.log('[SAVE] Deferring alert and redirect - waiting for pending images to upload');
             }
             
             // Priority: For staging cases, always go to view case (ignore returnTo if it's staging list)
