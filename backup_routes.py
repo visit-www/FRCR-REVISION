@@ -398,14 +398,19 @@ def restore_backup():
                             db.session.add(question)
                             stats['questions']['added'] += 1
                         
-                        for a_data in case_data.get('answers', []):
-                            answer = Answer(
-                                case_id=existing_case.id,
-                                answer_number=a_data.get('answer_number', 0),
-                                answer_text=a_data.get('answer_text', ''),
-                            )
-                            db.session.add(answer)
-                            stats['answers']['added'] += 1
+                        answers_list = case_data.get('answers', [])
+                        if isinstance(answers_list, list):
+                            for a_data in answers_list:
+                                if not isinstance(a_data, dict):
+                                    print(f"[IMPORT] Warning: Skipping invalid answer data (not a dict)")
+                                    continue
+                                answer = Answer(
+                                    case_id=existing_case.id,
+                                    answer_number=a_data.get('answer_number', 0),
+                                    answer_text=a_data.get('answer_text', ''),
+                                )
+                                db.session.add(answer)
+                                stats['answers']['added'] += 1
                         
                         # Update images if overwriting
                         CaseImage.query.filter_by(case_id=existing_case.id).delete()
@@ -548,10 +553,15 @@ def restore_backup():
                 
                 # Add images
                 import base64
-                for img_data in case_data.get('images', []):
-                    image_data_binary = None
-                    if img_data.get('image_data'):
-                        image_data_binary = base64.b64decode(img_data['image_data'])
+                images_list = case_data.get('images', [])
+                if isinstance(images_list, list):
+                    for img_data in images_list:
+                        if not isinstance(img_data, dict):
+                            print(f"[IMPORT] Warning: Skipping invalid image data (not a dict)")
+                            continue
+                        image_data_binary = None
+                        if img_data.get('image_data'):
+                            image_data_binary = base64.b64decode(img_data['image_data'])
                     
                     # Only create image if we have image data
                     if image_data_binary:
