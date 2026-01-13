@@ -949,31 +949,47 @@ function saveEditedCase(event) {
                                 
                                 fetch(`/api/case/${newCaseId}/image`, {
                                     method: 'POST',
-                                    body: formData
+                                    body: formData,
+                                    credentials: 'same-origin' // Ensure cookies are sent
                                 })
                                 .then(async r => {
+                                    console.log('[SAVE] Upload response status:', r.status, 'for', file.name);
                                     if (!r.ok) {
                                         let errorMessage = r.statusText;
                                         try {
                                             const errorData = await r.json();
                                             errorMessage = errorData.error || errorMessage;
+                                            console.error('[SAVE] Upload error response:', errorData);
                                         } catch (e) {
-                                            // Not JSON
+                                            // Not JSON, try to get text
+                                            try {
+                                                const errorText = await r.text();
+                                                errorMessage = errorText || errorMessage;
+                                            } catch (e2) {
+                                                // Can't read response
+                                            }
                                         }
-                                        throw new Error(errorMessage);
+                                        throw new Error(`Upload failed (${r.status}): ${errorMessage}`);
                                     }
                                     const contentType = r.headers.get('content-type');
                                     if (!contentType || !contentType.includes('application/json')) {
+                                        const responseText = await r.text();
+                                        console.warn('[SAVE] Non-JSON response:', responseText.substring(0, 100));
                                         throw new Error('Server returned non-JSON response');
                                     }
-        return r.json();
-    })
-    .then(data => {
+                                    return r.json();
+                                })
+                                .then(data => {
                                     console.log('[SAVE] Pending image uploaded successfully:', file.name, data);
                                     resolve(data);
                                 })
                                 .catch(error => {
                                     console.error('[SAVE] Error uploading pending image:', file.name, error);
+                                    console.error('[SAVE] Error details:', {
+                                        name: error.name,
+                                        message: error.message,
+                                        stack: error.stack
+                                    });
                                     reject(error);
                                 });
                             }, index * 300); // Stagger uploads slightly
