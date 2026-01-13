@@ -2169,12 +2169,14 @@ def upload_case_image(case_id):
         else:
             print(f"[IMAGE] ERROR: Image {image_id} was not found after commit!")
         
-        return jsonify({
+        response_data = {
             'image_id': image_id,
             'filename': case_image.image_filename,
             'message': 'Image uploaded successfully',
             'success': True
-        })
+        }
+        print(f"[IMAGE] Returning success response: {response_data}")
+        return jsonify(response_data)
     except Exception as e:
         db.session.rollback()
         error_msg = str(e)

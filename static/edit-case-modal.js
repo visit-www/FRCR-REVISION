@@ -697,14 +697,21 @@ function uploadImage() {
         return r.json();
     })
     .then(data => {
+        console.log('[IMAGE] Upload response:', data);
         if (data.image_id || data.success) {
             input.value = '';
-            reloadImages(caseId);
+            // Wait a moment before reloading to ensure database is updated
+            setTimeout(() => {
+                reloadImages(caseId);
+            }, 300);
             // Show success message
             if (typeof showToast === 'function') {
                 showToast('Image uploaded successfully!', 'success');
+            } else {
+                alert('Image uploaded successfully!');
             }
         } else {
+            console.error('[IMAGE] Upload failed - no image_id or success flag:', data);
             alert('Error: ' + (data.error || 'Upload failed'));
         }
     })
