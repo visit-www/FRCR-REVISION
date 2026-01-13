@@ -40,15 +40,30 @@ def run_migration():
     
     with app.app_context():
         try:
-            print("\n[INFO] Running migrations...")
+            print("\n[INFO] Checking current migration status...")
+            from flask_migrate import current, heads
+            current_rev = current()
+            head_revs = heads()
+            print(f"[INFO] Current revision: {current_rev}")
+            print(f"[INFO] Head revisions: {head_revs}")
+            
+            print("\n[INFO] Running migrations to head...")
             upgrade()
             print("\n" + "=" * 60)
             print("SUCCESS: Migrations completed successfully!")
             print("=" * 60)
         except Exception as e:
-            print(f"\n[ERROR] Migration failed: {e}")
-            import traceback
-            traceback.print_exc()
+            error_msg = str(e)
+            print(f"\n[ERROR] Migration failed: {error_msg}")
+            
+            # If it's a multiple heads error, suggest merge
+            if 'Multiple head revisions' in error_msg:
+                print("\n[INFO] Multiple head revisions detected.")
+                print("[INFO] A merge migration has been created.")
+                print("[INFO] Try running the migration again.")
+            else:
+                import traceback
+                traceback.print_exc()
             sys.exit(1)
 
 if __name__ == '__main__':
