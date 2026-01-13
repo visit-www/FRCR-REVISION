@@ -611,6 +611,13 @@ function uploadImage() {
     }
     
     const caseId = document.getElementById('editCaseId').value;
+    
+    // Check if this is a new case (not yet saved)
+    if (!caseId || caseId === 'new' || caseId.startsWith('new-')) {
+        alert('Please save the case first before uploading images. After saving, you can add images.');
+        return;
+    }
+    
     const formData = new FormData();
     formData.append('image', file);
     
@@ -866,6 +873,13 @@ function saveEditedCase(event) {
         console.log('[SAVE] Parsed response data:', data);
         
         if (data.success || data.id || data.case_id) {
+            // If this was a new case, update the caseId field so images can be uploaded
+            if (isNew && (data.id || data.case_id)) {
+                const newCaseId = data.id || data.case_id;
+                document.getElementById('editCaseId').value = newCaseId;
+                console.log('[SAVE] Updated caseId to:', newCaseId, 'for image uploads');
+            }
+            
             if (isStagingCase) {
                 alert('Case reviewed and promoted to production successfully!');
             } else {
