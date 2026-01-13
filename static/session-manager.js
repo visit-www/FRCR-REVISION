@@ -148,9 +148,20 @@ class SessionManager {
                 const data = await response.json();
                 const timeRemaining = data.time_remaining || 0;
                 
-                // Show warning if less than 5 minutes remaining
+                // Only show warning if:
+                // 1. Time remaining is between 0 and 5 minutes
+                // 2. Warning hasn't been shown yet
+                // 3. Time remaining is actually decreasing (not just refreshed)
                 if (timeRemaining > 0 && timeRemaining < this.WARNING_TIME && !this.warningShown) {
-                    this.showExpirationWarning(timeRemaining);
+                    // Check if this is a fresh page load (don't show warning immediately)
+                    const pageLoadTime = performance.timing.navigationStart || Date.now();
+                    const timeSinceLoad = Date.now() - pageLoadTime;
+                    
+                    // Only show warning if page has been loaded for at least 10 seconds
+                    // This prevents showing warning immediately on page refresh
+                    if (timeSinceLoad > 10000) {
+                        this.showExpirationWarning(timeRemaining);
+                    }
                 }
                 
                 // Auto-logout if expired

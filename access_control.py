@@ -34,7 +34,45 @@ def require_admin(f):
     def decorated_function(*args, **kwargs):
         if not current_user.is_authenticated:
             abort(401)
-        if current_user.role != UserRole.ADMIN:
+        
+        # Ensure user role is fresh from database
+        try:
+            from models import db
+            # Expire and refresh to get latest role
+            db.session.expire(current_user)
+            db.session.refresh(current_user)
+        except Exception as e:
+            print(f"[AUTH] Warning: Could not refresh user for admin check: {e}")
+            pass  # Continue even if refresh fails
+        
+        # Check role - ensure it's a UserRole enum
+        user_role = current_user.role
+        
+        # Debug logging (only for admin endpoints to reduce noise)
+        from flask import request
+        if request.path.startswith('/api/admin'):
+            print(f"[AUTH] Admin check for {current_user.email}: role={user_role}, type={type(user_role).__name__}")
+        
+        # Handle string role (shouldn't happen but be defensive)
+        if isinstance(user_role, str):
+            try:
+                user_role = UserRole(user_role.lower())
+                # Update the user object with the enum
+                current_user.role = user_role
+                from models import db
+                db.session.commit()
+            except (ValueError, KeyError) as e:
+                print(f"[AUTH] Error: User {current_user.email} has invalid role string '{user_role}': {e}")
+                abort(403)
+        
+        # Compare with enum - direct comparison should work
+        if not isinstance(user_role, UserRole):
+            print(f"[AUTH] Error: User {current_user.email} role is not UserRole enum: {type(user_role).__name__}")
+            abort(403)
+        
+        if user_role != UserRole.ADMIN:
+            # Log for debugging
+            print(f"[AUTH] Access denied: User {current_user.email} has role {user_role.value if hasattr(user_role, 'value') else user_role}, expected ADMIN")
             abort(403)
         return f(*args, **kwargs)
     return decorated_function

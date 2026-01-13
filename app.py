@@ -214,16 +214,58 @@ def track_activity():
                     # Invalid timestamp, reset it
                     pass
             
-            # Update last activity time on each request
-            flask_session['last_activity'] = datetime.utcnow().isoformat()
-            flask_session.permanent = True
+            # Only update last activity if enough time has passed (avoid excessive updates)
+            # This prevents showing expiry messages on every page refresh
+            # We already have last_activity_str from above, reuse it
+            should_update_activity = True
+            
+            if last_activity_str:
+                try:
+                    last_activity = datetime.fromisoformat(last_activity_str)
+                    time_since_update = datetime.utcnow() - last_activity
+                    # Only update if at least 1 minute has passed (reduces session writes)
+                    # This prevents the expiry warning from showing on every page refresh
+                    if time_since_update < timedelta(seconds=60):
+                        should_update_activity = False
+                except (ValueError, TypeError):
+                    # Invalid timestamp, reset it
+                    pass
+            
+            if should_update_activity:
+                flask_session['last_activity'] = datetime.utcnow().isoformat()
+                flask_session.permanent = True
             
             # Reload user from database to ensure role is up-to-date
             # This fixes the issue where role changes don't reflect until re-login
+            # Only refresh periodically (every 5 minutes) to avoid excessive DB queries
             try:
-                db.session.refresh(current_user)
-            except Exception:
-                # User might have been deleted, ignore
+                last_refresh_str = flask_session.get('user_refreshed_at')
+                should_refresh_user = True
+                
+                if last_refresh_str:
+                    try:
+                        last_refresh = datetime.fromisoformat(last_refresh_str)
+                        time_since_refresh = datetime.utcnow() - last_refresh
+                        # Only refresh user every 5 minutes
+                        if time_since_refresh < timedelta(seconds=300):
+                            should_refresh_user = False
+                    except (ValueError, TypeError):
+                        pass
+                
+                if should_refresh_user:
+                    # Expire the user object to force reload from database
+                    db.session.expire(current_user)
+                    # Refresh to get latest role
+                    db.session.refresh(current_user)
+                    # Mark when we refreshed
+                    flask_session['user_refreshed_at'] = datetime.utcnow().isoformat()
+                    
+                    # Debug: Log role for admin endpoints
+                    if request.path.startswith('/api/admin'):
+                        print(f"[SESSION] User {current_user.email} role refreshed: {current_user.role} (type: {type(current_user.role).__name__})")
+            except Exception as e:
+                # User might have been deleted or session issue, ignore
+                print(f"[SESSION] Warning: Could not refresh user: {e}")
                 pass
                 
         except Exception as e:
