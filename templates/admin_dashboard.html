@@ -574,6 +574,18 @@
             return;
         }
         
+        // Check file size - Vercel has 4.5MB limit for request body
+        const MAX_FILE_SIZE = 4 * 1024 * 1024; // 4MB (slightly under Vercel's 4.5MB limit)
+        if (file.size > MAX_FILE_SIZE) {
+            const fileSizeMB = (file.size / 1024 / 1024).toFixed(2);
+            showToast(
+                `File too large (${fileSizeMB} MB). Vercel limit is 4.5MB. ` +
+                `For large files, use direct database import or contact support.`,
+                'error'
+            );
+            return;
+        }
+        
         document.getElementById('duplicate-results').style.display = 'none';
         document.getElementById('import-progress').style.display = 'block';
         
