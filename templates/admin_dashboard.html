@@ -1,5 +1,11 @@
 {% extends "base.html" %}
 
+{% block mobile_breadcrumb %}
+    <li class="breadcrumb-item active text-white" aria-current="page">
+        <i class="fas fa-cog me-1"></i>Admin Dashboard
+    </li>
+{% endblock %}
+
 {% block content %}
 <div class="admin-dashboard-container container mt-5 mb-5">
     <!-- Breadcrumb Navigation -->
@@ -204,7 +210,7 @@
                                     </div>
                                 </div>
                                 <p id="import-progress-message" style="color: #c8e6d9; margin-top: 10px;"></p>
-                            </div>
+            </div>
 
             <!-- Enrichment Section -->
                             <div class="mt-4" id="enrichment-section" style="display: none;">
@@ -291,8 +297,8 @@
                     <div class="col-md-3"><strong>Cases:</strong> ${data.stats.total_cases}</div>
                     <div class="col-md-3"><strong>Questions:</strong> ${data.stats.total_questions}</div>
                     <div class="col-md-3"><strong>Answers:</strong> ${data.stats.total_answers}</div>
-                </div>
-            `;
+                            </div>
+                        `;
             
             const statusDiv = document.getElementById('backup-status');
             if (statusDiv) {
