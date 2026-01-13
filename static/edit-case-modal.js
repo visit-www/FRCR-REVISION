@@ -1177,8 +1177,8 @@ function saveEditedCase(event) {
             // Only redirect if we're not waiting for pending images
             if (!shouldWaitForImages) {
                 console.log('[SAVE] Redirecting to:', redirectUrl);
-            window.location.href = redirectUrl;
-        } else {
+                window.location.href = redirectUrl;
+            } else {
                 console.log('[SAVE] Deferring redirect - waiting for pending images to upload');
                 // Store redirect URL to use after images are uploaded
                 window.pendingRedirectUrl = redirectUrl;
