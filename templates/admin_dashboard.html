@@ -207,8 +207,8 @@
                                 <div class="progress mt-3" style="height: 25px;">
                                 <div id="import-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%;">
                                     <span id="import-progress-text">0%</span>
-                                    </div>
                                 </div>
+                            </div>
                                 <p id="import-progress-message" style="color: #c8e6d9; margin-top: 10px;"></p>
             </div>
 
@@ -505,6 +505,7 @@
             return;
         }
         
+        // File size check removed - no limit for local imports
         const statusDiv = document.getElementById('import-status');
         statusDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking for duplicates...';
         
@@ -580,17 +581,7 @@
             return;
         }
         
-        // Check file size - Vercel has 4.5MB limit for request body
-        const MAX_FILE_SIZE = 4 * 1024 * 1024; // 4MB (slightly under Vercel's 4.5MB limit)
-        if (file.size > MAX_FILE_SIZE) {
-            const fileSizeMB = (file.size / 1024 / 1024).toFixed(2);
-            showToast(
-                `File too large (${fileSizeMB} MB). Vercel limit is 4.5MB. ` +
-                `For large files, use direct database import or contact support.`,
-                'error'
-            );
-            return;
-        }
+        // File size check removed - no limit for local imports
         
         document.getElementById('duplicate-results').style.display = 'none';
         document.getElementById('import-progress').style.display = 'block';
