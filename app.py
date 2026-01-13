@@ -982,7 +982,7 @@ def cases_by_module(module):
         )
         
         # Prepare case data for student template - match admin template structure
-    for case in cases:
+        for case in cases:
             cases_data.append({
                 'id': case.id,
                 'diagnosis': case.diagnosis,
@@ -998,16 +998,16 @@ def cases_by_module(module):
         # Admins/Content Managers: prepare case data for admin template
         for case in cases:
             has_notes = CandidateNote.query.filter_by(case_id=case.id, user_id=current_user.id).first() is not None
-        cases_data.append({
-            'id': case.id,
-            'diagnosis': case.diagnosis,
-            'module_display': case.module.value if case.module else 'N/A',
-            'body_part_display': case.body_part.value if case.body_part else 'N/A',
+            cases_data.append({
+                'id': case.id,
+                'diagnosis': case.diagnosis,
+                'module_display': case.module.value if case.module else 'N/A',
+                'body_part_display': case.body_part.value if case.body_part else 'N/A',
                 'age_group_display': case.age_group.value if case.age_group else 'N/A',
-            'image_count': len(case.images),
-            'has_notes': has_notes,
-            'is_public': case.is_public
-        })
+                'image_count': len(case.images),
+                'has_notes': has_notes,
+                'is_public': case.is_public
+            })
     
     # Get all body parts and age groups for filters
     body_parts = [{'value': bp.name, 'display_name': bp.value} for bp in BodyPart]
