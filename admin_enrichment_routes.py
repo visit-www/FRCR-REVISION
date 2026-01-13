@@ -22,6 +22,16 @@ def check_admin():
     if request.endpoint and 'handle_' in request.endpoint:
         return
     
+    # FRESH APPROACH: Skip complex admin check for duplicate check endpoint
+    # This endpoint is read-only and doesn't modify data, so we can be more lenient
+    if request.endpoint == 'enrichment.check_duplicates':
+        # Just check if user is authenticated - duplicate check is safe for any authenticated user
+        if not current_user.is_authenticated:
+            return jsonify({'error': 'Unauthorized. Please log in.'}), 401
+        # Allow any authenticated user to check duplicates (it's just a read operation)
+        print(f"[ENRICHMENT] Allowing duplicate check for authenticated user: {current_user.email}")
+        return
+    
     # Debug: Log user info
     print(f"[ENRICHMENT] Checking admin access for user: {current_user.email if current_user.is_authenticated else 'NOT AUTHENTICATED'}")
     
@@ -175,10 +185,29 @@ def check_duplicates():
         return jsonify({'error': 'Only JSON files supported'}), 400
     
     try:
-        # Read and decode file
+        # FRESH APPROACH: Check file size BEFORE reading to prevent issues
+        file.seek(0, 2)  # Seek to end
+        file_size = file.tell()
+        file.seek(0)  # Reset to beginning
+        
+        print(f"[DUPLICATE CHECK] Backup file size: {file_size} bytes ({file_size / 1024 / 1024:.2f} MB)")
+        
+        # Vercel limit is 4.5MB, but we'll warn at 4MB
+        MAX_FILE_SIZE = 4 * 1024 * 1024  # 4MB
+        if file_size > MAX_FILE_SIZE:
+            return jsonify({
+                'error': f'Backup file is too large ({file_size / 1024 / 1024:.2f} MB). Maximum size is 4 MB for duplicate checking.',
+                'file_size_mb': round(file_size / 1024 / 1024, 2),
+                'max_size_mb': 4
+            }), 413  # 413 Payload Too Large
+        
+        # Read and decode file - READ ONCE
         file_content = file.read()
         if not file_content:
             return jsonify({'error': 'Backup file is empty'}), 400
+        
+        # Clear file reference to prevent multiple reads
+        file = None
         
         try:
             file_text = file_content.decode('utf-8')

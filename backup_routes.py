@@ -194,7 +194,25 @@ def restore_backup():
     if not file.filename.endswith('.json'):
         return jsonify({'error': 'Only JSON backup files are supported'}), 400
     
+    # FRESH APPROACH: Check file size BEFORE reading to prevent "Body is disturbed or locked"
+    # Vercel has a 4.5MB limit for request body, but we'll check for reasonable size
     try:
+        # Get file size (seek to end, get position, then reset)
+        file.seek(0, 2)  # Seek to end
+        file_size = file.tell()
+        file.seek(0)  # Reset to beginning
+        
+        print(f"[IMPORT] Backup file size: {file_size} bytes ({file_size / 1024 / 1024:.2f} MB)")
+        
+        # Vercel limit is 4.5MB, but we'll warn at 4MB to be safe
+        MAX_FILE_SIZE = 4 * 1024 * 1024  # 4MB
+        if file_size > MAX_FILE_SIZE:
+            return jsonify({
+                'error': f'Backup file is too large ({file_size / 1024 / 1024:.2f} MB). Maximum size is 4 MB. Please split the backup into smaller files or use the staging import method.',
+                'file_size_mb': round(file_size / 1024 / 1024, 2),
+                'max_size_mb': 4
+            }), 413  # 413 Payload Too Large
+        
         # Read and parse JSON - IMPORTANT: Read file content ONCE and store in memory
         # This prevents "Body is disturbed or locked" errors on PostgreSQL/Supabase
         # which can occur if the request body stream is read multiple times
@@ -202,6 +220,8 @@ def restore_backup():
         
         # Clear the file reference to ensure we don't try to read it again
         file = None
+        
+        print(f"[IMPORT] Successfully read {len(file_content)} characters from backup file")
         
         # Handle case where file might already be a string (double-encoded)
         if isinstance(file_content, str):
@@ -514,7 +534,7 @@ def restore_backup():
                         
                         # Update images if overwriting
                         CaseImage.query.filter_by(case_id=existing_case.id).delete()
-                        import base64
+        import base64
                         images_list = case_data.get('images', [])
                         if isinstance(images_list, list):
                             for img_data in images_list:
@@ -536,14 +556,14 @@ def restore_backup():
                                     image_description = img_data.get('image_description') or img_data.get('description', '')
                                     image_type = img_data.get('image_type', 'image/jpeg')
                                     
-                                    image = CaseImage(
+            image = CaseImage(
                                         case_id=existing_case.id,
                                         image_filename=image_filename,
                                         image_type=image_type,
                                         image_description=image_description,
                                         image_data=image_data_binary
-                                    )
-                                    db.session.add(image)
+            )
+            db.session.add(image)
                                     stats['images']['added'] += 1
                     
                     stats['cases']['updated'] += 1
@@ -806,7 +826,7 @@ def restore_backup():
                 
                 db.session.add(case)
                 try:
-                    db.session.flush()
+        db.session.flush()
                 except Exception as flush_error:
                     db.session.rollback()
                     print(f"[IMPORT] ERROR during case flush: {flush_error}")
@@ -822,12 +842,12 @@ def restore_backup():
                         if not isinstance(q_data, dict):
                             print(f"[IMPORT] Warning: Skipping invalid question data (not a dict)")
                             continue
-                        question = Question(
+            question = Question(
                             case_id=case.id,
                             question_number=q_data.get('question_number', 0),
                             question_text=q_data.get('question_text', ''),
-                        )
-                        db.session.add(question)
+            )
+            db.session.add(question)
                         stats['questions']['added'] += 1
                 
                 # Add answers
@@ -1141,7 +1161,7 @@ def restore_backup():
                 # Commit in batches to avoid long transactions
                 if (idx + 1) % BATCH_SIZE == 0:
                     try:
-                        db.session.commit()
+        db.session.commit()
                         print(f"[IMPORT] Committed batch of {BATCH_SIZE} highlights ({idx + 1}/{len(highlights_list)})")
                     except Exception as batch_error:
                         db.session.rollback()
@@ -1201,7 +1221,7 @@ def restore_backup():
         # Final commit for any remaining highlights/notes
         # For PostgreSQL/Supabase: Handle connection timeouts and transaction issues
         try:
-            db.session.commit()
+                db.session.commit()
             print(f"[IMPORT] Final commit completed for remaining highlights/notes")
         except Exception as commit_error:
             db.session.rollback()
