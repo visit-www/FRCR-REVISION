@@ -3439,3 +3439,49 @@ tbody tr.case-row:hover {
         font-size: 1.05rem;
     }
 }
+
+/* ==================== TOAST NOTIFICATIONS ==================== */
+/* Session and notification toasts - aligned with app design philosophy */
+
+.session-toast {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+.session-toast .btn-close {
+    filter: invert(1);
+    opacity: 0.6;
+    transition: opacity 0.2s ease;
+}
+
+.session-toast .btn-close:hover {
+    opacity: 1;
+}
+
+.session-toast button.btn {
+    font-weight: 600;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+}
+
+.session-toast button.btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Mobile responsiveness for toast container */
+@media (max-width: 576px) {
+    #toast-container {
+        left: 10px !important;
+        right: 10px !important;
+        max-width: calc(100% - 20px) !important;
+    }
+    
+    .session-toast {
+        min-width: auto !important;
+        max-width: 100% !important;
+        font-size: 13px !important;
+        padding: 14px 16px !important;
+    }
+}

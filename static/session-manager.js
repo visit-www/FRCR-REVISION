@@ -166,60 +166,92 @@ class SessionManager {
     showExpirationWarning(timeRemaining) {
         this.warningShown = true;
         const minutes = Math.ceil(timeRemaining / 60);
+        const seconds = Math.ceil(timeRemaining % 60);
         
-        // Create or update warning modal
-        let warningModal = document.getElementById('session-warning-modal');
-        if (!warningModal) {
-            warningModal = this.createWarningModal();
-            document.body.appendChild(warningModal);
+        // Show toast notification with orange background and black text
+        const message = `Your session will expire in ${minutes} minute${minutes !== 1 ? 's' : ''}. Click to stay logged in.`;
+        
+        // Use global showToast function if available, otherwise create custom toast
+        if (typeof showToast === 'function') {
+            // Show persistent toast that doesn't auto-dismiss
+            const toastId = 'session-warning-toast';
+            let existingToast = document.getElementById(toastId);
+            
+            if (!existingToast) {
+                // Create a special persistent toast with action button
+                const toastContainer = document.getElementById('toast-container');
+                if (toastContainer) {
+                    existingToast = document.createElement('div');
+                    existingToast.id = toastId;
+                    existingToast.className = 'session-toast';
+                    existingToast.setAttribute('role', 'alert');
+                    
+                    existingToast.style.cssText = `
+                        background: #ffc107;
+                        color: #000000;
+                        padding: 16px 20px;
+                        margin-bottom: 12px;
+                        border-radius: 8px;
+                        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+                        display: flex;
+                        align-items: center;
+                        justify-content: space-between;
+                        min-width: 300px;
+                        max-width: 400px;
+                        font-size: 14px;
+                        font-weight: 500;
+                        opacity: 0;
+                        transform: translateX(100%);
+                        transition: all 0.3s ease;
+                        border-left: 4px solid rgba(0,0,0,0.3);
+                        cursor: pointer;
+                    `;
+                    
+                    existingToast.innerHTML = `
+                        <div style="display: flex; align-items: center; flex: 1;">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            <span>${message}</span>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-dark ms-3" onclick="sessionManager.refreshSession(); this.closest('.session-toast').remove();" style="font-size: 12px; padding: 4px 12px;">
+                            Stay In
+                        </button>
+                    `;
+                    
+                    existingToast.addEventListener('click', (e) => {
+                        if (e.target.tagName !== 'BUTTON') {
+                            this.refreshSession();
+                            existingToast.remove();
+                        }
+                    });
+                    
+                    toastContainer.appendChild(existingToast);
+                    
+                    // Animate in
+                    setTimeout(() => {
+                        existingToast.style.opacity = '1';
+                        existingToast.style.transform = 'translateX(0)';
+                    }, 10);
+                }
+            } else {
+                // Update existing toast message
+                const messageSpan = existingToast.querySelector('span');
+                if (messageSpan) {
+                    messageSpan.textContent = message;
+                }
+            }
+            
+            // Auto-remove and logout when session expires
+            clearTimeout(this.warningTimer);
+            this.warningTimer = setTimeout(() => {
+                if (existingToast) {
+                    existingToast.remove();
+                }
+                this.handleSessionExpired();
+            }, timeRemaining * 1000);
+        } else {
+            // Fallback to simple alert if showToast not available
+            console.warn('[SessionManager] showToast function not available');
         }
-        
-        const message = warningModal.querySelector('.warning-message');
-        message.textContent = `Your session will expire in ${minutes} minute${minutes !== 1 ? 's' : ''}. Click "Stay Logged In" to continue.`;
-        
-        // Show modal
-        const bsModal = new bootstrap.Modal(warningModal);
-        bsModal.show();
-        
-        // Auto-hide after session expires
-        clearTimeout(this.warningTimer);
-        this.warningTimer = setTimeout(() => {
-            bsModal.hide();
-            this.handleSessionExpired();
-        }, timeRemaining * 1000);
-    }
-    
-    createWarningModal() {
-        const modal = document.createElement('div');
-        modal.id = 'session-warning-modal';
-        modal.className = 'modal fade';
-        modal.setAttribute('tabindex', '-1');
-        modal.setAttribute('data-bs-backdrop', 'static');
-        modal.setAttribute('data-bs-keyboard', 'false');
-        modal.innerHTML = `
-            <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content">
-                    <div class="modal-header bg-warning">
-                        <h5 class="modal-title">
-                            <i class="fas fa-exclamation-triangle me-2"></i>Session Expiring Soon
-                        </h5>
-                    </div>
-                    <div class="modal-body">
-                        <p class="warning-message"></p>
-                        <p class="text-muted small">For security, your session will automatically expire after 30 minutes of inactivity.</p>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-primary" onclick="sessionManager.refreshSession(); bootstrap.Modal.getInstance(document.getElementById('session-warning-modal')).hide();">
-                            <i class="fas fa-sync me-2"></i>Stay Logged In
-                        </button>
-                        <button type="button" class="btn btn-secondary" onclick="sessionManager.handleLogout();">
-                            <i class="fas fa-sign-out-alt me-2"></i>Log Out
-                        </button>
-                    </div>
-                </div>
-            </div>
-        `;
-        return modal;
     }
     
     handleSessionExpired() {
@@ -228,12 +260,17 @@ class SessionManager {
         // Clear all timers
         this.cleanup();
         
-        // Show expiration message
-        const message = 'Your session has expired due to inactivity. Please log in again.';
+        // Remove any existing warning toast
+        const warningToast = document.getElementById('session-warning-toast');
+        if (warningToast) {
+            warningToast.remove();
+        }
         
-        // Try to show a toast or alert
+        // Show expiration message with toast
+        const message = 'Your session has expired due to inactivity. Redirecting to login...';
+        
         if (typeof showToast === 'function') {
-            showToast(message, 'warning');
+            showToast(message, 'session-warning', 3000);
         } else {
             alert(message);
         }
@@ -241,7 +278,7 @@ class SessionManager {
         // Redirect to login
         setTimeout(() => {
             window.location.href = '/auth/login?expired=1';
-        }, 2000);
+        }, 3000);
     }
     
     async handleLogout() {
