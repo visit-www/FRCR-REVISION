@@ -1291,6 +1291,10 @@
     let selectedHighlightColor = null; // Persists across highlight sessions
     let currentHighlightField = null;
     let colorMenuOpen = false; // Track if color menu is currently open
+    let processedHighlights = new Set(); // Track processed highlights to prevent duplicates
+    let touchStartPos = null;
+    let isTouchHighlighting = false;
+    let highlightCursor = null; // Visual feedback cursor
     
     // Initialize highlighting for students only
     function initHighlighting() {
@@ -1557,16 +1561,13 @@
         // Don't process if clicking on floating highlight button or dropdown menu
         if (e.target && (e.target.closest('.floating-highlight-btn') || e.target.closest('.dropdown-menu'))) return;
         
-        // For touch events, don't prevent default - let text selection work naturally
-        // Small delay to ensure selection is complete (longer for mobile)
-        const delay = e.type === 'touchend' ? 300 : 50;
+        // Small delay to ensure selection is complete
+        const delay = e.type === 'touchend' ? 200 : 50;
         setTimeout(function() {
             const selection = window.getSelection();
             const text = selection.toString().trim();
             
-            if (text.length > 0 && text !== selectedText) {
-                selectedText = text;
-                
+            if (text.length > 0) {
                 try {
                     if (selection.rangeCount === 0) return;
                     
@@ -1593,15 +1594,27 @@
                         (fieldElement.dataset?.field || fieldElement.getAttribute('data-field') || 'discussion') : 
                         (currentHighlightField || 'discussion');
                     
-                    // Create highlight with selected color
-                    createHighlight(text, selectedHighlightColor, fieldName);
+                    // Create unique key to prevent duplicates
+                    const highlightKey = `${text}|${selectedHighlightColor}|${fieldName}`;
                     
-                    // Clear selection
-                    selection.removeAllRanges();
+                    // Check if we've already processed this highlight
+                    if (!processedHighlights.has(highlightKey)) {
+                        processedHighlights.add(highlightKey);
+                        selectedText = text;
+                        
+                        // Create highlight with selected color
+                        createHighlight(text, selectedHighlightColor, fieldName);
+                        
+                        // Clear selection after a brief moment
+                        setTimeout(function() {
+                            selection.removeAllRanges();
+                        }, 100);
+                    } else {
+                        // Already processed, just clear selection
+                        selection.removeAllRanges();
+                    }
                     
                     // Keep highlight mode active after creating highlight (for quick consecutive highlights)
-                    // Only exit if user explicitly cancels
-                    // exitHighlightMode(''); // Removed - keep mode active for quick highlighting
                 } catch (err) {
                     console.error('Error in handleTextSelection:', err);
                 }
