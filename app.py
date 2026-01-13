@@ -86,15 +86,28 @@ if DATABASE_URL:
     # For serverless environments (Vercel), disable connection pooling
     # Each function invocation should create and close its own connection
     if os.getenv('VERCEL'):
-        print("[DB] Serverless environment detected - using NullPool")
+        print("[DB] Serverless environment detected - using NullPool for PostgreSQL/Supabase")
         app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
             'poolclass': NullPool,  # No connection pooling for serverless
             'pool_pre_ping': True,  # Verify connections before using
+            'connect_args': {
+                'connect_timeout': 10,  # 10 second connection timeout
+                'options': '-c statement_timeout=300000'  # 5 minute statement timeout for long imports
+            }
         }
 else:
     # SQLite for local development
     print(f"[DB] Using SQLite: {instance_path}/frcr_examiner.db")
-    app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(instance_path, "frcr_examiner.db")}'
+    sqlite_path = os.path.join(instance_path, "frcr_examiner.db")
+    app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{sqlite_path}'
+    # Configure SQLite for local development only
+    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+        'pool_pre_ping': True,
+        'connect_args': {
+            'timeout': 30,  # 30 second timeout for database operations
+            'check_same_thread': False  # Allow multi-threaded access
+        }
+    }
 # SECRET_KEY is required for production security
 SECRET_KEY = os.getenv('SECRET_KEY')
 if not SECRET_KEY:
@@ -155,11 +168,27 @@ def load_user(user_id):
     try:
         user = User.query.get(int(user_id))
         if user:
-            # Ensure role is set if user has is_admin but no role
-            if user.is_admin and user.role != UserRole.ADMIN:
-                print(f"[AUTH] Fixing user {user_id} role: is_admin=True but role={user.role}, setting to ADMIN")
-                user.role = UserRole.ADMIN
-                db.session.commit()
+            # Ensure role is properly set
+            # If user has is_admin flag but role is not ADMIN, fix it
+            if user.is_admin:
+                if not isinstance(user.role, UserRole) or user.role != UserRole.ADMIN:
+                    print(f"[AUTH] Fixing user {user_id} ({user.email}) role: is_admin=True but role={user.role}, setting to ADMIN")
+                    user.role = UserRole.ADMIN
+                    db.session.commit()
+            
+            # Ensure role is a UserRole enum (not string)
+            if isinstance(user.role, str):
+                try:
+                    user.role = UserRole(user.role.lower())
+                    db.session.commit()
+                    print(f"[AUTH] Converted user {user_id} role from string to enum: {user.role}")
+                except (ValueError, KeyError) as e:
+                    print(f"[AUTH] Error converting role for user {user_id}: {e}")
+            
+            # Debug log for admin users
+            if isinstance(user.role, UserRole) and user.role == UserRole.ADMIN:
+                print(f"[AUTH] Loaded admin user: {user.email} (ID: {user_id}, Role: {user.role.value})")
+            
         return user
     except Exception as e:
         print(f"[AUTH] Error loading user {user_id}: {e}")

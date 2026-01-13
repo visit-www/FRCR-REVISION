@@ -1135,15 +1135,25 @@ def restore_backup():
                         print(f"[IMPORT] Warning: Could not parse note created_at datetime: {note_data.get('created_at')}, error: {e}")
                 db.session.add(note)
                 stats['notes']['added'] += 1
-                
-                try:
-                    db.session.commit()
-                except Exception as commit_error:
-                    db.session.rollback()
-                    print(f"[IMPORT] ERROR during note commit: {commit_error}")
-                    import traceback
-                    traceback.print_exc()
-                    raise
+        
+        # Commit all notes at once (batch commit)
+        # For PostgreSQL/Supabase: Handle connection timeouts and transaction issues
+        try:
+            db.session.commit()
+        except Exception as commit_error:
+            db.session.rollback()
+            error_str = str(commit_error).lower()
+            print(f"[IMPORT] ERROR during notes batch commit: {commit_error}")
+            import traceback
+            traceback.print_exc()
+            
+            # Check for PostgreSQL-specific errors
+            if 'timeout' in error_str or 'connection' in error_str:
+                raise Exception('Database connection timeout. The import may be too large. Please try importing in smaller batches.')
+            elif 'deadlock' in error_str or 'lock' in error_str:
+                raise Exception('Database transaction conflict. Please try again in a few moments.')
+            else:
+                raise
         
         # Build response message
         message_parts = ['Database imported successfully']
@@ -1174,14 +1184,32 @@ def restore_backup():
         db.session.rollback()
         import traceback
         error_traceback = traceback.format_exc()
-        print(f"[IMPORT] ERROR: {str(e)}")
+        error_message = str(e)
+        error_lower = error_message.lower()
+        
+        # Handle PostgreSQL/Supabase specific errors
+        if 'timeout' in error_lower or 'connection' in error_lower:
+            error_message = 'Database connection timeout. The import operation may be too large or taking too long. Please try importing in smaller batches or contact support.'
+        elif 'deadlock' in error_lower or 'lock' in error_lower:
+            error_message = 'Database transaction conflict. Another operation may be in progress. Please try again in a few moments.'
+        elif 'disturbed' in error_lower or 'body' in error_lower:
+            # This might be a request body size issue or connection issue
+            error_message = 'Request body error. The backup file may be too large or the connection was interrupted. Please try a smaller backup file or check your connection.'
+        elif 'violates' in error_lower and 'constraint' in error_lower:
+            error_message = 'Data integrity error. The backup file may contain invalid data or duplicate entries. Please verify the backup file.'
+        elif 'syntax error' in error_lower or 'invalid' in error_lower:
+            error_message = 'Invalid data format. Please ensure the backup file is valid JSON and was exported from a compatible version.'
+        
+        print(f"[IMPORT] ERROR: {error_message}")
+        print(f"[IMPORT] Original error: {str(e)}")
         print(f"[IMPORT] TRACEBACK:\n{error_traceback}")
         # Log to stderr for Vercel logs
         import sys
-        sys.stderr.write(f"[IMPORT] ERROR: {str(e)}\n")
+        sys.stderr.write(f"[IMPORT] ERROR: {error_message}\n")
+        sys.stderr.write(f"[IMPORT] Original: {str(e)}\n")
         sys.stderr.write(f"[IMPORT] TRACEBACK:\n{error_traceback}\n")
         return jsonify({
-            'error': f'Import failed: {str(e)}',
+            'error': f'Import failed: {error_message}',
             'details': error_traceback.split('\n')[-5:] if len(error_traceback) > 0 else []
         }), 500
 

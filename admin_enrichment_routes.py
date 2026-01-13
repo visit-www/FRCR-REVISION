@@ -4,9 +4,8 @@ Handles import, duplicate detection, enrichment, approval, and promotion
 """
 from flask import Blueprint, request, jsonify
 from flask_login import login_required, current_user
-from models import db, ImportedCaseStaging, FRCRModule, BodyPart, AgeGroup
+from models import db, ImportedCaseStaging, FRCRModule, BodyPart, AgeGroup, UserRole
 from services import ImportService, DuplicateDetectionService, ConflictResolutionService, PromotionService
-from access_control import require_admin
 from datetime import datetime
 import tempfile
 import os
@@ -17,10 +16,73 @@ enrichment_bp = Blueprint('enrichment', __name__, url_prefix='/api/admin/enrichm
 
 @enrichment_bp.before_request
 @login_required
-@require_admin
 def check_admin():
     """Verify admin access for all enrichment endpoints"""
-    pass
+    # Skip for error handlers
+    if request.endpoint and 'handle_' in request.endpoint:
+        return
+    
+    # Debug: Log user info
+    print(f"[ENRICHMENT] Checking admin access for user: {current_user.email if current_user.is_authenticated else 'NOT AUTHENTICATED'}")
+    
+    if not current_user.is_authenticated:
+        print("[ENRICHMENT] User not authenticated")
+        return jsonify({'error': 'Unauthorized. Please log in.'}), 401
+    
+    # Force refresh user from database to get latest role
+    try:
+        # Expire the object to force reload
+        db.session.expire(current_user)
+        # Refresh from database
+        db.session.refresh(current_user)
+        print(f"[ENRICHMENT] User role after refresh: {current_user.role}, type: {type(current_user.role).__name__}")
+    except Exception as e:
+        print(f"[ENRICHMENT] Error refreshing user: {e}")
+        import traceback
+        traceback.print_exc()
+    
+    # Get role
+    user_role = current_user.role
+    print(f"[ENRICHMENT] Raw role: {user_role}, type: {type(user_role).__name__}")
+    
+    # Handle string role (shouldn't happen but be defensive)
+    if isinstance(user_role, str):
+        print(f"[ENRICHMENT] Role is string '{user_role}', converting to enum")
+        try:
+            user_role = UserRole(user_role.lower())
+            current_user.role = user_role
+            db.session.commit()
+            print(f"[ENRICHMENT] Converted to enum: {user_role}")
+        except (ValueError, KeyError) as e:
+            print(f"[ENRICHMENT] Error converting role string to enum: {e}")
+            return jsonify({'error': 'Access denied. Invalid user role.'}), 403
+    
+    # Check if it's a UserRole enum
+    if not isinstance(user_role, UserRole):
+        print(f"[ENRICHMENT] ERROR: Role is not UserRole enum! Type: {type(user_role).__name__}, Value: {user_role}")
+        # Try to get role by value
+        try:
+            if hasattr(user_role, 'value'):
+                role_value = user_role.value
+            else:
+                role_value = str(user_role)
+            user_role = UserRole(role_value)
+            current_user.role = user_role
+            db.session.commit()
+            print(f"[ENRICHMENT] Fixed role to enum: {user_role}")
+        except Exception as e:
+            print(f"[ENRICHMENT] Could not fix role: {e}")
+            return jsonify({'error': 'Access denied. Please ensure you are logged in as an admin.'}), 403
+    
+    # Compare with ADMIN enum
+    print(f"[ENRICHMENT] Comparing: {user_role} == {UserRole.ADMIN}? Result: {user_role == UserRole.ADMIN}")
+    print(f"[ENRICHMENT] Role value: '{user_role.value}', ADMIN value: '{UserRole.ADMIN.value}'")
+    
+    if user_role != UserRole.ADMIN:
+        print(f"[ENRICHMENT] Access denied: role '{user_role.value}' != ADMIN '{UserRole.ADMIN.value}'")
+        return jsonify({'error': 'Access denied. Please ensure you are logged in as an admin.'}), 403
+    
+    print(f"[ENRICHMENT] ✓ Admin access granted for {current_user.email}")
 
 
 @enrichment_bp.errorhandler(401)
