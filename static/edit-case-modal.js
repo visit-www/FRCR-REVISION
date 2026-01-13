@@ -938,49 +938,57 @@ function saveEditedCase(event) {
                     const pendingImages = [...window.pendingImages]; // Copy array
                     window.pendingImages = []; // Clear array
                     
-                    // Upload all images and wait for them to complete before redirecting
-                    const uploadPromises = pendingImages.map((file, index) => {
-                        return new Promise((resolve, reject) => {
-                            setTimeout(() => {
-                                // Verify file is still valid
-                                if (!file) {
-                                    console.error('[SAVE] File is null or undefined');
-                                    reject(new Error('File object is missing'));
-                                    return;
-                                }
-                                
-                                // Check if file is a File or Blob
-                                const isFile = file instanceof File;
-                                const isBlob = file instanceof Blob;
-                                
-                                if (!isFile && !isBlob) {
-                                    console.error('[SAVE] Invalid file object type:', typeof file, file);
-                                    reject(new Error('File object is invalid or corrupted'));
-                                    return;
-                                }
-                                
-                                // Check file size
-                                if (file.size === 0) {
-                                    console.error('[SAVE] File is empty:', file.name);
-                                    reject(new Error('File is empty'));
-                                    return;
-                                }
-                                
-                                const formData = new FormData();
-                                formData.append('image', file, file.name || 'image.jpg');
-                                
-                                console.log('[SAVE] Uploading pending image:', file.name, 'size:', file.size, 'type:', file.type, 'isFile:', isFile, 'isBlob:', isBlob, 'to case', newCaseId);
-                                
-                                // Add timeout to fetch request
-                                const controller = new AbortController();
-                                const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
-                                
-                                fetch(`/api/case/${newCaseId}/image`, {
-                                    method: 'POST',
-                                    body: formData,
-                                    credentials: 'same-origin', // Ensure cookies are sent
-                                    signal: controller.signal
-                                })
+                    // Wait a moment after case creation to ensure case is fully committed
+                    console.log('[SAVE] Waiting 500ms before starting image uploads...');
+                    setTimeout(() => {
+                        // Upload all images and wait for them to complete before redirecting
+                        const uploadPromises = pendingImages.map((file, index) => {
+                            return new Promise((resolve, reject) => {
+                                setTimeout(() => {
+                                    // Verify file is still valid
+                                    if (!file) {
+                                        console.error('[SAVE] File is null or undefined');
+                                        reject(new Error('File object is missing'));
+                                        return;
+                                    }
+                                    
+                                    // Check if file is a File or Blob
+                                    const isFile = file instanceof File;
+                                    const isBlob = file instanceof Blob;
+                                    
+                                    if (!isFile && !isBlob) {
+                                        console.error('[SAVE] Invalid file object type:', typeof file, file);
+                                        reject(new Error('File object is invalid or corrupted'));
+                                        return;
+                                    }
+                                    
+                                    // Check file size
+                                    if (file.size === 0) {
+                                        console.error('[SAVE] File is empty:', file.name);
+                                        reject(new Error('File is empty'));
+                                        return;
+                                    }
+                                    
+                                    const formData = new FormData();
+                                    formData.append('image', file, file.name || 'image.jpg');
+                                    
+                                    console.log('[SAVE] Uploading pending image:', file.name, 'size:', file.size, 'type:', file.type, 'isFile:', isFile, 'isBlob:', isBlob, 'to case', newCaseId);
+                                    
+                                    // Add timeout to fetch request
+                                    const controller = new AbortController();
+                                    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+                                    
+                                    // Retry logic for network errors
+                                    let retryCount = 0;
+                                    const maxRetries = 2;
+                                    
+                                    function attemptUpload() {
+                                        fetch(`/api/case/${newCaseId}/image`, {
+                                            method: 'POST',
+                                            body: formData,
+                                            credentials: 'same-origin', // Ensure cookies are sent
+                                            signal: controller.signal
+                                        })
                                 .then(async r => {
                                     console.log('[SAVE] Upload response status:', r.status, 'for', file.name);
                                     if (!r.ok) {
@@ -1036,8 +1044,8 @@ function saveEditedCase(event) {
                         });
                     });
                     
-                    // Wait for all uploads to complete before showing success message or redirecting
-                    Promise.all(uploadPromises)
+                        // Wait for all uploads to complete before showing success message or redirecting
+                        Promise.all(uploadPromises)
                         .then(results => {
                             console.log('[SAVE] All pending images uploaded successfully:', results);
                             
