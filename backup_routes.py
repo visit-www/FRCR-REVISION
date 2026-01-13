@@ -434,19 +434,19 @@ def restore_backup():
                                     continue
                                 image_data_binary = None
                                 if img_data.get('image_data'):
-                                image_data_binary = base64.b64decode(img_data['image_data'])
-                            
-                            # Only create image if we have image data
-                            if image_data_binary:
-                                image = CaseImage(
-                                    case_id=existing_case.id,
-                                    image_filename=img_data.get('filename', ''),
-                                    image_type=img_data.get('image_type', 'image/jpeg'),
-                                    image_description=img_data.get('description', ''),
-                                    image_data=image_data_binary
-                                )
-                                db.session.add(image)
-                                stats['images']['added'] += 1
+                                    image_data_binary = base64.b64decode(img_data['image_data'])
+                                
+                                # Only create image if we have image data
+                                if image_data_binary:
+                                    image = CaseImage(
+                                        case_id=existing_case.id,
+                                        image_filename=img_data.get('filename', ''),
+                                        image_type=img_data.get('image_type', 'image/jpeg'),
+                                        image_description=img_data.get('description', ''),
+                                        image_data=image_data_binary
+                                    )
+                                    db.session.add(image)
+                                    stats['images']['added'] += 1
                     
                     stats['cases']['updated'] += 1
                     new_case_id = existing_case.id
