@@ -1302,8 +1302,73 @@
         // Setup highlight toolbars
         setupHighlightToolbars();
         
-        // Add mouseup listener for text selection when in highlight mode
+        // Add mouseup listener for text selection when in highlight mode (desktop)
         document.addEventListener('mouseup', handleTextSelection);
+        
+        // Add touchend listener for mobile devices (iPhone, iPad, etc.)
+        // Use passive to improve mobile performance and allow text selection to work naturally
+        document.addEventListener('touchend', handleTextSelection, { passive: true });
+        
+        // Add selectionchange listener for better mobile support
+        // This fires when text selection changes, which is more reliable on mobile
+        let selectionChangeTimeout = null;
+        document.addEventListener('selectionchange', function() {
+            if (highlightMode && selectedHighlightColor) {
+                // Clear any pending timeout
+                if (selectionChangeTimeout) {
+                    clearTimeout(selectionChangeTimeout);
+                }
+                
+                // Small delay to ensure selection is complete on mobile
+                selectionChangeTimeout = setTimeout(function() {
+                    const selection = window.getSelection();
+                    const text = selection.toString().trim();
+                    
+                    // Only process if there's actual selected text and it's different from last processed
+                    if (text.length > 0 && text !== selectedText) {
+                        // Check if selection is within highlightable content
+                        if (selection.rangeCount > 0) {
+                            try {
+                                const range = selection.getRangeAt(0);
+                                let fieldElement = null;
+                                
+                                // Find the field element from the range
+                                const container = range.commonAncestorContainer;
+                                if (container) {
+                                    fieldElement = container.nodeType === Node.TEXT_NODE 
+                                        ? container.parentElement 
+                                        : container;
+                                    
+                                    // Find the closest highlightable element
+                                    fieldElement = fieldElement.closest('.highlightable-text') || 
+                                                 fieldElement.closest('[data-field]') ||
+                                                 fieldElement;
+                                }
+                                
+                                if (fieldElement && (fieldElement.classList.contains('highlightable-text') || 
+                                    fieldElement.hasAttribute('data-field'))) {
+                                    // Prevent double-processing
+                                    const currentText = selection.toString().trim();
+                                    if (currentText && currentText !== selectedText) {
+                                        selectedText = currentText;
+                                        const fieldName = fieldElement.dataset?.field || 
+                                            fieldElement.getAttribute('data-field') || 
+                                            currentHighlightField || 'discussion';
+                                        createHighlight(currentText, selectedHighlightColor, fieldName);
+                                        // Clear selection after a brief moment to show the highlight was created
+                                        setTimeout(function() {
+                                            selection.removeAllRanges();
+                                        }, 100);
+                                    }
+                                }
+                            } catch (err) {
+                                console.error('Error in selectionchange handler:', err);
+                            }
+                        }
+                    }
+                }, 500); // Longer delay for mobile to ensure selection is stable (iOS needs more time)
+            }
+        });
     }
     
     function setupHighlightToolbars() {
@@ -1475,20 +1540,45 @@
         if (!highlightMode || !selectedHighlightColor) return;
         
         // Don't process if clicking on floating highlight button or dropdown menu
-        if (e.target.closest('.floating-highlight-btn') || e.target.closest('.dropdown-menu')) return;
+        if (e.target && (e.target.closest('.floating-highlight-btn') || e.target.closest('.dropdown-menu'))) return;
         
-        // Small delay to ensure selection is complete
+        // For touch events, don't prevent default - let text selection work naturally
+        // Only prevent if we're sure it's not a text selection gesture
+        
+        // Small delay to ensure selection is complete (longer for mobile)
+        const delay = e.type === 'touchend' ? 200 : 50;
         setTimeout(function() {
             const selection = window.getSelection();
             const text = selection.toString().trim();
             
-            if (text.length > 0) {
+            if (text.length > 0 && text !== selectedText) {
                 selectedText = text;
                 
                 try {
+                    if (selection.rangeCount === 0) return;
+                    
                     const range = selection.getRangeAt(0);
-                    const fieldElement = e.target.closest('.highlightable-text') || e.target.closest('[data-field]');
-                    const fieldName = fieldElement ? (fieldElement.dataset.field || 'discussion') : currentHighlightField || 'discussion';
+                    
+                    // Find the field element - handle both touch and mouse events
+                    let fieldElement = null;
+                    if (e.target) {
+                        fieldElement = e.target.closest('.highlightable-text') || e.target.closest('[data-field]');
+                    }
+                    
+                    // If not found via event target, try to find from range
+                    if (!fieldElement && range) {
+                        const container = range.commonAncestorContainer;
+                        fieldElement = container.nodeType === Node.TEXT_NODE 
+                            ? container.parentElement 
+                            : container;
+                        fieldElement = fieldElement.closest('.highlightable-text') || 
+                                     fieldElement.closest('[data-field]') ||
+                                     fieldElement;
+                    }
+                    
+                    const fieldName = fieldElement ? 
+                        (fieldElement.dataset?.field || fieldElement.getAttribute('data-field') || 'discussion') : 
+                        (currentHighlightField || 'discussion');
                     
                     // Create highlight with selected color
                     createHighlight(text, selectedHighlightColor, fieldName);
@@ -1503,7 +1593,7 @@
                     console.error('Error in handleTextSelection:', err);
                 }
             }
-        }, 50);
+        }, delay);
     }
     
     function showHighlightMenu(x, y, fieldName, range) {

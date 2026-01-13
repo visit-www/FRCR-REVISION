@@ -1,6 +1,33 @@
 /* FRCR Revision - "Confident Calm" Theme */
 /* Matte pastel palette for medical professionalism */
 
+/* Mobile-friendly text selection for highlighter */
+.highlightable-text {
+    -webkit-user-select: text !important;
+    -moz-user-select: text !important;
+    -ms-user-select: text !important;
+    user-select: text !important;
+    -webkit-touch-callout: default !important;
+    -webkit-tap-highlight-color: rgba(102, 126, 234, 0.2);
+    touch-action: manipulation;
+}
+
+/* Ensure text selection works on mobile devices */
+@media (max-width: 768px) {
+    .highlightable-text {
+        -webkit-user-select: text !important;
+        user-select: text !important;
+        -webkit-touch-callout: default !important;
+        cursor: text;
+    }
+    
+    /* Prevent text selection issues on iOS */
+    .highlightable-text * {
+        -webkit-user-select: text !important;
+        user-select: text !important;
+    }
+}
+
 :root {
     /* === PRIMARY ACTION COLORS === */
     /* Peachy Orange - Brand Accent */
