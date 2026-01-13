@@ -1166,7 +1166,7 @@ def restore_backup():
                 # Commit in batches to avoid long transactions
                 if (idx + 1) % BATCH_SIZE == 0:
                     try:
-        db.session.commit()
+                        db.session.commit()
                         print(f"[IMPORT] Committed batch of {BATCH_SIZE} highlights ({idx + 1}/{len(highlights_list)})")
                     except Exception as batch_error:
                         db.session.rollback()
@@ -1226,7 +1226,7 @@ def restore_backup():
         # Final commit for any remaining highlights/notes
         # For PostgreSQL/Supabase: Handle connection timeouts and transaction issues
         try:
-                db.session.commit()
+            db.session.commit()
             print(f"[IMPORT] Final commit completed for remaining highlights/notes")
         except Exception as commit_error:
             db.session.rollback()
