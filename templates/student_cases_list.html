@@ -43,28 +43,19 @@
                        placeholder="Search by diagnosis or keywords..."
                        value="{{ search_query }}">
             </div>
-            {% if flagged_filter %}
-            <a href="{{ url_for('student_cases_list') }}" class="btn btn-warning btn-sm w-100">
-                <i class="fas fa-times me-2"></i>Clear Flagged Filter
-            </a>
-            {% else %}
-            <a href="{{ url_for('student_cases_list', flagged='true') }}" class="btn btn-warning btn-sm w-100">
-                <i class="fas fa-star me-2"></i>My Flagged Cases
-            </a>
-            {% endif %}
         </div>
     </div>
 
     <!-- Filters -->
-    <div class="card shadow-sm border-0 mb-4">
-        <div class="card-body">
-            <div class="row g-3">
+    <div class="card filter-card shadow-sm border-0 mb-4">
+        <div class="card-body p-4">
+            <div class="filter-row">
                 {% if not module_filter %}
-                <div class="col-md-3">
-                    <label class="form-label small text-muted mb-1">
-                        <i class="fas fa-layer-group me-1"></i>Module
+                <div class="filter-item">
+                    <label class="filter-label">
+                        <i class="fas fa-layer-group me-2"></i>Module
                     </label>
-                    <select class="form-select" id="moduleFilter">
+                    <select class="form-select filter-select" id="moduleFilter">
                         <option value="">All Modules</option>
                         {% for module in all_modules %}
                         <option value="{{ module.value }}" {% if module_selected == module.value %}selected{% endif %}>
@@ -75,11 +66,11 @@
                 </div>
                 {% endif %}
                 
-                <div class="col-md-3">
-                    <label class="form-label small text-muted mb-1">
-                        <i class="fas fa-user-injured me-1"></i>Body Part
+                <div class="filter-item">
+                    <label class="filter-label">
+                        <i class="fas fa-user-injured me-2"></i>Body Part
                     </label>
-                    <select class="form-select" id="bodyPartFilter">
+                    <select class="form-select filter-select" id="bodyPartFilter">
                         <option value="">All Body Parts</option>
                         {% for body_part in body_parts %}
                         <option value="{{ body_part.value }}" {% if body_part_selected == body_part.value %}selected{% endif %}>
@@ -89,11 +80,11 @@
                     </select>
                 </div>
                 
-                <div class="col-md-3">
-                    <label class="form-label small text-muted mb-1">
-                        <i class="fas fa-user-clock me-1"></i>Age Group
+                <div class="filter-item">
+                    <label class="filter-label">
+                        <i class="fas fa-user-clock me-2"></i>Age Group
                     </label>
-                    <select class="form-select" id="ageGroupFilter">
+                    <select class="form-select filter-select" id="ageGroupFilter">
                         <option value="">All Age Groups</option>
                         {% for age_group in age_groups %}
                         <option value="{{ age_group.value }}" {% if age_group_selected == age_group.value %}selected{% endif %}>
@@ -103,85 +94,130 @@
                     </select>
                 </div>
                 
-                <div class="col-md-3 d-flex align-items-end">
-                    <button class="btn btn-secondary w-100" onclick="clearFilters()">
-                        <i class="fas fa-times me-2"></i>Clear Filters
+                <div class="filter-item filter-button-item">
+                    <button class="btn filter-clear-btn w-100" onclick="clearFilters()">
+                        <i class="fas filter-clear-btn me-2"></i>Clear Filters
                     </button>
                 </div>
+            </div>
+            
+            <div class="mt-3">
+                {% if flagged_filter %}
+                    <a href="{{ url_for('student_cases_list') }}" class="btn btn-warning btn-sm shadow-sm">
+                        <i class="fas fa-times me-2"></i>Clear Flagged Filter
+                    </a>
+                    {% else %}
+                    <a href="{{ url_for('student_cases_list', flagged='true') }}" class="btn btn-warning btn-sm shadow-sm">
+                        <i class="fas fa-star me-2"></i>My Flagged Cases
+                    </a>
+                {% endif %}
             </div>
         </div>
     </div>
 
     <!-- Case Count -->
-    <div class="mb-3">
-        <p class="text-muted small mb-0">
-            <i class="fas fa-check-circle me-1" style="color: #a8d5ba;"></i>
-            Showing <strong>{{ cases|length }}</strong> case(s)
-        </p>
+    <div class="mb-3 d-flex align-items-center justify-content-between">
+        <div class="d-flex align-items-center gap-2">
+            <span class="badge bg-light text-dark px-3 py-2 shadow-sm">
+                <i class="fas fa-check-circle me-2" style="color: #a8d5ba;"></i>
+                Showing <strong>{{ cases|length }}</strong> case{% if cases|length != 1 %}s{% endif %}
+            </span>
+        </div>
     </div>
 
-    <!-- Cases Table -->
-    <div class="card shadow-sm border-0">
-        <div class="table-responsive">
-            <table class="table table-hover mb-0">
-                <thead style="background-color: #f8f9fa;">
-                    <tr>
-                        <th style="width: 6%;">#</th>
-                        <th style="width: 28%;">Diagnosis</th>
-                        <th style="width: 14%;">Module</th>
-                        <th style="width: 14%;">Body Part</th>
-                        <th style="width: 10%;">Age Group</th>
-                        <th style="width: 6%;">Images</th>
-                        <th style="width: 12%;">Flag</th>
-                    </tr>
-                </thead>
-                <tbody id="casesTableBody">
-                    {% if cases %}
-                        {% for case in cases %}
-                        <tr id="caseRow{{ case.id }}" class="case-row case-public" style="cursor: pointer;" onclick="window.location.href='{{ url_for('view_case', case_id=case.id) }}'">
-                            <td class="fw-bold text-muted" style="background-color:#d4f8e8 !important; border-left:6px solid #28a745 !important;">#{{ case.id }}
-                            </td>
-                            <td style="background-color:#d4f8e8 !important;">
-                                <div class="fw-bold">{{ case.diagnosis }}</div>
-                            </td>
-                            <td style="background-color:#d4f8e8 !important;">
-                                <span class="badge" style="background-color: #a8d5ba;">
+    <!-- Cases Grid -->
+    <div id="casesGridContainer">
+        {% if cases %}
+        <div class="row g-4" id="casesGridBody">
+            {% for case in cases %}
+            <div class="col-12 col-md-6 col-lg-4 col-xl-3">
+                <div id="caseCard{{ case.id }}" class="case-card-modern case-card-student" onclick="window.location.href='{{ url_for('view_case', case_id=case.id) }}'">
+                    <!-- Card Header -->
+                    <div class="case-card-header-modern">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <span class="case-id-badge">#{{ case.id }}</span>
+                            <button class="btn btn-link p-0 flag-btn" data-case-id="{{ case.id }}" onclick="event.stopPropagation();" title="{% if case.flagged %}Unflag case{% else %}Flag case for study{% endif %}">
+                                <i class="fas fa-star{% if case.flagged %} text-warning{% else %} text-muted{% endif %}" id="flagIcon{{ case.id }}" style="font-size: 1.3rem;"></i>
+                            </button>
+                        </div>
+                        <h5 class="case-diagnosis">
+                            {{ case.diagnosis }}
+                        </h5>
+                        {% if case.has_notes %}
+                        <div class="case-notes-indicator">
+                            <i class="fas fa-sticky-note me-1" style="color: #f9e5a8;"></i>
+                            <small style="color: #6c757d; font-size: 0.75rem;">Has notes</small>
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Card Body -->
+                    <div class="case-card-body-modern">
+                        <div class="case-meta-row">
+                            <div class="case-meta-item">
+                                {% if case.module_display and case.module_display != 'N/A' %}
+                                    {% if 'Cardiothoracic' in case.module_display or 'Vascular' in case.module_display %}
+                                        {% set module_color = 'linear-gradient(135deg, #a8d8ea 0%, #7bb3d0 100%)' %}
+                                        {% set icon_color = '#7bb3d0' %}
+                                    {% elif 'Musculoskeletal' in case.module_display or 'Trauma' in case.module_display %}
+                                        {% set module_color = 'linear-gradient(135deg, #ffb380 0%, #ff9800 100%)' %}
+                                        {% set icon_color = '#ff9800' %}
+                                    {% elif 'Gastro' in case.module_display or 'intestinal' in case.module_display %}
+                                        {% set module_color = 'linear-gradient(135deg, #a8d5ba 0%, #7bb88a 100%)' %}
+                                        {% set icon_color = '#7bb88a' %}
+                                    {% elif 'Genito' in case.module_display or 'urinary' in case.module_display or 'Breast' in case.module_display %}
+                                        {% set module_color = 'linear-gradient(135deg, #e1bee7 0%, #ce93d8 100%)' %}
+                                        {% set icon_color = '#ce93d8' %}
+                                    {% elif 'Paediatric' in case.module_display %}
+                                        {% set module_color = 'linear-gradient(135deg, #fff9c4 0%, #fff59d 100%)' %}
+                                        {% set icon_color = '#fff59d' %}
+                                    {% elif 'CNS' in case.module_display or 'Head' in case.module_display or 'Neck' in case.module_display %}
+                                        {% set module_color = 'linear-gradient(135deg, #c5cae9 0%, #9fa8da 100%)' %}
+                                        {% set icon_color = '#9fa8da' %}
+                                    {% else %}
+                                        {% set module_color = 'linear-gradient(135deg, #b0bec5 0%, #90a4ae 100%)' %}
+                                        {% set icon_color = '#90a4ae' %}
+                                    {% endif %}
+                                {% else %}
+                                    {% set module_color = 'linear-gradient(135deg, #b0bec5 0%, #90a4ae 100%)' %}
+                                    {% set icon_color = '#90a4ae' %}
+                                {% endif %}
+                                <i class="fas fa-layer-group me-1" style="color: {{ icon_color }};"></i>
+                                <span class="badge px-2 py-1 shadow-sm module-badge" style="background: {{ module_color }}; color: #fff; font-weight: 500; font-size: 0.75rem;">
                                     {{ case.module_display }}
                                 </span>
-                            </td>
-                            <td style="background-color:#d4f8e8 !important;">
-                                <span class="badge bg-light text-dark">
-                                    {{ case.body_part_display }}
-                                </span>
-                            </td>
-                            <td style="background-color:#d4f8e8 !important;">
-                                <span class="badge bg-info text-white">
-                                    {{ case.age_group_display }}
-                                </span>
-                            </td>
-                            <td style="background-color:#d4f8e8 !important;">
-                                <i class="fas fa-images me-1" style="color: #ffc107;"></i>
-                                {{ case.image_count }}
-                            </td>
-                            <td style="background-color:#d4f8e8 !important; text-align:center;">
-                                <button class="btn btn-link p-0 flag-btn" data-case-id="{{ case.id }}" onclick="event.stopPropagation();" title="{% if case.flagged %}Unflag case{% else %}Flag case for study{% endif %}">
-                                    <i class="fas fa-star{% if case.flagged %} text-warning{% else %} text-secondary{% endif %}" id="flagIcon{{ case.id }}" style="font-size: 1.2rem;"></i>
-                                </button>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    {% else %}
-                        <tr>
-                            <td colspan="7" class="text-center text-muted py-5">
-                                <i class="fas fa-folder-open fa-3x mb-3 d-block" style="opacity: 0.3;"></i>
-                                <p class="mb-0">No cases found matching your criteria</p>
-                                <small>Try adjusting your filters or search term</small>
-                            </td>
-                        </tr>
-                    {% endif %}
-                </tbody>
-            </table>
+                            </div>
+                        </div>
+                        
+                        <div class="case-tags-row">
+                            <span class="badge px-2 py-1 shadow-sm bg-light text-dark" style="font-weight: 500; font-size: 0.7rem; border: 1px solid #dee2e6;">
+                                {{ case.body_part_display }}
+                            </span>
+                            <span class="badge px-2 py-1 shadow-sm bg-info text-white" style="font-weight: 500; font-size: 0.7rem;">
+                                {{ case.age_group_display }}
+                            </span>
+                        </div>
+                        
+                        <div class="case-footer-info">
+                            <div class="d-flex align-items-center gap-2">
+                                <i class="fas fa-images" style="color: #ffc107; font-size: 0.9rem;"></i>
+                                <span style="font-weight: 500; color: #495057; font-size: 0.85rem;">{{ case.image_count }} image{% if case.image_count != 1 %}s{% endif %}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
         </div>
+        {% else %}
+        <div class="text-center py-5">
+            <div class="py-4">
+                <i class="fas fa-folder-open fa-3x mb-3 d-block" style="opacity: 0.2; color: #6c757d;"></i>
+                <p class="mb-1 fw-semibold" style="color: #495057;">No cases found matching your criteria</p>
+                <small class="text-muted">Try adjusting your filters or search term</small>
+            </div>
+        </div>
+        {% endif %}
     </div>
 </div>
 
@@ -225,7 +261,7 @@ function clearFilters() {
 }
 
 // Flag/unflag AJAX
- document.querySelectorAll('.flag-btn').forEach(function(btn) {
+document.querySelectorAll('.flag-btn').forEach(function(btn) {
     btn.addEventListener('click', function(e) {
         const caseId = btn.getAttribute('data-case-id');
         const icon = document.getElementById('flagIcon' + caseId);
@@ -239,7 +275,7 @@ function clearFilters() {
         .then(data => {
             if (data.success) {
                 icon.classList.toggle('text-warning');
-                icon.classList.toggle('text-secondary');
+                icon.classList.toggle('text-muted');
                 btn.title = flagged ? 'Flag case for study' : 'Unflag case';
             } else {
                 alert('Error: ' + (data.error || 'Unknown error'));
@@ -251,27 +287,322 @@ function clearFilters() {
             btn.disabled = false;
         });
     });
- });
+});
 </script>
 
 <style>
-tr.case-row.case-public {
-    background-color: #d4f8e8 !important;
-    border-left: 6px solid #28a745 !important;
-    transition: background 0.3s;
+/* Filter Card Styling - Premium Design */
+.filter-card {
+    background: linear-gradient(135deg, #fdfdfb 0%, #f8f8f6 100%);
+    border: 1px solid #e0e0e0;
+    border-radius: 12px;
+    transition: all 0.3s ease;
 }
-tr.case-row:hover {
-    background-color: #fff8f0 !important;
+
+.filter-card:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+    transform: translateY(-1px);
 }
-.flag-btn .fa-star.text-warning { 
-    color: #ffc107 !important; 
+
+/* Filter Row - Even Distribution Using Flexbox */
+.filter-row {
+    display: flex;
+    gap: 1.25rem;
+    align-items: flex-end;
+    flex-wrap: wrap;
 }
-.flag-btn .fa-star.text-secondary { 
-    color: #ccc !important; 
+
+.filter-item {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
 }
+
+.filter-button-item {
+    flex: 1;
+    min-width: 140px;
+    max-width: 220px;
+    display: flex;
+    align-items: flex-end;
+}
+
+.filter-label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #5a6270;
+    margin-bottom: 0.5rem;
+    letter-spacing: 0.3px;
+}
+
+.filter-label i {
+    color: #a8d5ba;
+    font-size: 0.9rem;
+}
+
+.filter-select {
+    border: 2px solid #c5cad1;
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    background-color: white;
+    font-size: 0.95rem;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+    width: 100%;
+}
+
+.filter-select:hover {
+    border-color: #a8d5ba;
+    box-shadow: 0 2px 8px rgba(168, 213, 186, 0.15);
+}
+
+.filter-select:focus {
+    border-color: #a8d5ba;
+    box-shadow: 0 0 0 3px rgba(168, 213, 186, 0.15);
+    background-color: white;
+    outline: none;
+}
+
+.filter-clear-btn {
+    background: linear-gradient(135deg, #8b94a3 0%, #6c757d 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 0.75rem 1.25rem;
+    font-weight: 600;
+    font-size: 0.95rem;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    letter-spacing: 0.2px;
+    white-space: nowrap;
+    width: 100%;
+}
+
+.filter-clear-btn:hover {
+    background: linear-gradient(135deg, #6c757d 0%, #5a6270 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    color: white;
+}
+
+.filter-clear-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Modern Case Card Layout for Students */
+.case-card-modern {
+    background: linear-gradient(135deg, #fdfdfb 0%, #f8f8f6 100%);
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s ease;
+    cursor: pointer;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border: 1px solid #e0e0e0;
+}
+
+.case-card-modern:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    border-color: #a8d5ba;
+    background: linear-gradient(135deg, #ffffff 0%, #fdfdfb 100%);
+}
+
+.case-card-header-modern {
+    padding: 1.25rem 1.25rem 1rem;
+    border-bottom: 1px solid #f0f0f0;
+    background: linear-gradient(135deg, #fdfdfb 0%, #f8f8f6 100%);
+}
+
+.case-id-badge {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    background: #f0f0f0;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #6c757d;
+    letter-spacing: 0.3px;
+}
+
+.case-diagnosis {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #2c3e50;
+    margin: 0.75rem 0 0.5rem;
+    line-height: 1.4;
+    display: block;
+}
+
+.case-notes-indicator {
+    margin-top: 0.5rem;
+    display: flex;
+    align-items: center;
+}
+
+.case-card-body-modern {
+    padding: 1rem 1.25rem;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.case-meta-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.case-meta-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.case-tags-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.case-footer-info {
+    margin-top: auto;
+    padding-top: 0.75rem;
+    border-top: 1px solid #f0f0f0;
+    display: flex;
+    align-items: center;
+}
+
+/* Flag Button Styling */
+.flag-btn {
+    transition: all 0.2s ease;
+    border: none;
+    background: transparent;
+}
+
+.flag-btn:hover {
+    transform: scale(1.15);
+}
+
+.flag-btn .fa-star.text-warning {
+    color: #ffc107 !important;
+    filter: drop-shadow(0 2px 4px rgba(255, 193, 7, 0.3));
+}
+
+.flag-btn .fa-star.text-muted {
+    color: #adb5bd !important;
+}
+
 .flag-btn:hover .fa-star {
     transform: scale(1.2);
-    transition: transform 0.2s;
+    transition: transform 0.2s ease;
+}
+
+/* Responsive Design */
+@media (min-width: 992px) {
+    .filter-row {
+        gap: 1.5rem;
+    }
+    
+    .filter-item {
+        flex: 1;
+    }
+    
+    .filter-button-item {
+        flex: 1;
+        max-width: 220px;
+    }
+}
+
+@media (min-width: 768px) and (max-width: 991px) {
+    .filter-row {
+        gap: 1rem;
+    }
+    
+    .filter-item {
+        flex: 0 0 calc(50% - 0.5rem);
+    }
+    
+    .filter-button-item {
+        flex: 0 0 calc(50% - 0.5rem);
+        max-width: none;
+    }
+}
+
+@media (max-width: 767px) {
+    .filter-card .card-body {
+        padding: 1.25rem;
+    }
+    
+    .filter-row {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .filter-item {
+        flex: 1 1 100%;
+        width: 100%;
+    }
+    
+    .filter-button-item {
+        max-width: 100%;
+    }
+    
+    .filter-label {
+        font-size: 0.8rem;
+        margin-bottom: 0.4rem;
+    }
+    
+    .filter-select {
+        padding: 0.625rem 0.875rem;
+        font-size: 0.9rem;
+    }
+    
+    .filter-clear-btn {
+        padding: 0.625rem 1rem;
+        font-size: 0.9rem;
+    }
+    
+    .case-card-modern {
+        margin-bottom: 1rem;
+    }
+    
+    .case-card-header-modern {
+        padding: 1rem;
+    }
+    
+    .case-card-body-modern {
+        padding: 0.875rem 1rem;
+    }
+    
+    .case-diagnosis {
+        font-size: 1rem;
+    }
+}
+
+@media (min-width: 1200px) {
+    .col-xl-3 {
+        flex: 0 0 25%;
+        max-width: 25%;
+    }
+}
+
+/* Module badge styling with color-coded modules */
+.module-badge {
+    position: relative;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+}
+
+.module-badge:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.25);
+    filter: brightness(1.1);
 }
 </style>
 {% endblock %}
