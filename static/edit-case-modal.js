@@ -935,10 +935,12 @@ function saveEditedCase(event) {
                 
                 if (window.pendingImages && window.pendingImages.length > 0) {
                     console.log('[SAVE] Uploading', window.pendingImages.length, 'pending images for case', newCaseId);
+                    // Set a flag to indicate uploads are in progress BEFORE copying array
+                    // This ensures the flag is set before any redirect checks
+                    window.uploadsInProgress = true;
+                    console.log('[SAVE] Set uploadsInProgress flag to true');
                     const pendingImages = [...window.pendingImages]; // Copy array
                     // Don't clear window.pendingImages yet - we need it for the redirect check
-                    // Set a flag to indicate uploads are in progress
-                    window.uploadsInProgress = true;
                     
                     // Wait a moment after case creation to ensure case is fully committed
                     console.log('[SAVE] Waiting 500ms before starting image uploads...');
