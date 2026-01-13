@@ -358,12 +358,23 @@ def restore_backup():
                             from models import FRCRModule, BodyPart, AgeGroup
                             try:
                                 if key == 'module':
-                                    existing_case.module = FRCRModule(value)
+                                    # Try by value first (export format), then by name
+                                    try:
+                                        existing_case.module = FRCRModule(value)
+                                    except (ValueError, KeyError):
+                                        existing_case.module = FRCRModule[value]
                                 elif key == 'body_part':
-                                    existing_case.body_part = BodyPart(value)
+                                    try:
+                                        existing_case.body_part = BodyPart(value)
+                                    except (ValueError, KeyError):
+                                        existing_case.body_part = BodyPart[value]
                                 elif key == 'age_group':
-                                    existing_case.age_group = AgeGroup(value)
-                            except:
+                                    try:
+                                        existing_case.age_group = AgeGroup(value)
+                                    except (ValueError, KeyError):
+                                        existing_case.age_group = AgeGroup[value]
+                            except Exception as e:
+                                print(f"[IMPORT] Warning: Could not set {key} to {value}: {e}")
                                 pass
                         elif key == 'created_at' and value:
                             # Convert ISO string to datetime object for SQLite compatibility
@@ -506,22 +517,31 @@ def restore_backup():
                     is_public=filtered_data.get('is_public', True),
                 )
                 
-                # Set enums
+                # Set enums - try by value first (export format), then by name
                 if filtered_data.get('module'):
                     try:
                         case.module = FRCRModule(filtered_data['module'])
-                    except:
-                        pass
+                    except (ValueError, KeyError):
+                        try:
+                            case.module = FRCRModule[filtered_data['module']]
+                        except (ValueError, KeyError) as e:
+                            print(f"[IMPORT] Warning: Could not set module to {filtered_data['module']}: {e}")
                 if filtered_data.get('body_part'):
                     try:
                         case.body_part = BodyPart(filtered_data['body_part'])
-                    except:
-                        pass
+                    except (ValueError, KeyError):
+                        try:
+                            case.body_part = BodyPart[filtered_data['body_part']]
+                        except (ValueError, KeyError) as e:
+                            print(f"[IMPORT] Warning: Could not set body_part to {filtered_data['body_part']}: {e}")
                 if filtered_data.get('age_group'):
                     try:
                         case.age_group = AgeGroup(filtered_data['age_group'])
-                    except:
-                        pass
+                    except (ValueError, KeyError):
+                        try:
+                            case.age_group = AgeGroup[filtered_data['age_group']]
+                        except (ValueError, KeyError) as e:
+                            print(f"[IMPORT] Warning: Could not set age_group to {filtered_data['age_group']}: {e}")
                 
                 # Map created_by_user_id from backup using ID mapping
                 if filtered_data.get('created_by_user_id'):
