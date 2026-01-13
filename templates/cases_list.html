@@ -33,20 +33,19 @@
             </p>
             <div class="d-flex gap-2 flex-wrap">
                 {% if current_user.is_authenticated and (current_user.role.value == 'admin' or current_user.role.value == 'content_manager') %}
-                
                     <a href="/edit-case?new=true" class="btn btn-success btn-sm shadow-sm">
                         <i class="fas fa-plus me-2"></i>Create New Case
                     </a>
-               
-                <a href="/admin/staging-cases" class="btn btn-warning btn-sm position-relative shadow-sm">
-                    <i class="fas fa-clipboard-list me-2"></i>Review Staging Cases
-                    {% if pending_staging_count and pending_staging_count > 0 %}
-                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
-                        {{ pending_staging_count }}
-                        <span class="visually-hidden">pending cases</span>
-                    </span>
-                    {% endif %}
-                </a>
+                    <a href="/admin/staging-cases" class="btn btn-warning btn-sm position-relative shadow-sm">
+                        <i class="fas fa-clipboard-list me-2"></i>Review Staging Cases
+                        {% if pending_staging_count and pending_staging_count > 0 %}
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                            {{ pending_staging_count }}
+                            <span class="visually-hidden">pending cases</span>
+                        </span>
+                        {% endif %}
+                    </a>
+                {% endif %}
             </div>
         </div>
         <div class="col-lg-4 mt-3 mt-lg-0">
