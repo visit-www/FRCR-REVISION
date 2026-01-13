@@ -459,15 +459,21 @@ def restore_backup():
                     import json as json_lib
                     
                     # Store Q&A as JSON for staging (legacy format for compatibility)
+                    questions_list = case_data.get('questions', [])
+                    if not isinstance(questions_list, list):
+                        questions_list = []
                     questions_json = json_lib.dumps([{
-                        'question_number': q.get('question_number', 0),
-                        'question_text': q.get('question_text', '')
-                    } for q in case_data.get('questions', [])])
+                        'question_number': q.get('question_number', 0) if isinstance(q, dict) else 0,
+                        'question_text': q.get('question_text', '') if isinstance(q, dict) else str(q)
+                    } for q in questions_list if isinstance(q, dict)])
                     
+                    answers_list = case_data.get('answers', [])
+                    if not isinstance(answers_list, list):
+                        answers_list = []
                     answers_json = json_lib.dumps([{
-                        'answer_number': a.get('answer_number', 0),
-                        'answer_text': a.get('answer_text', '')
-                    } for a in case_data.get('answers', [])])
+                        'answer_number': a.get('answer_number', 0) if isinstance(a, dict) else 0,
+                        'answer_text': a.get('answer_text', '') if isinstance(a, dict) else str(a)
+                    } for a in answers_list if isinstance(a, dict)])
                     
                     staging = ImportedCaseStaging(
                         original_id=old_case_id,
