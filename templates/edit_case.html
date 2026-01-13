@@ -529,7 +529,7 @@ function initializeDiscussionEditor() {
         tinyMCERetryCount++;
         if (tinyMCERetryCount < MAX_TINYMCE_RETRIES) {
             console.warn(`TinyMCE not loaded yet, retrying in 500ms... (${tinyMCERetryCount}/${MAX_TINYMCE_RETRIES})`);
-            setTimeout(initializeDiscussionEditor, 500);
+        setTimeout(initializeDiscussionEditor, 500);
         } else {
             console.error('TinyMCE failed to load after maximum retries. Using textarea fallback.');
             // Show user-friendly message
@@ -626,7 +626,7 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('[TinyMCE Loader] TinyMCE ready in DOMContentLoaded, initializing...');
         setTimeout(function() {
             if (typeof initializeDiscussionEditor === 'function') {
-                initializeDiscussionEditor();
+    initializeDiscussionEditor();
             }
         }, 100);
     } else {
@@ -876,9 +876,28 @@ function loadCaseForEdit(caseId) {
 
 // Load staging case data for review
 function loadStagingCaseForEdit(stagingId) {
+    console.log('[STAGING] Loading staging case:', stagingId);
     fetch(`/api/admin/enrichment/${stagingId}`)
-        .then(r => r.json())
+        .then(r => {
+            if (!r.ok) {
+                throw new Error(`HTTP ${r.status}: ${r.statusText}`);
+            }
+            return r.json();
+        })
         .then(stagingData => {
+            console.log('[STAGING] Received staging data:', stagingData);
+            console.log('[STAGING] Images in response:', stagingData.images);
+            if (stagingData._debug) {
+                console.log('[STAGING] Debug info:', stagingData._debug);
+                if (!stagingData._debug.has_enrichment_notes) {
+                    console.warn('[STAGING] ⚠️ Case has no enrichment_notes - images may not have been stored during import');
+                } else if (!stagingData._debug.has_images_json_marker) {
+                    console.warn('[STAGING] ⚠️ enrichment_notes exists but no IMAGES_JSON marker found');
+                    console.log('[STAGING] Enrichment notes preview:', stagingData._debug.enrichment_notes_preview);
+                } else if (stagingData._debug.images_extracted_count === 0) {
+                    console.warn('[STAGING] ⚠️ IMAGES_JSON marker found but no images extracted - check server logs');
+                }
+            }
             // Mark as staging case
             document.getElementById('editCaseId').value = `staging-${stagingId}`;
             
@@ -957,10 +976,72 @@ function loadStagingCaseForEdit(stagingId) {
                 }
             }
             
-            // No images for staging cases (will be added on promotion)
+            // Load images from staging case (extracted from enrichment_notes)
             const imagesContainer = document.getElementById('editImagesContainer');
-            if (imagesContainer) {
-                imagesContainer.innerHTML = '<p class="text-muted">Images will be available after promotion to production.</p>';
+            console.log('[STAGING] Images container found:', !!imagesContainer);
+            console.log('[STAGING] Images array:', stagingData.images);
+            console.log('[STAGING] Images length:', stagingData.images ? stagingData.images.length : 0);
+            
+            if (imagesContainer && stagingData.images && stagingData.images.length > 0) {
+                console.log('[STAGING] Processing', stagingData.images.length, 'images');
+                // Convert staging images to displayable format
+                const displayImages = stagingData.images.map((img, idx) => {
+                    // Create data URL from base64 image data
+                    let dataUrl = null;
+                    if (img.image_data) {
+                        const imageType = img.image_type || 'image/jpeg';
+                        dataUrl = `data:${imageType};base64,${img.image_data}`;
+                    }
+                    
+                    return {
+                        id: img.id || `staging-${stagingId}-img-${idx}`,
+                        filename: img.filename || img.image_filename || 'image',
+                        image_filename: img.image_filename || img.filename || 'image',
+                        description: img.description || img.image_description || '',
+                        image_description: img.image_description || img.description || '',
+                        image_data: img.image_data,  // Keep raw base64 for populateImages
+                        image_type: img.image_type || 'image/jpeg',
+                        data_url: dataUrl,  // For displaying the image
+                        is_staging: true
+                    };
+                });
+                
+                // Use populateImages function from edit-case-modal.js
+                console.log('[STAGING] Calling populateImages with', displayImages.length, 'images');
+                console.log('[STAGING] First image sample:', displayImages[0] ? {
+                    id: displayImages[0].id,
+                    filename: displayImages[0].filename,
+                    has_data_url: !!displayImages[0].data_url,
+                    has_image_data: !!displayImages[0].image_data,
+                    data_url_length: displayImages[0].data_url ? displayImages[0].data_url.length : 0
+                } : 'none');
+                
+                if (typeof populateImages === 'function') {
+                    try {
+                        populateImages(displayImages);
+                        console.log('[STAGING] populateImages called successfully');
+                    } catch (error) {
+                        console.error('[STAGING] Error calling populateImages:', error);
+                        // Fallback to manual display
+                        throw error;
+                    }
+                } else {
+                    console.warn('[STAGING] populateImages function not found, using fallback');
+                    // Fallback: display images manually
+                    imagesContainer.innerHTML = '<div class="row g-3">' + displayImages.map(img => `
+                        <div class="col-md-4">
+                            <div class="card">
+                                <img src="${img.data_url || ''}" alt="${img.filename}" class="card-img-top" style="height: 180px; object-fit: cover;" onerror="this.style.display='none'">
+                                <div class="card-body">
+                                    <small class="text-muted d-block mb-2">${img.filename}</small>
+                                    <p class="small">${img.description || 'No description'}</p>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('') + '</div>';
+                }
+            } else if (imagesContainer) {
+                imagesContainer.innerHTML = '<p class="text-muted text-center py-3">No images available for this staging case.</p>';
             }
         })
         .catch(error => {
@@ -1011,14 +1092,14 @@ function updateVisibilityUI(status) {
     const visibilityInfo = document.getElementById('visibilityInfo');
     
     if (eyeIcon && statusText && visibilityDescription && visibilityInfo) {
-        if (isPublic) {
-            eyeIcon.style.color = '#28a745';
+            if (isPublic) {
+                eyeIcon.style.color = '#28a745';
             eyeIcon.className = 'fas fa-eye me-1';
-            statusText.textContent = 'Publicly Visible';
+                statusText.textContent = 'Publicly Visible';
             visibilityDescription.textContent = 'This case is visible to all users (students can access it)';
             visibilityInfo.className = 'alert alert-success mb-0';
-        } else {
-            eyeIcon.style.color = '#dc3545';
+            } else {
+                eyeIcon.style.color = '#dc3545';
             eyeIcon.className = 'fas fa-eye-slash me-1';
             statusText.textContent = 'Private (Not Visible)';
             visibilityDescription.textContent = 'This case is only visible to Content Managers and Admins';

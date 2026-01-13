@@ -23,6 +23,12 @@
             </p>
         </div>
         <div class="col-lg-4 mt-3 mt-lg-0 text-end">
+            <button type="button" 
+                    class="btn btn-danger btn-sm me-2" 
+                    onclick="deleteAllStagingCases()"
+                    title="Delete All Staging Cases">
+                <i class="fas fa-trash-alt me-2"></i>Delete All
+            </button>
             <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary btn-sm">
                 <i class="fas fa-arrow-left me-2"></i>Back to Admin Dashboard
             </a>
@@ -162,6 +168,50 @@ function deleteStagingCase(stagingId) {
     .catch(error => {
         console.error('Error deleting staging case:', error);
         alert('Error deleting staging case: ' + error.message);
+    });
+}
+
+function deleteAllStagingCases() {
+    const statusFilter = new URLSearchParams(window.location.search).get('status');
+    const statusText = statusFilter ? ` with status "${statusFilter}"` : '';
+    const totalCount = {{ pending_count + enriched_count + rejected_count }};
+    
+    if (totalCount === 0) {
+        alert('No staging cases to delete.');
+        return;
+    }
+    
+    const confirmMessage = statusFilter 
+        ? `Are you sure you want to delete ALL ${totalCount} staging case(s)${statusText}? This action cannot be undone.`
+        : `Are you sure you want to delete ALL ${totalCount} staging case(s)? This action cannot be undone.`;
+    
+    if (!confirm(confirmMessage)) {
+        return;
+    }
+    
+    // Build URL with optional status filter
+    let url = '/api/admin/enrichment/bulk-delete';
+    if (statusFilter) {
+        url += `?status=${statusFilter}`;
+    }
+    
+    fetch(url, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(`Successfully deleted ${data.deleted_count} staging case(s).`);
+            // Reload the page to refresh the list
+            window.location.reload();
+        } else {
+            alert('Error: ' + (data.error || 'Failed to delete staging cases'));
+        }
+    })
+    .catch(error => {
+        console.error('Error deleting staging cases:', error);
+        alert('Error deleting staging cases: ' + error.message);
     });
 }
 </script>

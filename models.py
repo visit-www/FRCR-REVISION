@@ -54,6 +54,7 @@ class CaseStatus(enum.Enum):
     PENDING_REVIEW = "pending_review"  # Waiting for admin approval
     PUBLISHED = "published"          # Approved and visible to users
     PRIVATE = "private"              # Hidden from students (admin only)
+    REJECTED = "rejected"            # Rejected (e.g., duplicate) - recoverable
     ARCHIVED = "archived"            # Old cases, hidden from view
 
 # FRCR Module Enum (FRCR-aligned modules)

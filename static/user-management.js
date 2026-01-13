@@ -68,15 +68,37 @@ class UserManagement {
             if (e.target.id === 'userDetailModal') this.closeModal();
         });
         
-        // Edit/View toggle
+        // Edit/View toggle - use event delegation with closest() to handle nested elements
         document.addEventListener('click', (e) => {
-            if (e.target.id === 'editUserBtn') this.switchToEditMode();
-            if (e.target.id === 'cancelEditBtn') this.switchToViewMode();
-            if (e.target.id === 'saveChangesBtn') this.saveAllChanges();
-            if (e.target.id === 'deleteUserBtn') this.showDeleteOptions();
-            if (e.target.id === 'confirmSoftDeleteBtn') this.confirmSoftDelete();
-            if (e.target.id === 'confirmPermanentDeleteBtn') this.confirmPermanentDelete();
-            if (e.target.id === 'restoreUserBtn') this.restoreUser();
+            // Use closest() to find the button element even when clicking on nested children
+            const softDeleteBtn = e.target.closest('#confirmSoftDeleteBtn');
+            const permanentDeleteBtn = e.target.closest('#confirmPermanentDeleteBtn');
+            const editBtn = e.target.closest('#editUserBtn');
+            const cancelBtn = e.target.closest('#cancelEditBtn');
+            const saveBtn = e.target.closest('#saveChangesBtn');
+            const deleteBtn = e.target.closest('#deleteUserBtn');
+            const restoreBtn = e.target.closest('#restoreUserBtn');
+            
+            // Check by ID first (for direct clicks), then by closest element
+            if (e.target.id === 'editUserBtn' || editBtn) {
+                this.switchToEditMode();
+            } else if (e.target.id === 'cancelEditBtn' || cancelBtn) {
+                this.switchToViewMode();
+            } else if (e.target.id === 'saveChangesBtn' || saveBtn) {
+                this.saveAllChanges();
+            } else if (e.target.id === 'deleteUserBtn' || deleteBtn) {
+                this.showDeleteOptions();
+            } else if (e.target.id === 'confirmSoftDeleteBtn' || softDeleteBtn) {
+                e.preventDefault();
+                e.stopPropagation();
+                this.confirmSoftDelete();
+            } else if (e.target.id === 'confirmPermanentDeleteBtn' || permanentDeleteBtn) {
+                e.preventDefault();
+                e.stopPropagation();
+                this.confirmPermanentDelete();
+            } else if (e.target.id === 'restoreUserBtn' || restoreBtn) {
+                this.restoreUser();
+            }
         });
     }
     
@@ -142,12 +164,15 @@ class UserManagement {
                 </td>
                 <td>
                     <div class="action-buttons">
-                        <button class="btn btn-sm btn-view" onclick="userMgmt.showUserDetail(${user.id}, 'view')">
+                        <button class="btn btn-sm btn-view" onclick="userMgmt.showUserDetail(${user.id}, 'view')" title="View user details">
                             <i class="fas fa-eye"></i> View
                         </button>
                         ${user.is_deleted ? '' : `
-                            <button class="btn btn-sm btn-edit" onclick="userMgmt.showUserDetail(${user.id}, 'edit')">
+                            <button class="btn btn-sm btn-edit" onclick="userMgmt.showUserDetail(${user.id}, 'edit')" title="Edit user">
                                 <i class="fas fa-edit"></i> Edit
+                            </button>
+                            <button class="btn btn-sm btn-delete" onclick="userMgmt.deleteUserFromTable(${user.id}, '${this.escapeHtml(user.email)}')" title="Delete user">
+                                <i class="fas fa-trash"></i> Delete
                             </button>
                         `}
                     </div>
@@ -475,6 +500,29 @@ class UserManagement {
                 console.error('Error restoring user:', error);
                 this.showError(`Failed to restore user: ${error.message}`);
             }
+        }
+    }
+    
+    async deleteUserFromTable(userId, userEmail) {
+        // Show confirmation dialog with options
+        const deleteChoice = confirm(
+            `Delete user: ${userEmail}\n\n` +
+            `Click OK for Soft Delete (recommended - preserves data, can be restored)\n` +
+            `Click Cancel to see more options in the detail view`
+        );
+        
+        if (deleteChoice) {
+            // Soft delete
+            if (confirm(`Soft delete ${userEmail}? Data will be preserved and can be restored.`)) {
+                await this.softDeleteUser(userId);
+            }
+        } else {
+            // Show user detail modal with delete options
+            await this.showUserDetail(userId, 'view');
+            // Trigger delete options display
+            setTimeout(() => {
+                this.showDeleteOptions();
+            }, 300);
         }
     }
     

@@ -246,6 +246,9 @@
     #deleteOptionsDiv {
         background: #fff3cd;
         border-left: 4px solid #ffc107;
+        padding: 1rem;
+        margin-top: 1rem;
+        border-radius: 0.5rem;
     }
     
     #deleteOptionsDiv h5 {
@@ -255,6 +258,66 @@
     
     #deleteOptionsDiv .text-muted {
         color: #856404 !important;
+    }
+    
+    /* Delete Option Buttons - Ensure full clickability */
+    .delete-option-button {
+        width: 100%;
+        padding: 1rem;
+        margin-bottom: 0.75rem;
+        border: 2px solid;
+        border-radius: 0.5rem;
+        cursor: pointer;
+        text-align: left;
+        display: block;
+        position: relative;
+        transition: all 0.2s ease;
+        /* Ensure entire button is clickable */
+        pointer-events: auto;
+    }
+    
+    .delete-option-button * {
+        /* Ensure nested elements don't block clicks */
+        pointer-events: none;
+    }
+    
+    .delete-option-button.soft-delete {
+        background-color: #fff3cd;
+        border-color: #ffc107;
+        color: #856404;
+    }
+    
+    .delete-option-button.soft-delete:hover {
+        background-color: #ffe69c;
+        border-color: #ffb300;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    }
+    
+    .delete-option-button.permanent-delete {
+        background-color: #f8d7da;
+        border-color: #dc3545;
+        color: #721c24;
+    }
+    
+    .delete-option-button.permanent-delete:hover {
+        background-color: #f5c6cb;
+        border-color: #c82333;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    }
+    
+    .delete-option-button .btn-title {
+        display: block;
+        font-weight: 600;
+        font-size: 1rem;
+        margin-bottom: 0.25rem;
+    }
+    
+    .delete-option-button .btn-description {
+        display: block;
+        font-size: 0.875rem;
+        opacity: 0.8;
     }
     
     /* Table Styling */

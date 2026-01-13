@@ -158,6 +158,99 @@ def get_case_details(case_id):
     # Convert case_number to string if it's an integer
     case_number_str = str(case.case_number) if case.case_number else None
     
+    # Extract images from enrichment_notes if present
+    # Format: [IMAGES_JSON]{...}[/IMAGES_JSON] in enrichment_notes
+    images = []
+    if case.enrichment_notes:
+        import re
+        import json as json_lib
+        
+        print(f"[ENRICH] Checking enrichment_notes for case {case_id}, length: {len(case.enrichment_notes)}")
+        
+        # Try to find IMAGES_JSON marker - use non-greedy match with DOTALL
+        # Pattern: [IMAGES_JSON]...[/IMAGES_JSON]
+        images_match = re.search(r'\[IMAGES_JSON\](.*?)\[/IMAGES_JSON\]', case.enrichment_notes, re.DOTALL | re.MULTILINE)
+        if not images_match:
+            # Try without DOTALL in case of formatting issues
+            images_match = re.search(r'\[IMAGES_JSON\](.*?)\[/IMAGES_JSON\]', case.enrichment_notes)
+        
+        if images_match:
+            print(f"[ENRICH] Found IMAGES_JSON marker for case {case_id}")
+            try:
+                images_json_str = images_match.group(1).strip()
+                print(f"[ENRICH] Extracted JSON string length: {len(images_json_str)}")
+                images_data = json_lib.loads(images_json_str)
+                print(f"[ENRICH] Parsed {len(images_data)} images from JSON")
+                
+                # Convert images to displayable format
+                # Create temporary IDs for display (they'll get real IDs on promotion)
+                for idx, img_data in enumerate(images_data):
+                    if not isinstance(img_data, dict):
+                        print(f"[ENRICH] Warning: Image {idx} is not a dict, skipping")
+                        continue
+                    
+                    image_data_base64 = img_data.get('image_data')
+                    if not image_data_base64:
+                        print(f"[ENRICH] Warning: Image {idx} has no image_data, skipping")
+                        continue
+                    
+                    images.append({
+                        'id': f'staging-{case_id}-img-{idx}',  # Temporary ID for display
+                        'filename': img_data.get('filename', 'image'),
+                        'image_filename': img_data.get('filename', 'image'),  # For compatibility
+                        'description': img_data.get('description', ''),
+                        'image_description': img_data.get('description', ''),  # For compatibility
+                        'image_type': img_data.get('image_type', 'image/jpeg'),
+                        'image_data': image_data_base64,  # Base64 string for data URL
+                        'is_staging': True  # Flag to indicate this is a staging image
+                    })
+                    print(f"[ENRICH] Added image {idx}: {img_data.get('filename', 'unknown')} (data length: {len(image_data_base64) if image_data_base64 else 0})")
+                
+                print(f"[ENRICH] Total images extracted: {len(images)}")
+            except (json_lib.JSONDecodeError, Exception) as e:
+                print(f"[ENRICH] Error parsing images JSON from staging case {case_id}: {e}")
+                import traceback
+                traceback.print_exc()
+        else:
+            # No IMAGES_JSON marker found - this could mean:
+            # 1. Case was imported before image storage logic was added
+            # 2. Images weren't found during import
+            # 3. Images are stored in a different format
+            print(f"[ENRICH] No IMAGES_JSON marker found in enrichment_notes for case {case_id}")
+            
+            # Check if case has original_id - if so, we might be able to find images in the backup
+            if case.original_id and case.source_system == 'frcr_examiner':
+                print(f"[ENRICH] Case has original_id={case.original_id}, source_system={case.source_system}")
+                print(f"[ENRICH] Images may not have been stored during import - case may need to be re-imported")
+            
+            # Debug: show first 500 chars of enrichment_notes
+            preview = case.enrichment_notes[:500] if len(case.enrichment_notes) > 500 else case.enrichment_notes
+            print(f"[ENRICH] Enrichment notes preview: {preview}...")
+            
+            # Also check if IMAGES_JSON exists but with different formatting
+            if '[IMAGES_JSON]' in case.enrichment_notes or 'IMAGES_JSON' in case.enrichment_notes:
+                print(f"[ENRICH] Found IMAGES_JSON text but regex didn't match - checking format...")
+                # Try alternative patterns
+                alt_patterns = [
+                    r'\[IMAGES_JSON\](.*?)\[/IMAGES_JSON\]',
+                    r'IMAGES_JSON(.*?)IMAGES_JSON',
+                    r'\[IMAGES_JSON\](.*)',
+                ]
+                for pattern in alt_patterns:
+                    alt_match = re.search(pattern, case.enrichment_notes, re.DOTALL)
+                    if alt_match:
+                        print(f"[ENRICH] Alternative pattern matched: {pattern[:30]}...")
+                        break
+    
+    # Debug information (remove in production)
+    debug_info = {
+        'has_enrichment_notes': bool(case.enrichment_notes),
+        'enrichment_notes_length': len(case.enrichment_notes) if case.enrichment_notes else 0,
+        'has_images_json_marker': '[IMAGES_JSON]' in (case.enrichment_notes or ''),
+        'images_extracted_count': len(images),
+        'enrichment_notes_preview': (case.enrichment_notes[:200] + '...' if case.enrichment_notes and len(case.enrichment_notes) > 200 else case.enrichment_notes) if case.enrichment_notes else None
+    }
+    
     return jsonify({
         'id': case.id,
         'case_number': case_number_str,
@@ -165,13 +258,15 @@ def get_case_details(case_id):
         'questions': case.questions,
         'answers': case.answers,
         'discussion': case.discussion,
-        'module': case.module.value if case.module else None,
-        'body_part': case.body_part.value if case.body_part else None,
-        'age_group': case.age_group.value if case.age_group else None,
+        'module': case.module.name if case.module else None,  # Return enum name, not value
+        'body_part': case.body_part.name if case.body_part else None,  # Return enum name, not value
+        'age_group': case.age_group.name if case.age_group else None,  # Return enum name, not value
         'status': getattr(case, 'status', None) and case.status.name if hasattr(case, 'status') and case.status else 'DRAFT',
         'is_public': case.is_public,
         'enrichment_status': case.enrichment_status,
         'enrichment_notes': case.enrichment_notes,
+        'images': images,  # Include extracted images
+        '_debug': debug_info  # Debug info to help diagnose issues
     }), 200
 
 
@@ -223,6 +318,49 @@ def delete_staging_case(case_id):
         return jsonify({
             'success': False,
             'error': f'Failed to delete staging case: {str(e)}'
+        }), 500
+
+
+@enrichment_bp.route('/bulk-delete', methods=['DELETE'])
+def bulk_delete_staging_cases():
+    """
+    Delete all staging cases (bulk operation)
+    Query parameters:
+    - status: optional filter by status (pending, enriched, rejected)
+    """
+    try:
+        status_filter = request.args.get('status', None)
+        
+        # Build query
+        query = ImportedCaseStaging.query
+        if status_filter:
+            query = query.filter_by(enrichment_status=status_filter)
+        
+        # Count cases to be deleted
+        count = query.count()
+        
+        if count == 0:
+            return jsonify({
+                'success': True,
+                'message': 'No staging cases to delete',
+                'deleted_count': 0
+            }), 200
+        
+        # Delete all matching cases
+        deleted = query.delete(synchronize_session=False)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Successfully deleted {deleted} staging case(s)',
+            'deleted_count': deleted
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'error': f'Failed to delete staging cases: {str(e)}'
         }), 500
 
 
@@ -410,8 +548,11 @@ def enrich_and_promote_case(case_id):
             normalized_diagnosis = diagnosis.lower().strip()
             
             # Check for exact matches in existing cases (both public and private)
+            # Exclude rejected cases - they shouldn't block new cases
             existing_cases = Case.query.filter(
                 db.func.lower(db.func.trim(Case.diagnosis)) == normalized_diagnosis
+            ).filter(
+                Case.status != CaseStatus.REJECTED
             ).all()
             
             if existing_cases:
@@ -437,11 +578,14 @@ def enrich_and_promote_case(case_id):
             
             # Check for similar diagnoses (case-insensitive contains or similarity)
             # Check if normalized diagnosis is contained in any existing diagnosis or vice versa
+            # Exclude rejected cases - they shouldn't block new cases
             similar_cases = Case.query.filter(
                 db.or_(
                     db.func.lower(Case.diagnosis).contains(normalized_diagnosis),
                     db.func.lower(db.func.cast(diagnosis, db.String)).contains(db.func.lower(Case.diagnosis))
                 )
+            ).filter(
+                Case.status != CaseStatus.REJECTED
             ).all()
             
             # Filter out exact matches (already handled above) and very short matches
@@ -488,6 +632,15 @@ def enrich_and_promote_case(case_id):
             return jsonify({'error': result.get('error', 'Promotion failed')}), 400
         
         promoted_case_id = result['case_id']
+        
+        # Ensure case is mapped to current user (for FRCR Examiner imports)
+        # This ensures that when cases are promoted, they're owned by the user who promoted them
+        promoted_case = Case.query.get(promoted_case_id)
+        if promoted_case:
+            # Check if this is from FRCR Examiner import (source_system = 'frcr_examiner')
+            if staging.source_system == 'frcr_examiner':
+                promoted_case.created_by_user_id = current_user.id
+                print(f"[ENRICH] Mapped promoted case {promoted_case_id} to current user {current_user.id} (FRCR Examiner import)")
         
         # Update Q&A pairs if provided
         if data.get('pairs'):
@@ -573,6 +726,9 @@ def reject_case(case_id):
     
     case.enrichment_status = 'rejected'
     case.enrichment_notes = data.get('reason', '')
+    # Track who rejected it (for FRCR Examiner imports, this ensures ownership tracking)
+    case.enriched_by_user_id = current_user.id
+    case.enriched_at = datetime.utcnow()
     
     db.session.commit()
     

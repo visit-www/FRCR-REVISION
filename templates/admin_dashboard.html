@@ -44,30 +44,30 @@
         <!-- Database Management Tab (Consolidated Backup & Import) -->
         <div class="tab-pane fade" id="database-content" role="tabpanel" aria-labelledby="database-tab">
             <h2 class="mb-5"><i class="fas fa-database"></i> Database Management</h2>
-            
+
             <!-- Database Status Section -->
             <div class="row mb-4">
-                <div class="col-md-12">
-                    <div class="card" style="background: linear-gradient(135deg, #2a2d35 0%, #1f2834 100%); color: #c8e6d9; border: 1px solid #8bb8d9;">
-                        <div class="card-body">
+        <div class="col-md-12">
+            <div class="card" style="background: linear-gradient(135deg, #2a2d35 0%, #1f2834 100%); color: #c8e6d9; border: 1px solid #8bb8d9;">
+                <div class="card-body">
                             <h5 class="card-title" style="color: #8bb8d9;"><i class="fas fa-info-circle"></i> Database Status</h5>
                             <div id="backup-status" class="mt-3" style="color: #c8e6d9;">
-                                <div class="text-center">
+                            <div class="text-center">
                                     <div class="spinner-border text-primary" role="status">
                                         <span class="visually-hidden">Loading...</span>
-                                    </div>
-                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-            
+        </div>
+    </div>
+
             <!-- Backup & Import Actions (Side by Side) -->
             <div class="row mb-4">
                 <!-- Download Backup Section -->
                 <div class="col-md-6 mb-4">
-                    <div class="card" style="background: #2a2d35; border: 1px solid #3a3d45;">
+            <div class="card" style="background: #2a2d35; border: 1px solid #3a3d45;">
                         <div class="card-header" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; border: none;">
                             <h5 class="mb-0"><i class="fas fa-download"></i> Download Backup</h5>
                         </div>
@@ -86,7 +86,7 @@
                     <div class="card" style="background: #2a2d35; border: 1px solid #3a3d45;">
                         <div class="card-header" style="background: linear-gradient(135deg, #ffc107 0%, #ffcd39 100%); color: #333; border: none;">
                             <h5 class="mb-0"><i class="fas fa-upload"></i> Import Backup</h5>
-                        </div>
+            </div>
                         <div class="card-body">
                             <div class="alert alert-info" style="background: #1a3a4a; border-color: #4a7a9a; color: #c8e6d9; font-size: 0.9rem;">
                                 <strong><i class="fas fa-info-circle"></i> Smart Import:</strong>
@@ -95,28 +95,28 @@
                                     <li>Existing data only updated if "Overwrite" is checked</li>
                                     <li>Unknown fields are ignored</li>
                                 </ul>
-                            </div>
-                            
+    </div>
+
                             <form id="restore-form">
                                 <div class="mb-3">
                                     <label for="backup-file" class="form-label" style="color: #c8e6d9;">Select Backup File (.json)</label>
                                     <input type="file" class="form-control" id="backup-file" accept=".json" required style="background: #353841; color: #c8e6d9; border-color: #4a4d55;">
-                                </div>
-                                
+    </div>
+
                                 <div class="form-check mb-3">
                                     <input class="form-check-input" type="checkbox" id="overwrite-existing">
                                     <label class="form-check-label" for="overwrite-existing" style="color: #c8e6d9;">
                                         <strong>Overwrite existing data</strong>
                                     </label>
-                                </div>
-                                
+    </div>
+
                                 <div class="form-check mb-3">
                                     <input class="form-check-input" type="checkbox" id="confirm-import" required>
                                     <label class="form-check-label" for="confirm-import" style="color: #c8e6d9;">
                                         <strong>I confirm I want to import</strong>
                                     </label>
-                                </div>
-                                
+    </div>
+
                                 <button type="submit" class="btn btn-warning w-100">
                                     <i class="fas fa-upload"></i> Import Database
                                 </button>
@@ -127,7 +127,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <!-- Import from FRCR-Examiner Section -->
             <div class="row mb-4">
                 <div class="col-md-12">
@@ -159,54 +159,54 @@
                             </div>
 
                             <div id="import-status" class="mt-3" style="color: #c8e6d9;"></div>
-                            
-                            <!-- Duplicate Check Results -->
+
+            <!-- Duplicate Check Results -->
                             <div class="row mt-4" id="duplicate-results" style="display: none;">
-                                <div class="col-md-12">
+                <div class="col-md-12">
                                     <h6 style="color: #8bb8d9;"><i class="fas fa-check-circle"></i> Duplicate Check Results</h6>
                                     <div class="row mt-3">
-                                        <div class="col-md-4">
-                                            <div style="background: #353841; padding: 15px; border-radius: 5px; text-align: center; border-left: 3px solid #28a745;">
-                                                <h4 id="result-new-cases" style="color: #28a745; margin: 0;">-</h4>
+                                <div class="col-md-4">
+                                    <div style="background: #353841; padding: 15px; border-radius: 5px; text-align: center; border-left: 3px solid #28a745;">
+                                        <h4 id="result-new-cases" style="color: #28a745; margin: 0;">-</h4>
                                                 <small style="color: #c8e6d9;">New Cases</small>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-4">
-                                            <div style="background: #353841; padding: 15px; border-radius: 5px; text-align: center; border-left: 3px solid #ffc107;">
-                                                <h4 id="result-staging-duplicates" style="color: #ffc107; margin: 0;">-</h4>
-                                                <small style="color: #c8e6d9;">Staging Duplicates</small>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-4">
-                                            <div style="background: #353841; padding: 15px; border-radius: 5px; text-align: center; border-left: 3px solid #dc3545;">
-                                                <h4 id="result-production-duplicates" style="color: #dc3545; margin: 0;">-</h4>
-                                                <small style="color: #c8e6d9;">Production Duplicates</small>
-                                            </div>
-                                        </div>
                                     </div>
-                                    <div class="mt-3">
-                                        <button class="btn btn-success" onclick="importCases()">
-                                            <i class="fas fa-download"></i> Import Cases to Staging
-                                        </button>
-                                        <button class="btn btn-secondary" onclick="resetImport()">
-                                            <i class="fas fa-times"></i> Clear
-                                        </button>
+                                </div>
+                                <div class="col-md-4">
+                                    <div style="background: #353841; padding: 15px; border-radius: 5px; text-align: center; border-left: 3px solid #ffc107;">
+                                        <h4 id="result-staging-duplicates" style="color: #ffc107; margin: 0;">-</h4>
+                                        <small style="color: #c8e6d9;">Staging Duplicates</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div style="background: #353841; padding: 15px; border-radius: 5px; text-align: center; border-left: 3px solid #dc3545;">
+                                        <h4 id="result-production-duplicates" style="color: #dc3545; margin: 0;">-</h4>
+                                        <small style="color: #c8e6d9;">Production Duplicates</small>
                                     </div>
                                 </div>
                             </div>
-                            
-                            <!-- Import Progress -->
+                                    <div class="mt-3">
+                                        <button class="btn btn-success" onclick="importCases()">
+                                    <i class="fas fa-download"></i> Import Cases to Staging
+                                </button>
+                                        <button class="btn btn-secondary" onclick="resetImport()">
+                                            <i class="fas fa-times"></i> Clear
+                                </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Import Progress -->
                             <div class="mt-4" id="import-progress" style="display: none;">
                                 <h6 style="color: #8bb8d9;"><i class="fas fa-spinner fa-spin"></i> Import in Progress</h6>
                                 <div class="progress mt-3" style="height: 25px;">
-                                    <div id="import-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%;">
-                                        <span id="import-progress-text">0%</span>
+                                <div id="import-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%;">
+                                    <span id="import-progress-text">0%</span>
                                     </div>
                                 </div>
                                 <p id="import-progress-message" style="color: #c8e6d9; margin-top: 10px;"></p>
                             </div>
-                            
-                            <!-- Enrichment Section -->
+
+            <!-- Enrichment Section -->
                             <div class="mt-4" id="enrichment-section" style="display: none;">
                                 <div class="alert alert-info" style="background: #1a3a4a; border-color: #4a7a9a; color: #c8e6d9;">
                                     <i class="fas fa-lightbulb"></i> <strong>Next Step:</strong> Review and enrich imported cases by adding FRCR Module, Body Part, and Age Group.
@@ -215,7 +215,7 @@
                                             <i class="fas fa-tasks"></i> Review Staging Cases
                                         </a>
                                     </div>
-                                </div>
+                            </div>
                             </div>
                         </div>
                     </div>
@@ -231,6 +231,23 @@
 
 <script>
     // Load backup status on page load
+    // Simple toast notification function
+    function showToast(message, type = 'info') {
+        const toast = document.createElement('div');
+        toast.className = `alert alert-${type === 'error' ? 'danger' : type === 'success' ? 'success' : 'info'} alert-dismissible fade show`;
+        toast.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+        toast.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        `;
+        document.body.appendChild(toast);
+        
+        // Auto-remove after 5 seconds
+        setTimeout(() => {
+            toast.remove();
+        }, 5000);
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
         loadBackupStatus();
         
@@ -266,8 +283,8 @@
                         ${data.needs_backup ? 
                         '<span class="badge bg-danger">Backup Recommended</span>' : 
                         '<span class="badge bg-success">Up to Date</span>'}
-                    </div>
-                </div>
+                                </div>
+                            </div>
                 <hr>
                 <div class="row">
                     <div class="col-md-3"><strong>Users:</strong> ${data.stats.total_users}</div>
@@ -280,7 +297,7 @@
             const statusDiv = document.getElementById('backup-status');
             if (statusDiv) {
                 statusDiv.innerHTML = statusHtml;
-            }
+                    }
         } catch (error) {
             const statusDiv = document.getElementById('backup-status');
             if (statusDiv) {
@@ -398,6 +415,15 @@
             
             const data = await response.json();
             
+            // Log debug info to browser console
+            console.log('[IMPORT] Import response:', data);
+            if (data.debug) {
+                console.log('[IMPORT] Debug info:', data.debug);
+                console.log(`[IMPORT] Total images in backup: ${data.debug.total_images_in_backup}`);
+                console.log(`[IMPORT] Staging cases with images: ${data.debug.staging_cases_with_images}`);
+                console.log(`[IMPORT] Total staging cases: ${data.debug.staging_cases_total}`);
+            }
+            
             if (!response.ok) {
                 throw new Error(data.error || 'Import failed');
             }
@@ -409,6 +435,7 @@
                     if (value.added) parts.push(`Added: ${value.added}`);
                     if (value.updated) parts.push(`Updated: ${value.updated}`);
                     if (value.skipped) parts.push(`Skipped: ${value.skipped}`);
+                    if (value.images_stored !== undefined) parts.push(`Images stored: ${value.images_stored}`);
                     return `<li><strong>${key}:</strong> ${parts.join(', ')}</li>`;
                 }
                 return `<li><strong>${key}:</strong> ${value}</li>`;
@@ -416,12 +443,18 @@
             
             let reviewLink = '';
             if (data.staging_count > 0 && data.import_batch_id) {
+                const imagesInfo = data.staging_images_count > 0 
+                    ? `<p class="mb-2 text-success"><i class="fas fa-check-circle"></i> ${data.staging_images_count} image(s) were stored in staging cases.</p>`
+                    : `<p class="mb-2 text-warning"><i class="fas fa-exclamation-triangle"></i> No images were stored in staging cases. Check server logs for details.</p>`;
+                
                 reviewLink = `
                     <div class="alert alert-warning mt-3">
                         <h6><i class="fas fa-exclamation-triangle me-2"></i>Review Required</h6>
                         <p class="mb-2">${data.staging_count} case(s) need review (missing critical fields).</p>
+                        ${imagesInfo}
                         <p class="mb-2"><small>Batch ID: ${data.import_batch_id}</small></p>
                         <p class="mb-2"><small>Navigate to Admin Dashboard → Case Enrichment to review staging cases.</small></p>
+                        <p class="mb-0"><small><strong>Note:</strong> Check your browser console (F12) and the terminal where Flask is running for detailed import logs.</small></p>
                     </div>
                 `;
             }
@@ -434,8 +467,8 @@
                     </div>
                     ${reviewLink}
                 `;
-            }
-            
+    }
+
             const restoreForm = document.getElementById('restore-form');
             if (restoreForm) {
                 restoreForm.reset();

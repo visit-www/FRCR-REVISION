@@ -999,15 +999,15 @@ def cases_by_module(module):
         for case in cases:
             has_notes = CandidateNote.query.filter_by(case_id=case.id, user_id=current_user.id).first() is not None
             cases_data.append({
-                'id': case.id,
-                'diagnosis': case.diagnosis,
-                'module_display': case.module.value if case.module else 'N/A',
-                'body_part_display': case.body_part.value if case.body_part else 'N/A',
+            'id': case.id,
+            'diagnosis': case.diagnosis,
+            'module_display': case.module.value if case.module else 'N/A',
+            'body_part_display': case.body_part.value if case.body_part else 'N/A',
                 'age_group_display': case.age_group.value if case.age_group else 'N/A',
-                'image_count': len(case.images),
-                'has_notes': has_notes,
-                'is_public': case.is_public
-            })
+            'image_count': len(case.images),
+            'has_notes': has_notes,
+            'is_public': case.is_public
+        })
     
     # Get all body parts and age groups for filters
     body_parts = [{'value': bp.name, 'display_name': bp.value} for bp in BodyPart]
@@ -1026,8 +1026,8 @@ def cases_by_module(module):
                              search_query=search_query)
     else:
         return render_template('cases_list.html',
-                         cases=cases_data,
-                         module_filter=module_enum.value,
+                             cases=cases_data,
+                             module_filter=module_enum.value,
                          body_parts=body_parts,
                          body_part_selected=body_part_filter,
                              age_groups=age_groups,
@@ -1860,6 +1860,47 @@ def edit_case():
 #     db.session.commit()
 #     
 #     return jsonify({'message': 'Packet updated successfully'})
+
+
+@app.route('/api/case/<int:case_id>/reject', methods=['POST'])
+@login_required
+def reject_case(case_id):
+    """Reject a case (mark as rejected instead of deleting)"""
+    try:
+        from models import CaseStatus
+        from access_control import has_case_edit_permission
+        
+        # Check if user has permission
+        case = Case.query.get(case_id)
+        if not case:
+            return jsonify({
+                'success': False,
+                'error': 'Case not found'
+            }), 404
+        
+        # Check if user has edit permission (admin or content manager)
+        if not has_case_edit_permission(case, current_user):
+            return jsonify({
+                'success': False,
+                'error': 'Unauthorized - Admin or Content Manager access required'
+            }), 403
+        
+        # Set status to REJECTED instead of deleting
+        case.status = CaseStatus.REJECTED
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Case rejected successfully. It can be recovered later.'
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"[REJECT] Error rejecting case {case_id}: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': f'Failed to reject case: {str(e)}'
+        }), 500
 
 
 @app.route('/api/case/<int:case_id>', methods=['DELETE'])

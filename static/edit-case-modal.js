@@ -114,8 +114,8 @@ function initializeTinyMCE(elementId, retryCount = 0) {
             return;
         } else {
             console.error('TinyMCE failed to load after maximum retries for', elementId);
-            return;
-        }
+        return;
+    }
     }
     
     // Check if element exists
@@ -202,13 +202,21 @@ function addNewQAPair() {
 
 // Populate images with improved UI
 function populateImages(images) {
+    console.log('[populateImages] Called with', images ? images.length : 0, 'images');
     const container = document.getElementById('editImagesContainer');
+    if (!container) {
+        console.error('[populateImages] Container editImagesContainer not found!');
+        return;
+    }
     container.innerHTML = '';
     
     if (!images || images.length === 0) {
+        console.log('[populateImages] No images provided');
         container.innerHTML = '<p class="text-muted text-center py-3">No images uploaded yet</p>';
         return;
     }
+    
+    console.log('[populateImages] Processing', images.length, 'images');
     
     const grid = document.createElement('div');
     grid.className = 'row g-3';
@@ -222,30 +230,53 @@ function populateImages(images) {
         const imageFilename = image.filename || image.image_filename || 'image.jpg';
         const imageDescription = image.description || image.image_description || '';
         
+        // For staging images, use data_url; for production images, use API endpoint
+        let imageSrc;
+        if (image.data_url) {
+            // Already a complete data URL
+            imageSrc = image.data_url;
+        } else if (image.image_data) {
+            // Base64 data without data URL prefix
+            const imageType = image.image_type || 'image/jpeg';
+            imageSrc = `data:${imageType};base64,${image.image_data}`;
+        } else {
+            // Production image - use API endpoint
+            imageSrc = `/api/case-image/${image.id}`;
+        }
+        
+        // Staging images can't be edited/deleted until promotion
+        const isStaging = image.is_staging || image.id.toString().startsWith('staging-');
+        const actionButtons = isStaging 
+            ? '<small class="text-muted d-block mt-2"><i class="fas fa-info-circle"></i> Images will be available for editing after promotion</small>'
+            : `
+                <div class="mt-2 d-flex gap-1">
+                    <button type="button" class="btn btn-sm btn-info flex-grow-1" 
+                            onclick="editImageDescription('${image.id}')">
+                        <i class="fas fa-edit"></i> Desc
+                    </button>
+                    <button type="button" class="btn btn-sm btn-danger" 
+                            onclick="deleteImage('${image.id}')">
+                        <i class="fas fa-trash"></i> Del
+                    </button>
+                </div>
+            `;
+        
         col.innerHTML = `
             <div class="card image-card h-100 shadow-sm">
-                <img src="/api/case-image/${image.id}" alt="${escapeHtml(imageFilename)}" 
+                <img src="${imageSrc}" alt="${escapeHtml(imageFilename)}" 
                      class="card-img-top" style="height: 180px; object-fit: cover; cursor: pointer;"
-                     onclick="viewImageFull('${image.id}')" title="Click to view full size">
+                     onclick="${isStaging ? '' : `viewImageFull('${image.id}')`}" 
+                     title="${isStaging ? 'Staging image - click to view' : 'Click to view full size'}">
                 <div class="card-body p-3">
                     <small class="text-muted d-block text-truncate mb-2" title="${escapeHtml(imageFilename)}">
                         📁 ${escapeHtml(imageFilename)}
                     </small>
                     <div class="description-section mb-2">
                         <small class="text-secondary d-block" id="desc-${image.id}" style="min-height: 40px; word-wrap: break-word;">
-                            ${(image.description || image.image_description) ? escapeHtml(image.description || image.image_description) : '<em class="text-muted">No description</em>'}
+                            ${imageDescription ? escapeHtml(imageDescription) : '<em class="text-muted">No description</em>'}
                         </small>
                     </div>
-                    <div class="mt-2 d-flex gap-1">
-                        <button type="button" class="btn btn-sm btn-info flex-grow-1" 
-                                onclick="editImageDescription(${image.id})">
-                            <i class="fas fa-edit"></i> Desc
-                        </button>
-                        <button type="button" class="btn btn-sm btn-danger" 
-                                onclick="deleteImage(${image.id})">
-                            <i class="fas fa-trash"></i> Del
-                        </button>
-                    </div>
+                    ${actionButtons}
                 </div>
             </div>
         `;
@@ -268,40 +299,40 @@ function editImageDescription(imageId) {
         .then(data => {
             // Get the original description from the API response
             const currentDescription = data.description || '';
-            
-            // Create a modal for editing description with TinyMCE
-            const modal = document.createElement('div');
-            modal.className = 'modal fade';
-            modal.id = 'descriptionModal';
-            modal.innerHTML = `
-                <div class="modal-dialog modal-lg">
-                    <div class="modal-content">
-                        <div class="modal-header bg-info text-white">
-                            <h5 class="modal-title">Edit Image Description</h5>
-                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                        </div>
-                        <div class="modal-body">
-                            <textarea class="form-control rich-editor" id="descriptionInput" rows="6" placeholder="Enter image description..."></textarea>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                            <button type="button" class="btn btn-info" onclick="saveImageDescription(${imageId})">Save</button>
-                        </div>
-                    </div>
+
+    // Create a modal for editing description with TinyMCE
+    const modal = document.createElement('div');
+    modal.className = 'modal fade';
+    modal.id = 'descriptionModal';
+    modal.innerHTML = `
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-info text-white">
+                    <h5 class="modal-title">Edit Image Description</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
-            `;
+                <div class="modal-body">
+                    <textarea class="form-control rich-editor" id="descriptionInput" rows="6" placeholder="Enter image description..."></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-info" onclick="saveImageDescription(${imageId})">Save</button>
+                </div>
+            </div>
+        </div>
+    `;
 
-            // Remove old modal if exists
-            const oldModal = document.getElementById('descriptionModal');
-            if (oldModal) oldModal.remove();
+    // Remove old modal if exists
+    const oldModal = document.getElementById('descriptionModal');
+    if (oldModal) oldModal.remove();
 
-            document.body.appendChild(modal);
-            const bsModal = new bootstrap.Modal(modal);
-            bsModal.show();
+    document.body.appendChild(modal);
+    const bsModal = new bootstrap.Modal(modal);
+    bsModal.show();
 
-            // Initialize TinyMCE for the description textarea after modal is shown
+    // Initialize TinyMCE for the description textarea after modal is shown
             // Use the same initialization function as Q&A answers for consistency
-            setTimeout(() => {
+    setTimeout(() => {
                 const textarea = document.getElementById('descriptionInput');
                 if (textarea) {
                     // Set value first as fallback
@@ -379,32 +410,32 @@ function editImageDescription(imageId) {
 
             setTimeout(() => {
                 if (typeof tinymce !== 'undefined' && tinymce.init) {
-                    tinymce.init({
-                        selector: '#descriptionInput',
-                        height: 250,
-                        menubar: false,
-                        toolbar: 'undo redo | bold italic underline | numlist bullist | table link code removeformat',
-                        plugins: 'table link code',
+            tinymce.init({
+                selector: '#descriptionInput',
+                height: 250,
+                menubar: false,
+                toolbar: 'undo redo | bold italic underline | numlist bullist | table link code removeformat',
+                plugins: 'table link code',
                         // Use CDN for assets (themes, skins, etc.) since we only have the minified JS locally
                         base_url: 'https://cdn.jsdelivr.net/npm/tinymce@6',
-                        content_css: 'default',
-                        skin: 'oxide',
-                        setup: function(editor) {
-                            editor.on('init', function() {
-                                editor.setContent(currentDescription);
-                            });
-                        }
+                content_css: 'default',
+                skin: 'oxide',
+                setup: function(editor) {
+                    editor.on('init', function() {
+                        editor.setContent(currentDescription);
                     });
                 }
-            }, 300);
-
-            modal.addEventListener('hidden.bs.modal', () => {
-                if (typeof tinymce !== 'undefined' && tinymce.get('descriptionInput')) {
-                    tinymce.get('descriptionInput').remove();
-                }
-                modal.remove();
             });
-        });
+        }
+    }, 300);
+
+    modal.addEventListener('hidden.bs.modal', () => {
+        if (typeof tinymce !== 'undefined' && tinymce.get('descriptionInput')) {
+            tinymce.get('descriptionInput').remove();
+        }
+        modal.remove();
+            });
+    });
 }
 
 // Save image description
@@ -432,7 +463,7 @@ function saveImageDescription(imageId) {
     .then(data => {
         const modal = bootstrap.Modal.getInstance(document.getElementById('descriptionModal'));
         if (modal) {
-            modal.hide();
+        modal.hide();
         }
 
         // Update the description on the page - use the cleaned description from server
@@ -728,7 +759,8 @@ function saveEditedCase(event) {
             
             // Show duplicate handling modal
             showDuplicateHandlingModal(responseData, diagnosis, payload, endpoint, method, saveBtn, originalText);
-            return;
+            // Return a rejected promise to stop the chain
+            return Promise.reject(new Error('DUPLICATE_DETECTED'));
         }
         
         if (!r.ok) {
@@ -742,19 +774,21 @@ function saveEditedCase(event) {
         }
         
         return responseData;
-        } catch (e) {
-            console.error('[SAVE] Failed to parse JSON response:', responseText);
-            throw new Error('Invalid response from server');
-        }
     })
     .then(data => {
+        // Skip if data is undefined (shouldn't happen, but safety check)
+        if (!data) {
+            console.warn('[SAVE] No data received, skipping success handler');
+            return;
+        }
+        
         console.log('[SAVE] Parsed response data:', data);
         
         if (data.success || data.id || data.case_id) {
             if (isStagingCase) {
                 alert('Case reviewed and promoted to production successfully!');
             } else {
-                alert('Case saved successfully!');
+            alert('Case saved successfully!');
             }
             
             // Determine redirect destination
@@ -779,7 +813,7 @@ function saveEditedCase(event) {
                 const newId = data.id || data.case_id;
                 if (newId) {
                     redirectUrl = `/view-case/${newId}`;
-                } else {
+            } else {
                     redirectUrl = '/cases';
                 }
             } else if (caseIdField && !caseIdField.toString().startsWith('staging-') && !caseIdField.toString().startsWith('new')) {
@@ -800,6 +834,12 @@ function saveEditedCase(event) {
         }
     })
     .catch(error => {
+        // Don't show error alert for duplicate detection (handled by modal)
+        if (error.message === 'DUPLICATE_DETECTED') {
+            console.log('[SAVE] Duplicate detected, handled by modal');
+            return;
+        }
+        
         console.error('[SAVE] Error saving case:', error);
         alert('Error saving case: ' + error.message);
         saveBtn.disabled = false;
@@ -811,11 +851,12 @@ function saveEditedCase(event) {
 function showDuplicateHandlingModal(duplicateData, currentDiagnosis, payload, endpoint, method, saveBtn, originalText) {
     const isExactMatch = duplicateData.exact_match;
     const existingCases = duplicateData.existing_cases || [];
+    const firstExistingCase = existingCases[0] || {};
     
-    // Create modal HTML
+    // Create modal HTML with two-column layout
     let modalHtml = `
         <div class="modal fade" id="duplicateModal" tabindex="-1" aria-labelledby="duplicateModalLabel" aria-hidden="true">
-            <div class="modal-dialog modal-lg">
+            <div class="modal-dialog modal-xl">
                 <div class="modal-content">
                     <div class="modal-header ${isExactMatch ? 'bg-danger text-white' : 'bg-warning'}">
                         <h5 class="modal-title" id="duplicateModalLabel">
@@ -825,75 +866,124 @@ function showDuplicateHandlingModal(duplicateData, currentDiagnosis, payload, en
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
-                        <div class="alert ${isExactMatch ? 'alert-danger' : 'alert-warning'}" role="alert">
-                            <strong>New Diagnosis:</strong> "${currentDiagnosis}"
-                        </div>
-                        
-                        <h6 class="mb-3">Existing ${isExactMatch ? 'Duplicate' : 'Similar'} Case(s):</h6>
-                        <div class="table-responsive">
-                            <table class="table table-sm table-bordered">
-                                <thead>
-                                    <tr>
-                                        <th>ID</th>
-                                        <th>Diagnosis</th>
-                                        <th>Module</th>
-                                        <th>Status</th>
-                                        <th>Visibility</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-    `;
-    
-    existingCases.forEach(c => {
-        modalHtml += `
-                                    <tr>
-                                        <td>${c.id}</td>
-                                        <td><strong>${escapeHtml(c.diagnosis)}</strong></td>
-                                        <td>${escapeHtml(c.module)}</td>
-                                        <td>${escapeHtml(c.status)}</td>
-                                        <td>${c.is_public ? '<span class="badge bg-success">Public</span>' : '<span class="badge bg-secondary">Private</span>'}</td>
-                                    </tr>
-        `;
-    });
-    
-    modalHtml += `
-                                </tbody>
-                            </table>
-                        </div>
-                        
                         ${isExactMatch ? `
-                            <div class="alert alert-danger mt-3">
-                                <strong>Exact match detected!</strong> You cannot override an exact duplicate. 
-                                Please change the diagnosis name to save this case, or delete the duplicate case.
+                            <div class="alert alert-danger mb-4" role="alert">
+                                <strong><i class="fas fa-exclamation-circle me-2"></i>Exact match detected!</strong> 
+                                You cannot save a case with an identical diagnosis. Please choose which case to reject, or change the diagnosis name.
                             </div>
                         ` : `
-                            <div class="alert alert-info mt-3">
-                                <strong>Similar diagnosis detected.</strong> You can override if this is a different case, 
-                                or change the diagnosis name to avoid confusion.
+                            <div class="alert alert-info mb-4" role="alert">
+                                <strong><i class="fas fa-info-circle me-2"></i>Similar diagnosis detected.</strong> 
+                                These cases may be duplicates. Please review and decide which case to keep.
                             </div>
                         `}
                         
-                        <div class="mb-3">
-                            <label for="newDiagnosisInput" class="form-label">Change Diagnosis Name:</label>
-                            <input type="text" class="form-control" id="newDiagnosisInput" 
-                                   value="${escapeHtml(currentDiagnosis)}" 
-                                   placeholder="Enter new diagnosis name">
+                        <div class="row g-4">
+                            <!-- Left Column: Existing Case -->
+                            <div class="col-md-6">
+                                <div class="card border-primary h-100">
+                                    <div class="card-header bg-primary text-white">
+                                        <h6 class="mb-0"><i class="fas fa-database me-2"></i>Existing Saved Case</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="mb-3">
+                                            <label class="form-label text-muted small">Case ID</label>
+                                            <div class="fw-bold">#${firstExistingCase.id || 'N/A'}</div>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label text-muted small">Diagnosis</label>
+                                            <div class="fw-bold text-primary">${escapeHtml(firstExistingCase.diagnosis || 'N/A')}</div>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label text-muted small">Module</label>
+                                            <div>${escapeHtml(firstExistingCase.module || 'N/A')}</div>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label text-muted small">Status</label>
+                                            <div>
+                                                <span class="badge ${firstExistingCase.status === 'published' ? 'bg-success' : 'bg-secondary'}">
+                                                    ${escapeHtml(firstExistingCase.status || 'N/A')}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label text-muted small">Visibility</label>
+                                            <div>
+                                                ${firstExistingCase.is_public ? 
+                                                    '<span class="badge bg-success">Public</span>' : 
+                                                    '<span class="badge bg-secondary">Private</span>'}
+                                            </div>
+                                        </div>
+                                        ${isExactMatch ? `
+                                            <button type="button" class="btn btn-danger w-100 mt-3" onclick="rejectExistingCase(${firstExistingCase.id})">
+                                                <i class="fas fa-times-circle me-2"></i>Reject This Case
+                                            </button>
+                                        ` : ''}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Right Column: New Incoming Case -->
+                            <div class="col-md-6">
+                                <div class="card border-warning h-100">
+                                    <div class="card-header bg-warning text-dark">
+                                        <h6 class="mb-0"><i class="fas fa-file-import me-2"></i>New Incoming Case</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="mb-3">
+                                            <label class="form-label text-muted small">Diagnosis</label>
+                                            <div class="fw-bold text-warning">${escapeHtml(currentDiagnosis || 'N/A')}</div>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label text-muted small">Module</label>
+                                            <div>${escapeHtml(payload.module || 'N/A')}</div>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label text-muted small">Body Part</label>
+                                            <div>${escapeHtml(payload.body_part || 'N/A')}</div>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label text-muted small">Age Group</label>
+                                            <div>${escapeHtml(payload.age_group || 'N/A')}</div>
+                                        </div>
+                                        ${isExactMatch ? `
+                                            <button type="button" class="btn btn-warning w-100 mt-3" onclick="rejectNewCase()">
+                                                <i class="fas fa-times-circle me-2"></i>Reject This Case
+                                            </button>
+                                        ` : ''}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Change Diagnosis Name Section -->
+                        <div class="mt-4 pt-4 border-top">
+                            <h6 class="mb-3"><i class="fas fa-edit me-2"></i>Change Diagnosis Name</h6>
+                            <p class="text-muted small mb-3">
+                                If you change the diagnosis name, the system will re-check for duplicates. 
+                                If the new name is unique, you can save normally.
+                            </p>
+                            <div class="row">
+                                <div class="col-md-8">
+                                    <input type="text" class="form-control form-control-lg" id="newDiagnosisInput" 
+                                           value="${escapeHtml(currentDiagnosis)}" 
+                                           placeholder="Enter new diagnosis name">
+                                </div>
+                                <div class="col-md-4">
+                                    <button type="button" class="btn btn-primary w-100" onclick="saveWithNewDiagnosis()">
+                                        <i class="fas fa-save me-2"></i>Save with New Name
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        ${isExactMatch ? `
-                            <button type="button" class="btn btn-danger" onclick="deleteDuplicateCases([${existingCases.map(c => c.id).join(',')}])">
-                                <i class="fas fa-trash me-1"></i>Delete Duplicate Case(s)
-                            </button>
-                        ` : `
+                        ${!isExactMatch ? `
                             <button type="button" class="btn btn-warning" onclick="overrideDuplicateCase()">
-                                <i class="fas fa-exclamation-circle me-1"></i>Override & Save
+                                <i class="fas fa-exclamation-circle me-1"></i>Override & Save Anyway
                             </button>
-                        `}
-                        <button type="button" class="btn btn-primary" onclick="saveWithNewDiagnosis()">
-                            <i class="fas fa-save me-1"></i>Save with New Name
-                        </button>
+                        ` : ''}
                     </div>
                 </div>
             </div>
@@ -917,7 +1007,8 @@ function showDuplicateHandlingModal(duplicateData, currentDiagnosis, payload, en
         saveBtn: saveBtn,
         originalText: originalText,
         existingCases: existingCases,
-        isExactMatch: isExactMatch
+        isExactMatch: isExactMatch,
+        currentDiagnosis: currentDiagnosis
     };
     
     // Show modal
@@ -936,28 +1027,29 @@ function saveWithNewDiagnosis() {
         return;
     }
     
-    if (newDiagnosis.toLowerCase().trim() === context.payload.diagnosis.toLowerCase().trim()) {
+    if (newDiagnosis.toLowerCase().trim() === context.currentDiagnosis.toLowerCase().trim()) {
         alert('Please enter a different diagnosis name');
         return;
     }
     
-    // Update payload with new diagnosis
-    context.payload.diagnosis = newDiagnosis;
+    // Update payload with new diagnosis (create copy to avoid mutating original)
+    const updatedPayload = { ...context.payload };
+    updatedPayload.diagnosis = newDiagnosis;
     
     // Close modal
     const modalElement = document.getElementById('duplicateModal');
     const modal = bootstrap.Modal.getInstance(modalElement);
     if (modal) modal.hide();
     
-    // Retry save with new diagnosis
+    // Retry save with new diagnosis - this will re-run duplicate detection on the server
     const saveBtn = context.saveBtn;
     saveBtn.disabled = true;
-    saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Saving...';
+    saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Checking duplicates...';
     
     fetch(context.endpoint, {
         method: context.method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(context.payload)
+        body: JSON.stringify(updatedPayload)
     })
     .then(async r => {
         const responseText = await r.text();
@@ -968,6 +1060,16 @@ function saveWithNewDiagnosis() {
             responseData = { error: responseText || 'Unknown error' };
         }
         
+        // Handle duplicate detection again (409 Conflict) - re-run check with new name
+        if (r.status === 409 && responseData.duplicate) {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = context.originalText;
+            
+            // Show duplicate handling modal again with new diagnosis
+            showDuplicateHandlingModal(responseData, newDiagnosis, updatedPayload, context.endpoint, context.method, saveBtn, context.originalText);
+            return Promise.reject(new Error('DUPLICATE_DETECTED'));
+        }
+        
         if (!r.ok) {
             throw new Error(responseData.error || responseData.message || `HTTP ${r.status}`);
         }
@@ -975,7 +1077,7 @@ function saveWithNewDiagnosis() {
         return responseData;
     })
     .then(data => {
-        if (data.success || data.id || data.case_id) {
+        if (data && (data.success || data.id || data.case_id)) {
             alert('Case saved successfully with new diagnosis name!');
             const promotedId = data.case_id || data.id || data.promoted_case_id;
             if (promotedId) {
@@ -984,10 +1086,14 @@ function saveWithNewDiagnosis() {
                 window.location.reload();
             }
         } else {
-            throw new Error(data.error || 'Failed to save case');
+            throw new Error(data?.error || 'Failed to save case');
         }
     })
     .catch(error => {
+        if (error.message === 'DUPLICATE_DETECTED') {
+            // Already handled by modal
+            return;
+        }
         console.error('[SAVE] Error saving with new diagnosis:', error);
         alert('Error saving case: ' + error.message);
         saveBtn.disabled = false;
@@ -1061,55 +1167,55 @@ function overrideDuplicateCase() {
     });
 }
 
-// Delete duplicate cases
-function deleteDuplicateCases(caseIds) {
-    if (!confirm(`Are you sure you want to delete ${caseIds.length} duplicate case(s)? This action cannot be undone.`)) {
+// Reject existing case (mark as rejected instead of deleting)
+function rejectExistingCase(caseId) {
+    if (!confirm('Are you sure you want to reject this existing case? It will be marked as rejected but can be recovered later.')) {
         return;
     }
     
-    // Delete all duplicate cases
-    const deletePromises = caseIds.map(caseId => 
-        fetch(`/api/case/${caseId}`, { method: 'DELETE' })
-            .then(r => r.json())
-            .then(data => {
-                if (!data.success) {
-                    throw new Error(data.error || 'Failed to delete case');
-                }
-                return data;
-            })
-    );
-    
-    Promise.all(deletePromises)
-        .then(() => {
-            alert('Duplicate case(s) deleted successfully. You can now save your new case.');
-            // Close modal
+    fetch(`/api/case/${caseId}/reject`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            // Close modal first
             const modalElement = document.getElementById('duplicateModal');
             const modal = bootstrap.Modal.getInstance(modalElement);
             if (modal) modal.hide();
             
-            // Retry save
+            // Show success message briefly, then retry
             const context = window.duplicateModalContext;
             if (context) {
-                // Remove override flag if present
-                delete context.payload.override_duplicate;
-                
-                const saveBtn = context.saveBtn;
-                saveBtn.disabled = true;
-                saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Saving...';
-                
-                fetch(context.endpoint, {
-                    method: context.method,
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(context.payload)
-                })
-                .then(async r => {
-                    const responseText = await r.text();
-                    let responseData;
-                    try {
-                        responseData = JSON.parse(responseText);
-                    } catch (e) {
-                        responseData = { error: responseText || 'Unknown error' };
-                    }
+                // Small delay to ensure database transaction is committed
+                setTimeout(() => {
+                    const saveBtn = context.saveBtn;
+                    saveBtn.disabled = true;
+                    saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Saving...';
+                    
+                    fetch(context.endpoint, {
+                        method: context.method,
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(context.payload)
+                    })
+                    .then(async r => {
+                        const responseText = await r.text();
+                        let responseData;
+                        try {
+                            responseData = JSON.parse(responseText);
+                        } catch (e) {
+                            responseData = { error: responseText || 'Unknown error' };
+                        }
+                        
+                        // Check for duplicates again (in case there are multiple)
+                        // Note: Rejected cases are now excluded from duplicate detection
+                        if (r.status === 409 && responseData.duplicate) {
+                            saveBtn.disabled = false;
+                            saveBtn.innerHTML = context.originalText;
+                            showDuplicateHandlingModal(responseData, context.currentDiagnosis, context.payload, context.endpoint, context.method, saveBtn, context.originalText);
+                            return Promise.reject(new Error('DUPLICATE_DETECTED'));
+                        }
                     
                     if (!r.ok) {
                         throw new Error(responseData.error || responseData.message || `HTTP ${r.status}`);
@@ -1118,7 +1224,7 @@ function deleteDuplicateCases(caseIds) {
                     return responseData;
                 })
                 .then(data => {
-                    if (data.success || data.id || data.case_id) {
+                    if (data && (data.success || data.id || data.case_id)) {
                         alert('Case saved successfully!');
                         const promotedId = data.case_id || data.id || data.promoted_case_id;
                         if (promotedId) {
@@ -1127,21 +1233,96 @@ function deleteDuplicateCases(caseIds) {
                             window.location.reload();
                         }
                     } else {
-                        throw new Error(data.error || 'Failed to save case');
+                        throw new Error(data?.error || 'Failed to save case');
                     }
                 })
                 .catch(error => {
-                    console.error('[SAVE] Error saving after delete:', error);
+                    if (error.message === 'DUPLICATE_DETECTED') {
+                        return; // Already handled by modal
+                    }
+                    console.error('[SAVE] Error saving after reject:', error);
                     alert('Error saving case: ' + error.message);
                     saveBtn.disabled = false;
                     saveBtn.innerHTML = context.originalText;
                 });
+                }, 500); // 500ms delay to ensure rejection is committed to database
+            }
+        } else {
+            alert('Error rejecting case: ' + (data.error || 'Unknown error'));
+        }
+    })
+    .catch(error => {
+        console.error('[REJECT] Error rejecting case:', error);
+        alert('Error rejecting case: ' + error.message);
+    });
+}
+
+// Reject new incoming case (close modal and cancel save, or reject staging case)
+function rejectNewCase() {
+    if (!confirm('Are you sure you want to reject this new case? It will be marked as rejected and will not be saved.')) {
+        return;
+    }
+    
+    const context = window.duplicateModalContext;
+    if (!context) {
+        alert('Error: No context found');
+        return;
+    }
+    
+    // Check if this is a staging case by looking at the endpoint
+    const isStagingCase = context.endpoint && context.endpoint.includes('/api/admin/enrichment/');
+    let stagingId = null;
+    
+    if (isStagingCase) {
+        // Extract staging ID from endpoint: /api/admin/enrichment/{id}/enrich-and-promote
+        const match = context.endpoint.match(/\/api\/admin\/enrichment\/(\d+)\//);
+        if (match) {
+            stagingId = match[1];
+        }
+    }
+    
+    // If it's a staging case, call the reject endpoint
+    if (isStagingCase && stagingId) {
+        fetch(`/api/admin/enrichment/${stagingId}/reject`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reason: 'Rejected due to duplicate detection' })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                alert('Staging case rejected successfully. It has been marked as rejected.');
+                // Close modal
+                const modalElement = document.getElementById('duplicateModal');
+                const modal = bootstrap.Modal.getInstance(modalElement);
+                if (modal) modal.hide();
+                
+                // Reset save button
+                context.saveBtn.disabled = false;
+                context.saveBtn.innerHTML = context.originalText;
+                
+                // Redirect to staging cases list
+                window.location.href = '/admin/staging-cases?status=rejected';
+            } else {
+                throw new Error(data.error || 'Failed to reject staging case');
             }
         })
         .catch(error => {
-            console.error('[DELETE] Error deleting duplicate cases:', error);
-            alert('Error deleting duplicate cases: ' + error.message);
+            console.error('[REJECT] Error rejecting staging case:', error);
+            alert('Error rejecting staging case: ' + error.message);
         });
+    } else {
+        // Not a staging case - just close modal and cancel
+        const modalElement = document.getElementById('duplicateModal');
+        const modal = bootstrap.Modal.getInstance(modalElement);
+        if (modal) modal.hide();
+        
+        // Reset save button
+        context.saveBtn.disabled = false;
+        context.saveBtn.innerHTML = context.originalText;
+        
+        alert('New case rejected. No changes were saved.');
+    }
 }
 
 // Helper function to escape HTML
@@ -1149,4 +1330,9 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+// Expose saveEditedCase globally for onclick handlers
+if (typeof window !== 'undefined') {
+    window.saveEditedCase = saveEditedCase;
 }

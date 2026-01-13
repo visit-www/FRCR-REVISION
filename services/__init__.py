@@ -132,7 +132,51 @@ class ImportService:
                     db.session.flush()  # Get staging ID for image import
                     
                     # Import images if present - store as JSON in enrichment_notes temporarily
+                    # Handle both formats:
+                    # 1. FRCR Revision: images nested in case_data['images']
+                    # 2. FRCR Examiner: images in separate backup_data['case_images'] array
+                    old_case_id = case_data.get('id')
                     images_data = case_data.get('images', [])
+                    
+                    # If no images in case data, check separate case_images array (FRCR Examiner format)
+                    if not images_data and 'case_images' in backup_data:
+                        print(f"[IMPORT] Looking for images in separate case_images array for case_id={old_case_id}, case_number={case_number}")
+                        case_images_list = backup_data.get('case_images', [])
+                        print(f"[IMPORT] Total images in backup: {len(case_images_list)}")
+                        
+                        # Find images matching this case
+                        for img_data in case_images_list:
+                            if not isinstance(img_data, dict):
+                                continue
+                            
+                            img_case_id = img_data.get('case_id')
+                            img_case_number = img_data.get('case_number')
+                            
+                            # Normalize types for comparison
+                            img_case_id_normalized = int(img_case_id) if img_case_id is not None and str(img_case_id).isdigit() else img_case_id
+                            old_case_id_normalized = int(old_case_id) if old_case_id is not None and str(old_case_id).isdigit() else old_case_id
+                            
+                            case_number_str = str(case_number) if case_number else None
+                            img_case_number_str = str(img_case_number) if img_case_number else None
+                            
+                            # Match by case_id or case_number
+                            matches = False
+                            if old_case_id_normalized is not None and img_case_id_normalized is not None:
+                                if img_case_id_normalized == old_case_id_normalized:
+                                    matches = True
+                                    print(f"[IMPORT] ✓ Matched image by case_id: {old_case_id_normalized}")
+                            elif case_number_str and img_case_number_str:
+                                if img_case_number_str == case_number_str:
+                                    matches = True
+                                    print(f"[IMPORT] ✓ Matched image by case_number (exact): {case_number_str}")
+                                elif case_number_str.isdigit() and img_case_number_str.isdigit():
+                                    if int(case_number_str) == int(img_case_number_str):
+                                        matches = True
+                                        print(f"[IMPORT] ✓ Matched image by case_number (numeric): {case_number_str}")
+                            
+                            if matches:
+                                images_data.append(img_data)
+                    
                     if images_data:
                         import base64
                         
@@ -140,15 +184,28 @@ class ImportService:
                         images_json = []
                         for img_data in images_data:
                             try:
-                                if img_data.get('image_data'):
+                                if not isinstance(img_data, dict):
+                                    continue
+                                
+                                # Support both field name formats
+                                image_filename = img_data.get('image_filename') or img_data.get('filename', 'image')
+                                image_description = img_data.get('image_description') or img_data.get('description', '')
+                                image_type = img_data.get('image_type', 'image/jpeg')
+                                image_data_base64 = img_data.get('image_data')
+                                
+                                if image_data_base64:
                                     # Store base64 encoded image data
                                     images_json.append({
-                                        'filename': img_data.get('filename', 'image'),
-                                        'image_type': img_data.get('image_type', 'image/jpeg'),
-                                        'description': img_data.get('description', ''),
-                                        'image_data': img_data['image_data']  # Keep as base64 string
+                                        'filename': image_filename,
+                                        'image_type': image_type,
+                                        'description': image_description,
+                                        'image_data': image_data_base64  # Keep as base64 string
                                     })
+                                    print(f"[IMPORT] Added image to staging: {image_filename} (data length: {len(image_data_base64)})")
+                                else:
+                                    print(f"[IMPORT] Warning: Image {image_filename} has no image_data")
                             except Exception as img_err:
+                                print(f"[IMPORT] Warning: Failed to process image for case {case_number}: {img_err}")
                                 errors.append(f"Failed to process image for case {case_number}: {str(img_err)}")
                         
                         # Store images JSON in enrichment_notes with special marker
@@ -158,6 +215,16 @@ class ImportService:
                                 staging.enrichment_notes = f"[IMAGES_JSON]{images_json_str}[/IMAGES_JSON]\n{staging.enrichment_notes}"
                             else:
                                 staging.enrichment_notes = f"[IMAGES_JSON]{images_json_str}[/IMAGES_JSON]"
+                            
+                            # Explicitly mark the object as modified
+                            from sqlalchemy.orm.attributes import flag_modified
+                            flag_modified(staging, 'enrichment_notes')
+                            
+                            print(f"[IMPORT] ✓ Stored {len(images_json)} images in staging case {staging.id} enrichment_notes")
+                        else:
+                            print(f"[IMPORT] ⚠️ No images to store for staging case {staging.id}")
+                    else:
+                        print(f"[IMPORT] ⚠️ No images found for case (case_id={old_case_id}, case_number={case_number})")
                     
                     imported_count += 1
                 except Exception as e:

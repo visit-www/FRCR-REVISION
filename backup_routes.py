@@ -216,6 +216,22 @@ def restore_backup():
         if 'metadata' not in backup_data:
             return jsonify({'error': 'Invalid backup file format: missing metadata'}), 400
         
+        # Detect source system (FRCR Examiner vs FRCR Revision)
+        metadata = backup_data.get('metadata', {})
+        app_name = metadata.get('app_name', '').upper()
+        is_frcr_examiner = 'EXAMINER' in app_name or metadata.get('source_system') == 'frcr_examiner'
+        is_frcr_revision = 'REVISION' in app_name or metadata.get('app_name') == 'FRCR_REVISION'
+        
+        # Default to FRCR Examiner if cannot determine (for backward compatibility)
+        if not is_frcr_examiner and not is_frcr_revision:
+            # Check if backup has FRCR Examiner structure (separate case_images array)
+            if 'case_images' in backup_data and isinstance(backup_data.get('case_images'), list):
+                is_frcr_examiner = True
+            else:
+                is_frcr_revision = True
+        
+        print(f"[IMPORT] Detected backup source: {'FRCR_EXAMINER' if is_frcr_examiner else 'FRCR_REVISION'}")
+        
         # Check if user confirmed overwrite for existing data
         # Support both form data and JSON data
         if request.is_json:
@@ -232,7 +248,7 @@ def restore_backup():
         stats = {
             'users': {'added': 0, 'updated': 0, 'skipped': 0},
             'cases': {'added': 0, 'updated': 0, 'skipped': 0},
-            'staging': {'added': 0},  # Cases sent to staging for review
+            'staging': {'added': 0, 'images_stored': 0},  # Cases sent to staging for review, and images stored in them
             'questions': {'added': 0},
             'answers': {'added': 0},
             'images': {'added': 0},
@@ -250,94 +266,112 @@ def restore_backup():
         valid_case_fields = get_model_fields(Case)
         
         # Import Users
-        users_list = backup_data.get('users', [])
-        if not isinstance(users_list, list):
-            return jsonify({'error': 'Invalid backup format: users must be a list'}), 400
-        
-        for user_data in users_list:
-            # Ensure user_data is a dictionary
-            if not isinstance(user_data, dict):
-                print(f"[IMPORT] Warning: Skipping invalid user data (not a dict): {type(user_data).__name__}")
-                continue
-            
-            # Filter out unknown fields
-            filtered_data = {k: v for k, v in user_data.items() if k in valid_user_fields or k in ['email', 'password_hash', 'full_name', 'role', 'is_active', 'subscription_status', 'payment_status']}
-            
-            existing_user = User.query.filter_by(email=user_data.get('email')).first()
-            
-            if existing_user:
-                if overwrite_existing:
-                    # Update existing user
-                    for key, value in filtered_data.items():
-                        if key == 'role' and value:
-                            try:
-                                existing_user.role = UserRole(value)
-                            except:
-                                pass
-                        elif key == 'subscription_status' and value:
-                            from models import SubscriptionStatus
-                            try:
-                                existing_user.subscription_status = SubscriptionStatus(value)
-                            except:
-                                pass
-                        elif key == 'payment_status' and value:
-                            from models import PaymentStatus
-                            try:
-                                existing_user.payment_status = PaymentStatus(value)
-                            except:
-                                pass
-                        elif key in ['created_at', 'last_login'] and value:
-                            # Convert ISO string to datetime object for SQLite compatibility
-                            try:
-                                if isinstance(value, str):
-                                    existing_user.__setattr__(key, datetime.fromisoformat(value))
-                                elif isinstance(value, datetime):
-                                    existing_user.__setattr__(key, value)
-                            except (ValueError, TypeError) as e:
-                                print(f"[IMPORT] Warning: Could not parse {key} datetime: {value}, error: {e}")
-                                pass
-                        elif key not in ['email', 'id'] and hasattr(existing_user, key):
-                            setattr(existing_user, key, value)
-                    stats['users']['updated'] += 1
-                else:
-                    stats['users']['skipped'] += 1
-            else:
-                # Create new user
-                user = User(
-                    email=filtered_data.get('email'),
-                    password_hash=filtered_data.get('password_hash', ''),
-                    full_name=filtered_data.get('full_name', ''),
-                    role=UserRole(filtered_data.get('role', 'student')),
-                    is_active=filtered_data.get('is_active', True),
-                )
-                if filtered_data.get('subscription_status'):
-                    from models import SubscriptionStatus
-                    user.subscription_status = SubscriptionStatus(filtered_data['subscription_status'])
-                if filtered_data.get('payment_status'):
-                    from models import PaymentStatus
-                    user.payment_status = PaymentStatus(filtered_data['payment_status'])
-                if filtered_data.get('created_at'):
-                    user.created_at = datetime.fromisoformat(filtered_data['created_at'])
-                db.session.add(user)
-                stats['users']['added'] += 1
-        
-        db.session.commit()
-        
-        # Build user email to ID mapping and old ID to new ID mapping
-        user_email_map = {u.email: u.id for u in User.query.all()}
+        # For FRCR Examiner: Skip user import, all cases will be mapped to current_user
+        # For FRCR Revision: Import users normally
         user_id_map = {}  # Map old user IDs from backup to new user IDs
         
-        # Build ID mapping for users (old backup ID -> new database ID)
-        for user_data in backup_data.get('users', []):
-            old_id = user_data.get('id')
-            email = user_data.get('email')
-            if old_id and email:
-                new_user = User.query.filter_by(email=email).first()
-                if new_user:
-                    user_id_map[old_id] = new_user.id
+        if is_frcr_examiner:
+            # FRCR Examiner: Don't import users, map everything to current_user
+            print(f"[IMPORT] FRCR Examiner backup: Skipping user import, mapping all cases to current user {current_user.id}")
+            # Create a dummy mapping for any user references (they'll be replaced with current_user.id)
+            users_list = backup_data.get('users', [])
+            if isinstance(users_list, list):
+                for user_data in users_list:
+                    old_id = user_data.get('id') if isinstance(user_data, dict) else None
+                    if old_id:
+                        user_id_map[old_id] = current_user.id
+        else:
+            # FRCR Revision: Import users normally
+            users_list = backup_data.get('users', [])
+            if not isinstance(users_list, list):
+                return jsonify({'error': 'Invalid backup format: users must be a list'}), 400
+            
+            for user_data in users_list:
+                # Ensure user_data is a dictionary
+                if not isinstance(user_data, dict):
+                    print(f"[IMPORT] Warning: Skipping invalid user data (not a dict): {type(user_data).__name__}")
+                    continue
+                
+                # Filter out unknown fields
+                filtered_data = {k: v for k, v in user_data.items() if k in valid_user_fields or k in ['email', 'password_hash', 'full_name', 'role', 'is_active', 'subscription_status', 'payment_status']}
+                
+                existing_user = User.query.filter_by(email=user_data.get('email')).first()
+                
+                if existing_user:
+                    if overwrite_existing:
+                        # Update existing user
+                        for key, value in filtered_data.items():
+                            if key == 'role' and value:
+                                try:
+                                    existing_user.role = UserRole(value)
+                                except:
+                                    pass
+                            elif key == 'subscription_status' and value:
+                                from models import SubscriptionStatus
+                                try:
+                                    existing_user.subscription_status = SubscriptionStatus(value)
+                                except:
+                                    pass
+                            elif key == 'payment_status' and value:
+                                from models import PaymentStatus
+                                try:
+                                    existing_user.payment_status = PaymentStatus(value)
+                                except:
+                                    pass
+                            elif key in ['created_at', 'last_login'] and value:
+                                # Convert ISO string to datetime object for SQLite compatibility
+                                try:
+                                    if isinstance(value, str):
+                                        existing_user.__setattr__(key, datetime.fromisoformat(value))
+                                    elif isinstance(value, datetime):
+                                        existing_user.__setattr__(key, value)
+                                except (ValueError, TypeError) as e:
+                                    print(f"[IMPORT] Warning: Could not parse {key} datetime: {value}, error: {e}")
+                                    pass
+                            elif key not in ['email', 'id'] and hasattr(existing_user, key):
+                                setattr(existing_user, key, value)
+                        stats['users']['updated'] += 1
+                    else:
+                        stats['users']['skipped'] += 1
+                else:
+                    # Create new user
+                    user = User(
+                        email=filtered_data.get('email'),
+                        password_hash=filtered_data.get('password_hash', ''),
+                        full_name=filtered_data.get('full_name', ''),
+                        role=UserRole(filtered_data.get('role', 'student')),
+                        is_active=filtered_data.get('is_active', True),
+                    )
+                    if filtered_data.get('subscription_status'):
+                        from models import SubscriptionStatus
+                        user.subscription_status = SubscriptionStatus(filtered_data['subscription_status'])
+                    if filtered_data.get('payment_status'):
+                        from models import PaymentStatus
+                        user.payment_status = PaymentStatus(filtered_data['payment_status'])
+                    if filtered_data.get('created_at'):
+                        user.created_at = datetime.fromisoformat(filtered_data['created_at'])
+                    db.session.add(user)
+                    stats['users']['added'] += 1
+            
+            db.session.commit()
+            
+            # Build user email to ID mapping and old ID to new ID mapping
+            user_email_map = {u.email: u.id for u in User.query.all()}
+            
+            # Build ID mapping for users (old backup ID -> new database ID)
+            for user_data in backup_data.get('users', []):
+                if not isinstance(user_data, dict):
+                    continue
+                old_id = user_data.get('id')
+                email = user_data.get('email')
+                if old_id and email:
+                    new_user = User.query.filter_by(email=email).first()
+                    if new_user:
+                        user_id_map[old_id] = new_user.id
         
         # Import Cases
-        case_id_map = {}  # Map old case IDs from backup to new case IDs
+        case_id_map = {}  # Map old case IDs from backup to new case IDs (production cases only)
+        staging_id_map = {}  # Map old case IDs from backup to staging IDs (staging cases only)
         
         for case_data in backup_data.get('cases', []):
             # Filter out unknown fields - only keep fields that exist in Case model
@@ -495,6 +529,9 @@ def restore_backup():
                         'answer_text': a.get('answer_text', '') if isinstance(a, dict) else str(a)
                     } for a in answers_list if isinstance(a, dict)])
                     
+                    # For FRCR Examiner: Store source system as 'frcr_examiner' to track origin
+                    source_system = 'frcr_examiner' if is_frcr_examiner else 'backup_import'
+                    
                     staging = ImportedCaseStaging(
                         original_id=old_case_id,
                         case_number=filtered_data.get('case_number'),
@@ -504,18 +541,124 @@ def restore_backup():
                         answers=answers_json,  # Legacy format for staging
                         enrichment_status='pending',
                         import_batch_id=import_batch_id,
-                        source_system='backup_import',
+                        source_system=source_system,
                         enrichment_notes=f"Missing fields: {', '.join(missing_fields)}. Requires admin review.",
                     )
                     db.session.add(staging)
                     db.session.flush()
                     
-                    # Store images temporarily (will be migrated on promotion)
-                    # For now, we'll need to handle images separately
-                    # Images will be stored when case is promoted
+                    # Store images temporarily in enrichment_notes (will be migrated on promotion)
+                    # Process images from separate case_images array for this staging case
+                    import base64
+                    import json as json_lib
+                    staging_images = []
+                    case_number_for_match = filtered_data.get('case_number')
+                    
+                    # Normalize case_number for comparison (convert to string)
+                    case_number_str = str(case_number_for_match) if case_number_for_match is not None else None
+                    
+                    print(f"[IMPORT] Looking for images for staging case: old_case_id={old_case_id} (type: {type(old_case_id).__name__}), case_number={case_number_for_match} (type: {type(case_number_for_match).__name__})")
+                    print(f"[IMPORT] Total images in backup: {len(backup_data.get('case_images', []))}")
+                    
+                    for img_data in backup_data.get('case_images', []):
+                        if not isinstance(img_data, dict):
+                            continue
+                        
+                        # Try to match by case_id first, then by case_number if available
+                        img_case_id = img_data.get('case_id')
+                        img_case_number = img_data.get('case_number')
+                        
+                        # Normalize types for comparison
+                        # Convert both to same type (prefer int for IDs, string for case_numbers)
+                        img_case_id_normalized = int(img_case_id) if img_case_id is not None and str(img_case_id).isdigit() else img_case_id
+                        old_case_id_normalized = int(old_case_id) if old_case_id is not None and str(old_case_id).isdigit() else old_case_id
+                        
+                        img_case_number_str = str(img_case_number) if img_case_number is not None else None
+                        
+                        # Match if case_id matches OR case_number matches
+                        matches = False
+                        if old_case_id_normalized is not None and img_case_id_normalized is not None:
+                            if img_case_id_normalized == old_case_id_normalized:
+                                matches = True
+                                print(f"[IMPORT] ✓ Matched image by case_id: {old_case_id_normalized}")
+                        elif case_number_str and img_case_number_str:
+                            # Try exact match first
+                            if img_case_number_str == case_number_str:
+                                matches = True
+                                print(f"[IMPORT] ✓ Matched image by case_number (exact): {case_number_str}")
+                            # Try numeric comparison if both are numeric
+                            elif case_number_str.isdigit() and img_case_number_str.isdigit():
+                                if int(case_number_str) == int(img_case_number_str):
+                                    matches = True
+                                    print(f"[IMPORT] ✓ Matched image by case_number (numeric): {case_number_str}")
+                        
+                        if matches:
+                            # This image belongs to this staging case
+                            try:
+                                image_filename = img_data.get('image_filename') or img_data.get('filename', '')
+                                image_description = img_data.get('image_description') or img_data.get('description', '')
+                                image_type = img_data.get('image_type', 'image/jpeg')
+                                image_data_base64 = img_data.get('image_data')
+                                
+                                if image_data_base64:
+                                    staging_images.append({
+                                        'filename': image_filename,
+                                        'image_type': image_type,
+                                        'description': image_description,
+                                        'image_data': image_data_base64  # Keep as base64 string
+                                    })
+                                    print(f"[IMPORT] Added image to staging: {image_filename} (data length: {len(image_data_base64)})")
+                                else:
+                                    print(f"[IMPORT] Warning: Image {image_filename} has no image_data")
+                            except Exception as img_err:
+                                print(f"[IMPORT] Warning: Failed to process image for staging case {old_case_id}: {img_err}")
+                                import traceback
+                                traceback.print_exc()
+                    
+                    if not staging_images:
+                        print(f"[IMPORT] ⚠️ Warning: No images found for staging case (old_case_id={old_case_id}, case_number={case_number_for_match})")
+                        print(f"[IMPORT] Total images in backup: {len(backup_data.get('case_images', []))}")
+                        # Debug: show first few image case_ids and case_numbers
+                        sample_data = []
+                        for img in backup_data.get('case_images', [])[:10]:
+                            if isinstance(img, dict):
+                                sample_data.append({
+                                    'case_id': img.get('case_id'),
+                                    'case_number': img.get('case_number'),
+                                    'filename': img.get('image_filename') or img.get('filename', 'N/A')
+                                })
+                        print(f"[IMPORT] Sample image data (first 10): {sample_data}")
+                        # Also check if any images have matching case_number
+                        matching_by_number = [img for img in backup_data.get('case_images', []) 
+                                            if isinstance(img, dict) and 
+                                            str(img.get('case_number', '')) == case_number_str]
+                        if matching_by_number:
+                            print(f"[IMPORT] Found {len(matching_by_number)} images with matching case_number but didn't match - check logic")
+                    
+                    # Store images JSON in enrichment_notes with special marker
+                    if staging_images:
+                        images_json_str = json_lib.dumps(staging_images)
+                        if staging.enrichment_notes:
+                            staging.enrichment_notes = f"[IMAGES_JSON]{images_json_str}[/IMAGES_JSON]\n{staging.enrichment_notes}"
+                        else:
+                            staging.enrichment_notes = f"[IMAGES_JSON]{images_json_str}[/IMAGES_JSON]"
+                        
+                        # Explicitly mark the object as modified to ensure SQLAlchemy tracks the change
+                        from sqlalchemy.orm.attributes import flag_modified
+                        flag_modified(staging, 'enrichment_notes')
+                        
+                        print(f"[IMPORT] ✓ Stored {len(staging_images)} images in staging case {staging.id} enrichment_notes")
+                        print(f"[IMPORT] Enrichment notes length: {len(staging.enrichment_notes)}")
+                        print(f"[IMPORT] Enrichment notes preview: {staging.enrichment_notes[:200]}...")
+                        stats['staging']['images_stored'] += len(staging_images)
+                    else:
+                        print(f"[IMPORT] ⚠️ No images to store for staging case {staging.id}")
                     
                     stats['staging']['added'] += 1
-                    # Don't create case_id_map entry for staging cases
+                    # Store staging ID mapping (for image processing)
+                    if old_case_id:
+                        staging_id_map[old_case_id] = staging.id
+                    # Don't create case_id_map entry for staging cases (they're not in production yet)
                     continue
                 
                 # All critical fields present - create case directly
@@ -553,9 +696,14 @@ def restore_backup():
                             print(f"[IMPORT] Warning: Could not set age_group to {filtered_data['age_group']}: {e}")
                 
                 # Map created_by_user_id from backup using ID mapping
-                if filtered_data.get('created_by_user_id'):
-                    old_user_id = filtered_data.get('created_by_user_id')
-                    case.created_by_user_id = user_id_map.get(old_user_id, current_user.id)
+                # For FRCR Examiner: Always use current_user.id
+                # For FRCR Revision: Use user_id_map to preserve original ownership
+                if is_frcr_examiner:
+                    case.created_by_user_id = current_user.id
+                else:
+                    if filtered_data.get('created_by_user_id'):
+                        old_user_id = filtered_data.get('created_by_user_id')
+                        case.created_by_user_id = user_id_map.get(old_user_id, current_user.id)
                 if filtered_data.get('created_at'):
                     case.created_at = datetime.fromisoformat(filtered_data['created_at'])
                 
@@ -569,22 +717,22 @@ def restore_backup():
                         question_number=q_data.get('question_number', 0),
                         question_text=q_data.get('question_text', ''),
                     )
-                    db.session.add(question)
-                    stats['questions']['added'] += 1
-                
-                answers_list = case_data.get('answers', [])
-                if isinstance(answers_list, list):
-                    for a_data in answers_list:
-                        if not isinstance(a_data, dict):
-                            print(f"[IMPORT] Warning: Skipping invalid answer data (not a dict)")
-                            continue
-                        answer = Answer(
-                            case_id=case.id,
-                            answer_number=a_data.get('answer_number', 0),
-                            answer_text=a_data.get('answer_text', ''),
-                    )
-                    db.session.add(answer)
-                    stats['answers']['added'] += 1
+            db.session.add(question)
+            stats['questions']['added'] += 1
+        
+        answers_list = case_data.get('answers', [])
+        if isinstance(answers_list, list):
+            for a_data in answers_list:
+                if not isinstance(a_data, dict):
+                    print(f"[IMPORT] Warning: Skipping invalid answer data (not a dict)")
+                    continue
+                answer = Answer(
+                    case_id=case.id,
+                    answer_number=a_data.get('answer_number', 0),
+                    answer_text=a_data.get('answer_text', ''),
+                )
+                db.session.add(answer)
+                stats['answers']['added'] += 1
                 
                 # Add images
                 import base64
@@ -630,10 +778,14 @@ def restore_backup():
         
         # Import images from separate case_images array (FRCR Examiner format)
         # This handles backups where images are stored separately, not in case['images']
+        # Note: Images for staging cases are already stored in enrichment_notes during case import
+        # This section only processes images for cases that went directly to production
         case_images_list = backup_data.get('case_images', [])
         if isinstance(case_images_list, list) and len(case_images_list) > 0:
             import base64
             print(f"[IMPORT] Found {len(case_images_list)} images in separate case_images array")
+            print(f"[IMPORT] Case ID map contains {len(case_id_map)} mappings: {case_id_map}")
+            print(f"[IMPORT] Staging ID map contains {len(staging_id_map)} mappings: {staging_id_map}")
             for img_data in case_images_list:
                 if not isinstance(img_data, dict):
                     print(f"[IMPORT] Warning: Skipping invalid image data (not a dict)")
@@ -645,9 +797,15 @@ def restore_backup():
                     print(f"[IMPORT] Warning: Skipping image without case_id")
                     continue
                 
+                # Check if this is a staging case (images already stored in enrichment_notes)
+                if old_case_id in staging_id_map:
+                    print(f"[IMPORT] Skipping image for case_id {old_case_id} (already stored in staging case {staging_id_map[old_case_id]} enrichment_notes)")
+                    continue
+                
                 new_case_id = case_id_map.get(old_case_id)
                 if not new_case_id:
-                    print(f"[IMPORT] Warning: Skipping image for case_id {old_case_id} (case not imported)")
+                    print(f"[IMPORT] Warning: Skipping image for case_id {old_case_id} (case not imported or not in case_id_map)")
+                    print(f"[IMPORT] Available case IDs in map: {list(case_id_map.keys())}")
                     continue
                 
                 # Check if image already exists (if overwriting)
@@ -685,165 +843,186 @@ def restore_backup():
         db.session.commit()
         
         # Import revision sessions
-        for session_data in backup_data.get('revision_sessions', []):
-            # Map user_id from backup using ID mapping
-            old_user_id = session_data.get('user_id')
-            user_id = user_id_map.get(old_user_id) if old_user_id else current_user.id
-            
-            if not user_id:
-                stats['revision_sessions']['skipped'] += 1
-                continue
-            
-            # Map case_ids from backup (old IDs -> new IDs)
-            old_case_ids = session_data.get('case_ids', [])
-            case_ids = [case_id_map.get(cid) for cid in old_case_ids if case_id_map.get(cid)]
-            
-            if not case_ids:
-                stats['revision_sessions']['skipped'] += 1
-                continue
-            
-            # Check if session already exists
-            existing = RevisionSession.query.filter_by(user_id=user_id).first()
-            if existing and not overwrite_existing:
-                stats['revision_sessions']['skipped'] += 1
-                continue
-            
-            if existing and overwrite_existing:
-                existing.set_case_ids_list(case_ids)
-                existing.current_case_index = session_data.get('current_case_index', 0)
-                # Update created_at if provided
-                if session_data.get('created_at'):
-                    try:
-                        if isinstance(session_data['created_at'], str):
-                            existing.created_at = datetime.fromisoformat(session_data['created_at'])
-                        elif isinstance(session_data['created_at'], datetime):
-                            existing.created_at = session_data['created_at']
-                    except (ValueError, TypeError) as e:
-                        print(f"[IMPORT] Warning: Could not parse session created_at datetime: {session_data.get('created_at')}, error: {e}")
-                stats['revision_sessions']['added'] += 1
-            else:
-                # Create new session - case_ids is required (nullable=False), so provide empty JSON array initially
-                rev_session = RevisionSession(
-                    user_id=user_id,
-                    case_ids='[]',  # Will be set by set_case_ids_list below
-                    current_case_index=session_data.get('current_case_index', 0),
-                )
-                rev_session.set_case_ids_list(case_ids)
-                # Set created_at if provided in backup data
-                if session_data.get('created_at'):
-                    rev_session.created_at = datetime.fromisoformat(session_data['created_at'])
-                db.session.add(rev_session)
-                stats['revision_sessions']['added'] += 1
+        # For FRCR Examiner: Skip user-specific data (sessions, flags, highlights, notes)
+        # For FRCR Revision: Import all user data
+        if not is_frcr_examiner:
+            for session_data in backup_data.get('revision_sessions', []):
+                # Map user_id from backup using ID mapping
+                old_user_id = session_data.get('user_id')
+                user_id = user_id_map.get(old_user_id) if old_user_id else current_user.id
+                
+                if not user_id:
+                    stats['revision_sessions']['skipped'] += 1
+                    continue
+                
+                # Map case_ids from backup (old IDs -> new IDs)
+                old_case_ids = session_data.get('case_ids', [])
+                case_ids = [case_id_map.get(cid) for cid in old_case_ids if case_id_map.get(cid)]
+                
+                if not case_ids:
+                    stats['revision_sessions']['skipped'] += 1
+                    continue
+                
+                # Check if session already exists
+                existing = RevisionSession.query.filter_by(user_id=user_id).first()
+                if existing and not overwrite_existing:
+                    stats['revision_sessions']['skipped'] += 1
+                    continue
+                
+                if existing and overwrite_existing:
+                    existing.set_case_ids_list(case_ids)
+                    existing.current_case_index = session_data.get('current_case_index', 0)
+                    # Update created_at if provided
+                    if session_data.get('created_at'):
+                        try:
+                            if isinstance(session_data['created_at'], str):
+                                existing.created_at = datetime.fromisoformat(session_data['created_at'])
+                            elif isinstance(session_data['created_at'], datetime):
+                                existing.created_at = session_data['created_at']
+                        except (ValueError, TypeError) as e:
+                            print(f"[IMPORT] Warning: Could not parse session created_at datetime: {session_data.get('created_at')}, error: {e}")
+                    stats['revision_sessions']['added'] += 1
+                else:
+                    # Create new session - case_ids is required (nullable=False), so provide empty JSON array initially
+                    rev_session = RevisionSession(
+                        user_id=user_id,
+                        case_ids='[]',  # Will be set by set_case_ids_list below
+                        current_case_index=session_data.get('current_case_index', 0),
+                    )
+                    rev_session.set_case_ids_list(case_ids)
+                    # Set created_at if provided in backup data
+                    if session_data.get('created_at'):
+                        rev_session.created_at = datetime.fromisoformat(session_data['created_at'])
+                    db.session.add(rev_session)
+                    stats['revision_sessions']['added'] += 1
         
         # Import case flags
-        for flag_data in backup_data.get('case_flags', []):
-            # Map user_id and case_id from backup using ID mappings
-            old_user_id = flag_data.get('user_id')
-            old_case_id = flag_data.get('case_id')
-            
-            user_id = user_id_map.get(old_user_id) if old_user_id else None
-            case_id = case_id_map.get(old_case_id) if old_case_id else None
-            
-            # Validate mapped IDs exist
-            if not user_id or not User.query.get(user_id):
-                stats['case_flags']['skipped'] += 1
-                continue
-            if not case_id or not Case.query.get(case_id):
-                stats['case_flags']['skipped'] += 1
-                continue
-            
-            # Check if flag already exists
-            existing = CaseFlag.query.filter_by(user_id=user_id, case_id=case_id).first()
-            if existing:
-                if overwrite_existing:
-                    # Update timestamp if overwriting
-                    if flag_data.get('created_at'):
-                        try:
-                            if isinstance(flag_data['created_at'], str):
-                                existing.created_at = datetime.fromisoformat(flag_data['created_at'])
-                            elif isinstance(flag_data['created_at'], datetime):
-                                existing.created_at = flag_data['created_at']
-                        except (ValueError, TypeError) as e:
-                            print(f"[IMPORT] Warning: Could not parse flag created_at datetime: {flag_data.get('created_at')}, error: {e}")
-                    stats['case_flags']['added'] += 1
-                else:
+        # For FRCR Examiner: Skip user-specific data
+        if not is_frcr_examiner:
+            for flag_data in backup_data.get('case_flags', []):
+                # Map user_id and case_id from backup using ID mappings
+                old_user_id = flag_data.get('user_id')
+                old_case_id = flag_data.get('case_id')
+                
+                user_id = user_id_map.get(old_user_id) if old_user_id else None
+                case_id = case_id_map.get(old_case_id) if old_case_id else None
+                
+                # Validate mapped IDs exist
+                if not user_id or not User.query.get(user_id):
                     stats['case_flags']['skipped'] += 1
-                continue
-            
-            flag = CaseFlag(
-                user_id=user_id,
-                case_id=case_id,
-            )
-            if flag_data.get('created_at'):
-                flag.created_at = datetime.fromisoformat(flag_data['created_at'])
-            db.session.add(flag)
-            stats['case_flags']['added'] += 1
+                    continue
+                if not case_id or not Case.query.get(case_id):
+                    stats['case_flags']['skipped'] += 1
+                    continue
+                
+                # Check if flag already exists
+                existing = CaseFlag.query.filter_by(user_id=user_id, case_id=case_id).first()
+                if existing:
+                    if overwrite_existing:
+                        # Update timestamp if overwriting
+                        if flag_data.get('created_at'):
+                            try:
+                                if isinstance(flag_data['created_at'], str):
+                                    existing.created_at = datetime.fromisoformat(flag_data['created_at'])
+                                elif isinstance(flag_data['created_at'], datetime):
+                                    existing.created_at = flag_data['created_at']
+                            except (ValueError, TypeError) as e:
+                                print(f"[IMPORT] Warning: Could not parse flag created_at datetime: {flag_data.get('created_at')}, error: {e}")
+                        stats['case_flags']['added'] += 1
+                    else:
+                        stats['case_flags']['skipped'] += 1
+                    continue
+                
+                flag = CaseFlag(
+                    user_id=user_id,
+                    case_id=case_id,
+                )
+                if flag_data.get('created_at'):
+                    flag.created_at = datetime.fromisoformat(flag_data['created_at'])
+                db.session.add(flag)
+                stats['case_flags']['added'] += 1
         
         # Import highlights
-        for highlight_data in backup_data.get('highlights', []):
-            # Map user_id and case_id from backup using ID mappings
-            old_user_id = highlight_data.get('user_id')
-            old_case_id = highlight_data.get('case_id')
-            
-            user_id = user_id_map.get(old_user_id) if old_user_id else None
-            case_id = case_id_map.get(old_case_id) if old_case_id else None
-            
-            # Validate mapped IDs exist
-            if not user_id or not User.query.get(user_id):
-                continue
-            if not case_id or not Case.query.get(case_id):
-                continue
-            
-            highlight = TextHighlight(
-                user_id=user_id,
-                case_id=case_id,
-                text_content=highlight_data.get('text_content', ''),
-                highlight_color=highlight_data.get('highlight_color', 'yellow'),
-                field_name=highlight_data.get('field_name', 'discussion'),
-            )
-            if highlight_data.get('created_at'):
-                highlight.created_at = datetime.fromisoformat(highlight_data['created_at'])
-            db.session.add(highlight)
-            stats['highlights']['added'] += 1
+        # For FRCR Examiner: Skip user-specific data
+        if not is_frcr_examiner:
+            for highlight_data in backup_data.get('highlights', []):
+                # Map user_id and case_id from backup using ID mappings
+                old_user_id = highlight_data.get('user_id')
+                old_case_id = highlight_data.get('case_id')
+                
+                user_id = user_id_map.get(old_user_id) if old_user_id else None
+                case_id = case_id_map.get(old_case_id) if old_case_id else None
+                
+                # Validate mapped IDs exist
+                if not user_id or not User.query.get(user_id):
+                    continue
+                if not case_id or not Case.query.get(case_id):
+                    continue
+                
+                highlight = TextHighlight(
+                    user_id=user_id,
+                    case_id=case_id,
+                    text_content=highlight_data.get('text_content', ''),
+                    highlight_color=highlight_data.get('highlight_color', 'yellow'),
+                    field_name=highlight_data.get('field_name', 'discussion'),
+                )
+                if highlight_data.get('created_at'):
+                    highlight.created_at = datetime.fromisoformat(highlight_data['created_at'])
+                db.session.add(highlight)
+                stats['highlights']['added'] += 1
         
         # Import notes
-        for note_data in backup_data.get('notes', []):
-            # Map user_id and case_id from backup using ID mappings
-            old_user_id = note_data.get('user_id')
-            old_case_id = note_data.get('case_id')
-            
-            user_id = user_id_map.get(old_user_id) if old_user_id else None
-            case_id = case_id_map.get(old_case_id) if old_case_id else None
-            
-            # Validate mapped IDs exist
-            if not user_id or not User.query.get(user_id):
-                continue
-            if not case_id or not Case.query.get(case_id):
-                continue
-            
-            note = CandidateNote(
-                user_id=user_id,
-                case_id=case_id,
-                note_text=note_data.get('note_text', ''),
-            )
-            if note_data.get('created_at'):
-                note.created_at = datetime.fromisoformat(note_data['created_at'])
-            db.session.add(note)
-            stats['notes']['added'] += 1
-        
-        db.session.commit()
+        # For FRCR Examiner: Skip user-specific data
+        if not is_frcr_examiner:
+            for note_data in backup_data.get('notes', []):
+                # Map user_id and case_id from backup using ID mappings
+                old_user_id = note_data.get('user_id')
+                old_case_id = note_data.get('case_id')
+                
+                user_id = user_id_map.get(old_user_id) if old_user_id else None
+                case_id = case_id_map.get(old_case_id) if old_case_id else None
+                
+                # Validate mapped IDs exist
+                if not user_id or not User.query.get(user_id):
+                    continue
+                if not case_id or not Case.query.get(case_id):
+                    continue
+                
+                note = CandidateNote(
+                    user_id=user_id,
+                    case_id=case_id,
+                    note_text=note_data.get('note_text', ''),
+                )
+                if note_data.get('created_at'):
+                    note.created_at = datetime.fromisoformat(note_data['created_at'])
+                db.session.add(note)
+                stats['notes']['added'] += 1
+                
+                db.session.commit()
         
         # Build response message
         message_parts = ['Database imported successfully']
         if stats['staging']['added'] > 0:
-            message_parts.append(f"{stats['staging']['added']} case(s) sent to staging for review (missing critical fields).")
+            staging_msg = f"{stats['staging']['added']} case(s) sent to staging for review (missing critical fields)."
+            if stats['staging']['images_stored'] > 0:
+                staging_msg += f" {stats['staging']['images_stored']} image(s) stored in staging cases."
+            message_parts.append(staging_msg)
+        
+        # Include debug info about image matching in response
+        debug_info = {
+            'total_images_in_backup': len(backup_data.get('case_images', [])),
+            'staging_cases_with_images': stats['staging']['images_stored'],
+            'staging_cases_total': stats['staging']['added'],
+        }
         
         return jsonify({
             'success': True,
             'message': ' '.join(message_parts),
             'stats': stats,
             'staging_count': stats['staging']['added'],
-            'import_batch_id': import_batch_id if stats['staging']['added'] > 0 else None
+            'staging_images_count': stats['staging']['images_stored'],
+            'import_batch_id': import_batch_id if stats['staging']['added'] > 0 else None,
+            'debug': debug_info
         })
         
     except Exception as e:
