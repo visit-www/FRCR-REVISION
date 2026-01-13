@@ -1387,6 +1387,8 @@
                 // Small delay to ensure selection is complete on mobile
                 selectionChangeTimeout = setTimeout(function() {
                     const selection = window.getSelection();
+                    if (!selection) return;
+                    
                     const text = selection.toString().trim();
                     
                     // Only process if there's actual selected text and it's different from last processed
@@ -1395,6 +1397,8 @@
                         if (selection.rangeCount > 0) {
                             try {
                                 const range = selection.getRangeAt(0);
+                                if (!range) return;
+                                
                                 let fieldElement = null;
                                 
                                 // Find the field element from the range
@@ -1414,19 +1418,22 @@
                                     fieldElement.hasAttribute('data-field'))) {
                                     // Prevent double-processing
                                     const currentText = selection.toString().trim();
-                                    const highlightKey = `${currentText}|${selectedHighlightColor}|${fieldElement.dataset?.field || 'discussion'}`;
+                                    const fieldName = fieldElement.dataset?.field || 
+                                        fieldElement.getAttribute('data-field') || 
+                                        currentHighlightField || 'discussion';
+                                    const highlightKey = `${currentText}|${selectedHighlightColor}|${fieldName}`;
                                     
                                     if (currentText && currentText !== selectedText && !processedHighlights.has(highlightKey)) {
                                         selectedText = currentText;
                                         processedHighlights.add(highlightKey);
-                                        const fieldName = fieldElement.dataset?.field || 
-                                            fieldElement.getAttribute('data-field') || 
-                                            currentHighlightField || 'discussion';
+                                        console.log('Creating highlight from selectionchange:', { text: currentText.substring(0, 50), color: selectedHighlightColor, field: fieldName });
                                         createHighlight(currentText, selectedHighlightColor, fieldName);
                                         // Clear selection after a brief moment to show the highlight was created
                                         setTimeout(function() {
-                                            selection.removeAllRanges();
-                                        }, 200);
+                                            if (window.getSelection) {
+                                                window.getSelection().removeAllRanges();
+                                            }
+                                        }, 300);
                                     }
                                 }
                             } catch (err) {
@@ -1719,15 +1726,25 @@
     
     function handleTextSelection(e) {
         // Only process if in highlight mode
-        if (!highlightMode || !selectedHighlightColor) return;
+        if (!highlightMode || !selectedHighlightColor) {
+            return;
+        }
+        
+        // Handle case where e might be undefined (from selectionchange)
+        const event = e || { target: null, type: 'mouseup' };
         
         // Don't process if clicking on floating highlight button or dropdown menu
-        if (e.target && (e.target.closest('.floating-highlight-btn') || e.target.closest('.dropdown-menu'))) return;
+        if (event.target && (event.target.closest('.floating-highlight-btn') || event.target.closest('.dropdown-menu'))) {
+            return;
+        }
         
         // Small delay to ensure selection is complete
-        const delay = e.type === 'touchend' ? 200 : 50;
+        const delay = event.type === 'touchend' ? 200 : 50;
+        
         setTimeout(function() {
             const selection = window.getSelection();
+            if (!selection) return;
+            
             const text = selection.toString().trim();
             
             if (text.length > 0) {
@@ -1735,27 +1752,37 @@
                     if (selection.rangeCount === 0) return;
                     
                     const range = selection.getRangeAt(0);
+                    if (!range) return;
                     
                     // Find the field element - handle both touch and mouse events
                     let fieldElement = null;
-                    if (e.target) {
-                        fieldElement = e.target.closest('.highlightable-text') || e.target.closest('[data-field]');
+                    if (event.target) {
+                        fieldElement = event.target.closest('.highlightable-text') || event.target.closest('[data-field]');
                     }
                     
                     // If not found via event target, try to find from range
                     if (!fieldElement && range) {
                         const container = range.commonAncestorContainer;
-                        fieldElement = container.nodeType === Node.TEXT_NODE 
-                            ? container.parentElement 
-                            : container;
-                        fieldElement = fieldElement.closest('.highlightable-text') || 
-                                     fieldElement.closest('[data-field]') ||
-                                     fieldElement;
+                        if (container) {
+                            fieldElement = container.nodeType === Node.TEXT_NODE 
+                                ? container.parentElement 
+                                : container;
+                            fieldElement = fieldElement.closest('.highlightable-text') || 
+                                         fieldElement.closest('[data-field]') ||
+                                         fieldElement;
+                        }
                     }
                     
-                    const fieldName = fieldElement ? 
-                        (fieldElement.dataset?.field || fieldElement.getAttribute('data-field') || 'discussion') : 
-                        (currentHighlightField || 'discussion');
+                    // Ensure we have a valid field element
+                    if (!fieldElement) {
+                        console.warn('Could not find field element for highlight');
+                        return;
+                    }
+                    
+                    const fieldName = fieldElement.dataset?.field || 
+                                    fieldElement.getAttribute('data-field') || 
+                                    currentHighlightField || 
+                                    'discussion';
                     
                     // Create unique key to prevent duplicates
                     const highlightKey = `${text}|${selectedHighlightColor}|${fieldName}`;
@@ -1765,16 +1792,23 @@
                         processedHighlights.add(highlightKey);
                         selectedText = text;
                         
+                        console.log('Creating highlight:', { text: text.substring(0, 50), color: selectedHighlightColor, field: fieldName });
+                        
                         // Create highlight with selected color
                         createHighlight(text, selectedHighlightColor, fieldName);
                         
                         // Clear selection after a brief moment
                         setTimeout(function() {
-                            selection.removeAllRanges();
-                        }, 100);
+                            if (window.getSelection) {
+                                window.getSelection().removeAllRanges();
+                            }
+                        }, 300); // Increased delay to ensure highlight is visible
                     } else {
+                        console.log('Skipping duplicate highlight');
                         // Already processed, just clear selection
-                        selection.removeAllRanges();
+                        if (window.getSelection) {
+                            window.getSelection().removeAllRanges();
+                        }
                     }
                     
                     // Keep highlight mode active after creating highlight (for quick consecutive highlights)
@@ -1980,7 +2014,25 @@
     }
     
     function createHighlight(text, color, fieldName) {
-        if (!isStudent) return;
+        if (!isStudent) {
+            console.warn('createHighlight called but user is not a student');
+            return;
+        }
+        
+        if (!text || text.trim().length === 0) {
+            console.warn('createHighlight called with empty text');
+            return;
+        }
+        
+        if (!color) {
+            console.warn('createHighlight called without color');
+            return;
+        }
+        
+        if (!caseId) {
+            console.error('createHighlight called but caseId is not defined');
+            return;
+        }
         
         // Create unique key for duplicate checking
         const highlightKey = `${text}|${color}|${fieldName}`;
@@ -1991,6 +2043,8 @@
             return;
         }
         
+        console.log('Sending highlight request:', { caseId, text: text.substring(0, 50), color, fieldName });
+        
         fetch(`/api/case/${caseId}/highlight`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -2000,8 +2054,16 @@
                 field_name: fieldName
             })
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(err => {
+                    throw new Error(err.error || `HTTP ${response.status}`);
+                });
+            }
+            return response.json();
+        })
         .then(data => {
+            console.log('Highlight response:', data);
             if (data.success) {
                 // Mark as processed
                 processedHighlights.add(highlightKey);
@@ -2009,7 +2071,7 @@
                 // Reload highlights to show new one
                 setTimeout(() => {
                     loadHighlights();
-                }, 200);
+                }, 300);
                 
                 // Show brief success feedback with visual animation
                 const feedback = document.getElementById('highlightModeFeedback');
@@ -2035,8 +2097,11 @@
                 // If highlight already exists (backend duplicate), remove from processed set
                 if (data.message && data.message.includes('already exists')) {
                     processedHighlights.delete(highlightKey);
+                    console.log('Highlight already exists on server');
                 } else {
                     console.error('Failed to create highlight:', data.error);
+                    // Remove from processed set so user can retry
+                    processedHighlights.delete(highlightKey);
                 }
             }
         })
@@ -2044,6 +2109,20 @@
             console.error('Error creating highlight:', error);
             // Remove from processed set on error so user can retry
             processedHighlights.delete(highlightKey);
+            // Show error feedback
+            const feedback = document.getElementById('highlightModeFeedback');
+            if (feedback) {
+                const originalHTML = feedback.innerHTML;
+                feedback.innerHTML = `<i class="fas fa-exclamation-triangle me-2"></i>Error: ${error.message}`;
+                feedback.style.background = '#dc3545';
+                setTimeout(() => {
+                    if (feedback && feedback.parentNode) {
+                        const colorName = selectedHighlightColor ? selectedHighlightColor.charAt(0).toUpperCase() + selectedHighlightColor.slice(1) : 'selected';
+                        feedback.innerHTML = `<i class="fas fa-highlighter me-2"></i>Highlight mode: ${colorName} - Select text to highlight`;
+                        feedback.style.background = '#667eea';
+                    }
+                }, 2000);
+            }
         });
     }
     
