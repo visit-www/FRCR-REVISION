@@ -1275,6 +1275,7 @@
     let highlightActionMenu = null;
     let currentSelectionRange = null;
     let currentSelectionField = null;
+    let currentSelectionText = null; // Store text immediately to avoid mobile Safari selection clearing
     let processedHighlights = new Set(); // Track processed highlights to prevent duplicates
     
     // Initialize new selection-based highlighting system
@@ -1401,9 +1402,10 @@
                          fieldElement.getAttribute('data-field') || 
                          'discussion';
         
-        // Store selection info
+        // Store selection info immediately (critical for mobile Safari)
         currentSelectionRange = range.cloneRange();
         currentSelectionField = fieldName;
+        currentSelectionText = text; // Store text immediately - mobile Safari clears selection on tap
         
         // Get position for menu (use selection end or event position)
         let menuX, menuY;
@@ -1490,7 +1492,18 @@
             min-width: 260px;
             animation: slideDown 0.2s ease-out;
             touch-action: manipulation;
+            -webkit-user-select: none;
+            user-select: none;
         `;
+        
+        // Prevent menu from clearing selection when touched (mobile Safari fix)
+        highlightActionMenu.addEventListener('touchstart', function(e) {
+            e.stopPropagation();
+        }, { passive: true });
+        
+        highlightActionMenu.addEventListener('touchend', function(e) {
+            e.stopPropagation();
+        }, { passive: true });
         
         // Add animation keyframes if not already added
         if (!document.getElementById('highlightMenuStyles')) {
@@ -1545,11 +1558,34 @@
             gap: 8px;
         `;
         highlightBtn.innerHTML = `<i class="fas fa-highlighter"></i> Highlight`;
-        highlightBtn.onclick = function() {
+        
+        // Handle both click and touch events for mobile compatibility
+        const handleHighlightClick = function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+            
             highlightBtn.disabled = true;
             highlightBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Highlighting...';
-            createHighlightFromSelection(currentHighlightColor);
+            
+            // Use stored text and field - mobile Safari clears selection on tap
+            if (currentSelectionText && currentSelectionField) {
+                console.log('[HIGHLIGHT] Creating highlight with stored text:', {
+                    text: currentSelectionText.substring(0, 50),
+                    color: currentHighlightColor,
+                    field: currentSelectionField
+                });
+                createHighlight(currentSelectionText, currentHighlightColor, currentSelectionField);
+                hideHighlightMenu();
+            } else {
+                console.warn('[HIGHLIGHT] No stored text, trying fallback');
+                // Fallback: try to get from selection
+                createHighlightFromSelection(currentHighlightColor);
+            }
         };
+        
+        highlightBtn.addEventListener('click', handleHighlightClick, { passive: false });
+        highlightBtn.addEventListener('touchend', handleHighlightClick, { passive: false });
         highlightActionMenu.appendChild(highlightBtn);
         
         // Color picker row
@@ -1637,35 +1673,38 @@
         }
         currentSelectionRange = null;
         currentSelectionField = null;
+        currentSelectionText = null;
         
-        // Clear selection
-        const selection = window.getSelection();
-        if (selection) {
-            selection.removeAllRanges();
-        }
+        // Clear selection (but only after a delay on mobile to allow highlight to process)
+        setTimeout(() => {
+            const selection = window.getSelection();
+            if (selection) {
+                selection.removeAllRanges();
+            }
+        }, 100);
     }
     
-    // Create highlight from current selection
+    // Create highlight from current selection (fallback method)
     function createHighlightFromSelection(color) {
-        if (!currentSelectionRange || !currentSelectionField) {
-            console.warn('No selection range available');
+        // First try stored text (works on mobile)
+        if (currentSelectionText && currentSelectionField) {
+            createHighlight(currentSelectionText, color, currentSelectionField);
             hideHighlightMenu();
             return;
         }
         
+        // Fallback: try to get from current selection (desktop)
         const selection = window.getSelection();
-        if (!selection || selection.rangeCount === 0) {
-            hideHighlightMenu();
-            return;
+        if (selection && selection.rangeCount > 0) {
+            const text = selection.toString().trim();
+            if (text && currentSelectionField) {
+                createHighlight(text, color, currentSelectionField);
+                hideHighlightMenu();
+                return;
+            }
         }
         
-        const text = selection.toString().trim();
-        if (!text) {
-            hideHighlightMenu();
-            return;
-        }
-        
-        createHighlight(text, color, currentSelectionField);
+        console.warn('No selection available for highlighting');
         hideHighlightMenu();
     }
     
@@ -1699,7 +1738,13 @@
             return;
         }
         
-        console.log('Sending highlight request:', { caseId, text: text.substring(0, 50), color, fieldName });
+        console.log('[HIGHLIGHT] Sending highlight request:', { 
+            caseId, 
+            text: text.substring(0, 50), 
+            color, 
+            fieldName,
+            textLength: text.length
+        });
         
         fetch(`/api/case/${caseId}/highlight`, {
             method: 'POST',
@@ -1711,15 +1756,17 @@
             })
         })
         .then(response => {
+            console.log('[HIGHLIGHT] Response status:', response.status, response.statusText);
             if (!response.ok) {
                 return response.json().then(err => {
+                    console.error('[HIGHLIGHT] API error:', err);
                     throw new Error(err.error || `HTTP ${response.status}`);
                 });
             }
             return response.json();
         })
         .then(data => {
-            console.log('Highlight response:', data);
+            console.log('[HIGHLIGHT] Response data:', data);
             if (data.success) {
                 // Mark as processed
                 processedHighlights.add(highlightKey);
@@ -1732,18 +1779,20 @@
                 // If highlight already exists (backend duplicate), remove from processed set
                 if (data.message && data.message.includes('already exists')) {
                     processedHighlights.delete(highlightKey);
-                    console.log('Highlight already exists on server');
+                    console.log('[HIGHLIGHT] Highlight already exists on server');
                 } else {
-                    console.error('Failed to create highlight:', data.error);
+                    console.error('[HIGHLIGHT] Failed to create highlight:', data.error);
                     // Remove from processed set so user can retry
                     processedHighlights.delete(highlightKey);
                 }
             }
         })
         .catch(error => {
-            console.error('Error creating highlight:', error);
+            console.error('[HIGHLIGHT] Error creating highlight:', error);
             // Remove from processed set on error so user can retry
             processedHighlights.delete(highlightKey);
+            // Show user-friendly error
+            alert('Failed to create highlight: ' + error.message);
         });
     }
     
