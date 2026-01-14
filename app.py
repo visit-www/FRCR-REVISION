@@ -1124,7 +1124,10 @@ def cases_by_module(module):
     else:
         # Admins/Content Managers: prepare case data for admin template
         for case in cases:
-            has_notes = CandidateNote.query.filter_by(case_id=case.id, user_id=current_user.id).first() is not None
+            has_notes = CandidateNote.query.filter_by(
+                case_id=case.id,
+                user_id=current_user.id
+            ).first() is not None
             cases_data.append({
                 'id': case.id,
                 'diagnosis': case.diagnosis,
@@ -1153,14 +1156,14 @@ def cases_by_module(module):
                              search_query=search_query)
     else:
         return render_template('cases_list.html',
-                         cases=cases_data,
-                         module_filter=module_enum.value,
-                         body_parts=body_parts,
-                         body_part_selected=body_part_filter,
-                             age_groups=age_groups,
-                             age_group_selected=age_group_filter,
-                             all_modules=all_modules,
-                         search_query=search_query)
+                               cases=cases_data,
+                               module_filter=module_enum.value,
+                               body_parts=body_parts,
+                               body_part_selected=body_part_filter,
+                               age_groups=age_groups,
+                               age_group_selected=age_group_filter,
+                               all_modules=all_modules,
+                               search_query=search_query)
 
 
 @app.route('/cases')
@@ -2060,7 +2063,7 @@ def delete_case(case_id):
         # Delete the case
         db.session.delete(case)
         db.session.commit()
-    
+        
         return jsonify({
             'success': True,
             'message': 'Case deleted successfully'

@@ -324,7 +324,7 @@
             if (hours < 24) return `${formatted} (${hours} hours ago)`;
             const days = Math.floor(hours / 24);
             return `${formatted} (${days} days ago)`;
-        }
+                        }
         return formatted;
     }
 
@@ -344,8 +344,8 @@
             if (!response.ok) {
                 const error = await response.json();
                 throw new Error(error.error || 'Download failed');
-            }
-            
+    }
+
             const contentDisposition = response.headers.get('Content-Disposition');
             let filename = 'backup.json';
             if (contentDisposition) {
@@ -379,7 +379,7 @@
         } finally {
             btn.disabled = false;
             btn.innerHTML = '<i class="fas fa-download"></i> Download Backup';
-        }
+    }
     }
 
     async function restoreBackup(event) {
@@ -395,8 +395,8 @@
                 statusDiv.innerHTML = '<div class="alert alert-danger">Please select a backup file</div>';
             }
             return;
-        }
-        
+    }
+
         if (!confirmCheck || !confirmCheck.checked) {
             if (statusDiv) {
                 statusDiv.innerHTML = '<div class="alert alert-danger">Please confirm the import</div>';

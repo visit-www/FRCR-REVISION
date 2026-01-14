@@ -104,25 +104,25 @@
 
         {% if case %}
         <div class="case-card mb-4 card border-0 shadow-lg">
-            <div class="case-card-header py-4 px-4 px-md-5" style="background: linear-gradient(90deg, #E8744F 0%, #F4A261 100%);" >
+            <div class="case-card-header py-4 px-4 px-md-5">
                 <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
                     <div>
-                        <h3 class="mb-2 fw-bold text-white" style="font-size: 2rem; letter-spacing: -0.5px;">Case #{{ case.id }}</h3>
+                        <h3 class="mb-2 fw-bold text-white">Case #{{ case.id }}</h3>
                         {% if case.module %}
-                        <p class="mb-0 fs-6 text-white opacity-90">
+                        <p class="mb-0 text-white">
                             <i class="fas fa-layer-group me-2"></i>{{ case.module.value }}
                             {% if case.body_part %} • {{ case.body_part.value }}{% endif %}
                         </p>
                         {% endif %}
                     </div>
                     <div class="text-end">
-                        <span class="badge bg-light text-dark px-3 py-2">
+                        <span class="badge bg-white px-3 py-2 shadow-sm" style="color: #5E899E;">
                             <i class="fas fa-images me-1"></i>{{ case.images|length }} Images
                         </span>
                     </div>
                 </div>
             </div>
-            <div class="card-body p-4 p-md-5" style="background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);">
+            <div class="card-body p-4 p-md-5" style="background: #ffffff;">
 
                 <!-- Case Details - Responsive Layout -->
                 <div class="case-details">
@@ -140,8 +140,8 @@
                     </div>
 
                     <!-- Question & Answer Section - Separate Pairs -->
-                    <div class="detail-section qa-section mb-5">
-                        <label class="section-title fw-bold mb-4 d-block"><i class="fas fa-comments me-2" style="color: #ADD8E6;"></i>Questions & Answers</label>
+                    <div class="detail-section qa-section mb-5 p-4 rounded-3" style="background: #f8f9fa;">
+                        <label class="section-title fw-bold mb-4 d-block"><i class="fas fa-comments me-2" style="color: #5E899E;"></i>Questions & Answers</label>
                         <div id="qaContainer" class="detail-content discussion-text highlightable-text">
                             <!-- Q&A pairs loaded by JavaScript -->
                         </div>
@@ -968,7 +968,10 @@
                 
                 // Reload highlights to apply to newly loaded Q&A
                 if (isStudent && typeof loadHighlights === 'function') {
-                    setTimeout(loadHighlights, 100);
+                    // Reload highlights after Q&A content is rendered (important for mobile)
+                    setTimeout(loadHighlights, 300);
+                    // Also retry after a longer delay in case content takes time to render on mobile
+                    setTimeout(loadHighlights, 1500);
                 }
             })
             .catch(error => {
@@ -1437,15 +1440,25 @@
     function loadHighlights() {
         if (!isStudent) return;
         
+        console.log('[HIGHLIGHT] Loading highlights for case:', caseId);
+        
         fetch(`/api/case/${caseId}/highlights`)
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                return response.json();
+            })
             .then(data => {
-                if (data.highlights) {
+                console.log('[HIGHLIGHT] Received highlights:', data.highlights ? data.highlights.length : 0);
+                if (data.highlights && data.highlights.length > 0) {
                     renderHighlights(data.highlights);
+                } else {
+                    console.log('[HIGHLIGHT] No highlights to render');
                 }
             })
             .catch(error => {
-                console.error('Error loading highlights:', error);
+                console.error('[HIGHLIGHT] Error loading highlights:', error);
             });
     }
     
@@ -1559,33 +1572,53 @@
         `;
         highlightBtn.innerHTML = `<i class="fas fa-highlighter"></i> Highlight`;
         
-        // Handle both click and touch events for mobile compatibility
-        const handleHighlightClick = function(e) {
+        // Store text and field in data attributes (more reliable than variables on mobile)
+        highlightBtn.setAttribute('data-highlight-text', selectedText);
+        highlightBtn.setAttribute('data-highlight-field', fieldName);
+        highlightBtn.setAttribute('data-highlight-color', currentHighlightColor);
+        
+        // Handle both mousedown and touchstart (before selection clears)
+        const handleHighlightAction = function(e) {
             e.preventDefault();
             e.stopPropagation();
             e.stopImmediatePropagation();
             
+            // Get text from data attribute (most reliable on mobile)
+            const storedText = highlightBtn.getAttribute('data-highlight-text');
+            const storedField = highlightBtn.getAttribute('data-highlight-field');
+            const storedColor = highlightBtn.getAttribute('data-highlight-color') || currentHighlightColor;
+            
+            if (!storedText || !storedField) {
+                console.error('[HIGHLIGHT] Missing stored text or field:', { storedText, storedField });
+                // Fallback to variable storage
+                if (currentSelectionText && currentSelectionField) {
+                    createHighlight(currentSelectionText, storedColor, currentSelectionField);
+                    hideHighlightMenu();
+                } else {
+                    console.error('[HIGHLIGHT] No text available for highlighting');
+                    alert('Unable to highlight: selection was lost. Please try selecting the text again.');
+                    hideHighlightMenu();
+                }
+                return;
+            }
+            
             highlightBtn.disabled = true;
             highlightBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Highlighting...';
             
-            // Use stored text and field - mobile Safari clears selection on tap
-            if (currentSelectionText && currentSelectionField) {
-                console.log('[HIGHLIGHT] Creating highlight with stored text:', {
-                    text: currentSelectionText.substring(0, 50),
-                    color: currentHighlightColor,
-                    field: currentSelectionField
-                });
-                createHighlight(currentSelectionText, currentHighlightColor, currentSelectionField);
-                hideHighlightMenu();
-            } else {
-                console.warn('[HIGHLIGHT] No stored text, trying fallback');
-                // Fallback: try to get from selection
-                createHighlightFromSelection(currentHighlightColor);
-            }
+            console.log('[HIGHLIGHT] Creating highlight with stored data:', {
+                text: storedText.substring(0, 50),
+                color: storedColor,
+                field: storedField,
+                textLength: storedText.length
+            });
+            
+            createHighlight(storedText, storedColor, storedField);
+            hideHighlightMenu();
         };
         
-        highlightBtn.addEventListener('click', handleHighlightClick, { passive: false });
-        highlightBtn.addEventListener('touchend', handleHighlightClick, { passive: false });
+        // Use mousedown/touchstart to capture before selection clears (critical for mobile)
+        highlightBtn.addEventListener('mousedown', handleHighlightAction, { passive: false });
+        highlightBtn.addEventListener('touchstart', handleHighlightAction, { passive: false });
         highlightActionMenu.appendChild(highlightBtn);
         
         // Color picker row
@@ -1797,14 +1830,31 @@
     }
     
     function renderHighlights(highlights) {
+        if (!highlights || highlights.length === 0) {
+            console.log('[HIGHLIGHT] No highlights to render');
+            return;
+        }
+        
+        console.log('[HIGHLIGHT] Rendering', highlights.length, 'highlights');
+        
         // Remove existing highlights (preserve text)
         document.querySelectorAll('.text-highlight').forEach(function(el) {
             const text = el.textContent;
             el.outerHTML = text;
         });
         
+        // Normalize text for comparison (handles whitespace differences on mobile)
+        function normalizeText(text) {
+            return text.replace(/\s+/g, ' ').trim();
+        }
+        
         // Apply highlights to each field
         highlights.forEach(function(highlight) {
+            if (!highlight.text_content || !highlight.field_name) {
+                console.warn('[HIGHLIGHT] Skipping invalid highlight:', highlight);
+                return;
+            }
+            
             let fieldElement = document.querySelector(`[data-field="${highlight.field_name}"]`);
             
             // Fallback for discussion and diagnosis
@@ -1821,43 +1871,76 @@
                 const qaElements = document.querySelectorAll('.qa-question');
                 // Try to find matching question element
                 qaElements.forEach(function(el) {
-                    if (el.textContent.includes(highlight.text_content) && !el.querySelector('.text-highlight')) {
+                    const elText = normalizeText(el.textContent || '');
+                    const highlightText = normalizeText(highlight.text_content);
+                    if (elText.includes(highlightText) && !el.querySelector('.text-highlight')) {
                         fieldElement = el;
                     }
                 });
             } else if (!fieldElement && highlight.field_name.startsWith('answer_')) {
                 const qaElements = document.querySelectorAll('.qa-answer');
                 qaElements.forEach(function(el) {
-                    if (el.textContent.includes(highlight.text_content) && !el.querySelector('.text-highlight')) {
+                    const elText = normalizeText(el.textContent || '');
+                    const highlightText = normalizeText(highlight.text_content);
+                    if (elText.includes(highlightText) && !el.querySelector('.text-highlight')) {
                         fieldElement = el;
                     }
                 });
             }
             
-            if (fieldElement && fieldElement.textContent.includes(highlight.text_content)) {
-                const colorMap = {
-                    'yellow': '#FFEB3B',
-                    'green': '#4CAF50',
-                    'pink': '#E91E63',
-                    'blue': '#2196F3'
-                };
-                
-                // Use textContent for matching, then apply to innerHTML to preserve formatting
-                const textContent = fieldElement.textContent || fieldElement.innerText;
-                if (textContent.includes(highlight.text_content)) {
-                    const regex = new RegExp(escapeRegex(highlight.text_content), 'gi');
-                    const html = fieldElement.innerHTML;
-                    // Only replace if not already highlighted
-                    if (!html.includes(`data-highlight-id="${highlight.id}"`)) {
-                        const highlighted = html.replace(regex, function(match) {
-                            const color = colorMap[highlight.highlight_color] || '#FFEB3B';
-                            return `<mark class="text-highlight" data-highlight-id="${highlight.id}" style="background-color: ${color}; cursor: pointer; padding: 2px 4px; border-radius: 3px; transition: all 0.2s;" onmouseover="this.style.boxShadow='0 2px 4px rgba(0,0,0,0.2)'; this.style.opacity='0.9';" onmouseout="this.style.boxShadow='none'; this.style.opacity='1';" onclick="deleteHighlight(${highlight.id}); event.stopPropagation();" title="Click to remove highlight"><span style="position: relative;">${match}<i class="fas fa-times" style="font-size: 0.7em; margin-left: 4px; opacity: 0.6;"></i></span></mark>`;
-                        });
-                        fieldElement.innerHTML = highlighted;
-                    }
-                }
+            if (!fieldElement) {
+                console.warn('[HIGHLIGHT] Field element not found for:', highlight.field_name);
+                return;
+            }
+            
+            // Get text content and normalize for comparison
+            const textContent = fieldElement.textContent || fieldElement.innerText || '';
+            const normalizedTextContent = normalizeText(textContent);
+            const normalizedHighlightText = normalizeText(highlight.text_content);
+            
+            if (!normalizedTextContent.includes(normalizedHighlightText)) {
+                console.warn('[HIGHLIGHT] Text not found in field:', {
+                    field: highlight.field_name,
+                    lookingFor: normalizedHighlightText.substring(0, 50),
+                    fieldText: normalizedTextContent.substring(0, 100)
+                });
+                return;
+            }
+            
+            // Check if already highlighted
+            const html = fieldElement.innerHTML;
+            if (html.includes(`data-highlight-id="${highlight.id}"`)) {
+                console.log('[HIGHLIGHT] Already highlighted:', highlight.id);
+                return;
+            }
+            
+            const colorMap = {
+                'yellow': '#FFEB3B',
+                'green': '#4CAF50',
+                'pink': '#E91E63',
+                'blue': '#2196F3'
+            };
+            
+            // Escape the highlight text for regex, but make it more flexible for whitespace
+            const escapedText = escapeRegex(highlight.text_content);
+            // Create regex that's flexible with whitespace (handles mobile Safari differences)
+            const flexibleRegex = new RegExp(escapedText.replace(/\s+/g, '\\s+'), 'gi');
+            
+            // Try to replace
+            const highlighted = html.replace(flexibleRegex, function(match) {
+                const color = colorMap[highlight.highlight_color] || '#FFEB3B';
+                return `<mark class="text-highlight" data-highlight-id="${highlight.id}" style="background-color: ${color}; cursor: pointer; padding: 2px 4px; border-radius: 3px; transition: all 0.2s;" onmouseover="this.style.boxShadow='0 2px 4px rgba(0,0,0,0.2)'; this.style.opacity='0.9';" onmouseout="this.style.boxShadow='none'; this.style.opacity='1';" onclick="deleteHighlight(${highlight.id}); event.stopPropagation();" title="Click to remove highlight"><span style="position: relative;">${match}<i class="fas fa-times" style="font-size: 0.7em; margin-left: 4px; opacity: 0.6;"></i></span></mark>`;
+            });
+            
+            if (highlighted !== html) {
+                fieldElement.innerHTML = highlighted;
+                console.log('[HIGHLIGHT] Successfully rendered highlight:', highlight.id);
+            } else {
+                console.warn('[HIGHLIGHT] Regex did not match for highlight:', highlight.id);
             }
         });
+        
+        console.log('[HIGHLIGHT] Finished rendering highlights');
     }
     
     function deleteHighlight(highlightId) {

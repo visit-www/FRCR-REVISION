@@ -223,17 +223,19 @@
     }
     
     .mobile-breadcrumb-nav .breadcrumb-item a {
-        color: rgba(255, 255, 255, 0.9);
+        color: #ffffff;
         text-decoration: none;
         transition: color 0.2s;
+        font-weight: 500;
     }
     
     .mobile-breadcrumb-nav .breadcrumb-item a:hover {
-        color: rgba(255, 255, 255, 1);
+        color: var(--brand-secondary);
     }
     
     .mobile-breadcrumb-nav .breadcrumb-item.active {
-        color: rgba(255, 255, 255, 0.9);
+        color: var(--brand-secondary);
+        font-weight: 700;
     }
     
     .mobile-breadcrumb-nav .breadcrumb-item + .breadcrumb-item::before {
@@ -326,6 +328,181 @@
     --danger-color: #e89580;            /* Soft alert (legacy) */
     --warning-color: #f9e5a8;           /* Gentle warning (legacy) */
     --light-bg: #fdfdfb;                /* Clinical background (legacy) */
+    
+    /* === BRAND COLOR SYSTEM (Standardized) === */
+    --brand-primary: #e96304;           /* Peachy Orange - Primary brand accent */
+    --brand-secondary: #ffc107;         /* Bootstrap Warning Yellow - Secondary accent */
+    --brand-success: #a8d5ba;           /* Soft Green - Success/Calm */
+    --brand-neutral: #5E899E;           /* Teal-blue - Neutral actions (matches navbar/footer) */
+    --brand-text-primary: #2c3e50;      /* Dark Slate - Primary text */
+    --brand-text-secondary: #5a6270;    /* Muted Slate - Secondary text */
+    --brand-bg-white: #ffffff;          /* White - Card backgrounds */
+    --brand-bg-offwhite: #fdfdfb;       /* Off-white - Body background */
+}
+
+/* ==================== BRAND UTILITY CLASSES ==================== */
+/* Custom brand classes - DO NOT modify Bootstrap classes */
+
+/* Brand Button Classes */
+.btn-brand-primary {
+    background-color: var(--brand-primary);
+    color: #ffffff;
+    border: none;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.btn-brand-primary:hover {
+    background-color: #c75002;
+    color: #ffffff;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(233, 99, 4, 0.3);
+}
+
+.btn-brand-secondary {
+    background-color: var(--brand-secondary);
+    color: #000000;
+    border: none;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.btn-brand-secondary:hover {
+    background-color: #ffb302;
+    color: #000000;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(255, 193, 7, 0.3);
+}
+
+.btn-brand-success {
+    background-color: var(--brand-success);
+    color: var(--brand-text-primary);
+    border: none;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.btn-brand-success:hover {
+    background-color: var(--deep-green);
+    color: var(--brand-text-primary);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(168, 213, 186, 0.3);
+}
+
+.btn-brand-neutral {
+    background-color: var(--brand-neutral);
+    color: #ffffff;
+    border: none;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.btn-brand-neutral:hover {
+    background-color: #4A6F7F;
+    color: #ffffff;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(94, 137, 158, 0.3);
+}
+
+/* Brand Text Color Classes */
+.text-brand-primary {
+    color: var(--brand-primary) !important;
+}
+
+.text-brand-secondary {
+    color: var(--brand-secondary) !important;
+}
+
+.text-brand-success {
+    color: var(--brand-success) !important;
+}
+
+.text-brand-white {
+    color: #ffffff !important;
+}
+
+/* Brand Background Classes */
+.bg-brand-primary {
+    background-color: var(--brand-primary) !important;
+    color: #ffffff !important;
+}
+
+.bg-brand-secondary {
+    background-color: var(--brand-secondary) !important;
+    color: #000000 !important;
+}
+
+.bg-brand-success {
+    background-color: var(--brand-success) !important;
+    color: var(--brand-text-primary) !important;
+}
+
+/* Standardized Card Classes */
+.card-brand {
+    background-color: var(--brand-bg-white);
+    border: 1px solid #e0e0e0;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s ease;
+}
+
+.card-brand:hover {
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    transform: translateY(-4px);
+    border-color: var(--brand-success);
+}
+
+.card-brand-header {
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid #f0f0f0;
+    background: linear-gradient(135deg, #fdfdfb 0%, #f8f8f6 100%);
+}
+
+.card-brand-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--brand-text-primary);
+    margin-bottom: 0.5rem;
+}
+
+.card-brand-body {
+    padding: 1.5rem;
+}
+
+/* Standardized Typography Classes */
+.text-page-title {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--brand-text-primary);
+    line-height: 1.2;
+}
+
+.text-section-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--brand-text-primary);
+    line-height: 1.3;
+}
+
+.text-card-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--brand-text-primary);
+    line-height: 1.4;
+}
+
+.text-body-standard {
+    font-size: 1rem;
+    font-weight: 400;
+    color: var(--brand-text-primary);
+    line-height: 1.6;
+}
+
+.text-small-standard {
+    font-size: 0.875rem;
+    font-weight: 400;
+    color: var(--brand-text-secondary);
+    line-height: 1.5;
 }
 
 body {
@@ -364,7 +541,7 @@ body {
 /* Navigation Bar - Confident Calm Theme */
 .navbar {
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
-    background: linear-gradient(135deg, #2c2c2c 0%, #1a1a1a 100%) !important;
+    background: linear-gradient(360deg, #5E899E 0%, #4A6F7F 100%) !important;
     padding: 1rem 0;
 }
 
@@ -423,24 +600,24 @@ body {
 }
 
 .breadcrumb-custom .breadcrumb-item a {
-    color: #ffc107;
+    color: #e96304;
     text-decoration: none;
     transition: color 0.2s ease;
-    font-weight: 500;
+    font-weight: 600;
 }
 
 .breadcrumb-custom .breadcrumb-item a:hover {
-    color: #ffb302;
+    color: #c75002;
     text-decoration: underline;
 }
 
 .breadcrumb-custom .breadcrumb-item.active {
-    color: #5a6270;
-    font-weight: 600;
+    color: var(--brand-text-primary);
+    font-weight: 700;
 }
 
 .breadcrumb-custom i {
-    color: #a8d5ba;
+    color: #e96304;
 }
 
 /* Quick Navigation Group */
@@ -488,7 +665,7 @@ body {
     align-items: center;
     justify-content: center;
     overflow: hidden;
-    margin-bottom: 3rem;
+    margin-bottom: 2rem;
 }
 
 .hero-overlay {
@@ -497,43 +674,7 @@ body {
     left: 0;
     right: 0;
     bottom: 0;
-    background: 
-        radial-gradient(circle at 20% 30%, 
-            rgba(255, 165, 0, 0.6) 0%,
-            rgba(255, 140, 0, 0.4) 12%,
-            transparent 25%
-        ),
-        radial-gradient(circle at 75% 25%, 
-            rgba(255, 193, 7, 0.55) 0%,
-            rgba(255, 165, 0, 0.35) 15%,
-            transparent 28%
-        ),
-        radial-gradient(circle at 85% 70%, 
-            rgba(233, 99, 4, 0.58) 0%,
-            rgba(179, 65, 0, 0.38) 14%,
-            transparent 26%
-        ),
-        radial-gradient(circle at 15% 75%, 
-            rgba(223, 140, 37, 0.52) 0%,
-            rgba(255, 100, 0, 0.32) 13%,
-            transparent 24%
-        ),
-        radial-gradient(circle at 50% 50%, 
-            rgba(255, 193, 7, 0.35) 0%,
-            rgba(255, 165, 0, 0.22) 20%,
-            rgba(204, 85, 0, 0.15) 40%,
-            transparent 60%
-        ),
-        radial-gradient(circle at 65% 45%, 
-            rgba(255, 100, 0, 0.5) 0%,
-            rgba(179, 65, 0, 0.3) 12%,
-            transparent 22%
-        ),
-        radial-gradient(circle at 35% 55%, 
-            rgba(255, 140, 0, 0.48) 0%,
-            rgba(204, 85, 0, 0.28) 11%,
-            transparent 20%
-        );
+    background:#fdfdfb !important;
     animation: slideBackground 15s ease infinite;
 }
 
@@ -568,8 +709,8 @@ body {
 
 .hero-subtitle {
     font-size: 1.5rem;
-    font-weight: 300;
-    color: #4a4a4a;
+    font-weight: 400;
+    color: var(--brand-primary);
     text-shadow: 1px 1px 4px rgba(255, 140, 0, 0.25);
     margin: 0;
 }
@@ -592,38 +733,33 @@ body {
 
 /* Footer */
 .footer {
-    background: linear-gradient(135deg, #2c2c2c 0%, #1a1a1a 100%);
+    background: linear-gradient(180deg, #5E899E 0%, #4A6F7F 100%) !important;
     color: white;
     margin-top: auto;
 }
 
-.footer-content {
-    background-color: #1a1a1a;
-    border-top: 3px solid #ffc107;
-}
-
 .footer-title {
     font-weight: 700;
-    color: #9ca3af;
+    color: var(--brand-secondary);
     font-size: 1.1rem;
     letter-spacing: 0.5px;
 }
 
 .footer-text {
-    color: #d1d5db;
+    color: #ffffff;
     line-height: 1.6;
     margin: 0;
 }
 
 .footer-link {
-    color: #9ca3af;
+    color: var(--brand-secondary);
     text-decoration: none;
     font-weight: 500;
     transition: color 0.3s ease;
 }
 
 .footer-link:hover {
-    color: #a8d5ba;
+    color: #ffffff;
     text-decoration: underline;
 }
 
@@ -633,7 +769,7 @@ body {
 }
 
 .footer-copyright {
-    color: #9ca3af;
+    color: #ffffff;
     margin: 0;
 }
 
@@ -852,20 +988,12 @@ textarea.form-control {
     }
 }
 
-.btn-primary {
-    background-color: #a8d5ba;
-    color: white;
-}
 
 .btn-primary:hover {
     background-color: #8bc9a3;
     color: white;
 }
 
-.btn-success {
-    background-color: #8bc9a3;
-    color: white;
-}
 
 .btn-success:hover {
     background-color: #73b88e;
@@ -893,12 +1021,12 @@ textarea.form-control {
 }
 
 .btn-danger {
-    background-color: #dc3545;
+    background-color: #e96304;
     color: white;
 }
 
 .btn-danger:hover {
-    background-color: #bb2d3b;
+    background-color: #e96304a3;
     color: white;
 }
 
@@ -1011,6 +1139,9 @@ table tbody tr:hover {
 
 .bg-primary {
     background: linear-gradient(135deg, #a8d5ba 0%, #8bc9a3 100%) !important;
+}
+.bg-dark-green{
+    background: #3d6a07;
 }
 
 .bg-success {
@@ -1368,7 +1499,7 @@ pre {
     }
 
     .footer-content {
-        padding: 1.5rem 0 !important;
+        padding: 1rem 0 !important;
     }
 
     .footer-title {
@@ -1574,7 +1705,7 @@ pre {
 }
 
 .case-card-header {
-    background: linear-gradient(135deg, #a8d5a8 0%, #8bb8d9 100%) !important;
+    background: linear-gradient(135deg, #5E899E 0%, #4A6F7F 100%) !important;
     border-radius: 12px 12px 0 0 !important;
     padding: 2.5rem !important;
     position: relative;
@@ -1595,19 +1726,22 @@ pre {
 
 .case-card-header h3 {
     color: white !important;
-    font-size: 2.2rem !important;
+    font-size: 2rem !important;
     font-weight: 800 !important;
-    letter-spacing: -0.8px;
+    letter-spacing: -0.5px;
     margin-bottom: 0.5rem !important;
     position: relative;
     z-index: 1;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .case-card-header p {
-    color: rgba(255,255,255,0.9) !important;
+    color: #ffffff !important;
     font-size: 1rem !important;
+    font-weight: 500 !important;
     position: relative;
     z-index: 1;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
 }
 
 .case-card-header .text-end {
@@ -2680,8 +2814,8 @@ pre {
 }
 
 .admin-dashboard-container .breadcrumb-item.active {
-    color: #5a6270;
-    font-weight: 600;
+    color: var(--brand-text-primary);
+    font-weight: 700;
 }
 
 /* Admin Title & Heading */
@@ -3337,6 +3471,7 @@ pre {
   font-weight: 700;
   background: linear-gradient(135deg, #ffdf85, #f2b705, #d49a00);
   -webkit-background-clip: text;
+  background-clip: text;
   margin-inline-end:2px;
   -webkit-text-fill-color: transparent;
 }
