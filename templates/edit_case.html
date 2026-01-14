@@ -424,9 +424,6 @@ console.log('[TinyMCE Loader] Script URL was:', "{{ url_for('static', filename='
         background-color: #ffffff !important;
     }
 
-    .rich-editor {
-        /* display: none;  Removed to ensure textarea is visible before TinyMCE loads */
-    }
 
     /* Responsive adjustments */
     @media (max-width: 768px) {
@@ -760,60 +757,70 @@ function loadCaseForEdit(caseId) {
             document.getElementById('editCaseAgeGroup').value = caseData.age_group || '';
         }
         
-        // Format Q&A pairs for populateQAPairs function
-        // The function expects: { questions: [{question_text: ...}], answers: [{answer_text: ...}] }
-        const formattedQAData = {
-            questions: qaPairs.map(pair => ({
-                question_text: pair.question ? pair.question.text : ''
-            })),
-            answers: qaPairs.map(pair => ({
-                answer_text: pair.answer ? pair.answer.text : ''
-            }))
-        };
-        
+        // Populate Q&A pairs directly using addQAPairRow
         // Wait for functions to be available, then populate Q&A
         function populateQADataWithRetry(retries = 0) {
-            if (retries > 20) {
-                console.error('populateQAPairs function not available after retries');
-                // Fallback: manually populate Q&A pairs
-                const container = document.getElementById('qaPairsContainer');
-                if (container && qaPairs.length > 0) {
-                    container.innerHTML = '';
-                    qaPairs.forEach(pair => {
-                        if (typeof addQAPairRow === 'function') {
-                            addQAPairRow(
-                                pair.question ? pair.question.text : '',
-                                pair.answer ? pair.answer.text : ''
-                            );
-                        }
-                    });
+            const container = document.getElementById('qaPairsContainer');
+            if (!container) {
+                if (retries < 30) {
+                    setTimeout(() => populateQADataWithRetry(retries + 1), 100);
+                } else {
+                    console.error('qaPairsContainer not found after retries');
                 }
                 return;
             }
             
-            if (typeof populateQAPairs === 'function') {
-                populateQAPairs(formattedQAData);
-            } else if (typeof addQAPairRow === 'function' && qaPairs.length > 0) {
-                // Fallback: manually populate Q&A pairs
-                const container = document.getElementById('qaPairsContainer');
-                if (container) {
-                    container.innerHTML = '';
-                    qaPairs.forEach(pair => {
-                        addQAPairRow(
-                            pair.question ? pair.question.text : '',
-                            pair.answer ? pair.answer.text : ''
-                        );
+            // Check if addQAPairRow is available (from edit-case-modal.js)
+            // Check both local scope and window object
+            const addQAPairRowFn = window.addQAPairRow || (typeof addQAPairRow !== 'undefined' ? addQAPairRow : null);
+            
+            if (typeof addQAPairRowFn === 'function') {
+                // Clear container first
+                container.innerHTML = '';
+                
+                // Populate Q&A pairs
+                if (qaPairs && qaPairs.length > 0) {
+                    console.log(`[Q&A Loader] Loading ${qaPairs.length} Q&A pairs`);
+                    qaPairs.forEach((pair, index) => {
+                        const questionText = pair.question ? (pair.question.text || pair.question.question_text || '') : '';
+                        const answerText = pair.answer ? (pair.answer.text || pair.answer.answer_text || '') : '';
+                        console.log(`[Q&A Loader] Pair ${index + 1}: Q="${questionText.substring(0, 50)}..." A="${answerText.substring(0, 50)}..."`);
+                        addQAPairRowFn(questionText, answerText);
                     });
+                } else {
+                    container.innerHTML = '<p class="text-muted mb-3">No Q&A pairs yet. Add one below.</p>';
                 }
-            } else {
+            } else if (retries < 50) {
+                // Function not loaded yet, retry (increased retries to 50)
                 setTimeout(() => populateQADataWithRetry(retries + 1), 100);
+            } else {
+                console.error('addQAPairRow function not available after retries');
+                if (qaPairs && qaPairs.length > 0) {
+                    container.innerHTML = '<p class="text-warning">Q&A pairs loaded but editor not ready. Please refresh the page.</p>';
+                } else {
+                    container.innerHTML = '<p class="text-muted mb-3">No Q&A pairs yet. Add one below.</p>';
+                }
             }
         }
         populateQADataWithRetry();
         
         // Wait for functions to be available, then populate images
         function populateImagesWithRetry(retries = 0) {
-            if (retries > 20) {
+            // Check both local scope and window object
+            const populateImagesFn = window.populateImages || (typeof populateImages !== 'undefined' ? populateImages : null);
+            
+            if (typeof populateImagesFn === 'function') {
+                // Normalize image data format for populateImages
+                const normalizedImages = images.map(img => ({
+                    id: img.id,
+                    filename: img.filename || img.image_filename || 'image.jpg',
+                    description: img.description || img.image_description || ''
+                }));
+                populateImagesFn(normalizedImages);
+            } else if (retries < 50) {
+                // Function not loaded yet, retry (increased retries to 50)
+                setTimeout(() => populateImagesWithRetry(retries + 1), 100);
+            } else {
                 console.error('populateImages function not available after retries');
                 // Fallback: manually show images
                 const container = document.getElementById('editImagesContainer');
@@ -824,19 +831,6 @@ function loadCaseForEdit(caseId) {
                         container.innerHTML = '<p class="text-muted text-center py-3">No images uploaded yet</p>';
                     }
                 }
-                return;
-            }
-            
-            if (typeof populateImages === 'function') {
-                // Normalize image data format for populateImages
-                const normalizedImages = images.map(img => ({
-                    id: img.id,
-                    filename: img.filename || img.image_filename || 'image.jpg',
-                    description: img.description || img.image_description || ''
-                }));
-                populateImages(normalizedImages);
-            } else {
-                setTimeout(() => populateImagesWithRetry(retries + 1), 100);
             }
         }
         populateImagesWithRetry();
@@ -942,8 +936,9 @@ function loadStagingCaseForEdit(stagingId) {
                         const qText = questions[i]?.question_text || questions[i]?.text || '';
                         const aText = answers[i]?.answer_text || answers[i]?.text || '';
                         // Use addQAPairRow from edit-case-modal.js
-                        if (typeof addQAPairRow === 'function') {
-                            addQAPairRow(qText, aText);
+                        const addQAPairRowFn = window.addQAPairRow || (typeof addQAPairRow !== 'undefined' ? addQAPairRow : null);
+                        if (typeof addQAPairRowFn === 'function') {
+                            addQAPairRowFn(qText, aText);
                         }
                     }
                 } else {
@@ -991,9 +986,10 @@ function loadStagingCaseForEdit(stagingId) {
                     data_url_length: displayImages[0].data_url ? displayImages[0].data_url.length : 0
                 } : 'none');
                 
-                if (typeof populateImages === 'function') {
+                const populateImagesFn = window.populateImages || (typeof populateImages !== 'undefined' ? populateImages : null);
+                if (typeof populateImagesFn === 'function') {
                     try {
-                        populateImages(displayImages);
+                        populateImagesFn(displayImages);
                         console.log('[STAGING] populateImages called successfully');
                     } catch (error) {
                         console.error('[STAGING] Error calling populateImages:', error);
@@ -1042,21 +1038,39 @@ document.addEventListener('DOMContentLoaded', function() {
 function updateVisibilityUI(status) {
     const isPublic = status === 'PUBLISHED';
     
-    // Update ALL card backgrounds - change the entire form container
+    // Reset all backgrounds first to ensure consistency
     const formContainer = document.getElementById('caseEditForm');
     const allCards = document.querySelectorAll('.card');
+    const allCardBodies = document.querySelectorAll('.card-body');
     
+    // Reset form container background
     if (formContainer) {
-        formContainer.style.backgroundColor = isPublic ? '#d4edda' : '#ffe5b4';
+        // Remove any inline styles first
+        formContainer.style.backgroundColor = '';
+        formContainer.style.transition = '';
+        // Apply a consistent neutral background (not tied to status)
+        formContainer.style.backgroundColor = '#f1f6f9';
         formContainer.style.transition = 'background-color 0.3s ease';
     }
     
-    // Also update individual card bodies for consistency
+    // Reset and update all card bodies for consistency
+    allCardBodies.forEach(cardBody => {
+        // Remove any inline styles first
+        cardBody.style.backgroundColor = '';
+        cardBody.style.transition = '';
+        // Apply consistent background
+        cardBody.style.backgroundColor = '#ffffff';
+        cardBody.style.transition = 'background-color 0.3s ease';
+    });
+    
+    // Also ensure card backgrounds are consistent (remove any inline styles)
     allCards.forEach(card => {
-        const cardBody = card.querySelector('.card-body');
-        if (cardBody) {
-            cardBody.style.backgroundColor = isPublic ? '#d4edda' : '#ffe5b4';
-            cardBody.style.transition = 'background-color 0.3s ease';
+        if (card.style.backgroundColor) {
+            // Only override if there's an inline style that shouldn't be there
+            const cardBody = card.querySelector('.card-body');
+            if (!cardBody || !cardBody.style.backgroundColor) {
+                card.style.backgroundColor = '';
+            }
         }
     });
     
@@ -1067,14 +1081,14 @@ function updateVisibilityUI(status) {
     const visibilityInfo = document.getElementById('visibilityInfo');
     
     if (eyeIcon && statusText && visibilityDescription && visibilityInfo) {
-            if (isPublic) {
-                eyeIcon.style.color = '#28a745';
+        if (isPublic) {
+            eyeIcon.style.color = '#28a745';
             eyeIcon.className = 'fas fa-eye me-1';
-                statusText.textContent = 'Publicly Visible';
+            statusText.textContent = 'Publicly Visible';
             visibilityDescription.textContent = 'This case is visible to all users (students can access it)';
             visibilityInfo.className = 'alert alert-success mb-0';
-            } else {
-                eyeIcon.style.color = '#dc3545';
+        } else {
+            eyeIcon.style.color = '#dc3545';
             eyeIcon.className = 'fas fa-eye-slash me-1';
             statusText.textContent = 'Private (Not Visible)';
             visibilityDescription.textContent = 'This case is only visible to Content Managers and Admins';

@@ -8,55 +8,33 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
-            --primary: #ffc107;
-            --secondary: #ffd4c4;
-            --accent: #a8d5ba;
-            --light-bg: #fff8f0;
+            --brand-primary: #e96304;
+            --brand-neutral: #5E899E;
+            --brand-success: #a8d5ba;
+            --brand-bg: #fdfdfb;
+            --brand-text-primary: #2c3e50;
+            --brand-text-secondary: #5a6270;
         }
 
         body {
-            background: 
-                radial-gradient(circle at 20% 30%, 
-                    rgba(255, 165, 0, 0.6) 0%,
-                    rgba(255, 140, 0, 0.4) 12%,
-                    transparent 25%
-                ),
-                radial-gradient(circle at 75% 25%, 
-                    rgba(255, 193, 7, 0.55) 0%,
-                    rgba(255, 165, 0, 0.35) 15%,
-                    transparent 28%
-                ),
-                radial-gradient(circle at 85% 70%, 
-                    rgba(233, 99, 4, 0.58) 0%,
-                    rgba(179, 65, 0, 0.38) 14%,
-                    transparent 26%
-                ),
-                radial-gradient(circle at 15% 75%, 
-                    rgba(223, 140, 37, 0.52) 0%,
-                    rgba(255, 100, 0, 0.32) 13%,
-                    transparent 24%
-                ),
-                radial-gradient(circle at 50% 50%, 
-                    rgba(255, 193, 7, 0.35) 0%,
-                    rgba(255, 165, 0, 0.22) 20%,
-                    rgba(204, 85, 0, 0.15) 40%,
-                    transparent 60%
-                ),
-                linear-gradient(135deg, #ffc107 0%, #ff8c42 50%, #e96304 100%);
+            background: linear-gradient(135deg, #f7fafc 0%, #e8f1f6 60%, var(--brand-bg) 100%);
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: var(--brand-text-primary);
+            padding: 24px;
         }
 
         .login-container {
             width: 100%;
-            max-width: 450px;
+            max-width: 480px;
             background: white;
-            border-radius: 15px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 18px 50px rgba(44, 62, 80, 0.15);
+            border: 1px solid rgba(44, 62, 80, 0.08);
+            padding: 42px;
             animation: slideIn 0.5s ease-out;
         }
 
@@ -78,22 +56,19 @@
 
         .logo-section i {
             font-size: 48px;
-            color: #a8d5ba;
+            color: var(--brand-neutral);
             margin-bottom: 15px;
         }
 
         .logo-section h1 {
-            background: linear-gradient(135deg, var(--primary), var(--secondary));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            color: var(--brand-primary);
             font-size: 28px;
             font-weight: 700;
             margin: 0;
         }
 
         .logo-section p {
-            color: #666;
+            color: var(--brand-text-secondary);
             font-size: 14px;
             margin: 5px 0 0 0;
         }
@@ -103,7 +78,7 @@
         }
 
         .form-label {
-            color: #666;
+            color: var(--brand-text-primary);
             font-weight: 600;
             margin-bottom: 8px;
             font-size: 14px;
@@ -118,8 +93,8 @@
         }
 
         .form-control:focus {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 0.2rem rgba(255, 140, 66, 0.25);
+            border-color: var(--brand-neutral);
+            box-shadow: 0 0 0 0.2rem rgba(94, 137, 158, 0.2);
             outline: none;
         }
 
@@ -136,7 +111,7 @@
         }
 
         .remember-forgot a {
-            color: var(--primary);
+            color: var(--brand-primary);
             text-decoration: none;
             font-weight: 500;
         }
@@ -148,7 +123,7 @@
         .btn-login {
             width: 100%;
             padding: 12px;
-            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            background: linear-gradient(135deg, var(--brand-primary), #c75002);
             color: white;
             border: none;
             border-radius: 8px;
@@ -161,14 +136,14 @@
 
         .btn-login:hover {
             transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(255, 140, 66, 0.4);
+            box-shadow: 0 10px 24px rgba(233, 99, 4, 0.25);
             color: white;
         }
 
         .divider {
             text-align: center;
             margin: 25px 0;
-            color: #999;
+            color: var(--brand-text-secondary);
             font-size: 13px;
         }
 
@@ -179,13 +154,33 @@
         }
 
         .signup-link a {
-            color: var(--primary);
+            color: var(--brand-primary);
             text-decoration: none;
             font-weight: 600;
         }
 
         .signup-link a:hover {
             text-decoration: underline;
+        }
+
+        .password-field {
+            position: relative;
+        }
+
+        .password-field input {
+            padding-right: 44px;
+        }
+
+        .toggle-password {
+            position: absolute;
+            top: 50%;
+            right: 12px;
+            transform: translateY(-50%);
+            border: none;
+            background: transparent;
+            color: var(--brand-text-secondary);
+            cursor: pointer;
+            font-size: 16px;
         }
 
         .alert {
@@ -263,14 +258,19 @@
 
             <div class="form-group">
                 <label for="password" class="form-label">Password</label>
-                <input 
-                    type="password" 
-                    id="password" 
-                    class="form-control" 
-                    placeholder="Enter your password"
-                    required
-                    autocomplete="current-password"
-                >
+                <div class="password-field">
+                    <input 
+                        type="password" 
+                        id="password" 
+                        class="form-control" 
+                        placeholder="Enter your password"
+                        required
+                        autocomplete="current-password"
+                    >
+                    <button type="button" class="toggle-password" data-target="password" aria-label="Show password">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </div>
             </div>
 
             <div class="remember-forgot">
@@ -302,6 +302,18 @@
         const loginBtn = document.getElementById('loginBtn');
         const loginText = document.getElementById('loginText');
         const alertContainer = document.getElementById('alertContainer');
+
+        // Toggle password visibility
+        document.querySelectorAll('.toggle-password').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                const targetId = btn.getAttribute('data-target');
+                const input = document.getElementById(targetId);
+                if (!input) return;
+                const isPassword = input.type === 'password';
+                input.type = isPassword ? 'text' : 'password';
+                btn.innerHTML = isPassword ? '<i class="fas fa-eye-slash"></i>' : '<i class="fas fa-eye"></i>';
+            });
+        });
 
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();

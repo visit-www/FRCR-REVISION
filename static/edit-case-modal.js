@@ -103,6 +103,11 @@ function addQAPairRow(questionText = '', answerText = '') {
     initializeTinyMCE(uniqueId);
 }
 
+// Expose addQAPairRow immediately
+if (typeof window !== 'undefined') {
+    window.addQAPairRow = addQAPairRow;
+}
+
 // Initialize TinyMCE editor for a specific field
 function initializeTinyMCE(elementId, retryCount = 0) {
     const MAX_RETRIES = 20; // Max 10 seconds of retries
@@ -284,6 +289,11 @@ function populateImages(images) {
     });
     
     container.appendChild(grid);
+}
+
+// Expose populateImages immediately
+if (typeof window !== 'undefined') {
+    window.populateImages = populateImages;
 }
 
 // Edit image description - improved with modal dialog
@@ -991,7 +1001,7 @@ function saveEditedCase(event) {
                                     const maxRetries = 2;
                                     
                                     function attemptUpload() {
-                                        console.log('[SAVE] Starting fetch request for', file.name, 'to /api/case/' + newCaseId + '/image');
+                                        console.log(`[SAVE] Starting fetch request for ${file.name} to /api/case/${newCaseId}/image`);
                                         fetch(`/api/case/${newCaseId}/image`, {
                                             method: 'POST',
                                             body: formData,
@@ -1026,9 +1036,9 @@ function saveEditedCase(event) {
                                                 console.warn('[SAVE] Non-JSON response:', responseText.substring(0, 100));
                                                 throw new Error('Server returned non-JSON response');
                                             }
-        return r.json();
-    })
-    .then(data => {
+                                            return r.json();
+                                        })
+                                        .then(data => {
                                             clearTimeout(timeoutId);
                                             console.log('[SAVE] Pending image uploaded successfully:', file.name, data);
                                             // Clear the pending image from the array after successful upload
@@ -1072,6 +1082,7 @@ function saveEditedCase(event) {
                                     
                                     attemptUpload();
                                 }, index * 500); // Stagger uploads more (500ms between each)
+                            });
                         });
                         
                         // Wait for all uploads to complete before showing success message or redirecting
@@ -1704,7 +1715,18 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-// Expose saveEditedCase globally for onclick handlers
+// Expose functions globally for use in edit_case.html
 if (typeof window !== 'undefined') {
     window.saveEditedCase = saveEditedCase;
+    window.addQAPairRow = addQAPairRow;
+    window.populateImages = populateImages;
+    window.populateQAPairs = populateQAPairs;
+    window.addNewQAPair = addNewQAPair;
+    window.removeQAPair = removeQAPair;
+    window.uploadImage = uploadImage;
+    window.editImageDescription = editImageDescription;
+    window.saveImageDescription = saveImageDescription;
+    window.deleteImage = deleteImage;
+    window.viewImageFull = viewImageFull;
+    window.initializeTinyMCE = initializeTinyMCE;
 }

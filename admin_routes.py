@@ -608,9 +608,15 @@ def toggle_case_public(case_id):
         return jsonify({'success': False, 'error': 'Case not found'}), 404
 
     try:
-        case.is_public = is_public
+        from models import CaseStatus, sync_case_visibility
+        target_status = CaseStatus.PUBLISHED if is_public else CaseStatus.PRIVATE
+        sync_case_visibility(case, status=target_status)
         db.session.commit()
-        return jsonify({'success': True, 'is_public': case.is_public}), 200
+        return jsonify({
+            'success': True,
+            'is_public': case.is_public,
+            'status': case.status.name if case.status else 'DRAFT'
+        }), 200
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'error': 'Database error', 'details': str(e)}), 500

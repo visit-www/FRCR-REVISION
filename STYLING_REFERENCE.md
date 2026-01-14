@@ -194,6 +194,39 @@ This document provides a comprehensive reference for all custom brand classes, C
 
 ---
 
+### Module List Page
+
+**Location**: `templates/modules_view.html`
+
+| Element | Class/Selector | Color | Usage |
+|---------|----------------|-------|-------|
+| Module Icon Color | `.module-icon` (inline `color`) | Module-specific (matches case list) | `templates/modules_view.html` |
+| Module Icon Background | `.module-icon` (inline `background`) | Soft tint per module | `templates/modules_view.html` |
+| Module Card | `.module-card` | White card with soft shadow | `templates/modules_view.html:92-104` |
+| Module Count Badge | `.module-count-badge` | `#f8f9fa` bg, muted text | `templates/modules_view.html:121-126` |
+
+**Module Icon Color Map** (same as case list):
+- Cardiothoracic/Vascular: `#7bb3d0`
+- Musculoskeletal/Trauma: `#ff9800`
+- Gastrointestinal: `#7bb88a`
+- Genitourinary/Breast: `#ce93d8`
+- Paediatric: `#fff59d`
+- CNS/Head & Neck: `#9fa8da`
+- Default: `#90a4ae`
+
+---
+
+### Edit Case Page
+
+**Location**: `templates/edit_case.html`
+
+| Element | Class/Selector | Color | Usage |
+|---------|----------------|-------|-------|
+| Form Background | `#caseEditForm` (inline JS) | `#f1f6f9` | Consistent neutral background |
+| Card Body Background | `.card-body` (inline JS) | `#ffffff` | Ensures all sections look consistent |
+
+---
+
 ## Quick Update Guide
 
 ### To Change Primary Brand Color

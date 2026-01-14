@@ -120,6 +120,20 @@
                         {% endfor %}
                     </select>
                 </div>
+
+                <div class="filter-item">
+                    <label class="filter-label">
+                        <i class="fas fa-clipboard-check me-2"></i>Status
+                    </label>
+                    <select class="form-select filter-select" id="statusFilter">
+                        <option value="">All Statuses</option>
+                        {% for status in status_options %}
+                        <option value="{{ status.value }}" {% if status_selected == status.value %}selected{% endif %}>
+                            {{ status.display_name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
                 
                 <div class="filter-item filter-button-item">
                     <button class="btn filter-clear-btn" onclick="clearFilters()">
@@ -317,12 +331,14 @@ document.getElementById('caseSearch').addEventListener('keydown', function(e) {
 document.getElementById('moduleFilter')?.addEventListener('change', applyFilters);
 document.getElementById('bodyPartFilter')?.addEventListener('change', applyFilters);
 document.getElementById('ageGroupFilter')?.addEventListener('change', applyFilters);
+document.getElementById('statusFilter')?.addEventListener('change', applyFilters);
 
 function applyFilters() {
     const searchParams = new URLSearchParams(window.location.search);
     const module = document.getElementById('moduleFilter')?.value;
     const bodyPart = document.getElementById('bodyPartFilter')?.value;
     const ageGroup = document.getElementById('ageGroupFilter')?.value;
+    const status = document.getElementById('statusFilter')?.value;
     const search = document.getElementById('caseSearch')?.value;
 
     if (module) searchParams.set('module', module);
@@ -333,6 +349,9 @@ function applyFilters() {
 
     if (ageGroup) searchParams.set('age_group', ageGroup);
     else searchParams.delete('age_group');
+
+    if (status) searchParams.set('status', status);
+    else searchParams.delete('status');
 
     if (search) searchParams.set('q', search);
     else searchParams.delete('q');
@@ -441,7 +460,7 @@ function deleteCase(caseId) {
 }
 
 .filter-clear-btn {
-    background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+    background: linear-gradient(135deg, #5E899E 0%, #4A6F7F 100%);
     color: white;
     border: none;
     border-radius: 8px;
@@ -449,16 +468,16 @@ function deleteCase(caseId) {
     font-weight: 600;
     font-size: 0.95rem;
     transition: all 0.3s ease;
-    box-shadow: 0 2px 8px rgba(255, 152, 0, 0.2);
+    box-shadow: 0 2px 8px rgba(94, 137, 158, 0.2);
     letter-spacing: 0.2px;
     white-space: nowrap;
     width: 100%;
 }
 
 .filter-clear-btn:hover {
-    background: linear-gradient(135deg, #f57c00 0%, #e65100 100%);
+    background: linear-gradient(135deg, #4A6F7F 0%, #3a5a6b 100%);
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(255, 152, 0, 0.3);
+    box-shadow: 0 4px 12px rgba(94, 137, 158, 0.3);
     color: white;
 }
 

@@ -245,6 +245,37 @@ class Case(db.Model):
         return f'<Case {self.case_number} - {self.diagnosis}>'
 
 
+def sync_case_visibility(case, status=None, is_public=None):
+    """Keep status and is_public aligned with status as source of truth."""
+    if status is not None:
+        status_enum = None
+        if isinstance(status, CaseStatus):
+            status_enum = status
+        elif isinstance(status, str):
+            try:
+                status_enum = CaseStatus[status]
+            except KeyError:
+                status_enum = None
+        if status_enum:
+            case.status = status_enum
+            case.is_public = (status_enum == CaseStatus.PUBLISHED)
+        return
+
+    if is_public is not None:
+        if isinstance(is_public, str):
+            is_public = is_public.lower() == 'true'
+        elif isinstance(is_public, int):
+            is_public = is_public == 1
+        else:
+            is_public = bool(is_public)
+
+        case.is_public = is_public
+        if is_public and case.status != CaseStatus.PUBLISHED:
+            case.status = CaseStatus.PUBLISHED
+        elif not is_public and case.status == CaseStatus.PUBLISHED:
+            case.status = CaseStatus.DRAFT
+
+
 class Question(db.Model):
     """Store individual questions for a case"""
     id = db.Column(db.Integer, primary_key=True)

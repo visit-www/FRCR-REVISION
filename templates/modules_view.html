@@ -17,7 +17,7 @@
     <!-- Page Header -->
     <div class="mb-4">
         <h2 class="mb-2">
-            <i class="fas fa-th-large me-2" style="color: #a8d5ba;"></i>
+            <i class="fas fa-th-large me-2 module-title-icon"></i>
             Select a Module
         </h2>
         <p class="text-muted">
@@ -29,30 +29,50 @@
     <div class="row g-4">
         {% for module in modules %}
         <div class="col-lg-4 col-md-6">
+            {% if 'Cardiothoracic' in module.display_name or 'Vascular' in module.display_name %}
+                {% set module_icon_color = '#7bb3d0' %}
+                {% set module_icon_bg = '#e8f3f9' %}
+            {% elif 'Musculoskeletal' in module.display_name or 'Trauma' in module.display_name %}
+                {% set module_icon_color = '#ff9800' %}
+                {% set module_icon_bg = '#fff3e0' %}
+            {% elif 'Gastro' in module.display_name or 'intestinal' in module.display_name %}
+                {% set module_icon_color = '#7bb88a' %}
+                {% set module_icon_bg = '#eef7f1' %}
+            {% elif 'Genito' in module.display_name or 'urinary' in module.display_name or 'Breast' in module.display_name %}
+                {% set module_icon_color = '#ce93d8' %}
+                {% set module_icon_bg = '#f6ecf8' %}
+            {% elif 'Paediatric' in module.display_name %}
+                {% set module_icon_color = '#fff59d' %}
+                {% set module_icon_bg = '#fffbe6' %}
+            {% elif 'CNS' in module.display_name or 'Head' in module.display_name or 'Neck' in module.display_name %}
+                {% set module_icon_color = '#9fa8da' %}
+                {% set module_icon_bg = '#eff0fb' %}
+            {% else %}
+                {% set module_icon_color = '#90a4ae' %}
+                {% set module_icon_bg = '#f1f3f4' %}
+            {% endif %}
             <div class="card h-100 shadow-sm border-0 module-card" 
-                 onclick="window.location.href='{{ url_for('cases_by_module', module=module.value) }}'"
-                 style="cursor: pointer; transition: all 0.2s ease;">
+                 onclick="window.location.href='{{ url_for('cases_by_module', module=module.value) }}'">
                 <div class="card-body p-4">
                     <div class="d-flex align-items-start mb-3">
-                        <div class="module-icon me-3">
+                        <div class="module-icon me-3" style="color: {{ module_icon_color }}; background: {{ module_icon_bg }}; border-radius: 50%;">
                             <i class="{{ module.icon }}"></i>
                         </div>
                         <div class="flex-grow-1">
                             <h5 class="card-title mb-1">{{ module.display_name }}</h5>
-                            <span class="badge bg-light text-dark">
+                            <span class="badge module-count-badge">
                                 {{ module.case_count }} cases
                             </span>
                         </div>
                     </div>
                     
-                    <p class="card-text text-muted small">
+                    <p class="card-text text-muted small module-description">
                         {{ module.description }}
                     </p>
                     
                     <div class="mt-3">
                         <a href="{{ url_for('cases_by_module', module=module.value) }}" 
-                           class="btn btn-sm w-100" 
-                           style="background-color: #a8d5ba; color: white;">
+                           class="btn btn-sm btn-brand-primary w-100 module-cta">
                             Start Practicing
                             <i class="fas fa-arrow-right ms-2"></i>
                         </a>
@@ -65,25 +85,53 @@
 </div>
 
 <style>
+.module-title-icon {
+    color: var(--brand-primary);
+}
+
+.module-card {
+    cursor: pointer;
+    border-radius: 14px;
+    background: #ffffff;
+    border: 1px solid rgba(44, 62, 80, 0.08);
+    box-shadow: 0 6px 18px rgba(44, 62, 80, 0.08);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
 .module-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15) !important;
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px rgba(44, 62, 80, 0.14) !important;
 }
 
 .module-icon {
-    font-size: 2.5rem;
-    color: #ffc107;
+    font-size: 2.2rem;
     width: 60px;
     height: 60px;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg, #f9e5a8 0%, #ffd4c4 100%);
-    border-radius: 12px;
+    border-radius: 14px;
+    box-shadow: 0 8px 18px rgba(44, 62, 80, 0.12);
 }
 
 .module-icon i {
-    color: white;
+    color: inherit;
+}
+
+.module-count-badge {
+    background: #f8f9fa;
+    color: var(--brand-text-secondary);
+    border: 1px solid rgba(44, 62, 80, 0.12);
+    font-weight: 600;
+}
+
+.module-description {
+    color: var(--brand-text-secondary);
+}
+
+.module-cta {
+    font-weight: 600;
+    letter-spacing: 0.2px;
 }
 </style>
 {% endblock %}

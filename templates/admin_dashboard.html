@@ -17,10 +17,10 @@
     </nav>
 
 
-    <h1 class="mb-5 justify-content-center"><i class="fas fa-shield-alt"></i> Admin Dashboard</h1>
+    <h1 class="mb-5 justify-content-center admin-dashboard-title"><i class="fas fa-shield-alt"></i> Admin Dashboard</h1>
 
     <!-- Tab Navigation -->
-    <ul class="nav nav-tabs mb-4 p-5 bg-opacity-100 bg-gradient bg- bg-success-subtle justify-content-between rounded-4" id="adminTabs" role="tablist">
+    <ul class="nav nav-tabs mb-4 admin-tabs justify-content-between rounded-4" id="adminTabs" role="tablist">
         <li class="nav-item" role="presentation">
             <button class="nav-link active" id="users-tab" data-bs-toggle="tab" data-bs-target="#users-content" type="button" role="tab" aria-controls="users-content" aria-selected="true">
                 <i class="fas fa-users"></i> User Management
@@ -49,15 +49,15 @@
 
         <!-- Database Management Tab (Consolidated Backup & Import) -->
         <div class="tab-pane fade" id="database-content" role="tabpanel" aria-labelledby="database-tab">
-            <h2 class="mb-5"><i class="fas fa-database"></i> Database Management</h2>
+            <h2 class="mb-5 admin-section-title"><i class="fas fa-database"></i> Database Management</h2>
 
             <!-- Database Status Section -->
             <div class="row mb-4">
         <div class="col-md-12">
-            <div class="card" style="background: linear-gradient(135deg, #2a2d35 0%, #1f2834 100%); color: #c8e6d9; border: 1px solid #8bb8d9;">
+            <div class="card admin-card admin-card-status">
                 <div class="card-body">
-                            <h5 class="card-title" style="color: #8bb8d9;"><i class="fas fa-info-circle"></i> Database Status</h5>
-                            <div id="backup-status" class="mt-3" style="color: #c8e6d9;">
+                            <h5 class="card-title admin-card-title"><i class="fas fa-info-circle"></i> Database Status</h5>
+                            <div id="backup-status" class="mt-3">
                             <div class="text-center">
                                     <div class="spinner-border text-primary" role="status">
                                         <span class="visually-hidden">Loading...</span>
@@ -73,13 +73,13 @@
             <div class="row mb-4">
                 <!-- Download Backup Section -->
                 <div class="col-md-6 mb-4">
-            <div class="card" style="background: #2a2d35; border: 1px solid #3a3d45;">
-                        <div class="card-header" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; border: none;">
+            <div class="card admin-card">
+                        <div class="card-header admin-card-header admin-header-success">
                             <h5 class="mb-0"><i class="fas fa-download"></i> Download Backup</h5>
                         </div>
                         <div class="card-body">
-                            <p style="color: #c8e6d9;">Download a complete backup of your database as JSON file.</p>
-                            <button id="download-backup-btn" class="btn btn-success w-100">
+                            <p class="admin-muted">Download a complete backup of your database as JSON file.</p>
+                            <button id="download-backup-btn" class="btn btn-brand-success w-100">
                                 <i class="fas fa-download"></i> Download Backup
                             </button>
                             <div id="download-status" class="mt-3"></div>
@@ -89,12 +89,12 @@
                 
                 <!-- Import Backup Section -->
                 <div class="col-md-6 mb-4">
-                    <div class="card" style="background: #2a2d35; border: 1px solid #3a3d45;">
-                        <div class="card-header" style="background: linear-gradient(135deg, #ffc107 0%, #ffcd39 100%); color: #333; border: none;">
+                    <div class="card admin-card">
+                        <div class="card-header admin-card-header admin-header-warning">
                             <h5 class="mb-0"><i class="fas fa-upload"></i> Import Backup</h5>
             </div>
                         <div class="card-body">
-                            <div class="alert alert-info" style="background: #1a3a4a; border-color: #4a7a9a; color: #c8e6d9; font-size: 0.9rem;">
+                            <div class="alert admin-callout" style="font-size: 0.9rem;">
                                 <strong><i class="fas fa-info-circle"></i> Smart Import:</strong>
                                 <ul class="mb-0 mt-2" style="font-size: 0.85rem;">
                                     <li>New data will be added automatically</li>
@@ -105,25 +105,25 @@
 
                             <form id="restore-form">
                                 <div class="mb-3">
-                                    <label for="backup-file" class="form-label" style="color: #c8e6d9;">Select Backup File (.json)</label>
-                                    <input type="file" class="form-control" id="backup-file" accept=".json" required style="background: #353841; color: #c8e6d9; border-color: #4a4d55;">
+                                    <label for="backup-file" class="form-label">Select Backup File (.json)</label>
+                                    <input type="file" class="form-control admin-input" id="backup-file" accept=".json" required>
     </div>
 
                                 <div class="form-check mb-3">
                                     <input class="form-check-input" type="checkbox" id="overwrite-existing">
-                                    <label class="form-check-label" for="overwrite-existing" style="color: #c8e6d9;">
+                                    <label class="form-check-label" for="overwrite-existing">
                                         <strong>Overwrite existing data</strong>
                                     </label>
     </div>
 
                                 <div class="form-check mb-3">
                                     <input class="form-check-input" type="checkbox" id="confirm-import" required>
-                                    <label class="form-check-label" for="confirm-import" style="color: #c8e6d9;">
+                                    <label class="form-check-label" for="confirm-import">
                                         <strong>I confirm I want to import</strong>
                                     </label>
     </div>
 
-                                <button type="submit" class="btn btn-warning w-100">
+                                <button type="submit" class="btn btn-brand-secondary w-100">
                                     <i class="fas fa-upload"></i> Import Database
                                 </button>
                             </form>
@@ -137,12 +137,12 @@
             <!-- Import from FRCR-Examiner Section -->
             <div class="row mb-4">
                 <div class="col-md-12">
-                    <div class="card" style="background: #2a2d35; border: 1px solid #3a3d45;">
-                        <div class="card-header" style="background: linear-gradient(135deg, #17a2b8 0%, #138496 100%); color: white; border: none;">
+                    <div class="card admin-card">
+                        <div class="card-header admin-card-header admin-header-info">
                             <h5 class="mb-0"><i class="fas fa-file-import"></i> Import from FRCR-Examiner</h5>
                         </div>
                         <div class="card-body">
-                            <div class="alert alert-info mb-3" style="background: #f0f7ff; border-left: 4px solid #0066cc;">
+                            <div class="alert admin-callout mb-3">
                                 <h6><i class="fas fa-info-circle"></i> Import Guide</h6>
                                 <ol class="mb-0" style="font-size: 0.9rem;">
                                     <li>Export a backup from FRCR-Examiner (JSON format)</li>
@@ -154,14 +154,14 @@
                             </div>
                             
                             <div class="mt-3">
-                                <label style="color: #c8e6d9;">Select FRCR-Examiner Backup File (JSON)</label>
+                                <label class="form-label">Select FRCR-Examiner Backup File (JSON)</label>
                                 <div class="input-group mb-3">
-                                    <input type="file" id="backup-file-input" class="form-control" accept=".json,.zip" style="background: #353841; color: #c8e6d9; border-color: #4a4d55;">
-                                    <button class="btn btn-primary" onclick="checkDuplicates()">
+                                    <input type="file" id="backup-file-input" class="form-control admin-input" accept=".json,.zip">
+                                    <button class="btn btn-brand-neutral" onclick="checkDuplicates()">
                                         <i class="fas fa-search"></i> Check for Duplicates
                                     </button>
                                 </div>
-                                <small style="color: #888;">Supported formats: JSON backup export, ZIP archive</small>
+                                <small class="text-muted">Supported formats: JSON backup export, ZIP archive</small>
                             </div>
 
                             <div id="import-status" class="mt-3" style="color: #c8e6d9;"></div>
@@ -169,32 +169,32 @@
             <!-- Duplicate Check Results -->
                             <div class="row mt-4" id="duplicate-results" style="display: none;">
                 <div class="col-md-12">
-                                    <h6 style="color: #8bb8d9;"><i class="fas fa-check-circle"></i> Duplicate Check Results</h6>
+                                    <h6 class="admin-subtitle"><i class="fas fa-check-circle"></i> Duplicate Check Results</h6>
                                     <div class="row mt-3">
                                 <div class="col-md-4">
-                                    <div style="background: #353841; padding: 15px; border-radius: 5px; text-align: center; border-left: 3px solid #28a745;">
-                                        <h4 id="result-new-cases" style="color: #28a745; margin: 0;">-</h4>
-                                                <small style="color: #c8e6d9;">New Cases</small>
+                                    <div class="admin-metric admin-metric-success">
+                                        <h4 id="result-new-cases">-</h4>
+                                                <small>New Cases</small>
                                     </div>
                                 </div>
                                 <div class="col-md-4">
-                                    <div style="background: #353841; padding: 15px; border-radius: 5px; text-align: center; border-left: 3px solid #ffc107;">
-                                        <h4 id="result-staging-duplicates" style="color: #ffc107; margin: 0;">-</h4>
-                                        <small style="color: #c8e6d9;">Staging Duplicates</small>
+                                    <div class="admin-metric admin-metric-warning">
+                                        <h4 id="result-staging-duplicates">-</h4>
+                                        <small>Staging Duplicates</small>
                                     </div>
                                 </div>
                                 <div class="col-md-4">
-                                    <div style="background: #353841; padding: 15px; border-radius: 5px; text-align: center; border-left: 3px solid #dc3545;">
-                                        <h4 id="result-production-duplicates" style="color: #dc3545; margin: 0;">-</h4>
-                                        <small style="color: #c8e6d9;">Production Duplicates</small>
+                                    <div class="admin-metric admin-metric-danger">
+                                        <h4 id="result-production-duplicates">-</h4>
+                                        <small>Production Duplicates</small>
                                     </div>
                                 </div>
                             </div>
                                     <div class="mt-3">
-                                        <button class="btn btn-success" onclick="importCases()">
+                                        <button class="btn btn-brand-success" onclick="importCases()">
                                     <i class="fas fa-download"></i> Import Cases to Staging
                                 </button>
-                                        <button class="btn btn-secondary" onclick="resetImport()">
+                                        <button class="btn btn-brand-neutral" onclick="resetImport()">
                                             <i class="fas fa-times"></i> Clear
                                 </button>
                     </div>
@@ -635,4 +635,116 @@
     }
 
 </script>
+
+<style>
+.admin-dashboard-title {
+    color: var(--brand-text-primary);
+    font-weight: 700;
+}
+
+.admin-section-title {
+    color: var(--brand-text-primary);
+    font-weight: 700;
+}
+
+.admin-tabs {
+    background: linear-gradient(135deg, #f1f6f9 0%, #e7eff4 100%);
+    border: 1px solid rgba(44, 62, 80, 0.08);
+    padding: 1.25rem 1.5rem;
+}
+
+.admin-tabs .nav-link {
+    color: var(--brand-text-primary);
+    font-weight: 600;
+    border: none;
+}
+
+.admin-tabs .nav-link.active {
+    color: #ffffff;
+    background: linear-gradient(135deg, var(--brand-neutral) 0%, #4A6F7F 100%);
+    border-radius: 999px;
+    padding: 0.5rem 1rem;
+}
+
+.admin-card {
+    background: #ffffff;
+    border: 1px solid rgba(44, 62, 80, 0.08);
+    box-shadow: 0 8px 18px rgba(44, 62, 80, 0.08);
+}
+
+.admin-card-status {
+    background: linear-gradient(135deg, #f7fafc 0%, #eef3f7 100%);
+}
+
+.admin-card-header {
+    border: none;
+    color: #ffffff;
+}
+
+.admin-header-success {
+    background: linear-gradient(135deg, var(--brand-success) 0%, #8bc9a3 100%);
+    color: var(--brand-text-primary);
+}
+
+.admin-header-warning {
+    background: linear-gradient(135deg, #ffc107 0%, #ffb302 100%);
+    color: #2c3e50;
+}
+
+.admin-header-info {
+    background: linear-gradient(135deg, var(--brand-neutral) 0%, #4A6F7F 100%);
+}
+
+.admin-card-title {
+    color: var(--brand-text-primary);
+    font-weight: 600;
+}
+
+.admin-muted {
+    color: var(--brand-text-secondary);
+}
+
+.admin-callout {
+    background: #f8fbfd;
+    border: 1px solid rgba(94, 137, 158, 0.25);
+    color: var(--brand-text-secondary);
+}
+
+.admin-input {
+    background: #ffffff;
+    border-color: rgba(44, 62, 80, 0.15);
+}
+
+.admin-subtitle {
+    color: var(--brand-text-primary);
+    font-weight: 600;
+}
+
+.admin-metric {
+    background: #f8fafc;
+    padding: 15px;
+    border-radius: 8px;
+    text-align: center;
+    border-left: 3px solid transparent;
+}
+
+.admin-metric h4 {
+    margin: 0;
+}
+
+.admin-metric-success {
+    border-left-color: #28a745;
+    color: #1f7a3f;
+}
+
+.admin-metric-warning {
+    border-left-color: #ffc107;
+    color: #856404;
+}
+
+.admin-metric-danger {
+    border-left-color: #dc3545;
+    color: #7a1c24;
+}
+</style>
 {% endblock %}

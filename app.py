@@ -752,7 +752,7 @@ def index():
 @login_required
 def dashboard():
     """Main dashboard for students"""
-    from models import CandidateNote, TextHighlight, Case
+    from models import CandidateNote, TextHighlight, Case, CaseStatus
     
     # Get user statistics
     notes_count = CandidateNote.query.filter_by(user_id=current_user.id).count()
@@ -762,7 +762,7 @@ def dashboard():
     reviewed_count = db.session.query(CandidateNote.case_id).filter_by(user_id=current_user.id).distinct().count()
     
     # Total public cases
-    case_count = Case.query.filter_by(is_public=True).count()
+    case_count = Case.query.filter(Case.status == CaseStatus.PUBLISHED).count()
     
     return render_template('student_dashboard.html',
                          notes_count=notes_count,
@@ -784,7 +784,7 @@ def start_balanced_revision():
     Prioritizes cases the user hasn't seen or has seen least recently.
     Ensures new cases are selected each time when multiple cases are available.
     """
-    from models import FRCRModule, Case, RevisionSession, RevisionHistory
+    from models import FRCRModule, Case, RevisionSession, RevisionHistory, CaseStatus
     import json
     from sqlalchemy import func
     
@@ -799,9 +799,9 @@ def start_balanced_revision():
         modules_without_cases = []
         
         for module in all_modules:
-            case_count = Case.query.filter_by(
-                module=module,
-                is_public=True
+            case_count = Case.query.filter(
+                Case.module == module,
+                Case.status == CaseStatus.PUBLISHED
             ).count()
             module_case_counts[module] = case_count
             
@@ -847,14 +847,14 @@ def start_balanced_revision():
             # Exclude recently used cases to ensure variety
             # Priority: unseen > least recently seen > random
             query = db.session.query(Case).filter(
-                Case.is_public == True,
+                Case.status == CaseStatus.PUBLISHED,
                 Case.module == module
             )
             
             # Exclude recently used cases if there are enough alternatives
-            total_available = Case.query.filter_by(
-                module=module,
-                is_public=True
+            total_available = Case.query.filter(
+                Case.module == module,
+                Case.status == CaseStatus.PUBLISHED
             ).count()
             
             # Only exclude recent cases if we have more than 1 case available
@@ -1019,16 +1019,16 @@ def view_revision_case(session_id, case_index):
 @login_required
 def modules_view():
     """Display all FRCR modules"""
-    from models import FRCRModule, Case
+    from models import FRCRModule, Case, CaseStatus
     
     # Prepare module data with case counts
     modules_data = []
     module_icons = {
         'CARDIOTHORACIC_VASCULAR': 'fas fa-heart',
         'MUSCULOSKELETAL_TRAUMA': 'fas fa-bone',
-        'GASTROINTESTINAL': 'fas fa-stomach',
-        'GENITOURINARY_BREAST': 'fas fa-venus',
-        'PAEDIATRIC': 'fas fa-baby',
+        'GASTROINTESTINAL': 'fas fa-wave-square',
+        'GENITOURINARY_BREAST': 'fas fa-filter',
+        'PAEDIATRIC': 'fas fa-child',
         'CNS_HEAD_NECK': 'fas fa-brain'
     }
     
@@ -1042,7 +1042,10 @@ def modules_view():
     }
     
     for module in FRCRModule:
-        case_count = Case.query.filter_by(module=module, is_public=True).count()
+        case_count = Case.query.filter(
+            Case.module == module,
+            Case.status == CaseStatus.PUBLISHED
+        ).count()
         modules_data.append({
             'value': module.name,
             'display_name': module.value,
@@ -1058,7 +1061,7 @@ def modules_view():
 @login_required
 def cases_by_module(module):
     """Show cases filtered by module - different templates for students vs admins"""
-    from models import FRCRModule, BodyPart, AgeGroup, Case, CandidateNote, CaseFlag
+    from models import FRCRModule, BodyPart, AgeGroup, Case, CandidateNote, CaseFlag, CaseStatus
     
     # Validate module
     try:
@@ -1069,17 +1072,27 @@ def cases_by_module(module):
     # Get filters from query params
     body_part_filter = request.args.get('body_part', '')
     age_group_filter = request.args.get('age_group', '')
+    status_filter = request.args.get('status', '')
     search_query = request.args.get('q', '')
     
     # Check if user is a student - use student template
     is_student = (hasattr(current_user, 'role') and current_user.role == UserRole.STUDENT)
     
     if is_student:
-        # Students: only public cases, use student template
-        query = Case.query.filter_by(module=module_enum, is_public=True)
+        # Students: only published cases, use student template
+        query = Case.query.filter(
+            Case.module == module_enum,
+            Case.status == CaseStatus.PUBLISHED
+        )
     else:
         # Admins/Content Managers: all cases
         query = Case.query.filter_by(module=module_enum)
+        if status_filter:
+            try:
+                status_enum = CaseStatus[status_filter]
+                query = query.filter(Case.status == status_enum)
+            except KeyError:
+                pass
     
     if body_part_filter:
         try:
@@ -1109,7 +1122,7 @@ def cases_by_module(module):
         )
         
         # Prepare case data for student template - match admin template structure
-    for case in cases:
+        for case in cases:
             cases_data.append({
                 'id': case.id,
                 'diagnosis': case.diagnosis,
@@ -1119,7 +1132,7 @@ def cases_by_module(module):
                 'image_count': len(case.images),
                 'date': case.created_at.strftime('%Y-%m-%d') if case.created_at else 'N/A',
                 'flagged': case.id in flagged_case_ids,
-                'is_public': True
+                'is_public': case.status == CaseStatus.PUBLISHED
             })
     else:
         # Admins/Content Managers: prepare case data for admin template
@@ -1143,6 +1156,7 @@ def cases_by_module(module):
     body_parts = [{'value': bp.name, 'display_name': bp.value} for bp in BodyPart]
     age_groups = [{'value': ag.name, 'display_name': ag.value} for ag in AgeGroup]
     all_modules = [{'value': m.name, 'display_name': m.value} for m in FRCRModule]
+    status_options = [{'value': s.name, 'display_name': s.value.replace('_', ' ').title()} for s in CaseStatus]
     
     if is_student:
         return render_template('student_cases_list.html',
@@ -1163,6 +1177,8 @@ def cases_by_module(module):
                                age_groups=age_groups,
                                age_group_selected=age_group_filter,
                                all_modules=all_modules,
+                               status_options=status_options,
+                               status_selected=status_filter,
                                search_query=search_query)
 
 
@@ -1170,7 +1186,7 @@ def cases_by_module(module):
 @login_required
 def all_cases_view():
     """Case list view - different templates for students vs admins"""
-    from models import FRCRModule, BodyPart, AgeGroup, Case, CandidateNote
+    from models import FRCRModule, BodyPart, AgeGroup, Case, CandidateNote, CaseStatus
     
     # For students: redirect to student route
     is_student = (hasattr(current_user, 'role') and current_user.role == UserRole.STUDENT)
@@ -1183,6 +1199,7 @@ def all_cases_view():
     body_part_filter = request.args.get('body_part', '')
     age_group_filter = request.args.get('age_group', '')
     search_query = request.args.get('q', '')
+    status_filter = request.args.get('status', '')
     
     # Build query - admins see ALL cases (public and private)
     query = Case.query
@@ -1205,6 +1222,13 @@ def all_cases_view():
         try:
             age_group_enum = AgeGroup[age_group_filter]
             query = query.filter_by(age_group=age_group_enum)
+        except KeyError:
+            pass
+
+    if status_filter:
+        try:
+            status_enum = CaseStatus[status_filter]
+            query = query.filter(Case.status == status_enum)
         except KeyError:
             pass
     
@@ -1234,6 +1258,7 @@ def all_cases_view():
     all_modules = [{'value': m.name, 'display_name': m.value} for m in FRCRModule]
     body_parts = [{'value': bp.name, 'display_name': bp.value} for bp in BodyPart]
     age_groups = [{'value': ag.name, 'display_name': ag.value} for ag in AgeGroup]
+    status_options = [{'value': s.name, 'display_name': s.value.replace('_', ' ').title()} for s in CaseStatus]
     
     # Get count of pending staging cases for badge
     from models import ImportedCaseStaging
@@ -1249,6 +1274,8 @@ def all_cases_view():
                          age_groups=age_groups,
                          age_group_selected=age_group_filter,
                          search_query=search_query,
+                         status_options=status_options,
+                         status_selected=status_filter,
                          pending_staging_count=pending_staging_count)
 
 
@@ -1256,7 +1283,7 @@ def all_cases_view():
 @login_required
 def student_cases_list():
     """Student case list - shows only public cases, no admin controls"""
-    from models import FRCRModule, BodyPart, AgeGroup, Case, CaseFlag
+    from models import FRCRModule, BodyPart, AgeGroup, Case, CaseFlag, CaseStatus
     
     # Ensure only students can access this route
     is_student = (hasattr(current_user, 'role') and current_user.role == UserRole.STUDENT)
@@ -1271,7 +1298,7 @@ def student_cases_list():
     search_query = request.args.get('q', '')
     
     # Build query - students see ONLY public cases
-    query = Case.query.filter_by(is_public=True)
+    query = Case.query.filter(Case.status == CaseStatus.PUBLISHED)
     
     if module_filter:
         try:
@@ -1349,7 +1376,7 @@ def student_cases_list():
 @login_required
 def flag_case(case_id):
     """Flag a case for the current student - STUDENTS ONLY"""
-    from models import Case, CaseFlag
+    from models import Case, CaseFlag, CaseStatus
     
     # Only students can flag cases
     is_student = (hasattr(current_user, 'role') and current_user.role == UserRole.STUDENT)
@@ -1361,7 +1388,7 @@ def flag_case(case_id):
     if not case:
         return jsonify({'success': False, 'error': 'Case not found'}), 404
     
-    if not case.is_public:
+    if case.status != CaseStatus.PUBLISHED:
         return jsonify({'success': False, 'error': 'Cannot flag private cases'}), 403
     
     # Check if already flagged
@@ -1705,6 +1732,7 @@ def create_case():
     # All Q&A data is stored in Question and Answer tables only
     # Note: packet_id was removed from Case model (legacy examiner workflow)
     try:
+        is_public_from_status = (status_enum == CaseStatus.PUBLISHED)
         case = Case(
             case_number=case_number,
             diagnosis=sanitize_html_for_saving(data.get('diagnosis', '')),
@@ -1713,7 +1741,7 @@ def create_case():
             body_part=body_part_enum,
             age_group=age_group_enum,
             status=status_enum,
-            is_public=data.get('is_public', False),  # Legacy field, status takes precedence
+            is_public=is_public_from_status,  # Legacy field synced from status
             created_by_user_id=current_user.id
         )
         db.session.add(case)
@@ -2617,7 +2645,7 @@ def get_candidate_note(case_id):
 @login_required
 def save_candidate_note(case_id):
     """Create or update user's note for a specific case - STUDENTS ONLY"""
-    from models import CandidateNote, Case
+    from models import CandidateNote, Case, CaseStatus
     
     # Only students can create/edit notes
     is_student = (hasattr(current_user, 'role') and current_user.role == UserRole.STUDENT)
@@ -2628,7 +2656,7 @@ def save_candidate_note(case_id):
     case = Case.query.get(case_id)
     if not case:
         return jsonify({'error': 'Case not found'}), 404
-    if not case.is_public:
+    if case.status != CaseStatus.PUBLISHED:
         return jsonify({'error': 'Cannot add notes to private cases'}), 403
     
     data = request.get_json()
@@ -2762,32 +2790,11 @@ def get_case(case_id):
             except Exception:
                 pass
         if 'status' in data:
-            from models import CaseStatus
-            try:
-                case.status = CaseStatus[data['status']] if data['status'] else CaseStatus.DRAFT
-                # Automatically sync is_public based on status: PUBLISHED = True, all others = False
-                case.is_public = (case.status == CaseStatus.PUBLISHED)
-            except (KeyError, AttributeError):
-                pass
+            from models import sync_case_visibility
+            sync_case_visibility(case, status=data['status'])
         elif 'is_public' in data:
-            # Legacy support: if only is_public is provided (without status), sync status
-            val = data['is_public']
-            if isinstance(val, bool):
-                case.is_public = val
-            elif isinstance(val, str):
-                case.is_public = val.lower() == 'true'
-            elif isinstance(val, int):
-                case.is_public = val == 1
-            else:
-                case.is_public = False
-            # Sync status with is_public if status not explicitly set
-            from models import CaseStatus
-            if case.is_public:
-                case.status = CaseStatus.PUBLISHED
-            else:
-                # Only change to DRAFT if current status is PUBLISHED (preserve other statuses)
-                if case.status == CaseStatus.PUBLISHED:
-                    case.status = CaseStatus.DRAFT
+            from models import sync_case_visibility
+            sync_case_visibility(case, is_public=data['is_public'])
         # Optionally update Q&A pairs if present
         if 'pairs' in data:
             # Remove old Q&A
@@ -2866,7 +2873,7 @@ def get_highlights(case_id):
 @login_required
 def add_highlight(case_id):
     """Add a new text highlight - STUDENTS ONLY"""
-    from models import TextHighlight, Case
+    from models import TextHighlight, Case, CaseStatus
     
     # Only students can create highlights
     is_student = (hasattr(current_user, 'role') and current_user.role == UserRole.STUDENT)
@@ -2877,7 +2884,7 @@ def add_highlight(case_id):
     case = Case.query.get(case_id)
     if not case:
         return jsonify({'error': 'Case not found'}), 404
-    if not case.is_public:
+    if case.status != CaseStatus.PUBLISHED:
         return jsonify({'error': 'Cannot highlight private cases'}), 403
     
     data = request.get_json()
