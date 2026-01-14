@@ -142,7 +142,7 @@
                     <!-- Question & Answer Section - Separate Pairs -->
                     <div class="detail-section qa-section mb-5">
                         <label class="section-title fw-bold mb-4 d-block"><i class="fas fa-comments me-2" style="color: #ADD8E6;"></i>Questions & Answers</label>
-                        <div id="qaContainer" class="detail-content">
+                        <div id="qaContainer" class="detail-content discussion-text highlightable-text">
                             <!-- Q&A pairs loaded by JavaScript -->
                         </div>
                     </div>
@@ -224,33 +224,7 @@
         </div>
         
         {% if current_user.is_authenticated and current_user.role and current_user.role.value == 'student' %}
-        <!-- Floating Highlight Button -->
-        <div class="floating-highlight-btn" id="floatingHighlightBtn" style="display: none;">
-            <div class="btn-group dropup">
-                <button type="button" class="btn btn-primary btn-lg rounded-circle shadow-lg" id="highlightBtnFloating" data-bs-toggle="dropdown" aria-expanded="false" title="Highlight text">
-                    <i class="fas fa-highlighter"></i>
-                </button>
-                <ul class="dropdown-menu dropdown-menu-end" id="highlightColorMenuFloating">
-                    <li><h6 class="dropdown-header">Select Color</h6></li>
-                    <li><a class="dropdown-item highlight-color-option" href="#" data-color="yellow" style="background-color: #FFEB3B; color: #333;">
-                        <i class="fas fa-highlighter me-2"></i>Yellow
-                    </a></li>
-                    <li><a class="dropdown-item highlight-color-option" href="#" data-color="green" style="background-color: #4CAF50; color: white;">
-                        <i class="fas fa-highlighter me-2"></i>Green
-                    </a></li>
-                    <li><a class="dropdown-item highlight-color-option" href="#" data-color="pink" style="background-color: #E91E63; color: white;">
-                        <i class="fas fa-highlighter me-2"></i>Pink
-                    </a></li>
-                    <li><a class="dropdown-item highlight-color-option" href="#" data-color="blue" style="background-color: #2196F3; color: white;">
-                        <i class="fas fa-highlighter me-2"></i>Blue
-                    </a></li>
-                    <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item text-danger" href="#" id="cancelHighlightBtnFloating" style="display: none;">
-                        <i class="fas fa-times me-2"></i>Cancel Highlight
-                    </a></li>
-                </ul>
-            </div>
-        </div>
+        <!-- Highlighting is now selection-based - no floating button needed -->
         {% endif %}
         
         {% else %}
@@ -325,6 +299,10 @@
             text-align: left !important;
         }
         
+        .detail-content * {
+            text-align: left !important;
+        }
+        
         .btn-sm {
             font-size: 0.85rem;
             padding: 0.4rem 0.8rem;
@@ -345,10 +323,19 @@
             vertical-align: top;
             text-align: left !important;
         }
+        
+        .detail-content * {
+            text-align: left !important;
+        }
     }
     
     .detail-section {
         margin-bottom: 24px;
+        text-align: left !important;
+    }
+    
+    .case-details {
+        text-align: left !important;
     }
     
     #imagesContainer {
@@ -357,93 +344,9 @@
     }
     
     /* Floating Highlight Button */
-    .floating-highlight-btn {
-        position: fixed;
-        bottom: 30px;
-        right: 30px;
-        z-index: 1000;
-        animation: fadeIn 0.3s ease-in;
-    }
+    /* Floating highlight button removed - using selection-based highlighting */
     
-    #highlightBtnFloating {
-        width: 60px;
-        height: 60px;
-        padding: 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.5rem;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-        transition: all 0.3s ease;
-        border: none;
-    }
-    
-    #highlightBtnFloating:hover {
-        transform: scale(1.1);
-        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
-    }
-    
-    #highlightBtnFloating.active {
-        background-color: #667eea !important;
-        animation: pulse 2s infinite;
-        opacity: 1 !important;
-    }
-    
-    #highlightBtnFloating[style*="opacity: 0.7"] {
-        border: 2px solid rgba(102, 126, 234, 0.5);
-    }
-    
-    #highlightColorMenuFloating {
-        min-width: 200px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-        border: none;
-        border-radius: 8px;
-        margin-bottom: 10px;
-    }
-    
-    #highlightColorMenuFloating .highlight-color-option {
-        padding: 10px 15px;
-        font-weight: 500;
-        transition: all 0.2s;
-    }
-    
-    #highlightColorMenuFloating .highlight-color-option:hover {
-        transform: translateX(5px);
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    }
-    
-    @keyframes fadeIn {
-        from {
-            opacity: 0;
-            transform: translateY(20px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
-    
-    @keyframes pulse {
-        0%, 100% {
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-        }
-        50% {
-            box-shadow: 0 4px 20px rgba(102, 126, 234, 0.6);
-        }
-    }
-    
-    @media (max-width: 768px) {
-        .floating-highlight-btn {
-            bottom: 20px;
-            right: 20px;
-        }
-        
-        #highlightBtnFloating {
-            width: 55px;
-            height: 55px;
-            font-size: 1.3rem;
-        }
-    }
+    /* Old floating button CSS removed - using selection-based highlighting */
     
     #imageInput {
         display: block;
@@ -850,7 +753,7 @@
                 loadImages(true); // Force refresh
             }, 500); // Small delay to ensure DB is ready
         } else {
-            loadImages();
+        loadImages();
         }
         
         renderDiscussion(); // Use unified renderer instead of linkifyDiscussion
@@ -948,6 +851,10 @@
                                         questionText = renderSafeHTML(questionText);
                                         answerText = renderSafeHTML(answerText);
                                         
+                                        // Remove leading whitespace/newlines that might cause centering issues
+                                        questionText = questionText.replace(/^[\s\n\r]+/, '');
+                                        answerText = answerText.replace(/^[\s\n\r]+/, '');
+                                        
                                         // Check if content is plain text (no HTML tags)
                                         const isQuestionPlainText = isPlainText(questionText);
                                         const isAnswerPlainText = isPlainText(answerText);
@@ -966,13 +873,13 @@
                                         <tr role="row" class="qa-table-row ${rowClass}" tabindex="0">
                                             <td role="cell" class="qa-table-cell qa-question-cell">
                                                 <div class="qa-cell-number">Q${pair.number}</div>
-                                                <div class="qa-cell-content highlightable-text qa-question ${isQuestionPlainText ? 'plain-text-formatted' : ''}" data-field="question_${pair.number}" ${isStudent ? 'style="user-select: text; cursor: text;"' : ''}>
+                                                <div class="qa-cell-content highlightable-text qa-question ${isQuestionPlainText ? 'plain-text-formatted' : ''}" data-field="question_${pair.number}" style="text-align: left !important; ${isStudent ? 'user-select: text; cursor: text;' : ''}">
                                                     ${questionText || '<em class="text-muted">No question text</em>'}
                                                 </div>
                                             </td>
                                             <td role="cell" class="qa-table-cell qa-answer-cell">
                                                 <div class="qa-cell-number">A${pair.number}</div>
-                                                <div class="qa-cell-content highlightable-text qa-answer ${isAnswerPlainText ? 'plain-text-formatted' : ''}" data-field="answer_${pair.number}" ${isStudent ? 'style="user-select: text; cursor: text;"' : ''}>
+                                                <div class="qa-cell-content highlightable-text qa-answer ${isAnswerPlainText ? 'plain-text-formatted' : ''}" data-field="answer_${pair.number}" style="text-align: left !important; ${isStudent ? 'user-select: text; cursor: text;' : ''}">
                                                     ${answerText || '<em class="text-muted">No answer text</em>'}
                                                 </div>
                                             </td>
@@ -998,6 +905,10 @@
                             // Render safe HTML (content is already sanitized server-side)
                             questionText = renderSafeHTML(questionText);
                             answerText = renderSafeHTML(answerText);
+                            
+                            // Remove leading whitespace/newlines that might cause centering issues
+                            questionText = questionText.replace(/^[\s\n\r]+/, '');
+                            answerText = answerText.replace(/^[\s\n\r]+/, '');
                             
                             // Check if content is plain text (no HTML tags)
                             const isQuestionPlainText = isPlainText(questionText);
@@ -1357,204 +1268,159 @@
         }
     }
     
-    // ==================== INLINE TEXT HIGHLIGHTING (STUDENTS ONLY) ====================
-    let selectedText = '';
-    let highlightMenu = null;
-    let highlightMode = false;
-    let selectedHighlightColor = null; // Persists across highlight sessions
-    let currentHighlightField = null;
-    let colorMenuOpen = false; // Track if color menu is currently open
+    // ==================== NEW SELECTION-BASED HIGHLIGHTING SYSTEM (STUDENTS ONLY) ====================
+    // Color preference stored in localStorage
+    const HIGHLIGHT_COLOR_KEY = 'frcr_highlight_color';
+    let currentHighlightColor = localStorage.getItem(HIGHLIGHT_COLOR_KEY) || 'yellow';
+    let highlightActionMenu = null;
+    let currentSelectionRange = null;
+    let currentSelectionField = null;
     let processedHighlights = new Set(); // Track processed highlights to prevent duplicates
-    let touchStartPos = null;
-    let isTouchHighlighting = false;
-    let highlightCursor = null; // Visual feedback cursor
     
-    // Initialize highlighting for students only
+    // Initialize new selection-based highlighting system
     function initHighlighting() {
         if (!isStudent) return;
         
         // Load existing highlights
         loadHighlights();
         
-        // Setup highlight toolbars
-        setupHighlightToolbars();
+        // Listen for text selection (works on both desktop and mobile)
+        let selectionTimeout = null;
         
-        // Setup visual feedback cursor for highlighting
-        setupHighlightCursor();
-        
-        // Add mouseup listener for text selection when in highlight mode (desktop)
-        // Use capture phase to ensure we catch the event before other handlers
+        // Handle mouseup (desktop)
         document.addEventListener('mouseup', function(e) {
-            // Only process if in highlight mode
-            if (highlightMode && selectedHighlightColor) {
-                console.log('Mouseup event in highlight mode');
-                handleTextSelection(e);
+            // Don't show menu if clicking on the menu itself
+            if (highlightActionMenu && highlightActionMenu.contains(e.target)) {
+                return;
             }
-        }, true); // Use capture phase
+            
+            // Small delay to ensure selection is complete
+            if (selectionTimeout) clearTimeout(selectionTimeout);
+            selectionTimeout = setTimeout(() => {
+                handleTextSelection(e);
+            }, 100);
+        });
         
-        document.addEventListener('mousemove', handleMouseMove);
+        // Handle touchend (mobile)
+        document.addEventListener('touchend', function(e) {
+            // Don't show menu if tapping on the menu itself
+            if (highlightActionMenu && highlightActionMenu.contains(e.target)) {
+                return;
+            }
+            
+            // Longer delay for mobile to ensure selection is complete
+            if (selectionTimeout) clearTimeout(selectionTimeout);
+            selectionTimeout = setTimeout(() => {
+                handleTextSelection(e);
+            }, 300);
+        }, { passive: true });
         
-        // Enhanced touch handlers for mobile highlighting (like sketch pen)
-        document.addEventListener('touchstart', handleTouchStart, { passive: true });
-        document.addEventListener('touchmove', handleTouchMove, { passive: true });
-        document.addEventListener('touchend', handleTouchEnd, { passive: true });
-        
-        // Add selectionchange listener for better mobile support
-        // This fires when text selection changes, which is more reliable on mobile
-        let selectionChangeTimeout = null;
+        // Handle selectionchange (backup for mobile)
         document.addEventListener('selectionchange', function() {
-            if (highlightMode && selectedHighlightColor && !isTouchHighlighting) {
-                // Clear any pending timeout
-                if (selectionChangeTimeout) {
-                    clearTimeout(selectionChangeTimeout);
-                }
-                
-                // Small delay to ensure selection is complete on mobile
-                selectionChangeTimeout = setTimeout(function() {
-                    const selection = window.getSelection();
-                    if (!selection) return;
-                    
-                    const text = selection.toString().trim();
-                    
-                    // Only process if there's actual selected text and it's different from last processed
-                    if (text.length > 0 && text !== selectedText) {
-                        // Check if selection is within highlightable content
-                        if (selection.rangeCount > 0) {
-                            try {
-                                const range = selection.getRangeAt(0);
-                                if (!range) return;
-                                
-                                let fieldElement = null;
-                                
-                                // Find the field element from the range
-                                const container = range.commonAncestorContainer;
-                                if (container) {
-                                    fieldElement = container.nodeType === Node.TEXT_NODE 
-                                        ? container.parentElement 
-                                        : container;
-                                    
-                                    // Find the closest highlightable element
-                                    fieldElement = fieldElement.closest('.highlightable-text') || 
-                                                 fieldElement.closest('[data-field]') ||
-                                                 fieldElement;
-                                }
-                                
-                                if (fieldElement && (fieldElement.classList.contains('highlightable-text') || 
-                                    fieldElement.hasAttribute('data-field'))) {
-                                    // Prevent double-processing
-                                    const currentText = selection.toString().trim();
-                                    const fieldName = fieldElement.dataset?.field || 
-                                        fieldElement.getAttribute('data-field') || 
-                                        currentHighlightField || 'discussion';
-                                    const highlightKey = `${currentText}|${selectedHighlightColor}|${fieldName}`;
-                                    
-                                    if (currentText && currentText !== selectedText && !processedHighlights.has(highlightKey)) {
-                                        selectedText = currentText;
-                                        processedHighlights.add(highlightKey);
-                                        console.log('Creating highlight from selectionchange:', { text: currentText.substring(0, 50), color: selectedHighlightColor, field: fieldName });
-                                        createHighlight(currentText, selectedHighlightColor, fieldName);
-                                        // Clear selection after a brief moment to show the highlight was created
-                                        setTimeout(function() {
-                                            if (window.getSelection) {
-                                                window.getSelection().removeAllRanges();
-                                            }
-                                        }, 300);
-                                    }
-                                }
-                            } catch (err) {
-                                console.error('Error in selectionchange handler:', err);
+            if (highlightActionMenu) return; // Don't interfere if menu is open
+            
+            const selection = window.getSelection();
+            if (selection && selection.toString().trim().length > 0) {
+                // Check if selection is in highlightable content
+                if (selection.rangeCount > 0) {
+                    try {
+                        const range = selection.getRangeAt(0);
+                        const container = range.commonAncestorContainer;
+                        if (container) {
+                            const fieldElement = (container.nodeType === Node.TEXT_NODE 
+                                ? container.parentElement 
+                                : container).closest('.highlightable-text, [data-field]');
+                            
+                            if (fieldElement) {
+                                // Small delay then show menu
+                                if (selectionTimeout) clearTimeout(selectionTimeout);
+                                selectionTimeout = setTimeout(() => {
+                                    handleTextSelection(null);
+                                }, 200);
                             }
                         }
+                    } catch (err) {
+                        // Ignore errors
                     }
-                }, 300); // Shorter delay since we're using touch handlers
+                }
+            }
+        });
+        
+        // Close menu when clicking outside
+        document.addEventListener('click', function(e) {
+            if (highlightActionMenu && !highlightActionMenu.contains(e.target)) {
+                const selection = window.getSelection();
+                if (!selection || !selection.toString().trim()) {
+                    hideHighlightMenu();
+                }
             }
         });
     }
     
-    function setupHighlightToolbars() {
+    // Handle text selection and show contextual menu
+    function handleTextSelection(e) {
         if (!isStudent) return;
         
-        // Show floating highlight button
-        const floatingBtn = document.getElementById('floatingHighlightBtn');
-        if (floatingBtn) {
-            floatingBtn.style.display = 'block';
+        const selection = window.getSelection();
+        if (!selection || selection.rangeCount === 0) {
+            return;
         }
         
-        const highlightBtn = document.getElementById('highlightBtnFloating');
-        const cancelBtn = document.getElementById('cancelHighlightBtnFloating');
-        const colorMenu = document.getElementById('highlightColorMenuFloating');
+        const text = selection.toString().trim();
+        if (text.length === 0) {
+            return;
+        }
         
-        if (highlightBtn && colorMenu) {
-            // Track dropdown open/close state
-            highlightBtn.addEventListener('show.bs.dropdown', function() {
-                colorMenuOpen = true;
-                // If color is already selected, activate highlight mode when menu opens
-                if (selectedHighlightColor && !highlightMode) {
-                    highlightMode = true;
-                    highlightBtn.style.backgroundColor = getColorHex(selectedHighlightColor);
-                    highlightBtn.style.opacity = '1';
-                    highlightBtn.classList.add('active');
-                    if (cancelBtn) cancelBtn.style.display = 'block';
-                    showHighlightModeFeedback();
-                }
-            });
-            
-            highlightBtn.addEventListener('hide.bs.dropdown', function() {
-                colorMenuOpen = false;
-                // If color is selected and mode is active, keep mode active (menu just closed)
-                if (selectedHighlightColor && highlightMode) {
-                    // Mode stays active, user can now select text
-                }
-            });
-            
-            // Handle color selection from dropdown
-            colorMenu.querySelectorAll('.highlight-color-option').forEach(function(item) {
-                item.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    
-                    const color = this.getAttribute('data-color');
-                    selectedHighlightColor = color;
-                    highlightMode = true;
-                    currentHighlightField = null; // Will be determined by text selection
-                    
-                    console.log('Highlight mode activated:', { color, highlightMode, selectedHighlightColor });
-                    
-                    // Clear processed highlights when starting new highlight session
-                    processedHighlights.clear();
-                    
-                    // Update button to show selected color
-                    highlightBtn.style.backgroundColor = getColorHex(color);
-                    highlightBtn.style.opacity = '1';
-                    highlightBtn.classList.add('active');
-                    
-                    // Show cancel option in dropdown
-                    if (cancelBtn) cancelBtn.style.display = 'block';
-                    
-                    // Close dropdown
-                    const dropdown = bootstrap.Dropdown.getInstance(highlightBtn);
-                    if (dropdown) dropdown.hide();
-                    
-                    // Show feedback
-                    showHighlightModeFeedback();
-                });
-            });
-            
-            // Cancel button in dropdown
-            if (cancelBtn) {
-                cancelBtn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    exitHighlightMode('');
-                    
-                    // Close dropdown
-                    const dropdown = bootstrap.Dropdown.getInstance(highlightBtn);
-                    if (dropdown) dropdown.hide();
-                });
+        // Get the range
+        const range = selection.getRangeAt(0);
+        if (!range) return;
+        
+        // Find the field element
+        let fieldElement = null;
+        if (e && e.target) {
+            fieldElement = e.target.closest('.highlightable-text, [data-field]');
+        }
+        
+        // If not found via event target, find from range
+        if (!fieldElement) {
+            const container = range.commonAncestorContainer;
+            if (container) {
+                fieldElement = (container.nodeType === Node.TEXT_NODE 
+                    ? container.parentElement 
+                    : container).closest('.highlightable-text, [data-field]');
             }
         }
+        
+        // Must be in highlightable content
+        if (!fieldElement) {
+            return;
+        }
+        
+        // Get field name
+        const fieldName = fieldElement.dataset?.field || 
+                         fieldElement.getAttribute('data-field') || 
+                         'discussion';
+        
+        // Store selection info
+        currentSelectionRange = range.cloneRange();
+        currentSelectionField = fieldName;
+        
+        // Get position for menu (use selection end or event position)
+        let menuX, menuY;
+        if (e && e.clientX !== undefined) {
+            menuX = e.clientX;
+            menuY = e.clientY;
+        } else {
+            const rect = range.getBoundingClientRect();
+            menuX = rect.left + rect.width / 2;
+            menuY = rect.top;
+        }
+        
+        // Show contextual menu
+        showHighlightActionMenu(menuX, menuY, text, fieldName);
     }
     
+    // Get color hex value
     function getColorHex(colorName) {
         const colors = {
             'yellow': '#FFEB3B',
@@ -1565,73 +1431,7 @@
         return colors[colorName] || '#FFEB3B';
     }
     
-    function exitHighlightMode(prefix) {
-        highlightMode = false;
-        isTouchHighlighting = false;
-        // Keep selectedHighlightColor stored for next time (don't clear it)
-        currentHighlightField = null;
-        
-        // Clear processed highlights set when exiting mode
-        processedHighlights.clear();
-        
-        // Hide highlight cursor
-        updateHighlightCursor(0, 0, false);
-        
-        // Reset floating highlight button appearance (but keep color stored)
-        const highlightBtn = document.getElementById('highlightBtnFloating');
-        if (highlightBtn) {
-            // Reset to default button color, but if we have a stored color, show it subtly
-            if (selectedHighlightColor) {
-                highlightBtn.style.backgroundColor = getColorHex(selectedHighlightColor);
-                highlightBtn.style.opacity = '0.7'; // Dimmed to show it's ready but not active
-            } else {
-                highlightBtn.style.backgroundColor = '';
-                highlightBtn.style.opacity = '1';
-            }
-            highlightBtn.classList.remove('active');
-        }
-        
-        // Hide cancel option in dropdown
-        const cancelBtn = document.getElementById('cancelHighlightBtnFloating');
-        if (cancelBtn) {
-            cancelBtn.style.display = 'none';
-        }
-        
-        // Remove feedback
-        hideHighlightModeFeedback();
-    }
-    
-    function showHighlightModeFeedback() {
-        // Remove existing feedback
-        hideHighlightModeFeedback();
-        
-        // Add visual feedback that highlight mode is active
-        const feedback = document.createElement('div');
-        feedback.id = 'highlightModeFeedback';
-        const colorName = selectedHighlightColor ? selectedHighlightColor.charAt(0).toUpperCase() + selectedHighlightColor.slice(1) : 'selected';
-        feedback.style.cssText = `
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: #667eea;
-            color: white;
-            padding: 12px 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-            z-index: 9999;
-            font-size: 0.9rem;
-            font-weight: 500;
-            animation: slideIn 0.3s ease-out;
-        `;
-        feedback.innerHTML = `<i class="fas fa-highlighter me-2"></i>Highlight mode: ${colorName} - Select text to highlight`;
-        document.body.appendChild(feedback);
-    }
-    
-    function hideHighlightModeFeedback() {
-        const feedback = document.getElementById('highlightModeFeedback');
-        if (feedback) feedback.remove();
-    }
-    
+    // Load highlights from API
     function loadHighlights() {
         if (!isStudent) return;
         
@@ -1647,220 +1447,19 @@
             });
     }
     
-    // Setup visual highlight cursor (sketch pen effect)
-    function setupHighlightCursor() {
-        if (highlightCursor) return;
-        
-        highlightCursor = document.createElement('div');
-        highlightCursor.id = 'highlightCursor';
-        highlightCursor.style.cssText = `
-            position: fixed;
-            width: 24px;
-            height: 24px;
-            pointer-events: none;
-            z-index: 10000;
-            opacity: 0;
-            transition: opacity 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        `;
-        highlightCursor.innerHTML = '<i class="fas fa-highlighter" style="font-size: 20px; color: #667eea;"></i>';
-        document.body.appendChild(highlightCursor);
-    }
-    
-    function updateHighlightCursor(x, y, visible) {
-        if (!highlightCursor) return;
-        highlightCursor.style.left = (x - 12) + 'px';
-        highlightCursor.style.top = (y - 12) + 'px';
-        highlightCursor.style.opacity = visible ? '0.8' : '0';
-    }
-    
-    function handleMouseMove(e) {
-        if (highlightMode && selectedHighlightColor) {
-            const target = e.target;
-            if (target && (target.closest('.highlightable-text') || target.closest('[data-field]'))) {
-                updateHighlightCursor(e.clientX, e.clientY, true);
-            } else {
-                updateHighlightCursor(e.clientX, e.clientY, false);
-            }
-        } else {
-            updateHighlightCursor(0, 0, false);
-        }
-    }
-    
-    // Touch handlers for mobile highlighting (sketch pen style)
-    function handleTouchStart(e) {
-        if (!highlightMode || !selectedHighlightColor) return;
-        
-        const touch = e.touches[0];
-        const target = document.elementFromPoint(touch.clientX, touch.clientY);
-        
-        if (target && (target.closest('.highlightable-text') || target.closest('[data-field]'))) {
-            isTouchHighlighting = true;
-            touchStartPos = { x: touch.clientX, y: touch.clientY };
-            updateHighlightCursor(touch.clientX, touch.clientY, true);
-            
-            // Change cursor to show pen is active
-            if (highlightCursor) {
-                const colorHex = getColorHex(selectedHighlightColor);
-                highlightCursor.innerHTML = `<i class="fas fa-highlighter" style="font-size: 20px; color: ${colorHex};"></i>`;
-            }
-        }
-    }
-    
-    function handleTouchMove(e) {
-        if (!isTouchHighlighting || !highlightMode || !selectedHighlightColor) return;
-        
-        const touch = e.touches[0];
-        updateHighlightCursor(touch.clientX, touch.clientY, true);
-        
-        // Try to extend selection as user moves finger
-        const selection = window.getSelection();
-        if (selection.rangeCount > 0) {
-            try {
-                const range = selection.getRangeAt(0);
-                const touchNode = document.elementFromPoint(touch.clientX, touch.clientY);
-                
-                if (touchNode && (touchNode.closest('.highlightable-text') || touchNode.closest('[data-field]'))) {
-                    // Try to extend selection to touch point
-                    const touchRange = document.caretRangeFromPoint ? document.caretRangeFromPoint(touch.clientX, touch.clientY) : null;
-                    if (touchRange) {
-                        range.setEnd(touchRange.endContainer, touchRange.endOffset);
-                        selection.removeAllRanges();
-                        selection.addRange(range);
-                    }
-                }
-            } catch (err) {
-                // Ignore errors during touch move
-            }
-        }
-    }
-    
-    function handleTouchEnd(e) {
-        if (!isTouchHighlighting) return;
-        
-        isTouchHighlighting = false;
-        updateHighlightCursor(0, 0, false);
-        
-        // Reset cursor icon
-        if (highlightCursor) {
-            highlightCursor.innerHTML = '<i class="fas fa-highlighter" style="font-size: 20px; color: #667eea;"></i>';
-        }
-        
-        // Process selection after touch ends
-        setTimeout(function() {
-            handleTextSelection(e);
-        }, 200);
-    }
-    
-    function handleTextSelection(e) {
-        // Only process if in highlight mode
-        if (!highlightMode || !selectedHighlightColor) {
-            return;
-        }
-        
-        // Handle case where e might be undefined (from selectionchange)
-        const event = e || { target: null, type: 'mouseup' };
-        
-        // Don't process if clicking on floating highlight button or dropdown menu
-        if (event.target && (event.target.closest('.floating-highlight-btn') || event.target.closest('.dropdown-menu'))) {
-            return;
-        }
-        
-        // Small delay to ensure selection is complete
-        const delay = event.type === 'touchend' ? 200 : 50;
-        
-        setTimeout(function() {
-            const selection = window.getSelection();
-            if (!selection) return;
-            
-            const text = selection.toString().trim();
-            
-            if (text.length > 0) {
-                try {
-                    if (selection.rangeCount === 0) return;
-                    
-                    const range = selection.getRangeAt(0);
-                    if (!range) return;
-                    
-                    // Find the field element - handle both touch and mouse events
-                    let fieldElement = null;
-                    if (event.target) {
-                        fieldElement = event.target.closest('.highlightable-text') || event.target.closest('[data-field]');
-                    }
-                    
-                    // If not found via event target, try to find from range
-                    if (!fieldElement && range) {
-                        const container = range.commonAncestorContainer;
-                        if (container) {
-                            fieldElement = container.nodeType === Node.TEXT_NODE 
-                                ? container.parentElement 
-                                : container;
-                            fieldElement = fieldElement.closest('.highlightable-text') || 
-                                         fieldElement.closest('[data-field]') ||
-                                         fieldElement;
-                        }
-                    }
-                    
-                    // Ensure we have a valid field element
-                    if (!fieldElement) {
-                        console.warn('Could not find field element for highlight');
-                        return;
-                    }
-                    
-                    const fieldName = fieldElement.dataset?.field || 
-                                    fieldElement.getAttribute('data-field') || 
-                                    currentHighlightField || 
-                                    'discussion';
-                    
-                    // Create unique key to prevent duplicates
-                    const highlightKey = `${text}|${selectedHighlightColor}|${fieldName}`;
-                    
-                    // Check if we've already processed this highlight
-                    if (!processedHighlights.has(highlightKey)) {
-                        processedHighlights.add(highlightKey);
-                        selectedText = text;
-                        
-                        console.log('Creating highlight:', { text: text.substring(0, 50), color: selectedHighlightColor, field: fieldName });
-                        
-                        // Create highlight with selected color
-                        createHighlight(text, selectedHighlightColor, fieldName);
-                        
-                        // Clear selection after a brief moment
-                        setTimeout(function() {
-                            if (window.getSelection) {
-                                window.getSelection().removeAllRanges();
-                            }
-                        }, 300); // Increased delay to ensure highlight is visible
-                    } else {
-                        console.log('Skipping duplicate highlight');
-                        // Already processed, just clear selection
-                        if (window.getSelection) {
-                            window.getSelection().removeAllRanges();
-                        }
-                    }
-                    
-                    // Keep highlight mode active after creating highlight (for quick consecutive highlights)
-                } catch (err) {
-                    console.error('Error in handleTextSelection:', err);
-                }
-            }
-        }, delay);
-    }
-    
-    function showHighlightMenu(x, y, fieldName, range) {
+    // Show contextual action menu (iOS/Android style)
+    function showHighlightActionMenu(x, y, selectedText, fieldName) {
         // Remove existing menu
-        if (highlightMenu) {
-            highlightMenu.remove();
+        if (highlightActionMenu) {
+            highlightActionMenu.remove();
         }
         
         // Calculate position to avoid screen edges
-        const menuWidth = 320; // Approximate width
-        const menuHeight = 80;
+        const menuWidth = 280;
+        const menuHeight = 120;
         const padding = 10;
-        let menuX = x;
-        let menuY = y - menuHeight - 15;
+        let menuX = x - menuWidth / 2;
+        let menuY = y - menuHeight - 20;
         
         // Adjust if too close to right edge
         if (menuX + menuWidth > window.innerWidth - padding) {
@@ -1870,26 +1469,27 @@
         if (menuX < padding) {
             menuX = padding;
         }
-        // Adjust if too close to top
+        // Adjust if too close to top - show below selection instead
         if (menuY < padding) {
-            menuY = y + 25;
+            menuY = y + 30;
         }
         
         // Create menu container
-        highlightMenu = document.createElement('div');
-        highlightMenu.className = 'highlight-menu';
-        highlightMenu.style.cssText = `
+        highlightActionMenu = document.createElement('div');
+        highlightActionMenu.className = 'highlight-action-menu';
+        highlightActionMenu.style.cssText = `
             position: fixed;
             left: ${menuX}px;
             top: ${menuY}px;
             background: white;
-            border: 2px solid #667eea;
+            border: 1px solid #ddd;
             border-radius: 12px;
             padding: 12px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
             z-index: 10000;
-            min-width: 300px;
+            min-width: 260px;
             animation: slideDown 0.2s ease-out;
+            touch-action: manipulation;
         `;
         
         // Add animation keyframes if not already added
@@ -1907,82 +1507,95 @@
                         transform: translateY(0);
                     }
                 }
-                .highlight-menu {
+                .highlight-action-menu {
                     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
                 }
-                .highlight-color-btn {
-                    transition: all 0.2s ease;
-                    border: 2px solid transparent !important;
+                .highlight-action-btn {
+                    transition: all 0.15s ease;
+                    border: none !important;
+                    touch-action: manipulation;
                 }
-                .highlight-color-btn:hover {
-                    transform: scale(1.1);
-                    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-                    border-color: rgba(0,0,0,0.2) !important;
-                }
-                .highlight-color-btn:active {
+                .highlight-action-btn:active {
                     transform: scale(0.95);
+                    opacity: 0.8;
                 }
             `;
             document.head.appendChild(style);
         }
         
-        // Add title
-        const title = document.createElement('div');
-        title.style.cssText = 'font-weight: 600; color: #333; margin-bottom: 10px; font-size: 0.9rem; display: flex; align-items: center; gap: 6px;';
-        title.innerHTML = '<i class="fas fa-highlighter" style="color: #667eea;"></i>Highlight Text';
-        highlightMenu.appendChild(title);
+        // Primary action: Highlight button (uses current color preference)
+        const highlightBtn = document.createElement('button');
+        highlightBtn.className = 'highlight-action-btn';
+        const currentColorHex = getColorHex(currentHighlightColor);
+        highlightBtn.style.cssText = `
+            background: ${currentColorHex};
+            color: ${currentHighlightColor === 'yellow' ? '#333' : '#fff'};
+            border: none;
+            padding: 10px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.9rem;
+            width: 100%;
+            margin-bottom: 8px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        `;
+        highlightBtn.innerHTML = `<i class="fas fa-highlighter"></i> Highlight`;
+        highlightBtn.onclick = function() {
+            highlightBtn.disabled = true;
+            highlightBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Highlighting...';
+            createHighlightFromSelection(currentHighlightColor);
+        };
+        highlightActionMenu.appendChild(highlightBtn);
         
-        // Color buttons container
-        const colorContainer = document.createElement('div');
-        colorContainer.style.cssText = 'display: flex; gap: 8px; flex-wrap: wrap; align-items: center;';
+        // Color picker row
+        const colorRow = document.createElement('div');
+        colorRow.style.cssText = 'display: flex; gap: 6px; justify-content: center; margin-bottom: 8px;';
         
         const colors = [
-            { name: 'yellow', color: '#FFEB3B', label: 'Yellow', icon: '🟡' },
-            { name: 'green', color: '#4CAF50', label: 'Green', icon: '🟢' },
-            { name: 'pink', color: '#E91E63', label: 'Pink', icon: '🔴' },
-            { name: 'blue', color: '#2196F3', label: 'Blue', icon: '🔵' }
+            { name: 'yellow', color: '#FFEB3B' },
+            { name: 'green', color: '#4CAF50' },
+            { name: 'pink', color: '#E91E63' },
+            { name: 'blue', color: '#2196F3' }
         ];
         
         colors.forEach(function(color) {
-            const btnWrapper = document.createElement('div');
-            btnWrapper.style.cssText = 'display: flex; flex-direction: column; align-items: center; gap: 4px;';
-            
-            const btn = document.createElement('button');
-            btn.className = 'highlight-color-btn';
-            btn.setAttribute('data-color', color.name);
-            btn.style.cssText = `
+            const colorBtn = document.createElement('button');
+            colorBtn.className = 'highlight-action-btn';
+            const isSelected = color.name === currentHighlightColor;
+            colorBtn.style.cssText = `
+                width: 36px;
+                height: 36px;
+                border-radius: 50%;
                 background: ${color.color};
-                color: ${color.name === 'yellow' ? '#333' : '#fff'};
-                border: 2px solid transparent;
-                padding: 8px 12px;
-                border-radius: 8px;
+                border: ${isSelected ? '3px solid #333' : '2px solid transparent'};
                 cursor: pointer;
-                font-weight: 600;
-                font-size: 0.85rem;
-                min-width: 60px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                gap: 6px;
-                box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             `;
-            btn.innerHTML = `<i class="fas fa-highlighter"></i> ${color.label}`;
-            btn.title = `Highlight with ${color.label}`;
-            btn.onclick = function() {
-                btn.disabled = true;
-                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-                createHighlight(selectedText, color.name, fieldName);
-                hideHighlightMenu();
-                window.getSelection().removeAllRanges();
+            colorBtn.title = `Use ${color.name} highlight`;
+            colorBtn.onclick = function(e) {
+                e.stopPropagation();
+                currentHighlightColor = color.name;
+                localStorage.setItem(HIGHLIGHT_COLOR_KEY, color.name);
+                // Update primary button color
+                highlightBtn.style.background = color.color;
+                highlightBtn.style.color = color.name === 'yellow' ? '#333' : '#fff';
+                // Update selected indicator
+                colorRow.querySelectorAll('button').forEach(btn => {
+                    btn.style.border = '2px solid transparent';
+                });
+                colorBtn.style.border = '3px solid #333';
             };
-            
-            btnWrapper.appendChild(btn);
-            colorContainer.appendChild(btnWrapper);
+            colorRow.appendChild(colorBtn);
         });
         
-        highlightMenu.appendChild(colorContainer);
+        highlightActionMenu.appendChild(colorRow);
         
-        // Close button (subtle)
+        // Close button
         const closeBtn = document.createElement('button');
         closeBtn.style.cssText = `
             position: absolute;
@@ -2000,47 +1613,60 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: all 0.2s;
         `;
         closeBtn.innerHTML = '<i class="fas fa-times"></i>';
-        closeBtn.title = 'Cancel';
-        closeBtn.onmouseover = function() { this.style.background = '#f0f0f0'; this.style.color = '#333'; };
-        closeBtn.onmouseout = function() { this.style.background = 'transparent'; this.style.color = '#999'; };
         closeBtn.onclick = hideHighlightMenu;
-        highlightMenu.appendChild(closeBtn);
+        highlightActionMenu.appendChild(closeBtn);
         
-        document.body.appendChild(highlightMenu);
+        document.body.appendChild(highlightActionMenu);
         
-        // Click outside to close
-        setTimeout(function() {
-            const closeHandler = function(e) {
-                if (highlightMenu && !highlightMenu.contains(e.target)) {
-                    const selection = window.getSelection();
-                    if (!selection.toString().trim()) {
-                        hideHighlightMenu();
-                        document.removeEventListener('click', closeHandler);
-                    }
-                }
-            };
-            document.addEventListener('click', closeHandler);
-            
-            // Also close on Escape key
-            const escapeHandler = function(e) {
-                if (e.key === 'Escape' && highlightMenu) {
-                    hideHighlightMenu();
-                    document.removeEventListener('keydown', escapeHandler);
-                }
-            };
-            document.addEventListener('keydown', escapeHandler);
-        }, 100);
+        // Close on Escape key
+        const escapeHandler = function(e) {
+            if (e.key === 'Escape' && highlightActionMenu) {
+                hideHighlightMenu();
+                document.removeEventListener('keydown', escapeHandler);
+            }
+        };
+        document.addEventListener('keydown', escapeHandler);
     }
     
     function hideHighlightMenu() {
-        if (highlightMenu) {
-            highlightMenu.remove();
-            highlightMenu = null;
+        if (highlightActionMenu) {
+            highlightActionMenu.remove();
+            highlightActionMenu = null;
         }
-        selectedText = '';
+        currentSelectionRange = null;
+        currentSelectionField = null;
+        
+        // Clear selection
+        const selection = window.getSelection();
+        if (selection) {
+            selection.removeAllRanges();
+        }
+    }
+    
+    // Create highlight from current selection
+    function createHighlightFromSelection(color) {
+        if (!currentSelectionRange || !currentSelectionField) {
+            console.warn('No selection range available');
+            hideHighlightMenu();
+            return;
+        }
+        
+        const selection = window.getSelection();
+        if (!selection || selection.rangeCount === 0) {
+            hideHighlightMenu();
+            return;
+        }
+        
+        const text = selection.toString().trim();
+        if (!text) {
+            hideHighlightMenu();
+            return;
+        }
+        
+        createHighlight(text, color, currentSelectionField);
+        hideHighlightMenu();
     }
     
     function createHighlight(text, color, fieldName) {
@@ -2102,27 +1728,6 @@
                 setTimeout(() => {
                     loadHighlights();
                 }, 300);
-                
-                // Show brief success feedback with visual animation
-                const feedback = document.getElementById('highlightModeFeedback');
-                if (feedback) {
-                    const colorName = selectedHighlightColor ? selectedHighlightColor.charAt(0).toUpperCase() + selectedHighlightColor.slice(1) : 'selected';
-                    const colorHex = getColorHex(selectedHighlightColor);
-                    
-                    // Animate success
-                    feedback.innerHTML = `<i class="fas fa-check me-2"></i>Highlighted! Select more text to continue`;
-                    feedback.style.background = colorHex;
-                    feedback.style.transform = 'scale(1.1)';
-                    feedback.style.transition = 'all 0.3s ease';
-                    
-                    setTimeout(() => {
-                        if (feedback && feedback.parentNode) {
-                            feedback.innerHTML = `<i class="fas fa-highlighter me-2"></i>Highlight mode: ${colorName} - Select text to highlight`;
-                            feedback.style.background = '#667eea';
-                            feedback.style.transform = 'scale(1)';
-                        }
-                    }, 1500);
-                }
             } else {
                 // If highlight already exists (backend duplicate), remove from processed set
                 if (data.message && data.message.includes('already exists')) {
@@ -2139,20 +1744,6 @@
             console.error('Error creating highlight:', error);
             // Remove from processed set on error so user can retry
             processedHighlights.delete(highlightKey);
-            // Show error feedback
-            const feedback = document.getElementById('highlightModeFeedback');
-            if (feedback) {
-                const originalHTML = feedback.innerHTML;
-                feedback.innerHTML = `<i class="fas fa-exclamation-triangle me-2"></i>Error: ${error.message}`;
-                feedback.style.background = '#dc3545';
-                setTimeout(() => {
-                    if (feedback && feedback.parentNode) {
-                        const colorName = selectedHighlightColor ? selectedHighlightColor.charAt(0).toUpperCase() + selectedHighlightColor.slice(1) : 'selected';
-                        feedback.innerHTML = `<i class="fas fa-highlighter me-2"></i>Highlight mode: ${colorName} - Select text to highlight`;
-                        feedback.style.background = '#667eea';
-                    }
-                }, 2000);
-            }
         });
     }
     
@@ -2242,6 +1833,15 @@
     
     function escapeRegex(str) {
         return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+    
+    // Initialize highlighting when page loads (students only)
+    if (isStudent) {
+        document.addEventListener('DOMContentLoaded', function() {
+            initHighlighting();
+            // Re-initialize after Q&A loads
+            setTimeout(initHighlighting, 1000);
+        });
     }
     
     // Initialize highlighting when page loads (students only)

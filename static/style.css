@@ -2097,9 +2097,15 @@ pre {
 /* Cell Content */
 .qa-cell-content {
     color: #2c2c2c;
-    text-align: left;
+    text-align: left !important;
     word-wrap: break-word;
     overflow-wrap: break-word;
+}
+
+/* Ensure all child elements are left-aligned */
+.qa-cell-content *,
+.qa-card-text * {
+    text-align: left !important;
 }
 
 /* Plain text formatting - preserves line breaks, bullets, indentation */
@@ -2109,6 +2115,7 @@ pre {
 #imageDescriptionDisplay.plain-text-formatted {
     white-space: pre-wrap !important;
     font-family: inherit;
+    text-align: left !important;
 }
 
 /* High contrast for better readability */
