@@ -85,8 +85,9 @@
 /* Better layout for filter buttons on mobile */
 @media (max-width: 991px) {
     .filter-row {
-        flex-direction: column;
-        gap: 1rem !important;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.75rem !important;
     }
     
     .filter-item {
@@ -95,6 +96,7 @@
     
     /* Make filter buttons horizontal on mobile instead of vertical stack */
     .filter-button-item {
+        grid-column: 1 / -1;
         display: flex;
         gap: 0.75rem;
         flex-wrap: wrap;
@@ -109,6 +111,54 @@
     .filter-button-item .btn {
         min-height: 44px;
         font-size: 0.95rem;
+    }
+}
+
+@media (max-width: 991px) {
+    .filter-card-mobile {
+        padding: 0.75rem 0.75rem 0;
+    }
+
+    .filter-card .filter-card-body {
+        padding: 0.75rem !important;
+    }
+
+    .filter-card.is-open .filter-card-body {
+        display: block;
+    }
+
+    .filter-card:not(.is-open) .filter-card-body {
+        display: none;
+    }
+
+    .filter-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.5rem;
+        font-size: 0.95rem;
+        min-height: 44px;
+    }
+
+    .filter-count {
+        font-weight: 600;
+    }
+
+    .filter-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-top: 0.75rem;
+    }
+
+    .filter-chip {
+        border: 1px solid rgba(94, 137, 158, 0.25);
+        background: #ffffff;
+        color: var(--brand-text-primary);
+        border-radius: 999px;
+        padding: 0.35rem 0.7rem;
+        font-size: 0.8rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
     }
 }
 
@@ -738,16 +788,20 @@ body {
     margin-top: auto;
 }
 
+.footer-content {
+    padding: 0.75rem 0;
+}
+
 .footer-title {
     font-weight: 700;
     color: var(--brand-primary);
-    font-size: 1.1rem;
+    font-size: 1rem;
     letter-spacing: 0.5px;
 }
 
 .footer-text {
     color: #ffffff;
-    line-height: 1.6;
+    line-height: 1.45;
     margin: 0;
 }
 
@@ -771,6 +825,7 @@ body {
 .footer-copyright {
     color: #ffffff;
     margin: 0;
+    font-size: 0.8rem;
 }
 
 
@@ -1431,7 +1486,14 @@ pre {
 .description-section .image-desc-meta,
 #imageDescriptionDisplay .image-desc-meta,
 #imageDescriptionDisplay a {
-    color: #000000 !important;
+    color: #2c2c2c !important;
+    opacity: 0.75;
+}
+
+.description-section .text-muted,
+#imageDescriptionDisplay .text-muted {
+    color: #2c2c2c !important;
+    opacity: 0.75;
 }
 
 .image-description-section textarea:focus {
@@ -1520,7 +1582,7 @@ pre {
     }
 
     .footer-content {
-        padding: 1rem 0 !important;
+        padding: 0.6rem 0 !important;
     }
 
     .footer-title {
@@ -1658,6 +1720,7 @@ pre {
     overflow: hidden;
     transition: all 0.3s ease;
     height: 100%;
+    width: 100%;
     display: flex;
     flex-direction: column;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
@@ -2283,7 +2346,8 @@ pre {
 
 #imageDescriptionDisplay .image-desc-meta,
 #imageDescriptionDisplay a {
-    color: #000000 !important;
+    color: #2c2c2c !important;
+    opacity: 0.75;
 }
 
 /* High contrast for better readability */

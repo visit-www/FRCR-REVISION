@@ -168,6 +168,7 @@ This document provides a comprehensive reference for all custom brand classes, C
 | Footer Links | `.footer-link` | `#ffffff` | `static/style.css:754-759` |
 | Footer Link Hover | `.footer-link:hover` | `#f7fbff` | `static/style.css:761-764` |
 | Footer Copyright | `.footer-copyright` | `#ffffff` | `static/style.css:771-773` |
+| Footer Spacing | `.footer-content` | Compact padding (`0.75rem 0`) | `static/style.css:789-796` |
 
 ### Duplicate Case Modal (Edit Case)
 
@@ -465,6 +466,23 @@ This document provides a comprehensive reference for all custom brand classes, C
 | Discussion | `linear-gradient(135deg, #f0f8fc 0%, #f5fbff 100%)` | `5px solid #17a2b8` | `#17a2b8` | `#2c3e50` | `templates/view_case.html:151` |
 | Notes | `linear-gradient(135deg, #FFF8E7 0%, #FFFCF3 100%)` | `5px solid #F2CC8F` | `#FFB84D` | `#2c3e50` | `templates/view_case.html:168` |
 
+### Image Description Text (View Case + Edit Case)
+
+**Location**: `static/style.css` (Image description selectors) and `templates/view_case.html`
+
+| Element | Style | Update Location |
+|---------|-------|-----------------|
+| Description Main Text | White (`#ffffff`) | `static/style.css:1476-1483`, `static/style.css:2331-2337` |
+| Credits/Courtesy/Links | Muted black (`#2c2c2c`, opacity `0.75`) | `static/style.css:1485-1491`, `static/style.css:2339-2342` |
+
+### Q&A Cards (Full Width)
+
+**Location**: `static/style.css`
+
+| Element | Style | Update Location |
+|---------|-------|-----------------|
+| Q&A Cards | `width: 100%` (max width within container) | `static/style.css:1704-1713` |
+
 ### Breadcrumb Navigation (View Case)
 
 **Location**: `templates/view_case.html` (Lines 81-103) and `static/style.css` (Lines 591-620)
@@ -491,6 +509,6 @@ This document provides a comprehensive reference for all custom brand classes, C
 
 ---
 
-**Last Updated**: After View Case UI review
+**Last Updated**: After image description, footer compacting, and Q&A width updates
 **Maintained By**: Development Team
 **Version**: 1.1

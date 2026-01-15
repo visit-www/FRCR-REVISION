@@ -74,8 +74,15 @@
     </div>
 
     <!-- Filters -->
-    <div class="card filter-card shadow-sm border-0 mb-4">
-        <div class="card-body p-4">
+    <div class="card filter-card shadow-sm border-0 mb-4" id="filtersCard">
+        <div class="filter-card-mobile d-md-none">
+            <button class="btn btn-brand-neutral w-100 filter-toggle" id="filtersToggle" type="button" aria-expanded="false">
+                <span><i class="fas fa-filter me-2"></i>Filters</span>
+                <span class="filter-count" id="filtersCount">Active: 0</span>
+            </button>
+            <div class="filter-chips" id="filterChips"></div>
+        </div>
+        <div class="card-body p-4 filter-card-body" id="filtersBody">
             <div class="filter-row">
                 {% if not module_filter %}
                 <div class="filter-item">
@@ -332,6 +339,11 @@ document.getElementById('moduleFilter')?.addEventListener('change', applyFilters
 document.getElementById('bodyPartFilter')?.addEventListener('change', applyFilters);
 document.getElementById('ageGroupFilter')?.addEventListener('change', applyFilters);
 document.getElementById('statusFilter')?.addEventListener('change', applyFilters);
+document.getElementById('caseSearch')?.addEventListener('input', updateFilterSummary);
+document.getElementById('moduleFilter')?.addEventListener('change', updateFilterSummary);
+document.getElementById('bodyPartFilter')?.addEventListener('change', updateFilterSummary);
+document.getElementById('ageGroupFilter')?.addEventListener('change', updateFilterSummary);
+document.getElementById('statusFilter')?.addEventListener('change', updateFilterSummary);
 
 function applyFilters() {
     const searchParams = new URLSearchParams(window.location.search);
@@ -362,6 +374,67 @@ function applyFilters() {
 function clearFilters() {
     window.location.href = window.location.pathname;
 }
+
+// Mobile filter summary + toggle
+const filtersCard = document.getElementById('filtersCard');
+const filtersToggle = document.getElementById('filtersToggle');
+const filtersBody = document.getElementById('filtersBody');
+const filtersCount = document.getElementById('filtersCount');
+const filterChips = document.getElementById('filterChips');
+
+function getActiveFilters() {
+    const active = [];
+    const module = document.getElementById('moduleFilter')?.value;
+    const bodyPart = document.getElementById('bodyPartFilter')?.value;
+    const ageGroup = document.getElementById('ageGroupFilter')?.value;
+    const status = document.getElementById('statusFilter')?.value;
+    const search = document.getElementById('caseSearch')?.value;
+
+    if (module) active.push({ key: 'module', label: 'Module', value: module });
+    if (bodyPart) active.push({ key: 'body_part', label: 'Body', value: bodyPart });
+    if (ageGroup) active.push({ key: 'age_group', label: 'Age', value: ageGroup });
+    if (status) active.push({ key: 'status', label: 'Status', value: status });
+    if (search) active.push({ key: 'q', label: 'Search', value: search });
+    return active;
+}
+
+function updateFilterSummary() {
+    if (!filtersCount || !filterChips) return;
+    const active = getActiveFilters();
+    filtersCount.textContent = `Active: ${active.length}`;
+    filterChips.innerHTML = '';
+    active.forEach(item => {
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = 'filter-chip';
+        chip.textContent = `${item.label}: ${item.value}`;
+        chip.addEventListener('click', () => {
+            const map = {
+                module: 'moduleFilter',
+                body_part: 'bodyPartFilter',
+                age_group: 'ageGroupFilter',
+                status: 'statusFilter',
+                q: 'caseSearch'
+            };
+            const el = document.getElementById(map[item.key]);
+            if (el) {
+                el.value = '';
+            }
+            applyFilters();
+        });
+        filterChips.appendChild(chip);
+    });
+}
+
+if (filtersToggle && filtersBody && filtersCard) {
+    filtersToggle.addEventListener('click', () => {
+        const isOpen = filtersCard.classList.toggle('is-open');
+        filtersBody.hidden = !isOpen;
+        filtersToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    });
+}
+
+updateFilterSummary();
 
 function deleteCase(caseId) {
     if (!confirm('Are you sure you want to delete this case?')) return;
