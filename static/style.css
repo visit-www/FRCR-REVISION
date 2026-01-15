@@ -2147,6 +2147,13 @@ pre {
     color: #FFFFFF;
 }
 
+/* Force LTR + left alignment for answer content (defensive override) */
+.qa-answer-card-display .qa-card-text,
+.qa-answer-card-display .qa-card-text * {
+    text-align: left !important;
+    direction: ltr !important;
+}
+
 /* Pair Divider - Golden */
 .qa-pair-divider {
     height: 2px;
