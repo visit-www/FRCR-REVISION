@@ -4131,29 +4131,31 @@ tbody tr.case-row:hover {
 /* ==================== AI GENERATED CONTENT STYLES ==================== */
 /*
  * AI-generated content is marked with .ai-generated-content class.
- * This provides visual distinction (blue text) before saving.
- * When the case is saved, this class should be removed via JavaScript
- * to convert the text to normal styling.
+ * This provides visual distinction (orange background) before saving.
+ * When the case is saved, this class is removed via JavaScript
+ * to convert the content to normal styling.
  */
 
 .ai-generated-content {
-    color: #2563eb !important; /* Blue color for AI content */
+    background-color: rgba(233, 99, 4, 0.1) !important; /* Light peachy-orange background */
+    border-left: 3px solid var(--peachy-orange, #e96304) !important;
+    padding-left: 8px !important;
 }
 
-.ai-generated-content a {
-    color: #1d4ed8 !important; /* Slightly darker blue for links */
+/* AI-generated Q&A pair row */
+.ai-generated-pair {
+    background-color: rgba(233, 99, 4, 0.08) !important;
+    border: 2px solid var(--peachy-orange, #e96304) !important;
 }
 
-.ai-generated-content a:hover {
-    color: #1e40af !important;
-    text-decoration: underline;
+.ai-generated-pair .qa-question-card,
+.ai-generated-pair .qa-answer-card {
+    background-color: rgba(233, 99, 4, 0.05) !important;
 }
 
 /* TinyMCE editor styling for AI content */
 .mce-content-body .ai-generated-content {
-    color: #2563eb !important;
-}
-
-.mce-content-body .ai-generated-content a {
-    color: #1d4ed8 !important;
+    background-color: rgba(233, 99, 4, 0.1) !important;
+    border-left: 3px solid #e96304 !important;
+    padding-left: 8px !important;
 }

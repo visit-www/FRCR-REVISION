@@ -69,17 +69,28 @@ function populateQAPairs(caseData) {
 }
 
 // Add Q&A pair row (new or existing) with TinyMCE for answers
-function addQAPairRow(questionText = '', answerText = '') {
+// isAiGenerated: if true, applies orange background styling (removed on save)
+function addQAPairRow(questionText = '', answerText = '', isAiGenerated = false) {
     const container = document.getElementById('qaPairsContainer');
     const pairNum = container.querySelectorAll('.qa-pair-row').length + 1;
     const questionId = 'qa-question-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
     const uniqueId = 'qa-answer-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
     
+    // AI badge indicator (orange brand color)
+    const aiIndicator = isAiGenerated 
+        ? '<span class="badge ms-2" style="background-color: var(--peachy-orange, #e96304); color: white;" title="AI Generated"><i class="fas fa-robot me-1"></i>AI</span>' 
+        : '';
+    
     const row = document.createElement('div');
     row.className = 'qa-pair-row p-3 mb-3 border rounded bg-light';
+    
+    // Add AI-generated styling (orange background) if applicable
+    if (isAiGenerated) {
+        row.classList.add('ai-generated-pair');
+    }
     row.innerHTML = `
         <div class="d-flex justify-content-between align-items-center mb-2">
-            <h6 class="mb-0"><strong>Pair ${pairNum}</strong></h6>
+            <h6 class="mb-0"><strong>Pair ${pairNum}</strong>${aiIndicator}</h6>
             <button type="button" class="btn btn-sm btn-danger" onclick="removeQAPair(this)">
                 <i class="fas fa-trash me-1"></i>Remove
             </button>
@@ -845,7 +856,7 @@ function saveEditedCase(event) {
         discussion = document.getElementById('editCaseDiscussion').value.trim();
     }
     
-    // Strip AI-generated content styling (blue text) before saving
+    // Strip AI-generated content styling (orange background) before saving
     // This converts AI content to normal text appearance
     discussion = stripAiGeneratedContentClass(discussion);
     
@@ -1865,7 +1876,8 @@ function createPrelimCaseData() {
     .then(data => {
         const pairs = data.added_pairs || [];
         pairs.forEach(pair => {
-            addQAPairRow(pair.question || '', pair.answer || '');
+            // Pass true for isAiGenerated to apply orange background styling
+            addQAPairRow(pair.question || '', pair.answer || '', true);
         });
         if (data.discussion_html) {
             appendDiscussionHtml(data.discussion_html);

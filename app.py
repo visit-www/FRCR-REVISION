@@ -1964,9 +1964,9 @@ def _build_ai_discussion_html(output, provider, model_name):
     """
     Build HTML for AI-generated discussion content.
     
-    The content is wrapped in a div with class 'ai-generated-content' which
-    applies blue text color. This class should be removed when the case is
-    saved to make the content appear as normal text.
+    The content is marked with class 'ai-generated-content' which applies
+    orange background styling (brand color). This class is removed when 
+    the case is saved, making the content appear as normal text.
     """
     sections = []
     timestamp = datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')
