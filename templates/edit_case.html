@@ -302,7 +302,14 @@ console.log('[TinyMCE Loader] Script URL was:', "{{ url_for('static', filename='
 
             <!-- Action Buttons -->
             <div class="sticky-bottom bg-white border-top p-3 mb-5 shadow-sm">
-                <div class="d-flex gap-2 justify-content-end">
+                <div class="d-flex gap-2 justify-content-end align-items-center flex-wrap">
+                    <select id="aiProviderSelect" class="form-select form-select-sm w-auto">
+                        <option value="claude" selected>Claude</option>
+                        <option value="consensus" disabled>Consensus (soon)</option>
+                    </select>
+                    <button type="button" class="btn btn-lg btn-brand-primary" id="aiPrelimBtn" onclick="createPrelimCaseData()">
+                        <i class="fas fa-wand-magic-sparkles me-2"></i>Create Preliminary Case Data
+                    </button>
                     <button type="button" class="btn btn-lg btn-outline-secondary" onclick="window.history.back()">
                         <i class="fas fa-times me-2"></i>Cancel
                     </button>
