@@ -1,4 +1,4 @@
-/* FRCR Revision - "Confident Calm" Theme */
+flaskflasfl/* FRCR Revision - "Confident Calm" Theme */
 /* Matte pastel palette for medical professionalism */
 
 /* Mobile-friendly text selection for highlighter */
@@ -2323,6 +2323,7 @@ pre {
 .qa-cell-content {
     color: #2c2c2c;
     text-align: left !important;
+    direction: ltr !important;
     word-wrap: break-word;
     overflow-wrap: break-word;
 }
@@ -2331,6 +2332,7 @@ pre {
 .qa-cell-content *,
 .qa-card-text * {
     text-align: left !important;
+    direction: ltr !important;
 }
 
 /* Plain text formatting - preserves line breaks, bullets, indentation */

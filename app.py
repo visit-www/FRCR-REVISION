@@ -492,7 +492,194 @@ def cases_by_module(module):
 def all_cases_view():
     if getattr(current_user, 'role', None) == UserRole.STUDENT:
         return redirect(url_for('student_cases_list'))
-    # ...existing admin case list logic...
+    from models import BodyPart, AgeGroup, FRCRModule, CaseStatus, CandidateNote, ImportedCaseStaging
+
+    module_filter = request.args.get('module', '')
+    body_part_filter = request.args.get('body_part', '')
+    age_group_filter = request.args.get('age_group', '')
+    status_filter = request.args.get('status', '')
+    search_query = request.args.get('q', '')
+
+    query = Case.query
+
+    if module_filter:
+        try:
+            module_enum = FRCRModule[module_filter]
+            query = query.filter_by(module=module_enum)
+        except KeyError:
+            module_filter = ''
+
+    if body_part_filter:
+        try:
+            body_part_enum = BodyPart[body_part_filter]
+            query = query.filter_by(body_part=body_part_enum)
+        except KeyError:
+            body_part_filter = ''
+
+    if age_group_filter:
+        try:
+            age_group_enum = AgeGroup[age_group_filter]
+            query = query.filter_by(age_group=age_group_enum)
+        except KeyError:
+            age_group_filter = ''
+
+    if status_filter:
+        try:
+            status_enum = CaseStatus[status_filter]
+            query = query.filter_by(status=status_enum)
+        except KeyError:
+            status_filter = ''
+
+    if search_query:
+        query = query.filter(Case.diagnosis.ilike(f'%{search_query}%'))
+
+    cases = query.order_by(Case.id.desc()).all()
+
+    cases_data = []
+    for case in cases:
+        has_notes = CandidateNote.query.filter_by(case_id=case.id, user_id=current_user.id).first() is not None
+        cases_data.append({
+            'id': case.id,
+            'diagnosis': case.diagnosis,
+            'module_display': case.module.value if case.module else 'N/A',
+            'body_part_display': case.body_part.value if case.body_part else 'N/A',
+            'image_count': len(case.images),
+            'has_notes': has_notes,
+            'is_public': case.is_public
+        })
+
+    body_parts = [{'value': bp.name, 'display_name': bp.value} for bp in BodyPart]
+    age_groups = [{'value': ag.name, 'display_name': ag.value} for ag in AgeGroup]
+    all_modules = [{'value': m.name, 'display_name': m.value} for m in FRCRModule]
+    status_options = [{'value': s.name, 'display_name': s.value} for s in CaseStatus]
+    pending_staging_count = ImportedCaseStaging.query.filter_by(enrichment_status='pending').count()
+
+    return render_template('cases_list.html',
+                           cases=cases_data,
+                           module_filter=module_filter,
+                           module_selected=module_filter,
+                           all_modules=all_modules,
+                           body_parts=body_parts,
+                           body_part_selected=body_part_filter,
+                           age_groups=age_groups,
+                           age_group_selected=age_group_filter,
+                           status_options=status_options,
+                           status_selected=status_filter,
+                           pending_staging_count=pending_staging_count,
+                           search_query=search_query)
+
+
+@app.route('/student-cases')
+@login_required
+def student_cases_list():
+    from models import BodyPart, AgeGroup, FRCRModule, CandidateNote, CaseFlag, CaseStatus
+
+    module_filter = request.args.get('module', '')
+    body_part_filter = request.args.get('body_part', '')
+    age_group_filter = request.args.get('age_group', '')
+    search_query = request.args.get('q', '')
+    flagged_filter = request.args.get('flagged') == '1'
+
+    query = Case.query.filter_by(status=CaseStatus.PUBLISHED)
+
+    if module_filter:
+        try:
+            module_enum = FRCRModule[module_filter]
+            query = query.filter_by(module=module_enum)
+        except KeyError:
+            module_filter = ''
+
+    if body_part_filter:
+        try:
+            body_part_enum = BodyPart[body_part_filter]
+            query = query.filter_by(body_part=body_part_enum)
+        except KeyError:
+            body_part_filter = ''
+
+    if age_group_filter:
+        try:
+            age_group_enum = AgeGroup[age_group_filter]
+            query = query.filter_by(age_group=age_group_enum)
+        except KeyError:
+            age_group_filter = ''
+
+    if search_query:
+        query = query.filter(Case.diagnosis.ilike(f'%{search_query}%'))
+
+    if flagged_filter:
+        query = query.join(CaseFlag).filter(CaseFlag.user_id == current_user.id)
+
+    cases = query.order_by(Case.id.desc()).all()
+
+    cases_data = []
+    for case in cases:
+        has_notes = CandidateNote.query.filter_by(case_id=case.id, user_id=current_user.id).first() is not None
+        flagged = CaseFlag.query.filter_by(case_id=case.id, user_id=current_user.id).first() is not None
+        cases_data.append({
+            'id': case.id,
+            'diagnosis': case.diagnosis,
+            'module_display': case.module.value if case.module else 'N/A',
+            'body_part_display': case.body_part.value if case.body_part else 'N/A',
+            'image_count': len(case.images),
+            'has_notes': has_notes,
+            'flagged': flagged,
+            'is_public': case.is_public
+        })
+
+    body_parts = [{'value': bp.name, 'display_name': bp.value} for bp in BodyPart]
+    age_groups = [{'value': ag.name, 'display_name': ag.value} for ag in AgeGroup]
+    all_modules = [{'value': m.name, 'display_name': m.value} for m in FRCRModule]
+
+    return render_template('student_cases_list.html',
+                           cases=cases_data,
+                           module_filter=module_filter,
+                           module_selected=module_filter,
+                           all_modules=all_modules,
+                           body_parts=body_parts,
+                           body_part_selected=body_part_filter,
+                           age_groups=age_groups,
+                           age_group_selected=age_group_filter,
+                           search_query=search_query,
+                           flagged_filter=flagged_filter)
+
+
+@app.route('/student/cases/<int:case_id>/flag', methods=['POST'])
+@login_required
+def flag_case(case_id):
+    from models import CaseFlag, CaseStatus
+
+    if getattr(current_user, 'role', None) != UserRole.STUDENT:
+        return jsonify({'error': 'Only students can flag cases'}), 403
+
+    case = Case.query.get(case_id)
+    if not case or case.status != CaseStatus.PUBLISHED:
+        return jsonify({'error': 'Case not found or not public'}), 404
+
+    existing = CaseFlag.query.filter_by(user_id=current_user.id, case_id=case_id).first()
+    if existing:
+        return jsonify({'success': True, 'message': 'Case already flagged'}), 200
+
+    flag = CaseFlag(user_id=current_user.id, case_id=case_id)
+    db.session.add(flag)
+    db.session.commit()
+    return jsonify({'success': True})
+
+
+@app.route('/student/cases/<int:case_id>/unflag', methods=['POST'])
+@login_required
+def unflag_case(case_id):
+    from models import CaseFlag
+
+    if getattr(current_user, 'role', None) != UserRole.STUDENT:
+        return jsonify({'error': 'Only students can unflag cases'}), 403
+
+    flag = CaseFlag.query.filter_by(user_id=current_user.id, case_id=case_id).first()
+    if not flag:
+        return jsonify({'success': True, 'message': 'Case not flagged'}), 200
+
+    db.session.delete(flag)
+    db.session.commit()
+    return jsonify({'success': True})
 
 
 @app.route('/profile')

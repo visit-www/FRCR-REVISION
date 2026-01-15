@@ -873,6 +873,18 @@
         // Check if content contains HTML tags
         return !content.includes('<') || !content.includes('>');
     }
+
+    function forceLeftAlignQaContent(container) {
+        if (!container) return;
+        const targets = container.querySelectorAll('.qa-cell-content, .qa-card-text');
+        targets.forEach(el => {
+            el.style.setProperty('text-align', 'left', 'important');
+            el.style.setProperty('text-indent', '0', 'important');
+            el.querySelectorAll('*').forEach(child => {
+                child.style.setProperty('text-align', 'left', 'important');
+            });
+        });
+    }
     
     // Load Q&A pairs on page load
     document.addEventListener('DOMContentLoaded', function() {
@@ -1104,6 +1116,7 @@
                 `;
                 
                 container.innerHTML = desktopHtml + mobileHtml;
+                forceLeftAlignQaContent(container);
                 
                 // Reload highlights to apply to newly loaded Q&A
                 if (isStudent && typeof loadHighlights === 'function') {

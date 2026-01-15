@@ -293,9 +293,18 @@ class SessionManager {
             alert(message);
         }
         
-        // Redirect to login
+        // Redirect to login (immediate + delayed fallback)
+        const redirectUrl = '/auth/login?expired=1';
+        if (window.location.pathname.startsWith('/auth/login')) {
+            return;
+        }
+        try {
+            window.location.replace(redirectUrl);
+        } catch (error) {
+            console.warn('[SessionManager] Immediate redirect failed:', error);
+        }
         setTimeout(() => {
-            window.location.href = '/auth/login?expired=1';
+            window.location.href = redirectUrl;
         }, 3000);
     }
     
