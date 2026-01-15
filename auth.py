@@ -146,7 +146,7 @@ def register():
             
             # Commit transaction - ensure it completes
             try:
-            db.session.commit()
+                db.session.commit()
                 print(f"[REGISTER] User committed to database - ID: {user_id}")
             except Exception as commit_error:
                 print(f"[REGISTER] Commit failed: {commit_error}")
@@ -254,8 +254,8 @@ def login():
         
         # Debug password check with better error handling
         try:
-        password_valid = user.check_password(password)
-        print(f"[AUTH] Login attempt - Email: {email}, Password valid: {password_valid}, User active: {user.is_active}")
+            password_valid = user.check_password(password)
+            print(f"[AUTH] Login attempt - Email: {email}, Password valid: {password_valid}, User active: {user.is_active}")
         except Exception as e:
             print(f"[AUTH] ERROR checking password: {str(e)}")
             import traceback

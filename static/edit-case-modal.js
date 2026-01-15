@@ -267,16 +267,16 @@ function populateImages(images) {
         const actionButtons = isStaging 
             ? '<small class="text-muted d-block mt-2"><i class="fas fa-info-circle"></i> Images will be available for editing after promotion</small>'
             : `
-                <div class="mt-2 d-flex gap-1">
-                    <button type="button" class="btn btn-sm btn-info flex-grow-1" 
+                    <div class="mt-2 d-flex gap-1">
+                        <button type="button" class="btn btn-sm btn-info flex-grow-1" 
                             onclick="editImageDescription('${image.id}')">
-                        <i class="fas fa-edit"></i> Desc
-                    </button>
-                    <button type="button" class="btn btn-sm btn-danger" 
+                            <i class="fas fa-edit"></i> Desc
+                        </button>
+                        <button type="button" class="btn btn-sm btn-danger" 
                             onclick="deleteImage('${image.id}')">
-                        <i class="fas fa-trash"></i> Del
-                    </button>
-                </div>
+                            <i class="fas fa-trash"></i> Del
+                        </button>
+                    </div>
             `;
         
         col.innerHTML = `
@@ -1771,6 +1771,90 @@ function rejectNewCase() {
     }
 }
 
+function appendDiscussionHtml(html) {
+    if (!html) return;
+    if (typeof tinymce !== 'undefined' && tinymce.get('editCaseDiscussion')) {
+        const editor = tinymce.get('editCaseDiscussion');
+        const existing = editor.getContent() || '';
+        editor.setContent(existing + html);
+        editor.save();
+        return;
+    }
+    const discussionField = document.getElementById('editCaseDiscussion');
+    if (discussionField) {
+        const existing = discussionField.value || '';
+        discussionField.value = existing + '\n' + html;
+    }
+}
+
+function createPrelimCaseData() {
+    const caseIdField = document.getElementById('editCaseId')?.value;
+    const diagnosis = document.getElementById('editCaseDiagnosis')?.value.trim();
+    const provider = document.getElementById('aiProviderSelect')?.value || 'claude';
+    const btn = document.getElementById('aiPrelimBtn');
+
+    const isStagingCase = caseIdField && caseIdField.toString().startsWith('staging-');
+    const isNew = !caseIdField || caseIdField === 'new' || caseIdField.toString().startsWith('new-');
+
+    if (isNew || isStagingCase) {
+        alert('Please save the case first before generating preliminary data.');
+        return;
+    }
+    if (!diagnosis) {
+        alert('Diagnosis is required to generate preliminary data.');
+        return;
+    }
+
+    if (btn) {
+        btn.disabled = true;
+        btn.dataset.originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Generating...';
+    }
+
+    fetch(`/api/case/${caseIdField}/ai-prelim`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider })
+    })
+    .then(async r => {
+        const text = await r.text();
+        let payload;
+        try {
+            payload = JSON.parse(text);
+        } catch (e) {
+            payload = { error: text || 'Unknown error' };
+        }
+        if (!r.ok) {
+            throw new Error(payload.error || 'Failed to generate preliminary data.');
+        }
+        return payload;
+    })
+    .then(data => {
+        const pairs = data.added_pairs || [];
+        pairs.forEach(pair => {
+            addQAPairRow(pair.question || '', pair.answer || '');
+        });
+        if (data.discussion_html) {
+            appendDiscussionHtml(data.discussion_html);
+        }
+        if (data.warnings && data.warnings.length) {
+            alert(`AI Warnings: ${data.warnings.join('; ')}`);
+        } else {
+            alert('Preliminary case data generated and appended.');
+        }
+    })
+    .catch(error => {
+        console.error('[AI PRELIM] Error:', error);
+        alert(error.message || 'Failed to generate preliminary case data.');
+    })
+    .finally(() => {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = btn.dataset.originalText || '<i class="fas fa-wand-magic-sparkles me-2"></i>Create Preliminary Case Data';
+        }
+    });
+}
+
 // Helper function to escape HTML
 function escapeHtml(text) {
     const div = document.createElement('div');
@@ -1792,4 +1876,5 @@ if (typeof window !== 'undefined') {
     window.deleteImage = deleteImage;
     window.viewImageFull = viewImageFull;
     window.initializeTinyMCE = initializeTinyMCE;
+    window.createPrelimCaseData = createPrelimCaseData;
 }

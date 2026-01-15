@@ -560,3 +560,29 @@ class ImportedCaseStaging(db.Model):
     
     def __repr__(self):
         return f'<ImportedCaseStaging {self.case_number} Status:{self.enrichment_status}>'
+
+
+class AiPrelimCaseData(db.Model):
+    """
+    Stores AI-generated preliminary case data and audit metadata.
+    """
+    __tablename__ = 'ai_prelim_case_data'
+
+    id = db.Column(db.Integer, primary_key=True)
+    case_id = db.Column(db.Integer, db.ForeignKey('case.id'), nullable=False, index=True)
+    created_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+
+    provider = db.Column(db.String(50), nullable=False)
+    model_name = db.Column(db.String(100), nullable=False)
+    prompt_version = db.Column(db.String(20), nullable=False, default='v1')
+
+    request_payload = db.Column(db.Text, nullable=True)
+    response_payload = db.Column(db.Text, nullable=True)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
+    case = db.relationship('Case', foreign_keys=[case_id])
+    created_by = db.relationship('User', foreign_keys=[created_by_user_id])
+
+    def __repr__(self):
+        return f'<AiPrelimCaseData Case:{self.case_id} Provider:{self.provider}>'
