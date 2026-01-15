@@ -2240,11 +2240,18 @@ pre {
 }
 
 .qa-table-header:first-child {
-    width: 50%;
+    width: 33.333%;
 }
 
 .qa-table-header:last-child {
-    width: 50%;
+    width: 66.666%;
+}
+
+.qa-question-cell {
+    width: 33.333%;
+}
+.qa-answer-cell {
+    width: 66.666%;
 }
 
 /* Table Rows - Zebra Striping with Light/Dark Grey */
@@ -2640,16 +2647,17 @@ pre {
     width: auto;
 }
 
+
 .qa-pair-grid > .qa-question-col,
 .qa-pair-grid > .qa-question-card {
-    flex: 0 0 66.666% !important;
-    max-width: 66.666% !important;
+    flex: 0 0 33.333% !important;
+    max-width: 33.333% !important;
 }
 
 .qa-pair-grid > .qa-answer-col,
 .qa-pair-grid > .qa-answer-card {
-    flex: 0 0 33.333% !important;
-    max-width: 33.333% !important;
+    flex: 0 0 66.666% !important;
+    max-width: 66.666% !important;
 }
 
 @media (max-width: 991px) {
