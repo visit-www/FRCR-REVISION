@@ -2135,6 +2135,11 @@ pre {
     margin-left: 0 !important;
     margin: 0 !important;
     white-space: normal !important;
+    display: block;
+    width: 100%;
+    float: none !important;
+    direction: ltr !important;
+    unicode-bidi: plaintext;
 }
 
 /* Question Text - Warning Color */
@@ -2152,6 +2157,16 @@ pre {
 .qa-answer-card-display .qa-card-text * {
     text-align: left !important;
     direction: ltr !important;
+}
+
+/* Layout guard: prevent answer text from shrinking and right-shifting */
+.qa-answer-card-display .qa-card-body {
+    align-items: stretch;
+}
+
+.qa-answer-card-display .qa-card-text {
+    align-self: stretch;
+    margin-right: auto !important;
 }
 
 /* Pair Divider - Golden */
@@ -2229,6 +2244,8 @@ pre {
     width: 100%;
     border-collapse: collapse;
     table-layout: fixed;
+    text-align: left !important;
+    direction: ltr !important;
 }
 
 /* Table Header - Dark Grey */
@@ -2256,9 +2273,13 @@ pre {
 
 .qa-question-cell {
     width: 33.333%;
+    text-align: left !important;
+    direction: ltr !important;
 }
 .qa-answer-cell {
     width: 66.666%;
+    text-align: left !important;
+    direction: ltr !important;
 }
 
 /* Table Rows - Zebra Striping with Light/Dark Grey */
@@ -2301,6 +2322,8 @@ pre {
     color: #2c2c2c;
     font-size: 0.95rem;
     line-height: 1.7;
+    text-align: left !important;
+    direction: ltr !important;
 }
 
 .qa-table-row:last-child .qa-table-cell {
@@ -2333,6 +2356,11 @@ pre {
     direction: ltr !important;
     word-wrap: break-word;
     overflow-wrap: break-word;
+    display: block;
+    width: 100%;
+    margin-right: auto !important;
+    float: none !important;
+    unicode-bidi: plaintext;
 }
 
 /* Ensure all child elements are left-aligned */
@@ -2340,6 +2368,7 @@ pre {
 .qa-card-text * {
     text-align: left !important;
     direction: ltr !important;
+    float: none !important;
 }
 
 /* Plain text formatting - preserves line breaks, bullets, indentation */
