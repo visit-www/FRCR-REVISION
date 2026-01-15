@@ -115,7 +115,7 @@
                             <td><small>{{ case.created_at }}</small></td>
                             <td>
                                 <div class="btn-group" role="group">
-                                    <a href="/edit-case?staging_id={{ case.id }}&returnTo=/admin/staging-cases" 
+                                    <a href="/edit-case?staging_id={{ case.id }}&returnTo=/admin/staging-cases{% if status_filter %}&status={{ status_filter }}{% endif %}" 
                                        class="btn btn-sm btn-primary" title="Review & Enrich">
                                         <i class="fas fa-edit"></i> Review
                                     </a>

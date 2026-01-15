@@ -482,9 +482,11 @@ def cases_by_module(module):
     return render_template('cases_list.html',
                          cases=cases_data,
                          module_filter=module_enum.value,
+                         module_name=module_enum.name,  # Pass enum name for URL building
                          body_parts=body_parts,
                          body_part_selected=body_part_filter,
-                         search_query=search_query)
+                         search_query=search_query,
+                         list_source='module')
 
 
 @app.route('/cases')
@@ -557,6 +559,7 @@ def all_cases_view():
     return render_template('cases_list.html',
                            cases=cases_data,
                            module_filter=module_filter,
+                           module_name=module_filter,  # In admin view, module_filter is already the enum name
                            module_selected=module_filter,
                            all_modules=all_modules,
                            body_parts=body_parts,
@@ -566,7 +569,8 @@ def all_cases_view():
                            status_options=status_options,
                            status_selected=status_filter,
                            pending_staging_count=pending_staging_count,
-                           search_query=search_query)
+                           search_query=search_query,
+                           list_source='admin')
 
 
 @app.route('/student-cases')
@@ -633,6 +637,7 @@ def student_cases_list():
     return render_template('student_cases_list.html',
                            cases=cases_data,
                            module_filter=module_filter,
+                           module_name=module_filter,  # In student view, module_filter is already the enum name
                            module_selected=module_filter,
                            all_modules=all_modules,
                            body_parts=body_parts,
@@ -640,7 +645,8 @@ def student_cases_list():
                            age_groups=age_groups,
                            age_group_selected=age_group_filter,
                            search_query=search_query,
-                           flagged_filter=flagged_filter)
+                           flagged_filter=flagged_filter,
+                           list_source='student')
 
 
 @app.route('/student/cases/<int:case_id>/flag', methods=['POST'])
@@ -696,6 +702,44 @@ def admin_dashboard():
     if not current_user.is_admin:
         return redirect(url_for('dashboard'))
     return render_template('admin_dashboard.html')
+
+
+@app.route('/admin/staging-cases')
+@login_required
+def review_staging_cases():
+    """Review and manage staging cases - ADMIN ONLY"""
+    from models import ImportedCaseStaging
+    
+    if not current_user.is_admin:
+        return redirect(url_for('dashboard'))
+    
+    # Get status filter from query params
+    status_filter = request.args.get('status', '')
+    
+    # Build query
+    query = ImportedCaseStaging.query
+    
+    if status_filter == 'pending':
+        query = query.filter(ImportedCaseStaging.enrichment_status == 'pending')
+    elif status_filter == 'enriched':
+        query = query.filter(ImportedCaseStaging.enrichment_status == 'enriched')
+    elif status_filter == 'rejected':
+        query = query.filter(ImportedCaseStaging.enrichment_status == 'rejected')
+    
+    # Get counts
+    pending_count = ImportedCaseStaging.query.filter_by(enrichment_status='pending').count()
+    enriched_count = ImportedCaseStaging.query.filter_by(enrichment_status='enriched').count()
+    rejected_count = ImportedCaseStaging.query.filter_by(enrichment_status='rejected').count()
+    
+    # Get cases ordered by created_at desc
+    cases = query.order_by(ImportedCaseStaging.created_at.desc()).all()
+    
+    return render_template('staging_cases_list.html',
+                         cases=cases,
+                         status_filter=status_filter,
+                         pending_count=pending_count,
+                         enriched_count=enriched_count,
+                         rejected_count=rejected_count)
 
 
 @app.route('/case-list')
@@ -999,37 +1043,238 @@ def create_case():
         return jsonify({'error': f'Failed to create case: {str(e)}'}), 500
 
 
+def get_module_enum_by_name_or_value(module_str):
+    """Helper to find FRCRModule enum by name or display value"""
+    from models import FRCRModule
+    if not module_str:
+        return None
+    # Try by name first (e.g., "NEURORADIOLOGY")
+    try:
+        return FRCRModule[module_str]
+    except KeyError:
+        pass
+    # Try by value (e.g., "Neuroradiology")
+    for m in FRCRModule:
+        if m.value == module_str:
+            return m
+    return None
+
+
+def get_case_navigation_context(case_id, list_source, filters):
+    """
+    Compute previous and next case IDs based on the list source and filters.
+    Uses same ordering as each list view for consistent navigation.
+    Returns (prev_case_id, next_case_id, nav_params)
+    """
+    from models import FRCRModule, BodyPart, AgeGroup, CaseStatus, ImportedCaseStaging, CaseFlag
+    
+    prev_case_id = None
+    next_case_id = None
+    case_ids = []
+    
+    # Build nav_params to preserve context in links
+    nav_params = {'list_source': list_source}
+    nav_params.update(filters)
+    
+    try:
+        if list_source == 'staging':
+            # Staging cases don't link directly to view_case
+            return None, None, nav_params
+            
+        elif list_source == 'student':
+            # Student cases list - only published, ordered by id DESC (newest first)
+            query = Case.query.filter_by(status=CaseStatus.PUBLISHED)
+            
+            module_enum = get_module_enum_by_name_or_value(filters.get('module'))
+            if module_enum:
+                query = query.filter_by(module=module_enum)
+            
+            if filters.get('body_part'):
+                try:
+                    bp_enum = BodyPart[filters['body_part']]
+                    query = query.filter_by(body_part=bp_enum)
+                except KeyError:
+                    pass
+            if filters.get('age_group'):
+                try:
+                    ag_enum = AgeGroup[filters['age_group']]
+                    query = query.filter_by(age_group=ag_enum)
+                except KeyError:
+                    pass
+            if filters.get('q'):
+                query = query.filter(Case.diagnosis.ilike(f"%{filters['q']}%"))
+            
+            # Match student_cases_list ordering: Case.id.desc()
+            case_ids = [c.id for c in query.order_by(Case.id.desc()).all()]
+            
+        elif list_source == 'admin':
+            # Admin cases list - all cases, ordered by id DESC (newest first)
+            query = Case.query
+            
+            module_enum = get_module_enum_by_name_or_value(filters.get('module'))
+            if module_enum:
+                query = query.filter_by(module=module_enum)
+            
+            if filters.get('body_part'):
+                try:
+                    bp_enum = BodyPart[filters['body_part']]
+                    query = query.filter_by(body_part=bp_enum)
+                except KeyError:
+                    pass
+            if filters.get('age_group'):
+                try:
+                    ag_enum = AgeGroup[filters['age_group']]
+                    query = query.filter_by(age_group=ag_enum)
+                except KeyError:
+                    pass
+            if filters.get('status'):
+                try:
+                    status_enum = CaseStatus[filters['status']]
+                    query = query.filter_by(status=status_enum)
+                except KeyError:
+                    pass
+            if filters.get('q'):
+                query = query.filter(Case.diagnosis.ilike(f"%{filters['q']}%"))
+            
+            # Match all_cases_view ordering: Case.id.desc()
+            case_ids = [c.id for c in query.order_by(Case.id.desc()).all()]
+            
+        elif list_source == 'module':
+            # Module-specific list - public cases, ordered by id ASC
+            module_enum = get_module_enum_by_name_or_value(filters.get('module'))
+            if module_enum:
+                query = Case.query.filter_by(module=module_enum, is_public=True)
+                
+                if filters.get('body_part'):
+                    try:
+                        bp_enum = BodyPart[filters['body_part']]
+                        query = query.filter_by(body_part=bp_enum)
+                    except KeyError:
+                        pass
+                if filters.get('q'):
+                    query = query.filter(Case.diagnosis.ilike(f"%{filters['q']}%"))
+                
+                # Match cases_by_module ordering: Case.id (ascending)
+                case_ids = [c.id for c in query.order_by(Case.id).all()]
+        else:
+            # Default: match user role's default list ordering
+            is_student = getattr(current_user, 'role', None) == UserRole.STUDENT
+            if is_student:
+                case_ids = [c.id for c in Case.query.filter_by(status=CaseStatus.PUBLISHED).order_by(Case.id.desc()).all()]
+            else:
+                case_ids = [c.id for c in Case.query.order_by(Case.id.desc()).all()]
+        
+        # Find prev/next based on list order
+        if case_id in case_ids:
+            idx = case_ids.index(case_id)
+            if idx > 0:
+                prev_case_id = case_ids[idx - 1]
+            if idx < len(case_ids) - 1:
+                next_case_id = case_ids[idx + 1]
+                
+    except Exception as e:
+        print(f"[NAV] Error computing case navigation: {e}")
+        import traceback
+        traceback.print_exc()
+    
+    return prev_case_id, next_case_id, nav_params
+
+
 @app.route('/view-case/<int:case_id>')
 @login_required
 def view_case(case_id):
-    """View a specific case"""
-    from models import CandidateNote
+    """View a specific case with prev/next navigation based on list context"""
+    from models import CandidateNote, CaseStatus
+    
     case = Case.query.get(case_id)
     if not case:
         return redirect(url_for('dashboard'))
+    
     # Get user's note for this case
     user_note = CandidateNote.query.filter_by(case_id=case_id, user_id=current_user.id).first()
+    
+    # Get navigation context from query params
+    list_source = request.args.get('list_source', '')
+    from_staging = request.args.get('from_staging', '') == 'true'
+    
+    # Collect filters from query params
+    filters = {
+        'module': request.args.get('module', ''),
+        'body_part': request.args.get('body_part', ''),
+        'age_group': request.args.get('age_group', ''),
+        'status': request.args.get('status', ''),
+        'q': request.args.get('q', ''),
+    }
+    
+    # Compute prev/next
+    prev_case_id, next_case_id, nav_params = get_case_navigation_context(case_id, list_source, filters)
+    
+    # Build query string for nav links
+    nav_query_string = '&'.join(f"{k}={v}" for k, v in nav_params.items() if v)
+    
     print(f"[DEBUG] case.discussion for case_id={case_id}: {repr(case.discussion)}")
+    
     return render_template('view_case.html', 
                          case=case, 
-                         user_note=user_note)
+                         user_note=user_note,
+                         previous_case_id=prev_case_id,
+                         next_case_id=next_case_id,
+                         from_staging=from_staging,
+                         nav_params=nav_params,
+                         nav_query_string=nav_query_string)
 
 
 @app.route('/edit-case')
 def edit_case():
-    """Full-page edit interface for a case"""
+    """Full-page edit interface for a case or staging case"""
     case_id = request.args.get('id', type=int)
+    staging_id = request.args.get('staging_id', type=int)
     is_new = request.args.get('new', 'false').lower() == 'true'
     return_to = request.args.get('returnTo', url_for('dashboard'))
-    if not is_new and not case_id:
+    status_filter = request.args.get('status', '')
+    
+    case = None
+    staging_case = None
+    prev_staging_id = None
+    next_staging_id = None
+    
+    if staging_id:
+        # Load staging case for review/enrichment
+        from models import ImportedCaseStaging
+        staging_case = ImportedCaseStaging.query.get(staging_id)
+        if not staging_case:
+            return redirect(url_for('dashboard'))
+        
+        # Compute prev/next staging case IDs (same order as staging list: created_at desc)
+        query = ImportedCaseStaging.query
+        if status_filter:
+            query = query.filter(ImportedCaseStaging.enrichment_status == status_filter)
+        staging_ids = [s.id for s in query.order_by(ImportedCaseStaging.created_at.desc()).all()]
+        
+        if staging_id in staging_ids:
+            idx = staging_ids.index(staging_id)
+            if idx > 0:
+                prev_staging_id = staging_ids[idx - 1]
+            if idx < len(staging_ids) - 1:
+                next_staging_id = staging_ids[idx + 1]
+                
+    elif case_id:
+        # Load regular case for editing
+        case = Case.query.get(case_id)
+        if not case:
+            return redirect(url_for('dashboard'))
+    elif not is_new:
+        # Neither staging_id, case_id, nor new - invalid request
         return redirect(url_for('dashboard'))
-    case = Case.query.get(case_id) if case_id else None
-    if not is_new and not case:
-        return redirect(url_for('dashboard'))
+    
     return render_template('edit_case.html', 
                          is_new=is_new,
                          return_to=return_to,
-                         case=case)
+                         case=case,
+                         staging_case=staging_case,
+                         prev_staging_id=prev_staging_id,
+                         next_staging_id=next_staging_id,
+                         status_filter=status_filter)
 
 
 

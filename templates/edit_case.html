@@ -55,11 +55,27 @@ console.log('[TinyMCE Loader] Script URL was:', "{{ url_for('static', filename='
 
 <div class="row">
     <div class="col-12 px-2 px-md-5">
-        <!-- Back Button -->
-        <div class="mb-4 mt-4">
+        <!-- Back Button and Navigation -->
+        <div class="mb-4 mt-4 d-flex align-items-center gap-3">
             <button class="btn btn-outline-secondary btn-sm" onclick="window.history.back()">
                 <i class="fas fa-arrow-left me-2"></i>Back
             </button>
+            {% if staging_case and (prev_staging_id or next_staging_id) %}
+            <div class="staging-nav-buttons d-flex gap-2">
+                {% if prev_staging_id %}
+                <a href="{{ url_for('edit_case') }}?staging_id={{ prev_staging_id }}&returnTo={{ return_to }}{% if status_filter %}&status={{ status_filter }}{% endif %}" 
+                   class="btn btn-sm staging-nav-btn" title="Previous staging case">
+                    <i class="fas fa-chevron-left me-1"></i>Prev
+                </a>
+                {% endif %}
+                {% if next_staging_id %}
+                <a href="{{ url_for('edit_case') }}?staging_id={{ next_staging_id }}&returnTo={{ return_to }}{% if status_filter %}&status={{ status_filter }}{% endif %}" 
+                   class="btn btn-sm staging-nav-btn" title="Next staging case">
+                    Next<i class="fas fa-chevron-right ms-1"></i>
+                </a>
+                {% endif %}
+            </div>
+            {% endif %}
         </div>
 
         <!-- Page Header -->
@@ -323,6 +339,22 @@ console.log('[TinyMCE Loader] Script URL was:', "{{ url_for('static', filename='
 </div>
 
 <style>
+    /* Staging Case Navigation Buttons */
+    .staging-nav-btn {
+        color: #e96304 !important;
+        background: rgba(233, 99, 4, 0.1);
+        border: 1px solid rgba(233, 99, 4, 0.3);
+        font-weight: 500;
+        text-decoration: none !important;
+        transition: all 0.2s ease;
+    }
+    .staging-nav-btn:hover {
+        color: #fff !important;
+        background: #e96304;
+        border-color: #e96304;
+        text-decoration: none !important;
+    }
+    
     body {
         background-color: #f8f9fa;
     }

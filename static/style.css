@@ -1726,6 +1726,13 @@ pre {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
+/* Force left alignment for all Q&A content, even if inline styles exist (desktop screens) */
+@media (min-width: 769px) {
+  .qa-section, .qa-section *, .qa-card, .qa-card *, .qa-question-card, .qa-question-card *, .qa-answer-card, .qa-answer-card *, .detail-content, .detail-content * {
+     text-align: left !important;
+  }
+}
+
 .qa-card:hover {
     border-color: #8bb8d9;
     box-shadow: 0 6px 16px rgba(139, 184, 217, 0.2);
@@ -2410,6 +2417,22 @@ pre {
     .qa-table-cell {
         padding: 1.5rem 2rem;
         font-size: 1rem;
+    }
+    
+    /* Fix answer cell alignment at large widths (1200px+) */
+    .qa-answer-cell .qa-cell-content {
+        display: block !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        text-align: left !important;
+        margin-left: 0 !important;
+        margin-right: auto !important;
+    }
+    
+    .qa-answer-cell .qa-cell-content.plain-text-formatted {
+        white-space: pre-wrap !important;
+        word-break: break-word !important;
+        overflow-wrap: break-word !important;
     }
 }
 

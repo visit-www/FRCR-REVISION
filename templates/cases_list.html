@@ -180,7 +180,7 @@
                 <tbody id="casesTableBody">
                     {% if cases %}
                         {% for case in cases %}
-                        <tr id="caseCard{{ case.id }}" class="case-row{% if case.is_public %} case-public{% else %} case-private{% endif %}{% if loop.index0 % 2 == 0 %} case-row-even{% else %} case-row-odd{% endif %}" style="cursor: pointer; transition: all 0.2s ease;" onclick="window.location.href='{{ url_for('view_case', case_id=case.id) }}'">
+                        <tr id="caseCard{{ case.id }}" class="case-row{% if case.is_public %} case-public{% else %} case-private{% endif %}{% if loop.index0 % 2 == 0 %} case-row-even{% else %} case-row-odd{% endif %}" style="cursor: pointer; transition: all 0.2s ease;" onclick="window.location.href='{{ url_for('view_case', case_id=case.id) }}?list_source={{ list_source or 'admin' }}{% if module_name %}&module={{ module_name }}{% elif module_filter %}&module={{ module_filter }}{% endif %}{% if body_part_filter %}&body_part={{ body_part_filter }}{% endif %}{% if age_group_filter %}&age_group={{ age_group_filter }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}'">
                             <td class="fw-bold" style="padding: 1rem 0.75rem; vertical-align: middle;">
                                 <span style="color: #495057; font-size: 0.9rem;">#{{ case.id }}</span>
                             </td>

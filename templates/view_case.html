@@ -56,16 +56,16 @@
     </li>
     {% if previous_case_id %}
     <li class="breadcrumb-item">
-        <a href="{{ url_for('view_case', case_id=previous_case_id, from_staging='true') if from_staging else url_for('view_case', case_id=previous_case_id) }}"
-           class="text-white text-decoration-none">
+        <a href="{{ url_for('view_case', case_id=previous_case_id) }}{% if nav_query_string %}?{{ nav_query_string }}{% endif %}"
+           class="text-decoration-none case-nav-link" title="Previous case">
             <i class="fas fa-chevron-left me-1"></i>Prev
         </a>
     </li>
     {% endif %}
     {% if next_case_id %}
     <li class="breadcrumb-item">
-        <a href="{{ url_for('view_case', case_id=next_case_id, from_staging='true') if from_staging else url_for('view_case', case_id=next_case_id) }}"
-           class="text-white text-decoration-none">
+        <a href="{{ url_for('view_case', case_id=next_case_id) }}{% if nav_query_string %}?{{ nav_query_string }}{% endif %}"
+           class="text-decoration-none case-nav-link" title="Next case">
             Next<i class="fas fa-chevron-right ms-1"></i>
         </a>
     </li>
@@ -114,21 +114,22 @@
                 {% else %}
                 <li class="breadcrumb-item"><a href="{{ url_for('all_cases_view') }}"><i class="fas fa-folder-open me-1"></i>All Cases</a></li>
                 {% endif %}
-                <li class="breadcrumb-item active"><i class="fas fa-file-medical me-1"></i>Case #{{ case.id }}</li>
-                {% if previous_case_id %}
-                <li class="breadcrumb-item">
-                    <a href="{{ url_for('view_case', case_id=previous_case_id, from_staging='true') if from_staging else url_for('view_case', case_id=previous_case_id) }}">
-                        <i class="fas fa-chevron-left me-1"></i>Prev
-                    </a>
+                <li class="breadcrumb-item active"><i class="fas fa-file-medical me-1"></i>Case #{{ case.id }}
+                    {% if previous_case_id or next_case_id %}
+                    <span class="ms-3 case-nav-buttons">
+                        {% if previous_case_id %}
+                        <a href="{{ url_for('view_case', case_id=previous_case_id) }}{% if nav_query_string %}?{{ nav_query_string }}{% endif %}" class="case-nav-btn" title="Previous case">
+                            <i class="fas fa-chevron-left me-1"></i>Prev
+                        </a>
+                        {% endif %}
+                        {% if next_case_id %}
+                        <a href="{{ url_for('view_case', case_id=next_case_id) }}{% if nav_query_string %}?{{ nav_query_string }}{% endif %}" class="case-nav-btn ms-2" title="Next case">
+                            Next<i class="fas fa-chevron-right ms-1"></i>
+                        </a>
+                        {% endif %}
+                    </span>
+                    {% endif %}
                 </li>
-                {% endif %}
-                {% if next_case_id %}
-                <li class="breadcrumb-item">
-                    <a href="{{ url_for('view_case', case_id=next_case_id, from_staging='true') if from_staging else url_for('view_case', case_id=next_case_id) }}">
-                        Next<i class="fas fa-chevron-right ms-1"></i>
-                    </a>
-                </li>
-                {% endif %}
             </ol>
         </nav>
 
@@ -136,7 +137,7 @@
         <div class="case-mobile-nav d-md-none">
             <div class="case-mobile-nav-row">
                 {% if previous_case_id %}
-                <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('view_case', case_id=previous_case_id, from_staging='true') if from_staging else url_for('view_case', case_id=previous_case_id) }}">
+                <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('view_case', case_id=previous_case_id) }}{% if nav_query_string %}?{{ nav_query_string }}{% endif %}">
                     <i class="fas fa-chevron-left me-1"></i>Prev
                 </a>
                 {% else %}
@@ -148,7 +149,7 @@
                     <i class="fas fa-folder-open me-1"></i>All Cases
                 </a>
                 {% if next_case_id %}
-                <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('view_case', case_id=next_case_id, from_staging='true') if from_staging else url_for('view_case', case_id=next_case_id) }}">
+                <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('view_case', case_id=next_case_id) }}{% if nav_query_string %}?{{ nav_query_string }}{% endif %}">
                     Next<i class="fas fa-chevron-right ms-1"></i>
                 </a>
                 {% else %}
@@ -339,6 +340,43 @@
 </div>
 
 <style>
+    /* Case Navigation Buttons - Peach Orange Brand Color */
+    .case-nav-link {
+        color: #e96304 !important;
+        font-weight: 500;
+        font-size: 0.9rem;
+        transition: all 0.2s ease;
+        text-decoration: none !important;
+    }
+    .case-nav-link:hover {
+        color: #c75002 !important;
+        text-decoration: none !important;
+    }
+    
+    .case-nav-buttons {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+    
+    .case-nav-btn {
+        color: #e96304;
+        background: rgba(233, 99, 4, 0.1);
+        padding: 0.25rem 0.6rem;
+        border-radius: 4px;
+        font-size: 0.85rem;
+        font-weight: 500;
+        text-decoration: none !important;
+        transition: all 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+    }
+    .case-nav-btn:hover {
+        color: #fff;
+        background: #e96304;
+        text-decoration: none !important;
+    }
+    
     @media (max-width: 768px) {
         .case-mobile-nav {
             position: sticky;
