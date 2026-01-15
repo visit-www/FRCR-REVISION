@@ -29,7 +29,7 @@
 | API route | ✅ Functional | `app.py` `/api/case/<id>/ai-prelim` |
 | UI controls | ✅ Working | `edit_case.html` + `edit-case-modal.js` |
 | Append-only behavior | ✅ Q&A + discussion | Route appends, never overwrites |
-| Visual distinction | ✅ Blue text | `.ai-generated-content` class in `style.css` |
+| Visual distinction | ✅ Orange background | `.ai-generated-content` + `.ai-generated-pair` classes |
 | Auto-normalize on save | ✅ Working | `stripAiGeneratedContentClass()` in JS |
 
 ### Current Flow
@@ -51,17 +51,17 @@ Claude API generates JSON response
     │
     ▼
 Server appends Q&A pairs + discussion + teaching image to case
-(with .ai-generated-content class for blue text styling)
+(with orange background styling via CSS classes)
     │
     ▼
 Audit record stored in ai_prelim_case_data table
     │
     ▼
-User reviews AI content (shown in blue)
+User reviews AI content (shown with orange background + AI badge)
     │
     ▼
-On Save: .ai-generated-content class is stripped
-(text converts to normal black styling)
+On Save: styling classes are stripped
+(content converts to normal styling, same as existing content)
 ```
 
 ### ❌ Gaps vs. Full Vision
