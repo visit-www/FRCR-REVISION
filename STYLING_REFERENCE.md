@@ -162,12 +162,24 @@ This document provides a comprehensive reference for all custom brand classes, C
 
 | Element | Class/Selector | Color | Update Location |
 |---------|----------------|-------|-----------------|
-| Footer Background | `.footer` | `linear-gradient(180deg, #5E899E 0%, #4A6F7F 100%)` | `static/style.css:557-562` |
-| Footer Title | `.footer-title` | `#ffc107` | `static/style.css:564-569` |
-| Footer Text | `.footer-text` | `#ffffff` | `static/style.css:571-575` |
-| Footer Links | `.footer-link` | `#ffc107` | `static/style.css:577-582` |
-| Footer Link Hover | `.footer-link:hover` | `#ffffff` | `static/style.css:584-587` |
-| Footer Copyright | `.footer-copyright` | `#ffffff` | `static/style.css:594-597` |
+| Footer Background | `.footer` | `linear-gradient(180deg, #5E899E 0%, #4A6F7F 100%)` | `static/style.css:735-739` |
+| Footer Title | `.footer-title` | `#e96304` | `static/style.css:741-746` |
+| Footer Text | `.footer-text` | `#ffffff` | `static/style.css:748-752` |
+| Footer Links | `.footer-link` | `#ffffff` | `static/style.css:754-759` |
+| Footer Link Hover | `.footer-link:hover` | `#f7fbff` | `static/style.css:761-764` |
+| Footer Copyright | `.footer-copyright` | `#ffffff` | `static/style.css:771-773` |
+
+### Duplicate Case Modal (Edit Case)
+
+**Location**: `static/edit-case-modal.js` + `static/style.css`
+
+| Element | Class/Selector | Color/Style | Update Location |
+|---------|----------------|-------------|-----------------|
+| Modal Width | `.duplicate-modal-dialog` | `85vw` desktop, `95%` mobile | `static/style.css:3498-3510` |
+| Header (Exact) | `.duplicate-modal-header-danger` | `linear-gradient(135deg, #e96304 0%, #c75002 100%)` | `static/style.css:3523-3526` |
+| Header (Similar) | `.duplicate-modal-header-warning` | `linear-gradient(135deg, #5E899E 0%, #4A6F7F 100%)` | `static/style.css:3528-3531` |
+| Top Row Cards | `.duplicate-case-existing`, `.duplicate-case-new` | Teal + Orange accents | `static/style.css:3588-3594` |
+| Bottom Row Cards | Match Summary + Rename | Two-column layout | `static/edit-case-modal.js:1326-1369` |
 
 ### Clear Filter Button
 

@@ -1241,22 +1241,10 @@ function showDuplicateHandlingModal(duplicateData, currentDiagnosis, payload, en
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body duplicate-modal-body">
-                        ${isExactMatch ? `
-                            <div class="alert alert-danger duplicate-alert mb-4" role="alert">
-                                <strong><i class="fas fa-exclamation-circle me-2"></i>Exact match detected!</strong> 
-                                You cannot save a case with an identical diagnosis. Please choose which case to reject, or change the diagnosis name.
-                            </div>
-                        ` : `
-                            <div class="alert alert-info duplicate-alert mb-4" role="alert">
-                                <strong><i class="fas fa-info-circle me-2"></i>Similar diagnosis detected.</strong> 
-                                These cases may be duplicates. Please review and decide which case to keep.
-                            </div>
-                        `}
-                        
                         <div class="row g-4 duplicate-comparison-row">
                             <!-- Left Column: Existing Case -->
                             <div class="col-lg-6">
-                                <div class="card duplicate-case-card duplicate-case-existing h-100">
+                                <div class="card duplicate-case-card duplicate-case-existing duplicate-top-card">
                                     <div class="card-header duplicate-case-header duplicate-case-header-existing">
                                         <h6 class="mb-0 duplicate-case-title">
                                             <i class="fas fa-database me-2"></i>Existing Saved Case
@@ -1302,7 +1290,7 @@ function showDuplicateHandlingModal(duplicateData, currentDiagnosis, payload, en
                             
                             <!-- Right Column: New Incoming Case -->
                             <div class="col-lg-6">
-                                <div class="card duplicate-case-card duplicate-case-new h-100">
+                                <div class="card duplicate-case-card duplicate-case-new duplicate-top-card">
                                     <div class="card-header duplicate-case-header duplicate-case-header-new">
                                         <h6 class="mb-0 duplicate-case-title">
                                             <i class="fas fa-file-import me-2"></i>New Incoming Case
@@ -1334,26 +1322,52 @@ function showDuplicateHandlingModal(duplicateData, currentDiagnosis, payload, en
                                 </div>
                             </div>
                         </div>
-                        
-                        <!-- Change Diagnosis Name Section -->
-                        <div class="duplicate-rename-section mt-5 pt-4">
-                            <h6 class="duplicate-section-title mb-3">
-                                <i class="fas fa-edit me-2"></i>Change Diagnosis Name
-                            </h6>
-                            <p class="duplicate-section-description mb-3">
-                                If you change the diagnosis name, the system will re-check for duplicates. 
-                                If the new name is unique, you can save normally.
-                            </p>
-                            <div class="row g-2">
-                                <div class="col-md-8">
-                                    <input type="text" class="form-control form-control-lg duplicate-rename-input" id="newDiagnosisInput" 
-                                       value="${escapeHtml(currentDiagnosis)}" 
-                                       placeholder="Enter new diagnosis name">
+
+                        <!-- Bottom Row: Match Summary + Rename -->
+                        <div class="row g-4 mt-4 duplicate-bottom-row">
+                            <div class="col-lg-6">
+                                <div class="card duplicate-case-card duplicate-summary-card h-100">
+                                    <div class="card-body duplicate-case-body">
+                                        <h6 class="duplicate-section-title mb-3">
+                                            <i class="fas fa-shield-alt me-2"></i>${isExactMatch ? 'Exact Case Match' : 'Similar Case Match'}
+                                        </h6>
+                                        ${isExactMatch ? `
+                                            <div class="alert alert-danger duplicate-alert mb-0" role="alert">
+                                                <strong><i class="fas fa-exclamation-circle me-2"></i>Exact match detected!</strong> 
+                                                You cannot save a case with an identical diagnosis. Please choose which case to reject, or change the diagnosis name.
+                                            </div>
+                                        ` : `
+                                            <div class="alert alert-info duplicate-alert mb-0" role="alert">
+                                                <strong><i class="fas fa-info-circle me-2"></i>Similar diagnosis detected.</strong> 
+                                                These cases may be duplicates. Please review and decide which case to keep.
+                                            </div>
+                                        `}
+                                    </div>
                                 </div>
-                                <div class="col-md-4">
-                                    <button type="button" class="btn duplicate-action-btn duplicate-btn-save w-100" onclick="saveWithNewDiagnosis()">
-                                        <i class="fas fa-save me-2"></i>Save with New Name
-                                    </button>
+                            </div>
+                            <div class="col-lg-6">
+                                <div class="card duplicate-case-card duplicate-rename-card h-100">
+                                    <div class="card-body duplicate-case-body">
+                                        <h6 class="duplicate-section-title mb-3">
+                                            <i class="fas fa-edit me-2"></i>Change Diagnosis Name
+                                        </h6>
+                                        <p class="duplicate-section-description mb-3">
+                                            If you change the diagnosis name, the system will re-check for duplicates. 
+                                            If the new name is unique, you can save normally.
+                                        </p>
+                                        <div class="row g-2">
+                                            <div class="col-md-8">
+                                                <input type="text" class="form-control form-control-lg duplicate-rename-input" id="newDiagnosisInput" 
+                                                   value="${escapeHtml(currentDiagnosis)}" 
+                                                   placeholder="Enter new diagnosis name">
+                                            </div>
+                                            <div class="col-md-4">
+                                                <button type="button" class="btn duplicate-action-btn duplicate-btn-save w-100" onclick="saveWithNewDiagnosis()">
+                                                    <i class="fas fa-save me-2"></i>Save with New Name
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
