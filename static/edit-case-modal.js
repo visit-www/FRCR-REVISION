@@ -800,6 +800,32 @@ function uploadImage() {
     });
 }
 
+/**
+ * Strip the 'ai-generated-content' class from HTML content.
+ * This is used when saving to convert blue AI text to normal text.
+ * @param {string} html - HTML content with potential ai-generated-content classes
+ * @returns {string} - HTML with ai-generated-content classes removed
+ */
+function stripAiGeneratedContentClass(html) {
+    if (!html) return html;
+    
+    // Use a temporary div to parse and modify the HTML
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = html;
+    
+    // Find all elements with the ai-generated-content class
+    const aiElements = tempDiv.querySelectorAll('.ai-generated-content');
+    aiElements.forEach(el => {
+        el.classList.remove('ai-generated-content');
+        // If the class attribute is now empty, remove it entirely
+        if (el.classList.length === 0) {
+            el.removeAttribute('class');
+        }
+    });
+    
+    return tempDiv.innerHTML;
+}
+
 // Save all changes - improved with validation and error handling
 function saveEditedCase(event) {
     // Prevent any form submission
@@ -818,6 +844,10 @@ function saveEditedCase(event) {
     } else {
         discussion = document.getElementById('editCaseDiscussion').value.trim();
     }
+    
+    // Strip AI-generated content styling (blue text) before saving
+    // This converts AI content to normal text appearance
+    discussion = stripAiGeneratedContentClass(discussion);
     
     // Get FRCR Revision fields
     const module = document.getElementById('editCaseModule')?.value || null;
@@ -856,6 +886,9 @@ function saveEditedCase(event) {
         } else {
             answerText = answerField.value.trim();
         }
+        
+        // Strip AI-generated content styling from answer text
+        answerText = stripAiGeneratedContentClass(answerText);
         
         // Only add pairs that have at least a question or answer
         if (questionText || answerText) {
@@ -1877,4 +1910,5 @@ if (typeof window !== 'undefined') {
     window.viewImageFull = viewImageFull;
     window.initializeTinyMCE = initializeTinyMCE;
     window.createPrelimCaseData = createPrelimCaseData;
+    window.stripAiGeneratedContentClass = stripAiGeneratedContentClass;
 }

@@ -24,11 +24,13 @@
 
 | Component | Status | Location |
 |-----------|--------|----------|
-| Claude API wrapper | ✅ Working | `ai_prelim.py` |
+| Claude API wrapper | ✅ Working (v2 prompt) | `ai_prelim.py` |
 | Audit logging model | ✅ Schema ready | `models.py` (AiPrelimCaseData) |
 | API route | ✅ Functional | `app.py` `/api/case/<id>/ai-prelim` |
-| UI controls | ✅ Basic | `edit_case.html` + `edit-case-modal.js` |
+| UI controls | ✅ Working | `edit_case.html` + `edit-case-modal.js` |
 | Append-only behavior | ✅ Q&A + discussion | Route appends, never overwrites |
+| Visual distinction | ✅ Blue text | `.ai-generated-content` class in `style.css` |
+| Auto-normalize on save | ✅ Working | `stripAiGeneratedContentClass()` in JS |
 
 ### Current Flow
 
@@ -42,29 +44,38 @@ Client validates (diagnosis required, case saved)
 POST /api/case/<id>/ai-prelim
     │
     ▼
-Server builds prompt from case context
+Server builds detailed prompt (v2) from case context
     │
     ▼
 Claude API generates JSON response
     │
     ▼
-Server appends Q&A pairs + discussion to case
+Server appends Q&A pairs + discussion + teaching image to case
+(with .ai-generated-content class for blue text styling)
     │
     ▼
 Audit record stored in ai_prelim_case_data table
+    │
+    ▼
+User reviews AI content (shown in blue)
+    │
+    ▼
+On Save: .ai-generated-content class is stripped
+(text converts to normal black styling)
 ```
 
 ### ❌ Gaps vs. Full Vision
 
 | Requirement | Current State | Gap |
 |-------------|---------------|-----|
-| **Literature retrieval** | ❌ None | No Consensus API integration |
+| **Literature retrieval** | ❌ None | No Consensus API integration (applied, awaiting access) |
 | **Evidence anchoring** | ⚠️ Partial | Claude generates from training data, not live papers |
-| **PMID citations** | ❌ None | No real references, just URL sources |
-| **Multi-query pipeline** | ❌ None | Single prompt, no Query A/B/C |
+| **PMID citations** | ⚠️ Partial | Claude suggests PMIDs but not verified |
+| **Multi-query pipeline** | ❌ None | Single prompt, awaiting Consensus for Query A-F |
 | **Evidence filtering** | ❌ None | No paper selection logic |
-| **Teaching image** | ⚠️ Schema only | Prompt asks for it, but no real image retrieval |
-| **Safety checklist** | ⚠️ Schema only | Generated but not verified |
+| **Teaching image** | ✅ Working | Prompt requests + displays in discussion |
+| **Safety checklist** | ✅ Working | Detailed prompt v2 generates safety items |
+| **Visual distinction** | ✅ Done | Blue text for AI content, normal on save |
 | **Cost tracking** | ❌ None | No usage metering |
 | **Caching** | ❌ None | Every click = new API call |
 
@@ -79,6 +90,7 @@ Build an AI system that does what a consultant radiologist would do:
 1. **Search the literature** → Extract what changes management → Summarise safely
 2. **Avoid hallucinations** → Keep inside peer-reviewed medical evidence
 3. **Generate FRCR-relevant content** → Q&A, discussion, safety notes, teaching images
+4. **Generate FRCR-relevant knowledge** → Q&A, discussion, teaching images
 4. **Full audit trail** → Every output traceable to source papers (PMID, journal)
 
 ### Consensus AI Retrieval + Synthesis Pipeline
@@ -91,7 +103,10 @@ When the button is clicked, build three structured Consensus queries from the ca
 |-------|---------|-----------|
 | **Query A** | Core diagnosis | `"{Diagnosis}" AND (CT OR MRI OR imaging OR radiology)` |
 | **Query B** | Safety & complications | `"{Diagnosis}" AND (complications OR hemorrhage OR perforation OR rupture OR obstruction OR ischemia OR mortality)` |
-| **Query C** | Management-changing imaging | `"{Diagnosis}" AND ("imaging predictors" OR "CT findings" OR "MRI findings" OR "staging" OR "risk stratification" OR "treatment decision")` |
+| **Query C** | Management-changing imaging features | `"{Diagnosis}" AND ("imaging predictors" OR "CT findings" OR "MRI findings" OR "staging" OR "risk stratification" OR "treatment decision")` |
+| **Query D** | Clinical adn radiological significant anatomical aspect | `"{Diagnosis}" AND ("Clinical anatomy" OR "Radiological anatomy"` |
+| **Query E** | Pathological aspect that are radiological relevant | `"{Diagnosis}" AND ("Radiopathological correlation" OR "Pathological differentials based on imaging features" OR "Pathophysiology of the diagnosis" OR "Conceptual understanding of disease and how it occurs and its implication in imaging"` |
+| **Query F** | Representative and descriptive images | `"{Diagnosis}" AND ("Line diagram to explain anatomical concepts relevant to radiology and its description" OR "Images to explain important diganostic features and how they appear in imaging"` |
 
 These ensure retrieval of:
 - Radiology papers
@@ -107,6 +122,7 @@ From Consensus results, **accept only** papers that satisfy ≥1 of:
 ✔ Staging or grading  
 ✔ Complication predictors  
 ✔ Surgical or interventional decision rules  
+✔ imaging based criterion
 
 **Reject:**
 - Pure pathology
@@ -163,7 +179,10 @@ Extract:
 │ • Build 3 Consensus queries from diagnosis                       │
 │ • Query A: Core diagnosis + imaging                              │
 │ • Query B: Complications + safety                                │
-│ • Query C: Management-changing findings                          │
+│ • Query C: Management-changing findings                          |
+| . Query D: Clinical adn radiological significant anatomical aspect|
+| . Query E: Pathological aspect that are radiological relevant    |
+| . Query F : Representative and descriptive images                |
 └──────────────────────────────────────────────────────────────────┘
                                  │
                                  ▼
@@ -177,7 +196,8 @@ Extract:
                                  ▼
 ┌──────────────────────────────────────────────────────────────────┐
 │ PHASE 3: Evidence Filtering (Server-side rules)                  │
-│ • Accept: imaging signs, CT/MRI findings, staging                │
+│ • Accept: imaging signs, CT/MRI findings, staging 
+| . Accept FRCR exam related materia.               │
 │ • Reject: pathology-only, animal studies, non-clinical           │
 │ • Score relevance to radiology practice                          │
 └──────────────────────────────────────────────────────────────────┘
@@ -203,12 +223,14 @@ Extract:
 
 ### Alternative Providers (If Consensus API Unavailable)
 
-| Alternative | Pros | Cons |
-|-------------|------|------|
-| **Semantic Scholar API** | Free, good coverage | No built-in synthesis |
-| **PubMed E-utilities** | Free, PMID access | Requires more parsing |
-| **Perplexity API** | Good synthesis | Less citation control |
-| **Claude with web search** | Integrated | Hallucination risk |
+| Alternative | Pros | Cons | Implementation Status |
+|-------------|------|------|----------------------|
+| **Semantic Scholar API** | Free, good coverage | No built-in synthesis | Placeholder in `ai_prelim.py` |
+| **PubMed E-utilities** | Free, PMID access | Requires more parsing | Placeholder in `ai_prelim.py` |
+| **Perplexity API** | Good synthesis | Less citation control | Not started |
+| **Claude with web search** | Integrated | Hallucination risk | Not recommended |
+
+**Note:** PubMed and Semantic Scholar placeholders are in `ai_prelim.py` ready for implementation when Consensus API is unavailable.
 
 ---
 

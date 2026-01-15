@@ -4127,3 +4127,33 @@ tbody tr.case-row:hover {
         padding: 14px 16px !important;
     }
 }
+
+/* ==================== AI GENERATED CONTENT STYLES ==================== */
+/*
+ * AI-generated content is marked with .ai-generated-content class.
+ * This provides visual distinction (blue text) before saving.
+ * When the case is saved, this class should be removed via JavaScript
+ * to convert the text to normal styling.
+ */
+
+.ai-generated-content {
+    color: #2563eb !important; /* Blue color for AI content */
+}
+
+.ai-generated-content a {
+    color: #1d4ed8 !important; /* Slightly darker blue for links */
+}
+
+.ai-generated-content a:hover {
+    color: #1e40af !important;
+    text-decoration: underline;
+}
+
+/* TinyMCE editor styling for AI content */
+.mce-content-body .ai-generated-content {
+    color: #2563eb !important;
+}
+
+.mce-content-body .ai-generated-content a {
+    color: #1d4ed8 !important;
+}
