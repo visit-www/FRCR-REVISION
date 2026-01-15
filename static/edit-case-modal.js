@@ -72,6 +72,7 @@ function populateQAPairs(caseData) {
 function addQAPairRow(questionText = '', answerText = '') {
     const container = document.getElementById('qaPairsContainer');
     const pairNum = container.querySelectorAll('.qa-pair-row').length + 1;
+    const questionId = 'qa-question-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
     const uniqueId = 'qa-answer-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
     
     const row = document.createElement('div');
@@ -83,13 +84,13 @@ function addQAPairRow(questionText = '', answerText = '') {
                 <i class="fas fa-trash me-1"></i>Remove
             </button>
         </div>
-        <div class="row g-2">
-            <div class="col-md-6">
-                <label class="form-label small text-info"><i class="fas fa-question-circle me-1"></i>Question</label>
-                <textarea class="form-control qa-question-text" rows="4" placeholder="Enter question">${escapeHtml(questionText)}</textarea>
-                <small class="text-muted d-block mt-1">Plain text question</small>
+        <div class="qa-pair-grid">
+            <div class="qa-question-col qa-question-card">
+                <label class="form-label small text-info"><i class="fas fa-question-circle me-1"></i>Question (Rich Text)</label>
+                <textarea class="form-control qa-question-text qa-rich-editor" id="${questionId}" data-qa-question="true" placeholder="Enter question with optional formatting...">${escapeHtml(questionText)}</textarea>
+                <small class="text-muted d-block mt-1">Supports tables, lists, formatting</small>
             </div>
-            <div class="col-md-6">
+            <div class="qa-answer-col qa-answer-card">
                 <label class="form-label small text-success"><i class="fas fa-edit me-1"></i>Answer (Rich Text)</label>
                 <textarea class="form-control qa-answer-text qa-rich-editor" id="${uniqueId}" data-qa-answer="true" placeholder="Enter answer with optional formatting, tables, lists...">${escapeHtml(answerText)}</textarea>
                 <small class="text-muted d-block mt-1">Supports tables, lists, formatting</small>
@@ -99,7 +100,8 @@ function addQAPairRow(questionText = '', answerText = '') {
     
     container.appendChild(row);
     
-    // Initialize TinyMCE for the answer field
+    // Initialize TinyMCE for the question and answer fields
+    initializeTinyMCE(questionId);
     initializeTinyMCE(uniqueId);
 }
 
@@ -161,6 +163,10 @@ function initializeTinyMCE(elementId, retryCount = 0) {
                 font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
                 font-size: 14px;
                 line-height: 1.6;
+                text-align: left !important;
+            }
+            p, h1, h2, h3, h4, h5, h6, li, td, th {
+                text-align: left !important;
             }
             table {
                 border-collapse: collapse;
@@ -175,6 +181,13 @@ function initializeTinyMCE(elementId, retryCount = 0) {
             th {
                 background-color: #f8f9fa;
                 font-weight: 600;
+            }
+            @media (max-width: 640px) {
+                table {
+                    display: block;
+                    overflow-x: auto;
+                    -webkit-overflow-scrolling: touch;
+                }
             }
         `,
         setup: function(editor) {
@@ -277,8 +290,8 @@ function populateImages(images) {
                         📁 ${escapeHtml(imageFilename)}
                     </small>
                     <div class="description-section mb-2">
-                        <small class="text-secondary d-block" id="desc-${image.id}" style="min-height: 40px; word-wrap: break-word;">
-                            ${imageDescription ? escapeHtml(imageDescription) : '<em class="text-muted">No description</em>'}
+                        <small class="image-description-text d-block" id="desc-${image.id}" style="min-height: 40px; word-wrap: break-word;">
+                            ${imageDescription ? formatImageDescriptionForDisplay(imageDescription) : '<em class="text-muted">No description</em>'}
                         </small>
                     </div>
                     ${actionButtons}
@@ -368,6 +381,34 @@ function editImageDescription(imageId) {
                                 toolbar: 'undo redo | bold italic underline | numlist bullist | table link code removeformat',
                                 plugins: 'table link code',
                                 base_url: 'https://cdn.jsdelivr.net/npm/tinymce@6',
+                                content_style: `
+                                    body {
+                                        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+                                        font-size: 14px;
+                                        line-height: 1.6;
+                                    }
+                                    table {
+                                        border-collapse: collapse;
+                                        width: 100%;
+                                        margin: 1rem 0;
+                                    }
+                                    th, td {
+                                        border: 1px solid #ddd;
+                                        padding: 8px;
+                                        text-align: left;
+                                    }
+                                    th {
+                                        background-color: #f8f9fa;
+                                        font-weight: 600;
+                                    }
+                                    @media (max-width: 640px) {
+                                        table {
+                                            display: block;
+                                            overflow-x: auto;
+                                            -webkit-overflow-scrolling: touch;
+                                        }
+                                    }
+                                `,
                                 content_css: 'default',
                                 skin: 'oxide',
                                 setup: function(editor) {
@@ -592,6 +633,14 @@ function escapeHtml(text) {
         "'": '&#039;'
     };
     return text.replace(/[&<>"']/g, m => map[m]);
+}
+
+// Highlight courtesy/credits text while keeping main description readable
+function formatImageDescriptionForDisplay(text) {
+    const escaped = escapeHtml(text);
+    if (!escaped) return '';
+    const metaPattern = /(courtesy[^.]*\.|credit[s]?:?[^.]*\.)/gi;
+    return escaped.replace(metaPattern, '<span class="image-desc-meta">$1</span>');
 }
 
 // Upload image with validation
@@ -1036,9 +1085,9 @@ function saveEditedCase(event) {
                                                 console.warn('[SAVE] Non-JSON response:', responseText.substring(0, 100));
                                                 throw new Error('Server returned non-JSON response');
                                             }
-                                            return r.json();
-                                        })
-                                        .then(data => {
+        return r.json();
+    })
+    .then(data => {
                                             clearTimeout(timeoutId);
                                             console.log('[SAVE] Pending image uploaded successfully:', file.name, data);
                                             // Clear the pending image from the array after successful upload

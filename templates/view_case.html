@@ -54,6 +54,22 @@
     <li class="breadcrumb-item active text-white" aria-current="page">
         <i class="fas fa-file-medical me-1"></i>Case #{{ case.id }}
     </li>
+    {% if previous_case_id %}
+    <li class="breadcrumb-item">
+        <a href="{{ url_for('view_case', case_id=previous_case_id, from_staging='true') if from_staging else url_for('view_case', case_id=previous_case_id) }}"
+           class="text-white text-decoration-none">
+            <i class="fas fa-chevron-left me-1"></i>Prev
+        </a>
+    </li>
+    {% endif %}
+    {% if next_case_id %}
+    <li class="breadcrumb-item">
+        <a href="{{ url_for('view_case', case_id=next_case_id, from_staging='true') if from_staging else url_for('view_case', case_id=next_case_id) }}"
+           class="text-white text-decoration-none">
+            Next<i class="fas fa-chevron-right ms-1"></i>
+        </a>
+    </li>
+    {% endif %}
 {% endblock %}
 
 {% block content %}
@@ -99,6 +115,20 @@
                 <li class="breadcrumb-item"><a href="{{ url_for('all_cases_view') }}"><i class="fas fa-folder-open me-1"></i>All Cases</a></li>
                 {% endif %}
                 <li class="breadcrumb-item active"><i class="fas fa-file-medical me-1"></i>Case #{{ case.id }}</li>
+                {% if previous_case_id %}
+                <li class="breadcrumb-item">
+                    <a href="{{ url_for('view_case', case_id=previous_case_id, from_staging='true') if from_staging else url_for('view_case', case_id=previous_case_id) }}">
+                        <i class="fas fa-chevron-left me-1"></i>Prev
+                    </a>
+                </li>
+                {% endif %}
+                {% if next_case_id %}
+                <li class="breadcrumb-item">
+                    <a href="{{ url_for('view_case', case_id=next_case_id, from_staging='true') if from_staging else url_for('view_case', case_id=next_case_id) }}">
+                        Next<i class="fas fa-chevron-right ms-1"></i>
+                    </a>
+                </li>
+                {% endif %}
             </ol>
         </nav>
 
@@ -725,6 +755,13 @@
             .replace(/'/g, '&#039;');
         return escaped;
     }
+
+    // Highlight courtesy/credits in image descriptions (plain text only)
+    function highlightImageDescriptionMeta(text, isPlainTextContent) {
+        if (!text || !isPlainTextContent) return text;
+        const metaPattern = /(courtesy[^.]*\.|credit[s]?:?[^.]*\.)/gi;
+        return text.replace(metaPattern, '<span class="image-desc-meta">$1</span>');
+    }
     
     /**
      * Check if content is plain text (no HTML tags)
@@ -1100,6 +1137,7 @@
                     // If plain text, escape HTML and add CSS class for formatting
                     if (isPlainTextDesc) {
                         desc = renderPlainTextWithFormatting(desc);
+                        desc = highlightImageDescriptionMeta(desc, true);
                         descriptionDisplay.classList.add('plain-text-formatted');
                     } else {
                         descriptionDisplay.classList.remove('plain-text-formatted');
@@ -1261,8 +1299,9 @@
             // If plain text, escape HTML and add CSS class for formatting
             if (isPlainTextDesc) {
                 desc = renderPlainTextWithFormatting(desc);
+                desc = highlightImageDescriptionMeta(desc, true);
                 descriptionDisplay.classList.add('plain-text-formatted');
-        } else {
+            } else {
                 descriptionDisplay.classList.remove('plain-text-formatted');
             }
             descriptionDisplay.innerHTML = desc;

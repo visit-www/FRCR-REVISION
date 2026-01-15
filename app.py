@@ -1792,6 +1792,16 @@ def view_case(case_id):
     case = Case.query.get(case_id)
     if not case:
         return redirect(url_for('dashboard'))
+    # Determine adjacent cases for breadcrumb navigation
+    from models import CaseStatus
+    is_student = (hasattr(current_user, 'role') and current_user.role == UserRole.STUDENT)
+    base_query = Case.query
+    if is_student:
+        base_query = base_query.filter(Case.status == CaseStatus.PUBLISHED)
+    previous_case_id = base_query.filter(Case.id < case.id).order_by(Case.id.desc()).with_entities(Case.id).first()
+    next_case_id = base_query.filter(Case.id > case.id).order_by(Case.id.asc()).with_entities(Case.id).first()
+    previous_case_id = previous_case_id[0] if previous_case_id else None
+    next_case_id = next_case_id[0] if next_case_id else None
     # Get user's note for this case
     user_note = CandidateNote.query.filter_by(case_id=case_id, user_id=current_user.id).first()
     
@@ -1802,7 +1812,9 @@ def view_case(case_id):
     return render_template('view_case.html', 
                          case=case, 
                          user_note=user_note,
-                         from_staging=from_staging)
+                         from_staging=from_staging,
+                         previous_case_id=previous_case_id,
+                         next_case_id=next_case_id)
 
 
 @app.route('/admin/staging-cases')

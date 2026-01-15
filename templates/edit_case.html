@@ -581,6 +581,13 @@ function initializeDiscussionEditor() {
                 background-color: #f8f9fa;
                 font-weight: 600;
             }
+            @media (max-width: 640px) {
+                table {
+                    display: block;
+                    overflow-x: auto;
+                    -webkit-overflow-scrolling: touch;
+                }
+            }
         `,
         setup: function(editor) {
             editor.on('change', function() {
@@ -879,7 +886,7 @@ function loadStagingCaseForEdit(stagingId) {
             document.getElementById('editCaseDiagnosis').value = stagingData.diagnosis || '';
             
             // Set discussion
-            setTimeout(() => {
+    setTimeout(() => {
                 if (typeof tinymce !== 'undefined' && tinymce.get('editCaseDiscussion')) {
                     tinymce.get('editCaseDiscussion').setContent(stagingData.discussion || '');
                 } else {
@@ -996,7 +1003,7 @@ function loadStagingCaseForEdit(stagingId) {
                         // Fallback to manual display
                         throw error;
                     }
-                } else {
+            } else {
                     console.warn('[STAGING] populateImages function not found, using fallback');
                     // Fallback: display images manually
                     imagesContainer.innerHTML = '<div class="row g-3">' + displayImages.map(img => `
