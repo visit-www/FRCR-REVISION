@@ -234,8 +234,8 @@ def check_duplicates():
         
         # Check for duplicates
         try:
-            result = DuplicateDetectionService.check_duplicates(backup_data)
-            return jsonify(result), 200
+        result = DuplicateDetectionService.check_duplicates(backup_data)
+        return jsonify(result), 200
         except Exception as e:
             import traceback
             traceback.print_exc()
