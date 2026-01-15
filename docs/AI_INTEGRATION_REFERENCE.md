@@ -1,8 +1,56 @@
 # AI Integration Reference Document
 
-> **Last Updated:** January 2026  
+> **Last Updated:** January 16, 2026  
 > **Branch:** `feature/ai-integration`  
 > **Stable Snapshot:** `v1.0-stable`
+
+---
+
+## 🚦 Session Progress (Pick Up Here)
+
+### ✅ Completed (Jan 16, 2026)
+
+1. **Prompt v2 implemented** in `ai_prelim.py`
+   - Full detailed prompt matching reference document
+   - JSON output with Q&A, discussion, safety checklist, teaching image, sources
+   
+2. **Orange background styling** for AI content
+   - Q&A pairs: `.ai-generated-pair` class (orange background + AI badge)
+   - Discussion: `.ai-generated-content` class (orange background + left border)
+   - On save: styling is stripped → content becomes normal
+
+3. **Claude API working** (needs `CLAUDE_API_KEY` env var)
+   - Model: `claude-sonnet-4-20250514` (configurable via `CLAUDE_MODEL`)
+
+### 🔜 Next Steps (Tomorrow)
+
+1. **Test the current implementation**
+   - Start Flask server
+   - Open a case with diagnosis
+   - Click "Create Preliminary Case Data"
+   - Verify Q&A pairs appear with orange background
+   - Verify discussion appended with orange styling
+   - Save and verify styling is removed
+
+2. **Consider alternative literature providers** (since no Consensus API yet):
+   - Option B: PubMed E-utilities (free, PMID access)
+   - Option C: Semantic Scholar API (free, good coverage)
+   - Implementation stubs already in `ai_prelim.py`
+
+3. **Future enhancements**:
+   - Caching by diagnosis hash
+   - Cost tracking
+   - User quotas
+   - Background job processing (for long API calls)
+
+### 📍 Key Files to Review
+
+| File | Purpose |
+|------|---------|
+| `ai_prelim.py` | Claude API wrapper + v2 prompt |
+| `app.py` (lines 1963-2130) | `/api/case/<id>/ai-prelim` route |
+| `static/edit-case-modal.js` | `createPrelimCaseData()` + `addQAPairRow()` |
+| `static/style.css` (lines 4131-4161) | `.ai-generated-content` + `.ai-generated-pair` |
 
 ---
 
@@ -303,22 +351,31 @@ CREATE TABLE ai_evidence_cache (
 
 ## Next Steps
 
-### Immediate Questions to Answer
+### Phase 1: Test & Validate (Immediate)
 
-1. **Do you have Consensus AI API access?** (Their API is invite-only/enterprise)
-2. **Is async OK?** (Background job = better UX for 10-30s operations)
-3. **Cost ceiling?** (Should we build in hard limits?)
-4. **Teaching image priority?** (Real image retrieval is complex — defer or implement?)
+1. **Test current Claude implementation**
+   - Ensure `CLAUDE_API_KEY` is set in environment
+   - Open edit case → click "Create Preliminary Case Data"
+   - Verify output quality and formatting
 
-### Implementation Order (When Ready)
+### Phase 2: Alternative Literature Providers (No Consensus API Yet)
 
-1. Create `consensus_client.py` with query builder
-2. Add evidence filtering rules
-3. Modify `ai_prelim.py` to accept evidence as input
-4. Update prompt to enforce "cite only provided PMIDs"
-5. Add caching layer (Redis or DB table)
-6. Add background job processing (Celery/RQ)
-7. Add cost tracking and user quotas
+Since Consensus API is not yet available, consider implementing:
+
+| Provider | Status | Notes |
+|----------|--------|-------|
+| **PubMed E-utilities** | Not implemented | Free, PMID access, requires parsing |
+| **Semantic Scholar API** | Not implemented | Free, good coverage, JSON responses |
+
+Implementation stubs exist in `ai_prelim.py` (lines 409-430).
+
+### Phase 3: Enhancements (Future)
+
+1. **Caching** — Cache by diagnosis hash (24-48h TTL)
+2. **Cost tracking** — Log token usage, estimate costs
+3. **User quotas** — Limit AI generations per user/day
+4. **Async processing** — Background jobs for long API calls
+5. **Evidence anchoring** — When literature API available, cite PMIDs
 
 ---
 
