@@ -44,9 +44,15 @@ except Exception as e:
 
 # Configuration
 # Use PostgreSQL on production (Vercel), SQLite locally
-# Vercel Supabase integration uses DATABASE_POSTGRES_URL_NON_POOLING for direct connection
+# Vercel/Supabase envs can be POSTGRES_URL(_NON_POOLING) or DATABASE_* variants
 # Priority: Use non-pooling URL first for serverless environments
-DATABASE_URL = os.getenv('DATABASE_POSTGRES_URL_NON_POOLING') or os.getenv('DATABASE_URL') or os.getenv('DATABASE_POSTGRES_URL')
+DATABASE_URL = (
+    os.getenv('DATABASE_POSTGRES_URL_NON_POOLING')
+    or os.getenv('POSTGRES_URL_NON_POOLING')
+    or os.getenv('DATABASE_URL')
+    or os.getenv('POSTGRES_URL')
+    or os.getenv('DATABASE_POSTGRES_URL')
+)
 
 if DATABASE_URL:
     # PostgreSQL on Vercel or external
