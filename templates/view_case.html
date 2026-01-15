@@ -1420,6 +1420,7 @@
     let currentSelectionRange = null;
     let currentSelectionField = null;
     let currentSelectionText = null; // Store text immediately to avoid mobile Safari selection clearing
+    let lastSelectionTs = 0;
     let processedHighlights = new Set(); // Track processed highlights to prevent duplicates
     
     // Initialize new selection-based highlighting system
@@ -1466,23 +1467,20 @@
             
             const selection = window.getSelection();
             if (selection && selection.toString().trim().length > 0) {
+                // Snapshot selection early (mobile may clear quickly)
+                captureSelectionSnapshot(selection);
                 // Check if selection is in highlightable content
                 if (selection.rangeCount > 0) {
                     try {
                         const range = selection.getRangeAt(0);
                         const container = range.commonAncestorContainer;
-                        if (container) {
-                            const fieldElement = (container.nodeType === Node.TEXT_NODE 
-                                ? container.parentElement 
-                                : container).closest('.highlightable-text, [data-field]');
-                            
-                            if (fieldElement) {
-                                // Small delay then show menu
-                                if (selectionTimeout) clearTimeout(selectionTimeout);
-                                selectionTimeout = setTimeout(() => {
-                                    handleTextSelection(null);
-                                }, 200);
-                            }
+                        const fieldElement = findFieldElementFromNode(container);
+                        if (fieldElement) {
+                            // Small delay then show menu
+                            if (selectionTimeout) clearTimeout(selectionTimeout);
+                            selectionTimeout = setTimeout(() => {
+                                handleTextSelection(null);
+                            }, 200);
                         }
                     } catch (err) {
                         // Ignore errors
@@ -1503,53 +1501,75 @@
     }
     
     // Handle text selection and show contextual menu
+    function findFieldElementFromNode(node) {
+        if (!node) return null;
+        const element = node.nodeType === Node.TEXT_NODE ? node.parentElement : node;
+        if (!element) return null;
+        return element.closest('[data-field]') || element.closest('.highlightable-text');
+    }
+
+    function captureSelectionSnapshot(selection) {
+        if (!selection || selection.rangeCount === 0) return;
+        const text = selection.toString().trim();
+        if (!text) return;
+        const range = selection.getRangeAt(0);
+        const container = range.commonAncestorContainer;
+        const fieldElement = findFieldElementFromNode(container);
+        if (!fieldElement) return;
+        currentSelectionRange = range.cloneRange();
+        currentSelectionField = fieldElement.dataset?.field || fieldElement.getAttribute('data-field') || 'discussion';
+        currentSelectionText = text;
+        lastSelectionTs = Date.now();
+    }
+
     function handleTextSelection(e) {
         if (!isStudent) return;
         
         const selection = window.getSelection();
-        if (!selection || selection.rangeCount === 0) {
-            return;
+        let range = selection && selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
+        let text = selection ? selection.toString().trim() : '';
+        let usingSnapshot = false;
+        if ((!selection || !text) && currentSelectionText && currentSelectionRange) {
+            // Mobile fallback: use recent snapshot if selection was cleared
+            if (Date.now() - lastSelectionTs < 1000) {
+                text = currentSelectionText;
+                range = currentSelectionRange;
+                usingSnapshot = true;
+            }
         }
-        
-        const text = selection.toString().trim();
-        if (text.length === 0) {
-            return;
-        }
+        if (!range || !text) return;
         
         // Get the range
-        const range = selection.getRangeAt(0);
-        if (!range) return;
-        
         // Find the field element
         let fieldElement = null;
-        if (e && e.target) {
-            fieldElement = e.target.closest('.highlightable-text, [data-field]');
+        if (!usingSnapshot && e && e.target) {
+            fieldElement = findFieldElementFromNode(e.target);
         }
         
         // If not found via event target, find from range
         if (!fieldElement) {
             const container = range.commonAncestorContainer;
-            if (container) {
-                fieldElement = (container.nodeType === Node.TEXT_NODE 
-                    ? container.parentElement 
-                    : container).closest('.highlightable-text, [data-field]');
-            }
+            fieldElement = findFieldElementFromNode(container);
         }
         
-        // Must be in highlightable content
-        if (!fieldElement) {
-            return;
-        }
-        
-        // Get field name
-        const fieldName = fieldElement.dataset?.field || 
+        // If not found, fall back to snapshot field when available
+        let fieldName = null;
+        if (!fieldElement && usingSnapshot && currentSelectionField) {
+            fieldName = currentSelectionField;
+        } else if (fieldElement) {
+            fieldName = fieldElement.dataset?.field || 
                          fieldElement.getAttribute('data-field') || 
                          'discussion';
+        }
+        if (!fieldName) {
+            return;
+        }
         
         // Store selection info immediately (critical for mobile Safari)
         currentSelectionRange = range.cloneRange();
         currentSelectionField = fieldName;
         currentSelectionText = text; // Store text immediately - mobile Safari clears selection on tap
+        lastSelectionTs = Date.now();
         
         // Get position for menu (use selection end or event position)
         let menuX, menuY;
@@ -1791,6 +1811,7 @@
                 e.stopPropagation();
                 currentHighlightColor = color.name;
                 localStorage.setItem(HIGHLIGHT_COLOR_KEY, color.name);
+                highlightBtn.setAttribute('data-highlight-color', color.name);
                 // Update primary button color
                 highlightBtn.style.background = color.color;
                 highlightBtn.style.color = color.name === 'yellow' ? '#333' : '#fff';
@@ -1848,6 +1869,7 @@
         currentSelectionRange = null;
         currentSelectionField = null;
         currentSelectionText = null;
+        lastSelectionTs = 0;
         
         // Clear selection (but only after a delay on mobile to allow highlight to process)
         setTimeout(() => {
@@ -1970,6 +1992,13 @@
         });
     }
     
+    function findVisibleFieldElement(fieldName) {
+        const nodes = Array.from(document.querySelectorAll(`[data-field="${fieldName}"]`));
+        if (!nodes.length) return null;
+        const visible = nodes.find(node => node.offsetParent !== null || node.getClientRects().length > 0);
+        return visible || nodes[0];
+    }
+
     function renderHighlights(highlights) {
         if (!highlights || highlights.length === 0) {
             console.log('[HIGHLIGHT] No highlights to render');
@@ -1996,7 +2025,7 @@
                 return;
             }
             
-            let fieldElement = document.querySelector(`[data-field="${highlight.field_name}"]`);
+            let fieldElement = findVisibleFieldElement(highlight.field_name);
             
             // Fallback for discussion and diagnosis
             if (!fieldElement) {
@@ -2012,6 +2041,7 @@
                 const qaElements = document.querySelectorAll('.qa-question');
                 // Try to find matching question element
                 qaElements.forEach(function(el) {
+                    if (fieldElement) return;
                     const elText = normalizeText(el.textContent || '');
                     const highlightText = normalizeText(highlight.text_content);
                     if (elText.includes(highlightText) && !el.querySelector('.text-highlight')) {
@@ -2021,6 +2051,7 @@
             } else if (!fieldElement && highlight.field_name.startsWith('answer_')) {
                 const qaElements = document.querySelectorAll('.qa-answer');
                 qaElements.forEach(function(el) {
+                    if (fieldElement) return;
                     const elText = normalizeText(el.textContent || '');
                     const highlightText = normalizeText(highlight.text_content);
                     if (elText.includes(highlightText) && !el.querySelector('.text-highlight')) {
@@ -2077,11 +2108,80 @@
                 fieldElement.innerHTML = highlighted;
                 console.log('[HIGHLIGHT] Successfully rendered highlight:', highlight.id);
             } else {
-                console.warn('[HIGHLIGHT] Regex did not match for highlight:', highlight.id);
+                // Fallback: try textContent-based range highlight (handles rich HTML in Q&A)
+                const fallbackApplied = applyHighlightByTextContent(
+                    fieldElement,
+                    highlight.text_content,
+                    colorMap[highlight.highlight_color] || '#FFEB3B',
+                    highlight.id
+                );
+                if (fallbackApplied) {
+                    console.log('[HIGHLIGHT] Fallback rendered highlight:', highlight.id);
+                } else {
+                    console.warn('[HIGHLIGHT] Regex did not match for highlight:', highlight.id);
+                }
             }
         });
         
         console.log('[HIGHLIGHT] Finished rendering highlights');
+    }
+
+    function applyHighlightByTextContent(fieldElement, textToFind, color, highlightId) {
+        if (!fieldElement || !textToFind) return false;
+        const fullText = fieldElement.textContent || '';
+        const flexibleRegex = new RegExp(escapeRegex(textToFind).replace(/\\s+/g, '\\\\s+'), 'i');
+        const matchIndex = fullText.search(flexibleRegex);
+        if (matchIndex === -1) return false;
+        const match = fullText.match(flexibleRegex);
+        if (!match || !match[0]) return false;
+
+        const startIndex = matchIndex;
+        const endIndex = matchIndex + match[0].length;
+        const walker = document.createTreeWalker(fieldElement, NodeFilter.SHOW_TEXT, null);
+        let currentIndex = 0;
+        let startNode = null;
+        let endNode = null;
+        let startOffset = 0;
+        let endOffset = 0;
+
+        while (walker.nextNode()) {
+            const node = walker.currentNode;
+            const nodeText = node.nodeValue || '';
+            const nextIndex = currentIndex + nodeText.length;
+            if (!startNode && startIndex >= currentIndex && startIndex <= nextIndex) {
+                startNode = node;
+                startOffset = Math.max(0, startIndex - currentIndex);
+            }
+            if (startNode && endIndex <= nextIndex) {
+                endNode = node;
+                endOffset = Math.max(0, endIndex - currentIndex);
+                break;
+            }
+            currentIndex = nextIndex;
+        }
+
+        if (!startNode || !endNode) return false;
+        const range = document.createRange();
+        range.setStart(startNode, startOffset);
+        range.setEnd(endNode, endOffset);
+
+        const mark = document.createElement('mark');
+        mark.className = 'text-highlight';
+        mark.setAttribute('data-highlight-id', highlightId);
+        mark.style.backgroundColor = color;
+        mark.style.cursor = 'pointer';
+        mark.style.padding = '2px 4px';
+        mark.style.borderRadius = '3px';
+        mark.style.transition = 'all 0.2s';
+        mark.onmouseover = function() { this.style.boxShadow = '0 2px 4px rgba(0,0,0,0.2)'; this.style.opacity = '0.9'; };
+        mark.onmouseout = function() { this.style.boxShadow = 'none'; this.style.opacity = '1'; };
+        mark.onclick = function(e) { deleteHighlight(highlightId); e.stopPropagation(); };
+        mark.title = 'Click to remove highlight';
+
+        const contents = range.extractContents();
+        mark.appendChild(contents);
+        range.insertNode(mark);
+        return true;
     }
     
     function deleteHighlight(highlightId) {
