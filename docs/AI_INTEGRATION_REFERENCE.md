@@ -22,6 +22,15 @@
 3. **Claude API working** (needs `CLAUDE_API_KEY` env var)
    - Model: `claude-sonnet-4-20250514` (configurable via `CLAUDE_MODEL`)
 
+4. **✅ TESTED SUCCESSFULLY** (Jan 16, 2026)
+   - Case: Extradural hematoma (#14)
+   - Generated: 8 new Q&A pairs
+   - Generated: Full discussion with imaging features, anatomy, herniation patterns
+   - Generated: 8-point Clinico-Radiological Safety Focus checklist
+   - Generated: Teaching image link (Radiopaedia)
+   - Generated: 3 source references (Radiopaedia, Radiology Assistant, NICE)
+   - Save verified: Orange styling stripped, content saved as permanent
+
 ### 🔜 Next Steps (Tomorrow)
 
 1. **Test the current implementation**
