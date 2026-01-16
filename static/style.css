@@ -4134,6 +4134,15 @@ tbody tr.case-row:hover {
  * This provides visual distinction (orange background) before saving.
  * When the case is saved, this class is removed via JavaScript
  * to convert the content to normal styling.
+ * 
+ * MODEL COLOR CODING (for future multi-model support):
+ * - Claude: Orange/Peachy Orange (current) - rgba(233, 99, 4, 0.1)
+ * - Consensus AI: Green (future) - rgba(40, 167, 69, 0.1)
+ * - Other models: TBD - each will have unique color
+ * 
+ * Watermark visibility rules:
+ * - Visible: Draft, Saved (not verified)
+ * - Hidden: Verified Mode, Published/Public
  */
 
 .ai-generated-content {

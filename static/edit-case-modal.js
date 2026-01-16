@@ -868,6 +868,32 @@ function saveEditedCase(event) {
     // Automatically set is_public based on status: PUBLISHED = true, all others = false
     const isPublic = status === 'PUBLISHED';
     
+    // Check if AI content should be verified
+    const aiVerifiedInput = document.getElementById('aiContentVerified');
+    const manuallyVerified = aiVerifiedInput && aiVerifiedInput.value === 'true';
+    const isPublished = status === 'PUBLISHED';
+    
+    // Auto-verify if publishing (with confirmation if not already verified)
+    let aiContentVerified = manuallyVerified;
+    if (isPublished && !manuallyVerified) {
+        const confirmed = confirm(
+            'Publishing this case will remove all AI watermarks and move the case to Verified mode.\n\n' +
+            'Do you want to proceed?'
+        );
+        if (confirmed) {
+            aiContentVerified = true;
+        } else {
+            // User cancelled - don't save
+            return;
+        }
+    }
+    
+    // If verified, ensure watermarks are stripped (already done above, but double-check)
+    if (aiContentVerified) {
+        discussion = stripAiGeneratedContentClass(discussion);
+        // Also strip from all Q&A pairs (will be done in loop below)
+    }
+    
     // Validate required fields (case_number is optional - auto-generated from body_part)
     if (!module) {
         alert('Module is required');
@@ -924,6 +950,7 @@ function saveEditedCase(event) {
         age_group: ageGroup,
         status: status,
         is_public: isPublic,  // Legacy field, status takes precedence
+        ai_content_verified: aiContentVerified,  // AI watermark removal flag
         pairs: pairs
     };
     
@@ -1831,7 +1858,87 @@ function appendDiscussionHtml(html) {
     }
 }
 
-function createPrelimCaseData() {
+/**
+ * Check AI cache and show warning dialog if cached
+ */
+function checkAiCacheAndPrompt(caseId, provider, diagnosis, btn) {
+    // Check cache status
+    fetch(`/api/case/${caseId}/ai-prelim/check-cache?provider=${encodeURIComponent(provider)}`)
+        .then(r => r.json())
+        .then(cacheData => {
+            if (cacheData.cached && cacheData.cache_entry) {
+                // Show warning dialog
+                const modelName = cacheData.cache_entry.model_name || provider;
+                const allModels = cacheData.all_used_models || [];
+                const allModelsUsed = allModels.length > 0;
+                
+                let message = `This diagnosis has already been generated using ${modelName}. `;
+                if (allModelsUsed && allModels.length > 1) {
+                    message += `All available AI models have already been used for this diagnosis. `;
+                }
+                message += `Do you want to regenerate the content using the same model, or cancel and choose another model?`;
+                
+                // Create modal dialog
+                const modal = document.createElement('div');
+                modal.className = 'modal fade show';
+                modal.style.display = 'block';
+                modal.style.backgroundColor = 'rgba(0,0,0,0.5)';
+                modal.innerHTML = `
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">
+                                    <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+                                    AI Content Already Generated
+                                </h5>
+                                <button type="button" class="btn-close" onclick="this.closest('.modal').remove()"></button>
+                            </div>
+                            <div class="modal-body">
+                                <p>${message}</p>
+                                ${cacheData.cache_entry ? `
+                                    <div class="alert alert-info">
+                                        <small>
+                                            <strong>First generated:</strong> ${new Date(cacheData.cache_entry.first_generated_at).toLocaleString()}<br>
+                                            <strong>Times queried:</strong> ${cacheData.cache_entry.query_count}
+                                        </small>
+                                    </div>
+                                ` : ''}
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" onclick="this.closest('.modal').remove()">
+                                    Cancel
+                                </button>
+                                <button type="button" class="btn btn-warning" onclick="
+                                    this.closest('.modal').remove();
+                                    createPrelimCaseData(true);
+                                ">
+                                    <i class="fas fa-redo me-1"></i>Regenerate using ${modelName}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+                
+                // Close on backdrop click
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) {
+                        modal.remove();
+                    }
+                });
+            } else {
+                // Not cached, proceed directly
+                createPrelimCaseData(true);
+            }
+        })
+        .catch(err => {
+            console.error('Cache check failed:', err);
+            // On error, proceed anyway (don't block user)
+            createPrelimCaseData(true);
+        });
+}
+
+function createPrelimCaseData(forceRegenerate = false) {
     const caseIdField = document.getElementById('editCaseId')?.value;
     const diagnosis = document.getElementById('editCaseDiagnosis')?.value.trim();
     const provider = document.getElementById('aiProviderSelect')?.value || 'claude';
@@ -1849,6 +1956,13 @@ function createPrelimCaseData() {
         return;
     }
 
+    // Check cache first (unless forcing regenerate)
+    if (!forceRegenerate) {
+        checkAiCacheAndPrompt(caseIdField, provider, diagnosis, btn);
+        return;
+    }
+
+    // Proceed with generation (user confirmed regenerate)
     if (btn) {
         btn.disabled = true;
         btn.dataset.originalText = btn.innerHTML;
@@ -1858,7 +1972,7 @@ function createPrelimCaseData() {
     fetch(`/api/case/${caseIdField}/ai-prelim`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ provider })
+        body: JSON.stringify({ provider, force_regenerate: true })
     })
     .then(async r => {
         const text = await r.text();
@@ -1898,6 +2012,45 @@ function createPrelimCaseData() {
             btn.innerHTML = btn.dataset.originalText || '<i class="fas fa-wand-magic-sparkles me-2"></i>Create Preliminary Case Data';
         }
     });
+}
+
+/**
+ * Verify AI content - removes all AI watermarks after user confirmation
+ */
+function verifyAiContent() {
+    const confirmed = confirm(
+        'If verified, all AI watermarks will be removed when the case is saved.\n\n' +
+        'This action cannot be undone. Do you want to proceed?'
+    );
+    
+    if (!confirmed) {
+        return;
+    }
+    
+    // Set verified flag (will be saved with case)
+    const caseForm = document.getElementById('editCaseForm');
+    if (caseForm) {
+        // Add hidden input to mark as verified
+        let verifiedInput = document.getElementById('aiContentVerified');
+        if (!verifiedInput) {
+            verifiedInput = document.createElement('input');
+            verifiedInput.type = 'hidden';
+            verifiedInput.id = 'aiContentVerified';
+            verifiedInput.name = 'ai_content_verified';
+            verifiedInput.value = 'true';
+            caseForm.appendChild(verifiedInput);
+        } else {
+            verifiedInput.value = 'true';
+        }
+        
+        // Hide verification button (already verified)
+        const verifyBtn = document.getElementById('aiVerifyBtn');
+        if (verifyBtn) {
+            verifyBtn.style.display = 'none';
+        }
+        
+        alert('AI content marked as verified. Watermarks will be removed when you save the case.');
+    }
 }
 
 // Helper function to escape HTML

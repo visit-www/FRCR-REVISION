@@ -229,6 +229,9 @@ class Case(db.Model):
     approved_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)  # Who approved this case
     approved_at = db.Column(db.DateTime, nullable=True)  # When was it approved
     
+    # === AI CONTENT VERIFICATION ===
+    ai_content_verified = db.Column(db.Boolean, default=False, nullable=False, index=True)  # AI watermarks removed when True
+    
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
@@ -586,3 +589,39 @@ class AiPrelimCaseData(db.Model):
 
     def __repr__(self):
         return f'<AiPrelimCaseData Case:{self.case_id} Provider:{self.provider}>'
+
+
+class AiDiagnosisCache(db.Model):
+    """
+    Caches AI-generated content by diagnosis + model combination.
+    This is diagnosis-based (not user-based) to prevent duplicate queries.
+    """
+    __tablename__ = 'ai_diagnosis_cache'
+
+    id = db.Column(db.Integer, primary_key=True)
+    diagnosis = db.Column(db.String(500), nullable=False, index=True)
+    provider = db.Column(db.String(50), nullable=False)  # e.g., 'claude', 'consensus'
+    model_name = db.Column(db.String(100), nullable=False)  # e.g., 'claude-sonnet-4-20250514'
+    
+    # Store reference to the case that first generated this content
+    first_case_id = db.Column(db.Integer, db.ForeignKey('case.id'), nullable=False, index=True)
+    first_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    
+    # Timestamp of first generation
+    first_generated_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False, index=True)
+    
+    # Count how many times this diagnosis+model has been queried
+    query_count = db.Column(db.Integer, default=1, nullable=False)
+    
+    # Last time this was queried (for potential cache expiration)
+    last_queried_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    
+    __table_args__ = (
+        db.UniqueConstraint('diagnosis', 'provider', 'model_name', name='uq_diagnosis_provider_model'),
+    )
+
+    case = db.relationship('Case', foreign_keys=[first_case_id])
+    user = db.relationship('User', foreign_keys=[first_user_id])
+
+    def __repr__(self):
+        return f'<AiDiagnosisCache Diagnosis:{self.diagnosis[:30]}... Model:{self.model_name}>'

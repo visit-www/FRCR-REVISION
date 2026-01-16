@@ -52,13 +52,34 @@
    - User quotas
    - Background job processing (for long API calls)
 
+### ✅ NEW FEATURES (Jan 16, 2026 - After Stable Tag)
+
+5. **AI Diagnosis Caching System**
+   - Database model: `AiDiagnosisCache` (diagnosis + model, not user-based)
+   - Cache check before generation with warning dialog
+   - User choice: Regenerate or Cancel
+   - Tracks query count and first generation timestamp
+
+6. **AI Content Verification System**
+   - "AI Content Verified" button with confirmation
+   - Case status sync: Publishing → Auto-verify (with confirmation)
+   - Bidirectional sync: Verified ↔ Published
+   - Watermark visibility rules based on case state
+
+7. **Model Color Coding** (Documented for future)
+   - Claude: Orange (current)
+   - Consensus AI: Green (future)
+   - Other models: TBD
+
 ### 📍 Key Files to Review
 
 | File | Purpose |
 |------|---------|
 | `ai_prelim.py` | Claude API wrapper + v2 prompt |
 | `app.py` (lines 1963-2130) | `/api/case/<id>/ai-prelim` route |
-| `static/edit-case-modal.js` | `createPrelimCaseData()` + `addQAPairRow()` |
+| `app.py` (lines 2070-2120) | Cache check endpoint `/api/case/<id>/ai-prelim/check-cache` |
+| `models.py` | `AiDiagnosisCache` model + `Case.ai_content_verified` field |
+| `static/edit-case-modal.js` | `createPrelimCaseData()`, `checkAiCacheAndPrompt()`, `verifyAiContent()` |
 | `static/style.css` (lines 4131-4161) | `.ai-generated-content` + `.ai-generated-pair` |
 
 ---
@@ -134,7 +155,123 @@ On Save: styling classes are stripped
 | **Safety checklist** | ✅ Working | Detailed prompt v2 generates safety items |
 | **Visual distinction** | ✅ Done | Blue text for AI content, normal on save |
 | **Cost tracking** | ❌ None | No usage metering |
-| **Caching** | ❌ None | Every click = new API call |
+| **Caching** | ✅ Implemented | Diagnosis + model cache with warning dialog |
+| **Content Verification** | ✅ Implemented | User-controlled verification with status sync |
+
+---
+
+## AI Diagnosis Caching & Verification System
+
+### Overview
+
+The system now includes intelligent caching and user-controlled verification to prevent duplicate AI queries and manage AI watermark visibility.
+
+### 1. AI Diagnosis Caching
+
+**Database Model:** `AiDiagnosisCache`
+- **Key:** `(diagnosis, provider, model_name)` - unique combination
+- **Purpose:** Track which diagnosis+model combinations have been queried
+- **Not user-based:** Same diagnosis+model is cached regardless of who queries it
+
+**Workflow:**
+1. User clicks "Create Preliminary Case Data"
+2. Frontend checks cache via `GET /api/case/<id>/ai-prelim/check-cache`
+3. If cached:
+   - Show warning dialog: "This diagnosis has already been generated using {model}..."
+   - User options:
+     - **Regenerate** using same model (overwrites previous)
+     - **Cancel** and choose different model
+4. If not cached or user chooses regenerate:
+   - Proceed with AI generation
+   - Update cache after successful generation
+
+**Cache Entry Fields:**
+- `diagnosis` (normalized, lowercase)
+- `provider` (e.g., 'claude')
+- `model_name` (e.g., 'claude-sonnet-4-20250514')
+- `first_case_id` - First case that generated this
+- `first_user_id` - User who first generated
+- `query_count` - How many times queried
+- `first_generated_at` - Timestamp
+- `last_queried_at` - Last query timestamp
+
+### 2. AI Content Verification
+
+**Database Field:** `Case.ai_content_verified` (Boolean)
+
+**User Control:**
+- "AI Content Verified" button appears when AI content exists
+- Clicking shows confirmation: "If verified, all AI watermarks will be removed when the case is saved."
+- On confirmation, sets `ai_content_verified = true`
+
+**Status Synchronization:**
+- **Publishing → Auto-Verify:**
+  - When status changes to `PUBLISHED`
+  - Shows confirmation: "Publishing this case will remove all AI watermarks..."
+  - On confirmation, sets `ai_content_verified = true`
+- **Bidirectional Sync:**
+  - Verified mode allows publishing (but doesn't force it)
+  - Publishing auto-verifies (with confirmation)
+
+### 3. Watermark Visibility Rules
+
+| Case State | AI Watermarks Visible? |
+|------------|------------------------|
+| Draft / In-progress | ✅ Yes |
+| Saved (not verified) | ✅ Yes |
+| Verified Mode | ❌ No (removed) |
+| Published / Public | ❌ No (removed) |
+
+**Implementation:**
+- Watermarks are CSS classes: `.ai-generated-content`, `.ai-generated-pair`
+- On save, if `ai_content_verified = true`, JavaScript strips these classes
+- If not verified, watermarks remain visible
+
+### 4. Model Color Coding
+
+**Current:**
+- **Claude:** Orange/Peachy Orange (`rgba(233, 99, 4, 0.1)`)
+
+**Future Models (Documented):**
+- **Consensus AI:** Green (`rgba(40, 167, 69, 0.1)`)
+- **Other models:** TBD - each will have unique color
+
+**Implementation:**
+- Colors defined in `static/style.css`
+- Model-specific classes can be added: `.ai-generated-content-claude`, `.ai-generated-content-consensus`, etc.
+
+### 5. API Endpoints
+
+**Cache Check:**
+```
+GET /api/case/<id>/ai-prelim/check-cache?provider=claude&model=...
+Response: {
+  "cached": true/false,
+  "cache_entry": {...},
+  "all_used_models": [...],
+  "requested_provider": "...",
+  "requested_model": "..."
+}
+```
+
+**Generate (with cache bypass):**
+```
+POST /api/case/<id>/ai-prelim
+Body: {
+  "provider": "claude",
+  "force_regenerate": true  // Bypass cache check
+}
+```
+
+**Save Case (with verification):**
+```
+PUT /api/case/<id>
+Body: {
+  ...case fields...,
+  "ai_content_verified": true,
+  "status": "PUBLISHED"  // Auto-verifies if published
+}
+```
 
 ---
 

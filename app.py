@@ -1878,7 +1878,9 @@ def get_case(case_id):
             'discussion': case.discussion,
             'module': case.module.name if case.module else None,
             'body_part': case.body_part.name if case.body_part else None,
-            'is_public': case.is_public
+            'is_public': case.is_public,
+            'status': case.status.name if case.status else 'DRAFT',
+            'ai_content_verified': case.ai_content_verified if hasattr(case, 'ai_content_verified') else False
         })
 
     # Handle PUT request (update case)
@@ -1920,6 +1922,40 @@ def get_case(case_id):
                 case.is_public = val == 1
             else:
                 case.is_public = False
+        
+        # Handle status update (with sync to verified mode)
+        if 'status' in data:
+            from models import CaseStatus
+            try:
+                new_status = CaseStatus[data['status']] if data['status'] else CaseStatus.DRAFT
+                case.status = new_status
+                # Sync: PUBLISHED → auto-verify (if not already verified)
+                if new_status == CaseStatus.PUBLISHED and not case.ai_content_verified:
+                    case.ai_content_verified = True
+                # Sync: Verified → can be published (bidirectional)
+                if case.ai_content_verified and new_status != CaseStatus.PUBLISHED:
+                    # User can verify without publishing, but publishing auto-verifies
+                    pass
+            except (KeyError, ValueError):
+                pass
+        
+        # Handle AI content verification flag
+        if 'ai_content_verified' in data:
+            val = data['ai_content_verified']
+            if isinstance(val, bool):
+                case.ai_content_verified = val
+            elif isinstance(val, str):
+                case.ai_content_verified = val.lower() == 'true'
+            elif isinstance(val, int):
+                case.ai_content_verified = val == 1
+            else:
+                case.ai_content_verified = False
+        
+        # Sync: If verified, ensure status can be published (bidirectional sync)
+        if case.ai_content_verified and case.status != CaseStatus.PUBLISHED:
+            # Verified mode allows publishing, but doesn't force it
+            pass
+        
         # Optionally update Q&A pairs if present
         if 'pairs' in data:
             # Remove old Q&A
@@ -2068,6 +2104,116 @@ def _build_ai_discussion_html(output, provider, model_name):
     return ''.join(sections)
 
 
+# ==================== AI DIAGNOSIS CACHE HELPERS ====================
+
+def check_ai_diagnosis_cache(diagnosis, provider, model_name):
+    """
+    Check if this diagnosis + model combination has been cached.
+    Returns cache entry if exists, None otherwise.
+    """
+    from models import AiDiagnosisCache
+    normalized_diagnosis = diagnosis.strip().lower()
+    cache_entry = AiDiagnosisCache.query.filter_by(
+        diagnosis=normalized_diagnosis,
+        provider=provider,
+        model_name=model_name
+    ).first()
+    return cache_entry
+
+
+def get_all_models_for_diagnosis(diagnosis):
+    """
+    Get all models that have been used for this diagnosis.
+    Returns list of dicts with provider and model_name.
+    """
+    from models import AiDiagnosisCache
+    normalized_diagnosis = diagnosis.strip().lower()
+    cache_entries = AiDiagnosisCache.query.filter_by(
+        diagnosis=normalized_diagnosis
+    ).all()
+    return [
+        {'provider': entry.provider, 'model_name': entry.model_name}
+        for entry in cache_entries
+    ]
+
+
+def update_ai_diagnosis_cache(diagnosis, provider, model_name, case_id, user_id):
+    """
+    Update or create cache entry for this diagnosis + model combination.
+    """
+    from models import AiDiagnosisCache
+    normalized_diagnosis = diagnosis.strip().lower()
+    
+    cache_entry = AiDiagnosisCache.query.filter_by(
+        diagnosis=normalized_diagnosis,
+        provider=provider,
+        model_name=model_name
+    ).first()
+    
+    if cache_entry:
+        # Update existing entry
+        cache_entry.query_count += 1
+        cache_entry.last_queried_at = datetime.utcnow()
+    else:
+        # Create new entry
+        cache_entry = AiDiagnosisCache(
+            diagnosis=normalized_diagnosis,
+            provider=provider,
+            model_name=model_name,
+            first_case_id=case_id,
+            first_user_id=user_id,
+            query_count=1,
+            first_generated_at=datetime.utcnow(),
+            last_queried_at=datetime.utcnow()
+        )
+        db.session.add(cache_entry)
+    
+    db.session.commit()
+    return cache_entry
+
+
+@app.route('/api/case/<int:case_id>/ai-prelim/check-cache', methods=['GET'])
+@login_required
+def check_ai_prelim_cache(case_id):
+    """
+    Check if AI generation for this diagnosis has been cached.
+    Returns cache status and available models.
+    """
+    case = verify_case_ownership(case_id)
+    if not case:
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    if not case.diagnosis or not case.diagnosis.strip():
+        return jsonify({
+            'cached': False,
+            'message': 'No diagnosis available'
+        })
+    
+    provider = request.args.get('provider', 'claude').strip()
+    model_name = request.args.get('model', '').strip()
+    
+    # If model not specified, get default from ai_prelim
+    if not model_name:
+        from ai_prelim import _get_model_name
+        model_name = _get_model_name(provider)
+    
+    cache_entry = check_ai_diagnosis_cache(case.diagnosis, provider, model_name)
+    all_models = get_all_models_for_diagnosis(case.diagnosis)
+    
+    return jsonify({
+        'cached': cache_entry is not None,
+        'cache_entry': {
+            'provider': cache_entry.provider if cache_entry else None,
+            'model_name': cache_entry.model_name if cache_entry else None,
+            'first_generated_at': cache_entry.first_generated_at.isoformat() if cache_entry else None,
+            'query_count': cache_entry.query_count if cache_entry else 0,
+        } if cache_entry else None,
+        'all_used_models': all_models,
+        'requested_provider': provider,
+        'requested_model': model_name,
+    })
+
+
 @app.route('/api/case/<int:case_id>/ai-prelim', methods=['POST'])
 @login_required
 def generate_preliminary_case_data(case_id):
@@ -2082,9 +2228,34 @@ def generate_preliminary_case_data(case_id):
     data = request.get_json() or {}
     provider = (data.get('provider') or 'claude').strip()
     notes = (data.get('notes') or '').strip()
+    force_regenerate = data.get('force_regenerate', False)  # User confirmed to regenerate
 
     if not case.diagnosis or not case.diagnosis.strip():
         return jsonify({'error': 'Diagnosis is required'}), 400
+    
+    # Get model name (will be determined by ai_prelim, but we need it for cache check)
+    import os
+    model_name = os.getenv("CLAUDE_MODEL", "claude-sonnet-4-20250514") if provider == 'claude' else ''
+    
+    # Check cache (unless user explicitly chose to regenerate)
+    if not force_regenerate:
+        cache_entry = check_ai_diagnosis_cache(case.diagnosis, provider, model_name)
+        if cache_entry:
+            # Return cache warning - frontend will show dialog
+            all_models = get_all_models_for_diagnosis(case.diagnosis)
+            return jsonify({
+                'error': 'CACHED',
+                'message': f'This diagnosis has already been generated using {cache_entry.model_name}.',
+                'cache_info': {
+                    'provider': cache_entry.provider,
+                    'model_name': cache_entry.model_name,
+                    'first_generated_at': cache_entry.first_generated_at.isoformat(),
+                    'query_count': cache_entry.query_count,
+                },
+                'all_used_models': all_models,
+                'requested_provider': provider,
+                'requested_model': model_name,
+            }), 200  # 200 because this is expected behavior, not an error
 
     sources = [
         'https://radiologyassistant.nl',
@@ -2150,6 +2321,19 @@ def generate_preliminary_case_data(case_id):
         response_payload=json.dumps(result),
     )
     db.session.add(audit)
+    
+    # Update diagnosis cache
+    try:
+        update_ai_diagnosis_cache(
+            diagnosis=case.diagnosis,
+            provider=result.get('provider', provider),
+            model_name=result.get('model', model_name),
+            case_id=case.id,
+            user_id=current_user.id
+        )
+    except Exception as cache_exc:
+        # Log but don't fail the request if cache update fails
+        print(f"[WARNING] Failed to update AI cache: {cache_exc}")
 
     try:
         db.session.commit()
