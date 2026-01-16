@@ -1,3 +1,6 @@
+# Load environment variables from .env file (must be first!)
+from dotenv import load_dotenv
+load_dotenv()
 
 # ==================== STUDENT CASE BROWSER ====================
 # (Moved below app initialization)
