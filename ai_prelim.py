@@ -194,8 +194,13 @@ Provide:
 Use sources such as:
 • Radiopaedia (radiopaedia.org)
 • Radiology Assistant (radiologyassistant.nl)
-• AJR, Radiology journals
-• Cancer staging atlases
+• ACR (acr.org)
+• NICE guidelines (nice.org.uk)
+• Radiology key (radiologykey.com)
+• Rdiographics (https://pubs.rsna.org/journal/radiographics)
+• Cancer staging atlases (https://www.cancernetwork.org/tool?tnm_version=v8)
+.Msucoskeliton MRI anatomy from https://www.freitasrad.net
+. Head and neck MRI anatomy from https://headandneckrad.com
 
 If no suitable image is known, leave teaching_image as empty object {}"""
 

@@ -1,8 +1,8 @@
 # AI Integration Reference Document
 
-> **Last Updated:** January 16, 2026  
-> **Branch:** `feature/ai-integration`  
-> **Stable Snapshot:** `v1.0-stable`
+> **Last Updated:** January 17, 2026  
+> **Branch:** `main`  
+> **Stable Snapshot:** `v1.0-stable-ai-integration`
 
 ---
 
@@ -15,9 +15,9 @@
    - JSON output with Q&A, discussion, safety checklist, teaching image, sources
    
 2. **Orange background styling** for AI content
-   - Q&A pairs: `.ai-generated-pair` class (orange background + AI badge)
-   - Discussion: `.ai-generated-content` class (orange background + left border)
-   - On save: styling is stripped → content becomes normal
+   - Q&A pairs and Discussion: Wrapped in `<div data-ai-generated="true" class="ai-generated-wrapper">`
+   - Visual: Orange background (`rgba(233, 99, 4, 0.1)`) with red left border (`#e96304`)
+   - On save (if published/public): Wrapper divs are stripped → content becomes normal
 
 3. **Claude API working** (needs `CLAUDE_API_KEY` env var)
    - Model: `claude-sonnet-4-20250514` (configurable via `CLAUDE_MODEL`)
@@ -52,7 +52,7 @@
    - User quotas
    - Background job processing (for long API calls)
 
-### ✅ NEW FEATURES (Jan 16, 2026 - After Stable Tag)
+### ✅ NEW FEATURES (Jan 16-17, 2026 - After Stable Tag)
 
 5. **AI Diagnosis Caching System**
    - Database model: `AiDiagnosisCache` (diagnosis + model, not user-based)
@@ -60,13 +60,29 @@
    - User choice: Regenerate or Cancel
    - Tracks query count and first generation timestamp
 
-6. **AI Content Verification System**
-   - "AI Content Verified" button with confirmation
-   - Case status sync: Publishing → Auto-verify (with confirmation)
-   - Bidirectional sync: Verified ↔ Published
-   - Watermark visibility rules based on case state
+6. **AI Generation Cancel Button**
+   - "Cancel Generation" button appears during active AI generation
+   - Uses `AbortController` to cancel fetch requests
+   - Automatically hides when generation completes or is cancelled
+   - Stays in edit mode (does not navigate away)
 
-7. **Model Color Coding** (Documented for future)
+7. **AI Generation Flash Messages**
+   - Success message displayed after generation completes
+   - Shows count of Q&A pairs generated
+   - Indicates if discussion was appended
+   - Auto-dismisses after 5 seconds
+
+8. **Image Description Styling**
+   - Links in image descriptions display as muted gray (`#6c757d`)
+   - Credits, courtesy, and source information styled consistently
+   - Maintains readability while distinguishing metadata
+
+9. **Case Deletion Improvements**
+   - Fixed foreign key constraint errors during case deletion
+   - Explicit cleanup of related records: `CaseFlag`, `AiDiagnosisCache`, `ImportedCaseStaging`, `AiPrelimCaseData`
+   - Robust error handling with rollback on failure
+
+10. **Model Color Coding** (Documented for future)
    - Claude: Orange (current)
    - Consensus AI: Green (future)
    - Other models: TBD
@@ -78,9 +94,9 @@
 | `ai_prelim.py` | Claude API wrapper + v2 prompt |
 | `app.py` (lines 1963-2130) | `/api/case/<id>/ai-prelim` route |
 | `app.py` (lines 2070-2120) | Cache check endpoint `/api/case/<id>/ai-prelim/check-cache` |
-| `models.py` | `AiDiagnosisCache` model + `Case.ai_content_verified` field |
-| `static/edit-case-modal.js` | `createPrelimCaseData()`, `checkAiCacheAndPrompt()`, `verifyAiContent()` |
-| `static/style.css` (lines 4131-4161) | `.ai-generated-content` + `.ai-generated-pair` |
+| `models.py` | `AiDiagnosisCache` model (no `ai_content_verified` field - removed) |
+| `static/edit-case-modal.js` | `createPrelimCaseData()`, `checkAiCacheAndPrompt()`, `stripAiGeneratedWrappers()`, `showAiGenerationFlash()`, `cancelAiGeneration()` |
+| `static/style.css` (lines 4132-4298) | `.ai-generated-wrapper` (wrapper div strategy) |
 
 ---
 
@@ -107,8 +123,10 @@
 | API route | ✅ Functional | `app.py` `/api/case/<id>/ai-prelim` |
 | UI controls | ✅ Working | `edit_case.html` + `edit-case-modal.js` |
 | Append-only behavior | ✅ Q&A + discussion | Route appends, never overwrites |
-| Visual distinction | ✅ Orange background | `.ai-generated-content` + `.ai-generated-pair` classes |
-| Auto-normalize on save | ✅ Working | `stripAiGeneratedContentClass()` in JS |
+| Visual distinction | ✅ Orange background | Wrapper divs with `data-ai-generated="true"` and `.ai-generated-wrapper` class |
+| Auto-normalize on save | ✅ Working | `stripAiGeneratedWrappers()` removes wrapper divs if published/public |
+| Cancel generation | ✅ Working | `cancelAiGeneration()` with `AbortController` |
+| Flash messages | ✅ Working | `showAiGenerationFlash()` shows generation summary |
 
 ### Current Flow
 
@@ -129,16 +147,19 @@ Claude API generates JSON response
     │
     ▼
 Server appends Q&A pairs + discussion + teaching image to case
-(with orange background styling via CSS classes)
+(wrapped in <div data-ai-generated="true" class="ai-generated-wrapper">)
     │
     ▼
 Audit record stored in ai_prelim_case_data table
     │
     ▼
-User reviews AI content (shown with orange background + AI badge)
+User reviews AI content (shown with orange background + red left border)
     │
     ▼
-On Save: styling classes are stripped
+Flash message shows: Q&A pairs count + discussion appended status
+    │
+    ▼
+On Save (if published/public): Wrapper divs are stripped
 (content converts to normal styling, same as existing content)
 ```
 
@@ -153,18 +174,19 @@ On Save: styling classes are stripped
 | **Evidence filtering** | ❌ None | No paper selection logic |
 | **Teaching image** | ✅ Working | Prompt requests + displays in discussion |
 | **Safety checklist** | ✅ Working | Detailed prompt v2 generates safety items |
-| **Visual distinction** | ✅ Done | Blue text for AI content, normal on save |
+| **Visual distinction** | ✅ Done | Orange background wrapper divs for AI content, removed on publish/public |
 | **Cost tracking** | ❌ None | No usage metering |
 | **Caching** | ✅ Implemented | Diagnosis + model cache with warning dialog |
-| **Content Verification** | ✅ Implemented | User-controlled verification with status sync |
+| **Cancel generation** | ✅ Implemented | AbortController-based cancellation with UI feedback |
+| **Flash messages** | ✅ Implemented | Shows Q&A pairs count and discussion appended status |
 
 ---
 
-## AI Diagnosis Caching & Verification System
+## AI Diagnosis Caching & Watermark System
 
 ### Overview
 
-The system now includes intelligent caching and user-controlled verification to prevent duplicate AI queries and manage AI watermark visibility.
+The system now includes intelligent caching to prevent duplicate AI queries and watermark management based on case publication status.
 
 ### 1. AI Diagnosis Caching
 
@@ -195,39 +217,52 @@ The system now includes intelligent caching and user-controlled verification to 
 - `first_generated_at` - Timestamp
 - `last_queried_at` - Last query timestamp
 
-### 2. AI Content Verification
+### 2. AI Generation Cancel Button
 
-**Database Field:** `Case.ai_content_verified` (Boolean)
+**UI Control:** `aiCancelBtn` button in `edit_case.html`
 
-**User Control:**
-- "AI Content Verified" button appears when AI content exists
-- Clicking shows confirmation: "If verified, all AI watermarks will be removed when the case is saved."
-- On confirmation, sets `ai_content_verified = true`
+**Functionality:**
+- Appears automatically when AI generation starts
+- Uses `AbortController` to cancel the active fetch request
+- Hides automatically when generation completes or is cancelled
+- Does not navigate away from edit mode (stays in place)
+- Handler set dynamically in `createPrelimCaseData()` function
 
-**Status Synchronization:**
-- **Publishing → Auto-Verify:**
-  - When status changes to `PUBLISHED`
-  - Shows confirmation: "Publishing this case will remove all AI watermarks..."
-  - On confirmation, sets `ai_content_verified = true`
-- **Bidirectional Sync:**
-  - Verified mode allows publishing (but doesn't force it)
-  - Publishing auto-verifies (with confirmation)
+**Implementation:**
+- Button ID: `aiCancelBtn`
+- Styled as `btn-danger` (red)
+- Display controlled via `style.display = 'inline-block'` / `'none'`
+- Abort signal passed to `fetch()` request
 
-### 3. Watermark Visibility Rules
+### 3. AI Generation Flash Messages
+
+**Function:** `showAiGenerationFlash()` in `edit-case-modal.js`
+
+**Display:**
+- Bootstrap alert/toast positioned top-right
+- Shows after successful AI generation
+- Displays:
+  - Q&A pairs count: "Generated **X** Q&A pair(s)"
+  - Discussion status: "Discussion was appended" or "not generated"
+- Auto-dismisses after 5 seconds
+- Container: `#aiFlashMessages` (fixed position)
+
+### 4. Watermark Visibility Rules
 
 | Case State | AI Watermarks Visible? |
 |------------|------------------------|
 | Draft / In-progress | ✅ Yes |
-| Saved (not verified) | ✅ Yes |
-| Verified Mode | ❌ No (removed) |
-| Published / Public | ❌ No (removed) |
+| Saved (not published) | ✅ Yes |
+| Published / Public | ❌ No (removed on save) |
 
 **Implementation:**
-- Watermarks are CSS classes: `.ai-generated-content`, `.ai-generated-pair`
-- On save, if `ai_content_verified = true`, JavaScript strips these classes
-- If not verified, watermarks remain visible
+- Watermarks are wrapper divs: `<div data-ai-generated="true" class="ai-generated-wrapper">`
+- Wrapper divs wrap both Q&A pairs and discussion sections
+- On save, if case is `PUBLISHED` or `PUBLIC`, JavaScript strips wrapper divs via `stripAiGeneratedWrappers()`
+- If not published, watermarks remain visible
+- CSS: Orange background (`rgba(233, 99, 4, 0.1)`) with red left border (`#e96304`)
 
-### 4. Model Color Coding
+### 5. Model Color Coding
 
 **Current:**
 - **Claude:** Orange/Peachy Orange (`rgba(233, 99, 4, 0.1)`)
@@ -237,10 +272,11 @@ The system now includes intelligent caching and user-controlled verification to 
 - **Other models:** TBD - each will have unique color
 
 **Implementation:**
-- Colors defined in `static/style.css`
-- Model-specific classes can be added: `.ai-generated-content-claude`, `.ai-generated-content-consensus`, etc.
+- Colors defined in `static/style.css` (`.ai-generated-wrapper`)
+- Current: Single wrapper div strategy (simpler than per-element classes)
+- Future: Model-specific wrapper classes can be added if needed
 
-### 5. API Endpoints
+### 6. API Endpoints
 
 **Cache Check:**
 ```
@@ -263,13 +299,25 @@ Body: {
 }
 ```
 
-**Save Case (with verification):**
+**Save Case (watermarks removed if published):**
 ```
 PUT /api/case/<id>
 Body: {
   ...case fields...,
-  "ai_content_verified": true,
-  "status": "PUBLISHED"  // Auto-verifies if published
+  "status": "PUBLISHED"  // Watermarks removed on save if published/public
+}
+```
+
+**Response includes generation summary:**
+```
+POST /api/case/<id>/ai-prelim
+Response: {
+  "success": true,
+  "added_pairs": [...],
+  "discussion_html": "...",
+  "pairs_count": 8,
+  "discussion_appended": true,
+  ...
 }
 ```
 
@@ -461,10 +509,12 @@ Extract:
 | File | Purpose |
 |------|---------|
 | `ai_prelim.py` | Claude API wrapper, prompt builder |
-| `models.py` | `AiPrelimCaseData` audit model |
-| `app.py` | `/api/case/<id>/ai-prelim` route |
-| `templates/edit_case.html` | UI controls (dropdown + button) |
-| `static/edit-case-modal.js` | `createPrelimCaseData()` client function |
+| `models.py` | `AiPrelimCaseData` audit model, `AiDiagnosisCache` model |
+| `app.py` | `/api/case/<id>/ai-prelim` route, `/api/case/<id>/ai-prelim/check-cache` route |
+| `templates/edit_case.html` | UI controls (dropdown + button, cancel button, flash container) |
+| `static/edit-case-modal.js` | `createPrelimCaseData()`, `checkAiCacheAndPrompt()`, `stripAiGeneratedWrappers()`, `showAiGenerationFlash()`, `cancelAiGeneration()` |
+| `static/style.css` | `.ai-generated-wrapper` styles, AI cache modal styling |
+| `templates/view_case.html` | View mode watermark detection and styling |
 
 ### Database Tables
 
@@ -736,7 +786,7 @@ When requesting JSON output, use this schema:
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `CLAUDE_API_KEY` | Yes | — | Anthropic API key |
-| `CLAUDE_MODEL` | No | `claude-3-5-sonnet-20240620` | Model to use |
+| `CLAUDE_MODEL` | No | `claude-sonnet-4-20250514` | Model to use |
 | `CONSENSUS_API_KEY` | Future | — | Consensus AI API key |
 | `AI_CACHE_TTL_HOURS` | Future | `24` | Evidence cache TTL |
 | `AI_MAX_REQUESTS_PER_DAY` | Future | `50` | User quota |

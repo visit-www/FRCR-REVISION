@@ -41,5 +41,7 @@ def upgrade():
 
 def downgrade():
     # Add the column back if needed
-    op.add_column('case', sa.Column('ai_content_verified', sa.Boolean(), nullable=False, server_default='false'))
+    # Use '0' as server_default to match the original migration (167ef09c7b85)
+    # This ensures compatibility with both SQLite and PostgreSQL
+    op.add_column('case', sa.Column('ai_content_verified', sa.Boolean(), nullable=False, server_default='0'))
     op.create_index('ix_case_ai_content_verified', 'case', ['ai_content_verified'], unique=False)
