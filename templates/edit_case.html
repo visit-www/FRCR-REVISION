@@ -317,22 +317,20 @@ console.log('[TinyMCE Loader] Script URL was:', "{{ url_for('static', filename='
             </div>
 
             <!-- Action Buttons -->
-            <div class="sticky-bottom bg-white border-top p-3 mb-5 shadow-sm">
-                <div class="d-flex gap-2 justify-content-end align-items-center flex-wrap">
-                    <select id="aiProviderSelect" class="form-select form-select-sm w-auto">
+            <div class="sticky-bottom bg-white border-top p-3 mb-5 shadow-sm ">
+                <div class="d-flex gap-2 justify-content-end align-items-start flex-wrap p-3">
+                    <select id="aiProviderSelect" class="form-select form-select-sm w-auto m-2">
                         <option value="claude" selected>Claude</option>
                         <option value="consensus" disabled>Consensus (soon)</option>
                     </select>
-                    <button type="button" class="btn btn-lg btn-brand-primary" id="aiPrelimBtn" onclick="createPrelimCaseData()">
-                        <i class="fas fa-wand-magic-sparkles me-2"></i>Create Preliminary Case Data
+                    <button type="button" class="btn btn-lg btn-brand-primary m-2" id="aiPrelimBtn" onclick="createPrelimCaseData()">
+                        <i class="fas fa-wand-magic-sparkles me-1"></i>Create Preliminary Case Data
                     </button>
-                    <button type="button" class="btn btn-lg btn-success" id="aiVerifyBtn" onclick="verifyAiContent()" style="display: none;">
-                        <i class="fas fa-check-circle me-2"></i>AI Content Verified
+                    <button type="button" class="btn btn-lg btn-danger" id="aiCancelBtn" style="display: none; background-color: #dc3545; border-color: #dc3545; color: #ffffff;">
+                        <i class="fas fa-times me-2"></i>Cancel Generation
                     </button>
-                    <button type="button" class="btn btn-lg btn-outline-secondary" onclick="window.history.back()">
-                        <i class="fas fa-times me-2"></i>Cancel
-                    </button>
-                    <button type="button" class="btn btn-lg btn-primary" id="saveCaseButton" onclick="handleSaveCase(event)">
+                    
+                    <button type="button" class="btn btn-lg btn-primary m-2" id="saveCaseButton" onclick="handleSaveCase(event)">
                         <i class="fas fa-save me-2"></i>Save All Changes
                     </button>
                 </div>
@@ -659,6 +657,12 @@ async function generateCaseNumber(bodyPart) {
 
 // Load case data when page loads
 document.addEventListener('DOMContentLoaded', function() {
+    // Ensure cancel button is hidden on page load
+    const cancelBtn = document.getElementById('aiCancelBtn');
+    if (cancelBtn) {
+        cancelBtn.style.display = 'none';
+    }
+    
     const params = new URLSearchParams(window.location.search);
     const caseId = params.get('id');
     const stagingId = params.get('staging_id');
@@ -805,6 +809,8 @@ function loadCaseForEdit(caseId) {
         if (document.getElementById('editCaseAgeGroup')) {
             document.getElementById('editCaseAgeGroup').value = caseData.age_group || '';
         }
+        
+        // AI watermark preservation: watermarks preserved unless case is published/public
         
         // Populate Q&A pairs directly using addQAPairRow
         // Wait for functions to be available, then populate Q&A

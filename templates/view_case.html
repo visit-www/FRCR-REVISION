@@ -1040,6 +1040,11 @@
                                         questionText = renderSafeHTML(questionText);
                                         answerText = renderSafeHTML(answerText);
                                         
+                                        // Check if content has AI-generated wrapper div
+                                        const isQuestionAiGenerated = questionText.includes('data-ai-generated="true"') || questionText.includes("data-ai-generated='true'");
+                                        const isAnswerAiGenerated = answerText.includes('data-ai-generated="true"') || answerText.includes("data-ai-generated='true'");
+                                        const isPairAiGenerated = isQuestionAiGenerated || isAnswerAiGenerated;
+                                        
                                         // Remove leading whitespace/newlines that might cause centering issues
                                         questionText = questionText.replace(/^[\s\n\r]+/, '');
                                         answerText = answerText.replace(/^[\s\n\r]+/, '');
@@ -1057,18 +1062,19 @@
                                         }
                                         
                                         const rowClass = index % 2 === 0 ? 'qa-row-even' : 'qa-row-odd';
+                                        const aiRowClass = isPairAiGenerated ? 'ai-generated-pair' : '';
                                         
                                         return `
-                                        <tr role="row" class="qa-table-row ${rowClass}" tabindex="0">
+                                        <tr role="row" class="qa-table-row ${rowClass} ${aiRowClass}" tabindex="0">
                                             <td role="cell" class="qa-table-cell qa-question-cell">
                                                 <div class="qa-cell-number">Q${pair.number}</div>
-                                                <div class="qa-cell-content highlightable-text qa-question ${isQuestionPlainText ? 'plain-text-formatted' : ''}" data-field="question_${pair.number}" style="text-align: left !important; ${isStudent ? 'user-select: text; cursor: text;' : ''}">
+                                                <div class="qa-cell-content highlightable-text qa-question ${isQuestionPlainText ? 'plain-text-formatted' : ''} ${isQuestionAiGenerated ? 'has-ai-content' : ''}" data-field="question_${pair.number}" style="text-align: left !important; ${isStudent ? 'user-select: text; cursor: text;' : ''}">
                                                     ${questionText || '<em class="text-muted">No question text</em>'}
                                                 </div>
                                             </td>
                                             <td role="cell" class="qa-table-cell qa-answer-cell">
                                                 <div class="qa-cell-number">A${pair.number}</div>
-                                                <div class="qa-cell-content highlightable-text qa-answer ${isAnswerPlainText ? 'plain-text-formatted' : ''}" data-field="answer_${pair.number}" style="text-align: left !important; ${isStudent ? 'user-select: text; cursor: text;' : ''}">
+                                                <div class="qa-cell-content highlightable-text qa-answer ${isAnswerPlainText ? 'plain-text-formatted' : ''} ${isAnswerAiGenerated ? 'has-ai-content' : ''}" data-field="answer_${pair.number}" style="text-align: left !important; ${isStudent ? 'user-select: text; cursor: text;' : ''}">
                                                     ${answerText || '<em class="text-muted">No answer text</em>'}
                                                 </div>
                                             </td>
@@ -1095,6 +1101,11 @@
                             questionText = renderSafeHTML(questionText);
                             answerText = renderSafeHTML(answerText);
                             
+                            // Check if content has AI-generated wrapper div
+                            const isQuestionAiGenerated = questionText.includes('data-ai-generated="true"') || questionText.includes("data-ai-generated='true'");
+                            const isAnswerAiGenerated = answerText.includes('data-ai-generated="true"') || answerText.includes("data-ai-generated='true'");
+                            const isPairAiGenerated = isQuestionAiGenerated || isAnswerAiGenerated;
+                            
                             // Remove leading whitespace/newlines that might cause centering issues
                             questionText = questionText.replace(/^[\s\n\r]+/, '');
                             answerText = answerText.replace(/^[\s\n\r]+/, '');
@@ -1111,8 +1122,10 @@
                                 answerText = renderPlainTextWithFormatting(answerText);
                             }
                             
+                            const aiRowClass = isPairAiGenerated ? 'ai-generated-pair' : '';
+                            
                             return `
-                            <div class="qa-cards-row mb-4">
+                            <div class="qa-cards-row mb-4 ${aiRowClass}">
                                 <div class="row g-2">
                                     <!-- Question Card -->
                                     <div class="col-12 d-flex">
@@ -1123,7 +1136,7 @@
                                                 </div>
                                             </div>
                                             <div class="qa-card-body">
-                                                <div class="qa-card-text qa-question highlightable-text ${isQuestionPlainText ? 'plain-text-formatted' : ''}" data-field="question_${pair.number}" style="${isStudent ? 'user-select: text; cursor: text; ' : ''}text-align: left !important; text-indent: 0 !important;">
+                                                <div class="qa-card-text qa-question highlightable-text ${isQuestionPlainText ? 'plain-text-formatted' : ''} ${isQuestionAiGenerated ? 'has-ai-content' : ''}" data-field="question_${pair.number}" style="${isStudent ? 'user-select: text; cursor: text; ' : ''}text-align: left !important; text-indent: 0 !important;">
                                                     ${questionText || '<em class="text-muted">No question text</em>'}
                                                 </div>
                                             </div>
@@ -1139,7 +1152,7 @@
                                                 </div>
                                             </div>
                                             <div class="qa-card-body">
-                                                <div class="qa-card-text qa-answer highlightable-text ${isAnswerPlainText ? 'plain-text-formatted' : ''}" data-field="answer_${pair.number}" style="${isStudent ? 'user-select: text; cursor: text; ' : ''}text-align: left !important; text-indent: 0 !important;">
+                                                <div class="qa-card-text qa-answer highlightable-text ${isAnswerPlainText ? 'plain-text-formatted' : ''} ${isAnswerAiGenerated ? 'has-ai-content' : ''}" data-field="answer_${pair.number}" style="${isStudent ? 'user-select: text; cursor: text; ' : ''}text-align: left !important; text-indent: 0 !important;">
                                                     ${answerText || '<em class="text-muted">No answer text</em>'}
                                                 </div>
                                             </div>

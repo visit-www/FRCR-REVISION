@@ -812,29 +812,29 @@ function uploadImage() {
 }
 
 /**
- * Strip the 'ai-generated-content' class from HTML content.
- * This is used when saving to convert blue AI text to normal text.
- * @param {string} html - HTML content with potential ai-generated-content classes
- * @returns {string} - HTML with ai-generated-content classes removed
+ * Remove AI-generated wrapper divs from HTML content.
+ * This is used when saving to remove AI watermarks if case is published.
+ * @param {string} html - HTML content with potential data-ai-generated="true" wrapper divs
+ * @returns {string} - HTML with wrapper divs removed (content preserved)
  */
-function stripAiGeneratedContentClass(html) {
+function stripAiGeneratedWrappers(html) {
     if (!html) return html;
     
-    // Use a temporary div to parse and modify the HTML
-    const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = html;
+    // Use regex to remove wrapper divs: <div data-ai-generated="true" class="ai-generated-wrapper">content</div>
+    // This preserves the inner content while removing the wrapper
+    let cleaned = html;
     
-    // Find all elements with the ai-generated-content class
-    const aiElements = tempDiv.querySelectorAll('.ai-generated-content');
-    aiElements.forEach(el => {
-        el.classList.remove('ai-generated-content');
-        // If the class attribute is now empty, remove it entirely
-        if (el.classList.length === 0) {
-            el.removeAttribute('class');
-        }
-    });
+    // Match wrapper divs (handles both single-line and multi-line)
+    const wrapperPattern = /<div\s+data-ai-generated=["']true["'][^>]*class=["'][^"']*ai-generated-wrapper[^"']*["'][^>]*>(.*?)<\/div>/gis;
     
-    return tempDiv.innerHTML;
+    // Replace wrapper divs with their inner content
+    cleaned = cleaned.replace(wrapperPattern, '$1');
+    
+    // Also handle cases where class might be in different order
+    const wrapperPattern2 = /<div\s+class=["'][^"']*ai-generated-wrapper[^"']*["'][^>]*data-ai-generated=["']true["'][^>]*>(.*?)<\/div>/gis;
+    cleaned = cleaned.replace(wrapperPattern2, '$1');
+    
+    return cleaned;
 }
 
 // Save all changes - improved with validation and error handling
@@ -856,10 +856,6 @@ function saveEditedCase(event) {
         discussion = document.getElementById('editCaseDiscussion').value.trim();
     }
     
-    // Strip AI-generated content styling (orange background) before saving
-    // This converts AI content to normal text appearance
-    discussion = stripAiGeneratedContentClass(discussion);
-    
     // Get FRCR Revision fields
     const module = document.getElementById('editCaseModule')?.value || null;
     const bodyPart = document.getElementById('editCaseBodyPart')?.value || null;
@@ -867,31 +863,13 @@ function saveEditedCase(event) {
     const status = document.getElementById('editCaseStatus')?.value || 'DRAFT';
     // Automatically set is_public based on status: PUBLISHED = true, all others = false
     const isPublic = status === 'PUBLISHED';
-    
-    // Check if AI content should be verified
-    const aiVerifiedInput = document.getElementById('aiContentVerified');
-    const manuallyVerified = aiVerifiedInput && aiVerifiedInput.value === 'true';
     const isPublished = status === 'PUBLISHED';
     
-    // Auto-verify if publishing (with confirmation if not already verified)
-    let aiContentVerified = manuallyVerified;
-    if (isPublished && !manuallyVerified) {
-        const confirmed = confirm(
-            'Publishing this case will remove all AI watermarks and move the case to Verified mode.\n\n' +
-            'Do you want to proceed?'
-        );
-        if (confirmed) {
-            aiContentVerified = true;
-        } else {
-            // User cancelled - don't save
-            return;
-        }
-    }
-    
-    // If verified, ensure watermarks are stripped (already done above, but double-check)
-    if (aiContentVerified) {
-        discussion = stripAiGeneratedContentClass(discussion);
-        // Also strip from all Q&A pairs (will be done in loop below)
+    // Watermark preservation logic:
+    // - If published OR public: strip watermarks
+    // - Otherwise: preserve watermarks
+    if (isPublished || isPublic) {
+        discussion = stripAiGeneratedWrappers(discussion);
     }
     
     // Validate required fields (case_number is optional - auto-generated from body_part)
@@ -913,10 +891,20 @@ function saveEditedCase(event) {
     // Collect all Q&A pairs (only those with content)
     const pairs = [];
     document.querySelectorAll('.qa-pair-row').forEach((row, index) => {
-        const questionText = row.querySelector('.qa-question-text').value.trim();
-        let answerText = '';
+        // Check if this is an AI-generated pair
+        const isAiGenerated = row.classList.contains('ai-generated-pair');
         
-        // Get answer from TinyMCE editor if available
+        // Get question text from TinyMCE or textarea
+        let questionText = '';
+        const questionField = row.querySelector('.qa-question-text');
+        if (questionField.id && typeof tinymce !== 'undefined' && tinymce.get(questionField.id)) {
+            questionText = tinymce.get(questionField.id).getContent().trim();
+        } else {
+            questionText = questionField.value.trim();
+        }
+        
+        // Get answer text from TinyMCE or textarea
+        let answerText = '';
         const answerField = row.querySelector('.qa-answer-text');
         if (answerField.id && typeof tinymce !== 'undefined' && tinymce.get(answerField.id)) {
             answerText = tinymce.get(answerField.id).getContent().trim();
@@ -924,14 +912,19 @@ function saveEditedCase(event) {
             answerText = answerField.value.trim();
         }
         
-        // Strip AI-generated content styling from answer text
-        answerText = stripAiGeneratedContentClass(answerText);
+        // Strip AI-generated wrapper divs from question and answer text only if published/public
+        if (isPublished || isPublic) {
+            questionText = stripAiGeneratedWrappers(questionText);
+            answerText = stripAiGeneratedWrappers(answerText);
+        }
+        // If not published, wrapper divs are preserved (they provide visual distinction)
         
         // Only add pairs that have at least a question or answer
         if (questionText || answerText) {
             pairs.push({
                 question_text: questionText,
-                answer_text: answerText
+                answer_text: answerText,
+                is_ai_generated: isAiGenerated && !isPublished && !isPublic  // Store flag for view mode
             });
         }
     });
@@ -949,8 +942,7 @@ function saveEditedCase(event) {
         body_part: bodyPart,
         age_group: ageGroup,
         status: status,
-        is_public: isPublic,  // Legacy field, status takes precedence
-        ai_content_verified: aiContentVerified,  // AI watermark removal flag
+        is_public: isPublic,  // Syncs with status: PUBLISHED = true
         pairs: pairs
     };
     
@@ -1864,51 +1856,84 @@ function appendDiscussionHtml(html) {
 function checkAiCacheAndPrompt(caseId, provider, diagnosis, btn) {
     // Check cache status
     fetch(`/api/case/${caseId}/ai-prelim/check-cache?provider=${encodeURIComponent(provider)}`)
-        .then(r => r.json())
+        .then(async r => {
+            const text = await r.text();
+            let cacheData;
+            try {
+                cacheData = JSON.parse(text);
+            } catch (e) {
+                // If response is not JSON, it's likely an error page
+                console.warn('Cache check returned non-JSON response, proceeding anyway');
+                // Proceed with generation (don't block user)
+                createPrelimCaseData(true);
+                return;
+            }
+            return cacheData;
+        })
         .then(cacheData => {
+            if (!cacheData) return; // Already handled in previous then
             if (cacheData.cached && cacheData.cache_entry) {
                 // Show warning dialog
                 const modelName = cacheData.cache_entry.model_name || provider;
                 const allModels = cacheData.all_used_models || [];
                 const allModelsUsed = allModels.length > 0;
                 
-                let message = `This diagnosis has already been generated using ${modelName}. `;
+                let message = `This diagnosis has already been generated using <strong style="color: #e96304;">${modelName}</strong>. `;
                 if (allModelsUsed && allModels.length > 1) {
                     message += `All available AI models have already been used for this diagnosis. `;
                 }
                 message += `Do you want to regenerate the content using the same model, or cancel and choose another model?`;
                 
-                // Create modal dialog
+                // Create modal dialog with app brand styling
                 const modal = document.createElement('div');
-                modal.className = 'modal fade show';
-                modal.style.display = 'block';
-                modal.style.backgroundColor = 'rgba(0,0,0,0.5)';
+                modal.className = 'modal fade show ai-cache-modal';
+                modal.style.display = 'flex';
+                modal.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+                modal.style.zIndex = '9999';
                 modal.innerHTML = `
-                    <div class="modal-dialog">
+                    <div class="modal-dialog modal-dialog-centered" style="max-width: 600px; width: 90vw;">
                         <div class="modal-content">
                             <div class="modal-header">
                                 <h5 class="modal-title">
-                                    <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+                                    <i class="fas fa-exclamation-triangle"></i>
                                     AI Content Already Generated
                                 </h5>
-                                <button type="button" class="btn-close" onclick="this.closest('.modal').remove()"></button>
+                                <button type="button" class="btn-close btn-close-white" onclick="this.closest('.modal').remove()" style="opacity: 0.8;"></button>
                             </div>
                             <div class="modal-body">
-                                <p>${message}</p>
-                                ${cacheData.cache_entry ? `
-                                    <div class="alert alert-info">
-                                        <small>
-                                            <strong>First generated:</strong> ${new Date(cacheData.cache_entry.first_generated_at).toLocaleString()}<br>
-                                            <strong>Times queried:</strong> ${cacheData.cache_entry.query_count}
-                                        </small>
+                                <div class="row g-3">
+                                    <div class="col-auto">
+                                        <div class="card border-0 shadow-sm" style="background-color: #f8f9fa; border-left: 4px solid #5E899E !important;">
+                                            <div class="card-body p-3">
+                                                <p class="card-text mb-0" style="color: #2c3e50; font-size: 1rem; line-height: 1.6;">${message}</p>
+                                            </div>
+                                        </div>
                                     </div>
-                                ` : ''}
+                                    ${cacheData.cache_entry ? `
+                                    <div class="col-auto">
+                                        <div class="card border-0 shadow-sm" style="background-color: #f0f8fc; border-left: 4px solid #5E899E !important;">
+                                            <div class="card-body p-3">
+                                                <div style="font-size: 0.875rem; line-height: 1.6;">
+                                                    <div style="margin-bottom: 0.5rem;">
+                                                        <span class="info-label">First generated:</span> 
+                                                        <span class="info-value" style="color: #e96304; font-weight: 500;">${new Date(cacheData.cache_entry.first_generated_at).toLocaleString()}</span>
+                                                    </div>
+                                                    <div>
+                                                        <span class="info-label">Times queried:</span> 
+                                                        <span class="info-value">${cacheData.cache_entry.query_count}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    ` : ''}
+                                </div>
                             </div>
                             <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" onclick="this.closest('.modal').remove()">
+                                <button type="button" class="btn btn-cancel" onclick="this.closest('.modal').remove()">
                                     Cancel
                                 </button>
-                                <button type="button" class="btn btn-warning" onclick="
+                                <button type="button" class="btn btn-regenerate" onclick="
                                     this.closest('.modal').remove();
                                     createPrelimCaseData(true);
                                 ">
@@ -1943,6 +1968,7 @@ function createPrelimCaseData(forceRegenerate = false) {
     const diagnosis = document.getElementById('editCaseDiagnosis')?.value.trim();
     const provider = document.getElementById('aiProviderSelect')?.value || 'claude';
     const btn = document.getElementById('aiPrelimBtn');
+    const cancelBtn = document.getElementById('aiCancelBtn');
 
     const isStagingCase = caseIdField && caseIdField.toString().startsWith('staging-');
     const isNew = !caseIdField || caseIdField === 'new' || caseIdField.toString().startsWith('new-');
@@ -1963,16 +1989,40 @@ function createPrelimCaseData(forceRegenerate = false) {
     }
 
     // Proceed with generation (user confirmed regenerate)
+    // Create abort controller for cancellation
+    let abortController = new AbortController();
+    window.aiGenerationAbortController = abortController;
+    
+    // Update button state
     if (btn) {
         btn.disabled = true;
         btn.dataset.originalText = btn.innerHTML;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Generating...';
     }
+    
+    // Show and setup cancel button RIGHT BEFORE fetch starts
+    if (cancelBtn) {
+        cancelBtn.style.display = 'inline-block';
+        cancelBtn.onclick = () => {
+            abortController.abort();
+            window.aiGenerationAbortController = null;
+            // Reset button state
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = btn.dataset.originalText || '<i class="fas fa-wand-magic-sparkles me-2"></i>Create Preliminary Case Data';
+            }
+            // Hide cancel button
+            cancelBtn.style.display = 'none';
+            console.log('[AI PRELIM] Generation cancelled by user');
+        };
+    }
 
+    // Start fetch request
     fetch(`/api/case/${caseIdField}/ai-prelim`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ provider, force_regenerate: true })
+        body: JSON.stringify({ provider, force_regenerate: true }),
+        signal: abortController.signal
     })
     .then(async r => {
         const text = await r.text();
@@ -1996,68 +2046,131 @@ function createPrelimCaseData(forceRegenerate = false) {
         if (data.discussion_html) {
             appendDiscussionHtml(data.discussion_html);
         }
-        if (data.warnings && data.warnings.length) {
-            alert(`AI Warnings: ${data.warnings.join('; ')}`);
+        
+        // AI content added - wrapper divs will be preserved unless case is published/public
+        
+        // Show success flash message with counts
+        const pairsCount = data.pairs_count || pairs.length || 0;
+        const discussionAppended = data.discussion_appended || false;
+        
+        let message = `✅ AI Generation Complete\n\n`;
+        message += `Generated ${pairsCount} Q&A pair${pairsCount !== 1 ? 's' : ''}.`;
+        if (discussionAppended) {
+            message += ` Discussion appended.`;
         } else {
-            alert('Preliminary case data generated and appended.');
+            message += ` No discussion content generated.`;
         }
+        
+        if (data.warnings && data.warnings.length) {
+            message += `\n\n⚠️ Warnings: ${data.warnings.join('; ')}`;
+        }
+        
+        // Show Bootstrap alert/toast
+        showAiGenerationFlash(message, pairsCount, discussionAppended);
     })
     .catch(error => {
+        // Don't show error if user cancelled
+        if (error.name === 'AbortError') {
+            console.log('[AI PRELIM] Generation cancelled by user');
+            return;
+        }
         console.error('[AI PRELIM] Error:', error);
         alert(error.message || 'Failed to generate preliminary case data.');
     })
     .finally(() => {
+        // Always reset button state and hide cancel button
         if (btn) {
             btn.disabled = false;
             btn.innerHTML = btn.dataset.originalText || '<i class="fas fa-wand-magic-sparkles me-2"></i>Create Preliminary Case Data';
         }
+        if (cancelBtn) {
+            cancelBtn.style.display = 'none';
+        }
+        window.aiGenerationAbortController = null;
     });
 }
 
 /**
- * Verify AI content - removes all AI watermarks after user confirmation
+ * Cancel AI generation
+ * Always hides the cancel button, even if no active generation
  */
-function verifyAiContent() {
-    const confirmed = confirm(
-        'If verified, all AI watermarks will be removed when the case is saved.\n\n' +
-        'This action cannot be undone. Do you want to proceed?'
-    );
+function cancelAiGeneration() {
+    const cancelBtn = document.getElementById('aiCancelBtn');
+    const btn = document.getElementById('aiPrelimBtn');
     
-    if (!confirmed) {
-        return;
+    // Always hide cancel button
+    if (cancelBtn) {
+        cancelBtn.style.display = 'none';
     }
     
-    // Set verified flag (will be saved with case)
-    const caseForm = document.getElementById('editCaseForm');
-    if (caseForm) {
-        // Add hidden input to mark as verified
-        let verifiedInput = document.getElementById('aiContentVerified');
-        if (!verifiedInput) {
-            verifiedInput = document.createElement('input');
-            verifiedInput.type = 'hidden';
-            verifiedInput.id = 'aiContentVerified';
-            verifiedInput.name = 'ai_content_verified';
-            verifiedInput.value = 'true';
-            caseForm.appendChild(verifiedInput);
-        } else {
-            verifiedInput.value = 'true';
+    // If there's an active generation, abort it
+    if (window.aiGenerationAbortController) {
+        window.aiGenerationAbortController.abort();
+        window.aiGenerationAbortController = null;
+        
+        // Reset button state
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = btn.dataset.originalText || '<i class="fas fa-wand-magic-sparkles me-2"></i>Create Preliminary Case Data';
         }
         
-        // Hide verification button (already verified)
-        const verifyBtn = document.getElementById('aiVerifyBtn');
-        if (verifyBtn) {
-            verifyBtn.style.display = 'none';
-        }
-        
-        alert('AI content marked as verified. Watermarks will be removed when you save the case.');
+        console.log('[AI PRELIM] Generation cancelled by user');
     }
 }
+
 
 // Helper function to escape HTML
 function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+/**
+ * Show flash message for AI generation success
+ * @param {string} message - Main message text
+ * @param {number} pairsCount - Number of Q&A pairs generated
+ * @param {boolean} discussionAppended - Whether discussion was appended
+ */
+function showAiGenerationFlash(message, pairsCount, discussionAppended) {
+    // Create alert element
+    const alertDiv = document.createElement('div');
+    alertDiv.className = 'alert alert-success alert-dismissible fade show';
+    alertDiv.setAttribute('role', 'alert');
+    alertDiv.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 9999; min-width: 300px; max-width: 500px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);';
+    
+    alertDiv.innerHTML = `
+        <div class="d-flex align-items-start">
+            <i class="fas fa-check-circle me-2" style="font-size: 1.5rem; color: #198754;"></i>
+            <div class="flex-grow-1">
+                <h6 class="alert-heading mb-2" style="color: #198754; font-weight: 600;">
+                    <i class="fas fa-robot me-1"></i>AI Generation Complete
+                </h6>
+                <div style="line-height: 1.6;">
+                    <p class="mb-1"><strong>Generated ${pairsCount} Q&A pair${pairsCount !== 1 ? 's' : ''}.</strong></p>
+                    <p class="mb-0">Discussion ${discussionAppended ? '<span class="text-success">appended</span>' : '<span class="text-muted">not generated</span>'}.</p>
+                </div>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    `;
+    
+    // Remove any existing alerts
+    const existingAlert = document.querySelector('.alert.alert-success[role="alert"]');
+    if (existingAlert) {
+        existingAlert.remove();
+    }
+    
+    // Append to body
+    document.body.appendChild(alertDiv);
+    
+    // Auto-dismiss after 5 seconds
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.classList.remove('show');
+            setTimeout(() => alertDiv.remove(), 150);
+        }
+    }, 5000);
 }
 
 // Expose functions globally for use in edit_case.html
@@ -2075,5 +2188,7 @@ if (typeof window !== 'undefined') {
     window.viewImageFull = viewImageFull;
     window.initializeTinyMCE = initializeTinyMCE;
     window.createPrelimCaseData = createPrelimCaseData;
-    window.stripAiGeneratedContentClass = stripAiGeneratedContentClass;
+    window.stripAiGeneratedWrappers = stripAiGeneratedWrappers;
+    window.cancelAiGeneration = cancelAiGeneration;
+    window.showAiGenerationFlash = showAiGenerationFlash;
 }

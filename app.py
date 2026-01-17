@@ -1361,19 +1361,52 @@ def edit_case():
 @app.route('/api/case/<int:case_id>', methods=['DELETE'])
 @login_required
 def delete_case(case_id):
-    """Delete a case"""
+    """Delete a case and all related data"""
     # Verify user ownership
     case = verify_case_ownership(case_id)
     if not case:
         return jsonify({"error": "Unauthorized"}), 403
     
-    if not case:
-        return jsonify({'error': 'Case not found'}), 404
+    try:
+        # Clean up foreign key references that might prevent deletion
+        
+        # 1. Delete or update AiDiagnosisCache entries that reference this case as first_case_id
+        from models import AiDiagnosisCache
+        cache_entries = AiDiagnosisCache.query.filter_by(first_case_id=case_id).all()
+        for cache_entry in cache_entries:
+            db.session.delete(cache_entry)
+        
+        # 2. Update ImportedCaseStaging entries that reference this case as promoted_to_case_id
+        from models import ImportedCaseStaging
+        staging_entries = ImportedCaseStaging.query.filter_by(promoted_to_case_id=case_id).all()
+        for staging_entry in staging_entries:
+            staging_entry.promoted_to_case_id = None
+            staging_entry.promoted_at = None
+        
+        # 3. Delete AiPrelimCaseData entries that reference this case
+        from models import AiPrelimCaseData
+        prelim_entries = AiPrelimCaseData.query.filter_by(case_id=case_id).all()
+        for prelim_entry in prelim_entries:
+            db.session.delete(prelim_entry)
+        
+        # 4. Delete CaseFlag entries that reference this case (NOT NULL constraint prevents cascade)
+        from models import CaseFlag
+        case_flags = CaseFlag.query.filter_by(case_id=case_id).all()
+        for flag in case_flags:
+            db.session.delete(flag)
+        
+        # 5. Delete the case (cascade will handle: Questions, Answers, Images, Notes, Highlights, AuditLogs, ViewLogs, ApprovalQueue)
+        db.session.delete(case)
+        db.session.commit()
+        
+        return jsonify({'success': True, 'message': 'Case deleted successfully'})
     
-    db.session.delete(case)
-    db.session.commit()
-    
-    return jsonify({'success': True, 'message': 'Case deleted successfully'})
+    except Exception as e:
+        db.session.rollback()
+        print(f"[ERROR] Failed to delete case {case_id}: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': f'Failed to delete case: {str(e)}'}), 500
 
 
 @app.route('/api/case/<int:case_id>/image', methods=['POST'])
@@ -1499,8 +1532,22 @@ def delete_case_image(image_id):
     return jsonify({'message': 'Image deleted successfully'})
 
 
-@app.route('/api/case-image/<int:image_id>/description', methods=['PUT'])
-def update_image_description(image_id):
+@app.route('/api/case-image/<int:image_id>/description', methods=['GET', 'PUT'])
+def image_description(image_id):
+    """Get or update image description"""
+    image = CaseImage.query.get(image_id)
+    
+    if not image:
+        return jsonify({'error': 'Image not found'}), 404
+    
+    # Handle GET request
+    if request.method == 'GET':
+        return jsonify({
+            'image_id': image.id,
+            'description': image.image_description or ''
+        })
+    
+    # Handle PUT request
     """Update image description"""
     try:
         image = CaseImage.query.get(image_id)
@@ -1512,7 +1559,7 @@ def update_image_description(image_id):
         data = request.get_json()
         description = data.get('description', '')
         # Sanitize HTML for image description
-        allowed_tags = bleach.sanitizer.ALLOWED_TAGS + [
+        allowed_tags = list(bleach.sanitizer.ALLOWED_TAGS) + [
             'p', 'br', 'span', 'div', 'ul', 'ol', 'li', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'strong', 'em', 'u', 'b', 'i', 'a'
         ]
         allowed_attributes = {
@@ -1879,8 +1926,7 @@ def get_case(case_id):
             'module': case.module.name if case.module else None,
             'body_part': case.body_part.name if case.body_part else None,
             'is_public': case.is_public,
-            'status': case.status.name if case.status else 'DRAFT',
-            'ai_content_verified': case.ai_content_verified if hasattr(case, 'ai_content_verified') else False
+            'status': case.status.name if case.status else 'DRAFT'
         })
 
     # Handle PUT request (update case)
@@ -1923,38 +1969,24 @@ def get_case(case_id):
             else:
                 case.is_public = False
         
-        # Handle status update (with sync to verified mode)
+        # Handle status update (with sync to is_public)
         if 'status' in data:
             from models import CaseStatus
             try:
                 new_status = CaseStatus[data['status']] if data['status'] else CaseStatus.DRAFT
                 case.status = new_status
-                # Sync: PUBLISHED → auto-verify (if not already verified)
-                if new_status == CaseStatus.PUBLISHED and not case.ai_content_verified:
-                    case.ai_content_verified = True
-                # Sync: Verified → can be published (bidirectional)
-                if case.ai_content_verified and new_status != CaseStatus.PUBLISHED:
-                    # User can verify without publishing, but publishing auto-verifies
-                    pass
+                # Sync: PUBLISHED ↔ is_public (bidirectional)
+                if new_status == CaseStatus.PUBLISHED:
+                    case.is_public = True
+                else:
+                    case.is_public = False
             except (KeyError, ValueError):
                 pass
         
-        # Handle AI content verification flag
-        if 'ai_content_verified' in data:
-            val = data['ai_content_verified']
-            if isinstance(val, bool):
-                case.ai_content_verified = val
-            elif isinstance(val, str):
-                case.ai_content_verified = val.lower() == 'true'
-            elif isinstance(val, int):
-                case.ai_content_verified = val == 1
-            else:
-                case.ai_content_verified = False
-        
-        # Sync: If verified, ensure status can be published (bidirectional sync)
-        if case.ai_content_verified and case.status != CaseStatus.PUBLISHED:
-            # Verified mode allows publishing, but doesn't force it
-            pass
+        # Sync: If is_public is set, ensure status is PUBLISHED (bidirectional sync)
+        if 'is_public' in data:
+            if case.is_public and case.status != CaseStatus.PUBLISHED:
+                case.status = CaseStatus.PUBLISHED
         
         # Optionally update Q&A pairs if present
         if 'pairs' in data:
@@ -2003,18 +2035,21 @@ def _build_ai_discussion_html(output, provider, model_name):
     """
     Build HTML for AI-generated discussion content.
     
-    The content is marked with class 'ai-generated-content' which applies
-    orange background styling (brand color). This class is removed when 
-    the case is saved, making the content appear as normal text.
+    Uses wrapper div with data-ai-generated="true" attribute for simple detection and removal.
+    The wrapper provides visual distinction (orange background) and is removed when 
+    the case is saved and published, making the content appear as normal text.
     """
     sections = []
     timestamp = datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')
     
+    # Wrap entire AI-generated content in a single wrapper div with data attribute
+    sections.append('<div data-ai-generated="true" class="ai-generated-wrapper">')
+    
     # Header with AI attribution
     header = (
-        '<hr class="ai-generated-content">'
-        '<h3 class="ai-generated-content">AI Preliminary Case Data</h3>'
-        f'<p class="ai-generated-content"><em>Generated by { _escape_html(provider) } ({ _escape_html(model_name) })'
+        '<hr style="border-top: 2px solid #dc3545; margin: 0.5rem 0;">'
+        '<h3>AI Preliminary Case Data</h3>'
+        f'<p><em>Generated by { _escape_html(provider) } ({ _escape_html(model_name) })'
         f' on { _escape_html(timestamp) }.</em></p>'
     )
     sections.append(header)
@@ -2022,18 +2057,18 @@ def _build_ai_discussion_html(output, provider, model_name):
     # Discussion section
     discussion = (output or {}).get('discussion', '')
     if discussion:
-        sections.append('<h4 class="ai-generated-content">Discussion</h4>')
+        sections.append('<h4>Discussion</h4>')
         # Format discussion with better paragraph handling
-        safe_discussion = _escape_html(discussion).replace('\n\n', '</p><p class="ai-generated-content">').replace('\n', '<br>')
-        sections.append(f'<p class="ai-generated-content">{safe_discussion}</p>')
+        safe_discussion = _escape_html(discussion).replace('\n\n', '</p><p>').replace('\n', '<br>')
+        sections.append(f'<p>{safe_discussion}</p>')
 
     # Safety checklist
     checklist = (output or {}).get('safety_checklist', []) or []
     if checklist:
-        sections.append('<h4 class="ai-generated-content">Clinico-Radiological Safety Focus</h4>')
-        items = ''.join(f'<li class="ai-generated-content">{_escape_html(item)}</li>' for item in checklist if item)
+        sections.append('<h4>Clinico-Radiological Safety Focus</h4>')
+        items = ''.join(f'<li>{_escape_html(item)}</li>' for item in checklist if item)
         if items:
-            sections.append(f'<ul class="ai-generated-content">{items}</ul>')
+            sections.append(f'<ul>{items}</ul>')
 
     # Teaching image
     teaching = (output or {}).get('teaching_image', {}) or {}
@@ -2044,26 +2079,26 @@ def _build_ai_discussion_html(output, provider, model_name):
         teaching_point = _escape_html(teaching.get('teaching_point', ''))
         source = _escape_html(teaching.get('source', ''))
         
-        sections.append('<h4 class="ai-generated-content">Teaching Image</h4>')
+        sections.append('<h4>Teaching Image</h4>')
         if title:
-            sections.append(f'<p class="ai-generated-content"><strong>Image:</strong> {title}</p>')
+            sections.append(f'<p><strong>Image:</strong> {title}</p>')
         if link:
             safe_link = _escape_html(link)
             sections.append(
-                f'<p class="ai-generated-content"><strong>Link:</strong> '
-                f'<a href="{safe_link}" target="_blank" rel="noopener noreferrer" class="ai-generated-content">{safe_link}</a></p>'
+                f'<p><strong>Link:</strong> '
+                f'<a href="{safe_link}" target="_blank" rel="noopener noreferrer">{safe_link}</a></p>'
             )
         if description:
-            sections.append(f'<p class="ai-generated-content"><strong>Description:</strong> {description}</p>')
+            sections.append(f'<p><strong>Description:</strong> {description}</p>')
         if teaching_point:
-            sections.append(f'<p class="ai-generated-content"><strong>Teaching point:</strong> {teaching_point}</p>')
+            sections.append(f'<p><strong>Teaching point:</strong> {teaching_point}</p>')
         if source:
-            sections.append(f'<p class="ai-generated-content"><strong>Source:</strong> {source}</p>')
+            sections.append(f'<p><strong>Source:</strong> {source}</p>')
 
     # Sources/References
     sources = (output or {}).get('sources', []) or []
     if sources:
-        sections.append('<h4 class="ai-generated-content">Sources</h4>')
+        sections.append('<h4>Sources</h4>')
         source_items = []
         for item in sources:
             title = _escape_html(item.get('title', 'Source'))
@@ -2076,30 +2111,33 @@ def _build_ai_discussion_html(output, provider, model_name):
                 if pmid:
                     link_text += f' (PMID: {_escape_html(pmid)})'
                 source_items.append(
-                    f'<li class="ai-generated-content">'
-                    f'<a href="{safe_url}" target="_blank" rel="noopener noreferrer" class="ai-generated-content">{link_text}</a>'
+                    f'<li>'
+                    f'<a href="{safe_url}" target="_blank" rel="noopener noreferrer">{link_text}</a>'
                     f'</li>'
                 )
             elif pmid:
                 # Link to PubMed if we have PMID but no URL
                 pubmed_url = f'https://pubmed.ncbi.nlm.nih.gov/{_escape_html(pmid)}/'
                 source_items.append(
-                    f'<li class="ai-generated-content">'
-                    f'<a href="{pubmed_url}" target="_blank" rel="noopener noreferrer" class="ai-generated-content">'
+                    f'<li>'
+                    f'<a href="{pubmed_url}" target="_blank" rel="noopener noreferrer">'
                     f'{title} (PMID: {_escape_html(pmid)})</a>'
                     f'</li>'
                 )
             else:
-                source_items.append(f'<li class="ai-generated-content">{title}</li>')
+                source_items.append(f'<li>{title}</li>')
         if source_items:
-            sections.append(f"<ul class=\"ai-generated-content\">{''.join(source_items)}</ul>")
+            sections.append(f"<ul>{''.join(source_items)}</ul>")
 
     # Warnings
     warnings = (output or {}).get('warnings', []) or []
     if warnings:
         warning_text = '; '.join(_escape_html(w) for w in warnings if w)
         if warning_text:
-            sections.append(f'<p class="ai-generated-content"><strong>⚠️ Warnings:</strong> {warning_text}</p>')
+            sections.append(f'<p><strong>⚠️ Warnings:</strong> {warning_text}</p>')
+    
+    # Close the wrapper div
+    sections.append('</div>')
 
     return ''.join(sections)
 
@@ -2179,39 +2217,67 @@ def check_ai_prelim_cache(case_id):
     Check if AI generation for this diagnosis has been cached.
     Returns cache status and available models.
     """
-    case = verify_case_ownership(case_id)
-    if not case:
-        return jsonify({'error': 'Unauthorized'}), 403
-    
-    if not case.diagnosis or not case.diagnosis.strip():
+    try:
+        case = verify_case_ownership(case_id)
+        if not case:
+            return jsonify({'error': 'Unauthorized'}), 403
+        
+        if not case.diagnosis or not case.diagnosis.strip():
+            return jsonify({
+                'cached': False,
+                'message': 'No diagnosis available'
+            })
+        
+        provider = request.args.get('provider', 'claude').strip()
+        model_name = request.args.get('model', '').strip()
+        
+        # If model not specified, get default from environment (same as ai_prelim.py)
+        if not model_name:
+            import os
+            if provider == 'claude':
+                model_name = os.getenv("CLAUDE_MODEL", "claude-sonnet-4-20250514")
+            else:
+                model_name = ''  # Unknown provider
+        
+        # Try to check cache, but handle case where table doesn't exist yet
+        try:
+            cache_entry = check_ai_diagnosis_cache(case.diagnosis, provider, model_name)
+            all_models = get_all_models_for_diagnosis(case.diagnosis)
+        except Exception as e:
+            # Table might not exist yet (migration not run)
+            # Return not cached so user can proceed
+            print(f"[WARN] Cache check failed (table may not exist): {e}")
+            return jsonify({
+                'cached': False,
+                'message': 'Cache check unavailable (migration may be pending)',
+                'all_used_models': [],
+                'requested_provider': provider,
+                'requested_model': model_name,
+            })
+        
+        return jsonify({
+            'cached': cache_entry is not None,
+            'cache_entry': {
+                'provider': cache_entry.provider if cache_entry else None,
+                'model_name': cache_entry.model_name if cache_entry else None,
+                'first_generated_at': cache_entry.first_generated_at.isoformat() if cache_entry else None,
+                'query_count': cache_entry.query_count if cache_entry else 0,
+            } if cache_entry else None,
+            'all_used_models': all_models,
+            'requested_provider': provider,
+            'requested_model': model_name,
+        })
+    except Exception as e:
+        print(f"[ERROR] Cache check endpoint error: {e}")
+        import traceback
+        traceback.print_exc()
+        # Return not cached so user can proceed
         return jsonify({
             'cached': False,
-            'message': 'No diagnosis available'
-        })
-    
-    provider = request.args.get('provider', 'claude').strip()
-    model_name = request.args.get('model', '').strip()
-    
-    # If model not specified, get default from ai_prelim
-    if not model_name:
-        from ai_prelim import _get_model_name
-        model_name = _get_model_name(provider)
-    
-    cache_entry = check_ai_diagnosis_cache(case.diagnosis, provider, model_name)
-    all_models = get_all_models_for_diagnosis(case.diagnosis)
-    
-    return jsonify({
-        'cached': cache_entry is not None,
-        'cache_entry': {
-            'provider': cache_entry.provider if cache_entry else None,
-            'model_name': cache_entry.model_name if cache_entry else None,
-            'first_generated_at': cache_entry.first_generated_at.isoformat() if cache_entry else None,
-            'query_count': cache_entry.query_count if cache_entry else 0,
-        } if cache_entry else None,
-        'all_used_models': all_models,
-        'requested_provider': provider,
-        'requested_model': model_name,
-    })
+            'error': str(e),
+            'message': 'Cache check failed, proceeding anyway',
+            'all_used_models': [],
+        }), 200  # Return 200 so frontend doesn't treat it as error
 
 
 @app.route('/api/case/<int:case_id>/ai-prelim', methods=['POST'])
@@ -2294,6 +2360,13 @@ def generate_preliminary_case_data(case_id):
         answer_text = (pair.get('answer') or '').strip()
         if not question_text and not answer_text:
             continue
+        
+        # Wrap AI-generated Q&A in wrapper divs with data attribute
+        if question_text:
+            question_text = f'<div data-ai-generated="true" class="ai-generated-wrapper">{question_text}</div>'
+        if answer_text:
+            answer_text = f'<div data-ai-generated="true" class="ai-generated-wrapper">{answer_text}</div>'
+        
         if question_text:
             q = Question(case_id=case.id, question_number=next_q_number, question_text=question_text)
             db.session.add(q)
@@ -2344,7 +2417,9 @@ def generate_preliminary_case_data(case_id):
     return jsonify({
         'success': True,
         'added_pairs': added_pairs,
+        'pairs_count': len(added_pairs),
         'discussion_html': discussion_html,
+        'discussion_appended': bool(discussion_html),
         'warnings': output.get('warnings', []),
         'provider': result.get('provider', provider),
         'model': result.get('model', ''),

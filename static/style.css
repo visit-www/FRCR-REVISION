@@ -1396,7 +1396,7 @@ pre {
 }
 
 .modal-content {
-    background-color: #000 !important;
+    background-color: linear-gradient(135deg, #FFF8E7 0%, #FFFCF3 100%) !important;
     border: 2px solid #a8d5ba !important;
     box-shadow: 0 0 30px rgba(168, 213, 186, 0.25);
 }
@@ -1486,8 +1486,8 @@ pre {
 .description-section .image-desc-meta,
 #imageDescriptionDisplay .image-desc-meta,
 #imageDescriptionDisplay a {
-    color: #2c2c2c !important;
-    opacity: 0.75;
+    color: #6c757d !important; /* Muted gray for links, credits, courtesy, source */
+    opacity: 1;
 }
 
 .description-section .text-muted,
@@ -2398,8 +2398,8 @@ pre {
 
 #imageDescriptionDisplay .image-desc-meta,
 #imageDescriptionDisplay a {
-    color: #2c2c2c !important;
-    opacity: 0.75;
+    color: #6c757d !important; /* Muted gray for links, credits, courtesy, source */
+    opacity: 1;
 }
 
 /* High contrast for better readability */
@@ -4130,10 +4130,13 @@ tbody tr.case-row:hover {
 
 /* ==================== AI GENERATED CONTENT STYLES ==================== */
 /*
- * AI-generated content is marked with .ai-generated-content class.
+ * AI-generated content is wrapped in divs with data-ai-generated="true" attribute.
  * This provides visual distinction (orange background) before saving.
- * When the case is saved, this class is removed via JavaScript
+ * When the case is saved and published, wrapper divs are removed via JavaScript
  * to convert the content to normal styling.
+ * 
+ * Simpler approach: Single wrapper div per Q&A pair and discussion section.
+ * Easy to detect, easy to remove, no complex HTML parsing needed.
  * 
  * MODEL COLOR CODING (for future multi-model support):
  * - Claude: Orange/Peachy Orange (current) - rgba(233, 99, 4, 0.1)
@@ -4141,30 +4144,159 @@ tbody tr.case-row:hover {
  * - Other models: TBD - each will have unique color
  * 
  * Watermark visibility rules:
- * - Visible: Draft, Saved (not verified)
- * - Hidden: Verified Mode, Published/Public
+ * - Visible: Draft, Saved (not published)
+ * - Hidden: Published/Public
  */
 
-.ai-generated-content {
+/* AI-generated wrapper div - used for both Q&A pairs and discussion */
+.ai-generated-wrapper {
     background-color: rgba(233, 99, 4, 0.1) !important; /* Light peachy-orange background */
     border-left: 3px solid var(--peachy-orange, #e96304) !important;
-    padding-left: 8px !important;
+    padding: 8px 8px 8px 12px !important;
+    margin: 8px 0 !important;
+    border-radius: 4px;
 }
 
-/* AI-generated Q&A pair row */
+/* TinyMCE editor styling for AI wrapper content */
+.mce-content-body .ai-generated-wrapper {
+    background-color: rgba(233, 99, 4, 0.1) !important;
+    border-left: 3px solid #e96304 !important;
+    padding: 8px 8px 8px 12px !important;
+    margin: 8px 0 !important;
+}
+
+/* AI-generated Q&A pair row (for visual distinction in edit mode) */
 .ai-generated-pair {
-    background-color: rgba(233, 99, 4, 0.08) !important;
+    background-color: rgba(233, 99, 4, 0.05) !important;
     border: 2px solid var(--peachy-orange, #e96304) !important;
 }
 
 .ai-generated-pair .qa-question-card,
 .ai-generated-pair .qa-answer-card {
-    background-color: rgba(233, 99, 4, 0.05) !important;
+    background-color: rgba(233, 99, 4, 0.03) !important;
 }
 
-/* TinyMCE editor styling for AI content */
-.mce-content-body .ai-generated-content {
-    background-color: rgba(233, 99, 4, 0.1) !important;
-    border-left: 3px solid #e96304 !important;
-    padding-left: 8px !important;
+/* View mode: Q&A pairs with AI-generated wrapper */
+.qa-cell-content:has(.ai-generated-wrapper),
+.qa-card-text:has(.ai-generated-wrapper) {
+    padding: 0 !important; /* Remove extra padding since wrapper has its own */
+}
+
+/* View mode: Q&A row/card with AI-generated content */
+.qa-table-row:has(.ai-generated-wrapper) {
+    background-color: rgba(233, 99, 4, 0.03) !important;
+}
+
+.qa-cards-row:has(.ai-generated-wrapper) {
+    background-color: rgba(233, 99, 4, 0.03) !important;
+}
+
+/* Discussion section with AI-generated wrapper */
+.discussion-text:has(.ai-generated-wrapper) {
+    padding: 0 !important;
+}
+
+/* AI Cache Warning Modal - Brand Styling */
+.modal.ai-cache-modal {
+    z-index: 9999 !important;
+}
+
+.modal.ai-cache-modal .modal-content {
+    border-radius: 0.5rem !important;
+    overflow: hidden !important;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+    border: none !important;
+}
+
+.modal.ai-cache-modal .modal-header {
+    background: linear-gradient(135deg, #5E899E 0%, #4A6F7F 100%) !important;
+    color: #ffffff !important;
+    border-bottom: none !important;
+    padding: 1.25rem 1.5rem !important;
+}
+
+.modal.ai-cache-modal .modal-header .modal-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #ffffff;
+    margin: 0;
+    display: flex;
+    align-items: center;
+}
+
+.modal.ai-cache-modal .modal-header .modal-title i {
+    color: #ffc107;
+    margin-right: 0.5rem;
+}
+
+.modal.ai-cache-modal .modal-body {
+    padding: 1.5rem;
+    background: #ffffff !important;
+    color: #2c3e50;
+}
+
+.modal.ai-cache-modal .modal-body p {
+    font-size: 1rem;
+    line-height: 1.6;
+    color: #2c3e50;
+    margin-bottom: 1rem;
+}
+
+.modal.ai-cache-modal .modal-footer {
+    padding: 1rem 1.5rem;
+    background: #fdfdfb;
+    border-top: 1px solid #dee2e6;
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+}
+
+.modal.ai-cache-modal .modal-footer .btn-cancel {
+    background-color: #6c757d;
+    color: #ffffff;
+    border: none;
+    padding: 0.5rem 1.25rem;
+    border-radius: 0.375rem;
+    font-weight: 500;
+    transition: background-color 0.2s;
+}
+
+.modal.ai-cache-modal .modal-footer .btn-cancel:hover {
+    background-color: #5a6268;
+    color: #ffffff;
+}
+
+.modal.ai-cache-modal .modal-footer .btn-regenerate {
+    background-color: var(--brand-primary);
+    color: #ffffff;
+    border: none;
+    padding: 0.5rem 1.25rem;
+    border-radius: 0.375rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.modal.ai-cache-modal .modal-footer .btn-regenerate:hover {
+    background-color: #c75002;
+    color: #ffffff;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(233, 99, 4, 0.3);
+}
+
+/* AI Cache Info Box - Uses app brand colors */
+.ai-cache-info-box {
+    background: linear-gradient(135deg, #f0f8fc 0%, #f5fbff 100%);
+    border-left: 4px solid #5E899E;
+    padding: 1rem;
+    border-radius: 0.375rem;
+    margin-top: 1rem;
+}
+
+.ai-cache-info-box .info-label {
+    color: #5E899E;
+    font-weight: 600;
+}
+
+.ai-cache-info-box .info-value {
+    color: #5a6270;
 }
