@@ -230,7 +230,7 @@ class Case(db.Model):
     approved_at = db.Column(db.DateTime, nullable=True)  # When was it approved
     
     # === AI CONTENT VERIFICATION ===
-    ai_content_verified = db.Column(db.Boolean, default=False, nullable=False, index=True)  # AI watermarks removed when True
+    # REMOVED: ai_content_verified field - watermarks are now removed based on publish/public status only
     
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
