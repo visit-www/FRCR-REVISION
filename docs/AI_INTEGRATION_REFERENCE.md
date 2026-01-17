@@ -592,7 +592,153 @@ Implementation stubs exist in `ai_prelim.py` (lines 409-430).
 2. **Cost tracking** — Log token usage, estimate costs
 3. **User quotas** — Limit AI generations per user/day
 4. **Async processing** — Background jobs for long API calls
-5. **Evidence anchoring** — When literature API available, cite PMIDs
+5. **Evidence anchoring (Hybrid approach)** — Enrich Claude's output with PMID citations via post-processing (see detailed plan below)
+
+---
+
+## Evidence Anchoring: Hybrid Approach (Future Implementation)
+
+### Philosophy: Enrichment, Not Replacement
+
+**Key Principle:** Evidence anchoring will **enrich** Claude's comprehensive knowledge with verifiable PMID citations, **not replace** it. This preserves quality while adding trustworthiness.
+
+### Current Approach (Claude Only)
+- ✅ Claude generates content from its broad training data
+- ✅ Fast, comprehensive, well-synthesized
+- ⚠️ Citations are suggested but not verified
+- ⚠️ Risk of hallucination for specific thresholds/findings
+
+### Future Approach (Hybrid: Claude + Post-Processing)
+
+**Workflow:**
+```
+1. Claude generates content as normal (current approach)
+   ↓
+2. Search PubMed for relevant papers (background, non-blocking)
+   ↓
+3. Extract evidence atoms (findings → predictions → PMIDs)
+   ↓
+4. Post-process Claude's output:
+   - Match claims to evidence atoms
+   - Add PMID citations for verifiable claims
+   - Mark general knowledge (no citation needed)
+   - Flag unverified claims (warning added)
+   ↓
+5. Enriched output: Claude's knowledge + PMID citations
+```
+
+### Implementation Strategy
+
+**Step 1: Claude Generation (Unchanged)**
+- Keep current Claude generation exactly as-is
+- No constraints or restrictions on Claude
+- Preserve comprehensiveness and synthesis
+
+**Step 2: Evidence Retrieval (Parallel, Optional)**
+- Search PubMed for relevant papers (Query A, B, C)
+- Extract evidence atoms (imaging sign → prediction → PMID)
+- Cache evidence for diagnosis (24-48h TTL)
+
+**Step 3: Post-Processing Enrichment**
+- **Match claims to evidence**: Identify claims in Claude's output that match retrieved evidence
+- **Add PMIDs selectively**: Only for high-stakes claims (prognostic thresholds, management decisions)
+- **Preserve general knowledge**: Keep Claude's common knowledge without forcing citations
+- **Flag unverified**: Add warnings for claims not in evidence but not critical
+
+### Quality Preservation
+
+**What stays the same:**
+- ✅ Claude's comprehensive knowledge base
+- ✅ Fast generation time
+- ✅ Well-synthesized explanations
+- ✅ Complete coverage of common radiology knowledge
+
+**What gets enhanced:**
+- ✅ Verifiable PMID citations for specific findings
+- ✅ Reduced hallucination risk for thresholds/predictions
+- ✅ Academic trustworthiness
+- ✅ Ability to verify claims
+
+### Example: Hybrid Output
+
+**Claude generates (as normal):**
+```
+Q: What CT findings predict poor outcome in extradural hematoma?
+A: Mass effect >5mm and midline shift >3mm indicate increased 
+   intracranial pressure requiring urgent neurosurgical intervention.
+```
+
+**Post-processing enrichment (adds PMIDs where evidence exists):**
+```
+Q: What CT findings predict poor outcome in extradural hematoma?
+A: Mass effect >5mm [PMID: 12345678] and midline shift >3mm 
+   [PMID: 23456789] indicate increased intracranial pressure 
+   requiring urgent neurosurgical intervention.
+```
+
+**For general knowledge (no matching evidence, but verified knowledge):**
+```
+Q: What is the classic CT appearance of extradural hematoma?
+A: Extradural hematoma typically appears as a biconvex (lentiform) 
+   hyperdense collection on CT. [General radiology knowledge - 
+   well-established finding]
+```
+
+### When to Add PMIDs
+
+**✅ Add PMIDs for:**
+- Specific prognostic thresholds (e.g., "mass effect >5mm")
+- Management-changing findings
+- Recent research findings
+- Controversial or uncertain claims
+
+**❌ Don't add PMIDs for:**
+- Basic anatomy (well-established)
+- Classic imaging signs (textbook knowledge)
+- General radiology principles
+- Common knowledge not requiring citation
+
+### Technical Implementation
+
+**Components:**
+1. **PubMed search function** — Query PubMed E-utilities (free, no API key)
+2. **Evidence extraction** — Parse abstracts for imaging findings → predictions
+3. **Claim matching** — NLP matching of Claude's claims to evidence atoms
+4. **Citation injection** — Post-process HTML/JSON to add PMID links
+
+**Optional feature flag:**
+- `USE_EVIDENCE_ANCHORING=true` — Enable/disable enrichment
+- Default: `false` (current behavior)
+- When enabled: Adds PMIDs via post-processing only
+
+### Risk Mitigation
+
+**Quality protection:**
+- Claude generation is **never constrained** by evidence
+- Evidence retrieval runs **in parallel** (doesn't slow generation)
+- Post-processing is **additive only** (doesn't remove content)
+- Failures in evidence retrieval **don't affect** Claude output
+
+**Fallback behavior:**
+- If PubMed search fails → Use Claude output as-is
+- If evidence extraction fails → Use Claude output as-is
+- If matching fails → Use Claude output as-is (no citations added)
+
+### Expected Benefits
+
+1. **Quality maintained** — Claude's knowledge remains comprehensive
+2. **Trust increased** — Verifiable citations for key claims
+3. **Hallucination reduced** — PMIDs verify specific thresholds
+4. **Academic value** — Content can be used in teaching/publications
+5. **Backward compatible** — Can be disabled if quality concerns arise
+
+### Timeline
+
+- **Phase 1 (Research):** Implement PubMed search + evidence extraction
+- **Phase 2 (Testing):** Test post-processing enrichment on sample outputs
+- **Phase 3 (Integration):** Add as optional feature flag
+- **Phase 4 (Refinement):** Improve claim matching accuracy
+- **Phase 5 (Rollout):** Enable by default if quality maintained
 
 ---
 
