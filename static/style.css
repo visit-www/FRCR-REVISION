@@ -1487,6 +1487,7 @@ pre {
 #imageDescriptionDisplay .image-desc-meta,
 #imageDescriptionDisplay a {
     color: #6c757d !important; /* Muted gray for links, credits, courtesy, source */
+    text-decoration: underline !important; /* Make links clearly clickable */
     opacity: 1;
 }
 
@@ -2399,6 +2400,7 @@ pre {
 #imageDescriptionDisplay .image-desc-meta,
 #imageDescriptionDisplay a {
     color: #6c757d !important; /* Muted gray for links, credits, courtesy, source */
+    text-decoration: underline !important; /* Make links clearly clickable */
     opacity: 1;
 }
 

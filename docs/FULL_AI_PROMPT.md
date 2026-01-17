@@ -1,6 +1,6 @@
 # Full AI Prompt Used in FRCR Revision Companion
 
-> **Prompt Version:** v2  
+> **Prompt Version:** v2.1  
 > **Last Updated:** January 17, 2026  
 > **Model:** `claude-sonnet-4-20250514`  
 > **Location:** `ai_prelim.py`
@@ -65,6 +65,7 @@ If Case Diagnosis is 'NOT PROVIDED', return ONLY:
   "discussion": "",
   "safety_checklist": [],
   "teaching_image": {},
+  "anatomy_image": {},
   "sources": [],
   "warnings": ["Diagnosis is required"]
 }
@@ -87,6 +88,13 @@ Return valid JSON with this exact structure:
   "discussion": "...",
   "safety_checklist": ["..."],
   "teaching_image": {
+    "title": "...",
+    "link": "...",
+    "description": "...",
+    "teaching_point": "...",
+    "source": "..."
+  },
+  "anatomy_image": {
     "title": "...",
     "link": "...",
     "description": "...",
@@ -173,22 +181,68 @@ Provide:
 Use sources such as:
 • Radiopaedia (radiopaedia.org)
 • Radiology Assistant (radiologyassistant.nl)
-• AJR, Radiology journals
-• Cancer staging atlases
+• ACR (acr.org)
+• NICE guidelines (nice.org.uk)
+• Radiology key (radiologykey.com)
+• Radiographics (https://pubs.rsna.org/journal/radiographics)
+• Cancer staging atlases (https://www.cancernetwork.org/tool?tnm_version=v8)
+• Musculoskeletal MRI anatomy from https://www.freitasrad.net
+• Head and neck MRI anatomy from https://headandneckrad.com
+• Radiology Gyan (https://radiogyan.com/radiological-anatomy/) - comprehensive anatomy links collection
 
 If no suitable image is known, leave teaching_image as empty object {}
 
 ───────────────────────────────────────────────────────────────────
-5) sources — REFERENCES
+5) anatomy_image — NORMAL ANATOMY REFERENCE (OPTIONAL)
+───────────────────────────────────────────────────────────────────
+
+OPTIONAL SUPPLEMENT: If you can find a DISTINCT image showing NORMAL 
+radiological anatomy relevant to this diagnosis, provide it here.
+
+This should be DIFFERENT from teaching_image and specifically show:
+• Normal anatomical structures (not pathology)
+• Cross-sectional anatomy (CT/MRI) for spatial reference
+• Anatomical landmarks relevant to the diagnosis location
+• Structures that help understand the pathology context
+
+CRITICAL REQUIREMENTS:
+• MUST be different from teaching_image (do not duplicate)
+• MUST focus on NORMAL anatomy (not pathology)
+• MUST be relevant to the diagnosis location/structures
+• If uncertain or no suitable image exists, leave as empty object {}
+
+This helps students compare normal vs. pathology anatomy.
+
+Provide:
+• title: Brief descriptive title
+• link: URL to normal anatomy resource (MUST be valid, working URL)
+• description: What normal anatomical structures are shown
+• teaching_point: How this normal anatomy relates to the diagnosis
+• source: Attribution/credit
+
+Preferred sources for normal anatomy:
+• Radiopaedia normal anatomy sections (radiopaedia.org)
+• Radiology Assistant anatomy atlases (radiologyassistant.nl)
+• Radiology Gyan (https://radiogyan.com/radiological-anatomy/) - comprehensive anatomy links
+• Freitasrad (https://www.freitasrad.net) - MSK MRI anatomy
+• Head and Neck Radiology (https://headandneckrad.com) - Head/neck MRI anatomy
+• Medical Image Cafe normal anatomy sections (medicalimagecafe.com)
+• Sectional anatomy resources (sectional-anatomy.org)
+• Castlemountain imaging anatomy (castlemountain.dk)
+
+If no suitable normal anatomy image is known, leave anatomy_image as empty object {}
+
+───────────────────────────────────────────────────────────────────
+6) sources — REFERENCES
 ───────────────────────────────────────────────────────────────────
 
 List 2-5 reputable sources for your information:
 • Include title, url, and pmid (if applicable)
 • Prefer: Radiopaedia, Radiology Assistant, ACR, NICE guidelines
-• Only cite sources you are confident exist
+• Only cite sources you are confident exist and ensure the URL and links are valid
 
 ───────────────────────────────────────────────────────────────────
-6) warnings — IMPORTANT CAVEATS
+7) warnings — IMPORTANT CAVEATS
 ───────────────────────────────────────────────────────────────────
 
 Include any warnings about:
@@ -251,6 +305,7 @@ If Case Diagnosis is 'NOT PROVIDED', return ONLY:
   "discussion": "",
   "safety_checklist": [],
   "teaching_image": {},
+  "anatomy_image": {},
   "sources": [],
   "warnings": ["Diagnosis is required"]
 }
@@ -319,6 +374,13 @@ The prompt is sent to Claude API as:
     "teaching_point": "Demonstrates the classic lentiform shape and relationship to skull",
     "source": "Radiopaedia"
   },
+  "anatomy_image": {
+    "title": "Normal Cranial CT Anatomy - Skull and Dura",
+    "link": "https://radiopaedia.org/articles/normal-cranial-ct",
+    "description": "Normal CT showing skull, dura mater, and extradural space",
+    "teaching_point": "Shows normal anatomy for comparison - helps identify extradural location",
+    "source": "Radiopaedia"
+  },
   "sources": [
     {
       "title": "Extradural Hematoma - Radiopaedia",
@@ -352,4 +414,4 @@ The prompt is sent to Claude API as:
 
 ---
 
-*This prompt is version 2 (v2) and has been tested successfully with real cases.*
+*This prompt is version 2.1 (v2.1) and includes the optional anatomy_image field for normal anatomy reference. It has been tested successfully with real cases.*

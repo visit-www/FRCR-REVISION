@@ -76,6 +76,7 @@ If Case Diagnosis is 'NOT PROVIDED', return ONLY:
   "discussion": "",
   "safety_checklist": [],
   "teaching_image": {},
+  "anatomy_image": {},
   "sources": [],
   "warnings": ["Diagnosis is required"]
 }
@@ -100,6 +101,13 @@ Return valid JSON with this exact structure:
   "discussion": "...",
   "safety_checklist": ["..."],
   "teaching_image": {
+    "title": "...",
+    "link": "...",
+    "description": "...",
+    "teaching_point": "...",
+    "source": "..."
+  },
+  "anatomy_image": {
     "title": "...",
     "link": "...",
     "description": "...",
@@ -197,28 +205,71 @@ Use sources such as:
 • ACR (acr.org)
 • NICE guidelines (nice.org.uk)
 • Radiology key (radiologykey.com)
-• Rdiographics (https://pubs.rsna.org/journal/radiographics)
+• Radiographics (https://pubs.rsna.org/journal/radiographics)
 • Cancer staging atlases (https://www.cancernetwork.org/tool?tnm_version=v8)
-.Msucoskeliton MRI anatomy from https://www.freitasrad.net
-. Head and neck MRI anatomy from https://headandneckrad.com
+• Musculoskeletal MRI anatomy from https://www.freitasrad.net
+• Head and neck MRI anatomy from https://headandneckrad.com
+• Radiology Gyan (https://radiogyan.com/radiological-anatomy/) - comprehensive anatomy links collection
 
 If no suitable image is known, leave teaching_image as empty object {}"""
 
-    # Section 5: Sources
+    # Section 5: Anatomy image (OPTIONAL - Normal anatomy reference)
+    anatomy_image_section = """
+───────────────────────────────────────────────────────────────────
+5) anatomy_image — NORMAL ANATOMY REFERENCE (OPTIONAL)
+───────────────────────────────────────────────────────────────────
+
+OPTIONAL SUPPLEMENT: If you can find a DISTINCT image showing NORMAL 
+radiological anatomy relevant to this diagnosis, provide it here.
+
+This should be DIFFERENT from teaching_image and specifically show:
+• Normal anatomical structures (not pathology)
+• Cross-sectional anatomy (CT/MRI) for spatial reference
+• Anatomical landmarks relevant to the diagnosis location
+• Structures that help understand the pathology context
+
+CRITICAL REQUIREMENTS:
+• MUST be different from teaching_image (do not duplicate)
+• MUST focus on NORMAL anatomy (not pathology)
+• MUST be relevant to the diagnosis location/structures
+• If uncertain or no suitable image exists, leave as empty object {}
+
+This helps students compare normal vs. pathology anatomy.
+
+Provide:
+• title: Brief descriptive title
+• link: URL to normal anatomy resource (MUST be valid, working URL)
+• description: What normal anatomical structures are shown
+• teaching_point: How this normal anatomy relates to the diagnosis
+• source: Attribution/credit
+
+Preferred sources for normal anatomy:
+• Radiopaedia normal anatomy sections (radiopaedia.org)
+• Radiology Assistant anatomy atlases (radiologyassistant.nl)
+• Radiology Gyan (https://radiogyan.com/radiological-anatomy/) - comprehensive anatomy links
+• Freitasrad (https://www.freitasrad.net) - MSK MRI anatomy
+• Head and Neck Radiology (https://headandneckrad.com) - Head/neck MRI anatomy
+• Medical Image Cafe normal anatomy sections (medicalimagecafe.com)
+• Sectional anatomy resources (sectional-anatomy.org)
+• Castlemountain imaging anatomy (castlemountain.dk)
+
+If no suitable normal anatomy image is known, leave anatomy_image as empty object {}"""
+
+    # Section 6: Sources
     sources_section = """
 ───────────────────────────────────────────────────────────────────
-5) sources — REFERENCES
+6) sources — REFERENCES
 ───────────────────────────────────────────────────────────────────
 
 List 2-5 reputable sources for your information:
 • Include title, url, and pmid (if applicable)
 • Prefer: Radiopaedia, Radiology Assistant, ACR, NICE guidelines
-• Only cite sources you are confident exist"""
+• Only cite sources you are confident exist and ensure the URL and links are valid"""
 
-    # Section 6: Warnings
+    # Section 7: Warnings
     warnings_section = """
 ───────────────────────────────────────────────────────────────────
-6) warnings — IMPORTANT CAVEATS
+7) warnings — IMPORTANT CAVEATS
 ───────────────────────────────────────────────────────────────────
 
 Include any warnings about:
@@ -252,6 +303,7 @@ Keep everything clinically relevant, radiology-focused, and easy to retain."""
         discussion_section,
         safety_section,
         image_section,
+        anatomy_image_section,
         sources_section,
         warnings_section,
         quality_bar
@@ -381,6 +433,7 @@ def generate_prelim_case_data(case_context, provider="claude"):
     parsed.setdefault("discussion", "")
     parsed.setdefault("safety_checklist", [])
     parsed.setdefault("teaching_image", {})
+    parsed.setdefault("anatomy_image", {})  # Optional field - may be empty
     parsed.setdefault("sources", [])
     parsed.setdefault("warnings", [])
 

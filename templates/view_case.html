@@ -598,6 +598,29 @@
         text-decoration: underline !important;
     }
     
+    /* Markdown **text** converted to h4 tags */
+    .discussion-text h4,
+    .qa-question h4,
+    .qa-answer h4,
+    .qa-cell-content h4,
+    .qa-card-text h4,
+    .image-description-text h4,
+    .description-section h4 {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #2c3e50;
+        margin: 1rem 0 0.5rem 0;
+        padding-bottom: 0.25rem;
+        border-bottom: 2px solid #5E899E;
+        line-height: 1.4;
+    }
+    
+    /* Ensure h4 tags don't break layout in plain text sections */
+    .plain-text-formatted h4 {
+        display: block;
+        white-space: normal;
+    }
+    
     /* Image Navigation Buttons */
     .image-nav-btn {
         position: absolute;
@@ -880,6 +903,69 @@
      * Returns HTML element with appropriate CSS class
      */
     /**
+     * Convert markdown-style **text** to <h4> tags
+     * Handles edge cases and ensures backward compatibility
+     * Works with both HTML and plain text content
+     */
+    function convertMarkdownBoldToH4(content) {
+        if (!content) return content;
+        
+        // Split content by HTML tags to process text parts only
+        // This avoids converting **text** that's inside HTML attributes or tags
+        const parts = content.split(/(<[^>]+>)/);
+        
+        return parts.map((part, index) => {
+            // If it's an HTML tag, return as-is (don't process)
+            if (part.startsWith('<') && part.endsWith('>')) {
+                return part;
+            }
+            
+            // Otherwise, convert **text** to <h4>text</h4>
+            // Pattern: **text** (exactly two asterisks on each side)
+            // Avoid matching ***text*** (three asterisks) or **text**text** (multiple patterns)
+            // Use non-greedy matching to handle multiple instances
+            return part.replace(/\*\*([^*]+?)\*\*/g, '<h4>$1</h4>');
+        }).join('');
+    }
+
+    /**
+     * Safely linkify URLs in content, avoiding URLs that are already inside <a> tags
+     * Only processes plain text URLs, not URLs in HTML attributes or existing links
+     * @param {string} content - The content to linkify
+     * @param {boolean} useInlineStyles - If true, adds inline styles (default: true). If false, relies on CSS classes.
+     */
+    function linkifyUrlsSafely(content, useInlineStyles = true) {
+        if (!content) return content;
+        
+        // Split content by HTML tags to process text parts only
+        // This avoids linkifying URLs that are inside HTML attributes or existing <a> tags
+        const parts = content.split(/(<[^>]+>)/);
+        
+        return parts.map((part) => {
+            // If it's an HTML tag, return as-is (don't process)
+            if (part.startsWith('<') && part.endsWith('>')) {
+                return part;
+            }
+            
+            // Otherwise, linkify plain text URLs in this text part
+            // Pattern: http:// or https:// followed by non-whitespace, non-< characters
+            const urlPattern = /(https?:\/\/[^\s<]+)/g;
+            return part.replace(urlPattern, function(url) {
+                // Remove trailing punctuation
+                let cleanUrl = url.replace(/[.,;:!?)]+$/, '');
+                let punctuation = url.substring(cleanUrl.length);
+                
+                // Use inline styles for discussion/Q&A, but not for image descriptions (they use CSS)
+                const styleAttr = useInlineStyles 
+                    ? ' style="color: #17a2b8; text-decoration: underline; font-weight: 500;"'
+                    : '';
+                
+                return `<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer"${styleAttr}>${cleanUrl}</a>${punctuation}`;
+            });
+        }).join('');
+    }
+
+    /**
      * Escape HTML entities for plain text (preserves \n for CSS white-space: pre-wrap)
      * Returns escaped text that should be inserted into an element with white-space: pre-wrap
      */
@@ -967,6 +1053,9 @@
         // Plain text is preserved as plain text (not converted to HTML) - formatting via CSS
         let renderedContent = renderSafeHTML(rawDiscussion);
         
+        // Convert markdown-style **text** to <h4> tags (before HTML escaping)
+        renderedContent = convertMarkdownBoldToH4(renderedContent);
+        
         // Check if content is plain text (no HTML tags)
         const isPlainTextContent = isPlainText(renderedContent);
         
@@ -980,15 +1069,8 @@
             discussionDiv.classList.remove('plain-text-formatted');
         }
         
-        // After rendering, linkify URLs (same as before, but on the rendered content)
-        const urlPattern = /(https?:\/\/[^\s<]+)/g;
-        renderedContent = renderedContent.replace(urlPattern, function(url) {
-            // Remove trailing punctuation
-            let cleanUrl = url.replace(/[.,;:!?)]+$/, '');
-            let punctuation = url.substring(cleanUrl.length);
-            
-            return `<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer" style="color: #17a2b8; text-decoration: underline; font-weight: 500;">${cleanUrl}</a>${punctuation}`;
-        });
+        // After rendering, safely linkify URLs (only plain text URLs, not those already in <a> tags)
+        renderedContent = linkifyUrlsSafely(renderedContent);
         
         discussionDiv.innerHTML = renderedContent;
     }
@@ -1039,6 +1121,10 @@
                                         // Render safe HTML (content is already sanitized server-side)
                                         questionText = renderSafeHTML(questionText);
                                         answerText = renderSafeHTML(answerText);
+                                        
+                                        // Convert markdown-style **text** to <h4> tags
+                                        questionText = convertMarkdownBoldToH4(questionText);
+                                        answerText = convertMarkdownBoldToH4(answerText);
                                         
                                         // Check if content has AI-generated wrapper div
                                         const isQuestionAiGenerated = questionText.includes('data-ai-generated="true"') || questionText.includes("data-ai-generated='true'");
@@ -1100,6 +1186,10 @@
                             // Render safe HTML (content is already sanitized server-side)
                             questionText = renderSafeHTML(questionText);
                             answerText = renderSafeHTML(answerText);
+                            
+                            // Convert markdown-style **text** to <h4> tags
+                            questionText = convertMarkdownBoldToH4(questionText);
+                            answerText = convertMarkdownBoldToH4(answerText);
                             
                             // Check if content has AI-generated wrapper div
                             const isQuestionAiGenerated = questionText.includes('data-ai-generated="true"') || questionText.includes("data-ai-generated='true'");
@@ -1298,6 +1388,11 @@
                 if (image && image.description && image.description.trim()) {
                     // Show description if it exists (render as safe HTML - already sanitized server-side)
                     let desc = renderSafeHTML(image.description);
+                    // Convert markdown-style **text** to <h4> tags
+                    desc = convertMarkdownBoldToH4(desc);
+                    // Safely linkify URLs (convert plain text URLs to clickable links)
+                    // Don't use inline styles - let CSS handle the muted gray color
+                    desc = linkifyUrlsSafely(desc, false);
                     // Check if content is plain text (no HTML tags)
                     const isPlainTextDesc = isPlainText(desc);
                     // If plain text, escape HTML and add CSS class for formatting
@@ -1460,6 +1555,11 @@
         if (image.description && image.description.trim()) {
             // Render as safe HTML (already sanitized server-side)
             let desc = renderSafeHTML(image.description);
+            // Convert markdown-style **text** to <h4> tags
+            desc = convertMarkdownBoldToH4(desc);
+            // Safely linkify URLs (convert plain text URLs to clickable links)
+            // Don't use inline styles - let CSS handle the muted gray color
+            desc = linkifyUrlsSafely(desc, false);
             // Check if content is plain text (no HTML tags)
             const isPlainTextDesc = isPlainText(desc);
             // If plain text, escape HTML and add CSS class for formatting

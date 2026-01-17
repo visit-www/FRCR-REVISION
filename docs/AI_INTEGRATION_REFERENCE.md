@@ -6,13 +6,21 @@
 
 ---
 
+## 📚 Related Documents
+
+- **[Full AI Prompt Documentation](FULL_AI_PROMPT.md)** - Complete prompt structure, system prompt, and user prompt templates
+- **[Anatomy Resources Feature Design](ANATOMY_RESOURCES_FEATURE.md)** - Design document for student-facing anatomy resources feature
+
+---
+
 ## 🚦 Session Progress (Pick Up Here)
 
 ### ✅ Completed (Jan 16, 2026)
 
 1. **Prompt v2 implemented** in `ai_prelim.py`
    - Full detailed prompt matching reference document
-   - JSON output with Q&A, discussion, safety checklist, teaching image, sources
+   - JSON output with Q&A, discussion, safety checklist, teaching image, anatomy_image (optional), sources
+   - See [Full AI Prompt Documentation](FULL_AI_PROMPT.md) for complete prompt structure
    
 2. **Orange background styling** for AI content
    - Q&A pairs and Discussion: Wrapped in `<div data-ai-generated="true" class="ai-generated-wrapper">`
@@ -28,6 +36,7 @@
    - Generated: Full discussion with imaging features, anatomy, herniation patterns
    - Generated: 8-point Clinico-Radiological Safety Focus checklist
    - Generated: Teaching image link (Radiopaedia)
+   - Generated: Anatomy image (normal anatomy reference) - optional field
    - Generated: 3 source references (Radiopaedia, Radiology Assistant, NICE)
    - Save verified: Orange styling stripped, content saved as permanent
 
@@ -82,7 +91,15 @@
    - Explicit cleanup of related records: `CaseFlag`, `AiDiagnosisCache`, `ImportedCaseStaging`, `AiPrelimCaseData`
    - Robust error handling with rollback on failure
 
-10. **Model Color Coding** (Documented for future)
+10. **Anatomy Image Field (Optional)**
+   - New optional `anatomy_image` field in AI response
+   - Provides normal anatomy reference for comparison with pathology
+   - Distinct from `teaching_image` (which focuses on pathology/teaching)
+   - Helps students understand normal vs. abnormal anatomy
+   - Sources include: Radiology Gyan, Freitasrad, Head and Neck Radiology, etc.
+   - See [Full AI Prompt Documentation](FULL_AI_PROMPT.md) for details
+
+11. **Model Color Coding** (Documented for future)
    - Claude: Orange (current)
    - Consensus AI: Green (future)
    - Other models: TBD
@@ -91,12 +108,14 @@
 
 | File | Purpose |
 |------|---------|
-| `ai_prelim.py` | Claude API wrapper + v2 prompt |
+| `ai_prelim.py` | Claude API wrapper + v2 prompt (includes optional `anatomy_image` field) |
 | `app.py` (lines 1963-2130) | `/api/case/<id>/ai-prelim` route |
 | `app.py` (lines 2070-2120) | Cache check endpoint `/api/case/<id>/ai-prelim/check-cache` |
 | `models.py` | `AiDiagnosisCache` model (no `ai_content_verified` field - removed) |
 | `static/edit-case-modal.js` | `createPrelimCaseData()`, `checkAiCacheAndPrompt()`, `stripAiGeneratedWrappers()`, `showAiGenerationFlash()`, `cancelAiGeneration()` |
 | `static/style.css` (lines 4132-4298) | `.ai-generated-wrapper` (wrapper div strategy) |
+| `docs/FULL_AI_PROMPT.md` | Complete prompt documentation with full structure |
+| `docs/ANATOMY_RESOURCES_FEATURE.md` | Design document for student anatomy resources feature |
 
 ---
 
@@ -508,13 +527,15 @@ Extract:
 
 | File | Purpose |
 |------|---------|
-| `ai_prelim.py` | Claude API wrapper, prompt builder |
+| `ai_prelim.py` | Claude API wrapper, prompt builder (includes optional `anatomy_image` field) |
 | `models.py` | `AiPrelimCaseData` audit model, `AiDiagnosisCache` model |
 | `app.py` | `/api/case/<id>/ai-prelim` route, `/api/case/<id>/ai-prelim/check-cache` route |
 | `templates/edit_case.html` | UI controls (dropdown + button, cancel button, flash container) |
 | `static/edit-case-modal.js` | `createPrelimCaseData()`, `checkAiCacheAndPrompt()`, `stripAiGeneratedWrappers()`, `showAiGenerationFlash()`, `cancelAiGeneration()` |
 | `static/style.css` | `.ai-generated-wrapper` styles, AI cache modal styling |
 | `templates/view_case.html` | View mode watermark detection and styling |
+| `docs/FULL_AI_PROMPT.md` | Complete prompt documentation with full structure and examples |
+| `docs/ANATOMY_RESOURCES_FEATURE.md` | Design document for student-facing anatomy resources feature |
 
 ### Database Tables
 
@@ -721,10 +742,45 @@ Source / Credit: …
 Use medical sources such as:
 • Radiopaedia
 • Radiology Assistant
-• AJR
-• NEJM Image in Clinical Medicine
+• ACR
+• NICE guidelines
+• Radiology key
+• Radiographics
 • Cancer staging atlases
-• Or medical sources available to Consensus AI
+• Musculoskeletal MRI anatomy from freitasrad.net
+• Head and neck MRI anatomy from headandneckrad.com
+• Radiology Gyan (comprehensive anatomy links collection)
+
+───────────────────────────────────────────────────────────────────
+5) ANATOMY IMAGE — NORMAL ANATOMY REFERENCE (OPTIONAL)
+───────────────────────────────────────────────────────────────────
+
+OPTIONAL SUPPLEMENT: If you can find a DISTINCT image showing NORMAL 
+radiological anatomy relevant to this diagnosis, provide it here.
+
+This should be DIFFERENT from teaching_image and specifically show:
+• Normal anatomical structures (not pathology)
+• Cross-sectional anatomy (CT/MRI) for spatial reference
+• Anatomical landmarks relevant to the diagnosis location
+• Structures that help understand the pathology context
+
+CRITICAL REQUIREMENTS:
+• MUST be different from teaching_image (do not duplicate)
+• MUST focus on NORMAL anatomy (not pathology)
+• MUST be relevant to the diagnosis location/structures
+• If uncertain or no suitable image exists, leave as empty object {}
+
+This helps students compare normal vs. pathology anatomy.
+
+Preferred sources for normal anatomy:
+• Radiopaedia normal anatomy sections
+• Radiology Assistant anatomy atlases
+• Radiology Gyan (comprehensive anatomy links)
+• Freitasrad (MSK MRI anatomy)
+• Head and Neck Radiology (Head/neck MRI anatomy)
+• Medical Image Cafe normal anatomy sections
+• Sectional anatomy resources
+• Castlemountain imaging anatomy
 
 ═══════════════════════════════════════════════════════════════════
 FORMATTING RULES
@@ -772,12 +828,21 @@ When requesting JSON output, use this schema:
     "teaching_point": "...",
     "source": "..."
   },
+  "anatomy_image": {
+    "title": "...",
+    "link": "...",
+    "description": "...",
+    "teaching_point": "...",
+    "source": "..."
+  },
   "sources": [
     {"title": "...", "url": "...", "pmid": "..."}
   ],
   "warnings": ["..."]
 }
 ```
+
+**Note:** `anatomy_image` is an optional field. If no suitable normal anatomy image is found, it will be an empty object `{}`. This field provides normal anatomy references to help students compare with pathology.
 
 ---
 
