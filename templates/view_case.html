@@ -1541,6 +1541,11 @@
     
     // Load Q&A pairs on page load
     document.addEventListener('DOMContentLoaded', function() {
+        // Initialize global marker click handler (event delegation - works for all markers forever)
+        if (isStudent) {
+            initMarkerClickHandler();
+        }
+        
         // Student layout class (visual reflow only; DOM order preserved)
         if (isStudent) {
             const caseDetails = document.querySelector('.case-details');
@@ -1638,22 +1643,26 @@
         return modifiedHTML;
     }
     
-    // Attach click handlers to all markers on the page
-    function attachMarkerClickHandlers() {
-        const markers = document.querySelectorAll('.note-marker:not([data-handler-attached])');
-        markers.forEach(marker => {
-            marker.addEventListener('click', (e) => {
+    // EVENT DELEGATION: Single global handler for all markers (current + future)
+    // This works regardless of when markers are added to DOM - no re-attachment needed!
+    function initMarkerClickHandler() {
+        // Only initialize once
+        if (window.markerClickHandlerInitialized) return;
+        
+        document.addEventListener('click', (e) => {
+            // Check if click was on a marker or inside a marker
+            const marker = e.target.closest('.note-marker');
+            if (marker) {
                 e.stopPropagation();
                 e.preventDefault();
                 const noteId = marker.getAttribute('data-note-id');
                 console.log('[MARKERS] Marker clicked:', noteId);
                 openNoteFragmentPopup(noteId);
-            });
-            marker.setAttribute('data-handler-attached', 'true');
+            }
         });
-        if (markers.length > 0) {
-            console.log('[MARKERS] Attached click handlers to', markers.length, 'markers');
-        }
+        
+        window.markerClickHandlerInitialized = true;
+        console.log('[MARKERS] ✓ Global click handler initialized (event delegation)');
     }
     
     // Render discussion using the same pipeline as Questions/Answers/Image descriptions
@@ -1702,10 +1711,7 @@
         discussionDiv.innerHTML = renderedContent;
         console.log('[DISCUSSION] innerHTML set complete');
         
-        // Attach click handlers to markers
-        if (isStudent) {
-            attachMarkerClickHandlers();
-        }
+        // Event delegation handles clicks - no need to attach handlers per marker
     }
 
     // ==================== STUDENT DISCUSSION FORUM (CHAT-STYLE UI) ====================
