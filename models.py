@@ -625,3 +625,29 @@ class AiDiagnosisCache(db.Model):
 
     def __repr__(self):
         return f'<AiDiagnosisCache Diagnosis:{self.diagnosis[:30]}... Model:{self.model_name}>'
+
+
+# ==================== RECOGITO ANNOTATION MODEL ====================
+class RecogitoAnnotation(db.Model):
+    """Vanilla Recogito.js annotations"""
+    __tablename__ = 'recogito_annotations'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    annotation_id = db.Column(db.String(255), nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+    case_id = db.Column(db.Integer, db.ForeignKey('case.id'), nullable=False, index=True)
+    field_name = db.Column(db.String(100), nullable=False)
+    annotation_data = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    user = db.relationship('User', backref='recogito_annotations')
+    case = db.relationship('Case', backref='recogito_annotations')
+    
+    __table_args__ = (
+        db.UniqueConstraint('annotation_id', 'user_id', 'case_id', name='uq_recogito_ann'),
+        db.Index('idx_recogito_user_case_field', 'user_id', 'case_id', 'field_name'),
+    )
+    
+    def __repr__(self):
+        return f'<RecogitoAnnotation {self.annotation_id[:8]}... case={self.case_id}>'

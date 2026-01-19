@@ -1179,6 +1179,49 @@
             right: 0.5rem;
         }
     }
+    
+    /* ==================== RECOGITO.JS LAYOUT FIX ==================== */
+    /* Prevent Recogito from affecting page layout */
+    
+    /* Force Recogito wrapper to take full width and not affect layout */
+    .r6o-annotatable {
+        display: block !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    
+    /* Ensure discussion text stays left-aligned */
+    #discussionText.r6o-annotatable,
+    #discussionText {
+        text-align: left !important;
+        display: block !important;
+        width: 100% !important;
+    }
+    
+    /* Ensure Q&A elements maintain their layout */
+    .qa-question.r6o-annotatable,
+    .qa-answer.r6o-annotatable {
+        display: block !important;
+        width: 100% !important;
+        text-align: left !important;
+    }
+    
+    /* Fix any flex/inline issues */
+    .discussion-section,
+    .qa-section {
+        display: block !important;
+        width: 100% !important;
+    }
+    
+    /* Ensure Recogito popups don't affect layout */
+    .r6o-editor,
+    .r6o-widget,
+    .r6o-annotation {
+        z-index: 10000 !important;
+    }
+    
 </style>
 
 <!-- ==================== RECOGITO.JS ANNOTATION LIBRARY ==================== -->
@@ -3609,6 +3652,159 @@
             });
         }
     });
+
+    // ==================== VANILLA RECOGITO.JS ANNOTATION ====================
+    // Simple, out-of-the-box text annotation for students only
+    
+    if (isStudent) {
+        console.log('[RECOGITO] Vanilla annotation system loading...');
+        
+        // Wait for page content to fully load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Wait a bit for Q&A to load
+            setTimeout(initVanillaRecogito, 1500);
+            setTimeout(initVanillaRecogito, 3000); // Retry for slow loads
+        });
+        
+        function initVanillaRecogito() {
+            console.log('[RECOGITO] Initializing vanilla annotations');
+            
+            // Define where annotations can be added
+            const annotatableAreas = [
+                { selector: '#discussionText', name: 'Discussion' },
+                { selector: '.qa-question', name: 'Q&A Questions' },
+                { selector: '.qa-answer', name: 'Q&A Answers' },
+                { selector: '.image-description-text', name: 'Image Descriptions' }
+            ];
+            
+            annotatableAreas.forEach(area => {
+                const elements = document.querySelectorAll(area.selector);
+                
+                elements.forEach(element => {
+                    // Skip if already initialized
+                    if (element.hasAttribute('data-recogito-initialized')) {
+                        return;
+                    }
+                    
+                    // Skip if empty
+                    if (!element.textContent || element.textContent.trim().length === 0) {
+                        return;
+                    }
+                    
+                    try {
+                        // Initialize Recogito with vanilla configuration
+                        const r = Recogito.init({
+                            content: element,
+                            readOnly: false,
+                            // Use out-of-the-box widgets
+                            widgets: [
+                                'COMMENT',  // For adding notes
+                                'TAG'       // For highlights/tags
+                            ]
+                        });
+                        
+                        // Mark as initialized
+                        element.setAttribute('data-recogito-initialized', 'true');
+                        
+                        console.log('[RECOGITO] ✓ Initialized on:', area.name, element);
+                        
+                        // Handle annotation events
+                        r.on('createAnnotation', function(annotation) {
+                            console.log('[RECOGITO] Created:', annotation);
+                            saveAnnotation(annotation, element);
+                        });
+                        
+                        r.on('updateAnnotation', function(annotation) {
+                            console.log('[RECOGITO] Updated:', annotation);
+                            saveAnnotation(annotation, element);
+                        });
+                        
+                        r.on('deleteAnnotation', function(annotation) {
+                            console.log('[RECOGITO] Deleted:', annotation);
+                            deleteAnnotation(annotation);
+                        });
+                        
+                        // Load existing annotations for this element
+                        loadAnnotations(r, element);
+                        
+                    } catch (error) {
+                        console.error('[RECOGITO] Error initializing on', area.name, error);
+                    }
+                });
+            });
+        }
+        
+        // Save annotation to backend
+        function saveAnnotation(annotation, element) {
+            const fieldName = element.getAttribute('data-field') || element.id || 'unknown';
+            
+            fetch(`/api/case/${caseId}/recogito-annotation`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    annotation_id: annotation.id,
+                    annotation_data: JSON.stringify(annotation),
+                    field_name: fieldName
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    console.log('[RECOGITO] ✓ Saved to backend:', annotation.id);
+                } else {
+                    console.error('[RECOGITO] Save failed:', data);
+                }
+            })
+            .catch(error => {
+                console.error('[RECOGITO] Save error:', error);
+            });
+        }
+        
+        // Load annotations from backend
+        function loadAnnotations(recogito, element) {
+            const fieldName = element.getAttribute('data-field') || element.id || 'unknown';
+            
+            fetch(`/api/case/${caseId}/recogito-annotations?field=${fieldName}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.annotations && data.annotations.length > 0) {
+                        data.annotations.forEach(ann => {
+                            try {
+                                const parsed = JSON.parse(ann.annotation_data);
+                                recogito.addAnnotation(parsed);
+                            } catch (error) {
+                                console.error('[RECOGITO] Parse error:', error);
+                            }
+                        });
+                        console.log(`[RECOGITO] ✓ Loaded ${data.annotations.length} annotations`);
+                    }
+                })
+                .catch(error => {
+                    console.error('[RECOGITO] Load error:', error);
+                });
+        }
+        
+        // Delete annotation from backend
+        function deleteAnnotation(annotation) {
+            fetch(`/api/case/${caseId}/recogito-annotation/${annotation.id}`, {
+                method: 'DELETE'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    console.log('[RECOGITO] ✓ Deleted from backend:', annotation.id);
+                }
+            })
+            .catch(error => {
+                console.error('[RECOGITO] Delete error:', error);
+            });
+        }
+    }
+    
+    // ==================== END VANILLA RECOGITO.JS ====================
+
 </script>
 <script src="/static/edit-case-modal.js"></script>
 {% endblock %}

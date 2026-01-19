@@ -2525,6 +2525,98 @@ def delete_highlight(highlight_id):
     return jsonify({'success': True, 'message': 'Highlight deleted'})
 
 
+# ==================== RECOGITO ANNOTATION ENDPOINTS ====================
+
+@app.route('/api/case/<int:case_id>/recogito-annotations', methods=['GET'])
+@login_required
+def get_recogito_annotations(case_id):
+    """Get Recogito annotations for a case and field"""
+    from models import RecogitoAnnotation
+    
+    case = Case.query.get_or_404(case_id)
+    field_name = request.args.get('field', '')
+    
+    query = RecogitoAnnotation.query.filter_by(
+        case_id=case_id,
+        user_id=current_user.id
+    )
+    
+    if field_name:
+        query = query.filter_by(field_name=field_name)
+    
+    annotations = query.all()
+    
+    return jsonify({
+        'success': True,
+        'annotations': [{
+            'annotation_id': ann.annotation_id,
+            'annotation_data': ann.annotation_data,
+            'field_name': ann.field_name
+        } for ann in annotations]
+    })
+
+
+@app.route('/api/case/<int:case_id>/recogito-annotation', methods=['POST'])
+@login_required
+def save_recogito_annotation(case_id):
+    """Save or update a Recogito annotation"""
+    from models import RecogitoAnnotation
+    
+    case = Case.query.get_or_404(case_id)
+    data = request.json
+    
+    annotation_id = data.get('annotation_id')
+    annotation_data = data.get('annotation_data')
+    field_name = data.get('field_name', 'unknown')
+    
+    if not annotation_id or not annotation_data:
+        return jsonify({'error': 'Missing data'}), 400
+    
+    # Check if exists
+    existing = RecogitoAnnotation.query.filter_by(
+        annotation_id=annotation_id,
+        user_id=current_user.id,
+        case_id=case_id
+    ).first()
+    
+    if existing:
+        existing.annotation_data = annotation_data
+        existing.field_name = field_name
+    else:
+        new_ann = RecogitoAnnotation(
+            annotation_id=annotation_id,
+            user_id=current_user.id,
+            case_id=case_id,
+            field_name=field_name,
+            annotation_data=annotation_data
+        )
+        db.session.add(new_ann)
+    
+    db.session.commit()
+    return jsonify({'success': True})
+
+
+@app.route('/api/case/<int:case_id>/recogito-annotation/<annotation_id>', methods=['DELETE'])
+@login_required
+def delete_recogito_annotation(case_id, annotation_id):
+    """Delete a Recogito annotation"""
+    from models import RecogitoAnnotation
+    
+    annotation = RecogitoAnnotation.query.filter_by(
+        annotation_id=annotation_id,
+        user_id=current_user.id,
+        case_id=case_id
+    ).first()
+    
+    if not annotation:
+        return jsonify({'error': 'Not found'}), 404
+    
+    db.session.delete(annotation)
+    db.session.commit()
+    
+    return jsonify({'success': True})
+
+
 # ==================== ADMIN ENDPOINTS ====================
 
 @app.route('/api/admin/migrate-db', methods=['POST'])
