@@ -2563,14 +2563,18 @@ def save_recogito_annotation(case_id):
     from models import RecogitoAnnotation
     
     case = Case.query.get_or_404(case_id)
-    data = request.json
+    
+    # Use get_json() for proper error handling
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'Invalid or missing JSON data'}), 400
     
     annotation_id = data.get('annotation_id')
     annotation_data = data.get('annotation_data')
     field_name = data.get('field_name', 'unknown')
     
     if not annotation_id or not annotation_data:
-        return jsonify({'error': 'Missing data'}), 400
+        return jsonify({'error': 'Missing required fields: annotation_id or annotation_data'}), 400
     
     # Check if exists
     existing = RecogitoAnnotation.query.filter_by(
