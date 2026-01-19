@@ -18,11 +18,8 @@ def send_recovery_email(email, token):
     """
     recovery_url = os.getenv('APP_URL', 'https://frcr-examiner.vercel.app') + url_for('auth.reset_password', token=token, _external=False)
     
-    # For development, just log it
+    # For development, just log the recovery URL (no email sent)
     if os.getenv('FLASK_ENV') == 'development':
-        print(f"\n📧 Password Recovery Email:")
-        print(f"   To: {email}")
-        print(f"   Reset Link: {recovery_url}\n")
         return True
     
     # For production, use Resend (free tier: 100 emails/day)
@@ -31,12 +28,7 @@ def send_recovery_email(email, token):
         resend_key = os.getenv('RESEND_API_KEY')
         
         if not resend_key:
-            print(f"[EMAIL] ERROR: RESEND_API_KEY not set. Email not sent to {email}")
-            print(f"[EMAIL] Recovery link (for debugging): {recovery_url}")
             return False
-        
-        print(f"[EMAIL] Sending recovery email to {email}")
-        print(f"[EMAIL] Recovery URL: {recovery_url}")
         
         # Use onboarding@resend.dev for testing (Resend's test domain)
         # For production, replace with your verified domain
@@ -65,20 +57,12 @@ def send_recovery_email(email, token):
             timeout=10
         )
         
-        print(f"[EMAIL] Response status: {response.status_code}")
-        print(f"[EMAIL] Response body: {response.text}")
-        
         if response.status_code != 200:
-            print(f"[EMAIL] ERROR: Failed to send email. Status: {response.status_code}")
             return False
         
-        print(f"[EMAIL] SUCCESS: Email sent to {email}")
         return True
         
     except Exception as e:
-        print(f"[EMAIL] EXCEPTION: Error sending email: {str(e)}")
-        import traceback
-        traceback.print_exc()
         return False
 
 
@@ -89,13 +73,8 @@ def register():
         try:
             # Verify database connection is working
             try:
-                # Simple query to test database connection
                 test_count = User.query.limit(1).count()
-                print(f"[REGISTER] Database connection verified (user count check)")
             except Exception as db_error:
-                print(f"[REGISTER] Database connection error: {db_error}")
-                import traceback
-                traceback.print_exc()
                 return jsonify({'error': 'Database connection failed. Please try again later.'}), 503
             
             data = request.get_json() if request.is_json else request.form
@@ -111,10 +90,8 @@ def register():
                 return jsonify({'error': 'Password must be at least 8 characters'}), 400
             
             # Check if user exists
-            print(f"[REGISTER] Checking for existing user: {email}")
             existing_user = User.query.filter_by(email=email).first()
             if existing_user:
-                print(f"[REGISTER] User already exists: {email}")
                 return jsonify({'error': 'Email already registered'}), 409
             
             # Check if this is the first user - make them admin
@@ -122,92 +99,47 @@ def register():
             is_first_user = user_count == 0
             
             # Create user
-            print(f"[REGISTER] Creating new user: {email}")
             user = User(email=email, full_name=full_name)
             user.set_password(password)
             
             if is_first_user:
                 user.is_admin = True
-                user.role = UserRole.ADMIN  # Set role to ADMIN for first user
-                print(f"[REGISTER] First user - granting admin privileges (is_admin=True, role=ADMIN)")
+                user.role = UserRole.ADMIN
             else:
                 user.is_admin = False
-                user.role = UserRole.STUDENT  # Explicitly set role to STUDENT
-                print(f"[REGISTER] Regular student user (role=STUDENT)")
+                user.role = UserRole.STUDENT
             
-            # Add user to session
+            # Add user to session and commit
             db.session.add(user)
-            print(f"[REGISTER] User added to session")
-            
-            # Flush to get the user ID before commit (important for serverless)
             db.session.flush()
             user_id = user.id
-            print(f"[REGISTER] User flushed - ID: {user_id}")
             
-            # Commit transaction - ensure it completes
             try:
                 db.session.commit()
-                print(f"[REGISTER] User committed to database - ID: {user_id}")
             except Exception as commit_error:
-                print(f"[REGISTER] Commit failed: {commit_error}")
                 db.session.rollback()
                 raise
             
-            # Verify user was saved by querying it back in a fresh query
-            # This ensures the transaction was actually persisted to the database
-            # Expire all objects to force fresh load from database
+            # Verify user was saved
             db.session.expire_all()
-            
-            # Query user again to verify it was actually saved to database
-            # Use with_entities to ensure password_hash column is loaded
             verified_user = User.query.filter_by(id=user_id).first()
             if not verified_user:
-                print(f"[REGISTER] ERROR: User was not saved! ID: {user_id}")
                 return jsonify({'error': 'Registration failed. User was not saved to database.'}), 500
             
-            print(f"[REGISTER] User verified in database - ID: {verified_user.id}, Email: {verified_user.email}")
-            
-            # Verify password_hash was saved correctly
             if not verified_user.password_hash:
-                print(f"[REGISTER] ERROR: Password hash missing for verified user!")
                 return jsonify({'error': 'Registration failed. Password was not saved correctly.'}), 500
             
-            print(f"[REGISTER] Password hash verified - Length: {len(verified_user.password_hash)}")
-            
-            # Test password verification to ensure it works immediately after save
-            try:
-                test_verify = verified_user.check_password(password)
-                print(f"[REGISTER] Password verification test: {test_verify}")
-                if not test_verify:
-                    print(f"[REGISTER] WARNING: Password verification failed immediately after save!")
-                    print(f"[REGISTER] Password hash value (first 50 chars): {verified_user.password_hash[:50] if verified_user.password_hash else 'None'}")
-            except Exception as verify_error:
-                print(f"[REGISTER] ERROR testing password verification: {verify_error}")
-                import traceback
-                traceback.print_exc()
-            
-            # Refresh the user object from the verified query
             user = verified_user
             
-            # Login user after successful save
-            # Mark session as permanent for serverless environments (Vercel)
-            # This ensures the session cookie persists across function invocations
+            # Login user after successful save (don't persist session - require explicit login next time)
             from flask import session as flask_session
             flask_session.permanent = True
-            login_user(user, remember=True)
-            print(f"[REGISTER] User logged in: {email}")
-            
-            # Debug session creation
-            print(f"[REGISTER] Session ID after login: {flask_session.get('_id', 'NO SESSION')}")
-            print(f"[REGISTER] Session permanent: {flask_session.permanent}")
-            print(f"[REGISTER] Current user authenticated: {current_user.is_authenticated}")
+            flask_session['last_activity'] = datetime.utcnow().isoformat()
+            login_user(user, remember=False)  # New users must explicitly log in next session
             
             return jsonify({'success': True, 'message': 'Registration successful', 'user_id': user.id}), 201
             
         except Exception as e:
-            print(f"[REGISTER] ERROR: {e}")
-            import traceback
-            traceback.print_exc()
             db.session.rollback()
             # Return more detailed error in development, generic in production
             error_msg = 'Registration failed. Please contact administrator or check logs.'
@@ -237,33 +169,20 @@ def login():
         user = User.query.filter_by(email=email).first()
         
         if not user:
-            print(f"[AUTH] User not found: {email}")
             return jsonify({'error': 'Invalid email or password'}), 401
         
-        # Debug: Check if user was properly loaded
-        print(f"[AUTH] User found - ID: {user.id}, Email: {user.email}, Active: {user.is_active}")
-        print(f"[AUTH] Password hash exists: {bool(user.password_hash)}, Length: {len(user.password_hash) if user.password_hash else 0}")
-        
-        # Ensure password_hash is loaded (refresh from database if needed)
+        # Ensure password_hash is loaded
         if not user.password_hash:
-            print(f"[AUTH] WARNING: No password hash found for user {email}, refreshing from database")
             db.session.refresh(user)
             if not user.password_hash:
-                print(f"[AUTH] ERROR: Password hash still missing after refresh for user {email}")
                 return jsonify({'error': 'User account error. Please contact administrator.'}), 500
         
-        # Debug password check with better error handling
         try:
             password_valid = user.check_password(password)
-            print(f"[AUTH] Login attempt - Email: {email}, Password valid: {password_valid}, User active: {user.is_active}")
         except Exception as e:
-            print(f"[AUTH] ERROR checking password: {str(e)}")
-            import traceback
-            traceback.print_exc()
             return jsonify({'error': 'Authentication error. Please contact administrator.'}), 500
         
         if not password_valid:
-            print(f"[AUTH] Password validation failed for: {email}")
             return jsonify({'error': 'Invalid email or password'}), 401
         
         if not user.is_active:
@@ -274,28 +193,22 @@ def login():
             user.last_login = datetime.utcnow()
             db.session.commit()
             
-            # Mark session as permanent for serverless environments (Vercel)
-            # This ensures the session cookie persists across function invocations
+            # Mark session as permanent for session timeout tracking
             from flask import session as flask_session
             flask_session.permanent = True
             # Track last activity time for session timeout
             flask_session['last_activity'] = datetime.utcnow().isoformat()
-            login_user(user, remember=True)  # Always remember in serverless
             
-            # Debug session creation
-            print(f"[AUTH] Successful login: {email}")
-            print(f"[AUTH] Session created - User ID: {user.id}, Email: {user.email}")
-            print(f"[AUTH] Session permanent: {flask_session.permanent}")
-            print(f"[AUTH] Remember: True (forced for serverless)")
+            # Use user's "Remember Me" preference
+            # If remember=False: session expires when browser closes
+            # If remember=True: session persists for REMEMBER_COOKIE_DURATION (7 days)
+            login_user(user, remember=bool(remember))
             
             return jsonify({'success': True, 'message': 'Login successful'}), 200
         
         except Exception as e:
-            print(f"[LOGIN] ERROR: {e}")
-            import traceback
-            traceback.print_exc()
             db.session.rollback()
-            return jsonify({'error': 'Login failed. Please contact administrator or check logs.'}), 500
+            return jsonify({'error': 'Login failed. Please try again.'}), 500
     
     return render_template('login.html')
 
@@ -349,9 +262,7 @@ def refresh_session():
         }), 200
         
     except Exception as e:
-        print(f"[AUTH] Error refreshing session: {e}")
-        import traceback
-        traceback.print_exc()
+        pass  # Session refresh failed, non-critical
         return jsonify({'error': 'Failed to refresh session'}), 500
 
 
@@ -415,7 +326,6 @@ def forgot_password():
             email_sent = send_recovery_email(email, token)
             
             if not email_sent:
-                print(f"[AUTH] Failed to send recovery email to {email}")
                 return jsonify({'error': 'Failed to send recovery email. Please try again or contact support.'}), 500
         
         # Return success if user exists and email sent (don't reveal if email doesn't exist)
@@ -593,9 +503,7 @@ def verify_db_users():
         }), 200
         
     except Exception as e:
-        print(f"[DEBUG] Error verifying users: {e}")
-        import traceback
-        traceback.print_exc()
+        pass
         return jsonify({'error': f'Error querying database: {str(e)}'}), 500
 
 
@@ -625,7 +533,6 @@ def promote_user():
     user.is_admin = True
     db.session.commit()
     
-    print(f"[ADMIN] User promoted to admin: {user_email} by {current_user.email}")
     
     return jsonify({'success': True, 'message': f'User {user_email} promoted to admin'}), 200
 
@@ -670,11 +577,9 @@ def upload_profile_picture():
         current_user.profile_picture = picture_base64
         db.session.commit()
         
-        print(f"[PROFILE] Picture updated for user: {current_user.email}")
         return jsonify({'success': True, 'message': 'Profile picture updated'}), 200
-        
+    
     except Exception as e:
-        print(f"[PROFILE] Error uploading picture: {e}")
         db.session.rollback()
         return jsonify({'error': 'Failed to upload picture'}), 500
 
@@ -687,11 +592,9 @@ def remove_profile_picture():
         current_user.profile_picture = None
         db.session.commit()
         
-        print(f"[PROFILE] Picture removed for user: {current_user.email}")
         return jsonify({'success': True, 'message': 'Profile picture removed'}), 200
-        
+    
     except Exception as e:
-        print(f"[PROFILE] Error removing picture: {e}")
         db.session.rollback()
         return jsonify({'error': 'Failed to remove picture'}), 500
 
@@ -718,11 +621,9 @@ def update_profile():
         current_user.email = email
         db.session.commit()
         
-        print(f"[PROFILE] Profile updated for user: {email}")
         return jsonify({'success': True, 'message': 'Profile updated'}), 200
-        
+    
     except Exception as e:
-        print(f"[PROFILE] Error updating profile: {e}")
         db.session.rollback()
         return jsonify({'error': 'Failed to update profile'}), 500
 
@@ -751,10 +652,8 @@ def change_password():
         current_user.set_password(new_password)
         db.session.commit()
         
-        print(f"[PROFILE] Password changed for user: {current_user.email}")
         return jsonify({'success': True, 'message': 'Password updated'}), 200
-        
+    
     except Exception as e:
-        print(f"[PROFILE] Error changing password: {e}")
         db.session.rollback()
         return jsonify({'error': 'Failed to change password'}), 500

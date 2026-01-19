@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Script to run database migrations on Vercel/Supabase.
+Script to run database migrations on Vercel/Neon PostgreSQL.
 Can be run locally with Vercel environment variables.
 
 Usage:

@@ -144,18 +144,18 @@
                 <span class="btn btn-outline-secondary btn-sm disabled">
                     <i class="fas fa-chevron-left me-1"></i>Prev
                 </span>
-                {% endif %}
+                    {% endif %}
                 <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('all_cases_view') }}">
                     <i class="fas fa-folder-open me-1"></i>All Cases
                 </a>
                 {% if next_case_id %}
                 <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('view_case', case_id=next_case_id) }}{% if nav_query_string %}?{{ nav_query_string }}{% endif %}">
                     Next<i class="fas fa-chevron-right ms-1"></i>
-                </a>
-                {% else %}
+                    </a>
+                    {% else %}
                 <span class="btn btn-outline-secondary btn-sm disabled">
                     Next<i class="fas fa-chevron-right ms-1"></i>
-                </span>
+                    </span>
                 {% endif %}
             </div>
         </div>
@@ -199,15 +199,23 @@
 
                     <!-- Question & Answer Section - Separate Pairs -->
                     <div class="detail-section qa-section mb-5 p-4 rounded-3" style="background: #f8f9fa;">
-                        <label class="section-title fw-bold mb-4 d-block"><i class="fas fa-comments me-2" style="color: #5E899E;"></i>Questions & Answers</label>
+                        <label class="section-title fw-bold mt-0 mb-4 d-block"><i class="fas fa-comments me-2" style="color: #5E899E;"></i>Questions & Answers</label>
                         <div id="qaContainer" class="detail-content discussion-text highlightable-text">
                             <!-- Q&A pairs loaded by JavaScript -->
                         </div>
                     </div>
 
                     <!-- Discussion/Comments -->
-                    <div class="detail-section discussion-section mb-5 p-4 rounded-3" style="background: linear-gradient(135deg, #f0f8fc 0%, #f5fbff 100%); border-left: 5px solid #17a2b8;">
-                        <label class="detail-label fw-bold text-secondary mb-3 d-block"><i class="fas fa-comments-dollar me-2" style="color: #17a2b8;"></i>Discussion & Comments</label>
+                    <div class="detail-section discussion-section justify-content-between mb-5 p-4 rounded-3" style="background: linear-gradient(135deg, #f0f8fc 0%, #f5fbff 100%); border-left: 5px solid #17a2b8; position: relative;">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <label class="detail-label fw-bold text-secondary mb-0"><i class="fas fa-comments-dollar me-2" style="color: #17a2b8;"></i>Discussion & Comments</label>
+                            {% if current_user.is_authenticated and current_user.role and current_user.role.value == 'student' %}
+                            <!-- Mobile only: toggle in header -->
+                            <button type="button" class="forum-toggle-btn forum-visible d-lg-none" id="forumToggleBtnMobile" title="Show/hide forum">
+                                <i class="fas fa-comments me-1"></i><span id="forumToggleTextMobile">Hide Forum</span>
+                            </button>
+                            {% endif %}
+                        </div>
                         <div id="discussionText" class="detail-content discussion-text highlightable-text" data-field="discussion" style="line-height: 1.8; color: #2c3e50; text-align: left; {% if current_user.is_authenticated and current_user.role and current_user.role.value == 'student' %}user-select: text; cursor: text;{% endif %}" data-raw-discussion="{{ case.discussion|e if case.discussion else '' }}">
             <!-- Content will be rendered client-side using renderSafeHTML() for consistency -->
             <em class="text-muted"><i class="fas fa-spinner fa-spin me-2"></i>Loading...</em>
@@ -223,20 +231,40 @@
 
                     <!-- My Notes Section (Student Notes - STUDENTS ONLY) -->
                     {% if current_user.is_authenticated and current_user.role and current_user.role.value == 'student' %}
-                    <div class="detail-section notes-section mb-5 p-4 rounded-3" style="background: linear-gradient(135deg, #FFF8E7 0%, #FFFCF3 100%); border-left: 5px solid #F2CC8F;">
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <label class="detail-label fw-bold text-secondary mb-0">
-                                <i class="fas fa-sticky-note me-2" style="color: #FFB84D;"></i>My Notes
+                    <div class="detail-section notes-section mt-4 mb-5 p-4 rounded-3" style="background: linear-gradient(135deg, #FFF8E7 0%, #FFFCF3 100%); border-left: 5px solid #F2CC8F;">
+                        <div class="d-flex justify-content-between align-items-center mb-3" style="border-bottom: 1px solid #8b94af; padding-bottom: 0.5rem;">
+                            <label class="detail-label fw-bold mb-0" style="color: #e96304;">
+                                <i class="fas fa-sticky-note me-2" style="color: #e96304;"></i>My Notes
                             </label>
                             <small class="text-muted">
                                 <i class="fas fa-save me-1"></i>Auto-saved
                             </small>
                         </div>
+                        <div id="notesDisplayWrapper" style="display: none; background-color: #FFFEF8; border: 2px solid #F2CC8F; border-radius: 0.375rem; padding: 0.75rem; min-height: 150px; white-space: pre-wrap; font-family: 'Courier New', monospace; line-height: 1.6; color: #2c3e50;"></div>
                         <textarea id="candidateNoteText" 
                                   class="form-control" 
-                                  rows="6" 
                                   placeholder="Type your notes here... They are private and will be auto-saved."
-                                  style="background-color: #FFFEF8; border: 2px solid #F2CC8F; font-family: 'Courier New', monospace; line-height: 1.6; resize: vertical;">{% if user_note %}{{ user_note.note_text }}{% endif %}</textarea>
+                                  style="background-color: #FFFEF8; border: 2px solid #F2CC8F; font-family: 'Courier New', monospace; line-height: 1.6; white-space: pre-wrap;">{% if user_note %}{{ user_note.note_text }}{% endif %}</textarea>
+                        <script>
+                            // Format notes on page load to hide tags and show bullet points
+                            (function() {
+                                const textarea = document.getElementById('candidateNoteText');
+                                if (textarea && textarea.value) {
+                                    // Store raw notes (with tags) for the fragment system
+                                    const rawNotes = textarea.value;
+                                    textarea.dataset.rawNotes = rawNotes;
+                                    textarea.dataset.previousNotes = rawNotes;
+                                    
+                                    // Format the notes: replace [note:ID][from CONTEXT][text:...] content [/note:ID] with bullet points
+                                    // The [text:...] tag is optional for backward compatibility
+                                    const formatted = rawNotes.replace(/\[note:[^\]]+\]\[from ([^\]]+)\](?:\[text:[^\]]*\])?\s*(.*?)\[\/note:[^\]]+\]/gs, (match, context, content) => {
+                                        return '• ' + content.trim();
+                                    });
+                                    textarea.value = formatted;
+                                    
+                                }
+                            })();
+                        </script>
                         <div class="mt-2 d-flex justify-content-between align-items-center">
                             <small class="text-muted" id="noteSaveStatus">
                                 {% if user_note %}
@@ -247,6 +275,9 @@
                             </small>
                             <button class="btn btn-sm btn-outline-secondary" onclick="clearNotes()" title="Clear all notes">
                                 <i class="fas fa-times me-1"></i>Clear
+                            </button>
+                            <button id="undoClearBtn" class="btn btn-sm btn-outline-warning" onclick="undoClearNotes()" title="Restore last cleared notes" style="display: none;">
+                                <i class="fas fa-undo me-1"></i>Undo Clear
                             </button>
                         </div>
                     </div>
@@ -261,6 +292,13 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Floating Notes Button (Phase 2: Unified Notes System) -->
+                {% if current_user.is_authenticated and current_user.role and current_user.role.value == 'student' %}
+                <button type="button" id="floatingNotesBtn" class="floating-notes-button" title="Quick Note" style="display: flex !important;">
+                    <i class="fas fa-sticky-note me-2"></i>Notes
+                </button>
+                {% endif %}
 
                 <!-- Action Buttons - Admin/Content Manager Only -->
                 {% if current_user.is_authenticated and current_user.role and (current_user.role.value == 'admin' or current_user.role.value == 'content_manager') %}
@@ -453,8 +491,8 @@
 
         .diagnosis-section { order: 1; }
         .qa-section { order: 2; }
-        .discussion-section { order: 3; }
-        .notes-section { order: 4; }
+        .notes-section { order: 3; }
+        .discussion-section { order: 4; }
         .images-section { order: 5; }
 
         .section-title,
@@ -497,6 +535,543 @@
         .detail-content * {
             text-align: left !important;
         }
+    }
+
+    /* ==================== STUDENT CASE VIEW LAYOUT UPGRADE ====================
+       Visual reflow only (DOM order preserved for SEO/accessibility) */
+    @media (min-width: 992px) {
+        /* Two-column top section: Q&A (left) + Notes (right), bottom sections full width */
+        .case-details.student-case-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.25rem;
+            align-items: stretch; /* Notes matches Q&A height */
+        }
+
+        /* Diagnosis remains full width at top */
+        .case-details.student-case-layout .diagnosis-section {
+            grid-column: 1 / -1;
+            grid-row: 1;
+        }
+
+        /* Top row (50/50) */
+        .case-details.student-case-layout .qa-section {
+            grid-column: 1 / 2;
+            grid-row: 2;
+        }
+        .case-details.student-case-layout .notes-section {
+            grid-column: 2 / 3;
+            grid-row: 2;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* Make notes textarea expand to fill available space */
+        .case-details.student-case-layout .notes-section #candidateNoteText {
+            flex: 1 1 auto;
+            min-height: 150px;
+            resize: none; /* Disable manual resize since it auto-matches */
+        }
+
+        /* Bottom sections (full width) */
+        .case-details.student-case-layout .discussion-section {
+            grid-column: 1 / -1;
+            grid-row: 3;
+        }
+        .case-details.student-case-layout .images-section {
+            grid-column: 1 / -1;
+            grid-row: 4;
+        }
+    }
+
+    /* Mobile: Stack vertically (remove grid) */
+    @media (max-width: 991px) {
+        .case-details.student-case-layout {
+            display: block; /* Remove grid on mobile */
+        }
+        
+        /* On mobile, notes textarea has fixed minimum height */
+        .case-details.student-case-layout .notes-section #candidateNoteText {
+            min-height: 180px;
+            resize: vertical;
+        }
+    }
+
+    /* ==================== Q&A STUDENT INTERACTION STYLES ==================== */
+    .qa-progress-container {
+        padding: 0.75rem;
+        background: #f8f9fa;
+        border-radius: 0.5rem;
+        border: 1px solid #e0e0e0;
+    }
+
+    .qa-student-items {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .qa-student-item {
+        background: #ffffff;
+        border: 1px solid #e0e0e0;
+        border-radius: 0.5rem;
+        overflow: hidden;
+        transition: all 0.2s ease;
+    }
+
+    .qa-preview-card {
+        cursor: pointer;
+    }
+
+    .qa-preview-card:hover {
+        border-color: #5E899E;
+        box-shadow: 0 2px 8px rgba(94, 137, 158, 0.15);
+    }
+
+    .qa-preview-card.qa-expanded {
+        border-color: #5E899E;
+        box-shadow: 0 4px 12px rgba(94, 137, 158, 0.2);
+    }
+
+    /* Status color coding */
+    .qa-preview-card.status-unreviewed {
+        border-left: 3px solid #6c757d; /* Gray */
+    }
+
+    .qa-preview-card.status-reviewed {
+        border-left: 3px solid #28a745; /* Green */
+    }
+
+    .qa-preview-card.status-difficult {
+        border-left: 3px solid #ff9800; /* Orange */
+    }
+
+    .qa-preview-header {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.9rem 1rem;
+    }
+
+    .qa-preview-status {
+        flex-shrink: 0;
+        font-size: 1rem;
+    }
+
+    .qa-preview-number {
+        flex-shrink: 0;
+        font-weight: 700;
+        color: #5E899E;
+        min-width: 40px;
+    }
+
+    .qa-preview-text {
+        flex-grow: 1;
+        color: #2c3e50;
+        line-height: 1.5;
+    }
+
+    .qa-preview-actions {
+        padding: 0 1rem 0.9rem 1rem;
+    }
+
+    .qa-reveal-btn {
+        font-size: 0.875rem;
+        padding: 0.375rem 0.75rem;
+    }
+
+    .qa-student-question-full {
+        padding: 1rem;
+        border-top: 1px solid #e9ecef;
+    }
+
+    .qa-student-question-full[hidden] {
+        display: none !important;
+    }
+
+    .qa-student-answer {
+        padding: 0.9rem 1rem;
+        border-top: 1px solid #e9ecef;
+        background: rgba(168, 213, 186, 0.18); /* var(--brand-success) tint */
+        border-left: 4px solid var(--brand-success, #a8d5ba);
+        transition: all 0.3s ease;
+    }
+
+    .qa-student-answer[hidden] {
+        display: none !important;
+    }
+
+    /* ==================== NOTE MARKERS (PHASE 2) ==================== */
+    .note-marker {
+        color: #e96304 !important;
+        cursor: pointer !important;
+        font-size: 0.8em !important;
+        margin-left: 2px !important;
+        opacity: 0.8;
+        transition: opacity 0.2s ease;
+        user-select: none;
+    }
+
+    .note-marker:hover {
+        opacity: 1;
+        color: #c55003 !important;
+    }
+
+    /* ==================== FLOATING NOTES BUTTON (PHASE 2) ==================== */
+    .floating-notes-button {
+        position: fixed !important;
+        bottom: 2rem !important;
+        right: 2rem !important;
+        background: #5E899E !important;
+        color: #ffffff !important;
+        border: none !important;
+        border-radius: 50px !important;
+        padding: 0.875rem 1.5rem !important;
+        font-size: 0.95rem !important;
+        font-weight: 600 !important;
+        box-shadow: 0 4px 12px rgba(94, 137, 158, 0.3) !important;
+        cursor: pointer !important;
+        z-index: 9999 !important;
+        transition: all 0.3s ease !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 0.5rem !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        pointer-events: auto !important;
+    }
+
+    .floating-notes-button:hover {
+        background: #4A6F7F !important;
+        transform: translateY(-2px) !important;
+        box-shadow: 0 6px 16px rgba(94, 137, 158, 0.4) !important;
+        opacity: 1 !important;
+        visibility: visible !important;
+    }
+
+    .floating-notes-button:active {
+        transform: translateY(0) !important;
+    }
+
+    @media (max-width: 768px) {
+        .floating-notes-button {
+            bottom: 1.5rem !important;
+            right: 1.5rem !important;
+            padding: 0.75rem 1.25rem !important;
+            font-size: 0.875rem !important;
+        }
+    }
+
+    /* ==================== NOTES MODAL STYLING (Match Notes Box) ==================== */
+    .notes-modal-dialog {
+        max-width: 90vw;
+        width: 600px;
+        max-height: 70vh;
+        height: auto;
+    }
+
+    @media (max-width: 768px) {
+        .notes-modal-dialog {
+            width: 95vw;
+            max-height: 85vh;
+            margin: 1rem auto;
+        }
+    }
+
+    .notes-modal-content {
+        position: relative;
+        background: #FFFEF8;
+        border: 3px solid #e96304;
+        border-radius: 0.75rem;
+        box-shadow: 0 4px 12px rgba(233, 99, 4, 0.3);
+        height: 100%;
+        min-height: 400px;
+        max-height: 70vh;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+
+    }
+
+    @media (max-width: 768px) {
+        .notes-modal-content {
+            min-height: 300px;
+            max-height: 85vh;
+        }
+    }
+
+    .notes-modal-textarea {
+        position: absolute;
+        top: 50px;
+        left: 0px;
+        right: 0px;
+        bottom:50px;
+        width: 100%;
+        height: 100%;
+    
+        background-color: transparent;
+        border: none !important;
+        font-family: 'Courier New', monospace;
+        line-height: 1.6;
+        color: #2c3e50 !important;
+        padding: auto;
+        margin: 0 auto;
+        resize: none;
+        font-size: 0.95rem !important;
+        font-weight: 400 !important;
+        overflow-y: auto;
+        caret-color: #e96304 !important;
+        z-index: 1;
+        pointer-events: auto;
+    }
+
+    .notes-modal-textarea::placeholder {
+        color: #8b94af !important;
+        opacity: 0.7 !important;
+    }
+
+    .notes-modal-textarea:focus {
+        outline: 2px solid #e96304 !important;
+        outline-offset: -2px;
+        background-color: #FFFEF8 !important;
+        color: #2c3e50 !important;
+    }
+
+    .notes-modal-overlay {
+        position: absolute;
+        top: 0px;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        pointer-events: none;
+        z-index: 10;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+
+    .notes-modal-header {
+        background: #e96304;
+        border-bottom: 2px solid #8b94aF;
+        padding: 0.75rem 1.25rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        pointer-events: auto;
+        border-radius: 0.75rem 0.75rem 0 0;
+    }
+
+    .notes-modal-title {
+        color: #ffffff;
+        font-weight: 600;
+        font-size: 1.1rem;
+        margin: 0;
+    }
+
+    .notes-modal-footer {
+        background: #f8f9fa;
+        border-top: 2px solid #8b94af;
+        padding: 0.75rem 1.25rem;
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.5rem;
+        pointer-events: auto;
+        border-radius: 0 0 0.75rem 0.75rem;
+    }
+
+    .notes-modal-footer .btn {
+        pointer-events: auto;
+    }
+
+    /* ==================== DISCUSSION FORUM (CHAT-STYLE UI) ==================== */
+    @media (min-width: 992px) {
+        .discussion-section.discussion-has-chat {
+            display: grid;
+            grid-template-columns: 1fr 380px;
+            grid-template-rows: auto auto auto;
+            column-gap: 1.25rem;
+        }
+
+        /* When forum is hidden, discussion takes full width */
+        .discussion-section.discussion-has-chat.forum-hidden {
+            grid-template-columns: 1fr;
+        }
+
+        .discussion-section.discussion-has-chat > .d-flex.justify-content-between {
+            grid-column: 1 / -1;
+            grid-row: 1;
+        }
+
+        .discussion-section.discussion-has-chat #discussionText {
+            grid-column: 1 / 2;
+            grid-row: 2;
+        }
+
+        .discussion-section.discussion-has-chat #discussionChatPanel {
+            grid-column: 2 / 3;
+            grid-row: 2;
+            position: relative;
+        }
+
+        .discussion-section.discussion-has-chat.forum-hidden #discussionText {
+            grid-column: 1 / -1;
+        }
+
+        .discussion-section.discussion-has-chat .highlight-tip {
+            grid-column: 1 / -1;
+            grid-row: 3;
+        }
+    }
+
+    #discussionChatPanel {
+        background: #ffffff;
+        border: 1px solid rgba(94, 137, 158, 0.25);
+        border-radius: 0.75rem;
+        padding: 0.9rem;
+        transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+
+    #discussionChatPanel[style*="display: none"] {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    /* Forum toggle button - positioned in discussion section (desktop) */
+    #forumToggleBtn {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        z-index: 10;
+    }
+
+    /* Forum toggle button styling */
+    .forum-toggle-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        transition: all 0.2s ease;
+        border: 2px solid transparent;
+    }
+
+    .forum-toggle-btn.forum-visible {
+        background: linear-gradient(135deg, #5E899E 0%, #4A6F7F 100%);
+        color: #ffffff;
+        border-color: #5E899E;
+    }
+
+    .forum-toggle-btn.forum-visible:hover {
+        background: linear-gradient(135deg, #4A6F7F 0%, #3d5c69 100%);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(94, 137, 158, 0.3);
+    }
+
+    .forum-toggle-btn.forum-hidden-btn {
+        background: #ffffff;
+        color: #5E899E;
+        border-color: #5E899E;
+    }
+
+    .forum-toggle-btn.forum-hidden-btn:hover {
+        background: #5E899E;
+        color: #ffffff;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(94, 137, 158, 0.3);
+    }
+
+    /* Mobile forum styles */
+    @media (max-width: 991px) {
+        #discussionChatPanel {
+            margin-top: 1rem;
+            width: 100%;
+        }
+
+        #forumToggleBtn {
+            display: none !important;
+        }
+
+        .discussion-section.forum-hidden #discussionChatPanel {
+            display: none !important;
+        }
+
+        .forum-toggle-btn {
+            padding: 0.4rem 0.75rem;
+            font-size: 0.8rem;
+        }
+    }
+
+    .chat-panel-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .chat-panel-header .chat-title {
+        font-weight: 700;
+        color: #2c3e50;
+        font-size: 0.95rem;
+        margin: 0;
+    }
+
+    .chat-panel-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.6rem;
+        max-height: 420px;
+        overflow: auto;
+        padding-right: 0.25rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .chat-message {
+        border: 1px solid #e9ecef;
+        border-radius: 0.75rem;
+        padding: 0.75rem;
+        background: #ffffff;
+    }
+
+    .chat-message.is-pinned {
+        border-left: 4px solid #ffc107; /* existing warning/orange */
+        background: rgba(255, 193, 7, 0.08);
+    }
+
+    .chat-message .chat-message-meta {
+        display: flex;
+        justify-content: space-between;
+        gap: 0.5rem;
+        align-items: center;
+        margin-bottom: 0.5rem;
+        color: #6c757d;
+        font-size: 0.8rem;
+    }
+
+    .chat-message .chat-message-body {
+        color: #2c3e50;
+        line-height: 1.5;
+    }
+
+    .chat-actions {
+        display: flex;
+        gap: 0.35rem;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+
+    .chat-actions .btn {
+        padding: 0.2rem 0.45rem;
+        font-size: 0.8rem;
+        border-radius: 0.5rem;
+    }
+
+    .chat-editor {
+        width: 100%;
+        min-height: 90px;
+        resize: vertical;
     }
     
     .detail-section {
@@ -696,14 +1271,124 @@
             right: 0.5rem;
         }
     }
+    
+    /* ==================== CUSTOM ANNOTATION STYLES ==================== */
+    /* User highlights */
+    .user-highlight {
+        background-color: #FFEB3B;
+        cursor: pointer;
+        border-radius: 2px;
+        transition: background-color 0.2s ease;
+    }
+    .user-highlight:hover {
+        background-color: #FDD835;
+    }
+    .user-highlight.highlight-green { background-color: #A5D6A7; }
+    .user-highlight.highlight-green:hover { background-color: #81C784; }
+    .user-highlight.highlight-pink { background-color: #F8BBD9; }
+    .user-highlight.highlight-pink:hover { background-color: #F48FB1; }
+    .user-highlight.highlight-blue { background-color: #90CAF9; }
+    .user-highlight.highlight-blue:hover { background-color: #64B5F6; }
+    
+    /* Note markers (superscript) */
+    .note-marker {
+        color: #e96304;
+        font-size: 0.7em;
+        vertical-align: super;
+        cursor: pointer;
+        margin-left: 2px;
+        font-weight: bold;
+        text-decoration: none;
+    }
+    .note-marker:hover {
+        color: #c85000;
+        text-decoration: underline;
+    }
+    
+    /* Selection popup */
+    .selection-popup {
+        position: fixed;
+        background: white;
+        border: 2px solid #5E899E;
+        border-radius: 8px;
+        padding: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        z-index: 10000;
+        display: flex;
+        gap: 8px;
+    }
+    
+    /* Highlight delete tooltip */
+    .highlight-tooltip {
+        position: absolute;
+        background: #333;
+        color: white;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        z-index: 10001;
+        cursor: pointer;
+    }
+    
 </style>
 
 <script>
     const caseId = {{ case.id }};
     const isStudent = {% if current_user.is_authenticated and current_user.role and current_user.role.value == 'student' %}true{% else %}false{% endif %};
+    const isAdminUser = {% if current_user.is_authenticated and current_user.role and (current_user.role.value == 'admin' or current_user.role.value == 'content_manager') %}true{% else %}false{% endif %};
+    const currentUserId = {% if current_user.is_authenticated %}{{ current_user.id }}{% else %}null{% endif %};
     let imageModal;
     let currentImages = [];
     let currentImageIndex = 0;
+    
+    // Flash message system (auto-dismiss, non-blocking)
+    function showFlash(message, type = 'success') {
+        const flashContainer = document.createElement('div');
+        flashContainer.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-weight: 500;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            max-width: 300px;
+        `;
+        
+        // Set colors based on type
+        if (type === 'success') {
+            flashContainer.style.backgroundColor = '#a8d5ba';
+            flashContainer.style.color = '#2c3e50';
+        } else if (type === 'error') {
+            flashContainer.style.backgroundColor = '#e89580';
+            flashContainer.style.color = '#2c3e50';
+        } else if (type === 'warning') {
+            flashContainer.style.backgroundColor = '#ffc107';
+            flashContainer.style.color = '#000';
+        } else {
+            flashContainer.style.backgroundColor = '#5E899E';
+            flashContainer.style.color = '#fff';
+        }
+        
+        flashContainer.textContent = message;
+        document.body.appendChild(flashContainer);
+        
+        // Fade in
+        setTimeout(() => {
+            flashContainer.style.opacity = '1';
+        }, 10);
+        
+        // Auto-dismiss after 1 second
+        setTimeout(() => {
+            flashContainer.style.opacity = '0';
+            setTimeout(() => {
+                flashContainer.remove();
+            }, 300);
+        }, 1000);
+    }
     
     /**
      * Convert pipe-separated text to HTML table (client-side, matches server-side logic)
@@ -1012,11 +1697,25 @@
     
     // Load Q&A pairs on page load
     document.addEventListener('DOMContentLoaded', function() {
+        // Initialize global marker click handler (event delegation - works for all markers forever)
+        if (isStudent) {
+            initMarkerClickHandler();
+        }
+        
+        // Student layout class (visual reflow only; DOM order preserved)
+        if (isStudent) {
+            const caseDetails = document.querySelector('.case-details');
+            if (caseDetails) caseDetails.classList.add('student-case-layout');
+        }
+
         loadQAPairs();
         imageModal = new bootstrap.Modal(document.getElementById('imageModal'), {
             backdrop: 'static',
             keyboard: true
         });
+        
+            // Render note markers after page loads and Q&A is ready
+        // Markers are now injected directly during renderDiscussion() - no manual rendering needed
         
         // Check if we're coming from a new case creation (has _t parameter)
         const urlParams = new URLSearchParams(window.location.search);
@@ -1031,9 +1730,129 @@
         loadImages();
         }
         
-        renderDiscussion(); // Use unified renderer instead of linkifyDiscussion
+        renderDiscussion(); // Use unified renderer instead of linkifyDiscussion - now includes marker injection
+        
+        initStudentDiscussionChat(); // Student-only enhancement (client-side only)
         setupKeyboardNavigation();
+        
+        // Floating Notes Button handler (Phase 2: Unified Notes System)
+        const floatingNotesBtn = document.getElementById('floatingNotesBtn');
+        if (floatingNotesBtn && isStudent) {
+            
+            // CRITICAL FIX: Move button to document.body to fix position:fixed
+            // (Parent elements with transform/filter break position:fixed)
+            document.body.appendChild(floatingNotesBtn);
+            
+            floatingNotesBtn.addEventListener('click', () => {
+                openFloatingNotePopup();
+            });
+            
+            // Periodically check if button is still visible (backup)
+            setInterval(() => {
+                const display = window.getComputedStyle(floatingNotesBtn).display;
+                const visibility = window.getComputedStyle(floatingNotesBtn).visibility;
+                const opacity = window.getComputedStyle(floatingNotesBtn).opacity;
+                
+                if (display === 'none' || visibility === 'hidden' || opacity === '0') {
+                    console.warn('[FLOATING BTN] Button was hidden! Display:', display, 'Visibility:', visibility, 'Opacity:', opacity);
+                    floatingNotesBtn.style.setProperty('display', 'flex', 'important');
+                    floatingNotesBtn.style.setProperty('visibility', 'visible', 'important');
+                    floatingNotesBtn.style.setProperty('opacity', '1', 'important');
+                }
+            }, 500);
+            
+            // Use MutationObserver to watch for style changes
+            const observer = new MutationObserver((mutations) => {
+                mutations.forEach((mutation) => {
+                    if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
+                        const currentDisplay = floatingNotesBtn.style.display;
+                        if (currentDisplay === 'none' || currentDisplay === '') {
+                            console.warn('[FLOATING BTN] Style mutation detected - display was changed to:', currentDisplay);
+                            floatingNotesBtn.style.setProperty('display', 'flex', 'important');
+                        }
+                    }
+                });
+            });
+            
+            observer.observe(floatingNotesBtn, {
+                attributes: true,
+                attributeFilter: ['style', 'class']
+            });
+        }
     });
+    
+    // ==================== SIMPLE MARKER SYSTEM ====================
+    // Inject markers into HTML string before rendering (simple & reliable)
+    function injectMarkersIntoHTML(sourceType, htmlContent) {
+        // Get markers from localStorage for this case
+        const markerKey = `note_markers_case_${caseId}_user_${(currentUserId !== null && currentUserId !== undefined) ? currentUserId : 'anon'}`;
+        let markers = [];
+        
+        try {
+            const stored = localStorage.getItem(markerKey);
+            if (stored) {
+                markers = JSON.parse(stored);
+                markers = markers.filter(m => m.source_type === sourceType);
+            }
+        } catch (e) {
+            console.error('[MARKERS] Error loading markers:', e);
+            return htmlContent;
+        }
+        
+        if (markers.length === 0) {
+            return htmlContent;
+        }
+        
+        let modifiedHTML = htmlContent;
+        
+        // Inject markers for each note
+        markers.forEach(markerData => {
+            const noteId = markerData.note_id;
+            const selectedText = markerData.selected_text || '';
+            
+            if (selectedText.length < 5) {
+                console.warn('[MARKERS] Text too short, skipping:', selectedText);
+                return;
+            }
+            
+            // Create marker HTML
+            const markerHTML = `<sup class="note-marker" data-note-id="${noteId}" style="color: #e96304 !important; cursor: pointer !important; font-size: 0.9em !important; margin: 0 2px !important; vertical-align: super !important; pointer-events: auto !important; font-weight: bold !important; text-decoration: none !important; display: inline !important; background-color: transparent !important;" title="Click to view/edit this note">[📝]</sup>`;
+            
+            // Find the text and inject marker after it
+            // Use first 50 chars to find location
+            const searchText = selectedText.substring(0, Math.min(50, selectedText.length));
+            const index = modifiedHTML.indexOf(searchText);
+            
+            if (index !== -1) {
+                // Insert marker after the found text
+                modifiedHTML = modifiedHTML.substring(0, index + searchText.length) + markerHTML + modifiedHTML.substring(index + searchText.length);
+            } else {
+                console.warn('[MARKERS] ✗ Text not found in HTML:', searchText.substring(0, 30));
+            }
+        });
+        
+        return modifiedHTML;
+    }
+    
+    // EVENT DELEGATION: Single global handler for all markers (current + future)
+    // This works regardless of when markers are added to DOM - no re-attachment needed!
+    function initMarkerClickHandler() {
+        // Only initialize once
+        if (window.markerClickHandlerInitialized) return;
+        
+        document.addEventListener('click', (e) => {
+            // Check if click was on a marker or inside a marker
+            const marker = e.target.closest('.note-marker');
+            if (marker) {
+                e.stopPropagation();
+                e.preventDefault();
+                const noteId = marker.getAttribute('data-note-id');
+                openNoteFragmentPopup(noteId);
+            }
+        });
+        
+        window.markerClickHandlerInitialized = true;
+    }
     
     // Render discussion using the same pipeline as Questions/Answers/Image descriptions
     // This ensures unified rendering: HTML tags + plain-text formatting (line breaks, bullets, indentation)
@@ -1072,7 +1891,416 @@
         // After rendering, safely linkify URLs (only plain text URLs, not those already in <a> tags)
         renderedContent = linkifyUrlsSafely(renderedContent);
         
+        // INJECT MARKERS INTO HTML (before setting innerHTML)
+        if (isStudent) {
+            renderedContent = injectMarkersIntoHTML('discussion', renderedContent);
+        }
+        
         discussionDiv.innerHTML = renderedContent;
+        
+        // Event delegation handles clicks - no need to attach handlers per marker
+    }
+
+    // ==================== STUDENT DISCUSSION FORUM (CHAT-STYLE UI) ====================
+    // IMPORTANT: Client-side enhancement only (no server-side data flow changes).
+    // Uses localStorage for persistence per user+case. Does NOT modify existing discussion content.
+    function initStudentDiscussionChat() {
+        if (!isStudent) return;
+
+        const discussionText = document.getElementById('discussionText');
+        if (!discussionText) return;
+
+        // Find the containing discussion section
+        const discussionSection = discussionText.closest('.discussion-section');
+        if (!discussionSection) return;
+
+        // Avoid duplicating panel
+        if (document.getElementById('discussionChatPanel')) return;
+
+        // Create desktop toggle button (positioned in discussion section, not inside panel)
+        const desktopToggleBtn = document.createElement('button');
+        desktopToggleBtn.type = 'button';
+        desktopToggleBtn.className = 'forum-toggle-btn forum-visible d-none d-lg-inline-flex';
+        desktopToggleBtn.id = 'forumToggleBtn';
+        desktopToggleBtn.title = 'Show/hide forum';
+        desktopToggleBtn.innerHTML = '<i class="fas fa-comments me-1"></i><span id="forumToggleText">Hide Forum</span>';
+        discussionSection.appendChild(desktopToggleBtn);
+
+        const panel = document.createElement('div');
+        panel.id = 'discussionChatPanel';
+        panel.setAttribute('aria-label', 'Discussion forum');
+        panel.style.display = ''; // Show by default
+        panel.innerHTML = `
+            <div class="chat-panel-header">
+                <p class="chat-title mb-0"><i class="fas fa-comments me-2" style="color: #5E899E;"></i>Forum</p>
+                <div class="d-flex gap-2 align-items-center">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="togglePinnedBtn" title="Hide/show pinned messages">
+                        <i class="fas fa-thumbtack me-1"></i>Pinned
+                    </button>
+                </div>
+            </div>
+            <div class="forum-guideline mb-2" style="background: #f8f9fa; border-radius: 6px; padding: 0.5rem 0.75rem; border-left: 3px solid #5E899E;">
+                <small style="color: #5a6270; font-size: 0.75rem; line-height: 1.4;">
+                    <i class="fas fa-lightbulb me-1" style="color: #5E899E;"></i>Share insights that help deepen understanding of this case.
+                </small>
+            </div>
+            <div id="chatPinnedWrap" class="mb-2"></div>
+            <div id="chatMessageList" class="chat-panel-list" role="list"></div>
+            <div class="mt-2">
+                <textarea id="chatEditorTextarea" class="form-control chat-editor" placeholder="Share a helpful insight about this case…"></textarea>
+                <div class="d-flex justify-content-between align-items-center mt-2">
+                    <small class="text-muted" id="chatStatusText" style="font-size: 0.7rem;">Sorted by votes • Shared with all students</small>
+                    <button type="button" class="btn btn-sm btn-brand-success" id="chatPostBtn">
+                        <i class="fas fa-paper-plane me-1"></i>Post
+                    </button>
+                </div>
+            </div>
+        `;
+
+        // Insert panel right after the discussion text (DOM order preserved; layout handled by CSS grid)
+        discussionText.insertAdjacentElement('afterend', panel);
+        discussionSection.classList.add('discussion-has-chat');
+
+        // Forum toggle function (shared by both mobile and desktop buttons)
+        function toggleForum() {
+            const isHidden = panel.style.display === 'none';
+            const desktopBtn = document.getElementById('forumToggleBtn');
+            const mobileBtn = document.getElementById('forumToggleBtnMobile');
+            
+            if (isHidden) {
+                panel.style.display = '';
+                discussionSection.classList.remove('forum-hidden');
+                // Update all toggle texts and button styles
+                document.querySelectorAll('#forumToggleText, #forumToggleTextMobile').forEach(el => {
+                    el.textContent = 'Hide Forum';
+                });
+                if (desktopBtn) {
+                    desktopBtn.classList.remove('forum-hidden-btn');
+                    desktopBtn.classList.add('forum-visible');
+                }
+                if (mobileBtn) {
+                    mobileBtn.classList.remove('forum-hidden-btn');
+                    mobileBtn.classList.add('forum-visible');
+                }
+                panel.setAttribute('aria-expanded', 'true');
+            } else {
+                panel.style.display = 'none';
+                discussionSection.classList.add('forum-hidden');
+                // Update all toggle texts and button styles
+                document.querySelectorAll('#forumToggleText, #forumToggleTextMobile').forEach(el => {
+                    el.textContent = 'Show Forum';
+                });
+                if (desktopBtn) {
+                    desktopBtn.classList.remove('forum-visible');
+                    desktopBtn.classList.add('forum-hidden-btn');
+                }
+                if (mobileBtn) {
+                    mobileBtn.classList.remove('forum-visible');
+                    mobileBtn.classList.add('forum-hidden-btn');
+                }
+                panel.setAttribute('aria-expanded', 'false');
+            }
+        }
+
+        // Desktop toggle button handler
+        desktopToggleBtn.addEventListener('click', toggleForum);
+
+        // Mobile toggle button handler
+        const toggleBtnMobile = document.getElementById('forumToggleBtnMobile');
+        if (toggleBtnMobile) {
+            toggleBtnMobile.addEventListener('click', toggleForum);
+        }
+
+        // Forum state - loaded from API, cached locally
+        let forumMessages = [];
+        let hidePinned = false;
+
+        // Load messages from API
+        async function loadForumMessages() {
+            try {
+                const response = await fetch(`/api/case/${caseId}/forum/messages`);
+                if (!response.ok) throw new Error('Failed to load messages');
+                const data = await response.json();
+                if (data.success) {
+                    forumMessages = data.messages || [];
+                    renderForum();
+                }
+            } catch (e) {
+                console.error('[FORUM] Load error:', e);
+                // Show error in UI
+                const list = document.getElementById('chatMessageList');
+                if (list) {
+                    list.innerHTML = '<div class="text-danger"><i class="fas fa-exclamation-circle me-2"></i>Failed to load messages.</div>';
+                }
+            }
+        }
+
+        function sanitizeMessageHtml(html) {
+            if (!html) return '';
+            let cleaned = html.replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '');
+            cleaned = cleaned.replace(/\son\w+="[^"]*"/gi, '');
+            cleaned = cleaned.replace(/\son\w+='[^']*'/gi, '');
+            return cleaned.trim();
+        }
+
+        function messageToneStyle(votes) {
+            const v = Number(votes || 0);
+            if (v >= 5) return 'border-left: 4px solid var(--brand-success, #a8d5ba); background: rgba(168, 213, 186, 0.16);';
+            if (v >= 1) return 'border-left: 4px solid rgba(168, 213, 186, 0.9); background: rgba(168, 213, 186, 0.10);';
+            if (v <= -3) return 'border-left: 4px solid #e89580; background: rgba(232, 149, 128, 0.10);';
+            if (v <= -1) return 'border-left: 4px solid rgba(232, 149, 128, 0.8); background: rgba(232, 149, 128, 0.06);';
+            return '';
+        }
+
+        function renderForum() {
+            const pinnedWrap = document.getElementById('chatPinnedWrap');
+            const list = document.getElementById('chatMessageList');
+            const togglePinnedBtn = document.getElementById('togglePinnedBtn');
+            if (!pinnedWrap || !list || !togglePinnedBtn) return;
+
+            togglePinnedBtn.classList.toggle('active', !hidePinned);
+
+            // Messages are already sorted by API (pinned first, then by votes)
+            const pinned = forumMessages.filter(m => m.is_pinned);
+            const normal = forumMessages.filter(m => !m.is_pinned);
+
+            // Pinned section
+            if (hidePinned || pinned.length === 0) {
+                pinnedWrap.innerHTML = '';
+            } else {
+                pinnedWrap.innerHTML = `
+                    <div class="mb-2 d-flex justify-content-between align-items-center">
+                        <small class="text-muted"><i class="fas fa-thumbtack me-1"></i>Pinned messages</small>
+                    </div>
+                    ${pinned.map(m => renderMessageHtml(m)).join('')}
+                `;
+            }
+
+            // Main list
+            if (normal.length === 0) {
+                list.innerHTML = '<div class="text-muted"><i class="fas fa-info-circle me-2"></i>No messages yet. Be the first to share!</div>';
+            } else {
+                list.innerHTML = normal.map(m => renderMessageHtml(m)).join('');
+            }
+
+            // Wire vote and pin actions
+            document.querySelectorAll('[data-forum-vote]').forEach(btn => {
+                btn.addEventListener('click', handleVote);
+            });
+            document.querySelectorAll('[data-forum-pin]').forEach(btn => {
+                btn.addEventListener('click', handlePin);
+            });
+            document.querySelectorAll('[data-forum-delete]').forEach(btn => {
+                btn.addEventListener('click', handleDelete);
+            });
+        }
+
+        async function handleVote(e) {
+            const btn = e.currentTarget;
+            const msgId = parseInt(btn.getAttribute('data-msg-id'));
+            const voteType = btn.getAttribute('data-forum-vote'); // 'up' or 'down'
+            
+            const msg = forumMessages.find(m => m.id === msgId);
+            if (!msg) return;
+
+            // Determine new vote: toggle if same, set if different
+            let newVote;
+            if (voteType === 'up') {
+                newVote = msg.user_vote === 1 ? 0 : 1;
+            } else {
+                newVote = msg.user_vote === -1 ? 0 : -1;
+            }
+
+            try {
+                const response = await fetch(`/api/forum/message/${msgId}/vote`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ vote: newVote })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    msg.vote_score = data.new_score;
+                    msg.user_vote = data.user_vote;
+                    renderForum();
+                }
+            } catch (e) {
+                console.error('[FORUM] Vote error:', e);
+            }
+        }
+
+        async function handlePin(e) {
+            const msgId = parseInt(e.currentTarget.getAttribute('data-msg-id'));
+            try {
+                const response = await fetch(`/api/forum/message/${msgId}/pin`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const data = await response.json();
+                if (data.success) {
+                    await loadForumMessages(); // Reload to get updated order
+                }
+            } catch (e) {
+                console.error('[FORUM] Pin error:', e);
+            }
+        }
+
+        async function handleDelete(e) {
+            const msgId = parseInt(e.currentTarget.getAttribute('data-msg-id'));
+            if (!confirm('Delete this message?')) return;
+            try {
+                const response = await fetch(`/api/forum/message/${msgId}`, {
+                    method: 'DELETE'
+                });
+                const data = await response.json();
+                if (data.success) {
+                    forumMessages = forumMessages.filter(m => m.id !== msgId);
+                    renderForum();
+                }
+            } catch (e) {
+                console.error('[FORUM] Delete error:', e);
+            }
+        }
+
+        function renderMessageHtml(msg) {
+            const votes = msg.vote_score || 0;
+            const tone = messageToneStyle(votes);
+            const pinIcon = msg.is_pinned ? '<i class="fas fa-thumbtack me-1 text-warning"></i>' : '';
+            
+            // Highlight user's own vote
+            const upClass = msg.user_vote === 1 ? 'btn-success' : 'btn-outline-secondary';
+            const downClass = msg.user_vote === -1 ? 'btn-danger' : 'btn-outline-secondary';
+            
+            // Admin can pin/unpin
+            const pinBtn = isAdminUser ? `
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-forum-pin="toggle" data-msg-id="${msg.id}" title="Pin/unpin">
+                    <i class="fas fa-thumbtack"></i>
+                </button>
+            ` : '';
+            
+            // Owner or admin can delete
+            const deleteBtn = (msg.is_own || isAdminUser) ? `
+                <button type="button" class="btn btn-sm btn-outline-danger" data-forum-delete="true" data-msg-id="${msg.id}" title="Delete">
+                    <i class="fas fa-trash-alt"></i>
+                </button>
+            ` : '';
+
+            // Show author name for shared forum
+            const authorDisplay = msg.author_name ? `<small class="text-muted ms-2">— ${msg.author_name}</small>` : '';
+
+            return `
+                <div class="chat-message ${msg.is_pinned ? 'is-pinned' : ''}" role="listitem" style="${tone}">
+                    <div class="chat-message-meta">
+                        <span>${pinIcon}<strong>${votes}</strong>${authorDisplay}</span>
+                        <div class="chat-actions">
+                            <button type="button" class="btn btn-sm ${upClass}" data-forum-vote="up" data-msg-id="${msg.id}" aria-label="Upvote">
+                                <i class="fas fa-thumbs-up"></i>
+                            </button>
+                            <button type="button" class="btn btn-sm ${downClass}" data-forum-vote="down" data-msg-id="${msg.id}" aria-label="Downvote">
+                                <i class="fas fa-thumbs-down"></i>
+                            </button>
+                            ${pinBtn}
+                            ${deleteBtn}
+                        </div>
+                    </div>
+                    <div class="chat-message-body">${msg.content || ''}</div>
+                </div>
+            `;
+        }
+
+        async function ensureTinyMceLoaded() {
+            if (window.tinymce && typeof window.tinymce.init === 'function') return true;
+            return new Promise((resolve) => {
+                const existing = document.querySelector('script[data-chat-tinymce="true"]');
+                if (existing) {
+                    existing.addEventListener('load', () => resolve(true));
+                    existing.addEventListener('error', () => resolve(false));
+                    return;
+                }
+                const s = document.createElement('script');
+                s.src = 'https://cdn.jsdelivr.net/npm/tinymce@6/tinymce.min.js';
+                s.async = true;
+                s.setAttribute('data-chat-tinymce', 'true');
+                s.onload = () => resolve(true);
+                s.onerror = () => resolve(false);
+                document.head.appendChild(s);
+            });
+        }
+
+        async function initEditorIfNeeded() {
+            const textarea = document.getElementById('chatEditorTextarea');
+            if (!textarea) return;
+            if (window.tinymce && window.tinymce.get('chatEditorTextarea')) return;
+
+            const ok = await ensureTinyMceLoaded();
+            if (!ok || !window.tinymce || !window.tinymce.init) return;
+
+            window.tinymce.init({
+                selector: '#chatEditorTextarea',
+                height: 180,
+                menubar: false,
+                toolbar: 'undo redo | bold italic underline | bullist numlist | link | removeformat',
+                plugins: 'link lists',
+                base_url: 'https://cdn.jsdelivr.net/npm/tinymce@6',
+                skin: 'oxide',
+                content_css: 'default'
+            });
+        }
+
+        // Toggle pinned visibility (local only, not persisted)
+        const togglePinnedBtn = document.getElementById('togglePinnedBtn');
+        if (togglePinnedBtn) {
+            togglePinnedBtn.addEventListener('click', () => {
+                hidePinned = !hidePinned;
+                renderForum();
+            });
+        }
+
+        // Post new message
+        const postBtn = document.getElementById('chatPostBtn');
+        if (postBtn) {
+            postBtn.addEventListener('click', async () => {
+                await initEditorIfNeeded();
+                let html = '';
+                if (window.tinymce && window.tinymce.get('chatEditorTextarea')) {
+                    html = window.tinymce.get('chatEditorTextarea').getContent();
+                    window.tinymce.get('chatEditorTextarea').setContent('');
+                } else {
+                    const textarea = document.getElementById('chatEditorTextarea');
+                    html = textarea ? textarea.value : '';
+                    if (textarea) textarea.value = '';
+                }
+
+                html = sanitizeMessageHtml(html);
+                if (!html) return;
+
+                try {
+                    const response = await fetch(`/api/case/${caseId}/forum/message`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ content: html })
+                    });
+                    const data = await response.json();
+                    if (data.success && data.message) {
+                        forumMessages.unshift(data.message); // Add to top
+                        renderForum();
+                    } else if (data.error) {
+                        alert('Error: ' + data.error);
+                    }
+                } catch (e) {
+                    console.error('[FORUM] Post error:', e);
+                    alert('Failed to post message. Please try again.');
+                }
+            });
+        }
+
+        // Initialize editor lazily on first focus
+        const textarea = document.getElementById('chatEditorTextarea');
+        if (textarea) {
+            textarea.addEventListener('focus', initEditorIfNeeded, { once: true });
+        }
+
+        // Load messages on init
+        loadForumMessages();
     }
     
     // Load Q&A pairs from API
@@ -1092,6 +2320,19 @@
                 
                 if (pairs.length === 0) {
                     container.innerHTML = '<p class="text-info">No Q&A pairs added yet. Click Edit Case to add them.</p>';
+                    return;
+                }
+
+                // Student view: interactive Q&A (dropdown + click-to-reveal answers)
+                if (isStudent) {
+                    renderStudentQAInteractive(pairs, container);
+                    forceLeftAlignQaContent(container);
+
+                    // Reload annotations to apply to newly loaded Q&A
+                    if (typeof loadAnnotations === 'function') {
+                        setTimeout(loadAnnotations, 300);
+                        setTimeout(loadAnnotations, 1500);
+                    }
                     return;
                 }
                 
@@ -1259,13 +2500,15 @@
                 container.innerHTML = desktopHtml + mobileHtml;
                 forceLeftAlignQaContent(container);
                 
-                // Reload highlights to apply to newly loaded Q&A
-                if (isStudent && typeof loadHighlights === 'function') {
-                    // Reload highlights after Q&A content is rendered (important for mobile)
-                    setTimeout(loadHighlights, 300);
+                // Reload annotations to apply to newly loaded Q&A
+                if (isStudent && typeof loadAnnotations === 'function') {
+                    // Reload annotations after Q&A content is rendered (important for mobile)
+                    setTimeout(loadAnnotations, 300);
                     // Also retry after a longer delay in case content takes time to render on mobile
-                    setTimeout(loadHighlights, 1500);
+                    setTimeout(loadAnnotations, 1500);
                 }
+                
+                // Markers will be injected when Q&A content is rendered
             })
             .catch(error => {
                 console.error('Error loading Q&A pairs:', error);
@@ -1274,6 +2517,190 @@
                     container.innerHTML = `<p class="text-danger">Error loading Q&A pairs: ${error.message || 'Unknown error'}</p>`;
                 }
             });
+    }
+
+    // ==================== STUDENT Q&A INTERACTION ====================
+    // IMPORTANT: This is a layout/interaction enhancement only. It uses the same API and preserves existing classes/IDs used elsewhere.
+    function renderStudentQAInteractive(pairs, container) {
+        if (!container) return;
+
+        // Load progress from localStorage
+        const progressKey = `frcr_qa_progress_${caseId}_${(currentUserId !== null && currentUserId !== undefined) ? currentUserId : 'anon'}`;
+        let progress = { reviewed: [], difficult: [] };
+        try {
+            const stored = localStorage.getItem(progressKey);
+            if (stored) {
+                progress = JSON.parse(stored);
+                if (!Array.isArray(progress.reviewed)) progress.reviewed = [];
+                if (!Array.isArray(progress.difficult)) progress.difficult = [];
+            }
+        } catch (e) {
+            progress = { reviewed: [], difficult: [] };
+        }
+
+        function updateProgress() {
+            const reviewedCount = progress.reviewed.length;
+            const totalCount = pairs.length;
+            const percent = totalCount > 0 ? Math.round((reviewedCount / totalCount) * 100) : 0;
+            
+            const progressBar = document.getElementById('qaProgressBar');
+            const progressText = document.getElementById('qaProgressText');
+            if (progressBar) {
+                progressBar.style.width = `${percent}%`;
+                progressBar.setAttribute('aria-valuenow', percent);
+            }
+            if (progressText) {
+                progressText.textContent = `${reviewedCount}/${totalCount} (${percent}%)`;
+            }
+        }
+
+        function normalizeQaText(pairText, prefixRegex) {
+            let t = (pairText || '').trim();
+            t = t.replace(prefixRegex, '');
+            t = renderSafeHTML(t);
+            t = convertMarkdownBoldToH4(t);
+            t = t.replace(/^[\s\n\r]+/, '');
+            const isPlain = isPlainText(t);
+            if (isPlain) t = renderPlainTextWithFormatting(t);
+            return t;
+        }
+
+        function getStatusClass(num) {
+            if (progress.difficult.includes(num)) return 'status-difficult';
+            if (progress.reviewed.includes(num)) return 'status-reviewed';
+            return 'status-unreviewed';
+        }
+
+        function getStatusIcon(num) {
+            if (progress.difficult.includes(num)) return '<i class="fas fa-star" style="color: #ff9800;"></i>';
+            if (progress.reviewed.includes(num)) return '<i class="fas fa-check-circle" style="color: #28a745;"></i>';
+            return '<i class="fas fa-circle" style="color: #6c757d;"></i>';
+        }
+
+        // Build preview cards for all questions (collapsed by default)
+        const itemsHtml = pairs.map(pair => {
+            const num = pair.number;
+            const questionText = normalizeQaText(pair?.question?.text, /^Question\s+\d+:\s*/i);
+            const answerText = normalizeQaText(pair?.answer?.text, /^Answer\s+\d+:\s*/i);
+
+            const questionAi = questionText.includes('data-ai-generated="true"') || questionText.includes("data-ai-generated='true'");
+            const answerAi = answerText.includes('data-ai-generated="true"') || answerText.includes("data-ai-generated='true'");
+            const aiRowClass = (questionAi || answerAi) ? 'ai-generated-pair' : '';
+            const statusClass = getStatusClass(num);
+            const statusIcon = getStatusIcon(num);
+
+            // Truncate question for preview (first 100 chars)
+            const questionPreview = questionText.length > 100 
+                ? questionText.substring(0, 100).replace(/<[^>]*>/g, '').trim() + '...'
+                : questionText.replace(/<[^>]*>/g, '').trim();
+
+            return `
+                <div class="qa-student-item qa-preview-card ${statusClass} ${aiRowClass}" id="qaStudentItem_${num}" data-qa-number="${num}">
+                    <div class="qa-preview-header">
+                        <div class="qa-preview-status">${statusIcon}</div>
+                        <div class="qa-preview-number">Q${num}</div>
+                        <div class="qa-preview-text">${questionPreview}</div>
+                    </div>
+                    <div class="qa-preview-actions">
+                        <button type="button" class="btn btn-sm btn-outline-success qa-reveal-btn" data-qa-num="${num}">
+                            <i class="fas fa-eye me-1"></i>Reveal Answer
+                        </button>
+                    </div>
+                    <div class="qa-student-question-full" hidden style="padding: 1rem; border-top: 1px solid #e9ecef;">
+                        <div class="qa-cell-content qa-question highlightable-text ${questionAi ? 'has-ai-content' : ''}" 
+                             data-field="question_${num}"
+                             style="text-align: left !important; ${isStudent ? 'user-select: text;' : ''}">
+                            ${questionText || '<em class="text-muted">No question text</em>'}
+                        </div>
+                    </div>
+                    <div class="qa-student-answer qa-cell-content qa-answer highlightable-text ${answerAi ? 'has-ai-content' : ''}"
+                         hidden
+                         data-field="answer_${num}"
+                         style="text-align: left !important; ${isStudent ? 'user-select: text; cursor: text;' : ''}">
+                        <div class="d-flex align-items-start gap-3">
+                            <div class="qa-cell-number" style="min-width: 40px; font-weight: 700; color: var(--brand-success, #a8d5ba);">A${num}</div>
+                            <div class="flex-grow-1">${answerText || '<em class="text-muted">No answer text</em>'}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        // Calculate initial progress
+        const reviewedCount = progress.reviewed.length;
+        const totalCount = pairs.length;
+        const percent = totalCount > 0 ? Math.round((reviewedCount / totalCount) * 100) : 0;
+
+        container.innerHTML = `
+            <div class="qa-progress-container mb-3">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="fw-bold">Progress: <span id="qaProgressText">${reviewedCount}/${totalCount} (${percent}%)</span></span>
+                </div>
+                <div class="progress" style="height: 8px;">
+                    <div id="qaProgressBar" class="progress-bar bg-success" role="progressbar" style="width: ${percent}%;" aria-valuenow="${percent}" aria-valuemin="0" aria-valuemax="100"></div>
+                </div>
+            </div>
+            <div id="qaStudentItems" class="qa-student-items" aria-live="polite">
+                ${itemsHtml}
+            </div>
+        `;
+
+        const list = document.getElementById('qaStudentItems');
+        if (!list) return;
+
+        // Handle question card expand/collapse
+        list.querySelectorAll('.qa-preview-card').forEach(card => {
+            const num = parseInt(card.dataset.qaNumber, 10);
+            const previewHeader = card.querySelector('.qa-preview-header');
+            const questionFull = card.querySelector('.qa-student-question-full');
+            const answerEl = card.querySelector('.qa-student-answer');
+            const revealBtn = card.querySelector('.qa-reveal-btn');
+
+            if (previewHeader && questionFull) {
+                previewHeader.addEventListener('click', (e) => {
+                    // Don't toggle if clicking the reveal button
+                    if (e.target.closest('.qa-reveal-btn')) return;
+
+                    const isHidden = questionFull.hasAttribute('hidden');
+                    if (isHidden) {
+                        questionFull.removeAttribute('hidden');
+                        card.classList.add('qa-expanded');
+                    } else {
+                        questionFull.setAttribute('hidden', 'hidden');
+                        card.classList.remove('qa-expanded');
+                        // Also hide answer if showing
+                        if (answerEl && !answerEl.hasAttribute('hidden')) {
+                            answerEl.setAttribute('hidden', 'hidden');
+                            if (revealBtn) {
+                                revealBtn.innerHTML = '<i class="fas fa-eye me-1"></i>Reveal Answer';
+                            }
+                        }
+                    }
+                });
+            }
+
+            if (revealBtn && answerEl) {
+                revealBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const isHidden = answerEl.hasAttribute('hidden');
+                    if (isHidden) {
+                        // Show full question first if hidden
+                        if (questionFull && questionFull.hasAttribute('hidden')) {
+                            
+                            card.classList.add('qa-expanded');
+                        }
+                        answerEl.removeAttribute('hidden');
+                        revealBtn.innerHTML = '<i class="fas fa-eye-slash me-1"></i>Hide Answer';
+                    } else {
+                        answerEl.setAttribute('hidden', 'hidden');
+                        revealBtn.innerHTML = '<i class="fas fa-eye me-1"></i>Reveal Answer';
+                    }
+                });
+            }
+        });
+
+        // Update progress initially
+        updateProgress();
     }
     
     // Delete case
@@ -1403,9 +2830,14 @@
                     } else {
                         descriptionDisplay.classList.remove('plain-text-formatted');
                     }
+                    // Add data-field and highlightable-text class for text selection menu
+                    descriptionDisplay.className = 'highlightable-text';
+                    descriptionDisplay.setAttribute('data-field', `image_${imageId}`);
                     descriptionDisplay.innerHTML = desc;
                 } else {
                     // Show default text if no description
+                    descriptionDisplay.className = 'highlightable-text';
+                    descriptionDisplay.setAttribute('data-field', `image_${imageId}`);
                     descriptionDisplay.innerHTML = 'No description';
                 }
             })
@@ -1478,9 +2910,88 @@
     const notesTextarea = document.getElementById('candidateNoteText');
     const noteSaveStatus = document.getElementById('noteSaveStatus');
     
-    // Auto-save notes after 2 seconds of inactivity (students only)
+    // Format notes display: convert to bullet points (no icons, no tags)
+    function formatNotesDisplay() {
+        if (!notesTextarea || !isStudent) return '';
+        
+        const rawNotes = notesTextarea.dataset.rawNotes || notesTextarea.value || '';
+        
+        // Regex to find note fragments: [note:ID][from CONTEXT][text:SELECTED] content [/note:ID]
+        // The [text:...] tag is optional for backward compatibility
+        const noteFragmentRegex = /\[note:([^\]]+)\]\[from ([^\]]+)\](?:\[text:[^\]]*\])?\s*(.*?)\[\/note:\1\]/gs;
+        
+        // Replace note fragments with bullet points (remove icons/tags)
+        let formattedNotes = rawNotes.replace(noteFragmentRegex, (match, noteId, context, content) => {
+            // Clean content (remove extra whitespace)
+            const cleanContent = content.trim();
+            // Return as bullet point only (no icons, no tags)
+            return '• ' + cleanContent;
+        });
+        
+        // Also ensure any existing plain notes start with bullet if they don't have one
+        formattedNotes = formattedNotes.trim();
+        if (formattedNotes && !formattedNotes.startsWith('•')) {
+            // Split by newlines and ensure each line starts with bullet
+            const lines = formattedNotes.split('\n').map(line => {
+                const trimmed = line.trim();
+                if (!trimmed) return '';
+                if (trimmed.startsWith('•')) return trimmed;
+                return '• ' + trimmed;
+            });
+            formattedNotes = lines.filter(line => line).join('\n');
+        }
+        
+        return formattedNotes;
+    }
+    
+    // Sync formatted display with textarea (called when notes are saved/loaded)
+    function syncNotesDisplay() {
+        if (!notesTextarea) return;
+        
+        // Format notes for display but keep raw tags in textarea value
+        // The textarea will show raw tags but we'll format them visually on display
+        // When user edits, they see raw tags (which is needed for fragment system)
+        // When displaying, we show formatted version
+        
+        // For now, we'll format in real-time when displaying notes
+        // But keep raw tags in textarea for fragment system to work
+    }
+    
+            // Auto-save notes after 2 seconds of inactivity (students only)
     if (notesTextarea && isStudent) {
+            // The inline script should have already formatted notes on page load
+            // This is a fallback in case inline script didn't run
+            if (notesTextarea.value && !notesTextarea.dataset.rawNotes) {
+                const rawNotes = notesTextarea.value;
+                // Store raw notes in dataset
+                notesTextarea.dataset.rawNotes = rawNotes;
+                notesTextarea.dataset.previousNotes = rawNotes;
+                
+                // Format notes to bullet points
+                const formatted = formatNotesDisplay();
+                notesTextarea.value = formatted;
+            } else if (notesTextarea.dataset.rawNotes && !notesTextarea.dataset.previousNotes) {
+                // If rawNotes exists but previousNotes doesn't, set it
+                notesTextarea.dataset.previousNotes = notesTextarea.dataset.rawNotes;
+            } else if (!notesTextarea.value) {
+                // No notes initially, store empty string
+                notesTextarea.dataset.previousNotes = '';
+            }
+        
         notesTextarea.addEventListener('input', function() {
+            // Mark that user has edited
+            notesTextarea.dataset.userEdited = 'true';
+            
+            // If user starts typing after clearing, hide undo button (they're adding new content)
+            const currentValue = notesTextarea.value.trim();
+            if (currentValue && lastClearedNotes) {
+                const undoBtn = document.getElementById('undoClearBtn');
+                if (undoBtn) {
+                    undoBtn.style.display = 'none';
+                }
+                lastClearedNotes = null;
+            }
+            
             // Clear existing timeout
             if (notesSaveTimeout) {
                 clearTimeout(notesSaveTimeout);
@@ -1497,7 +3008,33 @@
     }
     
     function saveNotes() {
-        const noteText = notesTextarea.value.trim();
+        // Use raw notes with tags if available (needed for fragment system)
+        let noteText = notesTextarea.dataset.rawNotes || notesTextarea.value.trim();
+        // If we have raw notes stored, use them; otherwise format might have changed, reconstruct if needed
+        if (notesTextarea.dataset.rawNotes) {
+            noteText = notesTextarea.dataset.rawNotes.trim();
+        }
+        
+        // Detect if notes are being manually cleared (empty after trim)
+        const previousNotes = notesTextarea.dataset.previousNotes || '';
+        const isManualClear = previousNotes && !noteText && notesTextarea.dataset.userEdited === 'true';
+        
+        if (isManualClear) {
+            // Store for undo
+            if (!lastClearedNotes) {
+                lastClearedNotes = previousNotes;
+                const undoBtn = document.getElementById('undoClearBtn');
+                if (undoBtn) {
+                    undoBtn.style.display = 'inline-block';
+                }
+            }
+            
+            // Note: Superscript markers will be handled by the new annotation system
+        }
+        
+        // Store current notes for next comparison
+        notesTextarea.dataset.previousNotes = noteText;
+        
         const caseId = {{ case.id }};
         
         fetch(`/api/case/${caseId}/note`, {
@@ -1515,6 +3052,11 @@
                 const now = new Date();
                 const timeStr = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
                 noteSaveStatus.innerHTML = `<i class="fas fa-check-circle text-success me-1"></i>Saved at ${timeStr}`;
+                
+                // If notes are empty, also update status
+                if (!noteText) {
+                    noteSaveStatus.innerHTML = `<i class="fas fa-check-circle text-success me-1"></i>Notes cleared at ${timeStr}`;
+                }
             } else {
                 noteSaveStatus.innerHTML = '<i class="fas fa-exclamation-circle text-danger me-1"></i>Error saving';
             }
@@ -1525,10 +3067,530 @@
         });
     }
     
+    // Store last cleared notes for undo functionality
+    let lastClearedNotes = null;
+    
     function clearNotes() {
         if (confirm('Are you sure you want to clear all notes for this case?')) {
+            // Store current notes for undo
+            lastClearedNotes = notesTextarea.dataset.rawNotes || notesTextarea.value;
+            
+            // Clear notes
             notesTextarea.value = '';
+            notesTextarea.dataset.rawNotes = '';
+            notesTextarea.dataset.userEdited = 'false';
+            
+            // Remove all superscript markers from the DOM
+            document.querySelectorAll('.note-marker').forEach(marker => {
+                marker.remove();
+            });
+            
+            // Save empty notes
             saveNotes();
+            
+            // Show undo button
+            const undoBtn = document.getElementById('undoClearBtn');
+            if (undoBtn) {
+                undoBtn.style.display = 'inline-block';
+            }
+            
+            showFlash('Notes cleared', 'success');
+        }
+    }
+    
+    function undoClearNotes() {
+        if (lastClearedNotes) {
+            // Restore raw notes
+            notesTextarea.dataset.rawNotes = lastClearedNotes;
+            
+            // Format for display (convert tags to bullet points)
+            const formatted = formatNotesDisplay();
+            notesTextarea.value = formatted;
+            
+            // Update previous notes for comparison
+            notesTextarea.dataset.previousNotes = lastClearedNotes;
+            
+            // Save restored notes
+            saveNotes();
+            
+            // Hide undo button and clear stored notes
+            const undoBtn = document.getElementById('undoClearBtn');
+            if (undoBtn) {
+                undoBtn.style.display = 'none';
+            }
+            
+            // Re-render markers from restored notes
+            setTimeout(renderNoteMarkersFromNotes, 500);
+            
+            lastClearedNotes = null;
+            
+            showFlash('Notes restored', 'success');
+        }
+    }
+    
+    // ==================== UNIFIED NOTES SYSTEM (PHASE 2) ====================
+    // Generate unique ID for note fragment
+    function generateNoteId() {
+        return 'note_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    }
+    
+    // Extract fragment from notes box (returns clean content for editor display)
+    function extractNoteFragment(noteId, notesText) {
+        const regex = new RegExp(`\\[note:${noteId}\\](.*?)\\[/note:${noteId}\\]`, 's');
+        const match = notesText.match(regex);
+        if (!match) return null;
+        // Remove internal tags for clean display:
+        // 1. [from X] prefix
+        // 2. [text:...] tag (stores selected text for marker re-rendering)
+        let content = match[1];
+        content = content.replace(/^\[from [^\]]+\]\s*/, '');  // Remove [from X]
+        content = content.replace(/^\[text:[^\]]*\]\s*/, '');  // Remove [text:...]
+        return content.trim();
+    }
+    
+    // Utility: Sanitize note content for editor display (strips all internal tags)
+    function sanitizeNoteForEditor(rawContent) {
+        if (!rawContent) return '';
+        let clean = rawContent;
+        // Remove [from X] tags
+        clean = clean.replace(/\[from [^\]]+\]\s*/g, '');
+        // Remove [text:...] tags  
+        clean = clean.replace(/\[text:[^\]]*\]\s*/g, '');
+        // Remove [note:ID] and [/note:ID] wrapper tags
+        clean = clean.replace(/\[note:[^\]]+\]/g, '');
+        clean = clean.replace(/\[\/note:[^\]]+\]/g, '');
+        return clean.trim();
+    }
+    
+    // Replace fragment in notes box (preserves [text:...] tag if present)
+    function replaceNoteFragment(noteId, newContent, notesText) {
+        // Regex that captures: [note:ID][from X] optionally [text:...] then content [/note:ID]
+        // Group 1: [note:ID][from X]
+        // Group 2: optional [text:...] tag (preserved)
+        // Group 3: the actual content (replaced)
+        // Group 4: [/note:ID]
+        const regex = new RegExp(`(\\[note:${noteId}\\]\\[from [^\\]]+\\])(\\[text:[^\\]]*\\])?\\s*(.*?)(\\[/note:${noteId}\\])`, 's');
+        if (regex.test(notesText)) {
+            return notesText.replace(regex, (match, prefix, textTag, oldContent, suffix) => {
+                // Preserve the [text:...] tag if it existed
+                const preservedTextTag = textTag || '';
+                return `${prefix}${preservedTextTag} ${newContent}${suffix}`;
+            });
+        }
+        // Fallback: try without [from X] prefix (for older notes)
+        const regex2 = new RegExp(`(\\[note:${noteId}\\])(.*?)(\\[/note:${noteId}\\])`, 's');
+        return notesText.replace(regex2, `$1${newContent}$3`);
+    }
+    
+    // Open "Add to Notes" popup (from text selection)
+    function openAddToNotesPopup(selectedText, fieldName) {
+        // Capture selection range IMMEDIATELY (before modal opens, which may clear selection)
+        const savedRange = currentSelectionRange ? currentSelectionRange.cloneRange() : null;
+        const savedRangeContainer = savedRange ? savedRange.commonAncestorContainer : null;
+        
+        // Generate unique ID for this note fragment
+        const noteId = generateNoteId();
+        
+        // Determine source context from field name
+        let sourceContext = 'text selection';
+        if (fieldName.startsWith('question_')) {
+            sourceContext = `Q${fieldName.replace('question_', '')}`;
+        } else if (fieldName.startsWith('answer_')) {
+            sourceContext = `A${fieldName.replace('answer_', '')}`;
+        } else if (fieldName === 'discussion') {
+            sourceContext = 'Discussion';
+        } else if (fieldName.startsWith('image_')) {
+            sourceContext = `Image ${fieldName.replace('image_', '')}`;
+        }
+        
+        // Create modal for note entry
+        const modalId = 'addToNotesModal';
+        let modal = document.getElementById(modalId);
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = modalId;
+            modal.className = 'modal fade';
+            modal.innerHTML = `
+                <div class="modal-dialog modal-dialog-centered notes-modal-dialog">
+                    <div class="modal-content notes-modal-content">
+                        <textarea id="addToNotesEditor" class="notes-modal-textarea" placeholder="Add your note here... (the selected text is pre-filled)"></textarea>
+                        <div class="notes-modal-overlay">
+                            <div class="notes-modal-header">
+                                <h5 class="notes-modal-title"><i class="fas fa-sticky-note me-2"></i>Add to Notes</h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="notes-modal-footer">
+                                <button type="button" class="btn btn-warning-outline btn-sm" data-bs-dismiss="modal">Cancel</button>
+                                <button type="button" class="btn btn-success-outline btn-sm" id="saveNoteFragmentBtn">
+                                    <i class="fas fa-save me-1"></i>Save Note
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+        
+        // Show modal first, then set editor value after modal is fully shown
+        const bsModal = new bootstrap.Modal(modal);
+        bsModal.show();
+        
+        // Wait for modal to be fully shown before setting editor value
+        modal.addEventListener('shown.bs.modal', function onModalShown() {
+            const editor = document.getElementById('addToNotesEditor');
+            if (editor) {
+                // Pre-fill with selected text (plain text, user can edit/remove)
+                const textToSet = selectedText.trim();
+                editor.value = textToSet;
+                // Force style to ensure visibility
+                editor.style.color = '#2c3e50';
+                editor.style.fontSize = '0.95rem';
+                editor.style.zIndex = '1';
+                // Set cursor at the end
+                setTimeout(() => {
+                    editor.focus();
+                    editor.setSelectionRange(editor.value.length, editor.value.length);
+                }, 50);
+            } else {
+                console.error('[Notes] Editor not found after modal shown!');
+            }
+        }, { once: true });
+        
+        // Save button handler
+        const saveBtn = document.getElementById('saveNoteFragmentBtn');
+        if (saveBtn) {
+            const handleSave = () => {
+                // Get editor from DOM (not from closure)
+                const editor = document.getElementById('addToNotesEditor');
+                if (!editor) {
+                    showFlash('Editor not found. Please try again.', 'error');
+                    return;
+                }
+                
+                const noteContent = editor.value.trim();
+                if (!noteContent) {
+                    showFlash('Please enter a note.', 'warning');
+                    return;
+                }
+                
+                // Get current notes - use raw notes if available (with tags), otherwise get from textarea
+                const currentRawNotes = notesTextarea?.dataset.rawNotes || (notesTextarea ? notesTextarea.value : '');
+                
+                // Append new note with internal tags for fragment system and marker persistence
+                // Format: [note:ID][from CONTEXT][text:SELECTED_TEXT] content [/note:ID]
+                // The [text:...] tag stores the selected text for marker re-rendering on page load
+                const escapedText = selectedText.replace(/\]/g, '\\]').substring(0, 100);
+                const noteFragment = `\n\n[note:${noteId}][from ${sourceContext}][text:${escapedText}] ${noteContent}[/note:${noteId}]`;
+                const updatedRawNotes = currentRawNotes + noteFragment;
+                
+                // Update notes textarea
+                if (notesTextarea) {
+                    // Store raw notes (with tags) for fragment system and saving
+                    notesTextarea.dataset.rawNotes = updatedRawNotes;
+                    
+                    // Format for display: convert to bullet points, remove icons/tags
+                    // Updated regex to handle [text:...] tag
+                    let formattedNotes = updatedRawNotes.replace(/\[note:[^\]]+\]\[from ([^\]]+)\](?:\[text:[^\]]*\])?\s*(.*?)\[\/note:[^\]]+\]/gs, (match, context, content) => {
+                        // Extract clean content and format as bullet point
+                        const cleanContent = content.trim();
+                        return '\n• ' + cleanContent;
+                    });
+                    // Also ensure any existing plain notes start with bullet if they don't have one
+                    formattedNotes = formattedNotes.trim();
+                    if (formattedNotes && !formattedNotes.startsWith('•')) {
+                        formattedNotes = '• ' + formattedNotes;
+                    }
+                    notesTextarea.value = formattedNotes;
+                    
+                    saveNotes(); // Save to server (will use raw notes)
+                }
+                
+                // Note: Marker position is now stored in the note itself via [text:...] tag
+                // No need for localStorage - markers will be rendered from notes on page load
+                
+                // Add superscript marker near selected text (use saved range from before modal opened)
+                if (savedRange && savedRangeContainer && savedRangeContainer.isConnected) {
+                    try {
+                        // Get the current selection to find where to insert the marker
+                        const selection = window.getSelection();
+                        if (selection && selection.rangeCount > 0) {
+                            const currentRange = selection.getRangeAt(0);
+                            // Check if selection is in the same container
+                            const currentContainer = currentRange.commonAncestorContainer;
+                            const container = currentContainer.nodeType === Node.TEXT_NODE ? currentContainer.parentElement : currentContainer;
+                            
+                            if (container) {
+                                // Try to insert after current selection end
+                                const range = currentRange.cloneRange();
+                                range.collapse(false); // Collapse to end
+                                
+                                const superscript = document.createElement('sup');
+                                superscript.className = 'note-marker';
+                                superscript.setAttribute('data-note-id', noteId);
+                                superscript.style.cssText = 'color: #e96304 !important; cursor: pointer !important; font-size: 0.9em !important; margin: 0 2px !important; vertical-align: super !important; pointer-events: auto !important; font-weight: bold !important; text-decoration: none !important; display: inline !important; background-color: transparent !important;';
+                                superscript.textContent = '[📝]';
+                                superscript.title = 'Click to view/edit this note';
+                                
+                                // Insert superscript after the selection
+                                range.insertNode(superscript);
+                                
+                                // Clear selection to avoid issues
+                                selection.removeAllRanges();
+                                
+                                // Add click handler to superscript
+                                superscript.addEventListener('click', (e) => {
+                                    e.stopPropagation();
+                                    e.preventDefault();
+                                    openNoteFragmentPopup(noteId);
+                                });
+                            }
+                        } else if (savedRangeContainer && savedRangeContainer.isConnected) {
+                            // Fallback: try using saved range
+                            const range = savedRange.cloneRange();
+                            if (!range.collapsed) {
+                                range.collapse(false);
+                                const superscript = document.createElement('sup');
+                                superscript.className = 'note-marker';
+                                superscript.setAttribute('data-note-id', noteId);
+                                superscript.style.cssText = 'color: #e96304 !important; cursor: pointer !important; font-size: 0.9em !important; margin: 0 2px !important; vertical-align: super !important; pointer-events: auto !important; font-weight: bold !important; text-decoration: none !important; display: inline !important; background-color: transparent !important;';
+                                superscript.textContent = '[📝]';
+                                superscript.title = 'Click to view/edit this note';
+                                range.insertNode(superscript);
+                                
+                                superscript.addEventListener('click', (e) => {
+                                    e.stopPropagation();
+                                    e.preventDefault();
+                                    openNoteFragmentPopup(noteId);
+                                });
+                            }
+                        }
+                    } catch (e) {
+                        console.warn('Could not insert superscript marker:', e);
+                        // Marker insertion failed, but note is saved - that's okay
+                    }
+                }
+                
+                bsModal.hide();
+                
+                // Format notes display to hide tags
+                formatNotesDisplay();
+                
+                showFlash('Note saved', 'success');
+            };
+            
+            // Remove old listeners
+            const newSaveBtn = saveBtn.cloneNode(true);
+            saveBtn.parentNode.replaceChild(newSaveBtn, saveBtn);
+            newSaveBtn.addEventListener('click', handleSave);
+        }
+    }
+    
+    // Open note fragment popup (from superscript click)
+    function openNoteFragmentPopup(noteId) {
+        // Use raw notes (with tags) for fragment extraction
+        const notesText = notesTextarea ? (notesTextarea.dataset.rawNotes || notesTextarea.value) : '';
+        if (!notesText) {
+            alert('No notes found.');
+            return;
+        }
+        
+        const fragmentContent = extractNoteFragment(noteId, notesText);
+        if (!fragmentContent) {
+            alert('Note fragment not found.');
+            return;
+        }
+        
+        // Create/use modal for editing fragment
+        const modalId = 'editNoteFragmentModal';
+        let modal = document.getElementById(modalId);
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = modalId;
+            modal.className = 'modal fade';
+            modal.innerHTML = `
+                <div class="modal-dialog modal-dialog-centered notes-modal-dialog">
+                    <div class="modal-content notes-modal-content">
+                        <textarea id="editNoteFragmentEditor" class="notes-modal-textarea"></textarea>
+                        <div class="notes-modal-overlay">
+                            <div class="notes-modal-header">
+                                <h5 class="notes-modal-title"><i class="fas fa-edit me-2"></i>Edit Note</h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="notes-modal-footer">
+                                <button type="button" class="btn btn-warning-outline btn-sm" data-bs-dismiss="modal">Cancel</button>
+                                <button type="button" class="btn btn-success-outline btn-sm" id="saveNoteFragmentEditBtn">
+                                    <i class="fas fa-save me-1"></i>Save
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+        
+        const bsModal = new bootstrap.Modal(modal);
+        bsModal.show();
+        
+        // Set editor value after modal is shown for visibility
+        modal.addEventListener('shown.bs.modal', function() {
+            const editor = document.getElementById('editNoteFragmentEditor');
+            if (editor) {
+                editor.value = fragmentContent;
+                // Force style to ensure visibility
+                editor.style.color = '#2c3e50';
+                editor.style.fontSize = '0.95rem';
+                editor.style.zIndex = '1';
+                setTimeout(() => {
+                    editor.focus();
+                    editor.setSelectionRange(editor.value.length, editor.value.length);
+                }, 50);
+            }
+        }, { once: true });
+        
+        // Store original content for no-change detection
+        const originalCleanContent = fragmentContent;
+        
+        const saveBtn = document.getElementById('saveNoteFragmentEditBtn');
+        if (saveBtn) {
+            const handleSave = () => {
+                // Get editor from DOM
+                const editor = document.getElementById('editNoteFragmentEditor');
+                const newContent = editor ? editor.value.trim() : '';
+                if (!newContent) {
+                    showFlash('Note cannot be empty.', 'warning');
+                    return;
+                }
+                
+                // Check if content actually changed (compare clean versions)
+                if (newContent === originalCleanContent) {
+                    // No change detected - silently close modal (no error, no save, no flash)
+                    bsModal.hide();
+                    return;
+                }
+                
+                // Use raw notes (with tags) for fragment replacement
+                const currentRawNotes = notesTextarea ? (notesTextarea.dataset.rawNotes || notesTextarea.value) : '';
+                const updatedRawNotes = replaceNoteFragment(noteId, newContent, currentRawNotes);
+                
+                // Only show error if actual replacement failed (not just no-change)
+                if (updatedRawNotes === currentRawNotes && newContent !== originalCleanContent) {
+                    showFlash('Could not update note. Please try again.', 'error');
+                    return;
+                }
+                
+                if (notesTextarea) {
+                    // Store updated raw notes
+                    notesTextarea.dataset.rawNotes = updatedRawNotes;
+                    
+                    // Format for display: convert to bullet points (remove icons/tags)
+                    // Updated regex to handle [text:...] tag
+                    let formattedNotes = updatedRawNotes.replace(/\[note:[^\]]+\]\[from ([^\]]+)\](?:\[text:[^\]]*\])?\s*(.*?)\[\/note:[^\]]+\]/gs, (match, context, content) => {
+                        const cleanContent = content.trim();
+                        return '\n• ' + cleanContent;
+                    });
+                    formattedNotes = formattedNotes.trim();
+                    if (formattedNotes && !formattedNotes.startsWith('•')) {
+                        formattedNotes = '• ' + formattedNotes;
+                    }
+                    notesTextarea.value = formattedNotes;
+                    
+                    saveNotes(); // Save raw notes
+                }
+                
+                bsModal.hide();
+                showFlash('Note updated', 'success');
+            };
+            
+            const newSaveBtn = saveBtn.cloneNode(true);
+            saveBtn.parentNode.replaceChild(newSaveBtn, saveBtn);
+            newSaveBtn.addEventListener('click', handleSave);
+        }
+    }
+    
+    // Open floating note popup (from floating button)
+    function openFloatingNotePopup() {
+        const modalId = 'floatingNoteModal';
+        let modal = document.getElementById(modalId);
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = modalId;
+            modal.className = 'modal fade';
+            modal.innerHTML = `
+                <div class="modal-dialog modal-dialog-centered notes-modal-dialog">
+                    <div class="modal-content notes-modal-content">
+                        <textarea id="floatingNoteEditor" class="notes-modal-textarea" placeholder="Type your note here..."></textarea>
+                        <div class="notes-modal-overlay">
+                            <div class="notes-modal-header">
+                                <h5 class="notes-modal-title"><i class="fas fa-sticky-note me-2"></i>Quick Note</h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="notes-modal-footer">
+                                <button type="button" class="btn btn-warning-outline btn-sm" data-bs-dismiss="modal">Cancel</button>
+                                <button type="button" class="btn btn-success-outline btn-sm" id="saveFloatingNoteBtn">
+                                    <i class="fas fa-save me-1"></i>Save Note
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+        
+        const bsModal = new bootstrap.Modal(modal);
+        bsModal.show();
+        
+        // Initialize editor after modal is shown for visibility
+        modal.addEventListener('shown.bs.modal', function() {
+            const editor = document.getElementById('floatingNoteEditor');
+            if (editor) {
+                editor.value = ''; // Clear editor
+                // Force style to ensure visibility
+                editor.style.color = '#2c3e50';
+                editor.style.fontSize = '0.95rem';
+                editor.style.zIndex = '1';
+                setTimeout(() => {
+                    editor.focus();
+                }, 50);
+            }
+        }, { once: true });
+        
+        const saveBtn = document.getElementById('saveFloatingNoteBtn');
+        if (saveBtn) {
+            const handleSave = () => {
+                // Get editor from DOM
+                const editor = document.getElementById('floatingNoteEditor');
+                const noteContent = editor ? editor.value.trim() : '';
+                if (!noteContent) {
+                    showFlash('Please enter a note.', 'warning');
+                    return;
+                }
+                
+                // Get current notes from textarea - use raw notes if available
+                const currentRawNotes = notesTextarea ? (notesTextarea.dataset.rawNotes || notesTextarea.value) : '';
+                
+                // Append new note as bullet point
+                const noteFragment = currentRawNotes ? `\n• ${noteContent}` : `• ${noteContent}`;
+                const updatedRawNotes = currentRawNotes + noteFragment;
+                
+                // Update notes textarea
+                if (notesTextarea) {
+                    // Store raw notes (keep any internal tags if present)
+                    notesTextarea.dataset.rawNotes = updatedRawNotes;
+                    // Display formatted version (bullet points)
+                    notesTextarea.value = updatedRawNotes;
+                    saveNotes(); // Save to server (will use raw notes)
+                }
+                
+                bsModal.hide();
+                showFlash('Note saved', 'success');
+            };
+            
+            const newSaveBtn = saveBtn.cloneNode(true);
+            saveBtn.parentNode.replaceChild(newSaveBtn, saveBtn);
+            newSaveBtn.addEventListener('click', handleSave);
         }
     }
     
@@ -1567,830 +3629,403 @@
                 desc = renderPlainTextWithFormatting(desc);
                 desc = highlightImageDescriptionMeta(desc, true);
                 descriptionDisplay.classList.add('plain-text-formatted');
-            } else {
+        } else {
                 descriptionDisplay.classList.remove('plain-text-formatted');
             }
+            // Add data-field and highlightable-text class for text selection menu
+            descriptionDisplay.className = 'highlightable-text' + (isPlainTextDesc ? ' plain-text-formatted' : '');
+            descriptionDisplay.setAttribute('data-field', `image_${image.id}`);
             descriptionDisplay.innerHTML = desc;
         } else {
+            // Add data-field and highlightable-text class even for empty descriptions
+            descriptionDisplay.className = 'highlightable-text';
+            descriptionDisplay.setAttribute('data-field', `image_${image.id}`);
             descriptionDisplay.innerHTML = 'No description';
         }
     }
     
-    // ==================== NEW SELECTION-BASED HIGHLIGHTING SYSTEM (STUDENTS ONLY) ====================
-    // Color preference stored in localStorage
-    const HIGHLIGHT_COLOR_KEY = 'frcr_highlight_color';
-    let currentHighlightColor = localStorage.getItem(HIGHLIGHT_COLOR_KEY) || 'yellow';
-    let highlightActionMenu = null;
+    // ==================== RECOGITO.JS ANNOTATION SYSTEM (STUDENTS ONLY) ====================
+    // This system replaces the legacy highlight/notes code with Recogito.js
+    // Two annotation types: 'highlight' (visual only) and 'note' (editable + saved)
+    
+    let recogito = null;
+    let annotationInstances = {}; // Track Recogito instances per content area
+    let globalNotesList = []; // Track all notes for the global notes section
+    
+    // Variables needed for notes system compatibility
     let currentSelectionRange = null;
     let currentSelectionField = null;
-    let currentSelectionText = null; // Store text immediately to avoid mobile Safari selection clearing
-    let lastSelectionTs = 0;
-    let processedHighlights = new Set(); // Track processed highlights to prevent duplicates
+    let currentSelectionText = null;
     
-    // Initialize new selection-based highlighting system
-    function initHighlighting() {
+    // ==================== INITIALIZATION ====================
+    function initAnnotationSystem() {
         if (!isStudent) return;
         
-        // Load existing highlights
-        loadHighlights();
+        // Setup text selection handlers for highlighting and notes
+        initializeAnnotatableAreas();
         
-        // Listen for text selection (works on both desktop and mobile)
-        let selectionTimeout = null;
+        // Setup floating notes button
+        setupFloatingNotesButton();
         
-        // Handle mouseup (desktop)
-        document.addEventListener('mouseup', function(e) {
-            // Don't show menu if clicking on the menu itself
-            if (highlightActionMenu && highlightActionMenu.contains(e.target)) {
-                return;
-            }
-            
-            // Small delay to ensure selection is complete
-            if (selectionTimeout) clearTimeout(selectionTimeout);
-            selectionTimeout = setTimeout(() => {
-                handleTextSelection(e);
-            }, 100);
-        });
-        
-        // Handle touchend (mobile)
-        document.addEventListener('touchend', function(e) {
-            // Don't show menu if tapping on the menu itself
-            if (highlightActionMenu && highlightActionMenu.contains(e.target)) {
-                return;
-            }
-            
-            // Longer delay for mobile to ensure selection is complete
-            if (selectionTimeout) clearTimeout(selectionTimeout);
-            selectionTimeout = setTimeout(() => {
-                handleTextSelection(e);
-            }, 300);
-        }, { passive: true });
-        
-        // Handle selectionchange (backup for mobile)
-        document.addEventListener('selectionchange', function() {
-            if (highlightActionMenu) return; // Don't interfere if menu is open
-            
-            const selection = window.getSelection();
-            if (selection && selection.toString().trim().length > 0) {
-                // Snapshot selection early (mobile may clear quickly)
-                captureSelectionSnapshot(selection);
-                // Check if selection is in highlightable content
-                if (selection.rangeCount > 0) {
-                    try {
-                        const range = selection.getRangeAt(0);
-                        const container = range.commonAncestorContainer;
-                        const fieldElement = findFieldElementFromNode(container);
-                        if (fieldElement) {
-                            // Small delay then show menu
-                            if (selectionTimeout) clearTimeout(selectionTimeout);
-                            selectionTimeout = setTimeout(() => {
-                                handleTextSelection(null);
-                            }, 200);
-                        }
-                    } catch (err) {
-                        // Ignore errors
-                    }
-                }
-            }
-        });
-        
-        // Close menu when clicking outside
-        document.addEventListener('click', function(e) {
-            if (highlightActionMenu && !highlightActionMenu.contains(e.target)) {
-                const selection = window.getSelection();
-                if (!selection || !selection.toString().trim()) {
-                    hideHighlightMenu();
-                }
-            }
-        });
+        // Render note markers after content loads
+        setTimeout(renderNoteMarkersFromNotes, 2000);
+        setTimeout(renderNoteMarkersFromNotes, 4000); // Retry for slow loads
     }
     
-    // Handle text selection and show contextual menu
-    function findFieldElementFromNode(node) {
-        if (!node) return null;
-        const element = node.nodeType === Node.TEXT_NODE ? node.parentElement : node;
-        if (!element) return null;
-        return element.closest('[data-field]') || element.closest('.highlightable-text');
+    // ==================== TEXT SELECTION SETUP ====================
+    function initializeAnnotatableAreas() {
+        if (!isStudent) return;
+        
+        // Add text selection handlers for creating highlights and notes
+        document.addEventListener('mouseup', handleTextSelection);
+        document.addEventListener('touchend', handleTextSelection);
     }
-
-    function captureSelectionSnapshot(selection) {
-        if (!selection || selection.rangeCount === 0) return;
-        const text = selection.toString().trim();
-        if (!text) return;
-        const range = selection.getRangeAt(0);
-        const container = range.commonAncestorContainer;
-        const fieldElement = findFieldElementFromNode(container);
-        if (!fieldElement) return;
-        currentSelectionRange = range.cloneRange();
-        currentSelectionField = fieldElement.dataset?.field || fieldElement.getAttribute('data-field') || 'discussion';
-        currentSelectionText = text;
-        lastSelectionTs = Date.now();
+    
+    // ==================== NOTE MARKERS ====================
+    // Render superscript markers by parsing notes and finding selected text in content
+    function renderNoteMarkersFromNotes() {
+        if (!notesTextarea) return;
+        
+        // Get raw notes with tags
+        const rawNotes = notesTextarea.dataset.rawNotes || notesTextarea.value || '';
+        if (!rawNotes) return;
+        
+        // Parse notes to extract note fragments with markers
+        // Format: [note:ID][from CONTEXT][text:SELECTED_TEXT] content [/note:ID]
+        const notePattern = /\[note:([^\]]+)\]\[from ([^\]]+)\](?:\[text:([^\]]*)\])?\s*(.*?)\[\/note:\1\]/gs;
+        let match;
+        let markersRendered = 0;
+        
+        while ((match = notePattern.exec(rawNotes)) !== null) {
+            const noteId = match[1];
+            const context = match[2];
+            const selectedText = match[3] ? match[3].replace(/\\\]/g, ']') : null;
+            
+            // Skip if no selected text or marker already exists
+            if (!selectedText || document.querySelector(`[data-note-id="${noteId}"]`)) {
+                continue;
+            }
+            
+            // Find the container based on context
+            let container = findContainerByContext(context);
+            if (!container) continue;
+            
+            // Try to find the selected text and add a marker
+            const success = addMarkerAfterText(container, selectedText, noteId);
+            if (success) {
+                markersRendered++;
+            }
+        }
     }
-
+    
+    // Find container element by note context (e.g., "Discussion", "Q1", "A2", "Image 1")
+    function findContainerByContext(context) {
+        if (context === 'Discussion' || context === 'discussion') {
+            return document.getElementById('discussionText');
+        } else if (context.startsWith('Q')) {
+            const num = context.replace('Q', '');
+            return document.querySelector(`.qa-question[data-field="question_${num}"]`) ||
+                   document.querySelector(`.qa-question`);
+        } else if (context.startsWith('A')) {
+            const num = context.replace('A', '');
+            return document.querySelector(`.qa-answer[data-field="answer_${num}"]`) ||
+                   document.querySelector(`.qa-answer`);
+        } else if (context.startsWith('Image')) {
+            const num = context.replace('Image ', '');
+            return document.querySelector(`[data-field="image_${num}"]`);
+        }
+        return null;
+    }
+    
+    // Add a superscript marker after the given text in the container
+    function addMarkerAfterText(container, searchText, noteId) {
+        // Use TreeWalker to find text nodes
+        const walker = document.createTreeWalker(
+            container,
+            NodeFilter.SHOW_TEXT,
+            null,
+            false
+        );
+        
+        let node;
+        while ((node = walker.nextNode())) {
+            const index = node.textContent.indexOf(searchText);
+            if (index !== -1) {
+                try {
+                    // Create a range at the end of the found text
+                    const range = document.createRange();
+                    range.setStart(node, index + searchText.length);
+                    range.setEnd(node, index + searchText.length);
+                    
+                    // Create marker
+                    const marker = document.createElement('sup');
+                    marker.className = 'note-marker';
+                    marker.dataset.noteId = noteId;
+                    marker.textContent = '[📝]';
+                    marker.title = 'Click to view/edit this note';
+                    marker.style.cssText = 'color: #e96304; cursor: pointer; font-size: 0.8em; margin-left: 2px;';
+                    
+                    // Add click handler
+                    marker.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        openNoteFragmentPopup(noteId);
+                    });
+                    
+                    range.insertNode(marker);
+                    return true;
+                } catch (e) {
+                    console.warn('[MARKERS] Error inserting marker:', e);
+                }
+            }
+        }
+        return false;
+    }
+    
     function handleTextSelection(e) {
         if (!isStudent) return;
         
-        const selection = window.getSelection();
-        let range = selection && selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
-        let text = selection ? selection.toString().trim() : '';
-        let usingSnapshot = false;
-        if ((!selection || !text) && currentSelectionText && currentSelectionRange) {
-            // Mobile fallback: use recent snapshot if selection was cleared
-            if (Date.now() - lastSelectionTs < 1000) {
-                text = currentSelectionText;
-                range = currentSelectionRange;
-                usingSnapshot = true;
-            }
-        }
-        if (!range || !text) return;
-        
-        // Get the range
-        // Find the field element
-        let fieldElement = null;
-        if (!usingSnapshot && e && e.target) {
-            fieldElement = findFieldElementFromNode(e.target);
-        }
-        
-        // If not found via event target, find from range
-        if (!fieldElement) {
-            const container = range.commonAncestorContainer;
-            fieldElement = findFieldElementFromNode(container);
-        }
-        
-        // If not found, fall back to snapshot field when available
-        let fieldName = null;
-        if (!fieldElement && usingSnapshot && currentSelectionField) {
-            fieldName = currentSelectionField;
-        } else if (fieldElement) {
-            fieldName = fieldElement.dataset?.field || 
-                         fieldElement.getAttribute('data-field') || 
-                         'discussion';
-        }
-        if (!fieldName) {
+        // Don't show menu if clicking on buttons, links, or interactive elements
+        const target = e.target;
+        if (target && (
+            target.tagName === 'BUTTON' || 
+            target.tagName === 'A' ||
+            target.closest('button') ||
+            target.closest('a') ||
+            target.closest('.btn') ||
+            target.closest('.qa-reveal-btn')
+        )) {
             return;
         }
         
-        // Store selection info immediately (critical for mobile Safari)
-        currentSelectionRange = range.cloneRange();
-        currentSelectionField = fieldName;
-        currentSelectionText = text; // Store text immediately - mobile Safari clears selection on tap
-        lastSelectionTs = Date.now();
+        const selection = window.getSelection();
+        const text = selection.toString().trim();
         
-        // Get position for menu (use selection end or event position)
-        let menuX, menuY;
-        if (e && e.clientX !== undefined) {
-            menuX = e.clientX;
-            menuY = e.clientY;
-        } else {
-            const rect = range.getBoundingClientRect();
-            menuX = rect.left + rect.width / 2;
-            menuY = rect.top;
-        }
+        if (!text || text.length < 3) return;
         
-        // Show contextual menu
-        showHighlightActionMenu(menuX, menuY, text, fieldName);
+        // Find if selection is in an annotatable area
+        const range = selection.getRangeAt(0);
+        const container = range.commonAncestorContainer;
+        const annotatable = container.nodeType === Node.TEXT_NODE 
+            ? container.parentElement.closest('.highlightable-text, [data-field]')
+            : container.closest('.highlightable-text, [data-field]');
+        
+        if (!annotatable) return;
+        
+        // Show simple selection menu
+        showSimpleSelectionMenu(e, text, annotatable);
     }
     
-    // Get color hex value
-    function getColorHex(colorName) {
-        const colors = {
-            'yellow': '#FFEB3B',
-            'green': '#4CAF50',
-            'pink': '#E91E63',
-            'blue': '#2196F3'
-        };
-        return colors[colorName] || '#FFEB3B';
-    }
-    
-    // Load highlights from API
-    function loadHighlights() {
-        if (!isStudent) return;
-        
-        console.log('[HIGHLIGHT] Loading highlights for case:', caseId);
-        
-        fetch(`/api/case/${caseId}/highlights`)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
-                return response.json();
-            })
-            .then(data => {
-                console.log('[HIGHLIGHT] Received highlights:', data.highlights ? data.highlights.length : 0);
-                if (data.highlights && data.highlights.length > 0) {
-                    renderHighlights(data.highlights);
-                } else {
-                    console.log('[HIGHLIGHT] No highlights to render');
-                }
-            })
-            .catch(error => {
-                console.error('[HIGHLIGHT] Error loading highlights:', error);
-            });
-    }
-    
-    // Show contextual action menu (iOS/Android style)
-    function showHighlightActionMenu(x, y, selectedText, fieldName) {
+    function showSimpleSelectionMenu(e, selectedText, element) {
         // Remove existing menu
-        if (highlightActionMenu) {
-            highlightActionMenu.remove();
+        const existing = document.getElementById('simpleSelectionMenu');
+        if (existing) existing.remove();
+        
+        // Store selection info for notes modal
+        const selection = window.getSelection();
+        if (selection && selection.rangeCount > 0) {
+            currentSelectionRange = selection.getRangeAt(0).cloneRange();
+            currentSelectionText = selectedText;
+            currentSelectionField = element.dataset.field || element.id || 'unknown';
         }
         
-        // Calculate position to avoid screen edges
-        const menuWidth = 280;
-        const menuHeight = 120;
-        const padding = 10;
-        let menuX = x - menuWidth / 2;
-        let menuY = y - menuHeight - 20;
-        
-        // Adjust if too close to right edge
-        if (menuX + menuWidth > window.innerWidth - padding) {
-            menuX = window.innerWidth - menuWidth - padding;
-        }
-        // Adjust if too close to left edge
-        if (menuX < padding) {
-            menuX = padding;
-        }
-        // Adjust if too close to top - show below selection instead
-        if (menuY < padding) {
-            menuY = y + 30;
-        }
-        
-        // Create menu container
-        highlightActionMenu = document.createElement('div');
-        highlightActionMenu.className = 'highlight-action-menu';
-        highlightActionMenu.style.cssText = `
+        // Create menu
+        const menu = document.createElement('div');
+        menu.id = 'simpleSelectionMenu';
+        menu.style.cssText = `
             position: fixed;
-            left: ${menuX}px;
-            top: ${menuY}px;
             background: white;
-            border: 1px solid #ddd;
-            border-radius: 12px;
-            padding: 12px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-            z-index: 10000;
-            min-width: 260px;
-            animation: slideDown 0.2s ease-out;
-            touch-action: manipulation;
-            -webkit-user-select: none;
-            user-select: none;
-        `;
-        
-        // Prevent menu from clearing selection when touched (mobile Safari fix)
-        highlightActionMenu.addEventListener('touchstart', function(e) {
-            e.stopPropagation();
-        }, { passive: true });
-        
-        highlightActionMenu.addEventListener('touchend', function(e) {
-            e.stopPropagation();
-        }, { passive: true });
-        
-        // Add animation keyframes if not already added
-        if (!document.getElementById('highlightMenuStyles')) {
-            const style = document.createElement('style');
-            style.id = 'highlightMenuStyles';
-            style.textContent = `
-                @keyframes slideDown {
-                    from {
-                        opacity: 0;
-                        transform: translateY(-10px);
-                    }
-                    to {
-                        opacity: 1;
-                        transform: translateY(0);
-                    }
-                }
-                .highlight-action-menu {
-                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-                }
-                .highlight-action-btn {
-                    transition: all 0.15s ease;
-                    border: none !important;
-                    touch-action: manipulation;
-                }
-                .highlight-action-btn:active {
-                    transform: scale(0.95);
-                    opacity: 0.8;
-                }
-            `;
-            document.head.appendChild(style);
-        }
-        
-        // Primary action: Highlight button (uses current color preference)
-        const highlightBtn = document.createElement('button');
-        highlightBtn.className = 'highlight-action-btn';
-        const currentColorHex = getColorHex(currentHighlightColor);
-        highlightBtn.style.cssText = `
-            background: ${currentColorHex};
-            color: ${currentHighlightColor === 'yellow' ? '#333' : '#fff'};
-            border: none;
-            padding: 10px 16px;
+            border: 2px solid #5E899E;
             border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 0.9rem;
-            width: 100%;
-            margin-bottom: 8px;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+            padding: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 10000;
             display: flex;
-            align-items: center;
-            justify-content: center;
             gap: 8px;
         `;
-        highlightBtn.innerHTML = `<i class="fas fa-highlighter"></i> Highlight`;
         
-        // Store text and field in data attributes (more reliable than variables on mobile)
-        highlightBtn.setAttribute('data-highlight-text', selectedText);
-        highlightBtn.setAttribute('data-highlight-field', fieldName);
-        highlightBtn.setAttribute('data-highlight-color', currentHighlightColor);
+        // Position menu
+        const x = e.clientX || (e.changedTouches && e.changedTouches[0].clientX) || 0;
+        const y = e.clientY || (e.changedTouches && e.changedTouches[0].clientY) || 0;
+        menu.style.left = `${x}px`;
+        menu.style.top = `${Math.max(10, y - 60)}px`;
         
-        // Handle both mousedown and touchstart (before selection clears)
-        const handleHighlightAction = function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            e.stopImmediatePropagation();
-            
-            // Get text from data attribute (most reliable on mobile)
-            const storedText = highlightBtn.getAttribute('data-highlight-text');
-            const storedField = highlightBtn.getAttribute('data-highlight-field');
-            const storedColor = highlightBtn.getAttribute('data-highlight-color') || currentHighlightColor;
-            
-            if (!storedText || !storedField) {
-                console.error('[HIGHLIGHT] Missing stored text or field:', { storedText, storedField });
-                // Fallback to variable storage
-                if (currentSelectionText && currentSelectionField) {
-                    createHighlight(currentSelectionText, storedColor, currentSelectionField);
-                    hideHighlightMenu();
-                } else {
-                    console.error('[HIGHLIGHT] No text available for highlighting');
-                    alert('Unable to highlight: selection was lost. Please try selecting the text again.');
-                    hideHighlightMenu();
-                }
-                return;
-            }
-            
-            highlightBtn.disabled = true;
-            highlightBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Highlighting...';
-            
-            console.log('[HIGHLIGHT] Creating highlight with stored data:', {
-                text: storedText.substring(0, 50),
-                color: storedColor,
-                field: storedField,
-                textLength: storedText.length
-            });
-            
-            createHighlight(storedText, storedColor, storedField);
-            hideHighlightMenu();
+        // Add Highlight button
+        const highlightBtn = document.createElement('button');
+        highlightBtn.className = 'btn btn-sm btn-warning';
+        highlightBtn.innerHTML = '<i class="fas fa-highlighter"></i> Highlight';
+        highlightBtn.onclick = () => {
+            createHighlightFromSelection(selectedText, element);
+            menu.remove();
         };
         
-        // Use mousedown/touchstart to capture before selection clears (critical for mobile)
-        highlightBtn.addEventListener('mousedown', handleHighlightAction, { passive: false });
-        highlightBtn.addEventListener('touchstart', handleHighlightAction, { passive: false });
-        highlightActionMenu.appendChild(highlightBtn);
-        
-        // Color picker row
-        const colorRow = document.createElement('div');
-        colorRow.style.cssText = 'display: flex; gap: 6px; justify-content: center; margin-bottom: 8px;';
-        
-        const colors = [
-            { name: 'yellow', color: '#FFEB3B' },
-            { name: 'green', color: '#4CAF50' },
-            { name: 'pink', color: '#E91E63' },
-            { name: 'blue', color: '#2196F3' }
-        ];
-        
-        colors.forEach(function(color) {
-            const colorBtn = document.createElement('button');
-            colorBtn.className = 'highlight-action-btn';
-            const isSelected = color.name === currentHighlightColor;
-            colorBtn.style.cssText = `
-                width: 36px;
-                height: 36px;
-                border-radius: 50%;
-                background: ${color.color};
-                border: ${isSelected ? '3px solid #333' : '2px solid transparent'};
-                cursor: pointer;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            `;
-            colorBtn.title = `Use ${color.name} highlight`;
-            colorBtn.onclick = function(e) {
-                e.stopPropagation();
-                currentHighlightColor = color.name;
-                localStorage.setItem(HIGHLIGHT_COLOR_KEY, color.name);
-                highlightBtn.setAttribute('data-highlight-color', color.name);
-                // Update primary button color
-                highlightBtn.style.background = color.color;
-                highlightBtn.style.color = color.name === 'yellow' ? '#333' : '#fff';
-                // Update selected indicator
-                colorRow.querySelectorAll('button').forEach(btn => {
-                    btn.style.border = '2px solid transparent';
-                });
-                colorBtn.style.border = '3px solid #333';
-            };
-            colorRow.appendChild(colorBtn);
-        });
-        
-        highlightActionMenu.appendChild(colorRow);
-        
-        // Close button
-        const closeBtn = document.createElement('button');
-        closeBtn.style.cssText = `
-            position: absolute;
-            top: 8px;
-            right: 8px;
-            background: transparent;
-            border: none;
-            color: #999;
-            cursor: pointer;
-            padding: 4px;
-            border-radius: 4px;
-            font-size: 0.9rem;
-            width: 24px;
-            height: 24px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        `;
-        closeBtn.innerHTML = '<i class="fas fa-times"></i>';
-        closeBtn.onclick = hideHighlightMenu;
-        highlightActionMenu.appendChild(closeBtn);
-        
-        document.body.appendChild(highlightActionMenu);
-        
-        // Close on Escape key
-        const escapeHandler = function(e) {
-            if (e.key === 'Escape' && highlightActionMenu) {
-                hideHighlightMenu();
-                document.removeEventListener('keydown', escapeHandler);
+        // Add Note button
+        const noteBtn = document.createElement('button');
+        noteBtn.className = 'btn btn-sm btn-brand-primary';
+        noteBtn.innerHTML = '<i class="fas fa-sticky-note"></i> Add Note';
+        noteBtn.onclick = () => {
+            
+            try {
+                const fieldName = element.dataset.field || element.id || 'unknown';
+                
+                openAddToNotesPopup(selectedText, fieldName);
+                
+                menu.remove();
+            } catch (error) {
+                console.error('[ANNOTATION] Error opening notes modal:', error);
+                alert('Error opening notes: ' + error.message);
             }
         };
-        document.addEventListener('keydown', escapeHandler);
-    }
-    
-    function hideHighlightMenu() {
-        if (highlightActionMenu) {
-            highlightActionMenu.remove();
-            highlightActionMenu = null;
-        }
-        currentSelectionRange = null;
-        currentSelectionField = null;
-        currentSelectionText = null;
-        lastSelectionTs = 0;
         
-        // Clear selection (but only after a delay on mobile to allow highlight to process)
+        menu.appendChild(highlightBtn);
+        menu.appendChild(noteBtn);
+        document.body.appendChild(menu);
+        
+        // Close on click outside
         setTimeout(() => {
-            const selection = window.getSelection();
-            if (selection) {
-                selection.removeAllRanges();
-            }
+            document.addEventListener('click', function closeMenu(e) {
+                if (!menu.contains(e.target)) {
+                    menu.remove();
+                    document.removeEventListener('click', closeMenu);
+                }
+            });
         }, 100);
     }
     
-    // Create highlight from current selection (fallback method)
-    function createHighlightFromSelection(color) {
-        // First try stored text (works on mobile)
-        if (currentSelectionText && currentSelectionField) {
-            createHighlight(currentSelectionText, color, currentSelectionField);
-            hideHighlightMenu();
-            return;
-        }
-        
-        // Fallback: try to get from current selection (desktop)
+    // Create a highlight from current selection
+    function createHighlightFromSelection(selectedText, element) {
         const selection = window.getSelection();
-        if (selection && selection.rangeCount > 0) {
-            const text = selection.toString().trim();
-            if (text && currentSelectionField) {
-                createHighlight(text, color, currentSelectionField);
-                hideHighlightMenu();
-                return;
-            }
-        }
-        
-        console.warn('No selection available for highlighting');
-        hideHighlightMenu();
-    }
-    
-    function createHighlight(text, color, fieldName) {
-        if (!isStudent) {
-            console.warn('createHighlight called but user is not a student');
+        if (!selection || selection.rangeCount === 0) {
+            showFlash('No text selected', 'warning');
             return;
         }
         
-        if (!text || text.trim().length === 0) {
-            console.warn('createHighlight called with empty text');
-            return;
+        const range = selection.getRangeAt(0);
+        const fieldName = element.dataset.field || element.id || 'unknown';
+        
+        // Get context (text before and after selection for reliable positioning)
+        const container = element;
+        const fullText = container.textContent || '';
+        const startIndex = fullText.indexOf(selectedText);
+        
+        let contextBefore = '';
+        let contextAfter = '';
+        
+        if (startIndex !== -1) {
+            contextBefore = fullText.substring(Math.max(0, startIndex - 50), startIndex);
+            contextAfter = fullText.substring(startIndex + selectedText.length, startIndex + selectedText.length + 50);
         }
         
-        if (!color) {
-            console.warn('createHighlight called without color');
-            return;
-        }
-        
-        if (!caseId) {
-            console.error('createHighlight called but caseId is not defined');
-            return;
-        }
-        
-        // Create unique key for duplicate checking
-        const highlightKey = `${text}|${color}|${fieldName}`;
-        
-        // Double-check we haven't already processed this (frontend duplicate prevention)
-        if (processedHighlights.has(highlightKey)) {
-            console.log('Skipping duplicate highlight:', highlightKey);
-            return;
-        }
-        
-        console.log('[HIGHLIGHT] Sending highlight request:', { 
-            caseId, 
-            text: text.substring(0, 50), 
-            color, 
-            fieldName,
-            textLength: text.length
-        });
-        
-        fetch(`/api/case/${caseId}/highlight`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                text_content: text,
-                highlight_color: color,
-                field_name: fieldName
-            })
-        })
-        .then(response => {
-            console.log('[HIGHLIGHT] Response status:', response.status, response.statusText);
-            if (!response.ok) {
-                return response.json().then(err => {
-                    console.error('[HIGHLIGHT] API error:', err);
-                    throw new Error(err.error || `HTTP ${response.status}`);
-                });
-            }
-            return response.json();
-        })
-        .then(data => {
-            console.log('[HIGHLIGHT] Response data:', data);
-            if (data.success) {
-                // Mark as processed
-                processedHighlights.add(highlightKey);
-                
-                // Reload highlights to show new one
-                setTimeout(() => {
-                    loadHighlights();
-                }, 300);
-            } else {
-                // If highlight already exists (backend duplicate), remove from processed set
-                if (data.message && data.message.includes('already exists')) {
-                    processedHighlights.delete(highlightKey);
-                    console.log('[HIGHLIGHT] Highlight already exists on server');
-                } else {
-                    console.error('[HIGHLIGHT] Failed to create highlight:', data.error);
-                    // Remove from processed set so user can retry
-                    processedHighlights.delete(highlightKey);
-                }
-            }
-        })
-        .catch(error => {
-            console.error('[HIGHLIGHT] Error creating highlight:', error);
-            // Remove from processed set on error so user can retry
-            processedHighlights.delete(highlightKey);
-            // Show user-friendly error
-            alert('Failed to create highlight: ' + error.message);
-        });
-    }
-    
-    function findVisibleFieldElement(fieldName) {
-        const nodes = Array.from(document.querySelectorAll(`[data-field="${fieldName}"]`));
-        if (!nodes.length) return null;
-        const visible = nodes.find(node => node.offsetParent !== null || node.getClientRects().length > 0);
-        return visible || nodes[0];
-    }
-
-    function renderHighlights(highlights) {
-        if (!highlights || highlights.length === 0) {
-            console.log('[HIGHLIGHT] No highlights to render');
-            return;
-        }
-        
-        console.log('[HIGHLIGHT] Rendering', highlights.length, 'highlights');
-        
-        // Remove existing highlights (preserve text)
-        document.querySelectorAll('.text-highlight').forEach(function(el) {
-            const text = el.textContent;
-            el.outerHTML = text;
-        });
-        
-        // Normalize text for comparison (handles whitespace differences on mobile)
-        function normalizeText(text) {
-            return text.replace(/\s+/g, ' ').trim();
-        }
-        
-        // Apply highlights to each field
-        highlights.forEach(function(highlight) {
-            if (!highlight.text_content || !highlight.field_name) {
-                console.warn('[HIGHLIGHT] Skipping invalid highlight:', highlight);
-                return;
-            }
+        // Create mark element
+        try {
+            const mark = document.createElement('mark');
+            mark.className = 'user-highlight';
+            mark.style.backgroundColor = '#FFEB3B';
+            mark.style.cursor = 'pointer';
+            mark.title = 'Click to remove highlight';
             
-            let fieldElement = findVisibleFieldElement(highlight.field_name);
+            range.surroundContents(mark);
+            selection.removeAllRanges();
             
-            // Fallback for discussion and diagnosis
-            if (!fieldElement) {
-                if (highlight.field_name === 'discussion') {
-                    fieldElement = document.getElementById('discussionText');
-                } else if (highlight.field_name === 'diagnosis') {
-                    fieldElement = document.getElementById('diagnosisText');
-                }
-            }
-            
-            // Also check Q&A fields (question_1, answer_1, etc.)
-            if (!fieldElement && highlight.field_name.startsWith('question_')) {
-                const qaElements = document.querySelectorAll('.qa-question');
-                // Try to find matching question element
-                qaElements.forEach(function(el) {
-                    if (fieldElement) return;
-                    const elText = normalizeText(el.textContent || '');
-                    const highlightText = normalizeText(highlight.text_content);
-                    if (elText.includes(highlightText) && !el.querySelector('.text-highlight')) {
-                        fieldElement = el;
-                    }
-                });
-            } else if (!fieldElement && highlight.field_name.startsWith('answer_')) {
-                const qaElements = document.querySelectorAll('.qa-answer');
-                qaElements.forEach(function(el) {
-                    if (fieldElement) return;
-                    const elText = normalizeText(el.textContent || '');
-                    const highlightText = normalizeText(highlight.text_content);
-                    if (elText.includes(highlightText) && !el.querySelector('.text-highlight')) {
-                        fieldElement = el;
-                    }
-                });
-            }
-            
-            if (!fieldElement) {
-                console.warn('[HIGHLIGHT] Field element not found for:', highlight.field_name);
-                return;
-            }
-            
-            // Get text content and normalize for comparison
-            const textContent = fieldElement.textContent || fieldElement.innerText || '';
-            const normalizedTextContent = normalizeText(textContent);
-            const normalizedHighlightText = normalizeText(highlight.text_content);
-            
-            if (!normalizedTextContent.includes(normalizedHighlightText)) {
-                console.warn('[HIGHLIGHT] Text not found in field:', {
-                    field: highlight.field_name,
-                    lookingFor: normalizedHighlightText.substring(0, 50),
-                    fieldText: normalizedTextContent.substring(0, 100)
-                });
-                return;
-            }
-            
-            // Check if already highlighted
-            const html = fieldElement.innerHTML;
-            if (html.includes(`data-highlight-id="${highlight.id}"`)) {
-                console.log('[HIGHLIGHT] Already highlighted:', highlight.id);
-                return;
-            }
-            
-            const colorMap = {
-                'yellow': '#FFEB3B',
-                'green': '#4CAF50',
-                'pink': '#E91E63',
-                'blue': '#2196F3'
-            };
-            
-            // Escape the highlight text for regex, but make it more flexible for whitespace
-            const escapedText = escapeRegex(highlight.text_content);
-            // Create regex that's flexible with whitespace (handles mobile Safari differences)
-            const flexibleRegex = new RegExp(escapedText.replace(/\s+/g, '\\s+'), 'gi');
-            
-            // Try to replace
-            const highlighted = html.replace(flexibleRegex, function(match) {
-                const color = colorMap[highlight.highlight_color] || '#FFEB3B';
-                return `<mark class="text-highlight" data-highlight-id="${highlight.id}" style="background-color: ${color}; cursor: pointer; padding: 2px 4px; border-radius: 3px; transition: all 0.2s;" onmouseover="this.style.boxShadow='0 2px 4px rgba(0,0,0,0.2)'; this.style.opacity='0.9';" onmouseout="this.style.boxShadow='none'; this.style.opacity='1';" onclick="deleteHighlight(${highlight.id}); event.stopPropagation();" title="Click to remove highlight"><span style="position: relative;">${match}<i class="fas fa-times" style="font-size: 0.7em; margin-left: 4px; opacity: 0.6;"></i></span></mark>`;
-            });
-            
-            if (highlighted !== html) {
-                fieldElement.innerHTML = highlighted;
-                console.log('[HIGHLIGHT] Successfully rendered highlight:', highlight.id);
-            } else {
-                // Fallback: try textContent-based range highlight (handles rich HTML in Q&A)
-                const fallbackApplied = applyHighlightByTextContent(
-                    fieldElement,
-                    highlight.text_content,
-                    colorMap[highlight.highlight_color] || '#FFEB3B',
-                    highlight.id
-                );
-                if (fallbackApplied) {
-                    console.log('[HIGHLIGHT] Fallback rendered highlight:', highlight.id);
-                } else {
-                    console.warn('[HIGHLIGHT] Regex did not match for highlight:', highlight.id);
-                }
-            }
-        });
-        
-        console.log('[HIGHLIGHT] Finished rendering highlights');
-    }
-
-    function applyHighlightByTextContent(fieldElement, textToFind, color, highlightId) {
-        if (!fieldElement || !textToFind) return false;
-        const fullText = fieldElement.textContent || '';
-        const flexibleRegex = new RegExp(escapeRegex(textToFind).replace(/\\s+/g, '\\\\s+'), 'i');
-        const matchIndex = fullText.search(flexibleRegex);
-        if (matchIndex === -1) return false;
-        const match = fullText.match(flexibleRegex);
-        if (!match || !match[0]) return false;
-
-        const startIndex = matchIndex;
-        const endIndex = matchIndex + match[0].length;
-        const walker = document.createTreeWalker(fieldElement, NodeFilter.SHOW_TEXT, null);
-        let currentIndex = 0;
-        let startNode = null;
-        let endNode = null;
-        let startOffset = 0;
-        let endOffset = 0;
-
-        while (walker.nextNode()) {
-            const node = walker.currentNode;
-            const nodeText = node.nodeValue || '';
-            const nextIndex = currentIndex + nodeText.length;
-            if (!startNode && startIndex >= currentIndex && startIndex <= nextIndex) {
-                startNode = node;
-                startOffset = Math.max(0, startIndex - currentIndex);
-            }
-            if (startNode && endIndex <= nextIndex) {
-                endNode = node;
-                endOffset = Math.max(0, endIndex - currentIndex);
-                break;
-            }
-            currentIndex = nextIndex;
-        }
-
-        if (!startNode || !endNode) return false;
-        const range = document.createRange();
-        range.setStart(startNode, startOffset);
-        range.setEnd(endNode, endOffset);
-
-        const mark = document.createElement('mark');
-        mark.className = 'text-highlight';
-        mark.setAttribute('data-highlight-id', highlightId);
-        mark.style.backgroundColor = color;
-        mark.style.cursor = 'pointer';
-        mark.style.padding = '2px 4px';
-        mark.style.borderRadius = '3px';
-        mark.style.transition = 'all 0.2s';
-        mark.onmouseover = function() { this.style.boxShadow = '0 2px 4px rgba(0,0,0,0.2)'; this.style.opacity = '0.9'; };
-        mark.onmouseout = function() { this.style.boxShadow = 'none'; this.style.opacity = '1'; };
-        mark.onclick = function(e) { deleteHighlight(highlightId); e.stopPropagation(); };
-        mark.title = 'Click to remove highlight';
-
-        const contents = range.extractContents();
-        mark.appendChild(contents);
-        range.insertNode(mark);
-        return true;
-    }
-    
-    function deleteHighlight(highlightId) {
-        if (confirm('Remove this highlight?')) {
-            fetch(`/api/highlight/${highlightId}`, {
-                method: 'DELETE'
+            // Save to backend
+            fetch(`/api/case/${caseId}/highlight`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    text_content: selectedText,
+                    highlight_color: 'yellow',
+                    field_name: fieldName,
+                    context_before: contextBefore,
+                    context_after: contextAfter
+                })
             })
             .then(response => response.json())
             .then(data => {
-                if (data.success) {
-                    loadHighlights(); // Reload to remove highlight
+                if (data.success && data.highlight) {
+                    mark.dataset.highlightId = data.highlight.id;
+                    
+                    // Add click handler to delete
+                    mark.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        if (confirm('Remove this highlight?')) {
+                            deleteHighlightElement(data.highlight.id, mark);
+                        }
+                    });
+                    
+                    showFlash('Text highlighted!', 'success');
                 } else {
-                    alert('Failed to delete highlight');
+                    // Remove mark if save failed
+                    const parent = mark.parentNode;
+                    while (mark.firstChild) {
+                        parent.insertBefore(mark.firstChild, mark);
+                    }
+                    parent.removeChild(mark);
+                    showFlash('Failed to save highlight', 'error');
                 }
             })
             .catch(error => {
-                console.error('Error deleting highlight:', error);
-                alert('Failed to delete highlight');
+                console.error('[HIGHLIGHT] Save error:', error);
+                // Remove mark on error
+                const parent = mark.parentNode;
+                while (mark.firstChild) {
+                    parent.insertBefore(mark.firstChild, mark);
+                }
+                parent.removeChild(mark);
+                showFlash('Error saving highlight', 'error');
+            });
+            
+        } catch (e) {
+            console.error('[HIGHLIGHT] Error creating highlight:', e);
+            showFlash('Cannot highlight across different elements', 'warning');
+        }
+    }
+    
+    // Helper function to delete highlight element
+    function deleteHighlightElement(highlightId, markElement) {
+        fetch(`/api/highlight/${highlightId}`, {
+            method: 'DELETE'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Unwrap the mark element
+                const parent = markElement.parentNode;
+                while (markElement.firstChild) {
+                    parent.insertBefore(markElement.firstChild, markElement);
+                }
+                parent.removeChild(markElement);
+                showFlash('Highlight removed', 'success');
+            } else {
+                showFlash('Failed to remove highlight', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('[HIGHLIGHT] Delete error:', error);
+            showFlash('Error removing highlight', 'error');
+        });
+    }
+    
+    function setupFloatingNotesButton() {
+        const floatingBtn = document.getElementById('floatingNotesBtn');
+        if (floatingBtn) {
+            // Open modal on click
+            floatingBtn.addEventListener('click', () => {
+                openFloatingNotePopup();
             });
         }
     }
     
-    function escapeRegex(str) {
-        return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    }
-    
-    // Initialize highlighting when page loads (students only)
+    // ==================== INITIALIZATION ====================
+    // Initialize annotation system on page load (students only)
     if (isStudent) {
         document.addEventListener('DOMContentLoaded', function() {
-            initHighlighting();
-            // Re-initialize after Q&A loads
-            setTimeout(initHighlighting, 1000);
+            initAnnotationSystem();
         });
     }
     
-    // Initialize highlighting when page loads (students only)
-    if (isStudent) {
-        document.addEventListener('DOMContentLoaded', function() {
-            initHighlighting();
-            // Re-initialize after Q&A loads
-            setTimeout(initHighlighting, 1000);
-        });
-    }
-    
-    // Ensure edit button works reliably
+    // Ensure edit button works reliably (admin only)
     document.addEventListener('DOMContentLoaded', function() {
         const editButton = document.getElementById('editCaseButton');
         if (editButton) {
@@ -2402,6 +4037,208 @@
             });
         }
     });
+
+    // ==================== HIGHLIGHT SYSTEM ====================
+    // Simple text highlighting using Selection API and <mark> elements
+    // Persists to database via existing TextHighlight model
+    
+    if (isStudent) {
+        
+        // Load and render existing highlights on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Wait for Q&A and other content to load
+            setTimeout(loadAndRenderHighlights, 1500);
+            setTimeout(loadAndRenderHighlights, 3000); // Retry for slow loads
+        });
+        
+        // Load highlights from backend and render them
+        function loadAndRenderHighlights() {
+            
+            fetch(`/api/case/${caseId}/highlights`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.highlights && data.highlights.length > 0) {
+                        data.highlights.forEach(highlight => {
+                            renderHighlight(highlight);
+                        });
+                    } else {
+                    }
+                })
+                .catch(error => {
+                    console.error('[HIGHLIGHT] Load error:', error);
+                });
+        }
+        
+        // Render a highlight on the page by finding the text and wrapping it
+        function renderHighlight(highlight) {
+            const fieldName = highlight.field_name;
+            const textContent = highlight.text_content;
+            const color = highlight.highlight_color || 'yellow';
+            
+            // Find the container element based on field name
+            let container = null;
+            if (fieldName === 'discussion' || fieldName === 'discussionText') {
+                container = document.getElementById('discussionText');
+            } else if (fieldName.startsWith('question_')) {
+                const qNum = fieldName.replace('question_', '');
+                container = document.querySelector(`.qa-question[data-field="${fieldName}"]`) ||
+                           document.querySelector(`.qa-question:nth-of-type(${qNum})`);
+            } else if (fieldName.startsWith('answer_')) {
+                const aNum = fieldName.replace('answer_', '');
+                container = document.querySelector(`.qa-answer[data-field="${fieldName}"]`) ||
+                           document.querySelector(`.qa-answer:nth-of-type(${aNum})`);
+            } else if (fieldName.startsWith('image_')) {
+                container = document.querySelector(`[data-field="${fieldName}"]`);
+            } else {
+                container = document.querySelector(`[data-field="${fieldName}"]`) ||
+                           document.getElementById(fieldName);
+            }
+            
+            if (!container) {
+                return;
+            }
+            
+            // Find and highlight the text using TreeWalker
+            const found = findAndHighlightText(container, textContent, color, highlight.id, highlight.context_before, highlight.context_after);
+            if (found) {
+            } else {
+            }
+        }
+        
+        // Find text in container and wrap with mark element
+        function findAndHighlightText(container, searchText, color, highlightId, contextBefore, contextAfter) {
+            const walker = document.createTreeWalker(
+                container,
+                NodeFilter.SHOW_TEXT,
+                null,
+                false
+            );
+            
+            // Collect all text nodes and their positions
+            let textNodes = [];
+            let fullText = '';
+            let node;
+            
+            while (node = walker.nextNode()) {
+                textNodes.push({
+                    node: node,
+                    start: fullText.length,
+                    end: fullText.length + node.textContent.length
+                });
+                fullText += node.textContent;
+            }
+            
+            // Find the search text in the full text
+            let searchIndex = -1;
+            
+            // Try to find with context for more accurate positioning
+            if (contextBefore && contextAfter) {
+                const fullSearch = contextBefore + searchText + contextAfter;
+                const fullIndex = fullText.indexOf(fullSearch);
+                if (fullIndex !== -1) {
+                    searchIndex = fullIndex + contextBefore.length;
+                }
+            }
+            
+            // Fallback to simple search
+            if (searchIndex === -1) {
+                searchIndex = fullText.indexOf(searchText);
+            }
+            
+            if (searchIndex === -1) {
+                return false;
+            }
+            
+            const searchEnd = searchIndex + searchText.length;
+            
+            // Find which text nodes contain the selection
+            let startNode = null, endNode = null;
+            let startOffset = 0, endOffset = 0;
+            
+            for (const nodeInfo of textNodes) {
+                if (!startNode && nodeInfo.end > searchIndex) {
+                    startNode = nodeInfo.node;
+                    startOffset = searchIndex - nodeInfo.start;
+                }
+                if (nodeInfo.end >= searchEnd) {
+                    endNode = nodeInfo.node;
+                    endOffset = searchEnd - nodeInfo.start;
+                    break;
+                }
+            }
+            
+            if (!startNode || !endNode) {
+                return false;
+            }
+            
+            // Create a range and wrap with mark element
+            try {
+                const range = document.createRange();
+                range.setStart(startNode, startOffset);
+                range.setEnd(endNode, endOffset);
+                
+                const mark = document.createElement('mark');
+                mark.className = 'user-highlight';
+                mark.dataset.highlightId = highlightId;
+                mark.style.backgroundColor = getHighlightColor(color);
+                mark.style.cursor = 'pointer';
+                mark.title = 'Click to remove highlight';
+                
+                // Add click handler to delete
+                mark.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    if (confirm('Remove this highlight?')) {
+                        deleteHighlight(highlightId, mark);
+                    }
+                });
+                
+                range.surroundContents(mark);
+                return true;
+            } catch (e) {
+                console.error('[HIGHLIGHT] Error wrapping text:', e);
+                return false;
+            }
+        }
+        
+        // Get CSS color from color name
+        function getHighlightColor(colorName) {
+            const colors = {
+                'yellow': '#FFEB3B',
+                'green': '#A8D5BA',
+                'pink': '#F8BBD9',
+                'blue': '#B3E5FC'
+            };
+            return colors[colorName] || colors.yellow;
+        }
+        
+        // Delete a highlight
+        function deleteHighlight(highlightId, markElement) {
+            fetch(`/api/highlight/${highlightId}`, {
+                method: 'DELETE'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Unwrap the mark element
+                    const parent = markElement.parentNode;
+                    while (markElement.firstChild) {
+                        parent.insertBefore(markElement.firstChild, markElement);
+                    }
+                    parent.removeChild(markElement);
+                    showFlash('Highlight removed', 'success');
+                } else {
+                    showFlash('Failed to remove highlight', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('[HIGHLIGHT] Delete error:', error);
+                showFlash('Error removing highlight', 'error');
+            });
+        }
+    }
+    
+    // ==================== END HIGHLIGHT SYSTEM ====================
+
 </script>
 <script src="/static/edit-case-modal.js"></script>
 {% endblock %}

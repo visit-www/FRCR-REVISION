@@ -46,8 +46,8 @@ except Exception as e:
     instance_path = '/tmp'
 
 # Configuration
-# Use PostgreSQL on production (Vercel), SQLite locally
-# Vercel/Supabase envs can be POSTGRES_URL(_NON_POOLING) or DATABASE_* variants
+# Use PostgreSQL on production (Vercel/Neon), SQLite locally
+# Production envs can be POSTGRES_URL(_NON_POOLING) or DATABASE_* variants
 # Priority: Use non-pooling URL first for serverless environments
 DATABASE_URL = (
     os.getenv('DATABASE_POSTGRES_URL_NON_POOLING')
@@ -64,7 +64,7 @@ if DATABASE_URL:
     db_uri = DATABASE_URL.replace('postgres://', 'postgresql://')
     
     # Remove unsupported query parameters (pgbouncer, supa, etc.) that cause psycopg2 errors
-    # These are often added by Supabase but not recognized by psycopg2
+    # Some providers add query params not recognized by psycopg2
     from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
     
     try:
@@ -88,9 +88,8 @@ if DATABASE_URL:
                 new_query,
                 parsed.fragment
             ))
-            print(f"[DB] Cleaned query parameters from connection string")
     except Exception as e:
-        print(f"[DB] Warning: Could not parse URL parameters: {e}")
+        pass  # URL parsing failed, use original db_uri
     
     app.config['SQLALCHEMY_DATABASE_URI'] = db_uri
     
@@ -118,13 +117,24 @@ else:
 
 # Only set SECURE in production (HTTPS)
 is_production = os.getenv('VERCEL_ENV') == 'production' or 'vercel.app' in os.getenv('VERCEL_URL', '')
+
+# Session cookie configuration (for regular sessions)
 app.config['SESSION_COOKIE_SECURE'] = is_production  # HTTPS only in production
 app.config['SESSION_COOKIE_HTTPONLY'] = True  # No JavaScript access
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # CSRF protection
 app.config['SESSION_COOKIE_NAME'] = 'frcr_session'  # Explicit name
-app.config['PERMANENT_SESSION_LIFETIME'] = 86400  # 24 hours
+app.config['PERMANENT_SESSION_LIFETIME'] = 1800  # 30 minutes session timeout
 
-print(f"[SESSION] SECURE={app.config['SESSION_COOKIE_SECURE']}, HTTPONLY={app.config['SESSION_COOKIE_HTTPONLY']}, SAMESITE={app.config['SESSION_COOKIE_SAMESITE']}")
+# Flask-Login "Remember Me" cookie configuration
+# These settings control persistent login when user checks "Remember Me"
+from datetime import timedelta
+app.config['REMEMBER_COOKIE_DURATION'] = timedelta(days=7)  # 7 days if "Remember Me" checked
+app.config['REMEMBER_COOKIE_SECURE'] = is_production  # HTTPS only in production
+app.config['REMEMBER_COOKIE_HTTPONLY'] = True  # No JavaScript access
+app.config['REMEMBER_COOKIE_SAMESITE'] = 'Lax'  # CSRF protection
+app.config['REMEMBER_COOKIE_NAME'] = 'frcr_remember'  # Explicit name
+
+print(f"[SESSION] SECURE={app.config['SESSION_COOKIE_SECURE']}, REMEMBER_DAYS={app.config['REMEMBER_COOKIE_DURATION'].days}")
 
 # Initialize database
 db.init_app(app)
@@ -145,7 +155,6 @@ def load_user(user_id):
 @login_manager.unauthorized_handler
 def unauthorized():
     """Handle unauthorized access - redirect to login"""
-    print(f"[AUTH] Unauthorized access attempt. Redirecting to login.")
     from flask import redirect, url_for, request
     # If it's an AJAX request, return JSON
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
@@ -219,7 +228,6 @@ def start_balanced_revision():
     import json
     from sqlalchemy import func
     
-    print(f"[REVISION] User {current_user.id} starting balanced revision session")
     
     try:
         # Get all FRCR modules
@@ -228,7 +236,6 @@ def start_balanced_revision():
         
         # For each module, select 6 cases
         for module in all_modules:
-            print(f"[REVISION] Selecting cases for module: {module.value}")
             
             # Strategy: Get cases with LEFT JOIN to revision_history
             # Priority: unseen > least recently seen > random
@@ -257,12 +264,6 @@ def start_balanced_revision():
             
             case_ids_for_module = [c.id for c in cases]
             selected_case_ids.extend(case_ids_for_module)
-            
-            print(f"[REVISION] Selected {len(case_ids_for_module)} cases from {module.value}: {case_ids_for_module}")
-            
-            # Handle insufficient cases in module
-            if len(cases) < 6:
-                print(f"[REVISION] WARNING: Only {len(cases)} cases available in {module.value} (need 6)")
         
         # Check if we have enough cases
         if len(selected_case_ids) == 0:
@@ -273,7 +274,6 @@ def start_balanced_revision():
         if len(selected_case_ids) < 36:
             flash(f'Started revision with {len(selected_case_ids)} available cases. Some modules need more cases for full coverage.', 'info')
         
-        print(f"[REVISION] Total selected cases: {len(selected_case_ids)}")
         
         # Create new revision session
         revision_session = RevisionSession(
@@ -286,7 +286,6 @@ def start_balanced_revision():
         db.session.add(revision_session)
         db.session.commit()
         
-        print(f"[REVISION] Created session {revision_session.id} with {len(selected_case_ids)} cases")
         
         # Redirect to first case
         if selected_case_ids:
@@ -299,7 +298,6 @@ def start_balanced_revision():
     
     except Exception as e:
         db.session.rollback()
-        print(f"[REVISION] Error starting session: {str(e)}")
         import traceback
         traceback.print_exc()
         flash(f'Error starting revision session: {str(e)}', 'danger')
@@ -367,7 +365,6 @@ def view_revision_case(session_id, case_index):
     
     db.session.commit()
     
-    print(f"[REVISION] User {current_user.id} viewing case {case_id} (index {case_index}/{len(case_ids)-1}) in session {session_id}")
     
     # Calculate navigation info
     has_previous = case_index > 0
@@ -1040,7 +1037,6 @@ def create_case():
         return jsonify({'success': True, 'id': case.id, 'case_id': case.id, 'message': 'Case created'})
     except Exception as e:
         db.session.rollback()
-        print(f"[CASE] Error creating case: {str(e)}")
         import traceback
         traceback.print_exc()
         return jsonify({'error': f'Failed to create case: {str(e)}'}), 500
@@ -1176,7 +1172,6 @@ def get_case_navigation_context(case_id, list_source, filters):
                 next_case_id = case_ids[idx + 1]
                 
     except Exception as e:
-        print(f"[NAV] Error computing case navigation: {e}")
         import traceback
         traceback.print_exc()
     
@@ -1215,7 +1210,6 @@ def view_case(case_id):
     # Build query string for nav links
     nav_query_string = '&'.join(f"{k}={v}" for k, v in nav_params.items() if v)
     
-    print(f"[DEBUG] case.discussion for case_id={case_id}: {repr(case.discussion)}")
     
     return render_template('view_case.html', 
                          case=case, 
@@ -1403,7 +1397,6 @@ def delete_case(case_id):
     
     except Exception as e:
         db.session.rollback()
-        print(f"[ERROR] Failed to delete case {case_id}: {e}")
         import traceback
         traceback.print_exc()
         return jsonify({'error': f'Failed to delete case: {str(e)}'}), 500
@@ -1468,7 +1461,6 @@ def upload_case_image(case_id):
         })
     except Exception as e:
         db.session.rollback()
-        print(f"[IMAGE] Error uploading image: {str(e)}")
         import traceback
         traceback.print_exc()
         return jsonify({'error': f'Database error: {str(e)}'}), 500
@@ -1583,7 +1575,6 @@ def image_description(image_id):
         })
     except Exception as e:
         db.session.rollback()
-        print(f"[ERROR] Update image description failed: {str(e)}")
         import traceback
         traceback.print_exc()
         return jsonify({'error': f'Failed to update description: {str(e)}'}), 500
@@ -1932,7 +1923,6 @@ def get_case(case_id):
     # Handle PUT request (update case)
     if request.method == 'PUT':
         data = request.get_json()
-        print(f"[DEBUG] Incoming PUT data: {data}")
         if data is None:
             return jsonify({'error': 'No data provided'}), 400
         # Update fields if present
@@ -2005,11 +1995,9 @@ def get_case(case_id):
                     db.session.add(a)
         try:
             db.session.commit()
-            print(f"[DEBUG] Case {case.id} saved successfully.")
             return jsonify({'success': True, 'message': 'Case updated'})
         except Exception as e:
             db.session.rollback()
-            print(f"[ERROR] Failed to update case: {e}")
             return jsonify({'error': str(e)}), 500
 
 
@@ -2246,7 +2234,6 @@ def check_ai_prelim_cache(case_id):
         except Exception as e:
             # Table might not exist yet (migration not run)
             # Return not cached so user can proceed
-            print(f"[WARN] Cache check failed (table may not exist): {e}")
             return jsonify({
                 'cached': False,
                 'message': 'Cache check unavailable (migration may be pending)',
@@ -2268,7 +2255,6 @@ def check_ai_prelim_cache(case_id):
             'requested_model': model_name,
         })
     except Exception as e:
-        print(f"[ERROR] Cache check endpoint error: {e}")
         import traceback
         traceback.print_exc()
         # Return not cached so user can proceed
@@ -2405,8 +2391,7 @@ def generate_preliminary_case_data(case_id):
             user_id=current_user.id
         )
     except Exception as cache_exc:
-        # Log but don't fail the request if cache update fails
-        print(f"[WARNING] Failed to update AI cache: {cache_exc}")
+        pass  # Log but don't fail the request if cache update fails
 
     try:
         db.session.commit()
@@ -2453,11 +2438,14 @@ def get_highlights(case_id):
     highlights = TextHighlight.query.filter_by(case_id=case_id, user_id=current_user.id).all()
     
     return jsonify({
+        'success': True,
         'highlights': [{
             'id': h.id,
             'text_content': h.text_content,
             'highlight_color': h.highlight_color,
             'field_name': h.field_name,
+            'context_before': h.context_before,
+            'context_after': h.context_after,
             'created_at': h.created_at.isoformat() if h.created_at else None
         } for h in highlights]
     })
@@ -2470,9 +2458,14 @@ def add_highlight(case_id):
     from models import TextHighlight
     
     data = request.get_json()
+    if not data:
+        return jsonify({'error': 'Invalid or missing JSON data'}), 400
+    
     text_content = data.get('text_content', '').strip()
     highlight_color = data.get('highlight_color', 'yellow')
     field_name = data.get('field_name', 'discussion')
+    context_before = data.get('context_before', '')[:100] if data.get('context_before') else None
+    context_after = data.get('context_after', '')[:100] if data.get('context_after') else None
     
     if not text_content:
         return jsonify({'error': 'Text content required'}), 400
@@ -2487,7 +2480,9 @@ def add_highlight(case_id):
         user_id=current_user.id,
         text_content=text_content,
         highlight_color=highlight_color,
-        field_name=field_name
+        field_name=field_name,
+        context_before=context_before,
+        context_after=context_after
     )
     
     db.session.add(highlight)
@@ -2499,7 +2494,9 @@ def add_highlight(case_id):
             'id': highlight.id,
             'text_content': highlight.text_content,
             'highlight_color': highlight.highlight_color,
-            'field_name': highlight.field_name
+            'field_name': highlight.field_name,
+            'context_before': highlight.context_before,
+            'context_after': highlight.context_after
         }
     })
 
@@ -2525,6 +2522,195 @@ def delete_highlight(highlight_id):
     return jsonify({'success': True, 'message': 'Highlight deleted'})
 
 
+# ==================== FORUM API ====================
+
+@app.route('/api/case/<int:case_id>/forum/messages', methods=['GET'])
+@login_required
+def get_forum_messages(case_id):
+    """Get all forum messages for a case, sorted by votes (pinned first)"""
+    from models import ForumMessage, ForumMessageVote
+    
+    # Get all non-deleted messages for this case
+    messages = ForumMessage.query.filter_by(
+        case_id=case_id, 
+        is_deleted=False
+    ).all()
+    
+    # Get current user's votes for these messages
+    user_votes = {}
+    if current_user.is_authenticated:
+        votes = ForumMessageVote.query.filter(
+            ForumMessageVote.message_id.in_([m.id for m in messages]),
+            ForumMessageVote.user_id == current_user.id
+        ).all()
+        user_votes = {v.message_id: v.vote_value for v in votes}
+    
+    # Format response
+    result = []
+    for msg in messages:
+        result.append({
+            'id': msg.id,
+            'content': msg.content,
+            'vote_score': msg.vote_score,
+            'is_pinned': msg.is_pinned,
+            'user_vote': user_votes.get(msg.id, 0),
+            'author_name': msg.author.full_name if msg.author else 'Anonymous',
+            'author_id': msg.user_id,
+            'is_own': msg.user_id == current_user.id,
+            'created_at': msg.created_at.isoformat() if msg.created_at else None
+        })
+    
+    # Sort: pinned first, then by vote_score desc, then by created_at desc
+    result.sort(key=lambda x: (-x['is_pinned'], -x['vote_score'], x['created_at'] or ''), reverse=False)
+    result.sort(key=lambda x: (-int(x['is_pinned']), -x['vote_score']))
+    
+    return jsonify({'success': True, 'messages': result})
+
+
+@app.route('/api/case/<int:case_id>/forum/message', methods=['POST'])
+@login_required
+def post_forum_message(case_id):
+    """Post a new forum message"""
+    from models import ForumMessage
+    
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'Invalid or missing JSON data'}), 400
+    
+    content = data.get('content', '').strip()
+    if not content:
+        return jsonify({'error': 'Message content required'}), 400
+    
+    # Limit message length
+    if len(content) > 5000:
+        return jsonify({'error': 'Message too long (max 5000 characters)'}), 400
+    
+    message = ForumMessage(
+        case_id=case_id,
+        user_id=current_user.id,
+        content=content,
+        vote_score=0,
+        is_pinned=False
+    )
+    
+    db.session.add(message)
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'message': {
+            'id': message.id,
+            'content': message.content,
+            'vote_score': message.vote_score,
+            'is_pinned': message.is_pinned,
+            'user_vote': 0,
+            'author_name': current_user.full_name,
+            'author_id': current_user.id,
+            'is_own': True,
+            'created_at': message.created_at.isoformat()
+        }
+    })
+
+
+@app.route('/api/forum/message/<int:message_id>/vote', methods=['POST'])
+@login_required
+def vote_forum_message(message_id):
+    """Vote on a forum message (+1 upvote, -1 downvote, 0 remove vote)"""
+    from models import ForumMessage, ForumMessageVote
+    
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'Invalid or missing JSON data'}), 400
+    
+    vote_value = data.get('vote', 0)
+    if vote_value not in [-1, 0, 1]:
+        return jsonify({'error': 'Invalid vote value'}), 400
+    
+    message = ForumMessage.query.get(message_id)
+    if not message or message.is_deleted:
+        return jsonify({'error': 'Message not found'}), 404
+    
+    # Check for existing vote
+    existing_vote = ForumMessageVote.query.filter_by(
+        message_id=message_id,
+        user_id=current_user.id
+    ).first()
+    
+    old_vote_value = existing_vote.vote_value if existing_vote else 0
+    
+    if vote_value == 0:
+        # Remove vote
+        if existing_vote:
+            message.vote_score -= existing_vote.vote_value
+            db.session.delete(existing_vote)
+    elif existing_vote:
+        # Update existing vote
+        message.vote_score -= existing_vote.vote_value
+        message.vote_score += vote_value
+        existing_vote.vote_value = vote_value
+    else:
+        # New vote
+        new_vote = ForumMessageVote(
+            message_id=message_id,
+            user_id=current_user.id,
+            vote_value=vote_value
+        )
+        db.session.add(new_vote)
+        message.vote_score += vote_value
+    
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'new_score': message.vote_score,
+        'user_vote': vote_value
+    })
+
+
+@app.route('/api/forum/message/<int:message_id>/pin', methods=['POST'])
+@login_required
+def toggle_pin_forum_message(message_id):
+    """Toggle pin status of a forum message (admin only)"""
+    from models import ForumMessage, UserRole
+    
+    # Check admin permission
+    if current_user.role != UserRole.ADMIN:
+        return jsonify({'error': 'Admin access required'}), 403
+    
+    message = ForumMessage.query.get(message_id)
+    if not message or message.is_deleted:
+        return jsonify({'error': 'Message not found'}), 404
+    
+    message.is_pinned = not message.is_pinned
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'is_pinned': message.is_pinned
+    })
+
+
+@app.route('/api/forum/message/<int:message_id>', methods=['DELETE'])
+@login_required
+def delete_forum_message(message_id):
+    """Delete (soft) a forum message - own messages or admin"""
+    from models import ForumMessage, UserRole
+    
+    message = ForumMessage.query.get(message_id)
+    if not message:
+        return jsonify({'error': 'Message not found'}), 404
+    
+    # Check permission: own message or admin
+    is_admin = current_user.role == UserRole.ADMIN
+    if message.user_id != current_user.id and not is_admin:
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    message.is_deleted = True
+    db.session.commit()
+    
+    return jsonify({'success': True, 'message': 'Message deleted'})
+
+
 # ==================== ADMIN ENDPOINTS ====================
 
 @app.route('/api/admin/migrate-db', methods=['POST'])
@@ -2536,7 +2722,6 @@ def migrate_db():
         print("[ADMIN] Database migration complete")
         return jsonify({'success': True, 'message': 'Database tables created'}), 200
     except Exception as e:
-        print(f"[ADMIN] Migration error: {e}")
         return jsonify({'error': str(e)}), 500
 
 

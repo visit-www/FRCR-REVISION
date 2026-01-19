@@ -783,8 +783,9 @@ body {
 
 /* Footer */
 .footer {
-    background: linear-gradient(180deg, #5E899E 0%, #4A6F7F 100%) !important;
-    color: white;
+    background: #f8f9fa !important;
+    border-top: 2px solid #8b94af;
+    color: #2c3e50;
     margin-top: auto;
 }
 
@@ -800,20 +801,20 @@ body {
 }
 
 .footer-text {
-    color: #ffffff;
+    color: #2c3e50;
     line-height: 1.45;
     margin: 0;
 }
 
 .footer-link {
-    color: #ffffff;
+    color: #5E899E;
     text-decoration: none;
     font-weight: 500;
     transition: color 0.3s ease;
 }
 
 .footer-link:hover {
-    color: #f7fbff;
+    color: #e96304;
     text-decoration: underline;
 }
 
@@ -823,7 +824,7 @@ body {
 }
 
 .footer-copyright {
-    color: #ffffff;
+    color: #6c757d;
     margin: 0;
     font-size: 0.8rem;
 }
@@ -1083,6 +1084,33 @@ textarea.form-control {
 .btn-danger:hover {
     background-color: #e96304a3;
     color: white;
+}
+
+/* Outline Button Variants */
+.btn-warning-outline {
+    background-color: transparent;
+    border: 2px solid #e96304;
+    color: #e96304;
+    transition: all 0.3s ease;
+}
+
+.btn-warning-outline:hover {
+    background-color: #e96304;
+    color: white;
+    border-color: #e96304;
+}
+
+.btn-success-outline {
+    background-color: transparent;
+    border: 2px solid #a8d5ba;
+    color: #73b88e;
+    transition: all 0.3s ease;
+}
+
+.btn-success-outline:hover {
+    background-color: #a8d5ba;
+    color: #2c3e50;
+    border-color: #a8d5ba;
 }
 
 .btn-light {
@@ -2345,7 +2373,9 @@ pre {
 
 /* Cell Number Badge */
 .qa-cell-number {
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     background: linear-gradient(135deg, #6a6a6a 0%, #4a4a4a 100%);
     color: #ffffff;
     padding: 0.25rem 0.75rem;
@@ -2355,6 +2385,7 @@ pre {
     margin-bottom: 0.75rem;
     letter-spacing: 0.5px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    white-space: nowrap;
 }
 
 /* Cell Content */
@@ -4301,4 +4332,74 @@ tbody tr.case-row:hover {
 
 .ai-cache-info-box .info-value {
     color: #5a6270;
+}
+
+/* ==================== USER HIGHLIGHTS ==================== */
+.user-highlight {
+    background-color: #FFEB3B;
+    cursor: pointer;
+    border-radius: 2px;
+    padding: 0 2px;
+    transition: background-color 0.2s ease;
+}
+
+.user-highlight:hover {
+    background-color: #FDD835;
+}
+
+.user-highlight.highlight-green {
+    background-color: #A8D5BA;
+}
+
+.user-highlight.highlight-green:hover {
+    background-color: #8BC9A3;
+}
+
+.user-highlight.highlight-pink {
+    background-color: #F8BBD9;
+}
+
+.user-highlight.highlight-pink:hover {
+    background-color: #F48FB1;
+}
+
+.user-highlight.highlight-blue {
+    background-color: #B3E5FC;
+}
+
+.user-highlight.highlight-blue:hover {
+    background-color: #81D4FA;
+}
+
+/* ==================== NOTE MARKERS ==================== */
+.note-marker {
+    color: #e96304;
+    font-size: 0.7em;
+    vertical-align: super;
+    cursor: pointer;
+    margin-left: 2px;
+    font-weight: bold;
+    transition: color 0.2s ease;
+}
+
+.note-marker:hover {
+    color: #c85000;
+    text-decoration: underline;
+}
+
+/* ==================== SELECTION POPUP ==================== */
+.selection-popup {
+    position: fixed;
+    background: white;
+    border: 2px solid #5E899E;
+    border-radius: 8px;
+    padding: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 10000;
+    display: flex;
+    gap: 8px;
+}
+
+.selection-popup button {
+    white-space: nowrap;
 }
