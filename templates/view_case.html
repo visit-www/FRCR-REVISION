@@ -1176,6 +1176,13 @@
     }
 </style>
 
+<!-- ==================== RECOGITO.JS ANNOTATION LIBRARY ==================== -->
+<!-- Library Choice: Recogito.js (text annotation library from Recogito project) -->
+<!-- Why: Mobile-first design, supports multiple annotation types (highlight/notes), -->
+<!-- custom rendering, manual persistence, Web Annotation API compliant, lightweight -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@recogito/recogito-js@1.8.2/dist/recogito.min.css">
+<script src="https://cdn.jsdelivr.net/npm/@recogito/recogito-js@1.8.2/dist/recogito.min.js"></script>
+
 <script>
     const caseId = {{ case.id }};
     const isStudent = {% if current_user.is_authenticated and current_user.role and current_user.role.value == 'student' %}true{% else %}false{% endif %};
@@ -2839,266 +2846,6 @@
         }
     }
     
-    // DEPRECATED: Old complex marker system - now using simple HTML injection
-    function renderAllNoteMarkers(rawNotes) {
-        console.log('[MARKERS] renderAllNoteMarkers() is deprecated - markers are now injected during content rendering');
-        return;
-        
-        // First, extract all note IDs from raw notes to know which notes still exist
-        const noteFragmentRegex = /\[note:([^\]]+)\]\[from ([^\]]+)\](.*?)\[\/note:\1\]/gs;
-        const existingNoteIds = new Set();
-        let match;
-        
-        while ((match = noteFragmentRegex.exec(rawNotes)) !== null) {
-            existingNoteIds.add(match[1]);
-        }
-        
-        console.log('[MARKERS] Found', existingNoteIds.size, 'notes in raw notes');
-        console.log('[MARKERS] Note IDs:', Array.from(existingNoteIds));
-        
-        // Get marker metadata from localStorage
-        const markerKey = `note_markers_case_${caseId}_user_${(currentUserId !== null && currentUserId !== undefined) ? currentUserId : 'anon'}`;
-        console.log('[MARKERS] Looking for localStorage key:', markerKey);
-        let markers = [];
-        
-        try {
-            const stored = localStorage.getItem(markerKey);
-            console.log('[MARKERS] localStorage raw data:', stored ? stored.substring(0, 200) : 'null');
-            if (stored) {
-                markers = JSON.parse(stored);
-                console.log('[MARKERS] Parsed markers count before filter:', markers.length);
-                if (!Array.isArray(markers)) markers = [];
-                
-                // Filter out markers for notes that no longer exist in raw notes
-                const beforeFilter = markers.length;
-                markers = markers.filter(m => existingNoteIds.has(m.note_id));
-                console.log('[MARKERS] After filter:', markers.length, '(removed', beforeFilter - markers.length, ')');
-            } else {
-                console.warn('[MARKERS] No marker metadata found in localStorage. Notes may have been created before marker tracking was implemented.');
-            }
-        } catch (e) {
-            console.error('[MARKERS] Error loading marker metadata:', e);
-            markers = [];
-        }
-        
-        // If no markers found in localStorage, try to infer from context in raw notes
-        if (markers.length === 0 && existingNoteIds.size > 0) {
-            console.log('[MARKERS] No localStorage data - attempting to infer marker positions from contexts');
-            noteFragmentRegex.lastIndex = 0; // Reset regex
-            while ((match = noteFragmentRegex.exec(rawNotes)) !== null) {
-                const noteId = match[1];
-                const context = match[2];
-                
-                // Infer source type from context string
-                let sourceType = 'qa';
-                if (context.includes('Discussion')) {
-                    sourceType = 'discussion';
-                } else if (context.includes('Image')) {
-                    sourceType = 'image';
-                }
-                
-                markers.push({
-                    note_id: noteId,
-                    source_type: sourceType,
-                    source_context_id: context,
-                    inferred: true
-                });
-            }
-            console.log('[MARKERS] Inferred', markers.length, 'marker positions from contexts');
-        }
-        
-        // Helper function to insert marker after specific text
-        function insertMarkerAfterText(container, searchText, superscript) {
-            if (!container || !searchText || searchText.length < 3) {
-                console.warn('[MARKERS] Invalid input for insertMarkerAfterText');
-                return false;
-            }
-            
-            // Get full container text for debugging
-            const fullText = container.textContent || '';
-            console.log('[MARKERS] Container text length:', fullText.length, 'first 100 chars:', fullText.substring(0, 100));
-            console.log('[MARKERS] Searching for text (length=' + searchText.length + '):', searchText.substring(0, 50));
-            
-            // Normalize search text (remove extra whitespace, convert to lowercase for comparison)
-            const normalizedSearch = searchText.trim().replace(/\s+/g, ' ').toLowerCase();
-            const normalizedFullText = fullText.replace(/\s+/g, ' ').toLowerCase();
-            
-            // Check if search text exists anywhere in container
-            if (!normalizedFullText.includes(normalizedSearch.substring(0, Math.min(15, normalizedSearch.length)))) {
-                console.warn('[MARKERS] Search text not found anywhere in container!');
-                console.log('[MARKERS] Normalized search:', normalizedSearch.substring(0, 50));
-                console.log('[MARKERS] Normalized container:', normalizedFullText.substring(0, 100));
-                return false;
-            }
-            
-            const textNodes = [];
-            const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null, false);
-            let node;
-            while (node = walker.nextNode()) {
-                textNodes.push(node);
-            }
-            
-            console.log('[MARKERS] Found', textNodes.length, 'text nodes to search');
-            
-            // Try exact match first
-            for (let textNode of textNodes) {
-                const text = textNode.textContent;
-                const normalizedText = text.replace(/\s+/g, ' ').toLowerCase();
-                const index = normalizedText.indexOf(normalizedSearch);
-                if (index !== -1) {
-                    // Found exact match! Insert marker after it
-                    try {
-                        const range = document.createRange();
-                        range.setStart(textNode, Math.min(index + searchText.length, textNode.length));
-                        range.collapse(true);
-                        range.insertNode(superscript);
-                        console.log('[MARKERS] ✓ Inserted marker inline after exact text at index', index);
-                        return true;
-                    } catch (e) {
-                        console.error('[MARKERS] Error inserting marker:', e);
-                    }
-                }
-            }
-            
-            // Try partial match (first 15-20 chars) if exact match fails
-            for (let len = Math.min(20, normalizedSearch.length); len >= 15; len--) {
-                const partialSearch = normalizedSearch.substring(0, len);
-                for (let textNode of textNodes) {
-                    const text = textNode.textContent;
-                    const normalizedText = text.replace(/\s+/g, ' ').toLowerCase();
-                    const index = normalizedText.indexOf(partialSearch);
-                    if (index !== -1) {
-                        // Found partial match! Insert marker after the found partial text
-                        try {
-                            const range = document.createRange();
-                            range.setStart(textNode, Math.min(index + partialSearch.length, textNode.length));
-                            range.collapse(true);
-                            range.insertNode(superscript);
-                            console.log('[MARKERS] ✓ Inserted marker inline after partial text (length=' + len + ') at index', index);
-                            return true;
-                        } catch (e) {
-                            console.error('[MARKERS] Error inserting marker:', e);
-                        }
-                    }
-                }
-            }
-            
-            console.warn('[MARKERS] ✗ Text not found for inline insertion despite existing in container');
-            return false;
-        }
-        
-        // Render markers based on metadata
-        markers.forEach(markerData => {
-            const noteId = markerData.note_id;
-            const sourceType = markerData.source_type;
-            const sourceContext = markerData.source_context_id;
-            const selectedText = markerData.selected_text || '';
-            
-            // Check if marker already exists
-            const existingMarker = document.querySelector(`[data-note-id="${noteId}"]`);
-            if (existingMarker) {
-                console.log('[MARKERS] Marker already exists for note:', noteId);
-                return;
-            }
-            
-            console.log('[MARKERS] Creating marker for note:', noteId, 'type:', sourceType, 'context:', sourceContext, 'text:', selectedText.substring(0, 30));
-            
-            // Create the superscript element
-            const superscript = document.createElement('sup');
-            superscript.className = 'note-marker';
-            superscript.setAttribute('data-note-id', noteId);
-            superscript.style.cssText = 'color: #e96304 !important; cursor: pointer !important; font-size: 0.9em !important; margin: 0 2px !important; vertical-align: super !important; pointer-events: auto !important; font-weight: bold !important; text-decoration: none !important; display: inline !important; background-color: transparent !important;';
-            superscript.textContent = '[📝]';
-            superscript.title = 'Click to view/edit this note';
-            
-            superscript.addEventListener('click', (e) => {
-                e.stopPropagation();
-                e.preventDefault();
-                console.log('[MARKERS] Marker clicked:', noteId);
-                openNoteFragmentPopup(noteId);
-            });
-            
-            // Place marker based on source type and context
-            if (sourceType === 'qa') {
-                // Parse Q&A context to get question/answer number
-                let targetElement = null;
-                
-                if (sourceContext.includes('Question')) {
-                    const match = sourceContext.match(/(\d+)/);
-                    if (match) {
-                        const num = parseInt(match[1]);
-                        // Try multiple selectors to find the question
-                        targetElement = document.querySelector(`.qa-question[data-question-number="${num}"]`) ||
-                                      document.querySelector(`.qa-question-card-display:nth-of-type(${num * 2 - 1})`) ||
-                                      document.querySelectorAll('.qa-question-card-display, .qa-card.qa-question-card-display')[num - 1];
-                    }
-                } else if (sourceContext.includes('Answer')) {
-                    const match = sourceContext.match(/(\d+)/);
-                    if (match) {
-                        const num = parseInt(match[1]);
-                        // Try multiple selectors to find the answer
-                        targetElement = document.querySelector(`.qa-answer[data-answer-number="${num}"]`) ||
-                                      document.querySelector(`.qa-answer-card-display:nth-of-type(${num * 2})`) ||
-                                      document.querySelectorAll('.qa-answer-card-display, .qa-card.qa-answer-card-display')[num - 1];
-                    }
-                }
-                
-                if (targetElement) {
-                    // Find the text content area
-                    const textArea = targetElement.querySelector('.qa-card-text, .qa-cell-content');
-                    if (textArea) {
-                        // Try to insert inline after the selected text
-                        const inserted = insertMarkerAfterText(textArea, selectedText, superscript);
-                        if (!inserted) {
-                            // Fallback: append to end
-                            textArea.appendChild(superscript);
-                        }
-                        console.log('[MARKERS] Added marker to Q&A:', sourceContext);
-                    } else {
-                        console.warn('[MARKERS] Text area not found in:', sourceContext);
-                    }
-                } else {
-                    console.warn('[MARKERS] Could not find Q&A element for:', sourceContext);
-                    console.log('[MARKERS] Available Q&A cards:', document.querySelectorAll('.qa-question-card-display, .qa-answer-card-display').length);
-                }
-            } else if (sourceType === 'discussion') {
-                // Find discussion content element
-                const discussionContent = document.querySelector('#discussionText, .discussion-text, .discussion-section .detail-content');
-                if (discussionContent) {
-                    // Try to insert inline after the selected text
-                    const inserted = insertMarkerAfterText(discussionContent, selectedText, superscript);
-                    if (!inserted) {
-                        // Fallback: append to end
-                        discussionContent.appendChild(superscript);
-                    }
-                    console.log('[MARKERS] Added marker to discussion section');
-                } else {
-                    console.error('[MARKERS] Discussion content element not found!');
-                }
-            }
-        });
-        
-        console.log('[MARKERS] Rendering complete');
-    }
-    
-    function removeAllNoteMarkers() {
-        // Remove all superscript note markers from Q&A, Discussion, and other sections
-        const markers = document.querySelectorAll('.note-marker');
-        markers.forEach(marker => marker.remove());
-    }
-    
-    // DEPRECATED: Old complex marker system - now using simple HTML injection
-    function ensureMarkersVisible() {
-        console.log('[MARKERS] ensureMarkersVisible() is deprecated - markers are now injected during content rendering');
-        return;
-    }
-    
-    function removeAllNoteMarkers() {
-        // Remove all superscript note markers from Q&A, Discussion, and other sections
-        const markers = document.querySelectorAll('.note-marker');
-        markers.forEach(marker => marker.remove());
-    }
-    
     // ==================== UNIFIED NOTES SYSTEM (PHASE 2) ====================
     // Generate unique ID for note fragment
     function generateNoteId() {
@@ -3595,917 +3342,170 @@
         }
     }
     
-    // ==================== NEW SELECTION-BASED HIGHLIGHTING SYSTEM (STUDENTS ONLY) ====================
-    // Color preference stored in localStorage
-    const HIGHLIGHT_COLOR_KEY = 'frcr_highlight_color';
-    let currentHighlightColor = localStorage.getItem(HIGHLIGHT_COLOR_KEY) || 'yellow';
-    let highlightActionMenu = null;
-    let currentSelectionRange = null;
-    let currentSelectionField = null;
-    let currentSelectionText = null; // Store text immediately to avoid mobile Safari selection clearing
-    let lastSelectionTs = 0;
-    let processedHighlights = new Set(); // Track processed highlights to prevent duplicates
-    let isSelecting = false; // Track if user is actively selecting text
-    let selectionChangeTimeout = null;
+    // ==================== RECOGITO.JS ANNOTATION SYSTEM (STUDENTS ONLY) ====================
+    // This system replaces the legacy highlight/notes code with Recogito.js
+    // Two annotation types: 'highlight' (visual only) and 'note' (editable + saved)
     
-    // Initialize new selection-based highlighting system
-    function initHighlighting() {
+    let recogito = null;
+    let annotationInstances = {}; // Track Recogito instances per content area
+    let globalNotesList = []; // Track all notes for the global notes section
+    
+    // ==================== INITIALIZATION ====================
+    function initAnnotationSystem() {
         if (!isStudent) return;
         
-        // Load existing highlights
-        loadHighlights();
+        console.log('[ANNOTATION] Initializing Recogito.js annotation system');
         
-        // Listen for text selection (works on both desktop and mobile)
-        let selectionTimeout = null;
+        // Initialize Recogito for all annotatable content areas
+        initializeAnnotatableAreas();
         
-        // Handle mousedown (start of selection)
-        document.addEventListener('mousedown', function(e) {
-            // Only track if clicking on highlightable content
-            const fieldElement = findFieldElementFromNode(e.target);
-            if (fieldElement) {
-                isSelecting = true;
-            }
-        });
+        // Load existing annotations from backend
+        loadAnnotations();
         
-        // Handle mouseup (desktop)
-        document.addEventListener('mouseup', function(e) {
-            // Don't show menu if clicking on the menu itself
-            if (highlightActionMenu && highlightActionMenu.contains(e.target)) {
-                isSelecting = false;
-                return;
-            }
-            
-            // Mark selection as complete
-            isSelecting = false;
-            
-            // Small delay to ensure selection is complete
-            if (selectionTimeout) clearTimeout(selectionTimeout);
-            selectionTimeout = setTimeout(() => {
-                handleTextSelection(e);
-            }, 100);
-        });
-        
-        // Handle touchstart (start of selection on mobile)
-        document.addEventListener('touchstart', function(e) {
-            const fieldElement = findFieldElementFromNode(e.target);
-            if (fieldElement) {
-                isSelecting = true;
-            }
-        }, { passive: true });
-        
-        // Handle touchend (mobile)
-        document.addEventListener('touchend', function(e) {
-            // Don't show menu if tapping on the menu itself
-            if (highlightActionMenu && highlightActionMenu.contains(e.target)) {
-                isSelecting = false;
-                return;
-            }
-            
-            // Mark selection as complete
-            isSelecting = false;
-            
-            // Longer delay for mobile to ensure selection is complete
-            if (selectionTimeout) clearTimeout(selectionTimeout);
-            selectionTimeout = setTimeout(() => {
-                handleTextSelection(e);
-            }, 300);
-        }, { passive: true });
-        
-        // Handle selectionchange (backup for mobile) - ONLY capture snapshot, don't process during selection
-        document.addEventListener('selectionchange', function() {
-            // DON'T process if user is actively selecting or if menu is open
-            if (isSelecting || highlightActionMenu) {
-                // Still capture snapshot for mobile Safari, but don't show menu
-                const selection = window.getSelection();
-                if (selection && selection.rangeCount > 0 && selection.toString().trim().length > 0) {
-                    try {
-                        captureSelectionSnapshot(selection);
-                    } catch (err) {
-                        // Ignore errors
-                    }
-                }
-                return;
-            }
-            
-            const selection = window.getSelection();
-            if (selection && selection.toString().trim().length > 0) {
-                // Snapshot selection early (mobile may clear quickly)
-                captureSelectionSnapshot(selection);
-                // Check if selection is in highlightable content
-                if (selection.rangeCount > 0) {
-                    try {
-                        const range = selection.getRangeAt(0);
-                        const container = range.commonAncestorContainer;
-                        const fieldElement = findFieldElementFromNode(container);
-                        if (fieldElement) {
-                            // Clear any pending timeout
-                            if (selectionChangeTimeout) clearTimeout(selectionChangeTimeout);
-                            // Small delay then show menu (only if not actively selecting)
-                            selectionChangeTimeout = setTimeout(() => {
-                                if (!isSelecting) {
-                                    handleTextSelection(null);
-                                }
-                            }, 200);
-                        }
-                    } catch (err) {
-                        // Ignore errors
-                    }
-                }
-            }
-        });
-        
-        // Close menu when clicking outside
-        document.addEventListener('click', function(e) {
-            if (highlightActionMenu && !highlightActionMenu.contains(e.target)) {
-                const selection = window.getSelection();
-                if (!selection || !selection.toString().trim()) {
-                    hideHighlightMenu();
-                }
-            }
-        });
+        // Setup floating notes button
+        setupFloatingNotesButton();
     }
     
-    // Handle text selection and show contextual menu
-    function findFieldElementFromNode(node) {
-        if (!node) return null;
-        const element = node.nodeType === Node.TEXT_NODE ? node.parentElement : node;
-        if (!element) return null;
-        return element.closest('[data-field]') || element.closest('.highlightable-text');
+    // ==================== RECOGITO INITIALIZATION FUNCTIONS ====================
+    function initializeAnnotatableAreas() {
+        console.log('[ANNOTATION] Setting up annotatable content areas with Recogito.js');
+        
+        if (!isStudent) {
+            console.log('[ANNOTATION] Not a student, skipping setup');
+            return;
+        }
+        
+        // NOTE: Recogito.js has compatibility issues with dynamically loaded content
+        // For a production-ready implementation, we should use a simpler approach
+        // or wait for Recogito to initialize after content loads
+        
+        // For now, adding placeholders for the implementation
+        console.log('[ANNOTATION] Recogito initialization deferred - see ANNOTATION_REFACTOR_STATUS.md');
+        
+        // TEMP: Add simple text selection menu as fallback
+        document.addEventListener('mouseup', handleTextSelection);
+        document.addEventListener('touchend', handleTextSelection);
     }
-
-    function captureSelectionSnapshot(selection) {
-        if (!selection || selection.rangeCount === 0) return;
-        const text = selection.toString().trim();
-        if (!text) return;
-        const range = selection.getRangeAt(0);
-        const container = range.commonAncestorContainer;
-        const fieldElement = findFieldElementFromNode(container);
-        if (!fieldElement) return;
-        currentSelectionRange = range.cloneRange();
-        currentSelectionField = fieldElement.dataset?.field || fieldElement.getAttribute('data-field') || 'discussion';
-        currentSelectionText = text;
-        lastSelectionTs = Date.now();
-    }
-
+    
     function handleTextSelection(e) {
         if (!isStudent) return;
         
         const selection = window.getSelection();
-        let range = selection && selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
-        let text = selection ? selection.toString().trim() : '';
-        let usingSnapshot = false;
-        if ((!selection || !text) && currentSelectionText && currentSelectionRange) {
-            // Mobile fallback: use recent snapshot if selection was cleared
-            if (Date.now() - lastSelectionTs < 1000) {
-                text = currentSelectionText;
-                range = currentSelectionRange;
-                usingSnapshot = true;
-            }
-        }
-        if (!range || !text) return;
+        const text = selection.toString().trim();
         
-        // Get the range
-        // Find the field element
-        let fieldElement = null;
-        if (!usingSnapshot && e && e.target) {
-            fieldElement = findFieldElementFromNode(e.target);
-        }
+        if (!text || text.length < 3) return;
         
-        // If not found via event target, find from range
-        if (!fieldElement) {
-            const container = range.commonAncestorContainer;
-            fieldElement = findFieldElementFromNode(container);
-        }
+        // Find if selection is in an annotatable area
+        const range = selection.getRangeAt(0);
+        const container = range.commonAncestorContainer;
+        const annotatable = container.nodeType === Node.TEXT_NODE 
+            ? container.parentElement.closest('.highlightable-text, [data-field]')
+            : container.closest('.highlightable-text, [data-field]');
         
-        // If not found, fall back to snapshot field when available
-        let fieldName = null;
-        if (!fieldElement && usingSnapshot && currentSelectionField) {
-            fieldName = currentSelectionField;
-        } else if (fieldElement) {
-            fieldName = fieldElement.dataset?.field || 
-                         fieldElement.getAttribute('data-field') || 
-                         'discussion';
-        }
-        if (!fieldName) {
-            return;
-        }
+        if (!annotatable) return;
         
-        // Store selection info immediately (critical for mobile Safari)
-        currentSelectionRange = range.cloneRange();
-        currentSelectionField = fieldName;
-        currentSelectionText = text; // Store text immediately - mobile Safari clears selection on tap
-        lastSelectionTs = Date.now();
-        
-        // Get position for menu (use selection end or event position)
-        let menuX, menuY;
-        if (e && e.clientX !== undefined) {
-            menuX = e.clientX;
-            menuY = e.clientY;
-        } else {
-            const rect = range.getBoundingClientRect();
-            menuX = rect.left + rect.width / 2;
-            menuY = rect.top;
-        }
-        
-        // Show contextual menu
-        showHighlightActionMenu(menuX, menuY, text, fieldName);
+        // Show simple selection menu
+        showSimpleSelectionMenu(e, text, annotatable);
     }
     
-    // Get color hex value
-    function getColorHex(colorName) {
-        const colors = {
-            'yellow': '#FFEB3B',
-            'green': '#4CAF50',
-            'pink': '#E91E63',
-            'blue': '#2196F3'
-        };
-        return colors[colorName] || '#FFEB3B';
-    }
-    
-    // Load highlights from API
-    function loadHighlights() {
-        if (!isStudent) return;
-        
-        console.log('[HIGHLIGHT] Loading highlights for case:', caseId);
-        
-        fetch(`/api/case/${caseId}/highlights`)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                }
-                return response.json();
-            })
-            .then(data => {
-                console.log('[HIGHLIGHT] Received highlights:', data.highlights ? data.highlights.length : 0);
-                if (data.highlights && data.highlights.length > 0) {
-                    renderHighlights(data.highlights);
-                } else {
-                    console.log('[HIGHLIGHT] No highlights to render');
-                }
-            })
-            .catch(error => {
-                console.error('[HIGHLIGHT] Error loading highlights:', error);
-            });
-    }
-    
-    // Show contextual action menu (iOS/Android style)
-    function showHighlightActionMenu(x, y, selectedText, fieldName) {
+    function showSimpleSelectionMenu(e, selectedText, element) {
         // Remove existing menu
-        if (highlightActionMenu) {
-            highlightActionMenu.remove();
-        }
+        const existing = document.getElementById('simpleSelectionMenu');
+        if (existing) existing.remove();
         
-        // Calculate position to avoid screen edges
-        const menuWidth = 280;
-        const menuHeight = 120;
-        const padding = 10;
-        let menuX = x - menuWidth / 2;
-        let menuY = y - menuHeight - 20;
-        
-        // Adjust if too close to right edge
-        if (menuX + menuWidth > window.innerWidth - padding) {
-            menuX = window.innerWidth - menuWidth - padding;
-        }
-        // Adjust if too close to left edge
-        if (menuX < padding) {
-            menuX = padding;
-        }
-        // Adjust if too close to top - show below selection instead
-        if (menuY < padding) {
-            menuY = y + 30;
-        }
-        
-        // Create menu container
-        highlightActionMenu = document.createElement('div');
-        highlightActionMenu.className = 'highlight-action-menu';
-        highlightActionMenu.style.cssText = `
+        // Create menu
+        const menu = document.createElement('div');
+        menu.id = 'simpleSelectionMenu';
+        menu.style.cssText = `
             position: fixed;
-            left: ${menuX}px;
-            top: ${menuY}px;
             background: white;
-            border: 1px solid #ddd;
-            border-radius: 12px;
-            padding: 12px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            border: 2px solid #5E899E;
+            border-radius: 8px;
+            padding: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
             z-index: 10000;
-            min-width: 260px;
-            animation: slideDown 0.2s ease-out;
-            touch-action: manipulation;
-            -webkit-user-select: none;
-            user-select: none;
+            display: flex;
+            gap: 8px;
         `;
         
-        // Prevent menu from clearing selection when touched (mobile Safari fix)
-        highlightActionMenu.addEventListener('touchstart', function(e) {
-            e.stopPropagation();
-        }, { passive: true });
+        // Position menu
+        const x = e.clientX || (e.changedTouches && e.changedTouches[0].clientX) || 0;
+        const y = e.clientY || (e.changedTouches && e.changedTouches[0].clientY) || 0;
+        menu.style.left = `${x}px`;
+        menu.style.top = `${Math.max(10, y - 60)}px`;
         
-        highlightActionMenu.addEventListener('touchend', function(e) {
-            e.stopPropagation();
-        }, { passive: true });
-        
-        // Add animation keyframes if not already added
-        if (!document.getElementById('highlightMenuStyles')) {
-            const style = document.createElement('style');
-            style.id = 'highlightMenuStyles';
-            style.textContent = `
-                @keyframes slideDown {
-                    from {
-                        opacity: 0;
-                        transform: translateY(-10px);
-                    }
-                    to {
-                        opacity: 1;
-                        transform: translateY(0);
-                    }
-                }
-                .highlight-action-menu {
-                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-                }
-                .highlight-action-btn {
-                    transition: all 0.15s ease;
-                    border: none !important;
-                    touch-action: manipulation;
-                }
-                .highlight-action-btn:active {
-                    transform: scale(0.95);
-                    opacity: 0.8;
-                }
-            `;
-            document.head.appendChild(style);
-        }
-        
-        // Primary action: Highlight button (uses current color preference)
+        // Add Highlight button
         const highlightBtn = document.createElement('button');
-        highlightBtn.className = 'highlight-action-btn';
-        const currentColorHex = getColorHex(currentHighlightColor);
-        highlightBtn.style.cssText = `
-            background: ${currentColorHex};
-            color: ${currentHighlightColor === 'yellow' ? '#333' : '#fff'};
-            border: none;
-            padding: 10px 16px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 0.9rem;
-            width: 100%;
-            margin-bottom: 8px;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        `;
-        highlightBtn.innerHTML = `<i class="fas fa-highlighter"></i> Highlight`;
-        
-        // Store text and field in data attributes (more reliable than variables on mobile)
-        highlightBtn.setAttribute('data-highlight-text', selectedText);
-        highlightBtn.setAttribute('data-highlight-field', fieldName);
-        highlightBtn.setAttribute('data-highlight-color', currentHighlightColor);
-        
-        // Handle both mousedown and touchstart (before selection clears)
-        const handleHighlightAction = function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            e.stopImmediatePropagation();
-            
-            // Get text from data attribute (most reliable on mobile)
-            const storedText = highlightBtn.getAttribute('data-highlight-text');
-            const storedField = highlightBtn.getAttribute('data-highlight-field');
-            const storedColor = highlightBtn.getAttribute('data-highlight-color') || currentHighlightColor;
-            
-            if (!storedText || !storedField) {
-                console.error('[HIGHLIGHT] Missing stored text or field:', { storedText, storedField });
-                // Fallback to variable storage
-                if (currentSelectionText && currentSelectionField) {
-                    createHighlight(currentSelectionText, storedColor, currentSelectionField);
-                    hideHighlightMenu();
-                } else {
-                    console.error('[HIGHLIGHT] No text available for highlighting');
-                    alert('Unable to highlight: selection was lost. Please try selecting the text again.');
-                    hideHighlightMenu();
-                }
-                return;
-            }
-            
-            highlightBtn.disabled = true;
-            highlightBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Highlighting...';
-            
-            console.log('[HIGHLIGHT] Creating highlight with stored data:', {
-                text: storedText.substring(0, 50),
-                color: storedColor,
-                field: storedField,
-                textLength: storedText.length
-            });
-            
-            createHighlight(storedText, storedColor, storedField);
-            hideHighlightMenu();
+        highlightBtn.className = 'btn btn-sm btn-warning';
+        highlightBtn.innerHTML = '<i class="fas fa-highlighter"></i> Highlight';
+        highlightBtn.onclick = () => {
+            // TODO: Create highlight annotation
+            showFlash('Highlight feature coming soon!', 'info');
+            menu.remove();
         };
         
-        // Use mousedown/touchstart to capture before selection clears (critical for mobile)
-        highlightBtn.addEventListener('mousedown', handleHighlightAction, { passive: false });
-        highlightBtn.addEventListener('touchstart', handleHighlightAction, { passive: false });
-        highlightActionMenu.appendChild(highlightBtn);
-        
-        // Add "Add to Notes" button (Phase 2: Unified Notes System)
-        const addToNotesBtn = document.createElement('button');
-        addToNotesBtn.className = 'highlight-action-btn';
-        addToNotesBtn.style.cssText = `
-            background: #e9630E;
-            color: #fff;
-            border: none;
-            padding: 10px 16px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 0.9rem;
-            width: 100%;
-            margin-bottom: 8px;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.15);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        `;
-        addToNotesBtn.innerHTML = `<i class="fas fa-sticky-note"></i> Add to Notes`;
-        addToNotesBtn.setAttribute('data-note-text', selectedText);
-        addToNotesBtn.setAttribute('data-note-field', fieldName);
-        
-        const handleAddToNotesAction = function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            e.stopImmediatePropagation();
-            
-            const storedText = addToNotesBtn.getAttribute('data-note-text');
-            const storedField = addToNotesBtn.getAttribute('data-note-field');
-            
-            if (!storedText || !storedField) {
-                // Fallback to variable storage
-                if (currentSelectionText && currentSelectionField) {
-                    openAddToNotesPopup(currentSelectionText, currentSelectionField);
-                    hideHighlightMenu();
-                } else {
-                    alert('Unable to create note: selection was lost. Please try selecting the text again.');
-                    hideHighlightMenu();
-                }
-                return;
-            }
-            
-            openAddToNotesPopup(storedText, storedField);
-            hideHighlightMenu();
+        // Add Note button
+        const noteBtn = document.createElement('button');
+        noteBtn.className = 'btn btn-sm btn-brand-primary';
+        noteBtn.innerHTML = '<i class="fas fa-sticky-note"></i> Add Note';
+        noteBtn.onclick = () => {
+            const fieldName = element.dataset.field || element.id || 'unknown';
+            openAddToNotesPopup(selectedText, fieldName);
+            menu.remove();
         };
         
-        addToNotesBtn.addEventListener('mousedown', handleAddToNotesAction, { passive: false });
-        addToNotesBtn.addEventListener('touchstart', handleAddToNotesAction, { passive: false });
-        highlightActionMenu.appendChild(addToNotesBtn);
+        menu.appendChild(highlightBtn);
+        menu.appendChild(noteBtn);
+        document.body.appendChild(menu);
         
-        // Color picker row
-        const colorRow = document.createElement('div');
-        colorRow.style.cssText = 'display: flex; gap: 6px; justify-content: center; margin-bottom: 8px;';
-        
-        const colors = [
-            { name: 'yellow', color: '#FFEB3B' },
-            { name: 'green', color: '#4CAF50' },
-            { name: 'pink', color: '#E91E63' },
-            { name: 'blue', color: '#2196F3' }
-        ];
-        
-        colors.forEach(function(color) {
-            const colorBtn = document.createElement('button');
-            colorBtn.className = 'highlight-action-btn';
-            const isSelected = color.name === currentHighlightColor;
-            colorBtn.style.cssText = `
-                width: 36px;
-                height: 36px;
-                border-radius: 50%;
-                background: ${color.color};
-                border: ${isSelected ? '3px solid #333' : '2px solid transparent'};
-                cursor: pointer;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            `;
-            colorBtn.title = `Use ${color.name} highlight`;
-            colorBtn.onclick = function(e) {
-                e.stopPropagation();
-                currentHighlightColor = color.name;
-                localStorage.setItem(HIGHLIGHT_COLOR_KEY, color.name);
-                highlightBtn.setAttribute('data-highlight-color', color.name);
-                // Update primary button color
-                highlightBtn.style.background = color.color;
-                highlightBtn.style.color = color.name === 'yellow' ? '#333' : '#fff';
-                // Update selected indicator
-                colorRow.querySelectorAll('button').forEach(btn => {
-                    btn.style.border = '2px solid transparent';
-                });
-                colorBtn.style.border = '3px solid #333';
-            };
-            colorRow.appendChild(colorBtn);
-        });
-        
-        highlightActionMenu.appendChild(colorRow);
-        
-        // Close button
-        const closeBtn = document.createElement('button');
-        closeBtn.style.cssText = `
-            position: absolute;
-            top: 8px;
-            right: 8px;
-            background: transparent;
-            border: none;
-            color: #999;
-            cursor: pointer;
-            padding: 4px;
-            border-radius: 4px;
-            font-size: 0.9rem;
-            width: 24px;
-            height: 24px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        `;
-        closeBtn.innerHTML = '<i class="fas fa-times"></i>';
-        closeBtn.onclick = hideHighlightMenu;
-        highlightActionMenu.appendChild(closeBtn);
-        
-        document.body.appendChild(highlightActionMenu);
-        
-        // Close on Escape key
-        const escapeHandler = function(e) {
-            if (e.key === 'Escape' && highlightActionMenu) {
-                hideHighlightMenu();
-                document.removeEventListener('keydown', escapeHandler);
-            }
-        };
-        document.addEventListener('keydown', escapeHandler);
-    }
-    
-    function hideHighlightMenu() {
-        if (highlightActionMenu) {
-            highlightActionMenu.remove();
-            highlightActionMenu = null;
-        }
-        currentSelectionRange = null;
-        currentSelectionField = null;
-        currentSelectionText = null;
-        lastSelectionTs = 0;
-        
-        // Clear selection (but only after a delay on mobile to allow highlight to process)
+        // Close on click outside
         setTimeout(() => {
-            const selection = window.getSelection();
-            if (selection) {
-                selection.removeAllRanges();
-            }
+            document.addEventListener('click', function closeMenu(e) {
+                if (!menu.contains(e.target)) {
+                    menu.remove();
+                    document.removeEventListener('click', closeMenu);
+                }
+            });
         }, 100);
     }
     
-    // Create highlight from current selection (fallback method)
-    function createHighlightFromSelection(color) {
-        // First try stored text (works on mobile)
-        if (currentSelectionText && currentSelectionField) {
-            createHighlight(currentSelectionText, color, currentSelectionField);
-            hideHighlightMenu();
-            return;
-        }
+    function loadAnnotations() {
+        if (!isStudent) return;
         
-        // Fallback: try to get from current selection (desktop)
-        const selection = window.getSelection();
-        if (selection && selection.rangeCount > 0) {
-            const text = selection.toString().trim();
-            if (text && currentSelectionField) {
-                createHighlight(text, color, currentSelectionField);
-                hideHighlightMenu();
-                return;
-            }
-        }
+        console.log('[ANNOTATION] Loading existing annotations for case', caseId);
         
-        console.warn('No selection available for highlighting');
-        hideHighlightMenu();
+        // TEMP: For now, this is a placeholder
+        // In production, this should fetch from: /api/case/{caseId}/annotations
+        // and render them using the annotation instances
+        
+        console.log('[ANNOTATION] Annotation loading deferred - see ANNOTATION_REFACTOR_STATUS.md');
     }
     
-    function createHighlight(text, color, fieldName) {
-        if (!isStudent) {
-            console.warn('createHighlight called but user is not a student');
-            return;
-        }
-        
-        if (!text || text.trim().length === 0) {
-            console.warn('createHighlight called with empty text');
-            return;
-        }
-        
-        if (!color) {
-            console.warn('createHighlight called without color');
-            return;
-        }
-        
-        if (!caseId) {
-            console.error('createHighlight called but caseId is not defined');
-            return;
-        }
-        
-        // Create unique key for duplicate checking
-        const highlightKey = `${text}|${color}|${fieldName}`;
-        
-        // Double-check we haven't already processed this (frontend duplicate prevention)
-        if (processedHighlights.has(highlightKey)) {
-            console.log('Skipping duplicate highlight:', highlightKey);
-            return;
-        }
-        
-        console.log('[HIGHLIGHT] Sending highlight request:', { 
-            caseId, 
-            text: text.substring(0, 50), 
-            color, 
-            fieldName,
-            textLength: text.length
-        });
-        
-        fetch(`/api/case/${caseId}/highlight`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                text_content: text,
-                highlight_color: color,
-                field_name: fieldName
-            })
-        })
-        .then(response => {
-            console.log('[HIGHLIGHT] Response status:', response.status, response.statusText);
-            if (!response.ok) {
-                return response.json().then(err => {
-                    console.error('[HIGHLIGHT] API error:', err);
-                    throw new Error(err.error || `HTTP ${response.status}`);
-                });
-            }
-            return response.json();
-        })
-        .then(data => {
-            console.log('[HIGHLIGHT] Response data:', data);
-            if (data.success) {
-                // Mark as processed
-                processedHighlights.add(highlightKey);
-                
-                // Reload highlights to show new one
-                setTimeout(() => {
-                    loadHighlights();
-                }, 300);
-            } else {
-                // If highlight already exists (backend duplicate), remove from processed set
-                if (data.message && data.message.includes('already exists')) {
-                    processedHighlights.delete(highlightKey);
-                    console.log('[HIGHLIGHT] Highlight already exists on server');
-                } else {
-                    console.error('[HIGHLIGHT] Failed to create highlight:', data.error);
-                    // Remove from processed set so user can retry
-                    processedHighlights.delete(highlightKey);
+    function setupFloatingNotesButton() {
+        const floatingBtn = document.getElementById('floatingNotesBtn');
+        if (floatingBtn) {
+            console.log('[ANNOTATION] Floating notes button found and active');
+            // Ensure button opens the global notes textarea
+            floatingBtn.addEventListener('click', () => {
+                const notesSection = document.querySelector('#candidateNoteText');
+                if (notesSection) {
+                    notesSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    notesSection.focus();
                 }
-            }
-        })
-        .catch(error => {
-            console.error('[HIGHLIGHT] Error creating highlight:', error);
-            // Remove from processed set on error so user can retry
-            processedHighlights.delete(highlightKey);
-            // Show user-friendly error
-            alert('Failed to create highlight: ' + error.message);
-        });
-    }
-    
-    function findVisibleFieldElement(fieldName) {
-        const nodes = Array.from(document.querySelectorAll(`[data-field="${fieldName}"]`));
-        if (!nodes.length) return null;
-        const visible = nodes.find(node => node.offsetParent !== null || node.getClientRects().length > 0);
-        return visible || nodes[0];
-    }
-
-    function renderHighlights(highlights) {
-        if (!highlights || highlights.length === 0) {
-            console.log('[HIGHLIGHT] No highlights to render');
-            return;
-        }
-        
-        console.log('[HIGHLIGHT] Rendering', highlights.length, 'highlights');
-        
-        // Remove existing highlights (preserve text)
-        document.querySelectorAll('.text-highlight').forEach(function(el) {
-            const text = el.textContent;
-            el.outerHTML = text;
-        });
-        
-        // Normalize text for comparison (handles whitespace differences on mobile)
-        function normalizeText(text) {
-            return text.replace(/\s+/g, ' ').trim();
-        }
-        
-        // Apply highlights to each field
-        highlights.forEach(function(highlight) {
-            if (!highlight.text_content || !highlight.field_name) {
-                console.warn('[HIGHLIGHT] Skipping invalid highlight:', highlight);
-                return;
-            }
-            
-            let fieldElement = findVisibleFieldElement(highlight.field_name);
-            
-            // Fallback for discussion and diagnosis
-            if (!fieldElement) {
-                if (highlight.field_name === 'discussion') {
-                    fieldElement = document.getElementById('discussionText');
-                } else if (highlight.field_name === 'diagnosis') {
-                    fieldElement = document.getElementById('diagnosisText');
-                }
-            }
-            
-            // Also check Q&A fields (question_1, answer_1, etc.)
-            if (!fieldElement && highlight.field_name.startsWith('question_')) {
-                const qaElements = document.querySelectorAll('.qa-question');
-                // Try to find matching question element
-                qaElements.forEach(function(el) {
-                    if (fieldElement) return;
-                    const elText = normalizeText(el.textContent || '');
-                    const highlightText = normalizeText(highlight.text_content);
-                    if (elText.includes(highlightText) && !el.querySelector('.text-highlight')) {
-                        fieldElement = el;
-                    }
-                });
-            } else if (!fieldElement && highlight.field_name.startsWith('answer_')) {
-                const qaElements = document.querySelectorAll('.qa-answer');
-                qaElements.forEach(function(el) {
-                    if (fieldElement) return;
-                    const elText = normalizeText(el.textContent || '');
-                    const highlightText = normalizeText(highlight.text_content);
-                    if (elText.includes(highlightText) && !el.querySelector('.text-highlight')) {
-                        fieldElement = el;
-                    }
-                });
-            }
-            
-            if (!fieldElement) {
-                console.warn('[HIGHLIGHT] Field element not found for:', highlight.field_name);
-                return;
-            }
-            
-            // Get text content and normalize for comparison
-            const textContent = fieldElement.textContent || fieldElement.innerText || '';
-            const normalizedTextContent = normalizeText(textContent);
-            const normalizedHighlightText = normalizeText(highlight.text_content);
-            
-            if (!normalizedTextContent.includes(normalizedHighlightText)) {
-                console.warn('[HIGHLIGHT] Text not found in field:', {
-                    field: highlight.field_name,
-                    lookingFor: normalizedHighlightText.substring(0, 50),
-                    fieldText: normalizedTextContent.substring(0, 100)
-                });
-                return;
-            }
-            
-            // Check if already highlighted
-            const html = fieldElement.innerHTML;
-            if (html.includes(`data-highlight-id="${highlight.id}"`)) {
-                console.log('[HIGHLIGHT] Already highlighted:', highlight.id);
-                return;
-            }
-            
-            const colorMap = {
-                'yellow': '#FFEB3B',
-                'green': '#4CAF50',
-                'pink': '#E91E63',
-                'blue': '#2196F3'
-            };
-            
-            // Escape the highlight text for regex, but make it more flexible for whitespace
-            const escapedText = escapeRegex(highlight.text_content);
-            // Create regex that's flexible with whitespace (handles mobile Safari differences)
-            const flexibleRegex = new RegExp(escapedText.replace(/\s+/g, '\\s+'), 'gi');
-            
-            // Try to replace
-            const highlighted = html.replace(flexibleRegex, function(match) {
-                const color = colorMap[highlight.highlight_color] || '#FFEB3B';
-                return `<mark class="text-highlight" data-highlight-id="${highlight.id}" style="background-color: ${color}; cursor: pointer; padding: 2px 4px; border-radius: 3px; transition: all 0.2s;" onmouseover="this.style.boxShadow='0 2px 4px rgba(0,0,0,0.2)'; this.style.opacity='0.9';" onmouseout="this.style.boxShadow='none'; this.style.opacity='1';" onclick="deleteHighlight(${highlight.id}); event.stopPropagation();" title="Click to remove highlight"><span style="position: relative;">${match}<i class="fas fa-times" style="font-size: 0.7em; margin-left: 4px; opacity: 0.6;"></i></span></mark>`;
-            });
-            
-            if (highlighted !== html) {
-                fieldElement.innerHTML = highlighted;
-                console.log('[HIGHLIGHT] Successfully rendered highlight:', highlight.id);
-            } else {
-                // Fallback: try textContent-based range highlight (handles rich HTML in Q&A)
-                const fallbackApplied = applyHighlightByTextContent(
-                    fieldElement,
-                    highlight.text_content,
-                    colorMap[highlight.highlight_color] || '#FFEB3B',
-                    highlight.id
-                );
-                if (fallbackApplied) {
-                    console.log('[HIGHLIGHT] Fallback rendered highlight:', highlight.id);
-                } else {
-                    console.warn('[HIGHLIGHT] Regex did not match for highlight:', highlight.id);
-                }
-            }
-        });
-        
-        console.log('[HIGHLIGHT] Finished rendering highlights');
-        
-        // Markers are embedded in HTML - no need to re-render
-    }
-
-    function applyHighlightByTextContent(fieldElement, textToFind, color, highlightId) {
-        if (!fieldElement || !textToFind) return false;
-        const fullText = fieldElement.textContent || '';
-        const flexibleRegex = new RegExp(escapeRegex(textToFind).replace(/\\s+/g, '\\\\s+'), 'i');
-        const matchIndex = fullText.search(flexibleRegex);
-        if (matchIndex === -1) return false;
-        const match = fullText.match(flexibleRegex);
-        if (!match || !match[0]) return false;
-
-        const startIndex = matchIndex;
-        const endIndex = matchIndex + match[0].length;
-        const walker = document.createTreeWalker(fieldElement, NodeFilter.SHOW_TEXT, null);
-        let currentIndex = 0;
-        let startNode = null;
-        let endNode = null;
-        let startOffset = 0;
-        let endOffset = 0;
-
-        while (walker.nextNode()) {
-            const node = walker.currentNode;
-            const nodeText = node.nodeValue || '';
-            const nextIndex = currentIndex + nodeText.length;
-            if (!startNode && startIndex >= currentIndex && startIndex <= nextIndex) {
-                startNode = node;
-                startOffset = Math.max(0, startIndex - currentIndex);
-            }
-            if (startNode && endIndex <= nextIndex) {
-                endNode = node;
-                endOffset = Math.max(0, endIndex - currentIndex);
-                break;
-            }
-            currentIndex = nextIndex;
-        }
-
-        if (!startNode || !endNode) return false;
-        const range = document.createRange();
-        range.setStart(startNode, startOffset);
-        range.setEnd(endNode, endOffset);
-
-        const mark = document.createElement('mark');
-        mark.className = 'text-highlight';
-        mark.setAttribute('data-highlight-id', highlightId);
-        mark.style.backgroundColor = color;
-        mark.style.cursor = 'pointer';
-        mark.style.padding = '2px 4px';
-        mark.style.borderRadius = '3px';
-        mark.style.transition = 'all 0.2s';
-        mark.onmouseover = function() { this.style.boxShadow = '0 2px 4px rgba(0,0,0,0.2)'; this.style.opacity = '0.9'; };
-        mark.onmouseout = function() { this.style.boxShadow = 'none'; this.style.opacity = '1'; };
-        mark.onclick = function(e) { deleteHighlight(highlightId); e.stopPropagation(); };
-        mark.title = 'Click to remove highlight';
-
-        const contents = range.extractContents();
-        mark.appendChild(contents);
-        range.insertNode(mark);
-        return true;
-    }
-    
-    function deleteHighlight(highlightId) {
-        if (confirm('Remove this highlight?')) {
-            fetch(`/api/highlight/${highlightId}`, {
-                method: 'DELETE'
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    loadHighlights(); // Reload to remove highlight
-                } else {
-                    alert('Failed to delete highlight');
-                }
-            })
-            .catch(error => {
-                console.error('Error deleting highlight:', error);
-                alert('Failed to delete highlight');
             });
         }
     }
     
-    function escapeRegex(str) {
-        return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    }
-    
-    // Initialize highlighting when page loads (students only)
+    // ==================== INITIALIZATION ====================
+    // Initialize annotation system on page load (students only)
     if (isStudent) {
         document.addEventListener('DOMContentLoaded', function() {
-            initHighlighting();
-            // Re-initialize after Q&A loads
-            setTimeout(initHighlighting, 1000);
+            console.log('[ANNOTATION] Page loaded, initializing annotation system');
+            initAnnotationSystem();
         });
     }
     
-    // Initialize highlighting when page loads (students only)
-    if (isStudent) {
-        document.addEventListener('DOMContentLoaded', function() {
-            initHighlighting();
-            // Re-initialize after Q&A loads
-            setTimeout(initHighlighting, 1000);
-        });
-    }
-    
-    // Ensure edit button works reliably
+    // Ensure edit button works reliably (admin only)
     document.addEventListener('DOMContentLoaded', function() {
         const editButton = document.getElementById('editCaseButton');
         if (editButton) {
