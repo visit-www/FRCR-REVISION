@@ -2104,10 +2104,10 @@
                     renderStudentQAInteractive(pairs, container);
                     forceLeftAlignQaContent(container);
 
-                    // Reload highlights to apply to newly loaded Q&A
-                    if (typeof loadHighlights === 'function') {
-                        setTimeout(loadHighlights, 300);
-                        setTimeout(loadHighlights, 1500);
+                    // Reload annotations to apply to newly loaded Q&A
+                    if (typeof loadAnnotations === 'function') {
+                        setTimeout(loadAnnotations, 300);
+                        setTimeout(loadAnnotations, 1500);
                     }
                     return;
                 }
@@ -2278,12 +2278,12 @@
                 console.log('[Q&A] innerHTML set complete');
                 forceLeftAlignQaContent(container);
                 
-                // Reload highlights to apply to newly loaded Q&A
-                if (isStudent && typeof loadHighlights === 'function') {
-                    // Reload highlights after Q&A content is rendered (important for mobile)
-                    setTimeout(loadHighlights, 300);
+                // Reload annotations to apply to newly loaded Q&A
+                if (isStudent && typeof loadAnnotations === 'function') {
+                    // Reload annotations after Q&A content is rendered (important for mobile)
+                    setTimeout(loadAnnotations, 300);
                     // Also retry after a longer delay in case content takes time to render on mobile
-                    setTimeout(loadHighlights, 1500);
+                    setTimeout(loadAnnotations, 1500);
                 }
                 
                 // Markers will be injected when Q&A content is rendered
@@ -2807,8 +2807,7 @@
                 }
             }
             
-            // Remove all superscript markers
-            removeAllNoteMarkers();
+            // Note: Superscript markers will be handled by the new annotation system
         }
         
         // Store current notes for next comparison
@@ -2859,8 +2858,7 @@
             notesTextarea.dataset.rawNotes = '';
             notesTextarea.dataset.userEdited = 'false';
             
-            // Remove all superscript note markers from the page
-            removeAllNoteMarkers();
+            // Note: Superscript markers will be handled by the new annotation system
             
             // Save empty notes
             saveNotes();
@@ -2894,8 +2892,7 @@
                 undoBtn.style.display = 'none';
             }
             
-            // Render superscript markers from restored notes
-            renderAllNoteMarkers(lastClearedNotes);
+            // Note: Superscript markers will be handled by the new annotation system
             
             lastClearedNotes = null;
         }
