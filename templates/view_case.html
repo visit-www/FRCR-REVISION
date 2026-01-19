@@ -1594,8 +1594,58 @@
         // Floating Notes Button handler (Phase 2: Unified Notes System)
         const floatingNotesBtn = document.getElementById('floatingNotesBtn');
         if (floatingNotesBtn && isStudent) {
+            console.log('[FLOATING BTN] Button found:', floatingNotesBtn);
+            console.log('[FLOATING BTN] Initial styles:', window.getComputedStyle(floatingNotesBtn).display);
+            
+            // Add hover debugging
+            floatingNotesBtn.addEventListener('mouseenter', () => {
+                console.log('[FLOATING BTN] Mouse entered');
+                console.log('[FLOATING BTN] Display:', window.getComputedStyle(floatingNotesBtn).display);
+                console.log('[FLOATING BTN] Visibility:', window.getComputedStyle(floatingNotesBtn).visibility);
+                console.log('[FLOATING BTN] Opacity:', window.getComputedStyle(floatingNotesBtn).opacity);
+            });
+            
+            floatingNotesBtn.addEventListener('mouseleave', () => {
+                console.log('[FLOATING BTN] Mouse left');
+                console.log('[FLOATING BTN] Display:', window.getComputedStyle(floatingNotesBtn).display);
+            });
+            
             floatingNotesBtn.addEventListener('click', () => {
+                console.log('[FLOATING BTN] Clicked');
                 openFloatingNotePopup();
+            });
+            
+            // Periodically check if button is still visible
+            setInterval(() => {
+                const display = window.getComputedStyle(floatingNotesBtn).display;
+                const visibility = window.getComputedStyle(floatingNotesBtn).visibility;
+                const opacity = window.getComputedStyle(floatingNotesBtn).opacity;
+                
+                if (display === 'none' || visibility === 'hidden' || opacity === '0') {
+                    console.warn('[FLOATING BTN] Button was hidden! Display:', display, 'Visibility:', visibility, 'Opacity:', opacity);
+                    floatingNotesBtn.style.setProperty('display', 'flex', 'important');
+                    floatingNotesBtn.style.setProperty('visibility', 'visible', 'important');
+                    floatingNotesBtn.style.setProperty('opacity', '1', 'important');
+                    console.log('[FLOATING BTN] Button restored');
+                }
+            }, 500);
+            
+            // Use MutationObserver to watch for style changes
+            const observer = new MutationObserver((mutations) => {
+                mutations.forEach((mutation) => {
+                    if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
+                        const currentDisplay = floatingNotesBtn.style.display;
+                        if (currentDisplay === 'none' || currentDisplay === '') {
+                            console.warn('[FLOATING BTN] Style mutation detected - display was changed to:', currentDisplay);
+                            floatingNotesBtn.style.setProperty('display', 'flex', 'important');
+                        }
+                    }
+                });
+            });
+            
+            observer.observe(floatingNotesBtn, {
+                attributes: true,
+                attributeFilter: ['style', 'class']
             });
         }
     });
@@ -3400,6 +3450,19 @@
     function handleTextSelection(e) {
         if (!isStudent) return;
         
+        // Don't show menu if clicking on buttons, links, or interactive elements
+        const target = e.target;
+        if (target && (
+            target.tagName === 'BUTTON' || 
+            target.tagName === 'A' ||
+            target.closest('button') ||
+            target.closest('a') ||
+            target.closest('.btn') ||
+            target.closest('.qa-reveal-btn')
+        )) {
+            return;
+        }
+        
         const selection = window.getSelection();
         const text = selection.toString().trim();
         
@@ -3467,9 +3530,23 @@
         noteBtn.className = 'btn btn-sm btn-brand-primary';
         noteBtn.innerHTML = '<i class="fas fa-sticky-note"></i> Add Note';
         noteBtn.onclick = () => {
-            const fieldName = element.dataset.field || element.id || 'unknown';
-            openAddToNotesPopup(selectedText, fieldName);
-            menu.remove();
+            console.log('[ANNOTATION] Add Note clicked');
+            console.log('[ANNOTATION] Selected text:', selectedText);
+            console.log('[ANNOTATION] Element:', element);
+            
+            try {
+                const fieldName = element.dataset.field || element.id || 'unknown';
+                console.log('[ANNOTATION] Field name:', fieldName);
+                console.log('[ANNOTATION] Calling openAddToNotesPopup...');
+                
+                openAddToNotesPopup(selectedText, fieldName);
+                
+                console.log('[ANNOTATION] openAddToNotesPopup called successfully');
+                menu.remove();
+            } catch (error) {
+                console.error('[ANNOTATION] Error opening notes modal:', error);
+                alert('Error opening notes: ' + error.message);
+            }
         };
         
         menu.appendChild(highlightBtn);
