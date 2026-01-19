@@ -1224,7 +1224,7 @@ def restore_backup():
                         raise
         
         # Final commit for any remaining highlights/notes
-        # For PostgreSQL/Supabase: Handle connection timeouts and transaction issues
+        # For PostgreSQL: Handle connection timeouts and transaction issues
         try:
             db.session.commit()
             print(f"[IMPORT] Final commit completed for remaining highlights/notes")
@@ -1275,7 +1275,7 @@ def restore_backup():
         error_message = str(e)
         error_lower = error_message.lower()
         
-        # Handle PostgreSQL/Supabase specific errors
+        # Handle PostgreSQL specific errors
         # Check for actual PostgreSQL error codes and messages
         if hasattr(e, 'orig') and hasattr(e.orig, 'pgcode'):
             # PostgreSQL specific error

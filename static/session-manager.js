@@ -32,8 +32,6 @@ class SessionManager {
             return;
         }
         
-        console.log('[SessionManager] Initializing session management');
-        
         // Track user activity
         this.setupActivityTracking();
         
@@ -121,11 +119,10 @@ class SessionManager {
                 const data = await response.json();
                 this.lastActivity = Date.now();
                 this.warningShown = false;
-                console.log('[SessionManager] Session refreshed successfully');
                 return data;
             }
         } catch (error) {
-            console.error('[SessionManager] Error refreshing session:', error);
+            // Session refresh failed silently
         }
     }
     
@@ -177,7 +174,7 @@ class SessionManager {
                 }
             }
         } catch (error) {
-            console.error('[SessionManager] Error checking session status:', error);
+            // Session status check failed silently
         }
     }
     
@@ -266,15 +263,10 @@ class SessionManager {
                 }
                 this.handleSessionExpired();
             }, timeRemaining * 1000);
-        } else {
-            // Fallback to simple alert if showToast not available
-            console.warn('[SessionManager] showToast function not available');
         }
     }
     
     handleSessionExpired() {
-        console.log('[SessionManager] Session expired - logging out');
-        
         // Clear all timers
         this.cleanup();
         
@@ -301,7 +293,7 @@ class SessionManager {
         try {
             window.location.replace(redirectUrl);
         } catch (error) {
-            console.warn('[SessionManager] Immediate redirect failed:', error);
+            // Immediate redirect failed, fallback below
         }
         setTimeout(() => {
             window.location.href = redirectUrl;
@@ -318,7 +310,7 @@ class SessionManager {
                 credentials: 'include'
             });
         } catch (error) {
-            console.error('[SessionManager] Error during logout:', error);
+            // Logout error - redirect anyway
         } finally {
             window.location.href = '/auth/login';
         }

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Initialize database tables for production.
-Run this script to create all tables in your Supabase/PostgreSQL database.
+Run this script to create all tables in your Neon/PostgreSQL database.
 
 Usage:
     python init_database.py
@@ -66,7 +66,7 @@ if __name__ == '__main__':
     if not os.getenv('DATABASE_URL') and not os.getenv('DATABASE_POSTGRES_URL_NON_POOLING'):
         print("⚠️  WARNING: DATABASE_URL not set!")
         print("   Set DATABASE_URL environment variable before running this script.")
-        print("   For Supabase: Use the connection string from your project settings.")
+        print("   For Neon: Use the connection string from your project settings.")
         sys.exit(1)
     
     print("Initializing database...")

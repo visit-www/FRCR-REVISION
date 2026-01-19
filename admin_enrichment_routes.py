@@ -29,25 +29,21 @@ def check_admin():
         if not current_user.is_authenticated:
             return jsonify({'error': 'Unauthorized. Please log in.'}), 401
         # Allow any authenticated user to check duplicates (it's just a read operation)
-        print(f"[ENRICHMENT] Allowing duplicate check for authenticated user: {current_user.email}")
         return
     
     # Debug: Log user info
-    print(f"[ENRICHMENT] Checking admin access for user: {current_user.email if current_user.is_authenticated else 'NOT AUTHENTICATED'}")
     
     if not current_user.is_authenticated:
-        print("[ENRICHMENT] User not authenticated")
         return jsonify({'error': 'Unauthorized. Please log in.'}), 401
     
     # Force refresh user from database to get latest role
-    # Query directly from database to bypass any caching issues with PostgreSQL/Supabase
+    # Query directly from database to bypass any caching issues with PostgreSQL
     user_from_db = None
     try:
         # Query user directly from database to ensure we get the latest role
         # This is important for PostgreSQL where enum values might be cached
         user_from_db = User.query.get(current_user.id)
         if not user_from_db:
-            print(f"[ENRICHMENT] ERROR: User {current_user.id} not found in database")
             return jsonify({'error': 'User not found in database'}), 403
         
         # Update current_user with fresh data
@@ -57,32 +53,24 @@ def check_admin():
         # Use the directly queried user's role for comparison (most reliable)
         user_role = user_from_db.role
         
-        print(f"[ENRICHMENT] User role from DB query: {user_from_db.role}, type: {type(user_from_db.role).__name__}")
-        print(f"[ENRICHMENT] User role from current_user: {current_user.role}, type: {type(current_user.role).__name__}")
     except Exception as e:
-        print(f"[ENRICHMENT] Error querying user from database: {e}")
         import traceback
         traceback.print_exc()
         # Fallback to current_user
         user_role = current_user.role
     
-    print(f"[ENRICHMENT] Raw role: {user_role}, type: {type(user_role).__name__}")
     
     # Handle string role (shouldn't happen but be defensive)
     if isinstance(user_role, str):
-        print(f"[ENRICHMENT] Role is string '{user_role}', converting to enum")
         try:
             user_role = UserRole(user_role.lower())
             current_user.role = user_role
             db.session.commit()
-            print(f"[ENRICHMENT] Converted to enum: {user_role}")
         except (ValueError, KeyError) as e:
-            print(f"[ENRICHMENT] Error converting role string to enum: {e}")
             return jsonify({'error': 'Access denied. Invalid user role.'}), 403
     
     # Check if it's a UserRole enum
     if not isinstance(user_role, UserRole):
-        print(f"[ENRICHMENT] ERROR: Role is not UserRole enum! Type: {type(user_role).__name__}, Value: {user_role}")
         # Try to get role by value
         try:
             if hasattr(user_role, 'value'):
@@ -92,9 +80,7 @@ def check_admin():
             user_role = UserRole(role_value)
             current_user.role = user_role
             db.session.commit()
-            print(f"[ENRICHMENT] Fixed role to enum: {user_role}")
         except Exception as e:
-            print(f"[ENRICHMENT] Could not fix role: {e}")
             return jsonify({'error': 'Access denied. Please ensure you are logged in as an admin.'}), 403
     
     # Compare with ADMIN enum - handle case differences between DB and Python
@@ -104,14 +90,12 @@ def check_admin():
     # Method 1: Direct enum comparison
     if isinstance(user_role, UserRole):
         is_admin = user_role == UserRole.ADMIN
-        print(f"[ENRICHMENT] Direct enum comparison: {is_admin}")
     
     # Method 2: Value comparison (case-insensitive) - handles DB storing 'ADMIN' vs Python 'admin'
     if not is_admin:
         role_value = user_role.value.lower() if hasattr(user_role, 'value') and isinstance(user_role, UserRole) else str(user_role).lower()
         admin_value = UserRole.ADMIN.value.lower()
         is_admin = role_value == admin_value
-        print(f"[ENRICHMENT] Case-insensitive value comparison: '{role_value}' == '{admin_value}'? {is_admin}")
     
     # Method 3: Check raw database value (PostgreSQL stores as 'ADMIN' uppercase)
     if not is_admin and user_from_db:
@@ -122,16 +106,11 @@ def check_admin():
             if db_role_raw:
                 db_role_lower = str(db_role_raw).lower()
                 if db_role_lower == 'admin':
-                    print(f"[ENRICHMENT] Database raw value check: '{db_role_raw}' -> '{db_role_lower}' == 'admin'")
                     is_admin = True
         except Exception as e:
-            print(f"[ENRICHMENT] Could not check raw DB value: {e}")
-    
-    print(f"[ENRICHMENT] Final admin check result: {is_admin}")
-    print(f"[ENRICHMENT] Role value: '{user_role.value if hasattr(user_role, 'value') else user_role}', ADMIN value: '{UserRole.ADMIN.value}'")
+            pass
     
     if not is_admin:
-        print(f"[ENRICHMENT] Access denied: role '{user_role.value if hasattr(user_role, 'value') else user_role}' != ADMIN '{UserRole.ADMIN.value}'")
         # Return more detailed error for debugging
         return jsonify({
             'error': 'Access denied. Please ensure you are logged in as an admin.',
@@ -143,7 +122,6 @@ def check_admin():
             }
         }), 403
     
-    print(f"[ENRICHMENT] ✓ Admin access granted for {current_user.email}")
 
 
 @enrichment_bp.errorhandler(401)
@@ -190,7 +168,6 @@ def check_duplicates():
         file_size = file.tell()
         file.seek(0)  # Reset to beginning
         
-        print(f"[DUPLICATE CHECK] Backup file size: {file_size} bytes ({file_size / 1024 / 1024:.2f} MB)")
         
         # Read file in chunks to handle large files (26MB+)
         file_content_parts = []
@@ -203,7 +180,6 @@ def check_duplicates():
                 break
             file_content_parts.append(chunk)
             total_read += len(chunk)
-            print(f"[DUPLICATE CHECK] Read chunk: {total_read / 1024 / 1024:.2f} MB / {file_size / 1024 / 1024:.2f} MB")
         
         # Combine chunks
         file_content = b''.join(file_content_parts)
@@ -360,7 +336,6 @@ def get_case_details(case_id):
         import re
         import json as json_lib
         
-        print(f"[ENRICH] Checking enrichment_notes for case {case_id}, length: {len(case.enrichment_notes)}")
         
         # Try to find IMAGES_JSON marker - use non-greedy match with DOTALL
         # Pattern: [IMAGES_JSON]...[/IMAGES_JSON]
@@ -370,23 +345,18 @@ def get_case_details(case_id):
             images_match = re.search(r'\[IMAGES_JSON\](.*?)\[/IMAGES_JSON\]', case.enrichment_notes)
         
         if images_match:
-            print(f"[ENRICH] Found IMAGES_JSON marker for case {case_id}")
             try:
                 images_json_str = images_match.group(1).strip()
-                print(f"[ENRICH] Extracted JSON string length: {len(images_json_str)}")
                 images_data = json_lib.loads(images_json_str)
-                print(f"[ENRICH] Parsed {len(images_data)} images from JSON")
                 
                 # Convert images to displayable format
                 # Create temporary IDs for display (they'll get real IDs on promotion)
                 for idx, img_data in enumerate(images_data):
                     if not isinstance(img_data, dict):
-                        print(f"[ENRICH] Warning: Image {idx} is not a dict, skipping")
                         continue
                     
                     image_data_base64 = img_data.get('image_data')
                     if not image_data_base64:
-                        print(f"[ENRICH] Warning: Image {idx} has no image_data, skipping")
                         continue
                     
                     images.append({
@@ -399,11 +369,8 @@ def get_case_details(case_id):
                         'image_data': image_data_base64,  # Base64 string for data URL
                         'is_staging': True  # Flag to indicate this is a staging image
                     })
-                    print(f"[ENRICH] Added image {idx}: {img_data.get('filename', 'unknown')} (data length: {len(image_data_base64) if image_data_base64 else 0})")
                 
-                print(f"[ENRICH] Total images extracted: {len(images)}")
             except (json_lib.JSONDecodeError, Exception) as e:
-                print(f"[ENRICH] Error parsing images JSON from staging case {case_id}: {e}")
                 import traceback
                 traceback.print_exc()
         else:
@@ -411,20 +378,13 @@ def get_case_details(case_id):
             # 1. Case was imported before image storage logic was added
             # 2. Images weren't found during import
             # 3. Images are stored in a different format
-            print(f"[ENRICH] No IMAGES_JSON marker found in enrichment_notes for case {case_id}")
             
             # Check if case has original_id - if so, we might be able to find images in the backup
             if case.original_id and case.source_system == 'frcr_examiner':
-                print(f"[ENRICH] Case has original_id={case.original_id}, source_system={case.source_system}")
-                print(f"[ENRICH] Images may not have been stored during import - case may need to be re-imported")
-            
-            # Debug: show first 500 chars of enrichment_notes
-            preview = case.enrichment_notes[:500] if len(case.enrichment_notes) > 500 else case.enrichment_notes
-            print(f"[ENRICH] Enrichment notes preview: {preview}...")
+                pass  # Images may not have been stored during import
             
             # Also check if IMAGES_JSON exists but with different formatting
             if '[IMAGES_JSON]' in case.enrichment_notes or 'IMAGES_JSON' in case.enrichment_notes:
-                print(f"[ENRICH] Found IMAGES_JSON text but regex didn't match - checking format...")
                 # Try alternative patterns
                 alt_patterns = [
                     r'\[IMAGES_JSON\](.*?)\[/IMAGES_JSON\]',
@@ -434,7 +394,6 @@ def get_case_details(case_id):
                 for pattern in alt_patterns:
                     alt_match = re.search(pattern, case.enrichment_notes, re.DOTALL)
                     if alt_match:
-                        print(f"[ENRICH] Alternative pattern matched: {pattern[:30]}...")
                         break
     
     # Debug information (remove in production)
@@ -665,21 +624,18 @@ def enrich_and_promote_case(case_id):
             try:
                 staging.module = FRCRModule[data['module']]  # Access by enum name
             except (KeyError, AttributeError) as e:
-                print(f"[ENRICH] Error setting module '{data['module']}': {e}")
                 raise ValueError(f"Invalid module value: '{data['module']}'. Valid values: {[m.name for m in FRCRModule]}")
         
         if data.get('body_part'):
             try:
                 staging.body_part = BodyPart[data['body_part']]  # Access by enum name
             except (KeyError, AttributeError) as e:
-                print(f"[ENRICH] Error setting body_part '{data['body_part']}': {e}")
                 raise ValueError(f"Invalid body_part value: '{data['body_part']}'. Valid values: {[bp.name for bp in BodyPart]}")
         
         if data.get('age_group'):
             try:
                 staging.age_group = AgeGroup[data['age_group']]  # Access by enum name
             except (KeyError, AttributeError) as e:
-                print(f"[ENRICH] Error setting age_group '{data['age_group']}': {e}")
                 raise ValueError(f"Invalid age_group value: '{data['age_group']}'. Valid values: {[ag.name for ag in AgeGroup]}")
         
         # Update other fields
@@ -721,7 +677,7 @@ def enrich_and_promote_case(case_id):
                         # Also store numeric part in case_number field
                         staging.case_number = num
             except (ValueError, AttributeError) as e:
-                print(f"[ENRICH] Warning: Could not convert case_number format: {e}")
+                pass  # Case number format conversion failed
         
         # Promote to production (bypass approval requirement for direct enrich-and-promote)
         # Temporarily mark as approved if not already
@@ -835,7 +791,6 @@ def enrich_and_promote_case(case_id):
             # Check if this is from FRCR Examiner import (source_system = 'frcr_examiner')
             if staging.source_system == 'frcr_examiner':
                 promoted_case.created_by_user_id = current_user.id
-                print(f"[ENRICH] Mapped promoted case {promoted_case_id} to current user {current_user.id} (FRCR Examiner import)")
         
         # Update Q&A pairs if provided
         if data.get('pairs'):
@@ -891,9 +846,9 @@ def enrich_and_promote_case(case_id):
                                 )
                                 db.session.add(case_image)
                         except Exception as img_err:
-                            print(f"[ENRICH] Warning: Failed to migrate image: {img_err}")
+                            pass  # Failed to migrate image
                 except (json.JSONDecodeError, Exception) as e:
-                    print(f"[ENRICH] Warning: Could not parse images JSON: {e}")
+                    pass  # Could not parse images JSON
         
         db.session.commit()
         

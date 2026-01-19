@@ -206,12 +206,13 @@
                     </div>
 
                     <!-- Discussion/Comments -->
-                    <div class="detail-section discussion-section mb-5 p-4 rounded-3" style="background: linear-gradient(135deg, #f0f8fc 0%, #f5fbff 100%); border-left: 5px solid #17a2b8;">
+                    <div class="detail-section discussion-section justify-content-between mb-5 p-4 rounded-3" style="background: linear-gradient(135deg, #f0f8fc 0%, #f5fbff 100%); border-left: 5px solid #17a2b8; position: relative;">
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <label class="detail-label fw-bold text-secondary mb-0"><i class="fas fa-comments-dollar me-2" style="color: #17a2b8;"></i>Discussion & Comments</label>
                             {% if current_user.is_authenticated and current_user.role and current_user.role.value == 'student' %}
-                            <button type="button" class="btn btn-sm btn-outline-secondary" id="forumToggleBtn" title="Show/hide forum">
-                                <i class="fas fa-comments me-1"></i><span id="forumToggleText">Show Forum</span>
+                            <!-- Mobile only: toggle in header -->
+                            <button type="button" class="forum-toggle-btn forum-visible d-lg-none" id="forumToggleBtnMobile" title="Show/hide forum">
+                                <i class="fas fa-comments me-1"></i><span id="forumToggleTextMobile">Hide Forum</span>
                             </button>
                             {% endif %}
                         </div>
@@ -242,9 +243,8 @@
                         <div id="notesDisplayWrapper" style="display: none; background-color: #FFFEF8; border: 2px solid #F2CC8F; border-radius: 0.375rem; padding: 0.75rem; min-height: 150px; white-space: pre-wrap; font-family: 'Courier New', monospace; line-height: 1.6; color: #2c3e50;"></div>
                         <textarea id="candidateNoteText" 
                                   class="form-control" 
-                                  rows="6" 
                                   placeholder="Type your notes here... They are private and will be auto-saved."
-                                  style="background-color: #FFFEF8; border: 2px solid #F2CC8F; font-family: 'Courier New', monospace; line-height: 1.6; resize: vertical; white-space: pre-wrap;">{% if user_note %}{{ user_note.note_text }}{% endif %}</textarea>
+                                  style="background-color: #FFFEF8; border: 2px solid #F2CC8F; font-family: 'Courier New', monospace; line-height: 1.6; white-space: pre-wrap;">{% if user_note %}{{ user_note.note_text }}{% endif %}</textarea>
                         <script>
                             // Format notes on page load to hide tags and show bullet points
                             (function() {
@@ -255,13 +255,13 @@
                                     textarea.dataset.rawNotes = rawNotes;
                                     textarea.dataset.previousNotes = rawNotes;
                                     
-                                    // Format the notes: replace [note:ID][from CONTEXT] content [/note:ID] with bullet points
-                                    const formatted = rawNotes.replace(/\[note:[^\]]+\]\[from ([^\]]+)\](.*?)\[\/note:[^\]]+\]/gs, (match, context, content) => {
+                                    // Format the notes: replace [note:ID][from CONTEXT][text:...] content [/note:ID] with bullet points
+                                    // The [text:...] tag is optional for backward compatibility
+                                    const formatted = rawNotes.replace(/\[note:[^\]]+\]\[from ([^\]]+)\](?:\[text:[^\]]*\])?\s*(.*?)\[\/note:[^\]]+\]/gs, (match, context, content) => {
                                         return '• ' + content.trim();
                                     });
                                     textarea.value = formatted;
                                     
-                                    console.log('[NOTES] Initial format complete. Raw notes stored:', rawNotes.substring(0, 100));
                                 }
                             })();
                         </script>
@@ -545,7 +545,7 @@
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 1.25rem;
-            align-items: start;
+            align-items: stretch; /* Notes matches Q&A height */
         }
 
         /* Diagnosis remains full width at top */
@@ -562,6 +562,15 @@
         .case-details.student-case-layout .notes-section {
             grid-column: 2 / 3;
             grid-row: 2;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* Make notes textarea expand to fill available space */
+        .case-details.student-case-layout .notes-section #candidateNoteText {
+            flex: 1 1 auto;
+            min-height: 150px;
+            resize: none; /* Disable manual resize since it auto-matches */
         }
 
         /* Bottom sections (full width) */
@@ -579,6 +588,12 @@
     @media (max-width: 991px) {
         .case-details.student-case-layout {
             display: block; /* Remove grid on mobile */
+        }
+        
+        /* On mobile, notes textarea has fixed minimum height */
+        .case-details.student-case-layout .notes-section #candidateNoteText {
+            min-height: 180px;
+            resize: vertical;
         }
     }
 
@@ -872,12 +887,17 @@
     @media (min-width: 992px) {
         .discussion-section.discussion-has-chat {
             display: grid;
-            grid-template-columns: 7fr 3fr;
+            grid-template-columns: 1fr 380px;
             grid-template-rows: auto auto auto;
             column-gap: 1.25rem;
         }
 
-        .discussion-section.discussion-has-chat > label.detail-label {
+        /* When forum is hidden, discussion takes full width */
+        .discussion-section.discussion-has-chat.forum-hidden {
+            grid-template-columns: 1fr;
+        }
+
+        .discussion-section.discussion-has-chat > .d-flex.justify-content-between {
             grid-column: 1 / -1;
             grid-row: 1;
         }
@@ -890,6 +910,11 @@
         .discussion-section.discussion-has-chat #discussionChatPanel {
             grid-column: 2 / 3;
             grid-row: 2;
+            position: relative;
+        }
+
+        .discussion-section.discussion-has-chat.forum-hidden #discussionText {
+            grid-column: 1 / -1;
         }
 
         .discussion-section.discussion-has-chat .highlight-tip {
@@ -909,6 +934,73 @@
     #discussionChatPanel[style*="display: none"] {
         opacity: 0;
         transform: translateY(-10px);
+    }
+
+    /* Forum toggle button - positioned in discussion section (desktop) */
+    #forumToggleBtn {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        z-index: 10;
+    }
+
+    /* Forum toggle button styling */
+    .forum-toggle-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        transition: all 0.2s ease;
+        border: 2px solid transparent;
+    }
+
+    .forum-toggle-btn.forum-visible {
+        background: linear-gradient(135deg, #5E899E 0%, #4A6F7F 100%);
+        color: #ffffff;
+        border-color: #5E899E;
+    }
+
+    .forum-toggle-btn.forum-visible:hover {
+        background: linear-gradient(135deg, #4A6F7F 0%, #3d5c69 100%);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(94, 137, 158, 0.3);
+    }
+
+    .forum-toggle-btn.forum-hidden-btn {
+        background: #ffffff;
+        color: #5E899E;
+        border-color: #5E899E;
+    }
+
+    .forum-toggle-btn.forum-hidden-btn:hover {
+        background: #5E899E;
+        color: #ffffff;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(94, 137, 158, 0.3);
+    }
+
+    /* Mobile forum styles */
+    @media (max-width: 991px) {
+        #discussionChatPanel {
+            margin-top: 1rem;
+            width: 100%;
+        }
+
+        #forumToggleBtn {
+            display: none !important;
+        }
+
+        .discussion-section.forum-hidden #discussionChatPanel {
+            display: none !important;
+        }
+
+        .forum-toggle-btn {
+            padding: 0.4rem 0.75rem;
+            font-size: 0.8rem;
+        }
     }
 
     .chat-panel-header {
@@ -1180,56 +1272,65 @@
         }
     }
     
-    /* ==================== RECOGITO.JS LAYOUT FIX ==================== */
-    /* Prevent Recogito from affecting page layout */
+    /* ==================== CUSTOM ANNOTATION STYLES ==================== */
+    /* User highlights */
+    .user-highlight {
+        background-color: #FFEB3B;
+        cursor: pointer;
+        border-radius: 2px;
+        transition: background-color 0.2s ease;
+    }
+    .user-highlight:hover {
+        background-color: #FDD835;
+    }
+    .user-highlight.highlight-green { background-color: #A5D6A7; }
+    .user-highlight.highlight-green:hover { background-color: #81C784; }
+    .user-highlight.highlight-pink { background-color: #F8BBD9; }
+    .user-highlight.highlight-pink:hover { background-color: #F48FB1; }
+    .user-highlight.highlight-blue { background-color: #90CAF9; }
+    .user-highlight.highlight-blue:hover { background-color: #64B5F6; }
     
-    /* Force Recogito wrapper to take full width and not affect layout */
-    .r6o-annotatable {
-        display: block !important;
-        width: 100% !important;
-        max-width: 100% !important;
-        margin: 0 !important;
-        padding: 0 !important;
+    /* Note markers (superscript) */
+    .note-marker {
+        color: #e96304;
+        font-size: 0.7em;
+        vertical-align: super;
+        cursor: pointer;
+        margin-left: 2px;
+        font-weight: bold;
+        text-decoration: none;
+    }
+    .note-marker:hover {
+        color: #c85000;
+        text-decoration: underline;
     }
     
-    /* Ensure discussion text stays left-aligned */
-    #discussionText.r6o-annotatable,
-    #discussionText {
-        text-align: left !important;
-        display: block !important;
-        width: 100% !important;
+    /* Selection popup */
+    .selection-popup {
+        position: fixed;
+        background: white;
+        border: 2px solid #5E899E;
+        border-radius: 8px;
+        padding: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        z-index: 10000;
+        display: flex;
+        gap: 8px;
     }
     
-    /* Ensure Q&A elements maintain their layout */
-    .qa-question.r6o-annotatable,
-    .qa-answer.r6o-annotatable {
-        display: block !important;
-        width: 100% !important;
-        text-align: left !important;
-    }
-    
-    /* Fix any flex/inline issues */
-    .discussion-section,
-    .qa-section {
-        display: block !important;
-        width: 100% !important;
-    }
-    
-    /* Ensure Recogito popups don't affect layout */
-    .r6o-editor,
-    .r6o-widget,
-    .r6o-annotation {
-        z-index: 10000 !important;
+    /* Highlight delete tooltip */
+    .highlight-tooltip {
+        position: absolute;
+        background: #333;
+        color: white;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        z-index: 10001;
+        cursor: pointer;
     }
     
 </style>
-
-<!-- ==================== RECOGITO.JS ANNOTATION LIBRARY ==================== -->
-<!-- Library Choice: Recogito.js (text annotation library from Recogito project) -->
-<!-- Why: Mobile-first design, supports multiple annotation types (highlight/notes), -->
-<!-- custom rendering, manual persistence, Web Annotation API compliant, lightweight -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@recogito/recogito-js@1.8.2/dist/recogito.min.css">
-<script src="https://cdn.jsdelivr.net/npm/@recogito/recogito-js@1.8.2/dist/recogito.min.js"></script>
 
 <script>
     const caseId = {{ case.id }};
@@ -1637,28 +1738,16 @@
         // Floating Notes Button handler (Phase 2: Unified Notes System)
         const floatingNotesBtn = document.getElementById('floatingNotesBtn');
         if (floatingNotesBtn && isStudent) {
-            console.log('[FLOATING BTN] Button found:', floatingNotesBtn);
-            console.log('[FLOATING BTN] Initial styles:', window.getComputedStyle(floatingNotesBtn).display);
             
-            // Add hover debugging
-            floatingNotesBtn.addEventListener('mouseenter', () => {
-                console.log('[FLOATING BTN] Mouse entered');
-                console.log('[FLOATING BTN] Display:', window.getComputedStyle(floatingNotesBtn).display);
-                console.log('[FLOATING BTN] Visibility:', window.getComputedStyle(floatingNotesBtn).visibility);
-                console.log('[FLOATING BTN] Opacity:', window.getComputedStyle(floatingNotesBtn).opacity);
-            });
-            
-            floatingNotesBtn.addEventListener('mouseleave', () => {
-                console.log('[FLOATING BTN] Mouse left');
-                console.log('[FLOATING BTN] Display:', window.getComputedStyle(floatingNotesBtn).display);
-            });
+            // CRITICAL FIX: Move button to document.body to fix position:fixed
+            // (Parent elements with transform/filter break position:fixed)
+            document.body.appendChild(floatingNotesBtn);
             
             floatingNotesBtn.addEventListener('click', () => {
-                console.log('[FLOATING BTN] Clicked');
                 openFloatingNotePopup();
             });
             
-            // Periodically check if button is still visible
+            // Periodically check if button is still visible (backup)
             setInterval(() => {
                 const display = window.getComputedStyle(floatingNotesBtn).display;
                 const visibility = window.getComputedStyle(floatingNotesBtn).visibility;
@@ -1669,7 +1758,6 @@
                     floatingNotesBtn.style.setProperty('display', 'flex', 'important');
                     floatingNotesBtn.style.setProperty('visibility', 'visible', 'important');
                     floatingNotesBtn.style.setProperty('opacity', '1', 'important');
-                    console.log('[FLOATING BTN] Button restored');
                 }
             }, 500);
             
@@ -1705,7 +1793,6 @@
             if (stored) {
                 markers = JSON.parse(stored);
                 markers = markers.filter(m => m.source_type === sourceType);
-                console.log('[MARKERS] Found', markers.length, 'markers for', sourceType);
             }
         } catch (e) {
             console.error('[MARKERS] Error loading markers:', e);
@@ -1739,7 +1826,6 @@
             if (index !== -1) {
                 // Insert marker after the found text
                 modifiedHTML = modifiedHTML.substring(0, index + searchText.length) + markerHTML + modifiedHTML.substring(index + searchText.length);
-                console.log('[MARKERS] ✓ Injected marker for:', noteId);
             } else {
                 console.warn('[MARKERS] ✗ Text not found in HTML:', searchText.substring(0, 30));
             }
@@ -1761,13 +1847,11 @@
                 e.stopPropagation();
                 e.preventDefault();
                 const noteId = marker.getAttribute('data-note-id');
-                console.log('[MARKERS] Marker clicked:', noteId);
                 openNoteFragmentPopup(noteId);
             }
         });
         
         window.markerClickHandlerInitialized = true;
-        console.log('[MARKERS] ✓ Global click handler initialized (event delegation)');
     }
     
     // Render discussion using the same pipeline as Questions/Answers/Image descriptions
@@ -1812,9 +1896,7 @@
             renderedContent = injectMarkersIntoHTML('discussion', renderedContent);
         }
         
-        console.log('[DISCUSSION] Setting innerHTML with markers already injected');
         discussionDiv.innerHTML = renderedContent;
-        console.log('[DISCUSSION] innerHTML set complete');
         
         // Event delegation handles clicks - no need to attach handlers per marker
     }
@@ -1835,10 +1917,19 @@
         // Avoid duplicating panel
         if (document.getElementById('discussionChatPanel')) return;
 
+        // Create desktop toggle button (positioned in discussion section, not inside panel)
+        const desktopToggleBtn = document.createElement('button');
+        desktopToggleBtn.type = 'button';
+        desktopToggleBtn.className = 'forum-toggle-btn forum-visible d-none d-lg-inline-flex';
+        desktopToggleBtn.id = 'forumToggleBtn';
+        desktopToggleBtn.title = 'Show/hide forum';
+        desktopToggleBtn.innerHTML = '<i class="fas fa-comments me-1"></i><span id="forumToggleText">Hide Forum</span>';
+        discussionSection.appendChild(desktopToggleBtn);
+
         const panel = document.createElement('div');
         panel.id = 'discussionChatPanel';
         panel.setAttribute('aria-label', 'Discussion forum');
-        panel.style.display = 'none'; // Hide by default
+        panel.style.display = ''; // Show by default
         panel.innerHTML = `
             <div class="chat-panel-header">
                 <p class="chat-title mb-0"><i class="fas fa-comments me-2" style="color: #5E899E;"></i>Forum</p>
@@ -1848,12 +1939,17 @@
                     </button>
                 </div>
             </div>
+            <div class="forum-guideline mb-2" style="background: #f8f9fa; border-radius: 6px; padding: 0.5rem 0.75rem; border-left: 3px solid #5E899E;">
+                <small style="color: #5a6270; font-size: 0.75rem; line-height: 1.4;">
+                    <i class="fas fa-lightbulb me-1" style="color: #5E899E;"></i>Share insights that help deepen understanding of this case.
+                </small>
+            </div>
             <div id="chatPinnedWrap" class="mb-2"></div>
             <div id="chatMessageList" class="chat-panel-list" role="list"></div>
             <div class="mt-2">
-                <textarea id="chatEditorTextarea" class="form-control chat-editor" placeholder="Post a message… (rich text supported)"></textarea>
+                <textarea id="chatEditorTextarea" class="form-control chat-editor" placeholder="Share a helpful insight about this case…"></textarea>
                 <div class="d-flex justify-content-between align-items-center mt-2">
-                    <small class="text-muted" id="chatStatusText">Messages are sorted by votes. Stored locally for now.</small>
+                    <small class="text-muted" id="chatStatusText" style="font-size: 0.7rem;">Sorted by votes • Shared with all students</small>
                     <button type="button" class="btn btn-sm btn-brand-success" id="chatPostBtn">
                         <i class="fas fa-paper-plane me-1"></i>Post
                     </button>
@@ -1865,66 +1961,86 @@
         discussionText.insertAdjacentElement('afterend', panel);
         discussionSection.classList.add('discussion-has-chat');
 
-        // Forum toggle button handler
-        const toggleBtn = document.getElementById('forumToggleBtn');
-        const toggleText = document.getElementById('forumToggleText');
-        if (toggleBtn && toggleText) {
-            toggleBtn.addEventListener('click', () => {
-                const isHidden = panel.style.display === 'none';
-                if (isHidden) {
-                    panel.style.display = '';
-                    toggleText.textContent = 'Hide Forum';
-                    panel.setAttribute('aria-expanded', 'true');
-                } else {
-                    panel.style.display = 'none';
-                    toggleText.textContent = 'Show Forum';
-                    panel.setAttribute('aria-expanded', 'false');
+        // Forum toggle function (shared by both mobile and desktop buttons)
+        function toggleForum() {
+            const isHidden = panel.style.display === 'none';
+            const desktopBtn = document.getElementById('forumToggleBtn');
+            const mobileBtn = document.getElementById('forumToggleBtnMobile');
+            
+            if (isHidden) {
+                panel.style.display = '';
+                discussionSection.classList.remove('forum-hidden');
+                // Update all toggle texts and button styles
+                document.querySelectorAll('#forumToggleText, #forumToggleTextMobile').forEach(el => {
+                    el.textContent = 'Hide Forum';
+                });
+                if (desktopBtn) {
+                    desktopBtn.classList.remove('forum-hidden-btn');
+                    desktopBtn.classList.add('forum-visible');
                 }
-            });
-        }
-
-        const storageKey = `frcr_discussion_forum_${caseId}_${(currentUserId !== null && currentUserId !== undefined) ? currentUserId : 'anon'}`;
-
-        function loadState() {
-            try {
-                const raw = localStorage.getItem(storageKey);
-                if (!raw) return { messages: [], hidePinned: false };
-                const parsed = JSON.parse(raw);
-                return {
-                    messages: Array.isArray(parsed.messages) ? parsed.messages : [],
-                    hidePinned: !!parsed.hidePinned
-                };
-            } catch (e) {
-                return { messages: [], hidePinned: false };
+                if (mobileBtn) {
+                    mobileBtn.classList.remove('forum-hidden-btn');
+                    mobileBtn.classList.add('forum-visible');
+                }
+                panel.setAttribute('aria-expanded', 'true');
+            } else {
+                panel.style.display = 'none';
+                discussionSection.classList.add('forum-hidden');
+                // Update all toggle texts and button styles
+                document.querySelectorAll('#forumToggleText, #forumToggleTextMobile').forEach(el => {
+                    el.textContent = 'Show Forum';
+                });
+                if (desktopBtn) {
+                    desktopBtn.classList.remove('forum-visible');
+                    desktopBtn.classList.add('forum-hidden-btn');
+                }
+                if (mobileBtn) {
+                    mobileBtn.classList.remove('forum-visible');
+                    mobileBtn.classList.add('forum-hidden-btn');
+                }
+                panel.setAttribute('aria-expanded', 'false');
             }
         }
 
-        function saveState(state) {
+        // Desktop toggle button handler
+        desktopToggleBtn.addEventListener('click', toggleForum);
+
+        // Mobile toggle button handler
+        const toggleBtnMobile = document.getElementById('forumToggleBtnMobile');
+        if (toggleBtnMobile) {
+            toggleBtnMobile.addEventListener('click', toggleForum);
+        }
+
+        // Forum state - loaded from API, cached locally
+        let forumMessages = [];
+        let hidePinned = false;
+
+        // Load messages from API
+        async function loadForumMessages() {
             try {
-                localStorage.setItem(storageKey, JSON.stringify(state));
+                const response = await fetch(`/api/case/${caseId}/forum/messages`);
+                if (!response.ok) throw new Error('Failed to load messages');
+                const data = await response.json();
+                if (data.success) {
+                    forumMessages = data.messages || [];
+                    renderForum();
+                }
             } catch (e) {
-                // ignore storage errors (private mode/quota)
+                console.error('[FORUM] Load error:', e);
+                // Show error in UI
+                const list = document.getElementById('chatMessageList');
+                if (list) {
+                    list.innerHTML = '<div class="text-danger"><i class="fas fa-exclamation-circle me-2"></i>Failed to load messages.</div>';
+                }
             }
         }
 
         function sanitizeMessageHtml(html) {
-            // Messages are authored by the current user via TinyMCE; keep minimal safety:
-            // strip <script> tags and event handler attributes.
             if (!html) return '';
             let cleaned = html.replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, '');
             cleaned = cleaned.replace(/\son\w+="[^"]*"/gi, '');
             cleaned = cleaned.replace(/\son\w+='[^']*'/gi, '');
             return cleaned.trim();
-        }
-
-        function sortMessages(messages) {
-            // Pinned first (in pinned section), then remaining by vote count desc, then createdAt desc
-            return [...messages].sort((a, b) => {
-                const av = Number(a.votes || 0);
-                const bv = Number(b.votes || 0);
-                if (bv !== av) return bv - av;
-                return Number(b.createdAt || 0) - Number(a.createdAt || 0);
-            });
         }
 
         function messageToneStyle(votes) {
@@ -1936,100 +2052,157 @@
             return '';
         }
 
-        function render() {
-            const state = loadState();
+        function renderForum() {
             const pinnedWrap = document.getElementById('chatPinnedWrap');
             const list = document.getElementById('chatMessageList');
             const togglePinnedBtn = document.getElementById('togglePinnedBtn');
             if (!pinnedWrap || !list || !togglePinnedBtn) return;
 
-            togglePinnedBtn.classList.toggle('active', !state.hidePinned);
+            togglePinnedBtn.classList.toggle('active', !hidePinned);
 
-            const pinned = sortMessages(state.messages.filter(m => !!m.pinned));
-            const normal = sortMessages(state.messages.filter(m => !m.pinned));
+            // Messages are already sorted by API (pinned first, then by votes)
+            const pinned = forumMessages.filter(m => m.is_pinned);
+            const normal = forumMessages.filter(m => !m.is_pinned);
 
             // Pinned section
-            if (state.hidePinned || pinned.length === 0) {
+            if (hidePinned || pinned.length === 0) {
                 pinnedWrap.innerHTML = '';
             } else {
                 pinnedWrap.innerHTML = `
                     <div class="mb-2 d-flex justify-content-between align-items-center">
                         <small class="text-muted"><i class="fas fa-thumbtack me-1"></i>Pinned messages</small>
                     </div>
-                    ${pinned.map(m => renderMessageHtml(m, true)).join('')}
+                    ${pinned.map(m => renderMessageHtml(m)).join('')}
                 `;
             }
 
             // Main list
             if (normal.length === 0) {
-                list.innerHTML = `<div class="text-muted"><i class="fas fa-info-circle me-2"></i>No messages yet.</div>`;
+                list.innerHTML = '<div class="text-muted"><i class="fas fa-info-circle me-2"></i>No messages yet. Be the first to share!</div>';
             } else {
-                list.innerHTML = normal.map(m => renderMessageHtml(m, false)).join('');
+                list.innerHTML = normal.map(m => renderMessageHtml(m)).join('');
             }
 
-            // Wire actions
-            list.querySelectorAll('[data-chat-action], [data-chat-pin]').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const msgId = e.currentTarget.getAttribute('data-chat-id');
-                    const action = e.currentTarget.getAttribute('data-chat-action');
-                    const pinAction = e.currentTarget.getAttribute('data-chat-pin');
-                    const st = loadState();
-                    const msg = st.messages.find(x => x.id === msgId);
-                    if (!msg) return;
-
-                    if (action === 'up') msg.votes = Number(msg.votes || 0) + 1;
-                    if (action === 'down') msg.votes = Number(msg.votes || 0) - 1;
-                    if (pinAction === 'toggle' && isAdminUser) msg.pinned = !msg.pinned;
-
-                    saveState(st);
-                    render();
-                });
+            // Wire vote and pin actions
+            document.querySelectorAll('[data-forum-vote]').forEach(btn => {
+                btn.addEventListener('click', handleVote);
             });
-
-            pinnedWrap.querySelectorAll('[data-chat-action], [data-chat-pin]').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const msgId = e.currentTarget.getAttribute('data-chat-id');
-                    const action = e.currentTarget.getAttribute('data-chat-action');
-                    const pinAction = e.currentTarget.getAttribute('data-chat-pin');
-                    const st = loadState();
-                    const msg = st.messages.find(x => x.id === msgId);
-                    if (!msg) return;
-
-                    if (action === 'up') msg.votes = Number(msg.votes || 0) + 1;
-                    if (action === 'down') msg.votes = Number(msg.votes || 0) - 1;
-                    if (pinAction === 'toggle' && isAdminUser) msg.pinned = !msg.pinned;
-
-                    saveState(st);
-                    render();
-                });
+            document.querySelectorAll('[data-forum-pin]').forEach(btn => {
+                btn.addEventListener('click', handlePin);
+            });
+            document.querySelectorAll('[data-forum-delete]').forEach(btn => {
+                btn.addEventListener('click', handleDelete);
             });
         }
 
-        function renderMessageHtml(msg, isPinned) {
-            const votes = Number(msg.votes || 0);
+        async function handleVote(e) {
+            const btn = e.currentTarget;
+            const msgId = parseInt(btn.getAttribute('data-msg-id'));
+            const voteType = btn.getAttribute('data-forum-vote'); // 'up' or 'down'
+            
+            const msg = forumMessages.find(m => m.id === msgId);
+            if (!msg) return;
+
+            // Determine new vote: toggle if same, set if different
+            let newVote;
+            if (voteType === 'up') {
+                newVote = msg.user_vote === 1 ? 0 : 1;
+            } else {
+                newVote = msg.user_vote === -1 ? 0 : -1;
+            }
+
+            try {
+                const response = await fetch(`/api/forum/message/${msgId}/vote`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ vote: newVote })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    msg.vote_score = data.new_score;
+                    msg.user_vote = data.user_vote;
+                    renderForum();
+                }
+            } catch (e) {
+                console.error('[FORUM] Vote error:', e);
+            }
+        }
+
+        async function handlePin(e) {
+            const msgId = parseInt(e.currentTarget.getAttribute('data-msg-id'));
+            try {
+                const response = await fetch(`/api/forum/message/${msgId}/pin`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const data = await response.json();
+                if (data.success) {
+                    await loadForumMessages(); // Reload to get updated order
+                }
+            } catch (e) {
+                console.error('[FORUM] Pin error:', e);
+            }
+        }
+
+        async function handleDelete(e) {
+            const msgId = parseInt(e.currentTarget.getAttribute('data-msg-id'));
+            if (!confirm('Delete this message?')) return;
+            try {
+                const response = await fetch(`/api/forum/message/${msgId}`, {
+                    method: 'DELETE'
+                });
+                const data = await response.json();
+                if (data.success) {
+                    forumMessages = forumMessages.filter(m => m.id !== msgId);
+                    renderForum();
+                }
+            } catch (e) {
+                console.error('[FORUM] Delete error:', e);
+            }
+        }
+
+        function renderMessageHtml(msg) {
+            const votes = msg.vote_score || 0;
             const tone = messageToneStyle(votes);
-            const pinIcon = msg.pinned ? '<i class="fas fa-thumbtack me-1"></i>' : '';
+            const pinIcon = msg.is_pinned ? '<i class="fas fa-thumbtack me-1 text-warning"></i>' : '';
+            
+            // Highlight user's own vote
+            const upClass = msg.user_vote === 1 ? 'btn-success' : 'btn-outline-secondary';
+            const downClass = msg.user_vote === -1 ? 'btn-danger' : 'btn-outline-secondary';
+            
+            // Admin can pin/unpin
             const pinBtn = isAdminUser ? `
-                <button type="button" class="btn btn-sm btn-outline-secondary" data-chat-pin="toggle" data-chat-id="${msg.id}" title="Pin/unpin">
+                <button type="button" class="btn btn-sm btn-outline-secondary" data-forum-pin="toggle" data-msg-id="${msg.id}" title="Pin/unpin">
                     <i class="fas fa-thumbtack"></i>
                 </button>
             ` : '';
+            
+            // Owner or admin can delete
+            const deleteBtn = (msg.is_own || isAdminUser) ? `
+                <button type="button" class="btn btn-sm btn-outline-danger" data-forum-delete="true" data-msg-id="${msg.id}" title="Delete">
+                    <i class="fas fa-trash-alt"></i>
+                </button>
+            ` : '';
+
+            // Show author name for shared forum
+            const authorDisplay = msg.author_name ? `<small class="text-muted ms-2">— ${msg.author_name}</small>` : '';
 
             return `
-                <div class="chat-message ${msg.pinned ? 'is-pinned' : ''}" role="listitem" style="${tone}">
+                <div class="chat-message ${msg.is_pinned ? 'is-pinned' : ''}" role="listitem" style="${tone}">
                     <div class="chat-message-meta">
-                        <span>${pinIcon}Votes: <strong>${votes}</strong></span>
+                        <span>${pinIcon}<strong>${votes}</strong>${authorDisplay}</span>
                         <div class="chat-actions">
-                            <button type="button" class="btn btn-sm btn-outline-secondary" data-chat-action="up" data-chat-id="${msg.id}" aria-label="Upvote">
+                            <button type="button" class="btn btn-sm ${upClass}" data-forum-vote="up" data-msg-id="${msg.id}" aria-label="Upvote">
                                 <i class="fas fa-thumbs-up"></i>
                             </button>
-                            <button type="button" class="btn btn-sm btn-outline-secondary" data-chat-action="down" data-chat-id="${msg.id}" aria-label="Downvote">
+                            <button type="button" class="btn btn-sm ${downClass}" data-forum-vote="down" data-msg-id="${msg.id}" aria-label="Downvote">
                                 <i class="fas fa-thumbs-down"></i>
                             </button>
                             ${pinBtn}
+                            ${deleteBtn}
                         </div>
                     </div>
-                    <div class="chat-message-body">${msg.html || ''}</div>
+                    <div class="chat-message-body">${msg.content || ''}</div>
                 </div>
             `;
         }
@@ -2073,16 +2246,16 @@
             });
         }
 
+        // Toggle pinned visibility (local only, not persisted)
         const togglePinnedBtn = document.getElementById('togglePinnedBtn');
         if (togglePinnedBtn) {
             togglePinnedBtn.addEventListener('click', () => {
-                const st = loadState();
-                st.hidePinned = !st.hidePinned;
-                saveState(st);
-                render();
+                hidePinned = !hidePinned;
+                renderForum();
             });
         }
 
+        // Post new message
         const postBtn = document.getElementById('chatPostBtn');
         if (postBtn) {
             postBtn.addEventListener('click', async () => {
@@ -2100,26 +2273,34 @@
                 html = sanitizeMessageHtml(html);
                 if (!html) return;
 
-                const st = loadState();
-                st.messages.push({
-                    id: `m_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
-                    html,
-                    votes: 0,
-                    pinned: false,
-                    createdAt: Date.now()
-                });
-                saveState(st);
-                render();
+                try {
+                    const response = await fetch(`/api/case/${caseId}/forum/message`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ content: html })
+                    });
+                    const data = await response.json();
+                    if (data.success && data.message) {
+                        forumMessages.unshift(data.message); // Add to top
+                        renderForum();
+                    } else if (data.error) {
+                        alert('Error: ' + data.error);
+                    }
+                } catch (e) {
+                    console.error('[FORUM] Post error:', e);
+                    alert('Failed to post message. Please try again.');
+                }
             });
         }
 
-        // Initialize editor lazily on first focus (keeps page lightweight)
+        // Initialize editor lazily on first focus
         const textarea = document.getElementById('chatEditorTextarea');
         if (textarea) {
             textarea.addEventListener('focus', initEditorIfNeeded, { once: true });
         }
 
-        render();
+        // Load messages on init
+        loadForumMessages();
     }
     
     // Load Q&A pairs from API
@@ -2316,9 +2497,7 @@
                     </div>
                 `;
                 
-                console.log('[Q&A] Setting innerHTML - this will clear any markers');
                 container.innerHTML = desktopHtml + mobileHtml;
-                console.log('[Q&A] innerHTML set complete');
                 forceLeftAlignQaContent(container);
                 
                 // Reload annotations to apply to newly loaded Q&A
@@ -2733,12 +2912,13 @@
     
     // Format notes display: convert to bullet points (no icons, no tags)
     function formatNotesDisplay() {
-        if (!notesTextarea || !isStudent) return;
+        if (!notesTextarea || !isStudent) return '';
         
         const rawNotes = notesTextarea.dataset.rawNotes || notesTextarea.value || '';
         
-        // Regex to find note fragments: [note:ID][from CONTEXT] content [/note:ID]
-        const noteFragmentRegex = /\[note:([^\]]+)\]\[from ([^\]]+)\](.*?)\[\/note:\1\]/gs;
+        // Regex to find note fragments: [note:ID][from CONTEXT][text:SELECTED] content [/note:ID]
+        // The [text:...] tag is optional for backward compatibility
+        const noteFragmentRegex = /\[note:([^\]]+)\]\[from ([^\]]+)\](?:\[text:[^\]]*\])?\s*(.*?)\[\/note:\1\]/gs;
         
         // Replace note fragments with bullet points (remove icons/tags)
         let formattedNotes = rawNotes.replace(noteFragmentRegex, (match, noteId, context, content) => {
@@ -2782,7 +2962,6 @@
             // The inline script should have already formatted notes on page load
             // This is a fallback in case inline script didn't run
             if (notesTextarea.value && !notesTextarea.dataset.rawNotes) {
-                console.log('[NOTES] Inline script did not run - formatting notes now');
                 const rawNotes = notesTextarea.value;
                 // Store raw notes in dataset
                 notesTextarea.dataset.rawNotes = rawNotes;
@@ -2901,7 +3080,10 @@
             notesTextarea.dataset.rawNotes = '';
             notesTextarea.dataset.userEdited = 'false';
             
-            // Note: Superscript markers will be handled by the new annotation system
+            // Remove all superscript markers from the DOM
+            document.querySelectorAll('.note-marker').forEach(marker => {
+                marker.remove();
+            });
             
             // Save empty notes
             saveNotes();
@@ -2911,6 +3093,8 @@
             if (undoBtn) {
                 undoBtn.style.display = 'inline-block';
             }
+            
+            showFlash('Notes cleared', 'success');
         }
     }
     
@@ -2935,9 +3119,12 @@
                 undoBtn.style.display = 'none';
             }
             
-            // Note: Superscript markers will be handled by the new annotation system
+            // Re-render markers from restored notes
+            setTimeout(renderNoteMarkersFromNotes, 500);
             
             lastClearedNotes = null;
+            
+            showFlash('Notes restored', 'success');
         }
     }
     
@@ -2947,22 +3134,50 @@
         return 'note_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
     }
     
-    // Extract fragment from notes box
+    // Extract fragment from notes box (returns clean content for editor display)
     function extractNoteFragment(noteId, notesText) {
         const regex = new RegExp(`\\[note:${noteId}\\](.*?)\\[/note:${noteId}\\]`, 's');
         const match = notesText.match(regex);
         if (!match) return null;
-        // Remove [from X] prefix if present
-        return match[1].replace(/^\[from [^\]]+\]\s*/, '').trim();
+        // Remove internal tags for clean display:
+        // 1. [from X] prefix
+        // 2. [text:...] tag (stores selected text for marker re-rendering)
+        let content = match[1];
+        content = content.replace(/^\[from [^\]]+\]\s*/, '');  // Remove [from X]
+        content = content.replace(/^\[text:[^\]]*\]\s*/, '');  // Remove [text:...]
+        return content.trim();
     }
     
-    // Replace fragment in notes box
+    // Utility: Sanitize note content for editor display (strips all internal tags)
+    function sanitizeNoteForEditor(rawContent) {
+        if (!rawContent) return '';
+        let clean = rawContent;
+        // Remove [from X] tags
+        clean = clean.replace(/\[from [^\]]+\]\s*/g, '');
+        // Remove [text:...] tags  
+        clean = clean.replace(/\[text:[^\]]*\]\s*/g, '');
+        // Remove [note:ID] and [/note:ID] wrapper tags
+        clean = clean.replace(/\[note:[^\]]+\]/g, '');
+        clean = clean.replace(/\[\/note:[^\]]+\]/g, '');
+        return clean.trim();
+    }
+    
+    // Replace fragment in notes box (preserves [text:...] tag if present)
     function replaceNoteFragment(noteId, newContent, notesText) {
-        const regex = new RegExp(`(\\[note:${noteId}\\]\\[from [^\\]]+\\])(.*?)(\\[/note:${noteId}\\])`, 's');
+        // Regex that captures: [note:ID][from X] optionally [text:...] then content [/note:ID]
+        // Group 1: [note:ID][from X]
+        // Group 2: optional [text:...] tag (preserved)
+        // Group 3: the actual content (replaced)
+        // Group 4: [/note:ID]
+        const regex = new RegExp(`(\\[note:${noteId}\\]\\[from [^\\]]+\\])(\\[text:[^\\]]*\\])?\\s*(.*?)(\\[/note:${noteId}\\])`, 's');
         if (regex.test(notesText)) {
-            return notesText.replace(regex, `$1${newContent}$3`);
+            return notesText.replace(regex, (match, prefix, textTag, oldContent, suffix) => {
+                // Preserve the [text:...] tag if it existed
+                const preservedTextTag = textTag || '';
+                return `${prefix}${preservedTextTag} ${newContent}${suffix}`;
+            });
         }
-        // Fallback: try without [from X] prefix
+        // Fallback: try without [from X] prefix (for older notes)
         const regex2 = new RegExp(`(\\[note:${noteId}\\])(.*?)(\\[/note:${noteId}\\])`, 's');
         return notesText.replace(regex2, `$1${newContent}$3`);
     }
@@ -3024,12 +3239,10 @@
         // Wait for modal to be fully shown before setting editor value
         modal.addEventListener('shown.bs.modal', function onModalShown() {
             const editor = document.getElementById('addToNotesEditor');
-            console.log('[Notes] Modal shown, editor found:', !!editor);
             if (editor) {
                 // Pre-fill with selected text (plain text, user can edit/remove)
                 const textToSet = selectedText.trim();
                 editor.value = textToSet;
-                console.log('[Notes] Set editor value:', textToSet.substring(0, 50));
                 // Force style to ensure visibility
                 editor.style.color = '#2c3e50';
                 editor.style.fontSize = '0.95rem';
@@ -3064,10 +3277,11 @@
                 // Get current notes - use raw notes if available (with tags), otherwise get from textarea
                 const currentRawNotes = notesTextarea?.dataset.rawNotes || (notesTextarea ? notesTextarea.value : '');
                 
-                // Append new note as bullet point with internal tags for fragment system (for superscript editing)
-                // Display format: bullet point only (no icons, no tags)
-                // Internal storage: keep tags for superscript editing functionality
-                const noteFragment = `\n\n[note:${noteId}][from ${sourceContext}] ${noteContent}[/note:${noteId}]`;
+                // Append new note with internal tags for fragment system and marker persistence
+                // Format: [note:ID][from CONTEXT][text:SELECTED_TEXT] content [/note:ID]
+                // The [text:...] tag stores the selected text for marker re-rendering on page load
+                const escapedText = selectedText.replace(/\]/g, '\\]').substring(0, 100);
+                const noteFragment = `\n\n[note:${noteId}][from ${sourceContext}][text:${escapedText}] ${noteContent}[/note:${noteId}]`;
                 const updatedRawNotes = currentRawNotes + noteFragment;
                 
                 // Update notes textarea
@@ -3076,7 +3290,8 @@
                     notesTextarea.dataset.rawNotes = updatedRawNotes;
                     
                     // Format for display: convert to bullet points, remove icons/tags
-                    let formattedNotes = updatedRawNotes.replace(/\[note:[^\]]+\]\[from ([^\]]+)\](.*?)\[\/note:[^\]]+\]/gs, (match, context, content) => {
+                    // Updated regex to handle [text:...] tag
+                    let formattedNotes = updatedRawNotes.replace(/\[note:[^\]]+\]\[from ([^\]]+)\](?:\[text:[^\]]*\])?\s*(.*?)\[\/note:[^\]]+\]/gs, (match, context, content) => {
                         // Extract clean content and format as bullet point
                         const cleanContent = content.trim();
                         return '\n• ' + cleanContent;
@@ -3091,26 +3306,8 @@
                     saveNotes(); // Save to server (will use raw notes)
                 }
                 
-                // Store marker metadata in localStorage
-                const markerKey = `note_markers_case_${caseId}_user_${(currentUserId !== null && currentUserId !== undefined) ? currentUserId : 'anon'}`;
-                try {
-                    let markers = [];
-                    const stored = localStorage.getItem(markerKey);
-                    if (stored) {
-                        markers = JSON.parse(stored);
-                        if (!Array.isArray(markers)) markers = [];
-                    }
-                    markers.push({
-                        note_id: noteId,
-                        source_type: fieldName.startsWith('question_') ? 'qa' : fieldName.startsWith('answer_') ? 'qa' : fieldName === 'discussion' ? 'discussion' : 'image',
-                        source_context_id: sourceContext,
-                        selected_text: selectedText,  // Store full text, not truncated
-                        created_at: new Date().toISOString()
-                    });
-                    localStorage.setItem(markerKey, JSON.stringify(markers));
-                } catch (e) {
-                    console.error('Error storing note marker:', e);
-                }
+                // Note: Marker position is now stored in the note itself via [text:...] tag
+                // No need for localStorage - markers will be rendered from notes on page load
                 
                 // Add superscript marker near selected text (use saved range from before modal opened)
                 if (savedRange && savedRangeContainer && savedRangeContainer.isConnected) {
@@ -3239,7 +3436,6 @@
         // Set editor value after modal is shown for visibility
         modal.addEventListener('shown.bs.modal', function() {
             const editor = document.getElementById('editNoteFragmentEditor');
-            console.log('[Notes] Edit modal shown, editor found:', !!editor);
             if (editor) {
                 editor.value = fragmentContent;
                 // Force style to ensure visibility
@@ -3253,6 +3449,9 @@
             }
         }, { once: true });
         
+        // Store original content for no-change detection
+        const originalCleanContent = fragmentContent;
+        
         const saveBtn = document.getElementById('saveNoteFragmentEditBtn');
         if (saveBtn) {
             const handleSave = () => {
@@ -3264,11 +3463,19 @@
                     return;
                 }
                 
+                // Check if content actually changed (compare clean versions)
+                if (newContent === originalCleanContent) {
+                    // No change detected - silently close modal (no error, no save, no flash)
+                    bsModal.hide();
+                    return;
+                }
+                
                 // Use raw notes (with tags) for fragment replacement
                 const currentRawNotes = notesTextarea ? (notesTextarea.dataset.rawNotes || notesTextarea.value) : '';
                 const updatedRawNotes = replaceNoteFragment(noteId, newContent, currentRawNotes);
                 
-                if (updatedRawNotes === currentRawNotes) {
+                // Only show error if actual replacement failed (not just no-change)
+                if (updatedRawNotes === currentRawNotes && newContent !== originalCleanContent) {
                     showFlash('Could not update note. Please try again.', 'error');
                     return;
                 }
@@ -3278,7 +3485,8 @@
                     notesTextarea.dataset.rawNotes = updatedRawNotes;
                     
                     // Format for display: convert to bullet points (remove icons/tags)
-                    let formattedNotes = updatedRawNotes.replace(/\[note:[^\]]+\]\[from ([^\]]+)\](.*?)\[\/note:[^\]]+\]/gs, (match, context, content) => {
+                    // Updated regex to handle [text:...] tag
+                    let formattedNotes = updatedRawNotes.replace(/\[note:[^\]]+\]\[from ([^\]]+)\](?:\[text:[^\]]*\])?\s*(.*?)\[\/note:[^\]]+\]/gs, (match, context, content) => {
                         const cleanContent = content.trim();
                         return '\n• ' + cleanContent;
                     });
@@ -3337,7 +3545,6 @@
         // Initialize editor after modal is shown for visibility
         modal.addEventListener('shown.bs.modal', function() {
             const editor = document.getElementById('floatingNoteEditor');
-            console.log('[Notes] Floating modal shown, editor found:', !!editor);
             if (editor) {
                 editor.value = ''; // Clear editor
                 // Force style to ensure visibility
@@ -3454,37 +3661,125 @@
     function initAnnotationSystem() {
         if (!isStudent) return;
         
-        console.log('[ANNOTATION] Initializing Recogito.js annotation system');
-        
-        // Initialize Recogito for all annotatable content areas
+        // Setup text selection handlers for highlighting and notes
         initializeAnnotatableAreas();
-        
-        // Load existing annotations from backend
-        loadAnnotations();
         
         // Setup floating notes button
         setupFloatingNotesButton();
+        
+        // Render note markers after content loads
+        setTimeout(renderNoteMarkersFromNotes, 2000);
+        setTimeout(renderNoteMarkersFromNotes, 4000); // Retry for slow loads
     }
     
-    // ==================== RECOGITO INITIALIZATION FUNCTIONS ====================
+    // ==================== TEXT SELECTION SETUP ====================
     function initializeAnnotatableAreas() {
-        console.log('[ANNOTATION] Setting up annotatable content areas with Recogito.js');
+        if (!isStudent) return;
         
-        if (!isStudent) {
-            console.log('[ANNOTATION] Not a student, skipping setup');
-            return;
-        }
-        
-        // NOTE: Recogito.js has compatibility issues with dynamically loaded content
-        // For a production-ready implementation, we should use a simpler approach
-        // or wait for Recogito to initialize after content loads
-        
-        // For now, adding placeholders for the implementation
-        console.log('[ANNOTATION] Recogito initialization deferred - see ANNOTATION_REFACTOR_STATUS.md');
-        
-        // TEMP: Add simple text selection menu as fallback
+        // Add text selection handlers for creating highlights and notes
         document.addEventListener('mouseup', handleTextSelection);
         document.addEventListener('touchend', handleTextSelection);
+    }
+    
+    // ==================== NOTE MARKERS ====================
+    // Render superscript markers by parsing notes and finding selected text in content
+    function renderNoteMarkersFromNotes() {
+        if (!notesTextarea) return;
+        
+        // Get raw notes with tags
+        const rawNotes = notesTextarea.dataset.rawNotes || notesTextarea.value || '';
+        if (!rawNotes) return;
+        
+        // Parse notes to extract note fragments with markers
+        // Format: [note:ID][from CONTEXT][text:SELECTED_TEXT] content [/note:ID]
+        const notePattern = /\[note:([^\]]+)\]\[from ([^\]]+)\](?:\[text:([^\]]*)\])?\s*(.*?)\[\/note:\1\]/gs;
+        let match;
+        let markersRendered = 0;
+        
+        while ((match = notePattern.exec(rawNotes)) !== null) {
+            const noteId = match[1];
+            const context = match[2];
+            const selectedText = match[3] ? match[3].replace(/\\\]/g, ']') : null;
+            
+            // Skip if no selected text or marker already exists
+            if (!selectedText || document.querySelector(`[data-note-id="${noteId}"]`)) {
+                continue;
+            }
+            
+            // Find the container based on context
+            let container = findContainerByContext(context);
+            if (!container) continue;
+            
+            // Try to find the selected text and add a marker
+            const success = addMarkerAfterText(container, selectedText, noteId);
+            if (success) {
+                markersRendered++;
+            }
+        }
+    }
+    
+    // Find container element by note context (e.g., "Discussion", "Q1", "A2", "Image 1")
+    function findContainerByContext(context) {
+        if (context === 'Discussion' || context === 'discussion') {
+            return document.getElementById('discussionText');
+        } else if (context.startsWith('Q')) {
+            const num = context.replace('Q', '');
+            return document.querySelector(`.qa-question[data-field="question_${num}"]`) ||
+                   document.querySelector(`.qa-question`);
+        } else if (context.startsWith('A')) {
+            const num = context.replace('A', '');
+            return document.querySelector(`.qa-answer[data-field="answer_${num}"]`) ||
+                   document.querySelector(`.qa-answer`);
+        } else if (context.startsWith('Image')) {
+            const num = context.replace('Image ', '');
+            return document.querySelector(`[data-field="image_${num}"]`);
+        }
+        return null;
+    }
+    
+    // Add a superscript marker after the given text in the container
+    function addMarkerAfterText(container, searchText, noteId) {
+        // Use TreeWalker to find text nodes
+        const walker = document.createTreeWalker(
+            container,
+            NodeFilter.SHOW_TEXT,
+            null,
+            false
+        );
+        
+        let node;
+        while ((node = walker.nextNode())) {
+            const index = node.textContent.indexOf(searchText);
+            if (index !== -1) {
+                try {
+                    // Create a range at the end of the found text
+                    const range = document.createRange();
+                    range.setStart(node, index + searchText.length);
+                    range.setEnd(node, index + searchText.length);
+                    
+                    // Create marker
+                    const marker = document.createElement('sup');
+                    marker.className = 'note-marker';
+                    marker.dataset.noteId = noteId;
+                    marker.textContent = '[📝]';
+                    marker.title = 'Click to view/edit this note';
+                    marker.style.cssText = 'color: #e96304; cursor: pointer; font-size: 0.8em; margin-left: 2px;';
+                    
+                    // Add click handler
+                    marker.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        openNoteFragmentPopup(noteId);
+                    });
+                    
+                    range.insertNode(marker);
+                    return true;
+                } catch (e) {
+                    console.warn('[MARKERS] Error inserting marker:', e);
+                }
+            }
+        }
+        return false;
     }
     
     function handleTextSelection(e) {
@@ -3560,8 +3855,7 @@
         highlightBtn.className = 'btn btn-sm btn-warning';
         highlightBtn.innerHTML = '<i class="fas fa-highlighter"></i> Highlight';
         highlightBtn.onclick = () => {
-            // TODO: Create highlight annotation
-            showFlash('Highlight feature coming soon!', 'info');
+            createHighlightFromSelection(selectedText, element);
             menu.remove();
         };
         
@@ -3570,18 +3864,12 @@
         noteBtn.className = 'btn btn-sm btn-brand-primary';
         noteBtn.innerHTML = '<i class="fas fa-sticky-note"></i> Add Note';
         noteBtn.onclick = () => {
-            console.log('[ANNOTATION] Add Note clicked');
-            console.log('[ANNOTATION] Selected text:', selectedText);
-            console.log('[ANNOTATION] Element:', element);
             
             try {
                 const fieldName = element.dataset.field || element.id || 'unknown';
-                console.log('[ANNOTATION] Field name:', fieldName);
-                console.log('[ANNOTATION] Calling openAddToNotesPopup...');
                 
                 openAddToNotesPopup(selectedText, fieldName);
                 
-                console.log('[ANNOTATION] openAddToNotesPopup called successfully');
                 menu.remove();
             } catch (error) {
                 console.error('[ANNOTATION] Error opening notes modal:', error);
@@ -3604,29 +3892,127 @@
         }, 100);
     }
     
-    function loadAnnotations() {
-        if (!isStudent) return;
+    // Create a highlight from current selection
+    function createHighlightFromSelection(selectedText, element) {
+        const selection = window.getSelection();
+        if (!selection || selection.rangeCount === 0) {
+            showFlash('No text selected', 'warning');
+            return;
+        }
         
-        console.log('[ANNOTATION] Loading existing annotations for case', caseId);
+        const range = selection.getRangeAt(0);
+        const fieldName = element.dataset.field || element.id || 'unknown';
         
-        // TEMP: For now, this is a placeholder
-        // In production, this should fetch from: /api/case/{caseId}/annotations
-        // and render them using the annotation instances
+        // Get context (text before and after selection for reliable positioning)
+        const container = element;
+        const fullText = container.textContent || '';
+        const startIndex = fullText.indexOf(selectedText);
         
-        console.log('[ANNOTATION] Annotation loading deferred - see ANNOTATION_REFACTOR_STATUS.md');
+        let contextBefore = '';
+        let contextAfter = '';
+        
+        if (startIndex !== -1) {
+            contextBefore = fullText.substring(Math.max(0, startIndex - 50), startIndex);
+            contextAfter = fullText.substring(startIndex + selectedText.length, startIndex + selectedText.length + 50);
+        }
+        
+        // Create mark element
+        try {
+            const mark = document.createElement('mark');
+            mark.className = 'user-highlight';
+            mark.style.backgroundColor = '#FFEB3B';
+            mark.style.cursor = 'pointer';
+            mark.title = 'Click to remove highlight';
+            
+            range.surroundContents(mark);
+            selection.removeAllRanges();
+            
+            // Save to backend
+            fetch(`/api/case/${caseId}/highlight`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    text_content: selectedText,
+                    highlight_color: 'yellow',
+                    field_name: fieldName,
+                    context_before: contextBefore,
+                    context_after: contextAfter
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.highlight) {
+                    mark.dataset.highlightId = data.highlight.id;
+                    
+                    // Add click handler to delete
+                    mark.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        if (confirm('Remove this highlight?')) {
+                            deleteHighlightElement(data.highlight.id, mark);
+                        }
+                    });
+                    
+                    showFlash('Text highlighted!', 'success');
+                } else {
+                    // Remove mark if save failed
+                    const parent = mark.parentNode;
+                    while (mark.firstChild) {
+                        parent.insertBefore(mark.firstChild, mark);
+                    }
+                    parent.removeChild(mark);
+                    showFlash('Failed to save highlight', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('[HIGHLIGHT] Save error:', error);
+                // Remove mark on error
+                const parent = mark.parentNode;
+                while (mark.firstChild) {
+                    parent.insertBefore(mark.firstChild, mark);
+                }
+                parent.removeChild(mark);
+                showFlash('Error saving highlight', 'error');
+            });
+            
+        } catch (e) {
+            console.error('[HIGHLIGHT] Error creating highlight:', e);
+            showFlash('Cannot highlight across different elements', 'warning');
+        }
+    }
+    
+    // Helper function to delete highlight element
+    function deleteHighlightElement(highlightId, markElement) {
+        fetch(`/api/highlight/${highlightId}`, {
+            method: 'DELETE'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Unwrap the mark element
+                const parent = markElement.parentNode;
+                while (markElement.firstChild) {
+                    parent.insertBefore(markElement.firstChild, markElement);
+                }
+                parent.removeChild(markElement);
+                showFlash('Highlight removed', 'success');
+            } else {
+                showFlash('Failed to remove highlight', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('[HIGHLIGHT] Delete error:', error);
+            showFlash('Error removing highlight', 'error');
+        });
     }
     
     function setupFloatingNotesButton() {
         const floatingBtn = document.getElementById('floatingNotesBtn');
         if (floatingBtn) {
-            console.log('[ANNOTATION] Floating notes button found and active');
-            // Ensure button opens the global notes textarea
+            // Open modal on click
             floatingBtn.addEventListener('click', () => {
-                const notesSection = document.querySelector('#candidateNoteText');
-                if (notesSection) {
-                    notesSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    notesSection.focus();
-                }
+                openFloatingNotePopup();
             });
         }
     }
@@ -3635,7 +4021,6 @@
     // Initialize annotation system on page load (students only)
     if (isStudent) {
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('[ANNOTATION] Page loaded, initializing annotation system');
             initAnnotationSystem();
         });
     }
@@ -3653,157 +4038,206 @@
         }
     });
 
-    // ==================== VANILLA RECOGITO.JS ANNOTATION ====================
-    // Simple, out-of-the-box text annotation for students only
+    // ==================== HIGHLIGHT SYSTEM ====================
+    // Simple text highlighting using Selection API and <mark> elements
+    // Persists to database via existing TextHighlight model
     
     if (isStudent) {
-        console.log('[RECOGITO] Vanilla annotation system loading...');
         
-        // Wait for page content to fully load
+        // Load and render existing highlights on page load
         document.addEventListener('DOMContentLoaded', function() {
-            // Wait a bit for Q&A to load
-            setTimeout(initVanillaRecogito, 1500);
-            setTimeout(initVanillaRecogito, 3000); // Retry for slow loads
+            // Wait for Q&A and other content to load
+            setTimeout(loadAndRenderHighlights, 1500);
+            setTimeout(loadAndRenderHighlights, 3000); // Retry for slow loads
         });
         
-        function initVanillaRecogito() {
-            console.log('[RECOGITO] Initializing vanilla annotations');
+        // Load highlights from backend and render them
+        function loadAndRenderHighlights() {
             
-            // Define where annotations can be added
-            const annotatableAreas = [
-                { selector: '#discussionText', name: 'Discussion' },
-                { selector: '.qa-question', name: 'Q&A Questions' },
-                { selector: '.qa-answer', name: 'Q&A Answers' },
-                { selector: '.image-description-text', name: 'Image Descriptions' }
-            ];
-            
-            annotatableAreas.forEach(area => {
-                const elements = document.querySelectorAll(area.selector);
-                
-                elements.forEach(element => {
-                    // Skip if already initialized
-                    if (element.hasAttribute('data-recogito-initialized')) {
-                        return;
-                    }
-                    
-                    // Skip if empty
-                    if (!element.textContent || element.textContent.trim().length === 0) {
-                        return;
-                    }
-                    
-                    try {
-                        // Initialize Recogito with vanilla configuration
-                        const r = Recogito.init({
-                            content: element,
-                            readOnly: false,
-                            // Use out-of-the-box widgets
-                            widgets: [
-                                'COMMENT',  // For adding notes
-                                'TAG'       // For highlights/tags
-                            ]
-                        });
-                        
-                        // Mark as initialized
-                        element.setAttribute('data-recogito-initialized', 'true');
-                        
-                        console.log('[RECOGITO] ✓ Initialized on:', area.name, element);
-                        
-                        // Handle annotation events
-                        r.on('createAnnotation', function(annotation) {
-                            console.log('[RECOGITO] Created:', annotation);
-                            saveAnnotation(annotation, element);
-                        });
-                        
-                        r.on('updateAnnotation', function(annotation) {
-                            console.log('[RECOGITO] Updated:', annotation);
-                            saveAnnotation(annotation, element);
-                        });
-                        
-                        r.on('deleteAnnotation', function(annotation) {
-                            console.log('[RECOGITO] Deleted:', annotation);
-                            deleteAnnotation(annotation);
-                        });
-                        
-                        // Load existing annotations for this element
-                        loadAnnotations(r, element);
-                        
-                    } catch (error) {
-                        console.error('[RECOGITO] Error initializing on', area.name, error);
-                    }
-                });
-            });
-        }
-        
-        // Save annotation to backend
-        function saveAnnotation(annotation, element) {
-            const fieldName = element.getAttribute('data-field') || element.id || 'unknown';
-            
-            fetch(`/api/case/${caseId}/recogito-annotation`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    annotation_id: annotation.id,
-                    annotation_data: JSON.stringify(annotation),
-                    field_name: fieldName
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    console.log('[RECOGITO] ✓ Saved to backend:', annotation.id);
-                } else {
-                    console.error('[RECOGITO] Save failed:', data);
-                }
-            })
-            .catch(error => {
-                console.error('[RECOGITO] Save error:', error);
-            });
-        }
-        
-        // Load annotations from backend
-        function loadAnnotations(recogito, element) {
-            const fieldName = element.getAttribute('data-field') || element.id || 'unknown';
-            
-            fetch(`/api/case/${caseId}/recogito-annotations?field=${fieldName}`)
+            fetch(`/api/case/${caseId}/highlights`)
                 .then(response => response.json())
                 .then(data => {
-                    if (data.success && data.annotations && data.annotations.length > 0) {
-                        data.annotations.forEach(ann => {
-                            try {
-                                const parsed = JSON.parse(ann.annotation_data);
-                                recogito.addAnnotation(parsed);
-                            } catch (error) {
-                                console.error('[RECOGITO] Parse error:', error);
-                            }
+                    if (data.success && data.highlights && data.highlights.length > 0) {
+                        data.highlights.forEach(highlight => {
+                            renderHighlight(highlight);
                         });
-                        console.log(`[RECOGITO] ✓ Loaded ${data.annotations.length} annotations`);
+                    } else {
                     }
                 })
                 .catch(error => {
-                    console.error('[RECOGITO] Load error:', error);
+                    console.error('[HIGHLIGHT] Load error:', error);
                 });
         }
         
-        // Delete annotation from backend
-        function deleteAnnotation(annotation) {
-            fetch(`/api/case/${caseId}/recogito-annotation/${annotation.id}`, {
+        // Render a highlight on the page by finding the text and wrapping it
+        function renderHighlight(highlight) {
+            const fieldName = highlight.field_name;
+            const textContent = highlight.text_content;
+            const color = highlight.highlight_color || 'yellow';
+            
+            // Find the container element based on field name
+            let container = null;
+            if (fieldName === 'discussion' || fieldName === 'discussionText') {
+                container = document.getElementById('discussionText');
+            } else if (fieldName.startsWith('question_')) {
+                const qNum = fieldName.replace('question_', '');
+                container = document.querySelector(`.qa-question[data-field="${fieldName}"]`) ||
+                           document.querySelector(`.qa-question:nth-of-type(${qNum})`);
+            } else if (fieldName.startsWith('answer_')) {
+                const aNum = fieldName.replace('answer_', '');
+                container = document.querySelector(`.qa-answer[data-field="${fieldName}"]`) ||
+                           document.querySelector(`.qa-answer:nth-of-type(${aNum})`);
+            } else if (fieldName.startsWith('image_')) {
+                container = document.querySelector(`[data-field="${fieldName}"]`);
+            } else {
+                container = document.querySelector(`[data-field="${fieldName}"]`) ||
+                           document.getElementById(fieldName);
+            }
+            
+            if (!container) {
+                return;
+            }
+            
+            // Find and highlight the text using TreeWalker
+            const found = findAndHighlightText(container, textContent, color, highlight.id, highlight.context_before, highlight.context_after);
+            if (found) {
+            } else {
+            }
+        }
+        
+        // Find text in container and wrap with mark element
+        function findAndHighlightText(container, searchText, color, highlightId, contextBefore, contextAfter) {
+            const walker = document.createTreeWalker(
+                container,
+                NodeFilter.SHOW_TEXT,
+                null,
+                false
+            );
+            
+            // Collect all text nodes and their positions
+            let textNodes = [];
+            let fullText = '';
+            let node;
+            
+            while (node = walker.nextNode()) {
+                textNodes.push({
+                    node: node,
+                    start: fullText.length,
+                    end: fullText.length + node.textContent.length
+                });
+                fullText += node.textContent;
+            }
+            
+            // Find the search text in the full text
+            let searchIndex = -1;
+            
+            // Try to find with context for more accurate positioning
+            if (contextBefore && contextAfter) {
+                const fullSearch = contextBefore + searchText + contextAfter;
+                const fullIndex = fullText.indexOf(fullSearch);
+                if (fullIndex !== -1) {
+                    searchIndex = fullIndex + contextBefore.length;
+                }
+            }
+            
+            // Fallback to simple search
+            if (searchIndex === -1) {
+                searchIndex = fullText.indexOf(searchText);
+            }
+            
+            if (searchIndex === -1) {
+                return false;
+            }
+            
+            const searchEnd = searchIndex + searchText.length;
+            
+            // Find which text nodes contain the selection
+            let startNode = null, endNode = null;
+            let startOffset = 0, endOffset = 0;
+            
+            for (const nodeInfo of textNodes) {
+                if (!startNode && nodeInfo.end > searchIndex) {
+                    startNode = nodeInfo.node;
+                    startOffset = searchIndex - nodeInfo.start;
+                }
+                if (nodeInfo.end >= searchEnd) {
+                    endNode = nodeInfo.node;
+                    endOffset = searchEnd - nodeInfo.start;
+                    break;
+                }
+            }
+            
+            if (!startNode || !endNode) {
+                return false;
+            }
+            
+            // Create a range and wrap with mark element
+            try {
+                const range = document.createRange();
+                range.setStart(startNode, startOffset);
+                range.setEnd(endNode, endOffset);
+                
+                const mark = document.createElement('mark');
+                mark.className = 'user-highlight';
+                mark.dataset.highlightId = highlightId;
+                mark.style.backgroundColor = getHighlightColor(color);
+                mark.style.cursor = 'pointer';
+                mark.title = 'Click to remove highlight';
+                
+                // Add click handler to delete
+                mark.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    if (confirm('Remove this highlight?')) {
+                        deleteHighlight(highlightId, mark);
+                    }
+                });
+                
+                range.surroundContents(mark);
+                return true;
+            } catch (e) {
+                console.error('[HIGHLIGHT] Error wrapping text:', e);
+                return false;
+            }
+        }
+        
+        // Get CSS color from color name
+        function getHighlightColor(colorName) {
+            const colors = {
+                'yellow': '#FFEB3B',
+                'green': '#A8D5BA',
+                'pink': '#F8BBD9',
+                'blue': '#B3E5FC'
+            };
+            return colors[colorName] || colors.yellow;
+        }
+        
+        // Delete a highlight
+        function deleteHighlight(highlightId, markElement) {
+            fetch(`/api/highlight/${highlightId}`, {
                 method: 'DELETE'
             })
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    console.log('[RECOGITO] ✓ Deleted from backend:', annotation.id);
+                    // Unwrap the mark element
+                    const parent = markElement.parentNode;
+                    while (markElement.firstChild) {
+                        parent.insertBefore(markElement.firstChild, markElement);
+                    }
+                    parent.removeChild(markElement);
+                    showFlash('Highlight removed', 'success');
+                } else {
+                    showFlash('Failed to remove highlight', 'error');
                 }
             })
             .catch(error => {
-                console.error('[RECOGITO] Delete error:', error);
+                console.error('[HIGHLIGHT] Delete error:', error);
+                showFlash('Error removing highlight', 'error');
             });
         }
     }
     
-    // ==================== END VANILLA RECOGITO.JS ====================
+    // ==================== END HIGHLIGHT SYSTEM ====================
 
 </script>
 <script src="/static/edit-case-modal.js"></script>

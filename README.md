@@ -47,7 +47,7 @@ Your companion app for FRCR exam preparation. Practice with real cases, take not
 ## 🛠️ Technology Stack
 
 - **Backend**: Flask 2.3.3, Python 3.9+
-- **Database**: PostgreSQL (Supabase) for production, SQLite for local development
+- **Database**: PostgreSQL (Neon) for production, SQLite for local development
 - **ORM**: SQLAlchemy 2.0.45, Flask-SQLAlchemy 3.0.5
 - **Authentication**: Flask-Login 0.6.2, Werkzeug password hashing
 - **Frontend**: Bootstrap 5, vanilla JavaScript
@@ -129,9 +129,9 @@ Your companion app for FRCR exam preparation. Practice with real cases, take not
 2. **Connect to Vercel**
    - Import your GitHub repository in Vercel dashboard
    - Configure environment variables:
-     - `DATABASE_URL`: PostgreSQL connection string (Supabase recommended)
+     - `DATABASE_URL`: PostgreSQL connection string (Neon recommended)
      - `SECRET_KEY`: Strong random key for session encryption
-     - `PYTHON_VERSION`: 3.9
+     - `CLAUDE_API_KEY`: Anthropic API key for AI features
 
 3. **Deploy**
    - Vercel automatically deploys on every push to main branch
@@ -139,12 +139,14 @@ Your companion app for FRCR exam preparation. Practice with real cases, take not
 
 ### Database Setup (Production)
 
-The application uses Supabase PostgreSQL for production:
+The application uses Neon PostgreSQL for production:
 
-1. Create a Supabase project at [supabase.com](https://supabase.com)
-2. Get your PostgreSQL connection string
+1. Create a Neon project at [neon.tech](https://neon.tech)
+2. Get your PostgreSQL connection string from Connection Details
 3. Add to Vercel environment variables as `DATABASE_URL`
 4. Database tables are created automatically on first run
+
+See `VERCEL_ENV_SETUP.md` for detailed environment variable configuration.
 
 ## 🔐 Authentication & Security
 
@@ -223,7 +225,7 @@ For technical support or questions:
 - Admin dashboard
 - Profile management
 
-### v1.0.0
+### v1.0.0 (FRCR-Examiner app- intial inspiration !)
 - Initial release
 - Exam session management
 - Case and candidate tracking

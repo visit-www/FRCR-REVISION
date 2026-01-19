@@ -166,7 +166,6 @@ class User(UserMixin, db.Model):
     def check_password(self, password):
         """Verify password against hash"""
         if not self.password_hash:
-            print(f"[PASSWORD] WARNING: No password hash for user {self.email}")
             return False
         if not password:
             return False
@@ -175,9 +174,6 @@ class User(UserMixin, db.Model):
             hash_to_check = self.password_hash.strip() if isinstance(self.password_hash, str) else self.password_hash
             return check_password_hash(hash_to_check, password)
         except Exception as e:
-            print(f"[PASSWORD] ERROR checking password for {self.email}: {str(e)}")
-            import traceback
-            traceback.print_exc()
             return False
     
     @property
@@ -346,8 +342,11 @@ class TextHighlight(db.Model):
     case_id = db.Column(db.Integer, db.ForeignKey('case.id'), nullable=False, index=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
     text_content = db.Column(db.Text, nullable=False)  # The highlighted text
-    highlight_color = db.Column(db.String(20), nullable=False)  # yellow, green, pink, blue
+    highlight_color = db.Column(db.String(20), nullable=False, default='yellow')  # yellow, green, pink, blue
     field_name = db.Column(db.String(50), nullable=False)  # question, answer, discussion, notes
+    # Context for reliable repositioning on page reload
+    context_before = db.Column(db.String(100), nullable=True)  # 50 chars before the highlight
+    context_after = db.Column(db.String(100), nullable=True)  # 50 chars after the highlight
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     # Composite index for efficient lookups
@@ -627,27 +626,70 @@ class AiDiagnosisCache(db.Model):
         return f'<AiDiagnosisCache Diagnosis:{self.diagnosis[:30]}... Model:{self.model_name}>'
 
 
-# ==================== RECOGITO ANNOTATION MODEL ====================
-class RecogitoAnnotation(db.Model):
-    """Vanilla Recogito.js annotations"""
-    __tablename__ = 'recogito_annotations'
+# ==================== FORUM DISCUSSION MODELS ====================
+# These models support the case-specific discussion forum for students
+
+class ForumMessage(db.Model):
+    """
+    Stores forum messages for case discussions.
+    Messages are shared across all users for a given case.
+    """
+    __tablename__ = 'forum_message'
     
     id = db.Column(db.Integer, primary_key=True)
-    annotation_id = db.Column(db.String(255), nullable=False, index=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
     case_id = db.Column(db.Integer, db.ForeignKey('case.id'), nullable=False, index=True)
-    field_name = db.Column(db.String(100), nullable=False)
-    annotation_data = db.Column(db.Text, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+    
+    # Message content (HTML supported)
+    content = db.Column(db.Text, nullable=False)
+    
+    # Voting - net score (upvotes - downvotes)
+    vote_score = db.Column(db.Integer, default=0, nullable=False, index=True)
+    
+    # Admin can pin important messages
+    is_pinned = db.Column(db.Boolean, default=False, index=True)
+    
+    # Soft delete (hide rather than remove)
+    is_deleted = db.Column(db.Boolean, default=False, index=True)
+    
+    # Timestamps
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    user = db.relationship('User', backref='recogito_annotations')
-    case = db.relationship('Case', backref='recogito_annotations')
+    # Relationships
+    author = db.relationship('User', backref='forum_messages', lazy=True)
+    case = db.relationship('Case', backref='forum_messages', lazy=True)
+    votes = db.relationship('ForumMessageVote', backref='message', lazy=True, cascade='all, delete-orphan')
     
     __table_args__ = (
-        db.UniqueConstraint('annotation_id', 'user_id', 'case_id', name='uq_recogito_ann'),
-        db.Index('idx_recogito_user_case_field', 'user_id', 'case_id', 'field_name'),
+        db.Index('idx_forum_case_votes', 'case_id', 'vote_score'),
+        db.Index('idx_forum_case_pinned', 'case_id', 'is_pinned'),
     )
     
     def __repr__(self):
-        return f'<RecogitoAnnotation {self.annotation_id[:8]}... case={self.case_id}>'
+        return f'<ForumMessage {self.id} Case:{self.case_id} User:{self.user_id} Score:{self.vote_score}>'
+
+
+class ForumMessageVote(db.Model):
+    """
+    Tracks individual user votes on forum messages.
+    Ensures each user can only vote once per message.
+    """
+    __tablename__ = 'forum_message_vote'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    message_id = db.Column(db.Integer, db.ForeignKey('forum_message.id'), nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+    
+    # +1 for upvote, -1 for downvote
+    vote_value = db.Column(db.Integer, nullable=False)
+    
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Each user can only vote once per message
+    __table_args__ = (
+        db.UniqueConstraint('message_id', 'user_id', name='uq_message_user_vote'),
+    )
+    
+    def __repr__(self):
+        return f'<ForumMessageVote Msg:{self.message_id} User:{self.user_id} Vote:{self.vote_value}>'

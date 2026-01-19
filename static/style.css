@@ -4333,3 +4333,73 @@ tbody tr.case-row:hover {
 .ai-cache-info-box .info-value {
     color: #5a6270;
 }
+
+/* ==================== USER HIGHLIGHTS ==================== */
+.user-highlight {
+    background-color: #FFEB3B;
+    cursor: pointer;
+    border-radius: 2px;
+    padding: 0 2px;
+    transition: background-color 0.2s ease;
+}
+
+.user-highlight:hover {
+    background-color: #FDD835;
+}
+
+.user-highlight.highlight-green {
+    background-color: #A8D5BA;
+}
+
+.user-highlight.highlight-green:hover {
+    background-color: #8BC9A3;
+}
+
+.user-highlight.highlight-pink {
+    background-color: #F8BBD9;
+}
+
+.user-highlight.highlight-pink:hover {
+    background-color: #F48FB1;
+}
+
+.user-highlight.highlight-blue {
+    background-color: #B3E5FC;
+}
+
+.user-highlight.highlight-blue:hover {
+    background-color: #81D4FA;
+}
+
+/* ==================== NOTE MARKERS ==================== */
+.note-marker {
+    color: #e96304;
+    font-size: 0.7em;
+    vertical-align: super;
+    cursor: pointer;
+    margin-left: 2px;
+    font-weight: bold;
+    transition: color 0.2s ease;
+}
+
+.note-marker:hover {
+    color: #c85000;
+    text-decoration: underline;
+}
+
+/* ==================== SELECTION POPUP ==================== */
+.selection-popup {
+    position: fixed;
+    background: white;
+    border: 2px solid #5E899E;
+    border-radius: 8px;
+    padding: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 10000;
+    display: flex;
+    gap: 8px;
+}
+
+.selection-popup button {
+    white-space: nowrap;
+}
