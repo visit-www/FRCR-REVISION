@@ -8,6 +8,8 @@ from models import db, User, UserRole
 from datetime import datetime
 import os
 import secrets
+import cloudinary
+import cloudinary.uploader
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
 
@@ -561,7 +563,7 @@ def list_users():
 @auth_bp.route('/profile/picture', methods=['POST'])
 @login_required
 def upload_profile_picture():
-    """Upload profile picture"""
+    """Upload profile picture - stores in Cloudinary"""
     try:
         data = request.get_json()
         picture_base64 = data.get('picture')
@@ -573,23 +575,54 @@ def upload_profile_picture():
         if not picture_base64.startswith('data:image/'):
             return jsonify({'error': 'Invalid image format'}), 400
         
-        # Store base64 in database
-        current_user.profile_picture = picture_base64
+        # Delete old Cloudinary image if exists
+        if current_user.profile_picture_public_id:
+            try:
+                cloudinary.uploader.destroy(current_user.profile_picture_public_id)
+            except Exception:
+                pass  # Ignore deletion errors for old image
+        
+        # Upload to Cloudinary
+        upload_result = cloudinary.uploader.upload(
+            picture_base64,
+            folder='frcr_profiles',
+            resource_type='image',
+            transformation=[
+                {'width': 200, 'height': 200, 'crop': 'fill', 'gravity': 'face'},
+                {'quality': 'auto', 'fetch_format': 'auto'}
+            ]
+        )
+        
+        # Store Cloudinary URL instead of base64
+        current_user.profile_picture = upload_result['secure_url']
+        current_user.profile_picture_public_id = upload_result['public_id']
         db.session.commit()
         
-        return jsonify({'success': True, 'message': 'Profile picture updated'}), 200
+        return jsonify({
+            'success': True, 
+            'message': 'Profile picture updated',
+            'picture_url': upload_result['secure_url']
+        }), 200
     
     except Exception as e:
         db.session.rollback()
-        return jsonify({'error': 'Failed to upload picture'}), 500
+        return jsonify({'error': f'Failed to upload picture: {str(e)}'}), 500
 
 
 @auth_bp.route('/profile/picture', methods=['DELETE'])
 @login_required
 def remove_profile_picture():
-    """Remove profile picture"""
+    """Remove profile picture - cleans up Cloudinary"""
     try:
+        # Delete from Cloudinary if applicable
+        if current_user.profile_picture_public_id:
+            try:
+                cloudinary.uploader.destroy(current_user.profile_picture_public_id)
+            except Exception:
+                pass  # Log but don't fail
+        
         current_user.profile_picture = None
+        current_user.profile_picture_public_id = None
         db.session.commit()
         
         return jsonify({'success': True, 'message': 'Profile picture removed'}), 200

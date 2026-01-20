@@ -116,7 +116,8 @@ class User(UserMixin, db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False, index=True)
     password_hash = db.Column(db.Text, nullable=False)  # Use Text instead of String for better compatibility
     full_name = db.Column(db.String(120), nullable=False)
-    profile_picture = db.Column(db.Text, nullable=True)  # Base64 encoded image or URL
+    profile_picture = db.Column(db.Text, nullable=True)  # Cloudinary URL (legacy: base64)
+    profile_picture_public_id = db.Column(db.String(255), nullable=True)  # For Cloudinary deletion
     public_display_name = db.Column(db.String(30), nullable=True)  # User-controlled forum display name
     is_active = db.Column(db.Boolean, default=True)
     is_admin = db.Column(db.Boolean, default=False)  # Admin flag for first user (DEPRECATED: use 'role' field)
@@ -335,10 +336,18 @@ class Answer(db.Model):
 
 
 class CaseImage(db.Model):
-    """Store images for a case"""
+    """Store images for a case - using Cloudinary for storage"""
     id = db.Column(db.Integer, primary_key=True)
     case_id = db.Column(db.Integer, db.ForeignKey('case.id'), nullable=False)
-    image_data = db.Column(db.LargeBinary, nullable=False)  # Binary image data
+    
+    # Legacy binary field - kept for backward compatibility during migration
+    image_data = db.Column(db.LargeBinary, nullable=True)  # Deprecated: will be removed
+    
+    # Cloudinary storage fields (preferred)
+    image_url = db.Column(db.String(500), nullable=True)  # Full Cloudinary URL
+    image_public_id = db.Column(db.String(255), nullable=True)  # For Cloudinary deletion
+    image_thumbnail_url = db.Column(db.String(500), nullable=True)  # Auto-generated thumbnail
+    
     image_filename = db.Column(db.String(255), nullable=False)
     image_type = db.Column(db.String(50), nullable=False)  # e.g., 'image/png', 'image/jpeg'
     image_description = db.Column(db.Text, default='')  # Optional image description
@@ -346,6 +355,11 @@ class CaseImage(db.Model):
     
     def __repr__(self):
         return f'<CaseImage {self.image_filename} for Case {self.case_id}>'
+    
+    @property
+    def is_cloudinary(self):
+        """Check if image is stored in Cloudinary"""
+        return self.image_url is not None
 
 
 

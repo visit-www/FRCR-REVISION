@@ -1403,7 +1403,17 @@ def delete_case(case_id):
         for flag in case_flags:
             db.session.delete(flag)
         
-        # 5. Delete the case (cascade will handle: Questions, Answers, Images, Notes, Highlights, AuditLogs, ViewLogs, ApprovalQueue)
+        # 5. Clean up Cloudinary images from forum messages before cascade delete
+        from models import ForumMessage
+        forum_messages = ForumMessage.query.filter_by(case_id=case_id).all()
+        for msg in forum_messages:
+            if msg.image_public_id:
+                try:
+                    cloudinary.uploader.destroy(msg.image_public_id)
+                except Exception as e:
+                    print(f"Warning: Failed to delete Cloudinary image {msg.image_public_id}: {e}")
+        
+        # 6. Delete the case (cascade will handle: Questions, Answers, Images, Notes, Highlights, AuditLogs, ViewLogs, ApprovalQueue, ForumMessages)
         db.session.delete(case)
         db.session.commit()
         
@@ -1419,7 +1429,7 @@ def delete_case(case_id):
 @app.route('/api/case/<int:case_id>/image', methods=['POST'])
 @login_required
 def upload_case_image(case_id):
-    """Upload an image for a case"""
+    """Upload an image for a case - stores in Cloudinary"""
     # Verify user ownership
     case = verify_case_ownership(case_id)
     if not case:
@@ -1451,15 +1461,28 @@ def upload_case_image(case_id):
     if file_type not in allowed_types:
         return jsonify({'error': 'Only image files (JPEG, PNG, GIF, WebP) are allowed'}), 400
     
-    image_data = file.read()
-    
     # Get description from form data
     description = request.form.get('description', '')
     
     try:
+        # Upload to Cloudinary
+        upload_result = cloudinary.uploader.upload(
+            file,
+            folder='frcr_cases',
+            resource_type='image',
+            transformation=[{'quality': 'auto', 'fetch_format': 'auto'}]
+        )
+        
+        # Generate thumbnail URL
+        thumbnail_url = cloudinary.CloudinaryImage(upload_result['public_id']).build_url(
+            width=200, height=200, crop='fill', quality='auto'
+        )
+        
         case_image = CaseImage(
             case_id=case_id,
-            image_data=image_data,
+            image_url=upload_result['secure_url'],
+            image_public_id=upload_result['public_id'],
+            image_thumbnail_url=thumbnail_url,
             image_filename=file.filename,
             image_type=file_type,
             image_description=description
@@ -1471,19 +1494,21 @@ def upload_case_image(case_id):
         return jsonify({
             'image_id': case_image.id,
             'filename': case_image.image_filename,
+            'image_url': case_image.image_url,
+            'thumbnail_url': case_image.image_thumbnail_url,
             'message': 'Image uploaded successfully'
         })
     except Exception as e:
         db.session.rollback()
         import traceback
         traceback.print_exc()
-        return jsonify({'error': f'Database error: {str(e)}'}), 500
+        return jsonify({'error': f'Upload error: {str(e)}'}), 500
 
 
 @app.route('/api/case/<int:case_id>/images')
 @login_required
 def get_case_images(case_id):
-    """Get all images for a case"""
+    """Get all images for a case - returns Cloudinary URLs or legacy fallback"""
     # Verify user ownership
     case = verify_case_ownership(case_id)
     if not case:
@@ -1493,44 +1518,57 @@ def get_case_images(case_id):
         'id': img.id,
         'filename': img.image_filename,
         'description': img.image_description if img.image_description else '',
-        'created_at': img.created_at.strftime('%Y-%m-%d %H:%M:%S')
+        'created_at': img.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+        # Include Cloudinary URLs if available, else clients use /api/case-image/<id>
+        'image_url': img.image_url,
+        'thumbnail_url': img.image_thumbnail_url,
+        'is_cloudinary': img.is_cloudinary
     } for img in images])
 
 
 @app.route('/api/case-image/<int:image_id>')
 @login_required
 def get_case_image(image_id):
-    """Retrieve a case image by ID"""
+    """Retrieve a case image by ID - redirects to Cloudinary or serves legacy binary"""
     image = CaseImage.query.get(image_id)
     
     if not image:
         return jsonify({'error': 'Image not found'}), 404
     
-    return send_file(
-        BytesIO(image.image_data),
-        mimetype=image.image_type,
-        as_attachment=False,
-        download_name=image.image_filename
-    )
+    # If image is on Cloudinary, redirect to CDN
+    if image.is_cloudinary and image.image_url:
+        return redirect(image.image_url)
+    
+    # Legacy fallback: serve binary data from database
+    if image.image_data:
+        return send_file(
+            BytesIO(image.image_data),
+            mimetype=image.image_type,
+            as_attachment=False,
+            download_name=image.image_filename
+        )
+    
+    return jsonify({'error': 'Image data not found'}), 404
 
 
 @app.route('/api/case-image/<int:image_id>', methods=['DELETE'])
 @login_required
 def delete_case_image(image_id):
-    """Delete a case image"""
+    """Delete a case image - cleans up Cloudinary if applicable"""
     # Verify user ownership of the case image
     image = CaseImage.query.get(image_id)
     if not image:
-        return jsonify({"error": "Unauthorized"}), 403
+        return jsonify({"error": "Image not found"}), 404
     case = verify_case_ownership(image.case_id)
     if not case:
         return jsonify({"error": "Unauthorized"}), 403
     
-    """Delete a case image"""
-    image = CaseImage.query.get(image_id)
-    
-    if not image:
-        return jsonify({'error': 'Image not found'}), 404
+    # Delete from Cloudinary if applicable
+    if image.image_public_id:
+        try:
+            cloudinary.uploader.destroy(image.image_public_id)
+        except Exception as e:
+            print(f"Warning: Failed to delete Cloudinary image {image.image_public_id}: {e}")
     
     db.session.delete(image)
     db.session.commit()
@@ -2572,9 +2610,10 @@ def get_forum_messages(case_id):
             'created_at': msg.created_at.isoformat() if msg.created_at else None
         })
     
-    # Sort: pinned first, then by vote_score desc, then by created_at desc
-    result.sort(key=lambda x: (-x['is_pinned'], -x['vote_score'], x['created_at'] or ''), reverse=False)
-    result.sort(key=lambda x: (-int(x['is_pinned']), -x['vote_score']))
+    # Sort: pinned first, then by vote_score desc, then by created_at desc (newest first as tiebreaker)
+    # Using Python's stable sort: first sort by tiebreaker, then by primary keys
+    result.sort(key=lambda x: x['created_at'] or '', reverse=True)  # Newest first (tiebreaker)
+    result.sort(key=lambda x: (-int(x['is_pinned']), -x['vote_score']))  # Primary sort (stable)
     
     return jsonify({'success': True, 'messages': result})
 
@@ -2728,7 +2767,18 @@ def delete_forum_message(message_id):
     if message.user_id != current_user.id and not is_admin:
         return jsonify({'error': 'Unauthorized'}), 403
     
+    # Delete Cloudinary image if present
+    if message.image_public_id:
+        try:
+            cloudinary.uploader.destroy(message.image_public_id)
+        except Exception as e:
+            # Log but don't fail the delete operation
+            print(f"Warning: Failed to delete Cloudinary image {message.image_public_id}: {e}")
+    
     message.is_deleted = True
+    message.image_url = None
+    message.image_thumbnail_url = None
+    message.image_public_id = None
     db.session.commit()
     
     return jsonify({'success': True, 'message': 'Message deleted'})
@@ -2900,10 +2950,17 @@ def admin_get_forum_messages():
             'created_at': msg.created_at.isoformat()
         })
     
+    # Get total flagged messages count (for badge display regardless of current filter)
+    total_flagged = ForumMessage.query.filter(
+        ForumMessage.is_deleted == False,
+        ForumMessage.flag_count > 0
+    ).count()
+    
     return jsonify({
         'success': True,
         'messages': result,
         'total': pagination.total,
+        'total_flagged': total_flagged,
         'pages': pagination.pages,
         'current_page': page
     })
@@ -2951,7 +3008,8 @@ def admin_get_flagged_messages():
     return jsonify({
         'success': True,
         'messages': result,
-        'total': len(result)
+        'total': len(result),
+        'total_flagged': len(result)  # Same as total for this endpoint
     })
 
 
@@ -2969,19 +3027,21 @@ def admin_resolve_flag(flag_id):
     if not flag:
         return jsonify({'error': 'Flag not found'}), 404
     
+    # Get current unresolved count BEFORE marking as resolved (to avoid off-by-one error)
+    message = ForumMessage.query.get(flag.message_id)
+    current_unresolved = ForumMessageFlag.query.filter_by(
+        message_id=flag.message_id,
+        is_resolved=False
+    ).count() if message else 0
+    
     flag.is_resolved = True
     flag.resolved_by_user_id = current_user.id
     flag.resolved_at = datetime.utcnow()
     flag.resolution_notes = resolution_notes if resolution_notes else None
     
-    # Update flag count on message
-    message = ForumMessage.query.get(flag.message_id)
+    # Update flag count on message (subtract 1 since we just resolved this flag)
     if message:
-        unresolved_count = ForumMessageFlag.query.filter_by(
-            message_id=message.id,
-            is_resolved=False
-        ).count()
-        message.flag_count = unresolved_count
+        message.flag_count = max(0, current_unresolved - 1)
     
     db.session.commit()
     
