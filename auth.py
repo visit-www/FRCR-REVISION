@@ -187,6 +187,9 @@ def login():
         if not password_valid:
             return jsonify({'error': 'Invalid email or password'}), 401
         
+        if user.is_deleted:
+            return jsonify({'error': 'Account has been deleted'}), 403
+        
         if not user.is_active:
             return jsonify({'error': 'Account is disabled'}), 403
         
