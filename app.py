@@ -1005,7 +1005,16 @@ def create_case():
         
         case_number = f"{prefix}{max_num + 1:03d}"
     
-    # Questions and Answers are stored in separate tables (Question, Answer)
+    # Parse age_group enum if provided
+    age_group_enum = None
+    if data.get('age_group'):
+        try:
+            from models import AgeGroup
+            age_group_enum = AgeGroup[data['age_group']]
+        except KeyError:
+            pass
+    
+    # Questions/Answers stored in separate Question/Answer tables (not on Case model)
     try:
         case = Case(
             case_number=case_number,
@@ -1013,6 +1022,7 @@ def create_case():
             discussion=data.get('discussion', ''),
             module=module_enum,
             body_part=body_part_enum,
+            age_group=age_group_enum,
             is_public=data.get('is_public', False),
             created_by_user_id=current_user.id
         )
