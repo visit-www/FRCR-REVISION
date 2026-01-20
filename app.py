@@ -1008,7 +1008,6 @@ def create_case():
     # Convert lists to JSON strings for TEXT fields (legacy support)
     try:
         case = Case(
-            packet_id=data.get('packet_id'),  # Nullable for standalone cases
             case_number=case_number,
             diagnosis=data['diagnosis'],
             questions=json.dumps(questions or []),
