@@ -1271,6 +1271,140 @@ def restore_backup():
             else:
                 raise
         
+        # Import forum messages (new in v2.1)
+        forum_message_id_map = {}  # Map old message IDs to new message IDs
+        stats['forum_messages'] = {'added': 0, 'skipped': 0}
+        stats['forum_votes'] = {'added': 0, 'skipped': 0}
+        stats['forum_flags'] = {'added': 0, 'skipped': 0}
+        
+        if not is_frcr_examiner:
+            forum_messages_list = backup_data.get('forum_messages', [])
+            for idx, msg_data in enumerate(forum_messages_list):
+                old_msg_id = msg_data.get('id')
+                old_user_id = msg_data.get('user_id')
+                old_case_id = msg_data.get('case_id')
+                
+                user_id = user_id_map.get(old_user_id) if old_user_id else None
+                case_id = case_id_map.get(old_case_id) if old_case_id else None
+                
+                # Validate mapped IDs exist
+                if not user_id or not User.query.get(user_id):
+                    continue
+                if not case_id or not Case.query.get(case_id):
+                    continue
+                
+                forum_msg = ForumMessage(
+                    case_id=case_id,
+                    user_id=user_id,
+                    content=msg_data.get('content', ''),
+                    vote_score=msg_data.get('vote_score', 0),
+                    is_pinned=msg_data.get('is_pinned', False),
+                    flag_count=msg_data.get('flag_count', 0),
+                    image_url=msg_data.get('image_url'),
+                    image_public_id=msg_data.get('image_public_id'),
+                    image_thumbnail_url=msg_data.get('image_thumbnail_url'),
+                )
+                if msg_data.get('created_at'):
+                    try:
+                        forum_msg.created_at = datetime.fromisoformat(msg_data['created_at']) if isinstance(msg_data['created_at'], str) else msg_data['created_at']
+                    except (ValueError, TypeError):
+                        pass
+                if msg_data.get('updated_at'):
+                    try:
+                        forum_msg.updated_at = datetime.fromisoformat(msg_data['updated_at']) if isinstance(msg_data['updated_at'], str) else msg_data['updated_at']
+                    except (ValueError, TypeError):
+                        pass
+                
+                db.session.add(forum_msg)
+                db.session.flush()  # Get the new ID
+                
+                if old_msg_id:
+                    forum_message_id_map[old_msg_id] = forum_msg.id
+                
+                stats['forum_messages']['added'] += 1
+                
+                # Commit in batches
+                if (idx + 1) % BATCH_SIZE == 0:
+                    try:
+                        db.session.commit()
+                        print(f"[IMPORT] Committed batch of forum messages ({idx + 1}/{len(forum_messages_list)})")
+                    except Exception as batch_error:
+                        db.session.rollback()
+                        print(f"[IMPORT] ERROR during forum messages batch commit: {batch_error}")
+            
+            # Import forum votes
+            forum_votes_list = backup_data.get('forum_votes', [])
+            for vote_data in forum_votes_list:
+                old_msg_id = vote_data.get('message_id')
+                old_user_id = vote_data.get('user_id')
+                
+                message_id = forum_message_id_map.get(old_msg_id)
+                user_id = user_id_map.get(old_user_id) if old_user_id else None
+                
+                if not message_id or not user_id:
+                    continue
+                
+                # Check for existing vote
+                existing_vote = ForumMessageVote.query.filter_by(message_id=message_id, user_id=user_id).first()
+                if existing_vote:
+                    stats['forum_votes']['skipped'] += 1
+                    continue
+                
+                vote = ForumMessageVote(
+                    message_id=message_id,
+                    user_id=user_id,
+                    vote_value=vote_data.get('vote_value', 0),
+                )
+                if vote_data.get('created_at'):
+                    try:
+                        vote.created_at = datetime.fromisoformat(vote_data['created_at']) if isinstance(vote_data['created_at'], str) else vote_data['created_at']
+                    except (ValueError, TypeError):
+                        pass
+                
+                db.session.add(vote)
+                stats['forum_votes']['added'] += 1
+            
+            # Import forum flags
+            forum_flags_list = backup_data.get('forum_flags', [])
+            for flag_data in forum_flags_list:
+                old_msg_id = flag_data.get('message_id')
+                old_user_id = flag_data.get('user_id')
+                
+                message_id = forum_message_id_map.get(old_msg_id)
+                user_id = user_id_map.get(old_user_id) if old_user_id else None
+                
+                if not message_id or not user_id:
+                    continue
+                
+                # Check for existing flag
+                existing_flag = ForumMessageFlag.query.filter_by(message_id=message_id, user_id=user_id).first()
+                if existing_flag:
+                    stats['forum_flags']['skipped'] += 1
+                    continue
+                
+                flag = ForumMessageFlag(
+                    message_id=message_id,
+                    user_id=user_id,
+                    reason=flag_data.get('reason', 'other'),
+                    details=flag_data.get('details'),
+                )
+                if flag_data.get('created_at'):
+                    try:
+                        flag.created_at = datetime.fromisoformat(flag_data['created_at']) if isinstance(flag_data['created_at'], str) else flag_data['created_at']
+                    except (ValueError, TypeError):
+                        pass
+                
+                db.session.add(flag)
+                stats['forum_flags']['added'] += 1
+            
+            # Final commit for forum data
+            try:
+                db.session.commit()
+                print(f"[IMPORT] Forum data imported: {stats['forum_messages']['added']} messages, {stats['forum_votes']['added']} votes, {stats['forum_flags']['added']} flags")
+            except Exception as forum_error:
+                db.session.rollback()
+                print(f"[IMPORT] ERROR during forum commit: {forum_error}")
+        
         # Build response message
         message_parts = ['Database imported successfully']
         if stats['staging']['added'] > 0:
