@@ -602,14 +602,26 @@ def remove_profile_picture():
 @auth_bp.route('/profile/update', methods=['POST'])
 @login_required
 def update_profile():
-    """Update user profile (name and email)"""
+    """Update user profile (name, email, and public display name)"""
     try:
         data = request.get_json()
         full_name = data.get('full_name', '').strip()
         email = data.get('email', '').strip().lower()
+        public_display_name = data.get('public_display_name', '').strip() if data.get('public_display_name') else None
         
         if not full_name or not email:
             return jsonify({'error': 'Name and email are required'}), 400
+        
+        # Validate public_display_name if provided
+        if public_display_name:
+            if len(public_display_name) < 2 or len(public_display_name) > 30:
+                return jsonify({'error': 'Public name must be 2-30 characters'}), 400
+            # Only allow letters, numbers, and spaces (no HTML, no emails)
+            import re
+            if not re.match(r'^[a-zA-Z0-9 ]+$', public_display_name):
+                return jsonify({'error': 'Public name can only contain letters, numbers, and spaces'}), 400
+            if '@' in public_display_name:
+                return jsonify({'error': 'Public name cannot contain email addresses'}), 400
         
         # Check if email is already taken by another user
         if email != current_user.email:
@@ -619,13 +631,51 @@ def update_profile():
         
         current_user.full_name = full_name
         current_user.email = email
+        current_user.public_display_name = public_display_name if public_display_name else None
         db.session.commit()
         
-        return jsonify({'success': True, 'message': 'Profile updated'}), 200
+        return jsonify({
+            'success': True, 
+            'message': 'Profile updated',
+            'display_name': current_user.get_display_name()
+        }), 200
     
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': 'Failed to update profile'}), 500
+
+
+@auth_bp.route('/profile/display-name', methods=['POST'])
+@login_required
+def update_display_name():
+    """Update public display name only (for forum inline editing)"""
+    try:
+        data = request.get_json()
+        public_display_name = data.get('public_display_name', '').strip() if data.get('public_display_name') else None
+        
+        # Validate public_display_name if provided
+        if public_display_name:
+            if len(public_display_name) < 2 or len(public_display_name) > 30:
+                return jsonify({'error': 'Public name must be 2-30 characters'}), 400
+            # Only allow letters, numbers, and spaces (no HTML, no emails)
+            import re
+            if not re.match(r'^[a-zA-Z0-9 ]+$', public_display_name):
+                return jsonify({'error': 'Public name can only contain letters, numbers, and spaces'}), 400
+            if '@' in public_display_name:
+                return jsonify({'error': 'Public name cannot contain email addresses'}), 400
+        
+        current_user.public_display_name = public_display_name if public_display_name else None
+        db.session.commit()
+        
+        return jsonify({
+            'success': True, 
+            'message': 'Display name updated',
+            'display_name': current_user.get_display_name()
+        }), 200
+    
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': 'Failed to update display name'}), 500
 
 
 @auth_bp.route('/profile/password', methods=['POST'])

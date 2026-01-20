@@ -117,6 +117,7 @@ class User(UserMixin, db.Model):
     password_hash = db.Column(db.Text, nullable=False)  # Use Text instead of String for better compatibility
     full_name = db.Column(db.String(120), nullable=False)
     profile_picture = db.Column(db.Text, nullable=True)  # Base64 encoded image or URL
+    public_display_name = db.Column(db.String(30), nullable=True)  # User-controlled forum display name
     is_active = db.Column(db.Boolean, default=True)
     is_admin = db.Column(db.Boolean, default=False)  # Admin flag for first user (DEPRECATED: use 'role' field)
     
@@ -200,6 +201,32 @@ class User(UserMixin, db.Model):
         """Clear recovery token after use"""
         self.recovery_token = None
         self.recovery_token_expires = None
+    
+    @property
+    def username(self):
+        """Extract username from email (before @)"""
+        if self.email:
+            return self.email.split('@')[0]
+        return None
+    
+    def get_display_name(self):
+        """
+        Get the user's display name for forum/public contexts.
+        Resolution priority:
+        1. public_display_name (if set)
+        2. username (from email)
+        3. full_name
+        4. "User" (final fallback)
+        
+        NEVER returns subscription status like "Free user" or "Paid user"
+        """
+        if self.public_display_name and self.public_display_name.strip():
+            return self.public_display_name.strip()
+        if self.username:
+            return self.username
+        if self.full_name and self.full_name.strip():
+            return self.full_name.strip()
+        return "User"
     
     def __repr__(self):
         return f'<User {self.email}>'

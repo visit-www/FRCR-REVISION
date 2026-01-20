@@ -2554,8 +2554,9 @@ def get_forum_messages(case_id):
             'vote_score': msg.vote_score,
             'is_pinned': msg.is_pinned,
             'user_vote': user_votes.get(msg.id, 0),
-            'author_name': msg.author.full_name if msg.author else 'Anonymous',
+            'author_name': msg.author.get_display_name() if msg.author else 'User',
             'author_id': msg.user_id,
+            'author_avatar': msg.author.profile_picture if msg.author and msg.author.profile_picture else None,
             'is_own': msg.user_id == current_user.id,
             'created_at': msg.created_at.isoformat() if msg.created_at else None
         })
@@ -2604,8 +2605,9 @@ def post_forum_message(case_id):
             'vote_score': message.vote_score,
             'is_pinned': message.is_pinned,
             'user_vote': 0,
-            'author_name': current_user.full_name,
+            'author_name': current_user.get_display_name(),
             'author_id': current_user.id,
+            'author_avatar': current_user.profile_picture if current_user.profile_picture else None,
             'is_own': True,
             'created_at': message.created_at.isoformat()
         }

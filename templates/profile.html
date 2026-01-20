@@ -83,6 +83,34 @@
                             </div>
                         </div>
                         
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="publicDisplayName" class="form-label">
+                                    <i class="fas fa-comments me-1" style="color: var(--brand-neutral);"></i>Public Name
+                                    <small class="text-muted">(shown in forum)</small>
+                                </label>
+                                <input type="text" class="form-control" id="publicDisplayName" 
+                                       value="{{ current_user.public_display_name or '' }}" 
+                                       placeholder="Leave empty to use username"
+                                       maxlength="30"
+                                       pattern="[a-zA-Z0-9 ]+"
+                                       title="Letters, numbers, and spaces only">
+                                <small class="text-muted">
+                                    This name is visible to others in the discussion forum.
+                                    2-30 characters, letters/numbers/spaces only.
+                                </small>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Current Display Name</label>
+                                <div class="form-control-plaintext">
+                                    <span class="badge" style="background-color: var(--brand-neutral); color: white; font-size: 0.95rem;">
+                                        {{ current_user.get_display_name() }}
+                                    </span>
+                                </div>
+                                <small class="text-muted">This is how you appear in forums</small>
+                            </div>
+                        </div>
+                        
                         <div class="mb-3">
                             <button type="submit" class="btn btn-brand-primary">
                                 <i class="fas fa-save me-2"></i>Save Changes
@@ -236,11 +264,26 @@ document.getElementById('profileForm').addEventListener('submit', function(e) {
     
     const fullName = document.getElementById('fullName').value;
     const email = document.getElementById('email').value;
+    const publicDisplayName = document.getElementById('publicDisplayName').value.trim();
+    
+    // Validate public display name if provided
+    if (publicDisplayName && (publicDisplayName.length < 2 || publicDisplayName.length > 30)) {
+        alert('Public name must be 2-30 characters');
+        return;
+    }
+    if (publicDisplayName && !/^[a-zA-Z0-9 ]+$/.test(publicDisplayName)) {
+        alert('Public name can only contain letters, numbers, and spaces');
+        return;
+    }
     
     fetch('/auth/profile/update', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({full_name: fullName, email: email})
+        body: JSON.stringify({
+            full_name: fullName, 
+            email: email,
+            public_display_name: publicDisplayName || null
+        })
     })
     .then(r => r.json())
     .then(data => {
@@ -252,7 +295,6 @@ document.getElementById('profileForm').addEventListener('submit', function(e) {
         }
     })
     .catch(err => {
-        console.error(err);
         alert('Error updating profile');
     });
 });

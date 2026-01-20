@@ -1954,6 +1954,10 @@
                         <i class="fas fa-paper-plane me-1"></i>Post
                     </button>
                 </div>
+                <div class="forum-guideline mt-2 p-2" style="background: #f8f9fa; border-radius: 4px; font-size: 0.7rem; color: #6c757d;">
+                    <i class="fas fa-info-circle me-1"></i>
+                    Please post only relevant insights that help deepen understanding of this case.
+                </div>
             </div>
         `;
 
@@ -2093,6 +2097,54 @@
             document.querySelectorAll('[data-forum-delete]').forEach(btn => {
                 btn.addEventListener('click', handleDelete);
             });
+            document.querySelectorAll('[data-edit-display-name]').forEach(btn => {
+                btn.addEventListener('click', handleEditDisplayName);
+            });
+        }
+        
+        // Handle inline display name editing
+        async function handleEditDisplayName(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const currentName = forumMessages.find(m => m.is_own)?.author_name || '';
+            const newName = prompt(
+                'Enter your public display name (2-30 characters, letters/numbers/spaces only):\n\nThis name is visible to others in the discussion forum.\nYou can also change it in Profile → Public Name.\nAnonymous posting is not supported.',
+                currentName
+            );
+            
+            if (newName === null) return; // Cancelled
+            
+            const trimmed = newName.trim();
+            
+            // Validate
+            if (trimmed && (trimmed.length < 2 || trimmed.length > 30)) {
+                alert('Public name must be 2-30 characters');
+                return;
+            }
+            if (trimmed && !/^[a-zA-Z0-9 ]+$/.test(trimmed)) {
+                alert('Public name can only contain letters, numbers, and spaces');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/auth/profile/display-name', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ public_display_name: trimmed || null })
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Refresh forum to show updated name
+                    await loadForumMessages();
+                    showFlash('Display name updated!', 'success');
+                } else {
+                    alert(data.error || 'Failed to update display name');
+                }
+            } catch (err) {
+                alert('Error updating display name');
+            }
         }
 
         async function handleVote(e) {
@@ -2184,8 +2236,18 @@
                 </button>
             ` : '';
 
-            // Show author name for shared forum
-            const authorDisplay = msg.author_name ? `<small class="text-muted ms-2">— ${msg.author_name}</small>` : '';
+            // Profile avatar (if available)
+            const avatarHtml = msg.author_avatar 
+                ? `<img src="${msg.author_avatar}" alt="" class="forum-author-avatar" style="width: 24px; height: 24px; border-radius: 50%; object-fit: cover; margin-right: 6px; vertical-align: middle;">`
+                : '';
+            
+            // Show author name with avatar - add edit button for own messages
+            const editNameBtn = msg.is_own 
+                ? `<button type="button" class="btn btn-link btn-sm p-0 ms-1 text-muted" data-edit-display-name="true" title="Change your public name" style="font-size: 0.75rem;"><i class="fas fa-pen"></i></button>`
+                : '';
+            const authorDisplay = msg.author_name 
+                ? `<small class="text-muted ms-2">${avatarHtml}— ${msg.author_name}${editNameBtn}</small>` 
+                : '';
 
             return `
                 <div class="chat-message ${msg.is_pinned ? 'is-pinned' : ''}" role="listitem" style="${tone}">
