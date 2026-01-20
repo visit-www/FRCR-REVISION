@@ -186,7 +186,14 @@
                 <div class="case-details">
                     <!-- Diagnosis - Featured -->
                     <div class="detail-section diagnosis-section mb-5 p-4 rounded-3" style="background: linear-gradient(135deg, #fff8f0 0%, #fffbf5 100%); border-left: 5px solid #FFD700;">
-                        <label class="detail-label fw-bold text-secondary mb-3 d-block"><i class="fas fa-stethoscope me-2" style="color: #FFC107;"></i>Diagnosis</label>
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <label class="detail-label fw-bold text-secondary mb-0 d-block"><i class="fas fa-stethoscope me-2" style="color: #FFC107;"></i>Diagnosis</label>
+                            {% if current_user.is_authenticated and current_user.role and current_user.role.value == 'student' %}
+                            <button type="button" id="zenModeToggle" class="btn btn-sm zen-mode-btn" title="Zen mode – hide notes and forum">
+                                <i class="fas fa-spa me-1"></i><span class="zen-mode-text">Zen Mode</span>
+                            </button>
+                            {% endif %}
+                        </div>
                         <div id="diagnosisText" class="detail-content diagnosis-text highlightable-text" data-field="diagnosis" style="line-height: 1.8; font-size: 1.05rem; color: #2c3e50; text-align: left; {% if current_user.is_authenticated and current_user.role and current_user.role.value == 'student' %}user-select: text; cursor: text;{% endif %}">{{ case.diagnosis }}</div>
                         {% if current_user.is_authenticated and current_user.role and current_user.role.value == 'student' %}
                         <div class="mt-3 p-3 rounded highlight-tip" style="background: #f8f9fa; border-left: 3px solid #667eea;">
@@ -199,7 +206,12 @@
 
                     <!-- Question & Answer Section - Separate Pairs -->
                     <div class="detail-section qa-section mb-5 p-4 rounded-3" style="background: #f8f9fa;">
-                        <label class="section-title fw-bold mt-0 mb-4 d-block"><i class="fas fa-comments me-2" style="color: #5E899E;"></i>Questions & Answers</label>
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <label class="section-title fw-bold mt-0 mb-0 d-block"><i class="fas fa-comments me-2" style="color: #5E899E;"></i>Questions & Answers</label>
+                            <button type="button" id="zenShowNotesBtn" class="zen-show-notes-btn" title="Show/Hide notes panel">
+                                <i class="fas fa-sticky-note"></i>Show Notes
+                            </button>
+                        </div>
                         <div id="qaContainer" class="detail-content discussion-text highlightable-text">
                             <!-- Q&A pairs loaded by JavaScript -->
                         </div>
@@ -209,12 +221,18 @@
                     <div class="detail-section discussion-section justify-content-between mb-5 p-4 rounded-3" style="background: linear-gradient(135deg, #f0f8fc 0%, #f5fbff 100%); border-left: 5px solid #17a2b8; position: relative;">
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <label class="detail-label fw-bold text-secondary mb-0"><i class="fas fa-comments-dollar me-2" style="color: #17a2b8;"></i>Discussion & Comments</label>
-                            {% if current_user.is_authenticated and current_user.role and current_user.role.value == 'student' %}
-                            <!-- Mobile only: toggle in header -->
-                            <button type="button" class="forum-toggle-btn forum-visible d-lg-none" id="forumToggleBtnMobile" title="Show/hide forum">
-                                <i class="fas fa-comments me-1"></i><span id="forumToggleTextMobile">Hide Forum</span>
-                            </button>
-                            {% endif %}
+                            <div class="d-flex gap-2 align-items-center">
+                                <!-- Zen Mode: Show Forum toggle button -->
+                                <button type="button" id="zenShowForumBtn" class="zen-show-forum-btn" title="Show/Hide forum">
+                                    <i class="fas fa-comments"></i>Show Forum
+                                </button>
+                                {% if current_user.is_authenticated and current_user.role and current_user.role.value == 'student' %}
+                                <!-- Mobile only: toggle in header -->
+                                <button type="button" class="forum-toggle-btn forum-visible d-lg-none" id="forumToggleBtnMobile" title="Show/hide forum">
+                                    <i class="fas fa-comments me-1"></i><span id="forumToggleTextMobile">Hide Forum</span>
+                                </button>
+                                {% endif %}
+                            </div>
                         </div>
                         <div id="discussionText" class="detail-content discussion-text highlightable-text" data-field="discussion" style="line-height: 1.8; color: #2c3e50; text-align: left; {% if current_user.is_authenticated and current_user.role and current_user.role.value == 'student' %}user-select: text; cursor: text;{% endif %}" data-raw-discussion="{{ case.discussion|e if case.discussion else '' }}">
             <!-- Content will be rendered client-side using renderSafeHTML() for consistency -->
@@ -236,9 +254,15 @@
                             <label class="detail-label fw-bold mb-0" style="color: #e96304;">
                                 <i class="fas fa-sticky-note me-2" style="color: #e96304;"></i>My Notes
                             </label>
-                            <small class="text-muted">
-                                <i class="fas fa-save me-1"></i>Auto-saved
-                            </small>
+                            <div class="d-flex align-items-center gap-2">
+                                <!-- Hide Notes button (appears only in Zen Mode when notes are visible) -->
+                                <button type="button" id="zenHideNotesBtn" class="zen-hide-notes-btn" title="Hide notes panel">
+                                    <i class="fas fa-eye-slash"></i>Hide Notes
+                                </button>
+                                <small class="text-muted">
+                                    <i class="fas fa-save me-1"></i>Auto-saved
+                                </small>
+                            </div>
                         </div>
                         <div id="notesDisplayWrapper" style="display: none; background-color: #FFFEF8; border: 2px solid #F2CC8F; border-radius: 0.375rem; padding: 0.75rem; min-height: 150px; white-space: pre-wrap; font-family: 'Courier New', monospace; line-height: 1.6; color: #2c3e50;"></div>
                         <textarea id="candidateNoteText" 
@@ -543,7 +567,7 @@
         /* Two-column top section: Q&A (left) + Notes (right), bottom sections full width */
         .case-details.student-case-layout {
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: 6fr 4fr; /* Q&A 60%, Notes 40% */
             gap: 1.25rem;
             align-items: stretch; /* Notes matches Q&A height */
         }
@@ -609,123 +633,142 @@
         padding: 0.5rem 0 0 0;
     }
     
-    /* Mode Controls Layout */
+    /* Mode Controls Layout - Clean card-based design */
     .qa-mode-controls {
         display: flex;
         flex-direction: column;
-        gap: 0.5rem;
+        gap: 1rem;
+        padding: 1rem;
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        border: 1px solid #e9ecef;
     }
     
     .qa-mode-row, .qa-filter-row {
         display: flex;
         align-items: center;
-        gap: 0.75rem;
+        gap: 1rem;
     }
     
     .qa-mode-label {
-        font-size: 0.75rem;
-        font-weight: 600;
-        color: #5a6270;
-        min-width: 40px;
+        font-size: 0.7rem;
+        font-weight: 700;
+        color: #6c757d;
+        min-width: 45px;
         text-transform: uppercase;
-        letter-spacing: 0.5px;
+        letter-spacing: 0.8px;
     }
     
+    /* Segmented control container */
     .qa-mode-buttons, .qa-filter-buttons {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.5rem;
+        display: inline-flex;
+        background: #f1f3f5;
+        border-radius: 10px;
+        padding: 4px;
+        gap: 0;
+        flex: 1;
     }
     
-    /* Mode Buttons - Pill shaped, brand orange */
+    /* Mode Buttons - Segmented control style */
     .qa-mode-btn {
+        flex: 1;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        padding: 0.4rem 1rem;
+        padding: 0.5rem 1.25rem;
         font-size: 0.8rem;
         font-weight: 500;
-        border-radius: 50px;
-        border: 2px solid var(--brand-primary, #e96304);
+        border-radius: 8px;
+        border: none;
         background: transparent;
-        color: var(--brand-primary, #e96304);
+        color: #495057;
         cursor: pointer;
         transition: all 0.2s ease;
         white-space: nowrap;
     }
     
     .qa-mode-btn:hover {
-        background: rgba(233, 99, 4, 0.1);
+        color: var(--brand-primary, #e96304);
     }
     
     .qa-mode-btn.active {
-        background: var(--brand-primary, #e96304);
-        color: white;
+        background: white;
+        color: var(--brand-primary, #e96304);
         font-weight: 600;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     }
     
-    /* Filter Buttons - Rounded rectangle, neutral */
+    /* Filter Buttons - Segmented control style */
     .qa-filter-btn {
+        flex: 1;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        padding: 0.35rem 0.75rem;
+        padding: 0.4rem 0.75rem;
         font-size: 0.75rem;
         font-weight: 500;
-        border-radius: 20px;
-        border: 1.5px solid #d0d5dd;
-        background: white;
-        color: #5a6270;
+        border-radius: 8px;
+        border: none;
+        background: transparent;
+        color: #6c757d;
         cursor: pointer;
         transition: all 0.2s ease;
         white-space: nowrap;
     }
     
     .qa-filter-btn:hover {
-        border-color: var(--brand-neutral, #5E899E);
         color: var(--brand-neutral, #5E899E);
     }
     
     .qa-filter-btn.active {
-        background: var(--brand-neutral, #5E899E);
-        border-color: var(--brand-neutral, #5E899E);
-        color: white;
+        background: white;
+        color: var(--brand-neutral, #5E899E);
         font-weight: 600;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
     }
     
-    /* Filter button status colors when active */
+    /* Filter button status colors when active - subtle text colors */
     .qa-filter-btn[data-qa-filter="unreviewed"].active {
-        background: #6c757d;
-        border-color: #6c757d;
+        color: #6c757d;
     }
     
     .qa-filter-btn[data-qa-filter="difficult"].active {
-        background: #ff9800;
-        border-color: #ff9800;
+        color: #e96304;
     }
     
     .qa-filter-btn[data-qa-filter="reviewed"].active {
-        background: #28a745;
-        border-color: #28a745;
+        color: #28a745;
     }
     
     /* Responsive adjustments for controls */
     @media (max-width: 767px) {
+        .qa-mode-controls {
+            padding: 0.75rem;
+            gap: 0.75rem;
+        }
         .qa-mode-row, .qa-filter-row {
             flex-direction: column;
-            align-items: flex-start;
+            align-items: stretch;
             gap: 0.5rem;
         }
         .qa-mode-label {
             min-width: auto;
+            text-align: center;
+        }
+        .qa-mode-buttons, .qa-filter-buttons {
+            flex-wrap: nowrap;
         }
         .qa-mode-btn {
             font-size: 0.7rem;
-            padding: 0.35rem 0.75rem;
+            padding: 0.4rem 0.5rem;
         }
         .qa-filter-btn {
             font-size: 0.65rem;
-            padding: 0.3rem 0.6rem;
+            padding: 0.35rem 0.4rem;
+        }
+        .qa-mode-btn i, .qa-filter-btn i {
+            display: none; /* Hide icons on mobile for space */
         }
         .qa-preview-actions {
             flex-direction: column;
@@ -831,6 +874,192 @@
 
     .qa-student-answer[hidden] {
         display: none !important;
+    }
+
+    /* ==================== ZEN MODE ==================== */
+    .zen-mode-btn {
+        background: transparent;
+        border: 2px solid var(--brand-primary, #e96304);
+        color: var(--brand-primary, #e96304);
+        border-radius: 20px;
+        padding: 0.3rem 0.75rem;
+        font-size: 0.75rem;
+        font-weight: 500;
+        transition: all 0.2s ease;
+    }
+    
+    .zen-mode-btn:hover {
+        background: rgba(233, 99, 4, 0.1);
+    }
+    
+    .zen-mode-btn.active {
+        background: var(--brand-primary, #e96304);
+        border-color: var(--brand-primary, #e96304);
+        color: white;
+    }
+    
+    /* Hidden elements in Zen Mode */
+    .zen-mode-active .notes-section {
+        display: none !important;
+    }
+    
+    /* Hide mode/filter controls in Zen Mode */
+    .zen-mode-active .qa-mode-controls {
+        display: none !important;
+    }
+    
+    /* Show Notes button (appears only in Zen Mode) */
+    .zen-show-notes-btn {
+        display: none;
+        background: transparent;
+        border: 1.5px solid var(--brand-neutral, #5E899E);
+        color: var(--brand-neutral, #5E899E);
+        border-radius: 20px;
+        padding: 0.35rem 0.85rem;
+        font-size: 0.75rem;
+        font-weight: 500;
+        cursor: pointer;
+    }
+    
+    .zen-show-notes-btn:hover {
+        background: rgba(94, 137, 158, 0.1);
+    }
+    
+    .zen-mode-active .zen-show-notes-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+    }
+    
+    /* Show Forum button (appears only in Zen Mode) */
+    .zen-show-forum-btn {
+        display: none;
+        background: transparent;
+        border: 1.5px solid var(--brand-neutral, #5E899E);
+        color: var(--brand-neutral, #5E899E);
+        border-radius: 20px;
+        padding: 0.35rem 0.85rem;
+        font-size: 0.75rem;
+        font-weight: 500;
+        cursor: pointer;
+    }
+    
+    .zen-show-forum-btn:hover {
+        background: rgba(94, 137, 158, 0.1);
+    }
+    
+    .zen-mode-active .zen-show-forum-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+    }
+    
+    /* When notes are manually shown in Zen Mode */
+    .zen-mode-active .notes-section.zen-notes-visible {
+        display: block !important;
+    }
+    
+    /* Hide Notes button inside notes section (appears only in Zen Mode when notes visible) */
+    .zen-hide-notes-btn {
+        display: none;
+        background: transparent;
+        border: 1.5px solid #e96304;
+        color: #e96304;
+        border-radius: 20px;
+        padding: 0.3rem 0.7rem;
+        font-size: 0.75rem;
+        font-weight: 500;
+        cursor: pointer;
+    }
+    
+    .zen-hide-notes-btn:hover {
+        background: rgba(233, 99, 4, 0.1);
+    }
+    
+    .zen-mode-active .notes-section.zen-notes-visible .zen-hide-notes-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+    }
+    
+    /* Forum panel hidden by default in Zen Mode (discussion TEXT remains visible) */
+    .zen-mode-active #discussionChatPanel {
+        display: none !important;
+    }
+    
+    /* Show forum when manually toggled in Zen Mode */
+    .zen-mode-active #discussionChatPanel.zen-forum-visible {
+        display: block !important;
+    }
+    
+    /* In Zen Mode by default, discussion takes full width (forum hidden) */
+    @media (min-width: 992px) {
+        .zen-mode-active .discussion-section.discussion-has-chat #discussionText {
+            grid-column: 1 / -1;
+        }
+        
+        /* When forum is visible in Zen Mode, discussion shrinks to left column */
+        .zen-mode-active .discussion-section.discussion-has-chat:has(#discussionChatPanel.zen-forum-visible) #discussionText {
+            grid-column: 1 / 2;
+        }
+        
+        /* Forum takes right column when visible in Zen Mode */
+        .zen-mode-active #discussionChatPanel.zen-forum-visible {
+            grid-column: 2 / 3;
+            grid-row: 2;
+        }
+    }
+    
+    /* Hide the regular forum toggle buttons in Zen Mode (we use zen-show-forum-btn instead) */
+    .zen-mode-active .forum-toggle-btn {
+        display: none !important;
+    }
+    
+    /* Adjust layout in Zen Mode - Q&A takes full width by default */
+    @media (min-width: 992px) {
+        .case-details.student-case-layout.zen-mode-active .qa-section {
+            grid-column: 1 / -1;
+        }
+        
+        /* When notes are visible in Zen Mode, Q&A shrinks to left column */
+        .case-details.student-case-layout.zen-mode-active .notes-section.zen-notes-visible ~ .qa-section,
+        .case-details.student-case-layout.zen-mode-active:has(.notes-section.zen-notes-visible) .qa-section {
+            grid-column: 1 / 2;
+        }
+        
+        /* Notes take right column when visible in Zen Mode */
+        .case-details.student-case-layout.zen-mode-active .notes-section.zen-notes-visible {
+            grid-column: 2 / 3;
+            grid-row: 2;
+        }
+    }
+    
+    /* Zen Mode: Simplified Q&A rendering - textbook style */
+    .zen-mode-active .qa-student-item {
+        border: none;
+        border-bottom: 1px solid #e9ecef;
+        border-radius: 0;
+        background: transparent;
+    }
+    
+    .zen-mode-active .qa-student-item:last-child {
+        border-bottom: none;
+    }
+    
+    .zen-mode-active .qa-preview-actions {
+        display: none !important;
+    }
+    
+    .zen-mode-active .qa-student-answer {
+        display: block !important;
+    }
+    
+    .zen-mode-active .qa-student-answer[hidden] {
+        display: block !important;
+    }
+    
+    .zen-mode-active .qa-progress-container {
+        display: none;
     }
 
     /* ==================== NOTE MARKERS (PHASE 2) ==================== */
@@ -1839,6 +2068,74 @@
             const caseDetails = document.querySelector('.case-details');
             if (caseDetails) caseDetails.classList.add('student-case-layout');
         }
+        
+        // ==================== ZEN MODE ====================
+        const zenModeToggle = document.getElementById('zenModeToggle');
+        const zenShowNotesBtn = document.getElementById('zenShowNotesBtn');
+        const zenShowForumBtn = document.getElementById('zenShowForumBtn');
+        const caseDetailsEl = document.querySelector('.case-details');
+        const notesSection = document.querySelector('.notes-section');
+        const forumPanel = document.getElementById('discussionChatPanel');
+        
+        if (zenModeToggle && isStudent) {
+            zenModeToggle.addEventListener('click', () => {
+                const isActive = caseDetailsEl.classList.toggle('zen-mode-active');
+                zenModeToggle.classList.toggle('active', isActive);
+                
+                // Update button text
+                const textSpan = zenModeToggle.querySelector('.zen-mode-text');
+                if (textSpan) {
+                    textSpan.textContent = isActive ? 'Exit Zen' : 'Zen';
+                }
+                
+                // Reset visibility states when exiting Zen Mode
+                if (!isActive) {
+                    if (notesSection) notesSection.classList.remove('zen-notes-visible');
+                    // Get the dynamically created forum panel
+                    const currentForumPanel = document.getElementById('discussionChatPanel');
+                    if (currentForumPanel) currentForumPanel.classList.remove('zen-forum-visible');
+                    
+                    // Reset button text
+                    if (zenShowNotesBtn) zenShowNotesBtn.innerHTML = '<i class="fas fa-sticky-note"></i>Show Notes';
+                    if (zenShowForumBtn) zenShowForumBtn.innerHTML = '<i class="fas fa-comments"></i>Show Forum';
+                }
+            });
+        }
+        
+        // Show/Hide Notes button in Zen Mode (toggle)
+        if (zenShowNotesBtn && notesSection) {
+            zenShowNotesBtn.addEventListener('click', () => {
+                notesSection.classList.toggle('zen-notes-visible');
+                const isVisible = notesSection.classList.contains('zen-notes-visible');
+                zenShowNotesBtn.innerHTML = isVisible 
+                    ? '<i class="fas fa-eye-slash"></i>Hide Notes' 
+                    : '<i class="fas fa-sticky-note"></i>Show Notes';
+            });
+        }
+        
+        // Hide Notes button INSIDE notes section (for when notes are visible in Zen Mode)
+        const zenHideNotesBtn = document.getElementById('zenHideNotesBtn');
+        if (zenHideNotesBtn && notesSection && zenShowNotesBtn) {
+            zenHideNotesBtn.addEventListener('click', () => {
+                notesSection.classList.remove('zen-notes-visible');
+                zenShowNotesBtn.innerHTML = '<i class="fas fa-sticky-note"></i>Show Notes';
+            });
+        }
+        
+        // Show/Hide Forum button in Zen Mode (toggle)
+        if (zenShowForumBtn) {
+            zenShowForumBtn.addEventListener('click', () => {
+                // Forum panel is created dynamically, so get it fresh
+                const currentForumPanel = document.getElementById('discussionChatPanel');
+                if (currentForumPanel) {
+                    currentForumPanel.classList.toggle('zen-forum-visible');
+                    const isVisible = currentForumPanel.classList.contains('zen-forum-visible');
+                    zenShowForumBtn.innerHTML = isVisible 
+                        ? '<i class="fas fa-eye-slash"></i>Hide Forum' 
+                        : '<i class="fas fa-comments"></i>Show Forum';
+                }
+            });
+        }
 
         loadQAPairs();
         imageModal = new bootstrap.Modal(document.getElementById('imageModal'), {
@@ -2838,15 +3135,16 @@
                     <div class="qa-mode-row mb-2">
                         <span class="qa-mode-label">Mode:</span>
                         <div class="qa-mode-buttons">
-                            <button type="button" class="qa-mode-btn active" id="qaMode_all" data-qa-mode="all" title="Show all questions with answers">
+                            <button type="button" class="qa-mode-btn active" id="qaMode_review" data-qa-mode="review" title="All questions, answers hidden">
+                                <i class="fas fa-eye-slash me-1"></i>Revision
+                            </button>
+                            <button type="button" class="qa-mode-btn" id="qaMode_all" data-qa-mode="all" title="Show all questions with answers">
                                 <i class="fas fa-eye me-1"></i>Reading
                             </button>
                             <button type="button" class="qa-mode-btn" id="qaMode_flashcard" data-qa-mode="flashcard" title="One question at a time">
                                 <i class="fas fa-clone me-1"></i>Flashcard
                             </button>
-                            <button type="button" class="qa-mode-btn" id="qaMode_review" data-qa-mode="review" title="All questions, answers hidden">
-                                <i class="fas fa-eye-slash me-1"></i>Revision
-                            </button>
+                            
                         </div>
                     </div>
                     <div class="qa-filter-row">
@@ -2856,13 +3154,13 @@
                                 <i class="fas fa-th-large me-1"></i>All
                             </button>
                             <button type="button" class="qa-filter-btn" id="qaFilter_unreviewed" data-qa-filter="unreviewed">
-                                <i class="fas fa-circle me-1"></i>Unreviewed
+                                <i class="fas fa-circle me-1"></i>New
                             </button>
                             <button type="button" class="qa-filter-btn" id="qaFilter_difficult" data-qa-filter="difficult">
-                                <i class="fas fa-star me-1"></i>Difficult
+                                <i class="fas fa-star me-1"></i>Hard
                             </button>
                             <button type="button" class="qa-filter-btn" id="qaFilter_reviewed" data-qa-filter="reviewed">
-                                <i class="fas fa-check-circle me-1"></i>Reviewed
+                                <i class="fas fa-check me-1"></i>Done
                             </button>
                         </div>
                     </div>
@@ -3007,7 +3305,7 @@
         }
         
         // Study Mode state
-        let currentMode = 'all';
+        let currentMode = 'review';
         let currentFilter = 'all';
         let flashcardIndex = 0;
         const allQuestionNums = pairs.map((_, i) => i + 1);
