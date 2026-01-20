@@ -7,7 +7,8 @@ from flask_login import login_required, current_user
 from models import (
     db, User, Case, CaseImage, Question, Answer,
     RevisionSession, RevisionHistory, CaseFlag, TextHighlight, CandidateNote,
-    ImportedCaseStaging, UserRole, FRCRModule, BodyPart, AgeGroup
+    ImportedCaseStaging, UserRole, FRCRModule, BodyPart, AgeGroup,
+    ForumMessage, ForumMessageVote, ForumMessageFlag
 )
 from datetime import datetime, timedelta
 from sqlalchemy import inspect
@@ -46,7 +47,7 @@ def download_backup():
             'metadata': {
                 'backup_date': datetime.utcnow().isoformat(),
                 'database_type': 'postgresql' if os.getenv('DATABASE_URL') or os.getenv('DATABASE_POSTGRES_URL_NON_POOLING') else 'sqlite',
-                'version': '2.0',
+                'version': '2.2',  # Bumped for complete data coverage
                 'app_name': 'FRCR_REVISION'
             },
             'users': [],
@@ -55,9 +56,14 @@ def download_backup():
             'questions': [],
             'answers': [],
             'revision_sessions': [],
+            'revision_history': [],  # NEW: User progress tracking
             'case_flags': [],
             'highlights': [],
-            'notes': []
+            'notes': [],
+            # Forum data (critical for discussions)
+            'forum_messages': [],
+            'forum_votes': [],
+            'forum_flags': [],
         }
         
         # Export users (with passwords for sync purposes)
@@ -67,10 +73,17 @@ def download_backup():
                 'email': user.email,
                 'password_hash': user.password_hash,
                 'full_name': user.full_name,
+                'profile_picture': user.profile_picture,  # Cloudinary URL or base64
+                'profile_picture_public_id': user.profile_picture_public_id,  # For Cloudinary cleanup
+                'public_display_name': user.public_display_name,  # Forum display name
                 'role': user.role.value if user.role else 'student',
                 'is_active': user.is_active,
                 'subscription_status': user.subscription_status.value if user.subscription_status else 'free',
                 'payment_status': user.payment_status.value if user.payment_status else 'no_subscription',
+                'subscription_start_date': user.subscription_start_date.isoformat() if user.subscription_start_date else None,
+                'subscription_end_date': user.subscription_end_date.isoformat() if user.subscription_end_date else None,
+                'last_case_viewed': user.last_case_viewed,
+                'last_case_viewed_id': user.last_case_viewed_id,
                 'created_at': user.created_at.isoformat() if user.created_at else None,
                 'last_login': user.last_login.isoformat() if user.last_login else None,
             }
@@ -87,8 +100,12 @@ def download_backup():
                 'body_part': case.body_part.value if case.body_part else None,
                 'age_group': case.age_group.value if case.age_group else None,
                 'is_public': case.is_public,
-                'created_at': case.created_at.isoformat() if case.created_at else None,
+                'status': case.status.value if hasattr(case, 'status') and case.status else None,
                 'created_by_user_id': case.created_by_user_id,
+                'approved_by_user_id': case.approved_by_user_id if hasattr(case, 'approved_by_user_id') else None,
+                'approved_at': case.approved_at.isoformat() if hasattr(case, 'approved_at') and case.approved_at else None,
+                'created_at': case.created_at.isoformat() if case.created_at else None,
+                'updated_at': case.updated_at.isoformat() if hasattr(case, 'updated_at') and case.updated_at else None,
             }
             
             # Export Questions for this case
@@ -156,6 +173,55 @@ def download_backup():
                 'case_id': note.case_id,
                 'note_text': note.note_text or '',
                 'created_at': note.created_at.isoformat() if note.created_at else None,
+                'updated_at': note.updated_at.isoformat() if note.updated_at else None,
+            })
+        
+        # Export revision history (user progress tracking)
+        for history in RevisionHistory.query.all():
+            backup_data['revision_history'].append({
+                'user_id': history.user_id,
+                'case_id': history.case_id,
+                'module': history.module.value if history.module else None,
+                'first_seen_at': history.first_seen_at.isoformat() if history.first_seen_at else None,
+                'last_seen_at': history.last_seen_at.isoformat() if history.last_seen_at else None,
+                'times_seen': history.times_seen or 0,
+                'revision_session_id': history.revision_session_id,
+            })
+        
+        # Export forum messages
+        for msg in ForumMessage.query.filter_by(is_deleted=False).all():
+            backup_data['forum_messages'].append({
+                'id': msg.id,
+                'case_id': msg.case_id,
+                'user_id': msg.user_id,
+                'content': msg.content or '',
+                'vote_score': msg.vote_score or 0,
+                'is_pinned': msg.is_pinned or False,
+                'flag_count': msg.flag_count or 0,
+                'image_url': msg.image_url,
+                'image_public_id': msg.image_public_id,
+                'image_thumbnail_url': msg.image_thumbnail_url,
+                'created_at': msg.created_at.isoformat() if msg.created_at else None,
+                'updated_at': msg.updated_at.isoformat() if msg.updated_at else None,
+            })
+        
+        # Export forum votes
+        for vote in ForumMessageVote.query.all():
+            backup_data['forum_votes'].append({
+                'message_id': vote.message_id,
+                'user_id': vote.user_id,
+                'vote_value': vote.vote_value,
+                'created_at': vote.created_at.isoformat() if vote.created_at else None,
+            })
+        
+        # Export forum flags (unresolved only)
+        for flag in ForumMessageFlag.query.filter_by(is_resolved=False).all():
+            backup_data['forum_flags'].append({
+                'message_id': flag.message_id,
+                'user_id': flag.user_id,
+                'reason': flag.reason,
+                'details': flag.details,
+                'created_at': flag.created_at.isoformat() if flag.created_at else None,
             })
         
         # Create JSON file in memory
@@ -390,6 +456,18 @@ def restore_backup():
                         role=user_role,
                         is_active=filtered_data.get('is_active', True),
                     )
+                    # Set profile and display fields
+                    if user_data.get('profile_picture'):
+                        user.profile_picture = user_data['profile_picture']
+                    if user_data.get('profile_picture_public_id'):
+                        user.profile_picture_public_id = user_data['profile_picture_public_id']
+                    if user_data.get('public_display_name'):
+                        user.public_display_name = user_data['public_display_name']
+                    if user_data.get('last_case_viewed'):
+                        user.last_case_viewed = user_data['last_case_viewed']
+                    if user_data.get('last_case_viewed_id'):
+                        user.last_case_viewed_id = user_data['last_case_viewed_id']
+                    
                     if filtered_data.get('subscription_status'):
                         from models import SubscriptionStatus
                         try:
@@ -402,6 +480,16 @@ def restore_backup():
                             user.payment_status = PaymentStatus(filtered_data['payment_status'])
                         except (ValueError, KeyError) as e:
                             print(f"[IMPORT] Warning: Could not set payment_status to {filtered_data.get('payment_status')}: {e}")
+                    if user_data.get('subscription_start_date'):
+                        try:
+                            user.subscription_start_date = datetime.fromisoformat(user_data['subscription_start_date']) if isinstance(user_data['subscription_start_date'], str) else user_data['subscription_start_date']
+                        except (ValueError, TypeError):
+                            pass
+                    if user_data.get('subscription_end_date'):
+                        try:
+                            user.subscription_end_date = datetime.fromisoformat(user_data['subscription_end_date']) if isinstance(user_data['subscription_end_date'], str) else user_data['subscription_end_date']
+                        except (ValueError, TypeError):
+                            pass
                     if filtered_data.get('created_at'):
                         try:
                             if isinstance(filtered_data['created_at'], str):
@@ -410,6 +498,11 @@ def restore_backup():
                                 user.created_at = filtered_data['created_at']
                         except (ValueError, TypeError) as e:
                             print(f"[IMPORT] Warning: Could not parse user created_at datetime: {filtered_data.get('created_at')}, error: {e}")
+                    if user_data.get('last_login'):
+                        try:
+                            user.last_login = datetime.fromisoformat(user_data['last_login']) if isinstance(user_data['last_login'], str) else user_data['last_login']
+                        except (ValueError, TypeError):
+                            pass
                     db.session.add(user)
                     stats['users']['added'] += 1
             
@@ -1271,7 +1364,59 @@ def restore_backup():
             else:
                 raise
         
-        # Import forum messages (new in v2.1)
+        # Import revision history
+        stats['revision_history'] = {'added': 0, 'skipped': 0}
+        if not is_frcr_examiner:
+            revision_history_list = backup_data.get('revision_history', [])
+            for history_data in revision_history_list:
+                old_user_id = history_data.get('user_id')
+                old_case_id = history_data.get('case_id')
+                
+                user_id = user_id_map.get(old_user_id) if old_user_id else None
+                case_id = case_id_map.get(old_case_id) if old_case_id else None
+                
+                if not user_id or not case_id:
+                    stats['revision_history']['skipped'] += 1
+                    continue
+                
+                # Check for existing history
+                existing = RevisionHistory.query.filter_by(user_id=user_id, case_id=case_id).first()
+                if existing:
+                    stats['revision_history']['skipped'] += 1
+                    continue
+                
+                history = RevisionHistory(
+                    user_id=user_id,
+                    case_id=case_id,
+                    times_seen=history_data.get('times_seen', 0),
+                )
+                if history_data.get('module'):
+                    try:
+                        history.module = FRCRModule(history_data['module'])
+                    except (ValueError, KeyError):
+                        pass
+                if history_data.get('first_seen_at'):
+                    try:
+                        history.first_seen_at = datetime.fromisoformat(history_data['first_seen_at']) if isinstance(history_data['first_seen_at'], str) else history_data['first_seen_at']
+                    except (ValueError, TypeError):
+                        pass
+                if history_data.get('last_seen_at'):
+                    try:
+                        history.last_seen_at = datetime.fromisoformat(history_data['last_seen_at']) if isinstance(history_data['last_seen_at'], str) else history_data['last_seen_at']
+                    except (ValueError, TypeError):
+                        pass
+                
+                db.session.add(history)
+                stats['revision_history']['added'] += 1
+            
+            try:
+                db.session.commit()
+                print(f"[IMPORT] Revision history imported: {stats['revision_history']['added']} records")
+            except Exception as e:
+                db.session.rollback()
+                print(f"[IMPORT] ERROR during revision history commit: {e}")
+        
+        # Import forum messages
         forum_message_id_map = {}  # Map old message IDs to new message IDs
         stats['forum_messages'] = {'added': 0, 'skipped': 0}
         stats['forum_votes'] = {'added': 0, 'skipped': 0}
@@ -1289,8 +1434,10 @@ def restore_backup():
                 
                 # Validate mapped IDs exist
                 if not user_id or not User.query.get(user_id):
+                    stats['forum_messages']['skipped'] += 1
                     continue
                 if not case_id or not Case.query.get(case_id):
+                    stats['forum_messages']['skipped'] += 1
                     continue
                 
                 forum_msg = ForumMessage(
@@ -1342,6 +1489,7 @@ def restore_backup():
                 user_id = user_id_map.get(old_user_id) if old_user_id else None
                 
                 if not message_id or not user_id:
+                    stats['forum_votes']['skipped'] += 1
                     continue
                 
                 # Check for existing vote
@@ -1374,6 +1522,7 @@ def restore_backup():
                 user_id = user_id_map.get(old_user_id) if old_user_id else None
                 
                 if not message_id or not user_id:
+                    stats['forum_flags']['skipped'] += 1
                     continue
                 
                 # Check for existing flag
