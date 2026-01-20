@@ -105,7 +105,7 @@ def download_backup():
                 'answer_text': a.answer_text,
             } for a in answers]
             
-            # Export Images for this case
+            # Export Images for this case (support both binary and Cloudinary)
             images = CaseImage.query.filter_by(case_id=case.id).all()
             import base64
             case_data['images'] = [{
@@ -113,6 +113,10 @@ def download_backup():
                 'image_type': img.image_type or '',
                 'description': img.image_description or '',
                 'image_data': base64.b64encode(img.image_data).decode('utf-8') if img.image_data else None,
+                # Cloudinary fields (new)
+                'image_url': img.image_url,
+                'image_public_id': img.image_public_id,
+                'image_thumbnail_url': img.image_thumbnail_url,
             } for img in images]
             
             backup_data['cases'].append(case_data)
@@ -554,19 +558,28 @@ def restore_backup():
                                         print(f"[IMPORT] Warning: Failed to decode image data: {e}")
                                         continue
                                 
-                                # Only create image if we have image data
-                                if image_data_binary:
-                                    # Support both field name formats: 'image_filename'/'image_description' (FRCR Examiner) and 'filename'/'description' (FRCR Revision)
-                                    image_filename = img_data.get('image_filename') or img_data.get('filename', '')
-                                    image_description = img_data.get('image_description') or img_data.get('description', '')
-                                    image_type = img_data.get('image_type', 'image/jpeg')
-                                    
+                                # Support both field name formats: 'image_filename'/'image_description' (FRCR Examiner) and 'filename'/'description' (FRCR Revision)
+                                image_filename = img_data.get('image_filename') or img_data.get('filename', '')
+                                image_description = img_data.get('image_description') or img_data.get('description', '')
+                                image_type = img_data.get('image_type', 'image/jpeg')
+                                
+                                # Check for Cloudinary URL (preferred) or binary data (legacy)
+                                image_url = img_data.get('image_url')
+                                image_public_id = img_data.get('image_public_id')
+                                image_thumbnail_url = img_data.get('image_thumbnail_url')
+                                
+                                # Only create image if we have image data OR Cloudinary URL
+                                if image_data_binary or image_url:
                                     image = CaseImage(
                                         case_id=existing_case.id,
                                         image_filename=image_filename,
                                         image_type=image_type,
                                         image_description=image_description,
-                                        image_data=image_data_binary
+                                        image_data=image_data_binary,
+                                        # Cloudinary fields
+                                        image_url=image_url,
+                                        image_public_id=image_public_id,
+                                        image_thumbnail_url=image_thumbnail_url,
                                     )
                                     db.session.add(image)
                                     stats['images']['added'] += 1
@@ -886,19 +899,27 @@ def restore_backup():
                                 print(f"[IMPORT] Warning: Failed to decode image data: {e}")
                                 continue
                         
-                        # Only create image if we have image data
-                        if image_data_binary:
-                            # Support both field name formats: 'image_filename'/'image_description' (FRCR Examiner) and 'filename'/'description' (FRCR Revision)
-                            image_filename = img_data.get('image_filename') or img_data.get('filename', '')
-                            image_description = img_data.get('image_description') or img_data.get('description', '')
-                            image_type = img_data.get('image_type', 'image/jpeg')
-                            
+                        # Support both field name formats
+                        image_filename = img_data.get('image_filename') or img_data.get('filename', '')
+                        image_description = img_data.get('image_description') or img_data.get('description', '')
+                        image_type = img_data.get('image_type', 'image/jpeg')
+                        
+                        # Check for Cloudinary URL (preferred) or binary data (legacy)
+                        image_url = img_data.get('image_url')
+                        image_public_id = img_data.get('image_public_id')
+                        image_thumbnail_url = img_data.get('image_thumbnail_url')
+                        
+                        # Only create image if we have image data OR Cloudinary URL
+                        if image_data_binary or image_url:
                             image = CaseImage(
                                 case_id=case.id,
                                 image_filename=image_filename,
                                 image_type=image_type,
                                 image_description=image_description,
-                                image_data=image_data_binary
+                                image_data=image_data_binary,
+                                image_url=image_url,
+                                image_public_id=image_public_id,
+                                image_thumbnail_url=image_thumbnail_url,
                             )
                             db.session.add(image)
                             stats['images']['added'] += 1
@@ -983,23 +1004,30 @@ def restore_backup():
                 image_description = img_data.get('image_description') or img_data.get('description', '')
                 image_type = img_data.get('image_type', 'image/jpeg')
                 
-                # Decode image data
+                # Decode image data (legacy binary)
                 image_data_binary = None
                 if img_data.get('image_data'):
                     try:
                         image_data_binary = base64.b64decode(img_data['image_data'])
                     except Exception as e:
                         print(f"[IMPORT] Warning: Failed to decode image data for {image_filename}: {e}")
-                        continue
                 
-                # Only create image if we have image data
-                if image_data_binary:
+                # Check for Cloudinary URL (preferred) or binary data (legacy)
+                image_url = img_data.get('image_url')
+                image_public_id = img_data.get('image_public_id')
+                image_thumbnail_url = img_data.get('image_thumbnail_url')
+                
+                # Only create image if we have image data OR Cloudinary URL
+                if image_data_binary or image_url:
                     image = CaseImage(
                         case_id=new_case_id,
                         image_filename=image_filename,
                         image_type=image_type,
                         image_description=image_description,
-                        image_data=image_data_binary
+                        image_data=image_data_binary,
+                        image_url=image_url,
+                        image_public_id=image_public_id,
+                        image_thumbnail_url=image_thumbnail_url,
                     )
                     db.session.add(image)
                     stats['images']['added'] += 1
