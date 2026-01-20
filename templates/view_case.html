@@ -598,11 +598,143 @@
     }
 
     /* ==================== Q&A STUDENT INTERACTION STYLES ==================== */
-    .qa-progress-container {
-        padding: 0.75rem;
+    .qa-controls-container {
         background: #f8f9fa;
         border-radius: 0.5rem;
         border: 1px solid #e0e0e0;
+        padding: 0.75rem;
+    }
+    
+    .qa-progress-container {
+        padding: 0.5rem 0 0 0;
+    }
+    
+    /* Mode Controls Layout */
+    .qa-mode-controls {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .qa-mode-row, .qa-filter-row {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    
+    .qa-mode-label {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: #5a6270;
+        min-width: 40px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .qa-mode-buttons, .qa-filter-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    
+    /* Mode Buttons - Pill shaped, brand orange */
+    .qa-mode-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.4rem 1rem;
+        font-size: 0.8rem;
+        font-weight: 500;
+        border-radius: 50px;
+        border: 2px solid var(--brand-primary, #e96304);
+        background: transparent;
+        color: var(--brand-primary, #e96304);
+        cursor: pointer;
+        transition: all 0.2s ease;
+        white-space: nowrap;
+    }
+    
+    .qa-mode-btn:hover {
+        background: rgba(233, 99, 4, 0.1);
+    }
+    
+    .qa-mode-btn.active {
+        background: var(--brand-primary, #e96304);
+        color: white;
+        font-weight: 600;
+    }
+    
+    /* Filter Buttons - Rounded rectangle, neutral */
+    .qa-filter-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.35rem 0.75rem;
+        font-size: 0.75rem;
+        font-weight: 500;
+        border-radius: 20px;
+        border: 1.5px solid #d0d5dd;
+        background: white;
+        color: #5a6270;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        white-space: nowrap;
+    }
+    
+    .qa-filter-btn:hover {
+        border-color: var(--brand-neutral, #5E899E);
+        color: var(--brand-neutral, #5E899E);
+    }
+    
+    .qa-filter-btn.active {
+        background: var(--brand-neutral, #5E899E);
+        border-color: var(--brand-neutral, #5E899E);
+        color: white;
+        font-weight: 600;
+    }
+    
+    /* Filter button status colors when active */
+    .qa-filter-btn[data-qa-filter="unreviewed"].active {
+        background: #6c757d;
+        border-color: #6c757d;
+    }
+    
+    .qa-filter-btn[data-qa-filter="difficult"].active {
+        background: #ff9800;
+        border-color: #ff9800;
+    }
+    
+    .qa-filter-btn[data-qa-filter="reviewed"].active {
+        background: #28a745;
+        border-color: #28a745;
+    }
+    
+    /* Responsive adjustments for controls */
+    @media (max-width: 767px) {
+        .qa-mode-row, .qa-filter-row {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.5rem;
+        }
+        .qa-mode-label {
+            min-width: auto;
+        }
+        .qa-mode-btn {
+            font-size: 0.7rem;
+            padding: 0.35rem 0.75rem;
+        }
+        .qa-filter-btn {
+            font-size: 0.65rem;
+            padding: 0.3rem 0.6rem;
+        }
+        .qa-preview-actions {
+            flex-direction: column;
+            gap: 0.5rem !important;
+        }
+        .qa-preview-actions .btn {
+            width: 100%;
+            justify-content: center;
+        }
     }
 
     .qa-student-items {
@@ -2663,9 +2795,15 @@
                         <div class="qa-preview-number">Q${num}</div>
                         <div class="qa-preview-text">${questionPreview}</div>
                     </div>
-                    <div class="qa-preview-actions">
+                    <div class="qa-preview-actions d-flex flex-wrap gap-2 align-items-center">
                         <button type="button" class="btn btn-sm btn-outline-success qa-reveal-btn" data-qa-num="${num}">
                             <i class="fas fa-eye me-1"></i>Reveal Answer
+                        </button>
+                        <button type="button" class="btn btn-sm ${progress.reviewed.includes(num) ? 'btn-success' : 'btn-outline-secondary'} qa-mark-reviewed-btn" data-qa-num="${num}" title="Mark as reviewed">
+                            <i class="fas fa-check me-1"></i>${progress.reviewed.includes(num) ? 'Reviewed' : 'Mark Reviewed'}
+                        </button>
+                        <button type="button" class="btn btn-sm ${progress.difficult.includes(num) ? 'btn-warning' : 'btn-outline-secondary'} qa-mark-difficult-btn" data-qa-num="${num}" title="Mark as difficult">
+                            <i class="fas fa-star me-1"></i>${progress.difficult.includes(num) ? 'Difficult' : 'Mark Difficult'}
                         </button>
                     </div>
                     <div class="qa-student-question-full" hidden style="padding: 1rem; border-top: 1px solid #e9ecef;">
@@ -2694,12 +2832,55 @@
         const percent = totalCount > 0 ? Math.round((reviewedCount / totalCount) * 100) : 0;
 
         container.innerHTML = `
-            <div class="qa-progress-container mb-3">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <span class="fw-bold">Progress: <span id="qaProgressText">${reviewedCount}/${totalCount} (${percent}%)</span></span>
+            <div class="qa-controls-container mb-3">
+                <!-- Study Mode Selector -->
+                <div class="qa-mode-controls mb-3">
+                    <div class="qa-mode-row mb-2">
+                        <span class="qa-mode-label">Mode:</span>
+                        <div class="qa-mode-buttons">
+                            <button type="button" class="qa-mode-btn active" id="qaMode_all" data-qa-mode="all" title="Show all questions with answers">
+                                <i class="fas fa-eye me-1"></i>Reading
+                            </button>
+                            <button type="button" class="qa-mode-btn" id="qaMode_flashcard" data-qa-mode="flashcard" title="One question at a time">
+                                <i class="fas fa-clone me-1"></i>Flashcard
+                            </button>
+                            <button type="button" class="qa-mode-btn" id="qaMode_review" data-qa-mode="review" title="All questions, answers hidden">
+                                <i class="fas fa-eye-slash me-1"></i>Revision
+                            </button>
+                        </div>
+                    </div>
+                    <div class="qa-filter-row">
+                        <span class="qa-mode-label">Filter:</span>
+                        <div class="qa-filter-buttons">
+                            <button type="button" class="qa-filter-btn active" id="qaFilter_all" data-qa-filter="all">
+                                <i class="fas fa-th-large me-1"></i>All
+                            </button>
+                            <button type="button" class="qa-filter-btn" id="qaFilter_unreviewed" data-qa-filter="unreviewed">
+                                <i class="fas fa-circle me-1"></i>Unreviewed
+                            </button>
+                            <button type="button" class="qa-filter-btn" id="qaFilter_difficult" data-qa-filter="difficult">
+                                <i class="fas fa-star me-1"></i>Difficult
+                            </button>
+                            <button type="button" class="qa-filter-btn" id="qaFilter_reviewed" data-qa-filter="reviewed">
+                                <i class="fas fa-check-circle me-1"></i>Reviewed
+                            </button>
+                        </div>
+                    </div>
                 </div>
-                <div class="progress" style="height: 8px;">
-                    <div id="qaProgressBar" class="progress-bar bg-success" role="progressbar" style="width: ${percent}%;" aria-valuenow="${percent}" aria-valuemin="0" aria-valuemax="100"></div>
+                
+                <!-- Progress Bar -->
+                <div class="qa-progress-container">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="fw-bold">Progress: <span id="qaProgressText">${reviewedCount}/${totalCount} (${percent}%)</span></span>
+                        <small class="text-muted" id="qaFlashcardNav" style="display: none;">
+                            <span id="qaFlashcardCurrent">1</span> / <span id="qaFlashcardTotal">${totalCount}</span>
+                            <button type="button" class="btn btn-sm btn-link p-0 ms-2" id="qaFlashcardPrev" title="Previous (P)"><i class="fas fa-chevron-left"></i></button>
+                            <button type="button" class="btn btn-sm btn-link p-0 ms-1" id="qaFlashcardNext" title="Next (N)"><i class="fas fa-chevron-right"></i></button>
+                        </small>
+                    </div>
+                    <div class="progress" style="height: 8px;">
+                        <div id="qaProgressBar" class="progress-bar bg-success" role="progressbar" style="width: ${percent}%;" aria-valuenow="${percent}" aria-valuemin="0" aria-valuemax="100"></div>
+                    </div>
                 </div>
             </div>
             <div id="qaStudentItems" class="qa-student-items" aria-live="polite">
@@ -2718,25 +2899,23 @@
             const answerEl = card.querySelector('.qa-student-answer');
             const revealBtn = card.querySelector('.qa-reveal-btn');
 
-            if (previewHeader && questionFull) {
+            if (previewHeader) {
                 previewHeader.addEventListener('click', (e) => {
-                    // Don't toggle if clicking the reveal button
-                    if (e.target.closest('.qa-reveal-btn')) return;
+                    // Don't toggle if clicking a button
+                    if (e.target.closest('button')) return;
 
-                    const isHidden = questionFull.hasAttribute('hidden');
-                    if (isHidden) {
-                        questionFull.removeAttribute('hidden');
+                    // Toggle answer visibility only (question already visible in card)
+                    const isAnswerHidden = answerEl && answerEl.hasAttribute('hidden');
+                    if (isAnswerHidden) {
+                        // Show answer only
                         card.classList.add('qa-expanded');
+                        if (answerEl) answerEl.removeAttribute('hidden');
+                        if (revealBtn) revealBtn.innerHTML = '<i class="fas fa-eye-slash me-1"></i>Hide Answer';
                     } else {
-                        questionFull.setAttribute('hidden', 'hidden');
+                        // Hide answer
                         card.classList.remove('qa-expanded');
-                        // Also hide answer if showing
-                        if (answerEl && !answerEl.hasAttribute('hidden')) {
-                            answerEl.setAttribute('hidden', 'hidden');
-                            if (revealBtn) {
-                                revealBtn.innerHTML = '<i class="fas fa-eye me-1"></i>Reveal Answer';
-                            }
-                        }
+                        if (answerEl) answerEl.setAttribute('hidden', 'hidden');
+                        if (revealBtn) revealBtn.innerHTML = '<i class="fas fa-eye me-1"></i>Reveal Answer';
                     }
                 });
             }
@@ -2758,6 +2937,217 @@
                         revealBtn.innerHTML = '<i class="fas fa-eye me-1"></i>Reveal Answer';
                     }
                 });
+            }
+            
+            // Mark Reviewed button handler
+            const reviewedBtn = card.querySelector('.qa-mark-reviewed-btn');
+            if (reviewedBtn) {
+                reviewedBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    toggleStatus(num, 'reviewed');
+                });
+            }
+            
+            // Mark Difficult button handler
+            const difficultBtn = card.querySelector('.qa-mark-difficult-btn');
+            if (difficultBtn) {
+                difficultBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    toggleStatus(num, 'difficult');
+                });
+            }
+        });
+        
+        // Toggle reviewed/difficult status
+        function toggleStatus(num, statusType) {
+            const arr = progress[statusType];
+            const idx = arr.indexOf(num);
+            if (idx >= 0) {
+                arr.splice(idx, 1);
+            } else {
+                arr.push(num);
+            }
+            
+            // Save to localStorage
+            try {
+                localStorage.setItem(progressKey, JSON.stringify(progress));
+            } catch (e) {}
+            
+            // Update UI for this card
+            const card = document.getElementById(`qaStudentItem_${num}`);
+            if (card) {
+                // Update status class
+                card.classList.remove('status-unreviewed', 'status-reviewed', 'status-difficult');
+                card.classList.add(getStatusClass(num));
+                
+                // Update status icon
+                const statusIcon = card.querySelector('.qa-preview-status');
+                if (statusIcon) {
+                    statusIcon.innerHTML = getStatusIcon(num);
+                }
+                
+                // Update buttons
+                const reviewedBtn = card.querySelector('.qa-mark-reviewed-btn');
+                const difficultBtn = card.querySelector('.qa-mark-difficult-btn');
+                
+                if (reviewedBtn) {
+                    const isReviewed = progress.reviewed.includes(num);
+                    reviewedBtn.className = `btn btn-sm ${isReviewed ? 'btn-success' : 'btn-outline-secondary'} qa-mark-reviewed-btn`;
+                    reviewedBtn.innerHTML = `<i class="fas fa-check me-1"></i>${isReviewed ? 'Reviewed' : 'Mark Reviewed'}`;
+                }
+                
+                if (difficultBtn) {
+                    const isDifficult = progress.difficult.includes(num);
+                    difficultBtn.className = `btn btn-sm ${isDifficult ? 'btn-warning' : 'btn-outline-secondary'} qa-mark-difficult-btn`;
+                    difficultBtn.innerHTML = `<i class="fas fa-star me-1"></i>${isDifficult ? 'Difficult' : 'Mark Difficult'}`;
+                }
+            }
+            
+            updateProgress();
+        }
+        
+        // Study Mode state
+        let currentMode = 'all';
+        let currentFilter = 'all';
+        let flashcardIndex = 0;
+        const allQuestionNums = pairs.map((_, i) => i + 1);
+        
+        // Get filtered question numbers
+        function getFilteredQuestions() {
+            if (currentFilter === 'all') return allQuestionNums;
+            if (currentFilter === 'unreviewed') return allQuestionNums.filter(n => !progress.reviewed.includes(n));
+            if (currentFilter === 'reviewed') return allQuestionNums.filter(n => progress.reviewed.includes(n));
+            if (currentFilter === 'difficult') return allQuestionNums.filter(n => progress.difficult.includes(n));
+            return allQuestionNums;
+        }
+        
+        // Apply current mode and filter
+        function applyModeAndFilter() {
+            const filtered = getFilteredQuestions();
+            const allCards = list.querySelectorAll('.qa-student-item');
+            
+            // Update flashcard total
+            const flashcardTotal = document.getElementById('qaFlashcardTotal');
+            if (flashcardTotal) flashcardTotal.textContent = filtered.length;
+            
+            if (currentMode === 'all') {
+                // Show all filtered cards AND reveal all answers (Reading mode)
+                // Question is already in the card header, so only show answer
+                allCards.forEach(card => {
+                    const num = parseInt(card.dataset.qaNumber, 10);
+                    card.style.display = filtered.includes(num) ? '' : 'none';
+                    
+                    if (filtered.includes(num)) {
+                        // Reveal answer only (question already visible in card header)
+                        const answerEl = card.querySelector('.qa-student-answer');
+                        const revealBtn = card.querySelector('.qa-reveal-btn');
+                        
+                        card.classList.add('qa-expanded');
+                        if (answerEl) answerEl.removeAttribute('hidden');
+                        if (revealBtn) revealBtn.innerHTML = '<i class="fas fa-eye-slash me-1"></i>Hide Answer';
+                    }
+                });
+                document.getElementById('qaFlashcardNav').style.display = 'none';
+            } else if (currentMode === 'flashcard') {
+                // Show only one card at a time
+                if (filtered.length === 0) {
+                    allCards.forEach(card => card.style.display = 'none');
+                    return;
+                }
+                
+                if (flashcardIndex >= filtered.length) flashcardIndex = 0;
+                if (flashcardIndex < 0) flashcardIndex = filtered.length - 1;
+                
+                const currentNum = filtered[flashcardIndex];
+                allCards.forEach(card => {
+                    const num = parseInt(card.dataset.qaNumber, 10);
+                    card.style.display = (num === currentNum) ? '' : 'none';
+                });
+                
+                document.getElementById('qaFlashcardNav').style.display = '';
+                document.getElementById('qaFlashcardCurrent').textContent = flashcardIndex + 1;
+                document.getElementById('qaFlashcardTotal').textContent = filtered.length;
+            } else if (currentMode === 'review') {
+                // Show all filtered cards, but hide all answers
+                allCards.forEach(card => {
+                    const num = parseInt(card.dataset.qaNumber, 10);
+                    card.style.display = filtered.includes(num) ? '' : 'none';
+                    
+                    // Hide answer
+                    const answerEl = card.querySelector('.qa-student-answer');
+                    const revealBtn = card.querySelector('.qa-reveal-btn');
+                    if (answerEl) answerEl.setAttribute('hidden', 'hidden');
+                    if (revealBtn) revealBtn.innerHTML = '<i class="fas fa-eye me-1"></i>Reveal Answer';
+                });
+                document.getElementById('qaFlashcardNav').style.display = 'none';
+            }
+        }
+        
+        // Mode button handlers
+        document.querySelectorAll('.qa-mode-btn[data-qa-mode]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.qa-mode-btn[data-qa-mode]').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentMode = btn.dataset.qaMode;
+                flashcardIndex = 0;
+                applyModeAndFilter();
+            });
+        });
+        
+        // Filter button handlers
+        document.querySelectorAll('.qa-filter-btn[data-qa-filter]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.qa-filter-btn[data-qa-filter]').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentFilter = btn.dataset.qaFilter;
+                flashcardIndex = 0;
+                applyModeAndFilter();
+            });
+        });
+        
+        // Flashcard navigation
+        const prevBtn = document.getElementById('qaFlashcardPrev');
+        const nextBtn = document.getElementById('qaFlashcardNext');
+        if (prevBtn) prevBtn.addEventListener('click', () => { flashcardIndex--; applyModeAndFilter(); });
+        if (nextBtn) nextBtn.addEventListener('click', () => { flashcardIndex++; applyModeAndFilter(); });
+        
+        // Keyboard shortcuts (only when Q&A section is in focus/visible)
+        document.addEventListener('keydown', (e) => {
+            // Don't trigger if typing in input/textarea
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
+            
+            const filtered = getFilteredQuestions();
+            if (filtered.length === 0) return;
+            
+            if (currentMode === 'flashcard') {
+                if (e.key === 'n' || e.key === 'N' || e.key === 'ArrowRight') {
+                    flashcardIndex++;
+                    applyModeAndFilter();
+                    e.preventDefault();
+                } else if (e.key === 'p' || e.key === 'P' || e.key === 'ArrowLeft') {
+                    flashcardIndex--;
+                    applyModeAndFilter();
+                    e.preventDefault();
+                } else if (e.key === ' ') {
+                    // Toggle answer visibility
+                    const currentNum = filtered[flashcardIndex];
+                    const card = document.getElementById(`qaStudentItem_${currentNum}`);
+                    if (card) {
+                        const revealBtn = card.querySelector('.qa-reveal-btn');
+                        if (revealBtn) revealBtn.click();
+                    }
+                    e.preventDefault();
+                } else if (e.key === 'd' || e.key === 'D') {
+                    // Toggle difficult
+                    const currentNum = filtered[flashcardIndex];
+                    toggleStatus(currentNum, 'difficult');
+                    e.preventDefault();
+                } else if (e.key === 'r' || e.key === 'R') {
+                    // Toggle reviewed
+                    const currentNum = filtered[flashcardIndex];
+                    toggleStatus(currentNum, 'reviewed');
+                    e.preventDefault();
+                }
             }
         });
 
