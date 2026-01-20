@@ -1244,6 +1244,191 @@
         pointer-events: auto;
     }
 
+    /* ==================== FLAG MODAL STYLING (Match Notes Modal) ==================== */
+    #forumFlagModal .flag-modal-dialog {
+        max-width: 90vw !important;
+        width: 450px !important;
+    }
+
+    @media (max-width: 768px) {
+        #forumFlagModal .flag-modal-dialog {
+            width: 95vw !important;
+            margin: 1rem auto !important;
+        }
+    }
+
+    #forumFlagModal .flag-modal-content {
+        background: #FFFEF8 !important;
+        border: 3px solid #e96304 !important;
+        border-radius: 0.75rem !important;
+        box-shadow: 0 4px 12px rgba(233, 99, 4, 0.3) !important;
+        overflow: hidden !important;
+    }
+
+    #forumFlagModal .flag-modal-header {
+        background: #e96304 !important;
+        padding: 0.75rem 1.25rem !important;
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        border: none !important;
+        border-bottom: none !important;
+    }
+
+    #forumFlagModal .flag-modal-header .modal-title {
+        color: #ffffff !important;
+        font-weight: 600 !important;
+        font-size: 1.1rem !important;
+        margin: 0 !important;
+    }
+
+    #forumFlagModal .flag-modal-header .btn-close {
+        filter: brightness(0) invert(1) !important;
+        opacity: 0.8 !important;
+    }
+
+    #forumFlagModal .flag-modal-header .btn-close:hover {
+        opacity: 1 !important;
+    }
+
+    #forumFlagModal .flag-modal-body {
+        padding: 0 !important;
+        background: #FFFEF8 !important;
+        display: flex !important;
+        flex-direction: column !important;
+    }
+
+    /* Flag modal sections - vertical stacking with full width */
+    #forumFlagModal .flag-section {
+        width: 100% !important;
+        padding: 1rem 1.25rem !important;
+        border-bottom: 1px solid rgba(233, 99, 4, 0.1) !important;
+    }
+
+    #forumFlagModal .flag-section:last-child {
+        border-bottom: none !important;
+    }
+
+    #forumFlagModal .flag-info-section {
+        background: rgba(233, 99, 4, 0.05) !important;
+    }
+
+    #forumFlagModal .flag-info-section p {
+        font-size: 0.9rem !important;
+        color: #2c3e50 !important;
+        line-height: 1.5 !important;
+    }
+
+    #forumFlagModal .flag-section-label {
+        display: block !important;
+        font-size: 0.85rem !important;
+        font-weight: 600 !important;
+        color: #5a6a7a !important;
+        margin-bottom: 0.75rem !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
+    }
+
+    #forumFlagModal .flag-options {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 0.25rem !important;
+    }
+
+    #forumFlagModal .flag-modal-body .form-check {
+        padding: 0.6rem 0.75rem !important;
+        margin-bottom: 0 !important;
+        border-radius: 0.5rem !important;
+        transition: background-color 0.15s ease !important;
+        width: 100% !important;
+    }
+
+    #forumFlagModal .flag-modal-body .form-check:hover {
+        background-color: rgba(233, 99, 4, 0.08) !important;
+    }
+
+    #forumFlagModal .flag-modal-body .form-check-input:checked {
+        background-color: #e96304 !important;
+        border-color: #e96304 !important;
+    }
+
+    #forumFlagModal .flag-modal-body .form-check-label {
+        color: #2c3e50 !important;
+        cursor: pointer !important;
+        font-size: 0.95rem !important;
+        display: block !important;
+        width: 100% !important;
+    }
+
+    #forumFlagModal .flag-details-section {
+        padding-bottom: 1.25rem !important;
+    }
+
+    #forumFlagModal .flag-modal-body textarea {
+        background: #ffffff !important;
+        border: 2px solid #e0e0e0 !important;
+        border-radius: 0.5rem !important;
+        font-family: inherit !important;
+        font-size: 0.9rem !important;
+        color: #2c3e50 !important;
+        transition: border-color 0.15s ease !important;
+        width: 100% !important;
+        resize: vertical !important;
+    }
+
+    #forumFlagModal .flag-modal-body textarea:focus {
+        border-color: #e96304 !important;
+        box-shadow: 0 0 0 0.2rem rgba(233, 99, 4, 0.15) !important;
+        outline: none !important;
+    }
+
+    #forumFlagModal .flag-modal-body textarea::placeholder {
+        color: #8b94af !important;
+    }
+
+    #forumFlagModal .flag-modal-footer {
+        background: #f8f9fa !important;
+        border-top: 2px solid #e0e0e0 !important;
+        padding: 0.75rem 1.25rem !important;
+        display: flex !important;
+        justify-content: flex-end !important;
+        gap: 0.5rem !important;
+    }
+
+    #forumFlagModal .flag-modal-footer .btn-cancel {
+        background: #6c757d !important;
+        border-color: #6c757d !important;
+        color: white !important;
+    }
+
+    #forumFlagModal .flag-modal-footer .btn-cancel:hover {
+        background: #5a6268 !important;
+        border-color: #545b62 !important;
+    }
+
+    #forumFlagModal .flag-modal-footer .btn-flag {
+        background: #e96304 !important;
+        border-color: #e96304 !important;
+        color: white !important;
+    }
+
+    #forumFlagModal .flag-modal-footer .btn-flag:hover {
+        background: #d45a04 !important;
+        border-color: #c85404 !important;
+    }
+
+    /* Forum flag button - subtle appearance */
+    .forum-flag-btn {
+        opacity: 0.5;
+        transition: opacity 0.2s ease, color 0.2s ease;
+    }
+
+    .forum-flag-btn:hover {
+        opacity: 1;
+        color: #e96304 !important;
+        border-color: #e96304 !important;
+    }
+
     /* ==================== DISCUSSION FORUM (CHAT-STYLE UI) ==================== */
     @media (min-width: 992px) {
         .discussion-section.discussion-has-chat {
@@ -2085,7 +2270,7 @@
                 // Update button text
                 const textSpan = zenModeToggle.querySelector('.zen-mode-text');
                 if (textSpan) {
-                    textSpan.textContent = isActive ? 'Exit Zen' : 'Zen';
+                    textSpan.textContent = isActive ? 'Exit Zen' : 'Zen Mode';
                 }
                 
                 // Reset visibility states when exiting Zen Mode
@@ -2377,8 +2562,25 @@
             <div id="chatMessageList" class="chat-panel-list" role="list"></div>
             <div class="mt-2">
                 <textarea id="chatEditorTextarea" class="form-control chat-editor" placeholder="Share a helpful insight about this case…"></textarea>
+                <div id="imagePreviewContainer" class="mt-2 p-2" style="display: none; background: #f8f9fa; border-radius: 4px;">
+                    <div class="d-flex align-items-center gap-2">
+                        <img id="imagePreviewThumb" src="" alt="Preview" style="width: 60px; height: 60px; object-fit: cover; border-radius: 6px; border: 1px solid #dee2e6;">
+                        <div class="flex-grow-1">
+                            <small class="text-muted" id="imagePreviewName">image.jpg</small>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-danger" id="removeImageBtn" title="Remove image">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
                 <div class="d-flex justify-content-between align-items-center mt-2">
-                    <small class="text-muted" id="chatStatusText" style="font-size: 0.7rem;">Sorted by votes • Shared with all students</small>
+                    <div class="d-flex align-items-center gap-2">
+                        <input type="file" id="forumImageInput" accept="image/jpeg,image/jpg,image/png,image/gif,image/webp" style="display: none;">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="attachImageBtn" title="Attach image (max 2MB)">
+                            <i class="fas fa-camera"></i>
+                        </button>
+                        <small class="text-muted" id="chatStatusText" style="font-size: 0.7rem;">Sorted by votes • Shared with all students</small>
+                    </div>
                     <button type="button" class="btn btn-sm btn-brand-success" id="chatPostBtn">
                         <i class="fas fa-paper-plane me-1"></i>Post
                     </button>
@@ -2529,6 +2731,12 @@
             document.querySelectorAll('[data-edit-display-name]').forEach(btn => {
                 btn.addEventListener('click', handleEditDisplayName);
             });
+            document.querySelectorAll('[data-forum-flag]').forEach(btn => {
+                btn.addEventListener('click', handleFlag);
+            });
+            document.querySelectorAll('[data-forum-image-click]').forEach(img => {
+                img.addEventListener('click', handleImageClick);
+            });
         }
         
         // Handle inline display name editing
@@ -2641,6 +2849,177 @@
                 console.error('[FORUM] Delete error:', e);
             }
         }
+        
+        // Handle flag button click - open flag modal
+        function handleFlag(e) {
+            const msgId = parseInt(e.currentTarget.getAttribute('data-msg-id'));
+            openFlagModal(msgId);
+        }
+        
+        // Open the flag modal for a message
+        function openFlagModal(msgId) {
+            // Create modal if it doesn't exist
+            let modal = document.getElementById('forumFlagModal');
+            if (!modal) {
+                modal = document.createElement('div');
+                modal.id = 'forumFlagModal';
+                modal.className = 'modal fade';
+                modal.innerHTML = `
+                    <div class="modal-dialog modal-dialog-centered flag-modal-dialog">
+                        <div class="modal-content flag-modal-content">
+                            <div class="modal-header flag-modal-header">
+                                <h5 class="modal-title"><i class="fas fa-flag me-2"></i>Report Message</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body flag-modal-body">
+                                <!-- Section 1: Info -->
+                                <div class="flag-section flag-info-section">
+                                    <p class="mb-0"><i class="fas fa-info-circle me-2" style="color: #e96304;"></i>Help us maintain a helpful forum. Why are you reporting this?</p>
+                                </div>
+                                
+                                <!-- Section 2: Reason selection -->
+                                <div class="flag-section flag-reason-section">
+                                    <label class="flag-section-label">Select a reason</label>
+                                    <div class="flag-options">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="radio" name="flagReason" id="flagSpam" value="spam" checked>
+                                            <label class="form-check-label" for="flagSpam"><i class="fas fa-ban me-2 text-muted"></i>Spam or advertising</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="radio" name="flagReason" id="flagInappropriate" value="inappropriate">
+                                            <label class="form-check-label" for="flagInappropriate"><i class="fas fa-exclamation-triangle me-2 text-muted"></i>Inappropriate content</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="radio" name="flagReason" id="flagIncorrect" value="incorrect">
+                                            <label class="form-check-label" for="flagIncorrect"><i class="fas fa-times-circle me-2 text-muted"></i>Incorrect information</label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="radio" name="flagReason" id="flagOther" value="other">
+                                            <label class="form-check-label" for="flagOther"><i class="fas fa-ellipsis-h me-2 text-muted"></i>Other reason</label>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Section 3: Additional details -->
+                                <div class="flag-section flag-details-section">
+                                    <label for="flagDetails" class="flag-section-label">Additional details (optional)</label>
+                                    <textarea class="form-control" id="flagDetails" rows="3" maxlength="500" placeholder="Describe your concern briefly..."></textarea>
+                                </div>
+                            </div>
+                            <div class="modal-footer flag-modal-footer">
+                                <button type="button" class="btn btn-cancel" data-bs-dismiss="modal">Cancel</button>
+                                <button type="button" class="btn btn-flag" id="submitFlagBtn"><i class="fas fa-flag me-1"></i>Submit Report</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+            }
+            
+            // Store current message ID
+            modal.setAttribute('data-flag-msg-id', msgId);
+            
+            // Reset form
+            document.getElementById('flagSpam').checked = true;
+            document.getElementById('flagDetails').value = '';
+            
+            // Fix aria-hidden accessibility warning: blur focus before hiding
+            modal.addEventListener('hide.bs.modal', function() {
+                if (document.activeElement && modal.contains(document.activeElement)) {
+                    document.activeElement.blur();
+                }
+            }, { once: true });
+            
+            // Show modal
+            const bsModal = new bootstrap.Modal(modal);
+            bsModal.show();
+            
+            // Handle submit
+            const submitBtn = document.getElementById('submitFlagBtn');
+            submitBtn.onclick = async () => {
+                const reason = document.querySelector('input[name="flagReason"]:checked').value;
+                const details = document.getElementById('flagDetails').value.trim();
+                
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Reporting...';
+                
+                try {
+                    const response = await fetch(`/api/forum/message/${msgId}/flag`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ reason, details })
+                    });
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        // Update local message flag count
+                        const msg = forumMessages.find(m => m.id === msgId);
+                        if (msg) msg.flag_count = data.flag_count;
+                        renderForum();
+                        bsModal.hide();
+                        // Show subtle success feedback
+                        const toast = document.createElement('div');
+                        toast.className = 'position-fixed bottom-0 end-0 p-3';
+                        toast.style.zIndex = '1100';
+                        toast.innerHTML = `
+                            <div class="toast show align-items-center text-white bg-success border-0" role="alert">
+                                <div class="d-flex">
+                                    <div class="toast-body">
+                                        <i class="fas fa-check-circle me-2"></i>Report submitted. Thank you!
+                                    </div>
+                                    <button type="button" class="btn-close btn-close-white me-2 m-auto" onclick="this.closest('.position-fixed').remove()"></button>
+                                </div>
+                            </div>
+                        `;
+                        document.body.appendChild(toast);
+                        setTimeout(() => toast.remove(), 3000);
+                    } else {
+                        alert(data.error || 'Failed to submit report');
+                    }
+                } catch (err) {
+                    console.error('[FORUM] Flag error:', err);
+                    alert('Error submitting report');
+                } finally {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<i class="fas fa-flag me-1"></i>Submit Report';
+                }
+            };
+        }
+        
+        // Handle image thumbnail click - open in modal
+        function handleImageClick(e) {
+            const fullImageUrl = e.currentTarget.getAttribute('data-full-image');
+            if (!fullImageUrl) return;
+            
+            // Use dedicated forum image modal to avoid conflict with case image modal
+            let modal = document.getElementById('forumImageModal');
+            if (!modal) {
+                modal = document.createElement('div');
+                modal.id = 'forumImageModal';
+                modal.className = 'modal fade';
+                modal.innerHTML = `
+                    <div class="modal-dialog modal-lg modal-dialog-centered">
+                        <div class="modal-content" style="background: transparent; border: none;">
+                            <div class="modal-header border-0 pb-0" style="position: absolute; top: 0; right: 0; z-index: 10;">
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body p-0 text-center">
+                                <img id="forumModalImage" src="" alt="Full image" class="img-fluid" style="max-height: 85vh; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.3);">
+                            </div>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+            }
+            
+            // Set image source and show
+            const imgEl = document.getElementById('forumModalImage');
+            if (imgEl) {
+                imgEl.src = fullImageUrl;
+                const bsModal = new bootstrap.Modal(modal);
+                bsModal.show();
+            }
+        }
 
         function renderMessageHtml(msg) {
             const votes = msg.vote_score || 0;
@@ -2664,6 +3043,16 @@
                     <i class="fas fa-trash-alt"></i>
                 </button>
             ` : '';
+            
+            // Flag button (not for own messages)
+            const flagBtn = !msg.is_own ? `
+                <button type="button" class="btn btn-sm btn-outline-secondary forum-flag-btn" data-forum-flag="true" data-msg-id="${msg.id}" title="Report this message">
+                    <i class="fas fa-flag" style="font-size: 0.7rem;"></i>
+                </button>
+            ` : '';
+            
+            // Flag count indicator (show if flagged)
+            const flagCount = msg.flag_count > 0 ? `<span class="badge bg-warning text-dark ms-1" title="${msg.flag_count} flag(s)"><i class="fas fa-flag me-1"></i>${msg.flag_count}</span>` : '';
 
             // Profile avatar (if available)
             const avatarHtml = msg.author_avatar 
@@ -2675,8 +3064,21 @@
                 ? `<button type="button" class="btn btn-link btn-sm p-0 ms-1 text-muted" data-edit-display-name="true" title="Change your public name" style="font-size: 0.75rem;"><i class="fas fa-pen"></i></button>`
                 : '';
             const authorDisplay = msg.author_name 
-                ? `<small class="text-muted ms-2">${avatarHtml}— ${msg.author_name}${editNameBtn}</small>` 
+                ? `<small class="text-muted ms-2">${avatarHtml}— ${msg.author_name}${editNameBtn}${flagCount}</small>` 
                 : '';
+            
+            // Image attachment (if present)
+            const imageHtml = msg.image_thumbnail_url ? `
+                <div class="forum-message-image mt-2">
+                    <img src="${msg.image_thumbnail_url}" 
+                         alt="Attached image" 
+                         class="forum-thumbnail" 
+                         data-full-image="${msg.image_url}"
+                         data-forum-image-click="true"
+                         style="width: 80px; height: 80px; object-fit: cover; border-radius: 8px; cursor: pointer; border: 1px solid #dee2e6;"
+                         title="Click to view full image">
+                </div>
+            ` : '';
 
             return `
                 <div class="chat-message ${msg.is_pinned ? 'is-pinned' : ''}" role="listitem" style="${tone}">
@@ -2689,11 +3091,12 @@
                             <button type="button" class="btn btn-sm ${downClass}" data-forum-vote="down" data-msg-id="${msg.id}" aria-label="Downvote">
                                 <i class="fas fa-thumbs-down"></i>
                             </button>
+                            ${flagBtn}
                             ${pinBtn}
                             ${deleteBtn}
                         </div>
                     </div>
-                    <div class="chat-message-body">${msg.content || ''}</div>
+                    <div class="chat-message-body">${msg.content || ''}${imageHtml}</div>
                 </div>
             `;
         }
@@ -2746,6 +3149,99 @@
             });
         }
 
+        // Image upload state
+        let pendingImageData = null; // { image_url, thumbnail_url, public_id }
+        
+        // Attach image button click
+        const attachImageBtn = document.getElementById('attachImageBtn');
+        const forumImageInput = document.getElementById('forumImageInput');
+        const imagePreviewContainer = document.getElementById('imagePreviewContainer');
+        const imagePreviewThumb = document.getElementById('imagePreviewThumb');
+        const imagePreviewName = document.getElementById('imagePreviewName');
+        const removeImageBtn = document.getElementById('removeImageBtn');
+        
+        if (attachImageBtn && forumImageInput) {
+            attachImageBtn.addEventListener('click', () => {
+                forumImageInput.click();
+            });
+            
+            forumImageInput.addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                
+                // Validate file size (2MB max)
+                if (file.size > 2 * 1024 * 1024) {
+                    alert('Image too large. Maximum size is 2MB.');
+                    forumImageInput.value = '';
+                    return;
+                }
+                
+                // Validate file type
+                if (!file.type.match(/^image\/(jpeg|jpg|png|gif|webp)$/)) {
+                    alert('Invalid image type. Allowed: jpg, png, gif, webp');
+                    forumImageInput.value = '';
+                    return;
+                }
+                
+                // Show preview immediately (using local file)
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    imagePreviewThumb.src = event.target.result;
+                    imagePreviewName.textContent = file.name;
+                    imagePreviewContainer.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+                
+                // Upload to Cloudinary
+                attachImageBtn.disabled = true;
+                attachImageBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+                
+                try {
+                    const formData = new FormData();
+                    formData.append('image', file);
+                    
+                    const response = await fetch('/api/forum/upload-image', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        pendingImageData = {
+                            image_url: data.image_url,
+                            image_thumbnail_url: data.thumbnail_url,
+                            image_public_id: data.public_id
+                        };
+                        imagePreviewThumb.src = data.thumbnail_url;
+                    } else {
+                        alert(data.error || 'Failed to upload image');
+                        clearImagePreview();
+                    }
+                } catch (err) {
+                    console.error('[FORUM] Image upload error:', err);
+                    alert('Failed to upload image');
+                    clearImagePreview();
+                } finally {
+                    attachImageBtn.disabled = false;
+                    attachImageBtn.innerHTML = '<i class="fas fa-camera"></i>';
+                }
+            });
+        }
+        
+        // Remove image button
+        if (removeImageBtn) {
+            removeImageBtn.addEventListener('click', clearImagePreview);
+        }
+        
+        function clearImagePreview() {
+            pendingImageData = null;
+            if (imagePreviewContainer) imagePreviewContainer.style.display = 'none';
+            if (imagePreviewThumb) imagePreviewThumb.src = '';
+            if (imagePreviewName) imagePreviewName.textContent = '';
+            if (forumImageInput) forumImageInput.value = '';
+        }
+        
         // Post new message
         const postBtn = document.getElementById('chatPostBtn');
         if (postBtn) {
@@ -2762,18 +3258,28 @@
                 }
 
                 html = sanitizeMessageHtml(html);
-                if (!html) return;
+                if (!html && !pendingImageData) return; // Need either text or image
 
                 try {
+                    const messagePayload = { content: html || '' };
+                    
+                    // Include image data if present
+                    if (pendingImageData) {
+                        messagePayload.image_url = pendingImageData.image_url;
+                        messagePayload.image_thumbnail_url = pendingImageData.image_thumbnail_url;
+                        messagePayload.image_public_id = pendingImageData.image_public_id;
+                    }
+                    
                     const response = await fetch(`/api/case/${caseId}/forum/message`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ content: html })
+                        body: JSON.stringify(messagePayload)
                     });
                     const data = await response.json();
                     if (data.success && data.message) {
                         forumMessages.unshift(data.message); // Add to top
                         renderForum();
+                        clearImagePreview(); // Clear image after successful post
                     } else if (data.error) {
                         alert('Error: ' + data.error);
                     }

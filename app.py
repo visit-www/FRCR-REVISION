@@ -11,6 +11,7 @@ from flask_login import LoginManager, login_required, current_user
 from flask_migrate import Migrate
 from models import db, User, Case, CaseImage, Question, Answer
 from models import RevisionSession, RevisionHistory  # STUDENT REVISION: New models for balanced revision
+from models import ForumMessage, ForumMessageVote, ForumMessageFlag  # Forum models
 from auth import auth_bp
 from backup_routes import backup_bp
 from admin_routes import admin_bp
@@ -22,6 +23,17 @@ import os
 from io import BytesIO
 import mimetypes
 import json
+
+# Cloudinary configuration for forum image uploads
+import cloudinary
+import cloudinary.uploader
+
+cloudinary.config(
+    cloud_name=os.environ.get('CLOUDINARY_CLOUD_NAME'),
+    api_key=os.environ.get('CLOUDINARY_API_KEY'),
+    api_secret=os.environ.get('CLOUDINARY_API_SECRET'),
+    secure=True
+)
 
 app = Flask(__name__, 
     template_folder=os.path.join(os.path.dirname(__file__), 'templates'),
@@ -545,6 +557,7 @@ def all_cases_view():
             'diagnosis': case.diagnosis,
             'module_display': case.module.value if case.module else 'N/A',
             'body_part_display': case.body_part.value if case.body_part else 'N/A',
+            'age_group_display': case.age_group.value if case.age_group else 'N/A',
             'image_count': len(case.images),
             'has_notes': has_notes,
             'is_public': case.is_public
@@ -624,6 +637,7 @@ def student_cases_list():
             'diagnosis': case.diagnosis,
             'module_display': case.module.value if case.module else 'N/A',
             'body_part_display': case.body_part.value if case.body_part else 'N/A',
+            'age_group_display': case.age_group.value if case.age_group else 'N/A',
             'image_count': len(case.images),
             'has_notes': has_notes,
             'flagged': flagged,
@@ -1539,14 +1553,8 @@ def image_description(image_id):
             'description': image.image_description or ''
         })
     
-    # Handle PUT request
-    """Update image description"""
+    # Handle PUT request - update image description
     try:
-        image = CaseImage.query.get(image_id)
-        
-        if not image:
-            return jsonify({'error': 'Image not found'}), 404
-        
         import bleach
         data = request.get_json()
         description = data.get('description', '')
@@ -2558,6 +2566,9 @@ def get_forum_messages(case_id):
             'author_id': msg.user_id,
             'author_avatar': msg.author.profile_picture if msg.author and msg.author.profile_picture else None,
             'is_own': msg.user_id == current_user.id,
+            'image_url': msg.image_url,
+            'image_thumbnail_url': msg.image_thumbnail_url,
+            'flag_count': msg.flag_count or 0,
             'created_at': msg.created_at.isoformat() if msg.created_at else None
         })
     
@@ -2571,7 +2582,7 @@ def get_forum_messages(case_id):
 @app.route('/api/case/<int:case_id>/forum/message', methods=['POST'])
 @login_required
 def post_forum_message(case_id):
-    """Post a new forum message"""
+    """Post a new forum message (with optional image)"""
     from models import ForumMessage
     
     data = request.get_json()
@@ -2586,12 +2597,20 @@ def post_forum_message(case_id):
     if len(content) > 5000:
         return jsonify({'error': 'Message too long (max 5000 characters)'}), 400
     
+    # Optional image fields (from Cloudinary upload)
+    image_url = data.get('image_url')
+    image_public_id = data.get('image_public_id')
+    image_thumbnail_url = data.get('image_thumbnail_url')
+    
     message = ForumMessage(
         case_id=case_id,
         user_id=current_user.id,
         content=content,
         vote_score=0,
-        is_pinned=False
+        is_pinned=False,
+        image_url=image_url,
+        image_public_id=image_public_id,
+        image_thumbnail_url=image_thumbnail_url
     )
     
     db.session.add(message)
@@ -2609,6 +2628,8 @@ def post_forum_message(case_id):
             'author_id': current_user.id,
             'author_avatar': current_user.profile_picture if current_user.profile_picture else None,
             'is_own': True,
+            'image_url': message.image_url,
+            'image_thumbnail_url': message.image_thumbnail_url,
             'created_at': message.created_at.isoformat()
         }
     })
@@ -2711,6 +2732,296 @@ def delete_forum_message(message_id):
     db.session.commit()
     
     return jsonify({'success': True, 'message': 'Message deleted'})
+
+
+@app.route('/api/forum/message/<int:message_id>/flag', methods=['POST'])
+@login_required
+def flag_forum_message(message_id):
+    """Flag a forum message for moderation"""
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'Invalid or missing JSON data'}), 400
+    
+    reason = data.get('reason', '').strip()
+    if not reason or reason not in ['spam', 'inappropriate', 'incorrect', 'other']:
+        return jsonify({'error': 'Invalid flag reason'}), 400
+    
+    details = data.get('details', '').strip()[:500]  # Limit to 500 chars
+    
+    message = ForumMessage.query.get(message_id)
+    if not message or message.is_deleted:
+        return jsonify({'error': 'Message not found'}), 404
+    
+    # Can't flag your own message
+    if message.user_id == current_user.id:
+        return jsonify({'error': 'Cannot flag your own message'}), 400
+    
+    # Check if already flagged by this user
+    existing_flag = ForumMessageFlag.query.filter_by(
+        message_id=message_id,
+        user_id=current_user.id
+    ).first()
+    
+    if existing_flag:
+        return jsonify({'error': 'You have already flagged this message'}), 400
+    
+    # Create flag
+    flag = ForumMessageFlag(
+        message_id=message_id,
+        user_id=current_user.id,
+        reason=reason,
+        details=details if details else None
+    )
+    db.session.add(flag)
+    
+    # Update flag count on message
+    message.flag_count = (message.flag_count or 0) + 1
+    
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'message': 'Message flagged for review',
+        'flag_count': message.flag_count
+    })
+
+
+@app.route('/api/forum/upload-image', methods=['POST'])
+@login_required
+def upload_forum_image():
+    """Upload an image to Cloudinary for forum messages"""
+    if 'image' not in request.files:
+        return jsonify({'error': 'No image provided'}), 400
+    
+    file = request.files['image']
+    
+    if not file or not file.filename:
+        return jsonify({'error': 'No image selected'}), 400
+    
+    # Validate file type
+    allowed_types = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
+    if file.content_type not in allowed_types:
+        return jsonify({'error': 'Invalid image type. Allowed: jpg, png, gif, webp'}), 400
+    
+    # Check file size (read into memory to check, max 2MB)
+    file_data = file.read()
+    if len(file_data) > 2 * 1024 * 1024:
+        return jsonify({'error': 'Image too large (max 2MB)'}), 400
+    
+    # Check if Cloudinary is configured
+    if not os.environ.get('CLOUDINARY_CLOUD_NAME'):
+        return jsonify({'error': 'Image upload not configured'}), 500
+    
+    try:
+        # Upload to Cloudinary with auto-thumbnail
+        result = cloudinary.uploader.upload(
+            file_data,
+            folder='frcr_forum',
+            transformation=[{'width': 800, 'crop': 'limit'}],  # Limit size
+            eager=[{'width': 80, 'height': 80, 'crop': 'fill'}]  # Generate thumbnail
+        )
+        
+        thumbnail_url = result.get('eager', [{}])[0].get('secure_url', result['secure_url'])
+        
+        return jsonify({
+            'success': True,
+            'image_url': result['secure_url'],
+            'thumbnail_url': thumbnail_url,
+            'public_id': result['public_id']
+        })
+    except Exception as e:
+        return jsonify({'error': f'Upload failed: {str(e)}'}), 500
+
+
+# ==================== ADMIN FORUM MANAGEMENT ENDPOINTS ====================
+
+@app.route('/api/admin/forum/messages', methods=['GET'])
+@login_required
+def admin_get_forum_messages():
+    """Get all forum messages with filters (admin only)"""
+    if current_user.role != UserRole.ADMIN:
+        return jsonify({'error': 'Admin access required'}), 403
+    
+    # Query parameters
+    case_id = request.args.get('case_id', type=int)
+    flagged_only = request.args.get('flagged_only', 'false').lower() == 'true'
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 20, type=int)
+    
+    query = ForumMessage.query.filter_by(is_deleted=False)
+    
+    if case_id:
+        query = query.filter_by(case_id=case_id)
+    
+    if flagged_only:
+        query = query.filter(ForumMessage.flag_count > 0)
+    
+    # Order by flag count desc, then created_at desc
+    query = query.order_by(ForumMessage.flag_count.desc(), ForumMessage.created_at.desc())
+    
+    # Paginate
+    pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+    messages = pagination.items
+    
+    result = []
+    for msg in messages:
+        # Get case info
+        case = Case.query.get(msg.case_id)
+        case_number = case.case_number if case else 'Unknown'
+        
+        # Get author info
+        author = User.query.get(msg.user_id)
+        author_name = author.get_display_name() if author else 'Unknown'
+        
+        # Get flags for this message
+        flags = ForumMessageFlag.query.filter_by(message_id=msg.id, is_resolved=False).all()
+        flag_details = [{
+            'id': f.id,
+            'reason': f.reason,
+            'details': f.details,
+            'created_at': f.created_at.isoformat(),
+            'flagger_name': User.query.get(f.user_id).get_display_name() if User.query.get(f.user_id) else 'Unknown'
+        } for f in flags]
+        
+        result.append({
+            'id': msg.id,
+            'case_id': msg.case_id,
+            'case_number': case_number,
+            'content': msg.content[:200] + '...' if len(msg.content) > 200 else msg.content,
+            'full_content': msg.content,
+            'author_id': msg.user_id,
+            'author_name': author_name,
+            'vote_score': msg.vote_score,
+            'is_pinned': msg.is_pinned,
+            'flag_count': msg.flag_count or 0,
+            'flags': flag_details,
+            'image_url': msg.image_url,
+            'image_thumbnail_url': msg.image_thumbnail_url,
+            'created_at': msg.created_at.isoformat()
+        })
+    
+    return jsonify({
+        'success': True,
+        'messages': result,
+        'total': pagination.total,
+        'pages': pagination.pages,
+        'current_page': page
+    })
+
+
+@app.route('/api/admin/forum/flagged', methods=['GET'])
+@login_required
+def admin_get_flagged_messages():
+    """Get only flagged forum messages (admin only)"""
+    if current_user.role != UserRole.ADMIN:
+        return jsonify({'error': 'Admin access required'}), 403
+    
+    # Get messages with unresolved flags
+    messages = ForumMessage.query.filter(
+        ForumMessage.is_deleted == False,
+        ForumMessage.flag_count > 0
+    ).order_by(ForumMessage.flag_count.desc(), ForumMessage.created_at.desc()).all()
+    
+    result = []
+    for msg in messages:
+        case = Case.query.get(msg.case_id)
+        author = User.query.get(msg.user_id)
+        
+        flags = ForumMessageFlag.query.filter_by(message_id=msg.id, is_resolved=False).all()
+        flag_details = [{
+            'id': f.id,
+            'reason': f.reason,
+            'details': f.details,
+            'created_at': f.created_at.isoformat()
+        } for f in flags]
+        
+        result.append({
+            'id': msg.id,
+            'case_id': msg.case_id,
+            'case_number': case.case_number if case else 'Unknown',
+            'content': msg.content,
+            'author_name': author.get_display_name() if author else 'Unknown',
+            'vote_score': msg.vote_score,
+            'is_pinned': msg.is_pinned,
+            'flag_count': msg.flag_count or 0,
+            'flags': flag_details,
+            'created_at': msg.created_at.isoformat()
+        })
+    
+    return jsonify({
+        'success': True,
+        'messages': result,
+        'total': len(result)
+    })
+
+
+@app.route('/api/admin/forum/flag/<int:flag_id>/resolve', methods=['POST'])
+@login_required
+def admin_resolve_flag(flag_id):
+    """Resolve (dismiss) a flag on a forum message (admin only)"""
+    if current_user.role != UserRole.ADMIN:
+        return jsonify({'error': 'Admin access required'}), 403
+    
+    data = request.get_json() or {}
+    resolution_notes = data.get('notes', '').strip()[:500]
+    
+    flag = ForumMessageFlag.query.get(flag_id)
+    if not flag:
+        return jsonify({'error': 'Flag not found'}), 404
+    
+    flag.is_resolved = True
+    flag.resolved_by_user_id = current_user.id
+    flag.resolved_at = datetime.utcnow()
+    flag.resolution_notes = resolution_notes if resolution_notes else None
+    
+    # Update flag count on message
+    message = ForumMessage.query.get(flag.message_id)
+    if message:
+        unresolved_count = ForumMessageFlag.query.filter_by(
+            message_id=message.id,
+            is_resolved=False
+        ).count()
+        message.flag_count = unresolved_count
+    
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'message': 'Flag resolved',
+        'remaining_flags': message.flag_count if message else 0
+    })
+
+
+@app.route('/api/admin/forum/message/<int:message_id>/resolve-all-flags', methods=['POST'])
+@login_required
+def admin_resolve_all_flags(message_id):
+    """Resolve all flags on a forum message (admin only)"""
+    if current_user.role != UserRole.ADMIN:
+        return jsonify({'error': 'Admin access required'}), 403
+    
+    data = request.get_json() or {}
+    resolution_notes = data.get('notes', '').strip()[:500]
+    
+    message = ForumMessage.query.get(message_id)
+    if not message:
+        return jsonify({'error': 'Message not found'}), 404
+    
+    # Resolve all unresolved flags
+    flags = ForumMessageFlag.query.filter_by(message_id=message_id, is_resolved=False).all()
+    for flag in flags:
+        flag.is_resolved = True
+        flag.resolved_by_user_id = current_user.id
+        flag.resolved_at = datetime.utcnow()
+        flag.resolution_notes = resolution_notes if resolution_notes else None
+    
+    message.flag_count = 0
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'message': f'Resolved {len(flags)} flag(s)',
+        'resolved_count': len(flags)
+    })
 
 
 # ==================== ADMIN ENDPOINTS ====================

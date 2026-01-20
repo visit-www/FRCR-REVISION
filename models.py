@@ -17,8 +17,8 @@ class CaseFlag(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     __table_args__ = (db.UniqueConstraint('user_id', 'case_id', name='uq_user_case_flag'),)
 
-    user = db.relationship('User', backref='case_flags', lazy=True)
-    case = db.relationship('Case', backref='flags', lazy=True)
+    user = db.relationship('User', backref='user_case_flags', lazy=True)
+    # case relationship defined on Case model with cascade delete
 
     def __repr__(self):
         return f'<CaseFlag user={self.user_id} case={self.case_id}>'
@@ -266,6 +266,12 @@ class Case(db.Model):
     audit_logs = db.relationship('CaseAuditLog', backref='case', lazy=True, cascade='all, delete-orphan')
     view_logs = db.relationship('CaseViewLog', backref='case', lazy=True, cascade='all, delete-orphan')
     approval_queue = db.relationship('CaseApprovalQueue', backref='case', lazy=True, cascade='all, delete-orphan', uselist=False)
+    # Forum messages - cascade delete when case is deleted (user messages preserved when user deleted)
+    forum_messages_rel = db.relationship('ForumMessage', backref='case_ref', lazy=True, cascade='all, delete-orphan')
+    # Case flags - cascade delete when case is deleted
+    case_flags = db.relationship('CaseFlag', backref='case_ref', lazy=True, cascade='all, delete-orphan')
+    # Revision history - cascade delete when case is deleted
+    revision_history_rel = db.relationship('RevisionHistory', backref='case_ref', lazy=True, cascade='all, delete-orphan')
     
     def __repr__(self):
         return f'<Case {self.case_number} - {self.diagnosis}>'
@@ -679,18 +685,28 @@ class ForumMessage(db.Model):
     # Soft delete (hide rather than remove)
     is_deleted = db.Column(db.Boolean, default=False, index=True)
     
+    # Flag count (cached for performance)
+    flag_count = db.Column(db.Integer, default=0, index=True)
+    
+    # Cloudinary image fields (URLs only - no binary data!)
+    image_url = db.Column(db.String(500), nullable=True)  # Full Cloudinary URL
+    image_public_id = db.Column(db.String(255), nullable=True)  # For deletion
+    image_thumbnail_url = db.Column(db.String(500), nullable=True)  # Auto-generated thumbnail
+    
     # Timestamps
     created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relationships
     author = db.relationship('User', backref='forum_messages', lazy=True)
-    case = db.relationship('Case', backref='forum_messages', lazy=True)
+    # case relationship defined on Case model with cascade delete
     votes = db.relationship('ForumMessageVote', backref='message', lazy=True, cascade='all, delete-orphan')
+    flags = db.relationship('ForumMessageFlag', backref='message', lazy=True, cascade='all, delete-orphan')
     
     __table_args__ = (
         db.Index('idx_forum_case_votes', 'case_id', 'vote_score'),
         db.Index('idx_forum_case_pinned', 'case_id', 'is_pinned'),
+        db.Index('idx_forum_flagged', 'flag_count'),
     )
     
     def __repr__(self):
@@ -720,3 +736,40 @@ class ForumMessageVote(db.Model):
     
     def __repr__(self):
         return f'<ForumMessageVote Msg:{self.message_id} User:{self.user_id} Vote:{self.vote_value}>'
+
+
+class ForumMessageFlag(db.Model):
+    """
+    User flags on forum messages for moderation.
+    Users can flag inappropriate, spam, or incorrect messages.
+    """
+    __tablename__ = 'forum_message_flag'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    message_id = db.Column(db.Integer, db.ForeignKey('forum_message.id'), nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+    
+    # Flag reason: spam, inappropriate, incorrect, other
+    reason = db.Column(db.String(50), nullable=False)
+    details = db.Column(db.Text, nullable=True)  # Optional additional details
+    
+    # Resolution tracking
+    is_resolved = db.Column(db.Boolean, default=False, index=True)
+    resolved_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    resolved_at = db.Column(db.DateTime, nullable=True)
+    resolution_notes = db.Column(db.Text, nullable=True)
+    
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    flagger = db.relationship('User', foreign_keys=[user_id], backref='flagged_messages')
+    resolver = db.relationship('User', foreign_keys=[resolved_by_user_id])
+    
+    # Each user can only flag a message once
+    __table_args__ = (
+        db.UniqueConstraint('message_id', 'user_id', name='uq_message_user_flag'),
+        db.Index('idx_unresolved_flags', 'is_resolved', 'created_at'),
+    )
+    
+    def __repr__(self):
+        return f'<ForumMessageFlag Msg:{self.message_id} User:{self.user_id} Reason:{self.reason}>'

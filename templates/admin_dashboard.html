@@ -32,6 +32,11 @@
             </a>
         </li>
         <li class="nav-item" role="presentation">
+            <button class="nav-link" id="forum-tab" data-bs-toggle="tab" data-bs-target="#forum-content" type="button" role="tab" aria-controls="forum-content" aria-selected="false">
+                <i class="fas fa-comments"></i> Forum <span id="flaggedCountBadge" class="badge bg-warning text-dark ms-1" style="display: none;">0</span>
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
             <button class="nav-link" id="database-tab" data-bs-toggle="tab" data-bs-target="#database-content" type="button" role="tab" aria-controls="database-content" aria-selected="false">
                 <i class="fas fa-database"></i> Database Management
             </button>
@@ -45,7 +50,55 @@
             {% include 'user-management-tab.html' %}
         </div>
 
-
+        <!-- Forum Management Tab -->
+        <div class="tab-pane fade" id="forum-content" role="tabpanel" aria-labelledby="forum-tab">
+            <h2 class="mb-4 admin-section-title"><i class="fas fa-comments"></i> Forum Management</h2>
+            
+            <!-- Filter Tabs -->
+            <div class="d-flex gap-2 mb-4">
+                <button type="button" class="btn btn-warning forum-filter-btn active" id="showFlaggedBtn">
+                    <i class="fas fa-flag me-1"></i>Flagged Messages <span id="flaggedCountInline" class="badge bg-dark ms-1">0</span>
+                </button>
+                <button type="button" class="btn btn-outline-secondary forum-filter-btn" id="showAllBtn">
+                    <i class="fas fa-list me-1"></i>All Messages
+                </button>
+            </div>
+            
+            <!-- Filter Controls -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-4">
+                            <label class="form-label">Filter by Case</label>
+                            <select class="form-select" id="forumCaseFilter">
+                                <option value="">All Cases</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Search</label>
+                            <input type="text" class="form-control" id="forumSearchInput" placeholder="Search messages...">
+                        </div>
+                        <div class="col-md-4">
+                            <button class="btn btn-brand-neutral w-100" id="refreshForumBtn">
+                                <i class="fas fa-sync-alt me-1"></i>Refresh
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Messages List -->
+            <div id="forumMessagesList">
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Pagination -->
+            <div id="forumPagination" class="d-flex justify-content-center mt-4"></div>
+        </div>
 
         <!-- Database Management Tab (Consolidated Backup & Import) -->
         <div class="tab-pane fade" id="database-content" role="tabpanel" aria-labelledby="database-tab">
@@ -634,6 +687,324 @@
         window.importData = null;
     }
 
+    // ============ FORUM MANAGEMENT FUNCTIONS ============
+    
+    let forumShowFlagged = true;
+    let forumCurrentPage = 1;
+    let forumCaseFilter = '';
+    let forumSearchTerm = '';
+    
+    // Initialize forum management when tab is shown
+    document.getElementById('forum-tab')?.addEventListener('shown.bs.tab', function() {
+        loadForumMessages();
+        loadCasesForFilter();
+    });
+    
+    // Filter buttons
+    document.getElementById('showFlaggedBtn')?.addEventListener('click', function() {
+        forumShowFlagged = true;
+        forumCurrentPage = 1;
+        document.querySelectorAll('.forum-filter-btn').forEach(b => b.classList.remove('active', 'btn-warning'));
+        this.classList.add('active', 'btn-warning');
+        document.getElementById('showAllBtn').classList.add('btn-outline-secondary');
+        document.getElementById('showAllBtn').classList.remove('btn-secondary');
+        loadForumMessages();
+    });
+    
+    document.getElementById('showAllBtn')?.addEventListener('click', function() {
+        forumShowFlagged = false;
+        forumCurrentPage = 1;
+        document.querySelectorAll('.forum-filter-btn').forEach(b => b.classList.remove('active', 'btn-warning', 'btn-secondary'));
+        this.classList.add('active', 'btn-secondary');
+        this.classList.remove('btn-outline-secondary');
+        document.getElementById('showFlaggedBtn').classList.remove('btn-warning');
+        document.getElementById('showFlaggedBtn').classList.add('btn-outline-warning');
+        loadForumMessages();
+    });
+    
+    document.getElementById('refreshForumBtn')?.addEventListener('click', loadForumMessages);
+    
+    document.getElementById('forumCaseFilter')?.addEventListener('change', function() {
+        forumCaseFilter = this.value;
+        forumCurrentPage = 1;
+        loadForumMessages();
+    });
+    
+    document.getElementById('forumSearchInput')?.addEventListener('input', debounce(function() {
+        forumSearchTerm = this.value;
+        forumCurrentPage = 1;
+        loadForumMessages();
+    }, 300));
+    
+    function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func.apply(this, args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+    
+    async function loadCasesForFilter() {
+        try {
+            const response = await fetch('/cases?json=true&limit=500');
+            const data = await response.json();
+            const select = document.getElementById('forumCaseFilter');
+            if (!select) return;
+            
+            select.innerHTML = '<option value="">All Cases</option>';
+            (data.cases || []).forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c.id;
+                opt.textContent = `${c.case_number || 'Case ' + c.id} - ${(c.diagnosis || '').substring(0, 30)}...`;
+                select.appendChild(opt);
+            });
+        } catch (e) {
+            console.error('[FORUM ADMIN] Error loading cases:', e);
+        }
+    }
+    
+    async function loadForumMessages() {
+        const listEl = document.getElementById('forumMessagesList');
+        if (!listEl) return;
+        
+        listEl.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-primary"></div></div>';
+        
+        try {
+            let url = forumShowFlagged 
+                ? '/api/admin/forum/flagged'
+                : `/api/admin/forum/messages?page=${forumCurrentPage}&per_page=20`;
+            
+            if (forumCaseFilter) {
+                url += `${url.includes('?') ? '&' : '?'}case_id=${forumCaseFilter}`;
+            }
+            
+            const response = await fetch(url);
+            const data = await response.json();
+            
+            if (!data.success) {
+                listEl.innerHTML = `<div class="alert alert-danger">${data.error || 'Failed to load messages'}</div>`;
+                return;
+            }
+            
+            let messages = data.messages || [];
+            
+            // Client-side search filter
+            if (forumSearchTerm) {
+                const term = forumSearchTerm.toLowerCase();
+                messages = messages.filter(m => 
+                    (m.content || '').toLowerCase().includes(term) ||
+                    (m.author_name || '').toLowerCase().includes(term) ||
+                    (m.case_number || '').toLowerCase().includes(term)
+                );
+            }
+            
+            // Update badge counts
+            const flaggedCount = forumShowFlagged ? messages.length : data.total_flagged || 0;
+            document.getElementById('flaggedCountBadge').textContent = flaggedCount;
+            document.getElementById('flaggedCountBadge').style.display = flaggedCount > 0 ? 'inline' : 'none';
+            document.getElementById('flaggedCountInline').textContent = flaggedCount;
+            
+            if (messages.length === 0) {
+                listEl.innerHTML = `
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        ${forumShowFlagged ? 'No flagged messages. Great!' : 'No messages found.'}
+                    </div>
+                `;
+                return;
+            }
+            
+            listEl.innerHTML = messages.map(renderAdminMessageCard).join('');
+            
+            // Wire up action buttons
+            listEl.querySelectorAll('[data-action="pin"]').forEach(btn => {
+                btn.addEventListener('click', () => togglePin(btn.dataset.msgId));
+            });
+            listEl.querySelectorAll('[data-action="delete"]').forEach(btn => {
+                btn.addEventListener('click', () => deleteMessage(btn.dataset.msgId));
+            });
+            listEl.querySelectorAll('[data-action="resolve"]').forEach(btn => {
+                btn.addEventListener('click', () => resolveAllFlags(btn.dataset.msgId));
+            });
+            
+            // Pagination
+            if (data.pages > 1) {
+                renderPagination(data.current_page, data.pages);
+            } else {
+                document.getElementById('forumPagination').innerHTML = '';
+            }
+            
+        } catch (e) {
+            console.error('[FORUM ADMIN] Error:', e);
+            listEl.innerHTML = `<div class="alert alert-danger">Error loading messages: ${e.message}</div>`;
+        }
+    }
+    
+    function renderAdminMessageCard(msg) {
+        const flagBadge = msg.flag_count > 0 
+            ? `<span class="badge bg-warning text-dark"><i class="fas fa-flag me-1"></i>${msg.flag_count} flag(s)</span>`
+            : '';
+        
+        const pinBadge = msg.is_pinned 
+            ? `<span class="badge bg-info"><i class="fas fa-thumbtack me-1"></i>Pinned</span>`
+            : '';
+        
+        const flagDetails = (msg.flags || []).length > 0 
+            ? `<div class="mt-2 p-2" style="background: #fff3cd; border-radius: 4px; font-size: 0.85rem;">
+                <strong>Flag reasons:</strong>
+                <ul class="mb-0 mt-1">
+                    ${msg.flags.map(f => `<li>${f.reason}${f.details ? ': ' + f.details : ''}</li>`).join('')}
+                </ul>
+               </div>`
+            : '';
+        
+        const imageHtml = msg.image_thumbnail_url 
+            ? `<div class="mt-2"><img src="${msg.image_thumbnail_url}" alt="Attached" style="max-width: 80px; border-radius: 4px;"></div>`
+            : '';
+        
+        return `
+            <div class="card mb-3 ${msg.flag_count > 0 ? 'border-warning' : ''}">
+                <div class="card-header d-flex justify-content-between align-items-center" style="background: ${msg.flag_count > 0 ? '#fff3cd' : '#f8f9fa'};">
+                    <div>
+                        <strong>${msg.case_number || 'Case ' + msg.case_id}</strong>
+                        <span class="text-muted ms-2">by ${msg.author_name}</span>
+                        ${flagBadge} ${pinBadge}
+                    </div>
+                    <small class="text-muted">${new Date(msg.created_at).toLocaleString()}</small>
+                </div>
+                <div class="card-body">
+                    <div class="mb-2" style="max-height: 150px; overflow-y: auto;">${msg.full_content || msg.content}</div>
+                    ${imageHtml}
+                    ${flagDetails}
+                </div>
+                <div class="card-footer d-flex gap-2 flex-wrap">
+                    <a href="/view-case/${msg.case_id}" target="_blank" class="btn btn-sm btn-outline-primary">
+                        <i class="fas fa-external-link-alt me-1"></i>View Case
+                    </a>
+                    <button type="button" class="btn btn-sm ${msg.is_pinned ? 'btn-info' : 'btn-outline-info'}" data-action="pin" data-msg-id="${msg.id}">
+                        <i class="fas fa-thumbtack me-1"></i>${msg.is_pinned ? 'Unpin' : 'Pin'}
+                    </button>
+                    ${msg.flag_count > 0 ? `
+                        <button type="button" class="btn btn-sm btn-success" data-action="resolve" data-msg-id="${msg.id}">
+                            <i class="fas fa-check me-1"></i>Dismiss Flags
+                        </button>
+                    ` : ''}
+                    <button type="button" class="btn btn-sm btn-outline-danger" data-action="delete" data-msg-id="${msg.id}">
+                        <i class="fas fa-trash me-1"></i>Delete
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+    
+    function renderPagination(current, total) {
+        const el = document.getElementById('forumPagination');
+        if (!el) return;
+        
+        let html = '<nav><ul class="pagination">';
+        
+        if (current > 1) {
+            html += `<li class="page-item"><a class="page-link" href="#" data-page="${current - 1}">Previous</a></li>`;
+        }
+        
+        for (let i = 1; i <= total; i++) {
+            if (i === 1 || i === total || (i >= current - 2 && i <= current + 2)) {
+                html += `<li class="page-item ${i === current ? 'active' : ''}"><a class="page-link" href="#" data-page="${i}">${i}</a></li>`;
+            } else if (i === current - 3 || i === current + 3) {
+                html += '<li class="page-item disabled"><span class="page-link">...</span></li>';
+            }
+        }
+        
+        if (current < total) {
+            html += `<li class="page-item"><a class="page-link" href="#" data-page="${current + 1}">Next</a></li>`;
+        }
+        
+        html += '</ul></nav>';
+        el.innerHTML = html;
+        
+        el.querySelectorAll('[data-page]').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                forumCurrentPage = parseInt(link.dataset.page);
+                loadForumMessages();
+            });
+        });
+    }
+    
+    async function togglePin(msgId) {
+        try {
+            const response = await fetch(`/api/forum/message/${msgId}/pin`, {
+                method: 'POST'
+            });
+            const data = await response.json();
+            if (data.success) {
+                showToast(`Message ${data.is_pinned ? 'pinned' : 'unpinned'}`, 'success');
+                loadForumMessages();
+            } else {
+                showToast(data.error || 'Failed to toggle pin', 'error');
+            }
+        } catch (e) {
+            showToast('Error toggling pin', 'error');
+        }
+    }
+    
+    async function deleteMessage(msgId) {
+        if (!confirm('Are you sure you want to delete this message?')) return;
+        
+        try {
+            const response = await fetch(`/api/forum/message/${msgId}`, {
+                method: 'DELETE'
+            });
+            const data = await response.json();
+            if (data.success) {
+                showToast('Message deleted', 'success');
+                loadForumMessages();
+            } else {
+                showToast(data.error || 'Failed to delete', 'error');
+            }
+        } catch (e) {
+            showToast('Error deleting message', 'error');
+        }
+    }
+    
+    async function resolveAllFlags(msgId) {
+        try {
+            const response = await fetch(`/api/admin/forum/message/${msgId}/resolve-all-flags`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ notes: 'Reviewed and dismissed by admin' })
+            });
+            const data = await response.json();
+            if (data.success) {
+                showToast(`Resolved ${data.resolved_count} flag(s)`, 'success');
+                loadForumMessages();
+            } else {
+                showToast(data.error || 'Failed to resolve flags', 'error');
+            }
+        } catch (e) {
+            showToast('Error resolving flags', 'error');
+        }
+    }
+    
+    // Load flagged count on page load
+    document.addEventListener('DOMContentLoaded', async function() {
+        try {
+            const response = await fetch('/api/admin/forum/flagged');
+            const data = await response.json();
+            if (data.success) {
+                const count = data.messages?.length || 0;
+                document.getElementById('flaggedCountBadge').textContent = count;
+                document.getElementById('flaggedCountBadge').style.display = count > 0 ? 'inline' : 'none';
+            }
+        } catch (e) {
+            console.error('[FORUM ADMIN] Error loading flagged count:', e);
+        }
+    });
+
 </script>
 
 <style>
@@ -745,6 +1116,27 @@
 .admin-metric-danger {
     border-left-color: #dc3545;
     color: #7a1c24;
+}
+
+/* Forum Management Styles */
+.forum-filter-btn {
+    transition: all 0.2s ease;
+}
+
+.forum-filter-btn.active {
+    font-weight: 600;
+}
+
+#forumMessagesList .card {
+    transition: box-shadow 0.2s ease;
+}
+
+#forumMessagesList .card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+#forumMessagesList .card.border-warning {
+    border-width: 2px;
 }
 </style>
 {% endblock %}
