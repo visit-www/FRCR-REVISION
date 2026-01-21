@@ -28,7 +28,7 @@ from flask_login import login_required, current_user
 
 from models import db
 
-notes_bp = Blueprint('notes_integration', __name__)
+notes_bp = Blueprint('notes_integration', __name__, url_prefix='/notes')
 
 # ==================== NOTION INTEGRATION ====================
 
