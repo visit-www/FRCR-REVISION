@@ -29,9 +29,12 @@ if os.path.exists('.env.vercel'):
                 value = value.strip('"\'')
                 os.environ[key] = value
 
-# Get database URL
+# Get database URL (handle both Vercel prefixed names and standard names)
 DATABASE_URL = (
-    os.getenv('DATABASE_POSTGRES_URL_NON_POOLING')
+    # Try Vercel prefixed names first (from vercel env pull)
+    os.getenv('frcr_revision_db_DATABASE_URL_UNPOOLED')
+    or os.getenv('frcr_revision_db_DATABASE_URL')
+    or os.getenv('DATABASE_POSTGRES_URL_NON_POOLING')
     or os.getenv('POSTGRES_URL_NON_POOLING')
     or os.getenv('DATABASE_URL')
     or os.getenv('POSTGRES_URL')
@@ -40,7 +43,13 @@ DATABASE_URL = (
 
 if not DATABASE_URL:
     print("[ERROR] DATABASE_URL not found in environment variables")
-    print("[INFO] Please set DATABASE_URL or load .env.vercel file")
+    print("\n[INFO] Available environment variables:")
+    for key in sorted(os.environ.keys()):
+        if 'DATABASE' in key or 'POSTGRES' in key or 'DB' in key:
+            print(f"  - {key}")
+    print("\n[INFO] Please:")
+    print("  1. Run: vercel env pull .env.vercel")
+    print("  2. Or set DATABASE_URL manually: export DATABASE_URL='postgresql://...'")
     sys.exit(1)
 
 # Clean URL
