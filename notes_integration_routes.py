@@ -104,12 +104,40 @@ def notion_blocks_to_text(blocks):
 
 # ==================== NOTION OAUTH ROUTES ====================
 
+def get_return_url():
+    """Get the URL to return to after OAuth flow."""
+    # Check session for stored case ID
+    case_id = session.pop('notion_return_case_id', None)
+    if case_id:
+        return url_for('view_case', case_id=case_id)
+    
+    # Check referrer header
+    referrer = request.referrer
+    if referrer and '/case/' in referrer:
+        return referrer
+    
+    # Default to dashboard
+    return url_for('dashboard')
+
+
 @notes_bp.route('/notion/connect')
 @login_required
 def notion_connect():
     """Start Notion OAuth flow."""
     if not NOTION_CLIENT_ID:
         return jsonify({'error': 'Notion not configured. Please set NOTION_CLIENT_ID.'}), 500
+    
+    # Store the case ID if provided (from query param or referrer)
+    case_id = request.args.get('case_id')
+    if not case_id and request.referrer:
+        # Try to extract case ID from referrer URL
+        import re
+        match = re.search(r'/case/(\d+)', request.referrer)
+        if match:
+            case_id = match.group(1)
+    
+    if case_id:
+        session['notion_return_case_id'] = case_id
     
     # Build OAuth URL
     auth_url = (
@@ -130,11 +158,13 @@ def notion_callback():
     code = request.args.get('code')
     error = request.args.get('error')
     
+    return_url = get_return_url()
+    
     if error:
-        return redirect(url_for('dashboard') + f'?notion=error&msg={error}')
+        return redirect(return_url + f'?notion=error&msg={error}')
     
     if not code:
-        return redirect(url_for('dashboard') + '?notion=error&msg=no_code')
+        return redirect(return_url + '?notion=error&msg=no_code')
     
     try:
         # Exchange code for access token
@@ -158,7 +188,7 @@ def notion_callback():
         )
         
         if response.status_code != 200:
-            return redirect(url_for('dashboard') + f'?notion=error&msg=token_error')
+            return redirect(return_url + f'?notion=error&msg=token_error')
         
         data = response.json()
         
@@ -168,11 +198,11 @@ def notion_callback():
         current_user.notion_connected_at = datetime.utcnow()
         db.session.commit()
         
-        return redirect(url_for('dashboard') + '?notion=connected')
+        return redirect(return_url + '?notion=connected')
     
     except Exception as e:
         current_app.logger.error(f"Notion OAuth error: {str(e)}")
-        return redirect(url_for('dashboard') + f'?notion=error&msg={str(e)}')
+        return redirect(return_url + f'?notion=error&msg={str(e)}')
 
 
 @notes_bp.route('/notion/disconnect')
@@ -183,6 +213,11 @@ def notion_disconnect():
     current_user.notion_workspace_id = None
     current_user.notion_connected_at = None
     db.session.commit()
+    
+    # Get return URL from referrer or default to dashboard
+    referrer = request.referrer
+    if referrer and '/case/' in referrer:
+        return redirect(referrer + '?notion=disconnected')
     
     return redirect(url_for('dashboard') + '?notion=disconnected')
 
