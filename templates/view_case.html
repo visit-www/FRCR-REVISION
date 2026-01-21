@@ -658,17 +658,25 @@
                                         <button id="sciencedirectDisconnectBtn" class="btn btn-outline-danger w-100" onclick="disconnectScienceDirect()" style="display: none;">
                                             <i class="fas fa-unlink me-2"></i>Disconnect
                                         </button>
+                                        <div class="alert alert-info small mt-2 mb-0">
+                                            <i class="fas fa-info-circle me-2"></i>
+                                            <strong>Note:</strong> You will need to log in with <strong>YOUR OWN ScienceDirect account</strong>. Admin credentials are not used for students.
+                                        </div>
                                     </div>
                                     
                                     <!-- Search Button (only shown when connected) -->
-                                    <div id="sciencedirectSearchSection" class="mb-3" style="display: none;">
-                                        <button class="btn w-100" onclick="searchScienceDirectStudent()" style="background: #ff6b35; border-color: #ff6b35; color: white;">
-                                            <i class="fas fa-external-link-alt me-2"></i>Search "{{ case.diagnosis if case else 'Diagnosis' }}" in ScienceDirect
-                                        </button>
-                                        <small class="text-muted d-block mt-2">
-                                            <i class="fas fa-info-circle me-1"></i>Opens advanced search in new window. Your session is remembered.
-                                        </small>
-                                    </div>
+                <div id="sciencedirectSearchSection" class="mb-3" style="display: none;">
+                    <button class="btn w-100" onclick="searchScienceDirectStudent()" style="background: #ff6b35; border-color: #ff6b35; color: white;">
+                        <i class="fas fa-external-link-alt me-2"></i>Search "{{ case.diagnosis if case else 'Diagnosis' }}" in ScienceDirect
+                    </button>
+                    <small class="text-muted d-block mt-2">
+                        <i class="fas fa-info-circle me-1"></i>Opens search in new window. <strong>You must log in with YOUR OWN ScienceDirect credentials.</strong>
+                    </small>
+                    <div class="alert alert-warning small mt-2 mb-0">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Important:</strong> If you see admin content, please log out of ScienceDirect and log in with your own account credentials.
+                    </div>
+                </div>
                                     
                                     <!-- Subscription Info -->
                                     <div class="alert alert-warning small mb-0">
@@ -7757,10 +7765,23 @@
                 return;
             }
             
+            // IMPORTANT: Show warning about using own credentials
+            if (data.requires_manual_login || !data.logged_in) {
+                const confirmMsg = 'IMPORTANT: You must log in to ScienceDirect with YOUR OWN credentials.\n\n' +
+                    'If you see admin content, please:\n' +
+                    '1. Log out of ScienceDirect\n' +
+                    '2. Log in with your own account\n\n' +
+                    'Continue to open ScienceDirect search?';
+                
+                if (!confirm(confirmMsg)) {
+                    return;
+                }
+            }
+            
             // Open search URL in new window
+            // If student is not logged in, ScienceDirect will show login page first
             window.open(data.search_url, '_blank');
-            const loginStatus = data.logged_in ? ' (session active)' : '';
-            showFlash(`Opening ScienceDirect search${loginStatus}...`, 'info');
+            showFlash('Opening ScienceDirect search. Please log in with YOUR OWN credentials if prompted.', 'info');
         } catch (error) {
             console.error('[SCIENCEDIRECT] Student search error:', error);
             showFlash(`Error opening ScienceDirect search: ${error.message}`, 'error');

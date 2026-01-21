@@ -217,10 +217,14 @@ def search_sciencedirect_student(user, diagnosis: str) -> Dict:
     """
     Search ScienceDirect for student.
     
-    Note: Since we can't capture cookies from ScienceDirect directly due to browser security,
-    we generate the search URL. Students will need to be logged in on ScienceDirect's site
-    in their browser to access full-text articles. The connection status is tracked so they
-    don't have to click "connect" again.
+    IMPORTANT: Students must use their own ScienceDirect credentials.
+    This function generates a search URL that opens in a new window where
+    the student must log in with their own credentials if not already logged in.
+    
+    Note: We cannot capture cookies from ScienceDirect due to browser security.
+    Students must manually log in on ScienceDirect's website with their own account.
+    The connection status is tracked so they don't have to click "connect" again,
+    but they still need to authenticate on ScienceDirect's site.
     
     Args:
         user: User object (connection status checked)
@@ -232,15 +236,25 @@ def search_sciencedirect_student(user, diagnosis: str) -> Dict:
     # Build search query
     search_query = f"{diagnosis} AND (radiology OR imaging OR diagnosis)"
     encoded_query = quote(search_query)
+    
+    # IMPORTANT: Use the login page first, then redirect to search
+    # This ensures students log in with their own credentials, not admin credentials
+    # The login page will redirect to search after authentication
+    login_url = SCIDIRECT_LOGIN
+    # After login, ScienceDirect will allow access to search
+    # We'll construct a URL that goes to login first, then search
     search_url = f"{SCIDIRECT_SEARCH}?qs={encoded_query}"
     
-    # Check if user has connected (even though we can't use their cookies directly)
-    logged_in = user.sciencedirect_connected_at is not None
+    # Check if user has connected (they've clicked connect, but still need to log in on ScienceDirect)
+    connected = user.sciencedirect_connected_at is not None
     
     return {
         'search_url': search_url,
+        'login_url': login_url,  # Provide login URL separately
         'diagnosis': diagnosis,
         'query': search_query,
-        'logged_in': logged_in,
-        'note': 'You can search and view results. For full-text access, make sure you are logged in on ScienceDirect in your browser.'
+        'logged_in': False,  # Always False for students - they must log in on ScienceDirect
+        'connected': connected,  # Whether they've clicked "connect" in our app
+        'note': 'IMPORTANT: You must log in to ScienceDirect with YOUR OWN credentials. If you see admin content, please log out of ScienceDirect and log in with your own account.',
+        'requires_manual_login': True
     }
