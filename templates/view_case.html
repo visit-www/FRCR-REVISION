@@ -288,7 +288,7 @@
                                 <textarea id="candidateNoteText" 
                                           class="form-control" 
                                           placeholder="Type your notes here... They are private and will be auto-saved."
-                                          style="background-color: #FFFEF8; border: 2px solid #F2CC8F; font-family: 'Courier New', monospace; line-height: 1.6; white-space: pre-wrap; min-height: 200px; height: auto; overflow-y: auto;">{% if user_note %}{{ user_note.note_text }}{% endif %}</textarea>
+                                          style="background-color: #FFFEF8; border: 2px solid #F2CC8F; font-family: 'Courier New', monospace; line-height: 1.6; white-space: pre-wrap;">{% if user_note %}{{ user_note.note_text }}{% endif %}</textarea>
                                 <script>
                                     // Format notes on page load to hide tags and show bullet points
                                     (function() {
@@ -805,12 +805,33 @@
             grid-row: 2;
             display: flex;
             flex-direction: column;
+            min-height: 400px;
+        }
+        
+        /* Make all containers flex to allow textarea to fill */
+        .case-details.student-case-layout .notes-section #notesTabContent {
+            flex: 1 1 auto;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
+        
+        .case-details.student-case-layout .notes-section #notesTabContent .tab-pane {
+            flex: 1 1 auto;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
+        
+        .case-details.student-case-layout .notes-section #notesTabContent .tab-pane.active {
+            display: flex !important;
         }
         
         /* Make notes textarea expand to fill available space */
         .case-details.student-case-layout .notes-section #candidateNoteText {
             flex: 1 1 auto;
-            min-height: 150px;
+            min-height: 250px;
+            height: 100% !important;
             resize: none; /* Disable manual resize since it auto-matches */
         }
 
@@ -833,8 +854,12 @@
         
         /* On mobile, notes textarea has fixed minimum height */
         .case-details.student-case-layout .notes-section #candidateNoteText {
-            min-height: 180px;
+            min-height: 250px;
             resize: vertical;
+        }
+        
+        .case-details.student-case-layout .notes-section {
+            min-height: 300px;
         }
     }
 
