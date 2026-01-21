@@ -14,3 +14,4 @@ requests==2.31.0
 bleach==6.1.0
 cloudinary==1.36.0
 notion-client==2.2.1
+biopython==1.81

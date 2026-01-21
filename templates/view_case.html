@@ -268,6 +268,21 @@
                                     <i class="fas fa-brain me-1" style="color: #235390;"></i>Anki
                                 </button>
                             </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="pubmedTab" data-bs-toggle="tab" data-bs-target="#pubmedPane" type="button" role="tab" aria-controls="pubmedPane" aria-selected="false">
+                                    <i class="fas fa-book-medical me-1" style="color: #28a745;"></i>PubMed
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="tciaTab" data-bs-toggle="tab" data-bs-target="#tciaPane" type="button" role="tab" aria-controls="tciaPane" aria-selected="false">
+                                    <i class="fas fa-x-ray me-1" style="color: #17a2b8;"></i>TCIA
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="radiologyAssistantTab" data-bs-toggle="tab" data-bs-target="#radiologyAssistantPane" type="button" role="tab" aria-controls="radiologyAssistantPane" aria-selected="false">
+                                    <i class="fas fa-stethoscope me-1" style="color: #6c757d;"></i>RadiologyAssistant
+                                </button>
+                            </li>
                         </ul>
                         
                         <div class="tab-content" id="notesTabContent">
@@ -510,6 +525,108 @@
                                         <button class="btn btn-sm btn-link text-muted" onclick="disconnectAnki()">
                                             <i class="fas fa-unlink me-1"></i>Disconnect Anki
                                         </button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- PubMed Tab -->
+                            <div class="tab-pane fade" id="pubmedPane" role="tabpanel" aria-labelledby="pubmedTab">
+                                <div class="p-3">
+                                    <h6 class="mb-3"><i class="fas fa-book-medical me-2" style="color: #28a745;"></i>PubMed Articles</h6>
+                                    <p class="text-muted small mb-3">Search for free full-text articles and latest guidelines related to this case.</p>
+                                    
+                                    <!-- Search Box -->
+                                    <div class="mb-3">
+                                        <div class="input-group input-group-sm">
+                                            <input type="text" id="pubmedSearchQuery" class="form-control" placeholder="Search PubMed (e.g., diagnosis, classification)..." value="{{ case.diagnosis if case else '' }}" onkeypress="if(event.key==='Enter') searchPubMed()">
+                                            <button class="btn btn-success" type="button" onclick="searchPubMed()" style="background: #28a745; border-color: #28a745;">
+                                                <i class="fas fa-search"></i>
+                                            </button>
+                                        </div>
+                                        <div class="d-flex gap-2 mt-2">
+                                            <button class="btn btn-sm btn-outline-success" onclick="searchPubMedGuidelines()" title="Search for latest guidelines">
+                                                <i class="fas fa-file-medical me-1"></i>Latest Guidelines
+                                            </button>
+                                            <small class="text-muted align-self-center ms-auto">
+                                                <i class="fas fa-info-circle me-1"></i>Focuses on free full-text articles
+                                            </small>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Search Status -->
+                                    <div id="pubmedSearchStatus" class="mb-3" style="display: none;">
+                                        <div class="d-flex align-items-center">
+                                            <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                                            <span class="text-muted small">Searching PubMed...</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Results -->
+                                    <div id="pubmedResults" style="max-height: 500px; overflow-y: auto;"></div>
+                                    
+                                    <div id="pubmedNoResults" style="display: none;" class="text-center py-3">
+                                        <i class="fas fa-search text-muted" style="font-size: 2rem; opacity: 0.5;"></i>
+                                        <p class="text-muted small mt-2 mb-0">No articles found. Try different search terms.</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- TCIA Tab -->
+                            <div class="tab-pane fade" id="tciaPane" role="tabpanel" aria-labelledby="tciaTab">
+                                <div class="p-3">
+                                    <h6 class="mb-3"><i class="fas fa-x-ray me-2" style="color: #17a2b8;"></i>TCIA Imaging Datasets</h6>
+                                    <p class="text-muted small mb-3">Browse real DICOM imaging datasets for practice. Opens in TCIA's native viewer.</p>
+                                    
+                                    <!-- Search Box -->
+                                    <div class="mb-3">
+                                        <div class="input-group input-group-sm">
+                                            <input type="text" id="tciaSearchQuery" class="form-control" placeholder="Search by diagnosis or keywords..." value="{{ case.diagnosis if case else '' }}" onkeypress="if(event.key==='Enter') searchTCIA()">
+                                            <button class="btn btn-info" type="button" onclick="searchTCIA()" style="background: #17a2b8; border-color: #17a2b8;">
+                                                <i class="fas fa-search"></i>
+                                            </button>
+                                        </div>
+                                        <small class="text-muted d-block mt-2">
+                                            <i class="fas fa-info-circle me-1"></i>Opens in TCIA web viewer - no downloads required
+                                        </small>
+                                    </div>
+                                    
+                                    <!-- Search Status -->
+                                    <div id="tciaSearchStatus" class="mb-3" style="display: none;">
+                                        <div class="d-flex align-items-center">
+                                            <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                                            <span class="text-muted small">Searching TCIA...</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Results -->
+                                    <div id="tciaResults" style="max-height: 500px; overflow-y: auto;"></div>
+                                    
+                                    <div id="tciaNoResults" style="display: none;" class="text-center py-3">
+                                        <i class="fas fa-search text-muted" style="font-size: 2rem; opacity: 0.5;"></i>
+                                        <p class="text-muted small mt-2 mb-0">No datasets found. Try different search terms.</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- RadiologyAssistant Tab -->
+                            <div class="tab-pane fade" id="radiologyAssistantPane" role="tabpanel" aria-labelledby="radiologyAssistantTab">
+                                <div class="p-3">
+                                    <h6 class="mb-3"><i class="fas fa-stethoscope me-2" style="color: #6c757d;"></i>RadiologyAssistant</h6>
+                                    <p class="text-muted small mb-3">Search RadiologyAssistant for exam-focused articles on this diagnosis.</p>
+                                    
+                                    <!-- Search Button -->
+                                    <div class="mb-3">
+                                        <button class="btn btn-secondary w-100" onclick="searchRadiologyAssistant()" style="background: #6c757d; border-color: #6c757d;">
+                                            <i class="fas fa-external-link-alt me-2"></i>Search "{{ case.diagnosis if case else 'Diagnosis' }}" in RadiologyAssistant
+                                        </button>
+                                        <small class="text-muted d-block mt-2">
+                                            <i class="fas fa-info-circle me-1"></i>Opens search results in new window. Use browser search (Cmd/Ctrl+F) to find the diagnosis on the article page.
+                                        </small>
+                                    </div>
+                                    
+                                    <div class="alert alert-info small mb-0">
+                                        <i class="fas fa-lightbulb me-2"></i>
+                                        <strong>Tip:</strong> Once on the article page, use your browser's find function (Cmd/Ctrl+F) to jump directly to sections mentioning the diagnosis.
                                     </div>
                                 </div>
                             </div>
@@ -7143,6 +7260,234 @@
             // Close modal after opening
             const modal = bootstrap.Modal.getInstance(document.getElementById('ankiCardModal'));
             if (modal) modal.hide();
+        }
+    }
+    
+    // ==================== PUBMED ====================
+    
+    async function searchPubMed() {
+        const query = document.getElementById('pubmedSearchQuery')?.value.trim() || caseDiagnosis;
+        const statusEl = document.getElementById('pubmedSearchStatus');
+        const resultsDiv = document.getElementById('pubmedResults');
+        const noResults = document.getElementById('pubmedNoResults');
+        
+        if (!query) {
+            showFlash('Please enter a search query', 'warning');
+            return;
+        }
+        
+        if (statusEl) statusEl.style.display = 'block';
+        if (resultsDiv) resultsDiv.innerHTML = '';
+        if (noResults) noResults.style.display = 'none';
+        
+        try {
+            const response = await fetch(`/resources/api/pubmed/search?topic=${encodeURIComponent(query)}&max_results=20&free_full_text=true`);
+            const data = await response.json();
+            
+            if (statusEl) statusEl.style.display = 'none';
+            
+            if (data.error) {
+                showFlash(data.error, 'error');
+                return;
+            }
+            
+            if (data.articles && data.articles.length > 0) {
+                resultsDiv.innerHTML = data.articles.map(article => `
+                    <div class="pubmed-article mb-3 p-3 rounded" style="background: #fff; border: 1px solid #e0e0e0; border-left: 3px solid #28a745;">
+                        <h6 class="mb-2" style="color: #2c3e50;">
+                            ${escapeHtml(article.title)}
+                            ${article.has_free_full_text ? '<span class="badge bg-success ms-2">Free Full Text</span>' : ''}
+                        </h6>
+                        <div class="mb-2">
+                            <small class="text-muted">
+                                <i class="fas fa-users me-1"></i>${escapeHtml(article.authors.join(', '))}
+                                <span class="ms-2"><i class="fas fa-book me-1"></i>${escapeHtml(article.journal_iso || article.journal)}</span>
+                                ${article.year ? `<span class="ms-2"><i class="fas fa-calendar me-1"></i>${escapeHtml(article.year)}</span>` : ''}
+                            </small>
+                        </div>
+                        ${article.abstract ? `<p class="small text-muted mb-2">${escapeHtml(article.abstract)}</p>` : ''}
+                        <div class="d-flex gap-2 mt-2">
+                            ${article.full_text_link ? `
+                                <a href="${article.full_text_link}" target="_blank" class="btn btn-sm btn-success">
+                                    <i class="fas fa-file-pdf me-1"></i>Free Full Text
+                                </a>
+                            ` : ''}
+                            <a href="${article.pubmed_link}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-external-link-alt me-1"></i>View on PubMed
+                            </a>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                if (noResults) noResults.style.display = 'block';
+            }
+        } catch (error) {
+            console.error('[PUBMED] Search error:', error);
+            if (statusEl) statusEl.style.display = 'none';
+            showFlash('Error searching PubMed', 'error');
+        }
+    }
+    
+    async function searchPubMedGuidelines() {
+        const query = document.getElementById('pubmedSearchQuery')?.value.trim() || caseDiagnosis;
+        const statusEl = document.getElementById('pubmedSearchStatus');
+        const resultsDiv = document.getElementById('pubmedResults');
+        const noResults = document.getElementById('pubmedNoResults');
+        
+        if (!query) {
+            showFlash('Please enter a search query', 'warning');
+            return;
+        }
+        
+        if (statusEl) statusEl.style.display = 'block';
+        if (resultsDiv) resultsDiv.innerHTML = '';
+        if (noResults) noResults.style.display = 'none';
+        
+        try {
+            const response = await fetch(`/resources/api/pubmed/guidelines?topic=${encodeURIComponent(query)}&max_results=10`);
+            const data = await response.json();
+            
+            if (statusEl) statusEl.style.display = 'none';
+            
+            if (data.error) {
+                showFlash(data.error, 'error');
+                return;
+            }
+            
+            if (data.articles && data.articles.length > 0) {
+                resultsDiv.innerHTML = '<h6 class="mb-3"><i class="fas fa-file-medical me-2"></i>Latest Guidelines & Reviews</h6>' + 
+                    data.articles.map(article => `
+                        <div class="pubmed-article mb-3 p-3 rounded" style="background: #fff; border: 1px solid #e0e0e0; border-left: 3px solid #28a745;">
+                            <h6 class="mb-2" style="color: #2c3e50;">
+                                ${escapeHtml(article.title)}
+                                ${article.has_free_full_text ? '<span class="badge bg-success ms-2">Free Full Text</span>' : ''}
+                            </h6>
+                            <div class="mb-2">
+                                <small class="text-muted">
+                                    <i class="fas fa-users me-1"></i>${escapeHtml(article.authors.join(', '))}
+                                    <span class="ms-2"><i class="fas fa-book me-1"></i>${escapeHtml(article.journal_iso || article.journal)}</span>
+                                    ${article.year ? `<span class="ms-2"><i class="fas fa-calendar me-1"></i>${escapeHtml(article.year)}</span>` : ''}
+                                </small>
+                            </div>
+                            ${article.abstract ? `<p class="small text-muted mb-2">${escapeHtml(article.abstract)}</p>` : ''}
+                            <div class="d-flex gap-2 mt-2">
+                                ${article.full_text_link ? `
+                                    <a href="${article.full_text_link}" target="_blank" class="btn btn-sm btn-success">
+                                        <i class="fas fa-file-pdf me-1"></i>Free Full Text
+                                    </a>
+                                ` : ''}
+                                <a href="${article.pubmed_link}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-external-link-alt me-1"></i>View on PubMed
+                                </a>
+                            </div>
+                        </div>
+                    `).join('');
+            } else {
+                if (noResults) noResults.style.display = 'block';
+            }
+        } catch (error) {
+            console.error('[PUBMED] Guidelines search error:', error);
+            if (statusEl) statusEl.style.display = 'none';
+            showFlash('Error searching guidelines', 'error');
+        }
+    }
+    
+    // ==================== TCIA ====================
+    
+    async function searchTCIA() {
+        const query = document.getElementById('tciaSearchQuery')?.value.trim() || caseDiagnosis;
+        const statusEl = document.getElementById('tciaSearchStatus');
+        const resultsDiv = document.getElementById('tciaResults');
+        const noResults = document.getElementById('tciaNoResults');
+        
+        if (!query) {
+            showFlash('Please enter a search query', 'warning');
+            return;
+        }
+        
+        if (statusEl) statusEl.style.display = 'block';
+        if (resultsDiv) resultsDiv.innerHTML = '';
+        if (noResults) noResults.style.display = 'none';
+        
+        try {
+            const response = await fetch(`/resources/api/tcia/search?diagnosis=${encodeURIComponent(query)}`);
+            const data = await response.json();
+            
+            if (statusEl) statusEl.style.display = 'none';
+            
+            if (data.error) {
+                showFlash(data.error, 'error');
+                return;
+            }
+            
+            if (data.results && data.results.length > 0) {
+                resultsDiv.innerHTML = data.results.map(result => {
+                    const collection = result.collection;
+                    const study = result.study;
+                    const series = result.series || [];
+                    
+                    return `
+                        <div class="tcia-result mb-3 p-3 rounded" style="background: #fff; border: 1px solid #e0e0e0; border-left: 3px solid #17a2b8;">
+                            <h6 class="mb-2" style="color: #2c3e50;">
+                                <i class="fas fa-database me-2"></i>${escapeHtml(collection.name)}
+                            </h6>
+                            <p class="small text-muted mb-2">${escapeHtml(collection.description || '')}</p>
+                            <div class="mb-2">
+                                <small class="text-muted">
+                                    <i class="fas fa-user me-1"></i>Patient: ${escapeHtml(study.patient_id)}
+                                    <span class="ms-2"><i class="fas fa-calendar me-1"></i>${escapeHtml(study.study_date || 'N/A')}</span>
+                                    <span class="ms-2"><i class="fas fa-x-ray me-1"></i>${escapeHtml(study.modality || 'N/A')}</span>
+                                </small>
+                            </div>
+                            ${series.length > 0 ? `
+                                <div class="mt-2">
+                                    <strong class="small">Available Series:</strong>
+                                    <div class="d-flex flex-wrap gap-2 mt-1">
+                                        ${series.map(s => `
+                                            <a href="${s.viewer_link}" target="_blank" class="btn btn-sm btn-info" style="background: #17a2b8; border-color: #17a2b8;">
+                                                <i class="fas fa-eye me-1"></i>${escapeHtml(s.series_description || 'View Series')}
+                                            </a>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                }).join('');
+            } else {
+                if (noResults) noResults.style.display = 'block';
+            }
+        } catch (error) {
+            console.error('[TCIA] Search error:', error);
+            if (statusEl) statusEl.style.display = 'none';
+            showFlash('Error searching TCIA', 'error');
+        }
+    }
+    
+    // ==================== RADIOLOGY ASSISTANT ====================
+    
+    async function searchRadiologyAssistant() {
+        const diagnosis = caseDiagnosis || '';
+        if (!diagnosis) {
+            showFlash('No diagnosis available for this case', 'warning');
+            return;
+        }
+        
+        try {
+            const response = await fetch(`/resources/api/radiology-assistant/search?diagnosis=${encodeURIComponent(diagnosis)}`);
+            const data = await response.json();
+            
+            if (data.error) {
+                showFlash(data.error, 'error');
+                return;
+            }
+            
+            // Open search URL in new window
+            window.open(data.search_url, '_blank');
+            showFlash('Opening RadiologyAssistant search...', 'info');
+        } catch (error) {
+            console.error('[RADIOLOGY ASSISTANT] Search error:', error);
+            showFlash('Error opening RadiologyAssistant search', 'error');
         }
     }
     

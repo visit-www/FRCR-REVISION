@@ -66,3 +66,10 @@ dist/
 *.tmp
 *.bak
 *.swp
+
+# Cache directories (keep structure, ignore content)
+cache/pubmed/*.json
+cache/tcia/*.json
+!cache/.gitkeep
+!cache/pubmed/.gitkeep
+!cache/tcia/.gitkeep
