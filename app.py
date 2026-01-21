@@ -1027,13 +1027,11 @@ def create_case():
         
         case_number = f"{prefix}{max_num + 1:03d}"
     
-    # Convert lists to JSON strings for TEXT fields (legacy support)
+    # Create case (questions/answers are stored in separate tables now)
     try:
         case = Case(
             case_number=case_number,
             diagnosis=data['diagnosis'],
-            questions=json.dumps(questions or []),
-            answers=json.dumps(answers or []),
             discussion=data.get('discussion', ''),
             module=module_enum,
             body_part=body_part_enum,
