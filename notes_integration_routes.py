@@ -431,12 +431,19 @@ def notion_status():
 @notes_bp.route('/api/notion/search')
 @login_required
 def notion_search():
-    """Search Notion pages by query."""
+    """Search Notion pages by query.
+    
+    Query params:
+    - q: search query (required)
+    - limit: max results (default 10, max 50)
+    - strict: if 'true', filter results to only pages containing the exact phrase in title
+    """
     if not current_user.notion_access_token:
         return jsonify({'error': 'Notion not connected', 'pages': [], 'connected': False}), 200
     
     query = request.args.get('q', '').strip()
     limit = min(int(request.args.get('limit', 10)), 50)
+    strict_mode = request.args.get('strict', 'false').lower() == 'true'
     
     if not query:
         return jsonify({'error': 'No search query provided', 'pages': []}), 400
@@ -446,14 +453,19 @@ def notion_search():
         if not client:
             return jsonify({'error': 'Notion SDK not available', 'pages': []}), 200
         
+        # For strict mode, fetch more results to filter from
+        fetch_limit = limit * 5 if strict_mode else limit
+        
         # Search pages
         results = client.search(
             query=query,
             filter={'property': 'object', 'value': 'page'},
-            page_size=limit
+            page_size=min(fetch_limit, 50)
         )
         
         pages = []
+        query_lower = query.lower()
+        
         for page in results.get('results', []):
             # Extract title from properties
             title = 'Untitled'
@@ -469,6 +481,11 @@ def notion_search():
                             title = ''.join([t.get('plain_text', '') for t in title_parts])
                         break
             
+            # For strict mode, only include pages where title contains the exact phrase
+            if strict_mode:
+                if query_lower not in title.lower():
+                    continue
+            
             pages.append({
                 'id': page.get('id'),
                 'title': title,
@@ -477,11 +494,16 @@ def notion_search():
                 'last_edited_time': page.get('last_edited_time'),
                 'icon': page.get('icon', {}).get('emoji') if page.get('icon') else None
             })
+            
+            # Stop once we have enough results
+            if len(pages) >= limit:
+                break
         
         return jsonify({
             'pages': pages,
             'total': len(pages),
             'query': query,
+            'strict': strict_mode,
             'connected': True
         })
     
