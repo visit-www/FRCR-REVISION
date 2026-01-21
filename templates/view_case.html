@@ -566,7 +566,25 @@
     </div>
 </div>
 
-<!-- Notion Page Viewer Modal - Enhanced with Notion-style rendering -->
+<!-- 
+    NOTION PAGE MODAL - COMMENTED OUT
+    
+    REASON: Replaced with server-side rendered full-page view.
+    
+    We now use the dedicated route /notes/notion/view/<page_id> which renders
+    templates/notion_page.html for a better full-page viewing experience with:
+    - Full page layout (not constrained to modal)
+    - Better SEO and shareability
+    - Cleaner URL structure
+    - Server-side rendering with recursive block parsing
+    
+    The viewNotionPage() function now redirects to the new route instead of
+    opening this modal. This modal code is kept for reference but is no longer used.
+    
+    If you need to restore modal functionality, uncomment this section and update
+    viewNotionPage() to use the modal instead of redirecting.
+-->
+<!--
 <div id="notionPageModal" class="modal fade notion-page-modal" tabindex="-1" aria-labelledby="notionPageModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content notion-modal-content">
@@ -633,6 +651,7 @@
         </div>
     </div>
 </div>
+-->
 
 <style>
     /* Case Navigation Buttons - Peach Orange Brand Color */
@@ -6414,103 +6433,41 @@
         }
     }
     
-    // Store current page ID for append functionality
+    // Store current page ID for append functionality (kept for potential future use)
     let currentNotionPageId = null;
     
-    async function viewNotionPage(pageId, title) {
-        const modal = new bootstrap.Modal(document.getElementById('notionPageModal'));
-        const modalTitle = document.getElementById('notionPageTitle');
-        const modalContent = document.getElementById('notionPageContentHtml');
-        const copyBtn = document.getElementById('copyNotionToNotes');
-        const coverEl = document.getElementById('notionPageCover');
-        const coverImg = coverEl?.querySelector('img');
-        const iconEl = document.getElementById('notionPageIcon');
-        const openInNotionBtn = document.getElementById('openInNotion');
-        const editedEl = document.getElementById('notionPageEdited');
-        const addTextarea = document.getElementById('addToNotionText');
-        const collapseEl = document.getElementById('addToNotionCollapse');
-        
-        // Store page ID for append
-        currentNotionPageId = pageId;
-        
-        // Reset state
-        if (modalTitle) modalTitle.textContent = title;
-        if (coverEl) coverEl.style.display = 'none';
-        if (iconEl) iconEl.textContent = '📄';
-        if (addTextarea) addTextarea.value = '';
-        if (collapseEl && collapseEl.classList.contains('show')) {
-            new bootstrap.Collapse(collapseEl, { toggle: false }).hide();
-        }
-        
-        if (modalContent) {
-            modalContent.innerHTML = `
-                <div class="notion-loading">
-                    <div class="spinner-border" role="status"></div>
-                    <p class="mt-3">Loading page content...</p>
-                </div>
-            `;
-        }
-        
-        modal.show();
-        
-        try {
-            const response = await fetch(`/notes/api/notion/page/${pageId}`);
-            const data = await response.json();
-            
-            if (data.error) {
-                modalContent.innerHTML = `<div class="text-center py-4"><i class="fas fa-exclamation-circle text-danger" style="font-size: 2rem;"></i><p class="text-danger mt-2">${data.error}</p></div>`;
-                return;
-            }
-            
-            // Update cover image
-            if (data.cover_url && coverEl && coverImg) {
-                coverImg.src = data.cover_url;
-                coverEl.style.display = 'block';
-            }
-            
-            // Update icon
-            if (data.icon && iconEl) {
-                iconEl.textContent = data.icon;
-            }
-            
-            // Update "Open in Notion" link
-            if (data.url && openInNotionBtn) {
-                openInNotionBtn.href = data.url;
-            }
-            
-            // Update last edited
-            if (data.last_edited_time && editedEl) {
-                editedEl.textContent = formatDate(data.last_edited_time);
-            }
-            
-            // Render rich HTML content
-            if (data.content_html) {
-                modalContent.innerHTML = data.content_html;
-                // Extract plain text from HTML for copy functionality
-                if (copyBtn) {
-                    const tempDiv = document.createElement('div');
-                    tempDiv.innerHTML = data.content_html;
-                    copyBtn.dataset.content = tempDiv.textContent || tempDiv.innerText || '';
-                }
-            } else {
-                modalContent.innerHTML = '<p class="text-muted text-center py-4">This page appears to be empty.</p>';
-                if (copyBtn) copyBtn.dataset.content = '';
-            }
-            
-        } catch (error) {
-            console.error('[NOTION] Fetch page error:', error);
-            modalContent.innerHTML = `<div class="text-center py-4"><i class="fas fa-exclamation-triangle text-warning" style="font-size: 2rem;"></i><p class="text-danger mt-2">Error loading page. Please try again.</p></div>`;
-        }
+    /**
+     * View Notion page - redirects to server-side rendered full page view
+     * Replaced modal approach with dedicated route for better UX
+     */
+    function viewNotionPage(pageId, title) {
+        // Redirect to server-side rendered Notion page instead of modal
+        window.location.href = `/notes/notion/view/${pageId}`;
     }
     
+    /**
+     * Append to Notion page - NOTE: This function references modal elements
+     * that are now commented out. This functionality should be moved to
+     * notion_page.html template if needed, or the modal can be restored.
+     * 
+     * Currently not functional since modal elements don't exist.
+     */
     async function appendToNotionPage() {
+        // Check if modal elements exist (they don't anymore)
+        const textarea = document.getElementById('addToNotionText');
+        const btn = document.getElementById('addToNotionBtn');
+        
+        if (!textarea || !btn) {
+            console.warn('[NOTION] Append functionality requires modal elements which are now commented out.');
+            alert('This feature is not available in the current view. Please use the full Notion page view.');
+            return;
+        }
+        
         if (!currentNotionPageId) {
             alert('No page selected');
             return;
         }
         
-        const textarea = document.getElementById('addToNotionText');
-        const btn = document.getElementById('addToNotionBtn');
         const content = textarea?.value?.trim();
         
         if (!content) {
@@ -6559,6 +6516,12 @@
         }
     }
     
+    /**
+     * Copy Notion content to notes - NOTE: This function references modal elements
+     * that are now commented out. The new notion_page.html template has its own
+     * copy functionality. This function is kept for reference but is no longer
+     * called since we're using the full-page view instead of modals.
+     */
     function copyNotionToNotes() {
         const copyBtn = document.getElementById('copyNotionToNotes');
         const content = copyBtn?.dataset.content || '';
@@ -6580,8 +6543,9 @@
             const myNotesTab = document.getElementById('myNotesTab');
             if (myNotesTab) new bootstrap.Tab(myNotesTab).show();
             
-            const modal = bootstrap.Modal.getInstance(document.getElementById('notionPageModal'));
-            if (modal) modal.hide();
+            // Modal reference - no longer exists since we use full-page view
+            // const modal = bootstrap.Modal.getInstance(document.getElementById('notionPageModal'));
+            // if (modal) modal.hide();
             
             showFlash('Content copied to notes!', 'success');
         }
