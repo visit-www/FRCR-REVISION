@@ -342,13 +342,23 @@
                                 
                                 <!-- Connected State -->
                                 <div id="notionConnected" style="display: none;">
-                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
                                         <small class="text-muted">
                                             <i class="fas fa-check-circle text-success me-1"></i>Connected
                                         </small>
-                                        <button class="btn btn-sm btn-outline-secondary" onclick="searchNotionPages()">
-                                            <i class="fas fa-sync-alt me-1"></i>Refresh
-                                        </button>
+                                    </div>
+                                    
+                                    <!-- Custom Search Box -->
+                                    <div class="mb-3">
+                                        <div class="input-group input-group-sm">
+                                            <input type="text" id="notionCustomSearch" class="form-control" placeholder="Search your Notion pages..." onkeypress="if(event.key==='Enter') searchNotionPages(this.value)">
+                                            <button class="btn btn-dark" type="button" onclick="searchNotionPages(document.getElementById('notionCustomSearch').value)">
+                                                <i class="fas fa-search"></i>
+                                            </button>
+                                        </div>
+                                        <small class="text-muted d-block mt-1">
+                                            <i class="fas fa-info-circle me-1"></i>Only pages you shared with the integration will appear.
+                                        </small>
                                     </div>
                                     
                                     <div id="notionSearchStatus" class="mb-3" style="display: none;">
@@ -362,7 +372,8 @@
                                     
                                     <div id="notionNoResults" style="display: none;" class="text-center py-3">
                                         <i class="fas fa-search text-muted" style="font-size: 2rem; opacity: 0.5;"></i>
-                                        <p class="text-muted small mt-2 mb-0">No pages found matching this case diagnosis.</p>
+                                        <p class="text-muted small mt-2 mb-1">No pages found.</p>
+                                        <p class="text-muted small mb-0">Try different search terms or <a href="https://www.notion.so/my-integrations" target="_blank">update page access</a> in Notion settings.</p>
                                     </div>
                                     
                                     <div class="text-center mt-4 pt-3 border-top">
@@ -5814,22 +5825,43 @@
         }
     }
     
-    async function searchNotionPages() {
+    async function searchNotionPages(customQuery = null) {
         if (!notionConnected) return;
         
+        // Use custom query, or extract first meaningful phrase from diagnosis
+        let query = customQuery;
+        if (!query || query.trim() === '') {
+            // Extract first line or first 50 chars of diagnosis as default search
+            const diagnosisText = caseDiagnosis || '';
+            const firstLine = diagnosisText.split(/[.\n]/)[0].trim();
+            query = firstLine.substring(0, 50);
+        }
+        query = query.trim();
+        
+        if (!query) {
+            console.log('[NOTION] No search query');
+            return;
+        }
+        
         const searchStatus = document.getElementById('notionSearchStatus');
-        const searchQuery = document.getElementById('notionSearchQuery');
+        const searchQueryEl = document.getElementById('notionSearchQuery');
         const pagesList = document.getElementById('notionPagesList');
         const noResults = document.getElementById('notionNoResults');
         const pageCount = document.getElementById('notionPageCount');
+        const customSearchInput = document.getElementById('notionCustomSearch');
+        
+        // Update the search input to show what's being searched
+        if (customSearchInput && !customQuery) {
+            customSearchInput.value = query;
+        }
         
         if (searchStatus) searchStatus.style.display = 'block';
-        if (searchQuery) searchQuery.textContent = caseDiagnosis;
+        if (searchQueryEl) searchQueryEl.textContent = query;
         if (pagesList) pagesList.innerHTML = '';
         if (noResults) noResults.style.display = 'none';
         
         try {
-            const response = await fetch(`/notes/api/notion/search?q=${encodeURIComponent(caseDiagnosis)}&limit=10`);
+            const response = await fetch(`/notes/api/notion/search?q=${encodeURIComponent(query)}&limit=10`);
             const data = await response.json();
             
             if (searchStatus) searchStatus.style.display = 'none';
