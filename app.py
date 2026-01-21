@@ -203,6 +203,13 @@ def index():
     return redirect(url_for('auth.login'))
 
 
+@app.route('/privacy')
+@app.route('/privacy-policy')
+def privacy_policy():
+    """Privacy Policy page - required for Notion OAuth and GDPR compliance"""
+    return render_template('privacy_policy.html')
+
+
 @app.route('/dashboard')
 @login_required
 def dashboard():
