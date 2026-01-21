@@ -102,6 +102,198 @@ def notion_blocks_to_text(blocks):
     return '\n'.join(text_parts)
 
 
+def rich_text_to_html(rich_text_array):
+    """Convert Notion rich_text array to HTML with formatting."""
+    if not rich_text_array:
+        return ''
+    
+    html_parts = []
+    for text_obj in rich_text_array:
+        content = text_obj.get('plain_text', '')
+        annotations = text_obj.get('annotations', {})
+        href = text_obj.get('href')
+        
+        # Escape HTML
+        import html
+        content = html.escape(content)
+        
+        # Apply annotations
+        if annotations.get('bold'):
+            content = f'<strong>{content}</strong>'
+        if annotations.get('italic'):
+            content = f'<em>{content}</em>'
+        if annotations.get('strikethrough'):
+            content = f'<del>{content}</del>'
+        if annotations.get('underline'):
+            content = f'<u>{content}</u>'
+        if annotations.get('code'):
+            content = f'<code class="notion-inline-code">{content}</code>'
+        
+        # Color
+        color = annotations.get('color', 'default')
+        if color != 'default':
+            if color.endswith('_background'):
+                bg_color = color.replace('_background', '')
+                content = f'<span class="notion-bg-{bg_color}">{content}</span>'
+            else:
+                content = f'<span class="notion-color-{color}">{content}</span>'
+        
+        # Link
+        if href:
+            content = f'<a href="{href}" target="_blank" rel="noopener" class="notion-link">{content}</a>'
+        
+        html_parts.append(content)
+    
+    return ''.join(html_parts)
+
+
+def notion_blocks_to_html(blocks):
+    """Convert Notion blocks to styled HTML."""
+    html_parts = []
+    list_stack = []  # Track open lists
+    
+    def close_lists():
+        """Close any open list tags."""
+        nonlocal list_stack
+        result = ''
+        while list_stack:
+            list_type = list_stack.pop()
+            result += f'</{list_type}>'
+        return result
+    
+    for block in blocks:
+        block_type = block.get('type')
+        block_id = block.get('id', '')
+        
+        # Handle list items specially
+        if block_type == 'bulleted_list_item':
+            if not list_stack or list_stack[-1] != 'ul':
+                html_parts.append(close_lists())
+                html_parts.append('<ul class="notion-bulleted-list">')
+                list_stack.append('ul')
+            rich_text = block.get('bulleted_list_item', {}).get('rich_text', [])
+            html_parts.append(f'<li>{rich_text_to_html(rich_text)}</li>')
+            continue
+            
+        elif block_type == 'numbered_list_item':
+            if not list_stack or list_stack[-1] != 'ol':
+                html_parts.append(close_lists())
+                html_parts.append('<ol class="notion-numbered-list">')
+                list_stack.append('ol')
+            rich_text = block.get('numbered_list_item', {}).get('rich_text', [])
+            html_parts.append(f'<li>{rich_text_to_html(rich_text)}</li>')
+            continue
+        
+        # Close any open lists for non-list items
+        html_parts.append(close_lists())
+        
+        if block_type == 'paragraph':
+            rich_text = block.get('paragraph', {}).get('rich_text', [])
+            content = rich_text_to_html(rich_text)
+            if content:
+                html_parts.append(f'<p class="notion-paragraph">{content}</p>')
+            else:
+                html_parts.append('<p class="notion-paragraph notion-empty">&nbsp;</p>')
+                
+        elif block_type == 'heading_1':
+            rich_text = block.get('heading_1', {}).get('rich_text', [])
+            html_parts.append(f'<h1 class="notion-heading-1">{rich_text_to_html(rich_text)}</h1>')
+            
+        elif block_type == 'heading_2':
+            rich_text = block.get('heading_2', {}).get('rich_text', [])
+            html_parts.append(f'<h2 class="notion-heading-2">{rich_text_to_html(rich_text)}</h2>')
+            
+        elif block_type == 'heading_3':
+            rich_text = block.get('heading_3', {}).get('rich_text', [])
+            html_parts.append(f'<h3 class="notion-heading-3">{rich_text_to_html(rich_text)}</h3>')
+            
+        elif block_type == 'to_do':
+            rich_text = block.get('to_do', {}).get('rich_text', [])
+            checked = block.get('to_do', {}).get('checked', False)
+            checked_class = 'checked' if checked else ''
+            checkbox = '☑' if checked else '☐'
+            html_parts.append(f'<div class="notion-to-do {checked_class}"><span class="notion-checkbox">{checkbox}</span> {rich_text_to_html(rich_text)}</div>')
+            
+        elif block_type == 'toggle':
+            rich_text = block.get('toggle', {}).get('rich_text', [])
+            html_parts.append(f'<details class="notion-toggle"><summary>{rich_text_to_html(rich_text)}</summary></details>')
+            
+        elif block_type == 'code':
+            rich_text = block.get('code', {}).get('rich_text', [])
+            language = block.get('code', {}).get('language', 'plain text')
+            code_text = ''.join([t.get('plain_text', '') for t in rich_text])
+            import html
+            code_text = html.escape(code_text)
+            html_parts.append(f'<div class="notion-code-block"><div class="notion-code-language">{language}</div><pre><code>{code_text}</code></pre></div>')
+            
+        elif block_type == 'quote':
+            rich_text = block.get('quote', {}).get('rich_text', [])
+            html_parts.append(f'<blockquote class="notion-quote">{rich_text_to_html(rich_text)}</blockquote>')
+            
+        elif block_type == 'callout':
+            rich_text = block.get('callout', {}).get('rich_text', [])
+            icon = block.get('callout', {}).get('icon', {})
+            emoji = icon.get('emoji', '💡') if icon.get('type') == 'emoji' else '💡'
+            html_parts.append(f'<div class="notion-callout"><span class="notion-callout-icon">{emoji}</span><div class="notion-callout-content">{rich_text_to_html(rich_text)}</div></div>')
+            
+        elif block_type == 'divider':
+            html_parts.append('<hr class="notion-divider">')
+            
+        elif block_type == 'image':
+            image_data = block.get('image', {})
+            image_type = image_data.get('type', '')
+            caption = image_data.get('caption', [])
+            
+            # Get image URL
+            image_url = ''
+            if image_type == 'external':
+                image_url = image_data.get('external', {}).get('url', '')
+            elif image_type == 'file':
+                image_url = image_data.get('file', {}).get('url', '')
+            
+            if image_url:
+                caption_html = rich_text_to_html(caption) if caption else ''
+                html_parts.append(f'''
+                    <figure class="notion-image">
+                        <img src="{image_url}" alt="{caption_html}" loading="lazy">
+                        {f'<figcaption>{caption_html}</figcaption>' if caption_html else ''}
+                    </figure>
+                ''')
+                
+        elif block_type == 'bookmark':
+            url = block.get('bookmark', {}).get('url', '')
+            caption = block.get('bookmark', {}).get('caption', [])
+            caption_html = rich_text_to_html(caption) if caption else url
+            html_parts.append(f'<a href="{url}" target="_blank" rel="noopener" class="notion-bookmark">{caption_html}</a>')
+            
+        elif block_type == 'embed':
+            url = block.get('embed', {}).get('url', '')
+            html_parts.append(f'<div class="notion-embed"><a href="{url}" target="_blank" rel="noopener">🔗 Embedded content: {url}</a></div>')
+            
+        elif block_type == 'video':
+            video_data = block.get('video', {})
+            video_type = video_data.get('type', '')
+            video_url = ''
+            if video_type == 'external':
+                video_url = video_data.get('external', {}).get('url', '')
+            elif video_type == 'file':
+                video_url = video_data.get('file', {}).get('url', '')
+            if video_url:
+                html_parts.append(f'<div class="notion-video"><a href="{video_url}" target="_blank" rel="noopener">🎬 Video: {video_url}</a></div>')
+                
+        elif block_type == 'table':
+            # Tables are complex - just indicate presence
+            html_parts.append('<div class="notion-table-placeholder">📊 Table (view in Notion for full formatting)</div>')
+            
+        elif block_type == 'column_list':
+            html_parts.append('<div class="notion-columns-placeholder">📐 Multi-column layout (view in Notion for full formatting)</div>')
+    
+    # Close any remaining open lists
+    html_parts.append(close_lists())
+    
+    return '\n'.join(html_parts)
+
+
 # ==================== NOTION OAUTH ROUTES ====================
 
 def get_return_url():
@@ -301,7 +493,7 @@ def notion_search():
 @notes_bp.route('/api/notion/page/<page_id>')
 @login_required
 def notion_get_page(page_id):
-    """Fetch content of a Notion page."""
+    """Fetch content of a Notion page with rich HTML rendering."""
     if not current_user.notion_access_token:
         return jsonify({'error': 'Notion not connected', 'connected': False}), 401
     
@@ -313,11 +505,24 @@ def notion_get_page(page_id):
         # Get page metadata
         page = client.pages.retrieve(page_id=page_id)
         
-        # Get page content (blocks)
-        blocks = client.blocks.children.list(block_id=page_id)
+        # Get page content (blocks) - fetch more blocks for larger pages
+        all_blocks = []
+        has_more = True
+        start_cursor = None
         
-        # Convert blocks to text
-        content_text = notion_blocks_to_text(blocks.get('results', []))
+        while has_more:
+            if start_cursor:
+                blocks_response = client.blocks.children.list(block_id=page_id, start_cursor=start_cursor)
+            else:
+                blocks_response = client.blocks.children.list(block_id=page_id)
+            
+            all_blocks.extend(blocks_response.get('results', []))
+            has_more = blocks_response.get('has_more', False)
+            start_cursor = blocks_response.get('next_cursor')
+        
+        # Convert blocks to both plain text and HTML
+        content_text = notion_blocks_to_text(all_blocks)
+        content_html = notion_blocks_to_html(all_blocks)
         
         # Extract title
         title = 'Untitled'
@@ -331,11 +536,32 @@ def notion_get_page(page_id):
                         title = ''.join([t.get('plain_text', '') for t in title_parts])
                     break
         
+        # Get cover image if exists
+        cover_url = None
+        cover = page.get('cover')
+        if cover:
+            if cover.get('type') == 'external':
+                cover_url = cover.get('external', {}).get('url')
+            elif cover.get('type') == 'file':
+                cover_url = cover.get('file', {}).get('url')
+        
+        # Get icon
+        icon = None
+        icon_data = page.get('icon')
+        if icon_data:
+            if icon_data.get('type') == 'emoji':
+                icon = icon_data.get('emoji')
+            elif icon_data.get('type') == 'external':
+                icon = icon_data.get('external', {}).get('url')
+        
         return jsonify({
             'id': page_id,
             'title': title,
             'url': page.get('url'),
             'content_text': content_text,
+            'content_html': content_html,
+            'cover_url': cover_url,
+            'icon': icon,
             'created_time': page.get('created_time'),
             'last_edited_time': page.get('last_edited_time'),
             'connected': True
@@ -343,6 +569,84 @@ def notion_get_page(page_id):
     
     except Exception as e:
         current_app.logger.error(f"Notion page fetch error: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+
+@notes_bp.route('/api/notion/page/<page_id>/append', methods=['POST'])
+@login_required
+def notion_append_to_page(page_id):
+    """Append content to a Notion page."""
+    if not current_user.notion_access_token:
+        return jsonify({'error': 'Notion not connected', 'connected': False}), 401
+    
+    try:
+        data = request.get_json()
+        content = data.get('content', '')
+        
+        if not content:
+            return jsonify({'error': 'No content provided'}), 400
+        
+        client = get_notion_client(current_user.notion_access_token)
+        if not client:
+            return jsonify({'error': 'Notion SDK not available'}), 500
+        
+        # Create blocks to append
+        # Split content by newlines and create paragraph blocks
+        lines = content.strip().split('\n')
+        children = []
+        
+        for line in lines:
+            if line.strip():
+                children.append({
+                    'object': 'block',
+                    'type': 'paragraph',
+                    'paragraph': {
+                        'rich_text': [{
+                            'type': 'text',
+                            'text': {'content': line}
+                        }]
+                    }
+                })
+        
+        if not children:
+            return jsonify({'error': 'No valid content to append'}), 400
+        
+        # Add a divider before the new content
+        children.insert(0, {
+            'object': 'block',
+            'type': 'divider',
+            'divider': {}
+        })
+        
+        # Add a timestamp header
+        from datetime import datetime
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M')
+        children.insert(1, {
+            'object': 'block',
+            'type': 'paragraph',
+            'paragraph': {
+                'rich_text': [{
+                    'type': 'text',
+                    'text': {'content': f'📝 Added from FRCR-Revision on {timestamp}'},
+                    'annotations': {'italic': True, 'color': 'gray'}
+                }]
+            }
+        })
+        
+        # Append blocks to the page
+        result = client.blocks.children.append(
+            block_id=page_id,
+            children=children
+        )
+        
+        return jsonify({
+            'success': True,
+            'message': 'Content added to Notion page',
+            'blocks_added': len(children)
+        })
+    
+    except Exception as e:
+        current_app.logger.error(f"Notion append error: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 

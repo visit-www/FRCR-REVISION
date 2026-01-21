@@ -550,46 +550,67 @@
     </div>
 </div>
 
-<!-- Notion Page Viewer Modal -->
+<!-- Notion Page Viewer Modal - Enhanced with Notion-style rendering -->
 <div id="notionPageModal" class="modal fade notion-page-modal" tabindex="-1" aria-labelledby="notionPageModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-centered" style="max-width: 90vw; height: 85vh;">
-        <div class="modal-content" style="height: 100%;">
-            <div class="modal-header py-2" style="background: #000; color: white;">
-                <h5 class="modal-title" id="notionPageModalLabel">
-                    <i class="fas fa-book me-2"></i>
-                    <span id="notionPageTitle">Page</span>
-                </h5>
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content notion-modal-content">
+            <!-- Cover Image -->
+            <div id="notionPageCover" class="notion-cover" style="display: none;">
+                <img src="" alt="Page cover" class="notion-cover-img">
+            </div>
+            
+            <!-- Header -->
+            <div class="modal-header notion-modal-header">
+                <div class="d-flex align-items-center">
+                    <span id="notionPageIcon" class="notion-page-icon me-2">📄</span>
+                    <h5 class="modal-title mb-0" id="notionPageTitle">Page</h5>
+                </div>
                 <div class="d-flex align-items-center gap-2">
-                    <a id="openInNotionBtn" href="#" target="_blank" rel="noopener" class="btn btn-sm btn-outline-light" title="Open in Notion">
-                        <i class="fas fa-external-link-alt me-1"></i>Open in Notion
+                    <a id="openInNotion" href="#" target="_blank" class="btn btn-sm btn-outline-dark" title="Open in Notion">
+                        <i class="fas fa-external-link-alt"></i>
                     </a>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
             </div>
-            <div class="modal-body p-0" style="flex: 1; overflow: hidden;">
-                <!-- Iframe for Notion embed -->
-                <iframe id="notionPageIframe" 
-                        src="" 
-                        style="width: 100%; height: 100%; border: none;"
-                        sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
-                        loading="lazy">
-                </iframe>
-                <!-- Fallback content if iframe doesn't work -->
-                <div id="notionPageFallback" style="display: none; padding: 2rem; text-align: center;">
-                    <i class="fas fa-lock" style="font-size: 3rem; color: #666; margin-bottom: 1rem;"></i>
-                    <h5>Private Page</h5>
-                    <p class="text-muted">This Notion page cannot be embedded. Click below to view it directly in Notion.</p>
-                    <a id="fallbackNotionLink" href="#" target="_blank" rel="noopener" class="btn btn-dark">
-                        <i class="fas fa-external-link-alt me-2"></i>Open in Notion
-                    </a>
-                    <hr class="my-4">
-                    <p class="text-muted small">You can still copy the text content to your notes:</p>
-                    <div id="notionPageContentText" class="notion-page-content text-start p-3 rounded" style="background: #f8f9fa; max-height: 200px; overflow-y: auto; font-size: 0.9rem;"></div>
+            
+            <!-- Page Info -->
+            <div class="notion-page-info">
+                <small class="text-muted">
+                    <i class="fas fa-clock me-1"></i>Last edited: <span id="notionPageEdited">-</span>
+                </small>
+            </div>
+            
+            <!-- Content -->
+            <div class="modal-body notion-modal-body">
+                <div id="notionPageContentHtml" class="notion-rendered-content">
+                    <!-- Rich HTML content will be rendered here -->
                 </div>
             </div>
-            <div class="modal-footer py-2">
-                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
-                <button type="button" id="copyNotionToNotes" class="btn copy-to-notes-btn btn-sm" onclick="copyNotionToNotes()">
+            
+            <!-- Add to Notion Section (collapsible) -->
+            <div class="notion-add-section">
+                <button class="btn btn-link text-decoration-none w-100 d-flex align-items-center justify-content-between py-2" 
+                        type="button" data-bs-toggle="collapse" data-bs-target="#addToNotionCollapse">
+                    <span><i class="fas fa-plus-circle me-2"></i>Add note to this page</span>
+                    <i class="fas fa-chevron-down"></i>
+                </button>
+                <div class="collapse" id="addToNotionCollapse">
+                    <div class="p-3">
+                        <textarea id="addToNotionText" class="form-control mb-2" rows="3" 
+                                  placeholder="Type your note to append to this Notion page..."></textarea>
+                        <button id="addToNotionBtn" class="btn btn-dark w-100" onclick="appendToNotionPage()">
+                            <i class="fas fa-paper-plane me-2"></i>Add to Notion
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Footer -->
+            <div class="modal-footer notion-modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i>Close
+                </button>
+                <button type="button" id="copyNotionToNotes" class="btn copy-to-notes-btn" onclick="copyNotionToNotes()">
                     <i class="fas fa-copy me-2"></i>Copy to My Notes
                 </button>
             </div>
@@ -2143,21 +2164,318 @@
     }
     
     /* Notion page modal */
-    .notion-page-modal .modal-header {
-        background: #000;
-        color: white;
+    /* ==================== NOTION PAGE MODAL - ENHANCED STYLES ==================== */
+    
+    .notion-modal-content {
+        border: none;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
     }
     
-    .notion-page-content {
+    .notion-cover {
+        width: 100%;
+        height: 180px;
+        overflow: hidden;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    
+    .notion-cover-img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    
+    .notion-modal-header {
+        background: #fff;
+        border-bottom: 1px solid #e8e8e8;
+        padding: 1rem 1.5rem;
+    }
+    
+    .notion-page-icon {
+        font-size: 1.5rem;
+    }
+    
+    .notion-page-info {
         background: #fafafa;
-        border: 1px solid #e0e0e0;
-        border-radius: 8px;
-        padding: 16px;
-        max-height: 400px;
+        padding: 0.5rem 1.5rem;
+        border-bottom: 1px solid #e8e8e8;
+    }
+    
+    .notion-modal-body {
+        background: #fff;
+        padding: 1.5rem 2rem;
+        max-height: 55vh;
         overflow-y: auto;
-        font-family: Georgia, serif;
+    }
+    
+    .notion-rendered-content {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        font-size: 16px;
         line-height: 1.7;
-        white-space: pre-wrap;
+        color: #37352f;
+    }
+    
+    /* Notion Block Styles */
+    .notion-paragraph {
+        margin-bottom: 0.5rem;
+    }
+    
+    .notion-empty {
+        min-height: 1em;
+    }
+    
+    .notion-heading-1 {
+        font-size: 1.875rem;
+        font-weight: 600;
+        margin: 1.5rem 0 0.5rem 0;
+        color: #37352f;
+    }
+    
+    .notion-heading-2 {
+        font-size: 1.5rem;
+        font-weight: 600;
+        margin: 1.25rem 0 0.5rem 0;
+        color: #37352f;
+    }
+    
+    .notion-heading-3 {
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin: 1rem 0 0.5rem 0;
+        color: #37352f;
+    }
+    
+    .notion-bulleted-list, .notion-numbered-list {
+        margin: 0.5rem 0;
+        padding-left: 1.5rem;
+    }
+    
+    .notion-bulleted-list li, .notion-numbered-list li {
+        margin-bottom: 0.25rem;
+    }
+    
+    .notion-to-do {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.5rem;
+        margin-bottom: 0.25rem;
+    }
+    
+    .notion-checkbox {
+        flex-shrink: 0;
+    }
+    
+    .notion-to-do.checked {
+        text-decoration: line-through;
+        color: rgba(55, 53, 47, 0.5);
+    }
+    
+    .notion-toggle {
+        margin: 0.5rem 0;
+        border: none;
+    }
+    
+    .notion-toggle summary {
+        cursor: pointer;
+        padding: 0.25rem 0;
+        font-weight: 500;
+    }
+    
+    .notion-code-block {
+        background: #f7f6f3;
+        border-radius: 6px;
+        margin: 0.75rem 0;
+        overflow: hidden;
+    }
+    
+    .notion-code-language {
+        background: #e8e8e8;
+        padding: 0.25rem 0.75rem;
+        font-size: 0.75rem;
+        color: #666;
+        text-transform: lowercase;
+    }
+    
+    .notion-code-block pre {
+        margin: 0;
+        padding: 0.75rem;
+        overflow-x: auto;
+    }
+    
+    .notion-code-block code {
+        font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+        font-size: 0.875rem;
+        line-height: 1.5;
+    }
+    
+    .notion-inline-code {
+        background: rgba(135, 131, 120, 0.15);
+        padding: 0.2em 0.4em;
+        border-radius: 3px;
+        font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+        font-size: 85%;
+        color: #eb5757;
+    }
+    
+    .notion-quote {
+        border-left: 3px solid #37352f;
+        padding-left: 1rem;
+        margin: 0.75rem 0;
+        color: #37352f;
+        font-style: italic;
+    }
+    
+    .notion-callout {
+        display: flex;
+        background: #f7f6f3;
+        border-radius: 6px;
+        padding: 1rem;
+        margin: 0.75rem 0;
+        gap: 0.75rem;
+    }
+    
+    .notion-callout-icon {
+        font-size: 1.25rem;
+        flex-shrink: 0;
+    }
+    
+    .notion-callout-content {
+        flex: 1;
+    }
+    
+    .notion-divider {
+        border: none;
+        border-top: 1px solid #e8e8e8;
+        margin: 1.5rem 0;
+    }
+    
+    .notion-image {
+        margin: 1rem 0;
+        text-align: center;
+    }
+    
+    .notion-image img {
+        max-width: 100%;
+        border-radius: 6px;
+    }
+    
+    .notion-image figcaption {
+        font-size: 0.875rem;
+        color: rgba(55, 53, 47, 0.65);
+        margin-top: 0.5rem;
+    }
+    
+    .notion-bookmark {
+        display: block;
+        border: 1px solid #e8e8e8;
+        border-radius: 6px;
+        padding: 0.75rem 1rem;
+        margin: 0.75rem 0;
+        text-decoration: none;
+        color: #37352f;
+        transition: background 0.2s;
+    }
+    
+    .notion-bookmark:hover {
+        background: #f7f6f3;
+    }
+    
+    .notion-embed, .notion-video {
+        background: #f7f6f3;
+        border-radius: 6px;
+        padding: 0.75rem 1rem;
+        margin: 0.75rem 0;
+    }
+    
+    .notion-embed a, .notion-video a {
+        color: #37352f;
+        text-decoration: none;
+    }
+    
+    .notion-table-placeholder, .notion-columns-placeholder {
+        background: #f7f6f3;
+        border-radius: 6px;
+        padding: 1rem;
+        margin: 0.75rem 0;
+        text-align: center;
+        color: rgba(55, 53, 47, 0.65);
+        font-size: 0.875rem;
+    }
+    
+    .notion-link {
+        color: #37352f;
+        text-decoration: underline;
+        text-underline-offset: 3px;
+    }
+    
+    .notion-link:hover {
+        color: #2eaadc;
+    }
+    
+    /* Notion text colors */
+    .notion-color-gray { color: rgba(120, 119, 116, 1); }
+    .notion-color-brown { color: rgba(159, 107, 83, 1); }
+    .notion-color-orange { color: rgba(217, 115, 13, 1); }
+    .notion-color-yellow { color: rgba(203, 145, 47, 1); }
+    .notion-color-green { color: rgba(68, 131, 97, 1); }
+    .notion-color-blue { color: rgba(51, 126, 169, 1); }
+    .notion-color-purple { color: rgba(144, 101, 176, 1); }
+    .notion-color-pink { color: rgba(193, 76, 138, 1); }
+    .notion-color-red { color: rgba(212, 76, 71, 1); }
+    
+    /* Notion background colors */
+    .notion-bg-gray { background: rgba(241, 241, 239, 1); }
+    .notion-bg-brown { background: rgba(244, 238, 238, 1); }
+    .notion-bg-orange { background: rgba(251, 236, 221, 1); }
+    .notion-bg-yellow { background: rgba(251, 243, 219, 1); }
+    .notion-bg-green { background: rgba(237, 243, 236, 1); }
+    .notion-bg-blue { background: rgba(231, 243, 248, 1); }
+    .notion-bg-purple { background: rgba(244, 240, 247, 0.8); }
+    .notion-bg-pink { background: rgba(249, 238, 243, 0.8); }
+    .notion-bg-red { background: rgba(253, 235, 236, 1); }
+    
+    /* Add to Notion section */
+    .notion-add-section {
+        background: #fafafa;
+        border-top: 1px solid #e8e8e8;
+    }
+    
+    .notion-add-section .btn-link {
+        color: #37352f;
+    }
+    
+    .notion-add-section textarea {
+        border: 1px solid #e8e8e8;
+        border-radius: 6px;
+        font-family: inherit;
+    }
+    
+    .notion-add-section textarea:focus {
+        border-color: #2eaadc;
+        box-shadow: 0 0 0 2px rgba(46, 170, 220, 0.2);
+    }
+    
+    .notion-modal-footer {
+        background: #fff;
+        border-top: 1px solid #e8e8e8;
+        padding: 1rem 1.5rem;
+    }
+    
+    /* Loading state */
+    .notion-loading {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 3rem;
+        color: rgba(55, 53, 47, 0.65);
+    }
+    
+    .notion-loading .spinner-border {
+        width: 2rem;
+        height: 2rem;
+        border-width: 2px;
     }
     
     /* Anki styles */
@@ -5923,7 +6241,7 @@
                 }
                 
                 pagesList.innerHTML = data.pages.map(page => `
-                    <div class="notion-page-card" onclick="viewNotionPage('${page.id}', '${escapeHtml(page.title)}', '${page.url || ''}')">
+                    <div class="notion-page-card" onclick="viewNotionPage('${page.id}', '${escapeHtml(page.title)}')">
                         <div class="page-title">
                             <span class="page-icon">${page.icon || '📄'}</span>
                             <span>${escapeHtml(page.title)}</span>
@@ -5944,88 +6262,148 @@
         }
     }
     
-    async function viewNotionPage(pageId, title, pageUrl) {
-        const modalEl = document.getElementById('notionPageModal');
-        const modal = new bootstrap.Modal(modalEl);
+    // Store current page ID for append functionality
+    let currentNotionPageId = null;
+    
+    async function viewNotionPage(pageId, title) {
+        const modal = new bootstrap.Modal(document.getElementById('notionPageModal'));
         const modalTitle = document.getElementById('notionPageTitle');
-        const iframe = document.getElementById('notionPageIframe');
-        const fallback = document.getElementById('notionPageFallback');
-        const modalContent = document.getElementById('notionPageContentText');
+        const modalContent = document.getElementById('notionPageContentHtml');
         const copyBtn = document.getElementById('copyNotionToNotes');
-        const openInNotionBtn = document.getElementById('openInNotionBtn');
-        const fallbackLink = document.getElementById('fallbackNotionLink');
+        const coverEl = document.getElementById('notionPageCover');
+        const coverImg = coverEl?.querySelector('img');
+        const iconEl = document.getElementById('notionPageIcon');
+        const openInNotionBtn = document.getElementById('openInNotion');
+        const editedEl = document.getElementById('notionPageEdited');
+        const addTextarea = document.getElementById('addToNotionText');
+        const collapseEl = document.getElementById('addToNotionCollapse');
         
+        // Store page ID for append
+        currentNotionPageId = pageId;
+        
+        // Reset state
         if (modalTitle) modalTitle.textContent = title;
-        
-        // Set up "Open in Notion" links
-        if (openInNotionBtn && pageUrl) {
-            openInNotionBtn.href = pageUrl;
-        }
-        if (fallbackLink && pageUrl) {
-            fallbackLink.href = pageUrl;
+        if (coverEl) coverEl.style.display = 'none';
+        if (iconEl) iconEl.textContent = '📄';
+        if (addTextarea) addTextarea.value = '';
+        if (collapseEl && collapseEl.classList.contains('show')) {
+            new bootstrap.Collapse(collapseEl, { toggle: false }).hide();
         }
         
-        // Format page ID for embed (remove hyphens)
-        const cleanPageId = pageId.replace(/-/g, '');
-        
-        // Try to embed the Notion page
-        // Notion embed URL format for public pages
-        const embedUrl = `https://notion.so/${cleanPageId}`;
-        
-        // Show iframe, hide fallback initially
-        if (iframe) {
-            iframe.style.display = 'block';
-            iframe.src = embedUrl;
-        }
-        if (fallback) {
-            fallback.style.display = 'none';
+        if (modalContent) {
+            modalContent.innerHTML = `
+                <div class="notion-loading">
+                    <div class="spinner-border" role="status"></div>
+                    <p class="mt-3">Loading page content...</p>
+                </div>
+            `;
         }
         
         modal.show();
         
-        // Fetch text content for copy functionality (in background)
         try {
             const response = await fetch(`/notes/api/notion/page/${pageId}`);
             const data = await response.json();
             
-            if (!data.error) {
-                if (copyBtn) copyBtn.dataset.content = data.content_text || '';
-                if (modalContent) modalContent.textContent = data.content_text || 'No content';
+            if (data.error) {
+                modalContent.innerHTML = `<div class="text-center py-4"><i class="fas fa-exclamation-circle text-danger" style="font-size: 2rem;"></i><p class="text-danger mt-2">${data.error}</p></div>`;
+                return;
             }
-        } catch (error) {
-            console.error('[NOTION] Fetch page content error:', error);
-        }
-        
-        // Handle iframe load error - show fallback after timeout
-        // Note: Notion may block iframe embedding for private pages
-        if (iframe) {
-            iframe.onerror = () => {
-                console.log('[NOTION] Iframe failed to load');
-                iframe.style.display = 'none';
-                if (fallback) fallback.style.display = 'block';
-            };
             
-            // Fallback detection: if iframe content is blocked, show fallback after delay
-            setTimeout(() => {
-                try {
-                    // Try to access iframe content - will fail for cross-origin
-                    const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
-                    // If we get here without error, check if it's an error page
-                    if (iframeDoc && iframeDoc.body && iframeDoc.body.innerHTML.includes('refused to connect')) {
-                        iframe.style.display = 'none';
-                        if (fallback) fallback.style.display = 'block';
-                    }
-                } catch (e) {
-                    // Cross-origin - this is expected for Notion pages, iframe might still work
-                    console.log('[NOTION] Iframe cross-origin (expected)');
-                }
-            }, 3000);
+            // Update cover image
+            if (data.cover_url && coverEl && coverImg) {
+                coverImg.src = data.cover_url;
+                coverEl.style.display = 'block';
+            }
+            
+            // Update icon
+            if (data.icon && iconEl) {
+                iconEl.textContent = data.icon;
+            }
+            
+            // Update "Open in Notion" link
+            if (data.url && openInNotionBtn) {
+                openInNotionBtn.href = data.url;
+            }
+            
+            // Update last edited
+            if (data.last_edited_time && editedEl) {
+                editedEl.textContent = formatDate(data.last_edited_time);
+            }
+            
+            // Render rich HTML content
+            if (data.content_html) {
+                modalContent.innerHTML = data.content_html;
+            } else if (data.content_text) {
+                // Fallback to plain text
+                modalContent.innerHTML = `<pre style="white-space: pre-wrap; font-family: inherit;">${escapeHtml(data.content_text)}</pre>`;
+            } else {
+                modalContent.innerHTML = '<p class="text-muted text-center py-4">This page appears to be empty.</p>';
+            }
+            
+            // Store plain text for copy functionality
+            if (copyBtn) copyBtn.dataset.content = data.content_text || '';
+            
+        } catch (error) {
+            console.error('[NOTION] Fetch page error:', error);
+            modalContent.innerHTML = `<div class="text-center py-4"><i class="fas fa-exclamation-triangle text-warning" style="font-size: 2rem;"></i><p class="text-danger mt-2">Error loading page. Please try again.</p></div>`;
+        }
+    }
+    
+    async function appendToNotionPage() {
+        if (!currentNotionPageId) {
+            alert('No page selected');
+            return;
         }
         
-        // Clear iframe when modal is hidden
-        modalEl.addEventListener('hidden.bs.modal', function() {
-            if (iframe) iframe.src = '';
-        }, { once: true });
+        const textarea = document.getElementById('addToNotionText');
+        const btn = document.getElementById('addToNotionBtn');
+        const content = textarea?.value?.trim();
+        
+        if (!content) {
+            alert('Please enter some text to add');
+            return;
+        }
+        
+        // Show loading state
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Adding...';
+        btn.disabled = true;
+        
+        try {
+            const response = await fetch(`/notes/api/notion/page/${currentNotionPageId}/append`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ content: content })
+            });
+            
+            const data = await response.json();
+            
+            if (data.error) {
+                alert('Error: ' + data.error);
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+                return;
+            }
+            
+            // Success
+            textarea.value = '';
+            btn.innerHTML = '<i class="fas fa-check me-2"></i>Added!';
+            
+            // Refresh page content to show the new note
+            setTimeout(() => {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+                // Reload the page content
+                viewNotionPage(currentNotionPageId, document.getElementById('notionPageTitle')?.textContent || 'Page');
+            }, 1500);
+            
+        } catch (error) {
+            console.error('[NOTION] Append error:', error);
+            alert('Error adding content. Please try again.');
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
     }
     
     function copyNotionToNotes() {
