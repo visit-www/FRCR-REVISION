@@ -9,7 +9,10 @@ Notion Routes:
 - GET /notion/disconnect - Remove connection
 - GET /api/notion/status - Check connection status
 - GET /api/notion/search - Search notes by query
-- GET /api/notion/page/<page_id> - Fetch page content
+- GET /api/notion/page/<page_id> - Fetch page content (JSON API)
+- POST /api/notion/page/<page_id>/append - Append content to page
+- GET /notion/view/<page_id> - Server-side rendered page view
+- POST /notion/sync-to-notes/<page_id> - Import Notion content to local notes
 
 Anki Routes:
 - POST /api/anki/connect - Connect to AnkiConnect
@@ -23,10 +26,10 @@ import re
 import json
 import requests
 from datetime import datetime
-from flask import Blueprint, redirect, url_for, request, jsonify, session, current_app
+from flask import Blueprint, redirect, url_for, request, jsonify, session, current_app, render_template
 from flask_login import login_required, current_user
 
-from models import db
+from models import db, CandidateNote
 
 notes_bp = Blueprint('notes_integration', __name__, url_prefix='/notes')
 
@@ -55,51 +58,66 @@ def get_notion_client(access_token):
     return NotionClient(auth=access_token)
 
 
-def notion_blocks_to_text(blocks):
-    """Convert Notion blocks to plain text."""
-    text_parts = []
+def fetch_blocks_recursive(client, block_id, depth=0, max_depth=5):
+    """
+    Recursively fetch all blocks and their children from a Notion page.
     
-    for block in blocks:
-        block_type = block.get('type')
-        
-        if block_type == 'paragraph':
-            rich_text = block.get('paragraph', {}).get('rich_text', [])
-            text_parts.append(''.join([t.get('plain_text', '') for t in rich_text]))
-            
-        elif block_type in ['heading_1', 'heading_2', 'heading_3']:
-            rich_text = block.get(block_type, {}).get('rich_text', [])
-            heading_text = ''.join([t.get('plain_text', '') for t in rich_text])
-            prefix = '#' * int(block_type[-1])
-            text_parts.append(f"\n{prefix} {heading_text}\n")
-            
-        elif block_type == 'bulleted_list_item':
-            rich_text = block.get('bulleted_list_item', {}).get('rich_text', [])
-            text_parts.append('• ' + ''.join([t.get('plain_text', '') for t in rich_text]))
-            
-        elif block_type == 'numbered_list_item':
-            rich_text = block.get('numbered_list_item', {}).get('rich_text', [])
-            text_parts.append('- ' + ''.join([t.get('plain_text', '') for t in rich_text]))
-            
-        elif block_type == 'to_do':
-            rich_text = block.get('to_do', {}).get('rich_text', [])
-            checked = block.get('to_do', {}).get('checked', False)
-            checkbox = '☑' if checked else '☐'
-            text_parts.append(f"{checkbox} " + ''.join([t.get('plain_text', '') for t in rich_text]))
-            
-        elif block_type == 'code':
-            rich_text = block.get('code', {}).get('rich_text', [])
-            language = block.get('code', {}).get('language', '')
-            code_text = ''.join([t.get('plain_text', '') for t in rich_text])
-            text_parts.append(f"\n```{language}\n{code_text}\n```\n")
-            
-        elif block_type == 'quote':
-            rich_text = block.get('quote', {}).get('rich_text', [])
-            text_parts.append('> ' + ''.join([t.get('plain_text', '') for t in rich_text]))
-            
-        elif block_type == 'divider':
-            text_parts.append('\n---\n')
+    Args:
+        client: Notion API client
+        block_id: ID of the block/page to fetch children for
+        depth: Current recursion depth (for safety limits)
+        max_depth: Maximum recursion depth to prevent infinite loops
     
-    return '\n'.join(text_parts)
+    Returns:
+        List of blocks with nested 'children' key for blocks that have children
+    
+    Note:
+        - Handles pagination via next_cursor for pages with >100 blocks
+        - Notion-hosted image URLs expire after ~1 hour (TODO: implement caching/re-hosting)
+    """
+    if depth > max_depth:
+        return []
+    
+    all_blocks = []
+    has_more = True
+    start_cursor = None
+    
+    # Fetch all blocks at this level with pagination
+    while has_more:
+        try:
+            if start_cursor:
+                response = client.blocks.children.list(
+                    block_id=block_id, 
+                    start_cursor=start_cursor,
+                    page_size=100
+                )
+            else:
+                response = client.blocks.children.list(
+                    block_id=block_id,
+                    page_size=100
+                )
+            
+            blocks = response.get('results', [])
+            
+            # For each block, recursively fetch children if has_children is True
+            for block in blocks:
+                if block.get('has_children', False):
+                    block['children'] = fetch_blocks_recursive(
+                        client, 
+                        block.get('id'), 
+                        depth=depth + 1, 
+                        max_depth=max_depth
+                    )
+                all_blocks.append(block)
+            
+            has_more = response.get('has_more', False)
+            start_cursor = response.get('next_cursor')
+            
+        except Exception as e:
+            current_app.logger.error(f"Error fetching blocks at depth {depth}: {str(e)}")
+            break
+    
+    return all_blocks
 
 
 def rich_text_to_html(rich_text_array):
@@ -147,8 +165,30 @@ def rich_text_to_html(rich_text_array):
     return ''.join(html_parts)
 
 
-def notion_blocks_to_html(blocks):
-    """Convert Notion blocks to styled HTML."""
+def notion_blocks_to_html(blocks, depth=0):
+    """
+    Recursively convert Notion blocks to styled HTML.
+    
+    Args:
+        blocks: List of Notion block objects (may include nested 'children' key)
+        depth: Current recursion depth for indentation tracking
+    
+    Returns:
+        HTML string representation of all blocks
+    
+    Supports:
+        - paragraph, heading_1/2/3, bulleted/numbered lists
+        - to_do, toggle (with nested children), code, quote, callout
+        - image (file and external URLs), bookmark, embed, video
+        - column_list and column (rendered as flex layout)
+        - Nested children via recursion
+    
+    Note:
+        Notion-hosted image URLs expire after ~1 hour.
+        TODO: Implement image caching/re-hosting for production use.
+    """
+    import html as html_module
+    
     html_parts = []
     list_stack = []  # Track open lists
     
@@ -164,15 +204,22 @@ def notion_blocks_to_html(blocks):
     for block in blocks:
         block_type = block.get('type')
         block_id = block.get('id', '')
+        children = block.get('children', [])
         
-        # Handle list items specially
+        # Handle list items specially - with nested children support
         if block_type == 'bulleted_list_item':
             if not list_stack or list_stack[-1] != 'ul':
                 html_parts.append(close_lists())
                 html_parts.append('<ul class="notion-bulleted-list">')
                 list_stack.append('ul')
             rich_text = block.get('bulleted_list_item', {}).get('rich_text', [])
-            html_parts.append(f'<li>{rich_text_to_html(rich_text)}</li>')
+            content = rich_text_to_html(rich_text)
+            # Handle nested children (sub-lists, paragraphs, etc.)
+            if children:
+                nested_html = notion_blocks_to_html(children, depth=depth + 1)
+                html_parts.append(f'<li>{content}<div class="notion-nested">{nested_html}</div></li>')
+            else:
+                html_parts.append(f'<li>{content}</li>')
             continue
             
         elif block_type == 'numbered_list_item':
@@ -181,7 +228,13 @@ def notion_blocks_to_html(blocks):
                 html_parts.append('<ol class="notion-numbered-list">')
                 list_stack.append('ol')
             rich_text = block.get('numbered_list_item', {}).get('rich_text', [])
-            html_parts.append(f'<li>{rich_text_to_html(rich_text)}</li>')
+            content = rich_text_to_html(rich_text)
+            # Handle nested children
+            if children:
+                nested_html = notion_blocks_to_html(children, depth=depth + 1)
+                html_parts.append(f'<li>{content}<div class="notion-nested">{nested_html}</div></li>')
+            else:
+                html_parts.append(f'<li>{content}</li>')
             continue
         
         # Close any open lists for non-list items
@@ -194,47 +247,86 @@ def notion_blocks_to_html(blocks):
                 html_parts.append(f'<p class="notion-paragraph">{content}</p>')
             else:
                 html_parts.append('<p class="notion-paragraph notion-empty">&nbsp;</p>')
+            # Handle nested children in paragraph
+            if children:
+                html_parts.append(f'<div class="notion-nested">{notion_blocks_to_html(children, depth=depth + 1)}</div>')
                 
         elif block_type == 'heading_1':
             rich_text = block.get('heading_1', {}).get('rich_text', [])
-            html_parts.append(f'<h1 class="notion-heading-1">{rich_text_to_html(rich_text)}</h1>')
+            is_toggleable = block.get('heading_1', {}).get('is_toggleable', False)
+            heading_html = rich_text_to_html(rich_text)
+            if is_toggleable and children:
+                nested_html = notion_blocks_to_html(children, depth=depth + 1)
+                html_parts.append(f'<details class="notion-toggle-heading"><summary><h1 class="notion-heading-1">{heading_html}</h1></summary><div class="notion-toggle-content">{nested_html}</div></details>')
+            else:
+                html_parts.append(f'<h1 class="notion-heading-1">{heading_html}</h1>')
             
         elif block_type == 'heading_2':
             rich_text = block.get('heading_2', {}).get('rich_text', [])
-            html_parts.append(f'<h2 class="notion-heading-2">{rich_text_to_html(rich_text)}</h2>')
+            is_toggleable = block.get('heading_2', {}).get('is_toggleable', False)
+            heading_html = rich_text_to_html(rich_text)
+            if is_toggleable and children:
+                nested_html = notion_blocks_to_html(children, depth=depth + 1)
+                html_parts.append(f'<details class="notion-toggle-heading"><summary><h2 class="notion-heading-2">{heading_html}</h2></summary><div class="notion-toggle-content">{nested_html}</div></details>')
+            else:
+                html_parts.append(f'<h2 class="notion-heading-2">{heading_html}</h2>')
             
         elif block_type == 'heading_3':
             rich_text = block.get('heading_3', {}).get('rich_text', [])
-            html_parts.append(f'<h3 class="notion-heading-3">{rich_text_to_html(rich_text)}</h3>')
+            is_toggleable = block.get('heading_3', {}).get('is_toggleable', False)
+            heading_html = rich_text_to_html(rich_text)
+            if is_toggleable and children:
+                nested_html = notion_blocks_to_html(children, depth=depth + 1)
+                html_parts.append(f'<details class="notion-toggle-heading"><summary><h3 class="notion-heading-3">{heading_html}</h3></summary><div class="notion-toggle-content">{nested_html}</div></details>')
+            else:
+                html_parts.append(f'<h3 class="notion-heading-3">{heading_html}</h3>')
             
         elif block_type == 'to_do':
             rich_text = block.get('to_do', {}).get('rich_text', [])
             checked = block.get('to_do', {}).get('checked', False)
             checked_class = 'checked' if checked else ''
             checkbox = '☑' if checked else '☐'
-            html_parts.append(f'<div class="notion-to-do {checked_class}"><span class="notion-checkbox">{checkbox}</span> {rich_text_to_html(rich_text)}</div>')
+            content = f'<div class="notion-to-do {checked_class}"><span class="notion-checkbox">{checkbox}</span> {rich_text_to_html(rich_text)}</div>'
+            html_parts.append(content)
+            # Handle nested children in to_do
+            if children:
+                html_parts.append(f'<div class="notion-nested notion-todo-nested">{notion_blocks_to_html(children, depth=depth + 1)}</div>')
             
         elif block_type == 'toggle':
             rich_text = block.get('toggle', {}).get('rich_text', [])
-            html_parts.append(f'<details class="notion-toggle"><summary>{rich_text_to_html(rich_text)}</summary></details>')
+            toggle_content = rich_text_to_html(rich_text)
+            # Toggle blocks should have children content
+            nested_html = notion_blocks_to_html(children, depth=depth + 1) if children else ''
+            html_parts.append(f'<details class="notion-toggle"><summary>{toggle_content}</summary><div class="notion-toggle-content">{nested_html}</div></details>')
             
         elif block_type == 'code':
             rich_text = block.get('code', {}).get('rich_text', [])
             language = block.get('code', {}).get('language', 'plain text')
             code_text = ''.join([t.get('plain_text', '') for t in rich_text])
-            import html
-            code_text = html.escape(code_text)
+            code_text = html_module.escape(code_text)
             html_parts.append(f'<div class="notion-code-block"><div class="notion-code-language">{language}</div><pre><code>{code_text}</code></pre></div>')
             
         elif block_type == 'quote':
             rich_text = block.get('quote', {}).get('rich_text', [])
-            html_parts.append(f'<blockquote class="notion-quote">{rich_text_to_html(rich_text)}</blockquote>')
+            quote_content = rich_text_to_html(rich_text)
+            # Handle nested children in quote
+            if children:
+                nested_html = notion_blocks_to_html(children, depth=depth + 1)
+                html_parts.append(f'<blockquote class="notion-quote">{quote_content}<div class="notion-quote-nested">{nested_html}</div></blockquote>')
+            else:
+                html_parts.append(f'<blockquote class="notion-quote">{quote_content}</blockquote>')
             
         elif block_type == 'callout':
             rich_text = block.get('callout', {}).get('rich_text', [])
             icon = block.get('callout', {}).get('icon', {})
             emoji = icon.get('emoji', '💡') if icon.get('type') == 'emoji' else '💡'
-            html_parts.append(f'<div class="notion-callout"><span class="notion-callout-icon">{emoji}</span><div class="notion-callout-content">{rich_text_to_html(rich_text)}</div></div>')
+            callout_content = rich_text_to_html(rich_text)
+            # Handle nested children in callout
+            if children:
+                nested_html = notion_blocks_to_html(children, depth=depth + 1)
+                html_parts.append(f'<div class="notion-callout"><span class="notion-callout-icon">{emoji}</span><div class="notion-callout-content">{callout_content}<div class="notion-callout-nested">{nested_html}</div></div></div>')
+            else:
+                html_parts.append(f'<div class="notion-callout"><span class="notion-callout-icon">{emoji}</span><div class="notion-callout-content">{callout_content}</div></div>')
             
         elif block_type == 'divider':
             html_parts.append('<hr class="notion-divider">')
@@ -245,6 +337,8 @@ def notion_blocks_to_html(blocks):
             caption = image_data.get('caption', [])
             
             # Get image URL
+            # NOTE: Notion-hosted (file type) URLs expire after ~1 hour
+            # TODO: Implement image caching/re-hosting for production
             image_url = ''
             if image_type == 'external':
                 image_url = image_data.get('external', {}).get('url', '')
@@ -253,9 +347,11 @@ def notion_blocks_to_html(blocks):
             
             if image_url:
                 caption_html = rich_text_to_html(caption) if caption else ''
+                # Escape the URL for safety
+                safe_url = html_module.escape(image_url)
                 html_parts.append(f'''
                     <figure class="notion-image">
-                        <img src="{image_url}" alt="{caption_html}" loading="lazy">
+                        <img src="{safe_url}" alt="{caption_html}" loading="lazy">
                         {f'<figcaption>{caption_html}</figcaption>' if caption_html else ''}
                     </figure>
                 ''')
@@ -263,12 +359,14 @@ def notion_blocks_to_html(blocks):
         elif block_type == 'bookmark':
             url = block.get('bookmark', {}).get('url', '')
             caption = block.get('bookmark', {}).get('caption', [])
-            caption_html = rich_text_to_html(caption) if caption else url
-            html_parts.append(f'<a href="{url}" target="_blank" rel="noopener" class="notion-bookmark">{caption_html}</a>')
+            caption_html = rich_text_to_html(caption) if caption else html_module.escape(url)
+            safe_url = html_module.escape(url)
+            html_parts.append(f'<a href="{safe_url}" target="_blank" rel="noopener" class="notion-bookmark">{caption_html}</a>')
             
         elif block_type == 'embed':
             url = block.get('embed', {}).get('url', '')
-            html_parts.append(f'<div class="notion-embed"><a href="{url}" target="_blank" rel="noopener">🔗 Embedded content: {url}</a></div>')
+            safe_url = html_module.escape(url)
+            html_parts.append(f'<div class="notion-embed"><a href="{safe_url}" target="_blank" rel="noopener">🔗 Embedded content: {safe_url}</a></div>')
             
         elif block_type == 'video':
             video_data = block.get('video', {})
@@ -279,14 +377,43 @@ def notion_blocks_to_html(blocks):
             elif video_type == 'file':
                 video_url = video_data.get('file', {}).get('url', '')
             if video_url:
-                html_parts.append(f'<div class="notion-video"><a href="{video_url}" target="_blank" rel="noopener">🎬 Video: {video_url}</a></div>')
+                safe_url = html_module.escape(video_url)
+                html_parts.append(f'<div class="notion-video"><a href="{safe_url}" target="_blank" rel="noopener">🎬 Video: {safe_url}</a></div>')
                 
         elif block_type == 'table':
-            # Tables are complex - just indicate presence
+            # Tables are complex - render placeholder but acknowledge children exist
             html_parts.append('<div class="notion-table-placeholder">📊 Table (view in Notion for full formatting)</div>')
             
         elif block_type == 'column_list':
-            html_parts.append('<div class="notion-columns-placeholder">📐 Multi-column layout (view in Notion for full formatting)</div>')
+            # Render column_list as a flex container with its column children
+            columns_html = []
+            for col_block in children:
+                if col_block.get('type') == 'column':
+                    col_children = col_block.get('children', [])
+                    col_content = notion_blocks_to_html(col_children, depth=depth + 1) if col_children else ''
+                    columns_html.append(f'<div class="notion-column">{col_content}</div>')
+            if columns_html:
+                html_parts.append(f'<div class="notion-column-list">{" ".join(columns_html)}</div>')
+            
+        elif block_type == 'column':
+            # Columns are handled by column_list parent; if standalone, render children
+            if children:
+                html_parts.append(f'<div class="notion-column">{notion_blocks_to_html(children, depth=depth + 1)}</div>')
+                
+        elif block_type == 'synced_block':
+            # Synced blocks contain synced content as children
+            if children:
+                html_parts.append(f'<div class="notion-synced-block">{notion_blocks_to_html(children, depth=depth + 1)}</div>')
+                
+        elif block_type == 'child_page':
+            # Child page reference
+            title = block.get('child_page', {}).get('title', 'Untitled')
+            html_parts.append(f'<div class="notion-child-page">📄 <span class="notion-child-page-title">{html_module.escape(title)}</span></div>')
+            
+        elif block_type == 'child_database':
+            # Child database reference
+            title = block.get('child_database', {}).get('title', 'Untitled Database')
+            html_parts.append(f'<div class="notion-child-database">🗃️ <span class="notion-child-database-title">{html_module.escape(title)}</span></div>')
     
     # Close any remaining open lists
     html_parts.append(close_lists())
@@ -515,7 +642,7 @@ def notion_search():
 @notes_bp.route('/api/notion/page/<page_id>')
 @login_required
 def notion_get_page(page_id):
-    """Fetch content of a Notion page with rich HTML rendering."""
+    """Fetch content of a Notion page with recursive block fetching and HTML rendering."""
     if not current_user.notion_access_token:
         return jsonify({'error': 'Notion not connected', 'connected': False}), 401
     
@@ -527,23 +654,10 @@ def notion_get_page(page_id):
         # Get page metadata
         page = client.pages.retrieve(page_id=page_id)
         
-        # Get page content (blocks) - fetch more blocks for larger pages
-        all_blocks = []
-        has_more = True
-        start_cursor = None
+        # Recursively fetch all blocks including nested children
+        all_blocks = fetch_blocks_recursive(client, page_id)
         
-        while has_more:
-            if start_cursor:
-                blocks_response = client.blocks.children.list(block_id=page_id, start_cursor=start_cursor)
-            else:
-                blocks_response = client.blocks.children.list(block_id=page_id)
-            
-            all_blocks.extend(blocks_response.get('results', []))
-            has_more = blocks_response.get('has_more', False)
-            start_cursor = blocks_response.get('next_cursor')
-        
-        # Convert blocks to both plain text and HTML
-        content_text = notion_blocks_to_text(all_blocks)
+        # Convert blocks to HTML (recursive function handles nested blocks)
         content_html = notion_blocks_to_html(all_blocks)
         
         # Extract title
@@ -580,7 +694,6 @@ def notion_get_page(page_id):
             'id': page_id,
             'title': title,
             'url': page.get('url'),
-            'content_text': content_text,
             'content_html': content_html,
             'cover_url': cover_url,
             'icon': icon,
@@ -592,6 +705,95 @@ def notion_get_page(page_id):
     except Exception as e:
         current_app.logger.error(f"Notion page fetch error: {str(e)}")
         return jsonify({'error': str(e)}), 500
+
+
+@notes_bp.route('/notion/view/<page_id>')
+@login_required
+def notion_view_page(page_id):
+    """
+    Server-side render a Notion page with full HTML output.
+    
+    This route renders a complete HTML page using Jinja2, suitable for
+    full-page viewing of Notion content within the app.
+    
+    Args:
+        page_id: Notion page ID to render
+    
+    Returns:
+        Rendered HTML template with Notion content
+    """
+    if not current_user.notion_access_token:
+        return redirect(url_for('notes_integration.notion_connect'))
+    
+    try:
+        client = get_notion_client(current_user.notion_access_token)
+        if not client:
+            return render_template('notion_page.html', 
+                                   error='Notion SDK not available',
+                                   page=None,
+                                   content_html='')
+        
+        # Get page metadata
+        page = client.pages.retrieve(page_id=page_id)
+        
+        # Recursively fetch all blocks including nested children
+        all_blocks = fetch_blocks_recursive(client, page_id)
+        
+        # Convert blocks to HTML
+        content_html = notion_blocks_to_html(all_blocks)
+        
+        # Extract title
+        title = 'Untitled'
+        props = page.get('properties', {})
+        for prop_name in ['title', 'Title', 'Name', 'name']:
+            if prop_name in props:
+                title_prop = props[prop_name]
+                if title_prop.get('type') == 'title':
+                    title_parts = title_prop.get('title', [])
+                    if title_parts:
+                        title = ''.join([t.get('plain_text', '') for t in title_parts])
+                    break
+        
+        # Get cover image if exists
+        cover_url = None
+        cover = page.get('cover')
+        if cover:
+            if cover.get('type') == 'external':
+                cover_url = cover.get('external', {}).get('url')
+            elif cover.get('type') == 'file':
+                cover_url = cover.get('file', {}).get('url')
+        
+        # Get icon
+        icon = None
+        icon_data = page.get('icon')
+        if icon_data:
+            if icon_data.get('type') == 'emoji':
+                icon = icon_data.get('emoji')
+            elif icon_data.get('type') == 'external':
+                icon = icon_data.get('external', {}).get('url')
+        
+        # Build page data object
+        page_data = {
+            'id': page_id,
+            'title': title,
+            'url': page.get('url'),
+            'cover_url': cover_url,
+            'icon': icon,
+            'created_time': page.get('created_time'),
+            'last_edited_time': page.get('last_edited_time')
+        }
+        
+        return render_template('notion_page.html',
+                               page=page_data,
+                               content_html=content_html,
+                               error=None)
+    
+    except Exception as e:
+        current_app.logger.error(f"Notion page view error: {str(e)}")
+        return render_template('notion_page.html',
+                               error=str(e),
+                               page=None,
+                               content_html='')
 
 
 @notes_bp.route('/api/notion/page/<page_id>/append', methods=['POST'])
@@ -669,6 +871,205 @@ def notion_append_to_page(page_id):
     
     except Exception as e:
         current_app.logger.error(f"Notion append error: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+
+def extract_text_from_blocks(blocks, depth=0):
+    """
+    Extract plain text from Notion blocks recursively.
+    
+    Used for syncing Notion content to local notes storage.
+    Preserves some formatting with markdown-like syntax.
+    
+    Args:
+        blocks: List of Notion blocks (may include nested 'children')
+        depth: Current recursion depth for indentation
+    
+    Returns:
+        Plain text string representation of all blocks
+    """
+    text_parts = []
+    indent = '  ' * depth
+    
+    for block in blocks:
+        block_type = block.get('type')
+        children = block.get('children', [])
+        
+        # Extract rich_text content helper
+        def get_text(rich_text_array):
+            return ''.join([t.get('plain_text', '') for t in rich_text_array])
+        
+        if block_type == 'paragraph':
+            text = get_text(block.get('paragraph', {}).get('rich_text', []))
+            if text:
+                text_parts.append(f"{indent}{text}")
+                
+        elif block_type in ['heading_1', 'heading_2', 'heading_3']:
+            text = get_text(block.get(block_type, {}).get('rich_text', []))
+            prefix = '#' * int(block_type[-1])
+            text_parts.append(f"\n{indent}{prefix} {text}\n")
+            
+        elif block_type == 'bulleted_list_item':
+            text = get_text(block.get('bulleted_list_item', {}).get('rich_text', []))
+            text_parts.append(f"{indent}• {text}")
+            
+        elif block_type == 'numbered_list_item':
+            text = get_text(block.get('numbered_list_item', {}).get('rich_text', []))
+            text_parts.append(f"{indent}- {text}")
+            
+        elif block_type == 'to_do':
+            text = get_text(block.get('to_do', {}).get('rich_text', []))
+            checked = block.get('to_do', {}).get('checked', False)
+            checkbox = '☑' if checked else '☐'
+            text_parts.append(f"{indent}{checkbox} {text}")
+            
+        elif block_type == 'toggle':
+            text = get_text(block.get('toggle', {}).get('rich_text', []))
+            text_parts.append(f"{indent}▸ {text}")
+            
+        elif block_type == 'code':
+            text = get_text(block.get('code', {}).get('rich_text', []))
+            language = block.get('code', {}).get('language', '')
+            text_parts.append(f"\n{indent}```{language}\n{indent}{text}\n{indent}```\n")
+            
+        elif block_type == 'quote':
+            text = get_text(block.get('quote', {}).get('rich_text', []))
+            text_parts.append(f"{indent}> {text}")
+            
+        elif block_type == 'callout':
+            text = get_text(block.get('callout', {}).get('rich_text', []))
+            icon = block.get('callout', {}).get('icon', {})
+            emoji = icon.get('emoji', '💡') if icon.get('type') == 'emoji' else '💡'
+            text_parts.append(f"{indent}{emoji} {text}")
+            
+        elif block_type == 'divider':
+            text_parts.append(f"\n{indent}---\n")
+            
+        elif block_type == 'image':
+            caption = get_text(block.get('image', {}).get('caption', []))
+            text_parts.append(f"{indent}[Image: {caption if caption else 'No caption'}]")
+            
+        elif block_type == 'bookmark':
+            url = block.get('bookmark', {}).get('url', '')
+            text_parts.append(f"{indent}[Bookmark: {url}]")
+            
+        elif block_type == 'child_page':
+            title = block.get('child_page', {}).get('title', 'Untitled')
+            text_parts.append(f"{indent}📄 {title}")
+            
+        elif block_type == 'column_list':
+            # Process columns sequentially
+            for col in children:
+                if col.get('type') == 'column':
+                    col_children = col.get('children', [])
+                    if col_children:
+                        text_parts.append(extract_text_from_blocks(col_children, depth))
+            children = []  # Already processed
+        
+        # Process nested children
+        if children:
+            nested_text = extract_text_from_blocks(children, depth + 1)
+            if nested_text:
+                text_parts.append(nested_text)
+    
+    return '\n'.join(filter(None, text_parts))
+
+
+@notes_bp.route('/notion/sync-to-notes/<page_id>', methods=['POST'])
+@login_required
+def notion_sync_to_notes(page_id):
+    """
+    Import Notion page content into local CandidateNote for a specific case.
+    
+    This allows students to copy Notion content into their case-specific notes
+    for offline access and integration with the app's note-taking features.
+    
+    Request JSON:
+        - case_id: Required. The case ID to associate the notes with.
+        - mode: Optional. 'append' (default) or 'replace'
+    
+    Returns:
+        JSON with success status and note details
+    """
+    if not current_user.notion_access_token:
+        return jsonify({'error': 'Notion not connected', 'connected': False}), 401
+    
+    try:
+        data = request.get_json() or {}
+        case_id = data.get('case_id')
+        mode = data.get('mode', 'append')  # 'append' or 'replace'
+        
+        if not case_id:
+            return jsonify({'error': 'case_id is required'}), 400
+        
+        client = get_notion_client(current_user.notion_access_token)
+        if not client:
+            return jsonify({'error': 'Notion SDK not available'}), 500
+        
+        # Get page metadata for title
+        page = client.pages.retrieve(page_id=page_id)
+        
+        # Extract title
+        title = 'Untitled'
+        props = page.get('properties', {})
+        for prop_name in ['title', 'Title', 'Name', 'name']:
+            if prop_name in props:
+                title_prop = props[prop_name]
+                if title_prop.get('type') == 'title':
+                    title_parts = title_prop.get('title', [])
+                    if title_parts:
+                        title = ''.join([t.get('plain_text', '') for t in title_parts])
+                    break
+        
+        # Recursively fetch all blocks
+        all_blocks = fetch_blocks_recursive(client, page_id)
+        
+        # Extract plain text content
+        content_text = extract_text_from_blocks(all_blocks)
+        
+        if not content_text.strip():
+            return jsonify({'error': 'No text content found in Notion page'}), 400
+        
+        # Build the note content with header
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M')
+        header = f"[From Notion: {title} - Synced {timestamp}]\n"
+        new_content = header + content_text
+        
+        # Get or create the user's note for this case
+        note = CandidateNote.query.filter_by(
+            case_id=case_id,
+            user_id=current_user.id
+        ).first()
+        
+        if note:
+            if mode == 'replace':
+                note.note_text = new_content
+            else:  # append
+                separator = '\n\n---\n\n' if note.note_text.strip() else ''
+                note.note_text = note.note_text + separator + new_content
+            note.updated_at = datetime.utcnow()
+        else:
+            note = CandidateNote(
+                case_id=case_id,
+                user_id=current_user.id,
+                note_text=new_content
+            )
+            db.session.add(note)
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Notion content synced to notes ({mode})',
+            'note_id': note.id,
+            'case_id': case_id,
+            'page_title': title,
+            'content_length': len(content_text)
+        })
+    
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Notion sync-to-notes error: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 

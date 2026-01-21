@@ -1,0 +1,499 @@
+{% extends 'base.html' %}
+
+{% block mobile_breadcrumb %}
+<li class="breadcrumb-item active text-white-50">Notion Page</li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Error State -->
+    {% if error %}
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="alert alert-danger" role="alert">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                <strong>Error loading Notion page:</strong> {{ error }}
+            </div>
+            <div class="text-center mt-4">
+                <a href="{{ url_for('dashboard') }}" class="btn btn-primary">
+                    <i class="fas fa-home me-2"></i>Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+    {% elif page %}
+    
+    <!-- Page Header -->
+    <div class="row justify-content-center">
+        <div class="col-lg-10 col-xl-8">
+            <!-- Cover Image -->
+            {% if page.cover_url %}
+            <div class="notion-page-cover mb-4">
+                <img src="{{ page.cover_url }}" alt="Page cover" class="img-fluid rounded-3">
+            </div>
+            {% endif %}
+            
+            <!-- Title and Actions -->
+            <div class="d-flex justify-content-between align-items-start mb-4">
+                <div class="d-flex align-items-center">
+                    {% if page.icon %}
+                    <span class="notion-page-icon-large me-3">{{ page.icon }}</span>
+                    {% endif %}
+                    <div>
+                        <h1 class="notion-page-title mb-1">{{ page.title }}</h1>
+                        {% if page.last_edited_time %}
+                        <small class="text-muted">
+                            <i class="fas fa-clock me-1"></i>
+                            Last edited: {{ page.last_edited_time[:10] }}
+                        </small>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="d-flex gap-2">
+                    {% if page.url %}
+                    <a href="{{ page.url }}" target="_blank" rel="noopener" class="btn btn-outline-secondary btn-sm">
+                        <i class="fas fa-external-link-alt me-1"></i>Open in Notion
+                    </a>
+                    {% endif %}
+                    <button onclick="history.back()" class="btn btn-outline-secondary btn-sm">
+                        <i class="fas fa-arrow-left me-1"></i>Back
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Page Content -->
+            <div class="notion-page-content">
+                <div class="notion-rendered-content">
+                    {{ content_html|safe }}
+                </div>
+            </div>
+            
+            <!-- Bottom Actions -->
+            <div class="border-top mt-4 pt-4">
+                <div class="d-flex justify-content-between align-items-center">
+                    <button onclick="copyPageContent()" class="btn btn-outline-primary">
+                        <i class="fas fa-copy me-2"></i>Copy to My Notes
+                    </button>
+                    <div class="d-flex gap-2">
+                        {% if page.url %}
+                        <a href="{{ page.url }}" target="_blank" rel="noopener" class="btn btn-dark">
+                            <i class="fas fa-edit me-2"></i>Edit in Notion
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    {% else %}
+    <!-- No page data -->
+    <div class="row justify-content-center">
+        <div class="col-lg-8 text-center py-5">
+            <i class="fas fa-file-alt text-muted" style="font-size: 4rem; opacity: 0.5;"></i>
+            <h3 class="mt-4 text-muted">Page not found</h3>
+            <p class="text-muted">The Notion page could not be loaded.</p>
+            <a href="{{ url_for('dashboard') }}" class="btn btn-primary mt-3">
+                <i class="fas fa-home me-2"></i>Back to Dashboard
+            </a>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+/* Notion Page Styles */
+.notion-page-cover {
+    max-height: 280px;
+    overflow: hidden;
+}
+
+.notion-page-cover img {
+    width: 100%;
+    height: 280px;
+    object-fit: cover;
+}
+
+.notion-page-icon-large {
+    font-size: 3rem;
+}
+
+.notion-page-title {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #37352f;
+}
+
+.notion-page-content {
+    background: #FFFEF8;
+    border-radius: 12px;
+    padding: 2rem;
+    border: 1px solid rgba(242, 204, 143, 0.3);
+}
+
+/* Notion Rendered Content Styles */
+.notion-rendered-content {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    font-size: 16px;
+    line-height: 1.7;
+    color: #37352f;
+}
+
+/* Paragraphs and Text */
+.notion-paragraph {
+    margin-bottom: 0.5rem;
+}
+
+.notion-empty {
+    min-height: 1em;
+}
+
+/* Headings */
+.notion-heading-1 {
+    font-size: 1.875rem;
+    font-weight: 600;
+    margin: 1.5rem 0 0.5rem 0;
+    color: #37352f;
+}
+
+.notion-heading-2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin: 1.25rem 0 0.5rem 0;
+    color: #37352f;
+}
+
+.notion-heading-3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 1rem 0 0.5rem 0;
+    color: #37352f;
+}
+
+/* Lists */
+.notion-bulleted-list,
+.notion-numbered-list {
+    margin: 0.5rem 0;
+    padding-left: 1.5rem;
+}
+
+.notion-bulleted-list li,
+.notion-numbered-list li {
+    margin-bottom: 0.25rem;
+}
+
+.notion-nested {
+    margin-left: 1.5rem;
+    margin-top: 0.25rem;
+}
+
+/* To-Do Items */
+.notion-to-do {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    margin: 0.25rem 0;
+}
+
+.notion-to-do.checked {
+    text-decoration: line-through;
+    opacity: 0.7;
+}
+
+.notion-checkbox {
+    font-size: 1rem;
+}
+
+/* Toggle Blocks */
+.notion-toggle {
+    margin: 0.5rem 0;
+    border: 1px solid rgba(94, 137, 158, 0.15);
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.notion-toggle summary {
+    padding: 0.75rem 1rem;
+    background: rgba(94, 137, 158, 0.05);
+    cursor: pointer;
+    font-weight: 500;
+}
+
+.notion-toggle summary:hover {
+    background: rgba(94, 137, 158, 0.1);
+}
+
+.notion-toggle-content {
+    padding: 0.75rem 1rem;
+    border-top: 1px solid rgba(94, 137, 158, 0.1);
+}
+
+.notion-toggle-heading summary {
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.notion-toggle-heading summary::before {
+    content: '▶';
+    font-size: 0.75rem;
+    transition: transform 0.2s;
+}
+
+.notion-toggle-heading[open] summary::before {
+    transform: rotate(90deg);
+}
+
+/* Code Blocks */
+.notion-code-block {
+    background: rgba(94, 137, 158, 0.08);
+    border-radius: 6px;
+    margin: 0.75rem 0;
+    overflow: hidden;
+    border: 1px solid rgba(94, 137, 158, 0.15);
+}
+
+.notion-code-language {
+    background: rgba(94, 137, 158, 0.15);
+    padding: 0.25rem 0.75rem;
+    font-size: 0.75rem;
+    color: #5E899E;
+    text-transform: lowercase;
+    font-weight: 500;
+}
+
+.notion-code-block pre {
+    margin: 0;
+    padding: 0.75rem;
+    overflow-x: auto;
+}
+
+.notion-code-block code {
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    font-size: 0.875rem;
+    line-height: 1.5;
+}
+
+.notion-inline-code {
+    background: rgba(233, 99, 4, 0.1);
+    padding: 0.2em 0.4em;
+    border-radius: 3px;
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    font-size: 85%;
+    color: #e96304;
+}
+
+/* Quote */
+.notion-quote {
+    border-left: 3px solid #5E899E;
+    padding-left: 1rem;
+    margin: 0.75rem 0;
+    color: #37352f;
+    font-style: italic;
+    background: rgba(94, 137, 158, 0.05);
+    padding: 0.75rem 1rem;
+    border-radius: 0 6px 6px 0;
+}
+
+/* Callout */
+.notion-callout {
+    display: flex;
+    background: linear-gradient(135deg, rgba(242, 204, 143, 0.2) 0%, rgba(242, 204, 143, 0.1) 100%);
+    border-radius: 6px;
+    padding: 1rem;
+    margin: 0.75rem 0;
+    gap: 0.75rem;
+    border-left: 3px solid #F2CC8F;
+}
+
+.notion-callout-icon {
+    font-size: 1.25rem;
+    flex-shrink: 0;
+}
+
+.notion-callout-content {
+    flex: 1;
+}
+
+/* Divider */
+.notion-divider {
+    margin: 1rem 0;
+    border: none;
+    border-top: 1px solid rgba(94, 137, 158, 0.2);
+}
+
+/* Images */
+.notion-image {
+    margin: 1rem 0;
+    text-align: center;
+}
+
+.notion-image img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 6px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.notion-image figcaption {
+    font-size: 0.875rem;
+    color: rgba(55, 53, 47, 0.65);
+    margin-top: 0.5rem;
+}
+
+/* Bookmarks, Embeds, Videos */
+.notion-bookmark {
+    display: block;
+    border: 1px solid rgba(94, 137, 158, 0.2);
+    border-radius: 6px;
+    padding: 0.75rem 1rem;
+    margin: 0.75rem 0;
+    text-decoration: none;
+    color: #37352f;
+    transition: all 0.2s;
+    background: rgba(94, 137, 158, 0.03);
+}
+
+.notion-bookmark:hover {
+    background: rgba(94, 137, 158, 0.08);
+    border-color: #5E899E;
+}
+
+.notion-embed,
+.notion-video {
+    background: rgba(94, 137, 158, 0.05);
+    border-radius: 6px;
+    padding: 0.75rem 1rem;
+    margin: 0.75rem 0;
+    border: 1px dashed rgba(94, 137, 158, 0.2);
+}
+
+.notion-embed a,
+.notion-video a {
+    color: #5E899E;
+    text-decoration: none;
+}
+
+.notion-embed a:hover,
+.notion-video a:hover {
+    color: #e96304;
+}
+
+/* Links */
+.notion-link {
+    color: #5E899E;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+.notion-link:hover {
+    color: #e96304;
+}
+
+/* Column Layout */
+.notion-column-list {
+    display: flex;
+    gap: 1.5rem;
+    margin: 1rem 0;
+}
+
+.notion-column {
+    flex: 1;
+    min-width: 0;
+}
+
+@media (max-width: 768px) {
+    .notion-column-list {
+        flex-direction: column;
+        gap: 1rem;
+    }
+}
+
+/* Placeholders for complex blocks */
+.notion-table-placeholder {
+    background: rgba(242, 204, 143, 0.15);
+    border-radius: 6px;
+    padding: 1rem;
+    margin: 0.75rem 0;
+    text-align: center;
+    color: #5E899E;
+    font-size: 0.875rem;
+    border: 1px dashed rgba(242, 204, 143, 0.5);
+}
+
+/* Child pages/databases */
+.notion-child-page,
+.notion-child-database {
+    background: rgba(94, 137, 158, 0.05);
+    border-radius: 6px;
+    padding: 0.75rem 1rem;
+    margin: 0.5rem 0;
+    color: #5E899E;
+}
+
+.notion-child-page-title,
+.notion-child-database-title {
+    font-weight: 500;
+}
+
+/* Synced blocks */
+.notion-synced-block {
+    border-left: 2px solid #F2CC8F;
+    padding-left: 1rem;
+}
+
+/* Color classes for text and backgrounds */
+.notion-color-gray { color: #9b9a97; }
+.notion-color-brown { color: #64473a; }
+.notion-color-orange { color: #d9730d; }
+.notion-color-yellow { color: #dfab01; }
+.notion-color-green { color: #0f7b6c; }
+.notion-color-blue { color: #0b6e99; }
+.notion-color-purple { color: #6940a5; }
+.notion-color-pink { color: #ad1a72; }
+.notion-color-red { color: #e03e3e; }
+
+.notion-bg-gray { background-color: #ebeced; padding: 0.1em 0.3em; border-radius: 3px; }
+.notion-bg-brown { background-color: #e9e5e3; padding: 0.1em 0.3em; border-radius: 3px; }
+.notion-bg-orange { background-color: #faebdd; padding: 0.1em 0.3em; border-radius: 3px; }
+.notion-bg-yellow { background-color: #fbf3db; padding: 0.1em 0.3em; border-radius: 3px; }
+.notion-bg-green { background-color: #ddedea; padding: 0.1em 0.3em; border-radius: 3px; }
+.notion-bg-blue { background-color: #ddebf1; padding: 0.1em 0.3em; border-radius: 3px; }
+.notion-bg-purple { background-color: #eae4f2; padding: 0.1em 0.3em; border-radius: 3px; }
+.notion-bg-pink { background-color: #f4dfeb; padding: 0.1em 0.3em; border-radius: 3px; }
+.notion-bg-red { background-color: #fbe4e4; padding: 0.1em 0.3em; border-radius: 3px; }
+</style>
+
+<script>
+function copyPageContent() {
+    const content = document.querySelector('.notion-rendered-content');
+    if (!content) {
+        alert('No content to copy');
+        return;
+    }
+    
+    // Extract text content
+    const textContent = content.textContent || content.innerText;
+    
+    // Copy to clipboard
+    navigator.clipboard.writeText(textContent).then(() => {
+        // Show success feedback
+        const btn = event.target.closest('button');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-check me-2"></i>Copied!';
+        btn.classList.remove('btn-outline-primary');
+        btn.classList.add('btn-success');
+        
+        setTimeout(() => {
+            btn.innerHTML = originalText;
+            btn.classList.remove('btn-success');
+            btn.classList.add('btn-outline-primary');
+        }, 2000);
+    }).catch(err => {
+        console.error('Failed to copy:', err);
+        alert('Failed to copy content. Please try selecting and copying manually.');
+    });
+}
+</script>
+{% endblock %}

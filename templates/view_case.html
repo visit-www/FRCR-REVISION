@@ -6486,15 +6486,16 @@
             // Render rich HTML content
             if (data.content_html) {
                 modalContent.innerHTML = data.content_html;
-            } else if (data.content_text) {
-                // Fallback to plain text
-                modalContent.innerHTML = `<pre style="white-space: pre-wrap; font-family: inherit;">${escapeHtml(data.content_text)}</pre>`;
+                // Extract plain text from HTML for copy functionality
+                if (copyBtn) {
+                    const tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = data.content_html;
+                    copyBtn.dataset.content = tempDiv.textContent || tempDiv.innerText || '';
+                }
             } else {
                 modalContent.innerHTML = '<p class="text-muted text-center py-4">This page appears to be empty.</p>';
+                if (copyBtn) copyBtn.dataset.content = '';
             }
-            
-            // Store plain text for copy functionality
-            if (copyBtn) copyBtn.dataset.content = data.content_text || '';
             
         } catch (error) {
             console.error('[NOTION] Fetch page error:', error);
