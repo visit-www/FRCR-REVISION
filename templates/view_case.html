@@ -552,23 +552,44 @@
 
 <!-- Notion Page Viewer Modal -->
 <div id="notionPageModal" class="modal fade notion-page-modal" tabindex="-1" aria-labelledby="notionPageModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-        <div class="modal-content">
-            <div class="modal-header" style="background: #000; color: white;">
+    <div class="modal-dialog modal-xl modal-dialog-centered" style="max-width: 90vw; height: 85vh;">
+        <div class="modal-content" style="height: 100%;">
+            <div class="modal-header py-2" style="background: #000; color: white;">
                 <h5 class="modal-title" id="notionPageModalLabel">
                     <i class="fas fa-book me-2"></i>
                     <span id="notionPageTitle">Page</span>
                 </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <div id="notionPageContentText" class="notion-page-content">
-                    <!-- Page content will be loaded here -->
+                <div class="d-flex align-items-center gap-2">
+                    <a id="openInNotionBtn" href="#" target="_blank" rel="noopener" class="btn btn-sm btn-outline-light" title="Open in Notion">
+                        <i class="fas fa-external-link-alt me-1"></i>Open in Notion
+                    </a>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                <button type="button" id="copyNotionToNotes" class="btn copy-to-notes-btn" onclick="copyNotionToNotes()">
+            <div class="modal-body p-0" style="flex: 1; overflow: hidden;">
+                <!-- Iframe for Notion embed -->
+                <iframe id="notionPageIframe" 
+                        src="" 
+                        style="width: 100%; height: 100%; border: none;"
+                        sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+                        loading="lazy">
+                </iframe>
+                <!-- Fallback content if iframe doesn't work -->
+                <div id="notionPageFallback" style="display: none; padding: 2rem; text-align: center;">
+                    <i class="fas fa-lock" style="font-size: 3rem; color: #666; margin-bottom: 1rem;"></i>
+                    <h5>Private Page</h5>
+                    <p class="text-muted">This Notion page cannot be embedded. Click below to view it directly in Notion.</p>
+                    <a id="fallbackNotionLink" href="#" target="_blank" rel="noopener" class="btn btn-dark">
+                        <i class="fas fa-external-link-alt me-2"></i>Open in Notion
+                    </a>
+                    <hr class="my-4">
+                    <p class="text-muted small">You can still copy the text content to your notes:</p>
+                    <div id="notionPageContentText" class="notion-page-content text-start p-3 rounded" style="background: #f8f9fa; max-height: 200px; overflow-y: auto; font-size: 0.9rem;"></div>
+                </div>
+            </div>
+            <div class="modal-footer py-2">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+                <button type="button" id="copyNotionToNotes" class="btn copy-to-notes-btn btn-sm" onclick="copyNotionToNotes()">
                     <i class="fas fa-copy me-2"></i>Copy to My Notes
                 </button>
             </div>
@@ -5902,7 +5923,7 @@
                 }
                 
                 pagesList.innerHTML = data.pages.map(page => `
-                    <div class="notion-page-card" onclick="viewNotionPage('${page.id}', '${escapeHtml(page.title)}')">
+                    <div class="notion-page-card" onclick="viewNotionPage('${page.id}', '${escapeHtml(page.title)}', '${page.url || ''}')">
                         <div class="page-title">
                             <span class="page-icon">${page.icon || '📄'}</span>
                             <span>${escapeHtml(page.title)}</span>
@@ -5923,32 +5944,88 @@
         }
     }
     
-    async function viewNotionPage(pageId, title) {
-        const modal = new bootstrap.Modal(document.getElementById('notionPageModal'));
+    async function viewNotionPage(pageId, title, pageUrl) {
+        const modalEl = document.getElementById('notionPageModal');
+        const modal = new bootstrap.Modal(modalEl);
         const modalTitle = document.getElementById('notionPageTitle');
+        const iframe = document.getElementById('notionPageIframe');
+        const fallback = document.getElementById('notionPageFallback');
         const modalContent = document.getElementById('notionPageContentText');
         const copyBtn = document.getElementById('copyNotionToNotes');
+        const openInNotionBtn = document.getElementById('openInNotionBtn');
+        const fallbackLink = document.getElementById('fallbackNotionLink');
         
         if (modalTitle) modalTitle.textContent = title;
-        if (modalContent) modalContent.innerHTML = '<div class="text-center py-4"><div class="spinner-border" role="status"></div><p class="text-muted mt-2">Loading...</p></div>';
+        
+        // Set up "Open in Notion" links
+        if (openInNotionBtn && pageUrl) {
+            openInNotionBtn.href = pageUrl;
+        }
+        if (fallbackLink && pageUrl) {
+            fallbackLink.href = pageUrl;
+        }
+        
+        // Format page ID for embed (remove hyphens)
+        const cleanPageId = pageId.replace(/-/g, '');
+        
+        // Try to embed the Notion page
+        // Notion embed URL format for public pages
+        const embedUrl = `https://notion.so/${cleanPageId}`;
+        
+        // Show iframe, hide fallback initially
+        if (iframe) {
+            iframe.style.display = 'block';
+            iframe.src = embedUrl;
+        }
+        if (fallback) {
+            fallback.style.display = 'none';
+        }
         
         modal.show();
         
+        // Fetch text content for copy functionality (in background)
         try {
             const response = await fetch(`/notes/api/notion/page/${pageId}`);
             const data = await response.json();
             
-            if (data.error) {
-                modalContent.innerHTML = `<p class="text-danger">${data.error}</p>`;
-                return;
+            if (!data.error) {
+                if (copyBtn) copyBtn.dataset.content = data.content_text || '';
+                if (modalContent) modalContent.textContent = data.content_text || 'No content';
             }
-            
-            modalContent.textContent = data.content_text || 'No content';
-            if (copyBtn) copyBtn.dataset.content = data.content_text || '';
         } catch (error) {
-            console.error('[NOTION] Fetch page error:', error);
-            modalContent.innerHTML = '<p class="text-danger">Error loading page.</p>';
+            console.error('[NOTION] Fetch page content error:', error);
         }
+        
+        // Handle iframe load error - show fallback after timeout
+        // Note: Notion may block iframe embedding for private pages
+        if (iframe) {
+            iframe.onerror = () => {
+                console.log('[NOTION] Iframe failed to load');
+                iframe.style.display = 'none';
+                if (fallback) fallback.style.display = 'block';
+            };
+            
+            // Fallback detection: if iframe content is blocked, show fallback after delay
+            setTimeout(() => {
+                try {
+                    // Try to access iframe content - will fail for cross-origin
+                    const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+                    // If we get here without error, check if it's an error page
+                    if (iframeDoc && iframeDoc.body && iframeDoc.body.innerHTML.includes('refused to connect')) {
+                        iframe.style.display = 'none';
+                        if (fallback) fallback.style.display = 'block';
+                    }
+                } catch (e) {
+                    // Cross-origin - this is expected for Notion pages, iframe might still work
+                    console.log('[NOTION] Iframe cross-origin (expected)');
+                }
+            }, 3000);
+        }
+        
+        // Clear iframe when modal is hidden
+        modalEl.addEventListener('hidden.bs.modal', function() {
+            if (iframe) iframe.src = '';
+        }, { once: true });
     }
     
     function copyNotionToNotes() {
