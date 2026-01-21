@@ -217,6 +217,12 @@ def terms_of_use():
     return render_template('terms_of_use.html')
 
 
+@app.route('/about')
+def about():
+    """About page - app philosophy, design principles, and developer info"""
+    return render_template('about.html')
+
+
 @app.route('/dashboard')
 @login_required
 def dashboard():
