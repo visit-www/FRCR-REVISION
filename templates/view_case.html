@@ -334,7 +334,7 @@
                                         <i class="fas fa-book" style="font-size: 3rem; color: #000; opacity: 0.5;"></i>
                                         <h5 class="mt-3 mb-2">Connect Notion</h5>
                                         <p class="text-muted small mb-3">Search your Notion workspace for notes related to this case.</p>
-                                        <a href="/notion/connect" class="btn btn-dark">
+                                        <a href="/notes/notion/connect" class="btn btn-dark">
                                             <i class="fas fa-link me-2"></i>Connect Notion
                                         </a>
                                     </div>
@@ -366,7 +366,7 @@
                                     </div>
                                     
                                     <div class="text-center mt-4 pt-3 border-top">
-                                        <a href="/notion/disconnect" class="btn btn-sm btn-link text-muted">
+                                        <a href="/notes/notion/disconnect" class="btn btn-sm btn-link text-muted">
                                             <i class="fas fa-unlink me-1"></i>Disconnect Notion
                                         </a>
                                     </div>
@@ -5793,7 +5793,7 @@
     
     async function checkNotionStatus() {
         try {
-            const response = await fetch('/api/notion/status');
+            const response = await fetch('/notes/api/notion/status');
             const data = await response.json();
             notionConnected = data.connected;
             
@@ -5829,7 +5829,7 @@
         if (noResults) noResults.style.display = 'none';
         
         try {
-            const response = await fetch(`/api/notion/search?q=${encodeURIComponent(caseDiagnosis)}&limit=10`);
+            const response = await fetch(`/notes/api/notion/search?q=${encodeURIComponent(caseDiagnosis)}&limit=10`);
             const data = await response.json();
             
             if (searchStatus) searchStatus.style.display = 'none';
@@ -5880,7 +5880,7 @@
         modal.show();
         
         try {
-            const response = await fetch(`/api/notion/page/${pageId}`);
+            const response = await fetch(`/notes/api/notion/page/${pageId}`);
             const data = await response.json();
             
             if (data.error) {
@@ -5928,7 +5928,7 @@
     
     async function checkAnkiStatus() {
         try {
-            const response = await fetch('/api/anki/status');
+            const response = await fetch('/notes/api/anki/status');
             const data = await response.json();
             ankiConnected = data.connected;
             
@@ -5960,7 +5960,7 @@
         }
         
         try {
-            const response = await fetch('/api/anki/connect', {
+            const response = await fetch('/notes/api/anki/connect', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ deck_name: 'FRCR Revision' })
@@ -5988,7 +5988,7 @@
     
     async function disconnectAnki() {
         try {
-            await fetch('/api/anki/disconnect', { method: 'POST' });
+            await fetch('/notes/api/anki/disconnect', { method: 'POST' });
             ankiConnected = false;
             checkAnkiStatus();
             showFlash('Disconnected from Anki', 'info');
@@ -6014,7 +6014,7 @@
         }
         
         try {
-            const response = await fetch('/api/anki/flashcard', {
+            const response = await fetch('/notes/api/anki/flashcard', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ front, back, tags: ['FRCR', 'Radiology', 'Case-' + caseId] })
@@ -6072,7 +6072,7 @@
         }
         
         try {
-            const response = await fetch('/api/anki/flashcard/bulk', {
+            const response = await fetch('/notes/api/anki/flashcard/bulk', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
