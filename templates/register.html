@@ -49,12 +49,24 @@
             text-align: center;
             margin-bottom: 30px;
         }
+        
+        .logo-mark {
+            width: 70px;
+            height: 70px;
+            margin-bottom: 15px;
+            border-radius: 10px;
+            object-fit: cover;
+        }
 
         .register-header h1 {
-            color: var(--brand-primary);
+            color: var(--brand-text-primary);
             font-size: 28px;
-            font-weight: 700;
+            font-weight: 500;
             margin-bottom: 8px;
+        }
+        
+        .register-header h1 span {
+            font-weight: 400;
         }
 
         .register-header p {
@@ -281,8 +293,9 @@
 <body>
     <div class="register-container">
         <div class="register-header">
-            <h1>Create Account</h1>
-            <p>Join FRCR Examiner to manage your exams</p>
+            <img src="https://res.cloudinary.com/dx7b7chvn/image/upload/c_fill,w_70,h_70,q_auto/v1768988247/frcr-revision-logo_pco6l0.jpg" alt="FRCR-Revision" class="logo-mark">
+            <h1>FRCR-<span>Revision</span></h1>
+            <p>Create your account to begin your journey</p>
         </div>
 
         <!-- Alert Messages -->

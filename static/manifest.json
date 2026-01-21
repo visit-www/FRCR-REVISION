@@ -1,13 +1,19 @@
 {
-  "name": "FRCR Revision",
-  "short_name": "FRCR Revision",
+  "name": "FRCR-Revision",
+  "short_name": "FRCR-Revision",
   "description": "Your companion app for FRCR exam preparation - practice cases, take notes, and build confidence for success.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#ffc107",
+  "background_color": "#5E899E",
+  "theme_color": "#5E899E",
   "orientation": "portrait-primary",
   "icons": [
+    {
+      "src": "/static/images/frcr-revision-logo.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any"
+    },
     {
       "src": "/static/images/icon-192x192.png",
       "sizes": "192x192",
@@ -31,8 +37,8 @@
       "url": "/modules",
       "icons": [
         {
-          "src": "/static/images/icon-192x192.png",
-          "sizes": "192x192"
+          "src": "/static/images/frcr-revision-logo.jpg",
+          "sizes": "512x512"
         }
       ]
     },
@@ -43,8 +49,8 @@
       "url": "/cases",
       "icons": [
         {
-          "src": "/static/images/icon-192x192.png",
-          "sizes": "192x192"
+          "src": "/static/images/frcr-revision-logo.jpg",
+          "sizes": "512x512"
         }
       ]
     }
