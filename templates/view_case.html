@@ -461,6 +461,33 @@
                                         </button>
                                     </div>
                                     
+                                    <!-- Search Flashcards -->
+                                    <div class="mt-3 p-3 rounded" style="background: #fff5e6; border: 1px solid #f2cc8f;">
+                                        <h6 class="mb-2"><i class="fas fa-search me-2" style="color: #235390;"></i>Search Flashcards</h6>
+                                        <div class="input-group input-group-sm mb-2">
+                                            <input type="text" id="ankiSearchQuery" class="form-control" placeholder="Search your Anki cards..." onkeypress="if(event.key==='Enter') searchAnkiCards()">
+                                            <button class="btn btn-outline-secondary" type="button" onclick="searchAnkiCards()">
+                                                <i class="fas fa-search"></i>
+                                            </button>
+                                        </div>
+                                        <small class="text-muted d-block mb-2">
+                                            <i class="fas fa-info-circle me-1"></i>Search by question, answer, or tags
+                                        </small>
+                                        
+                                        <!-- Search Results -->
+                                        <div id="ankiSearchResults" style="display: none; max-height: 400px; overflow-y: auto; margin-top: 1rem;">
+                                            <div id="ankiSearchStatus" class="text-center py-2" style="display: none;">
+                                                <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                                                <span class="text-muted small">Searching...</span>
+                                            </div>
+                                            <div id="ankiCardsList"></div>
+                                            <div id="ankiNoResults" style="display: none;" class="text-center py-3">
+                                                <i class="fas fa-search text-muted" style="font-size: 2rem; opacity: 0.5;"></i>
+                                                <p class="text-muted small mt-2 mb-0">No cards found.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
                                     <div class="text-center mt-4 pt-3 border-top">
                                         <button class="btn btn-sm btn-link text-muted" onclick="disconnectAnki()">
                                             <i class="fas fa-unlink me-1"></i>Disconnect Anki
@@ -651,7 +678,7 @@
         </div>
     </div>
 </div>
--->
+<-->
 
 <style>
     /* Case Navigation Buttons - Peach Orange Brand Color */
@@ -2623,6 +2650,30 @@
     
     .anki-card-creator:hover {
         box-shadow: 0 2px 8px rgba(35, 83, 144, 0.1);
+    }
+    
+    /* Anki Search Results */
+    .anki-card-result {
+        transition: all 0.2s ease;
+        cursor: default;
+    }
+    
+    .anki-card-result:hover {
+        box-shadow: 0 2px 8px rgba(35, 83, 144, 0.15);
+        transform: translateY(-1px);
+    }
+    
+    .anki-card-front,
+    .anki-card-back {
+        word-wrap: break-word;
+        line-height: 1.6;
+    }
+    
+    .anki-card-front strong,
+    .anki-card-back strong {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
     }
     
     /* Copy to notes button */
@@ -6644,7 +6695,12 @@
             const response = await fetch('/notes/api/anki/flashcard', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ front, back, tags: ['FRCR', 'Radiology', 'Case-' + caseId] })
+                body: JSON.stringify({ 
+                    front, 
+                    back, 
+                    tags: ['FRCR', 'Radiology', 'Case-' + caseId],
+                    allow_duplicate: true  // Allow duplicates to prevent errors
+                })
             });
             const data = await response.json();
             
@@ -6658,9 +6714,18 @@
                 }
                 showFlash('Flashcard created!', 'success');
             } else {
-                if (statusEl) {
-                    statusEl.innerHTML = `<i class="fas fa-exclamation-circle text-danger me-1"></i>${data.error}`;
-                    statusEl.className = 'mt-2 small text-danger';
+                // Handle duplicate gracefully
+                if (data.duplicate) {
+                    if (statusEl) {
+                        statusEl.innerHTML = '<i class="fas fa-info-circle text-warning me-1"></i>Card already exists (duplicate allowed)';
+                        statusEl.className = 'mt-2 small text-warning';
+                    }
+                    showFlash('Card already exists', 'info');
+                } else {
+                    if (statusEl) {
+                        statusEl.innerHTML = `<i class="fas fa-exclamation-circle text-danger me-1"></i>${data.error}`;
+                        statusEl.className = 'mt-2 small text-danger';
+                    }
                 }
             }
         } catch (error) {
@@ -6704,19 +6769,85 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
                     cards, 
-                    tags: ['FRCR', 'Radiology', 'Case-' + caseId, 'Bulk'] 
+                    tags: ['FRCR', 'Radiology', 'Case-' + caseId, 'Bulk'],
+                    allow_duplicate: true  // Allow duplicates to prevent errors
                 })
             });
             const data = await response.json();
             
             if (data.success) {
-                showFlash(`Created ${data.created} flashcards!`, 'success');
+                const message = data.skipped 
+                    ? `Created ${data.created} cards, ${data.skipped} skipped (duplicates)`
+                    : `Created ${data.created} flashcards!`;
+                showFlash(message, 'success');
             } else {
                 showFlash(data.error || 'Failed to create cards', 'error');
             }
         } catch (error) {
             console.error('[ANKI] Bulk create error:', error);
             showFlash('Failed to create cards', 'error');
+        }
+    }
+    
+    async function searchAnkiCards() {
+        const query = document.getElementById('ankiSearchQuery')?.value.trim();
+        const resultsDiv = document.getElementById('ankiSearchResults');
+        const statusEl = document.getElementById('ankiSearchStatus');
+        const cardsList = document.getElementById('ankiCardsList');
+        const noResults = document.getElementById('ankiNoResults');
+        
+        if (!query) {
+            showFlash('Please enter a search query', 'warning');
+            return;
+        }
+        
+        if (resultsDiv) resultsDiv.style.display = 'block';
+        if (statusEl) statusEl.style.display = 'block';
+        if (cardsList) cardsList.innerHTML = '';
+        if (noResults) noResults.style.display = 'none';
+        
+        try {
+            const response = await fetch(`/notes/api/anki/search?q=${encodeURIComponent(query)}&limit=50`);
+            const data = await response.json();
+            
+            if (statusEl) statusEl.style.display = 'none';
+            
+            if (data.error) {
+                showFlash(data.error, 'error');
+                return;
+            }
+            
+            if (data.cards && data.cards.length > 0) {
+                // Display cards
+                cardsList.innerHTML = data.cards.map(card => `
+                    <div class="anki-card-result mb-3 p-3 rounded" style="background: #fff; border: 1px solid #e0e0e0; border-left: 3px solid #235390;">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div class="flex-grow-1">
+                                <div class="anki-card-front mb-2">
+                                    <strong class="text-primary small">Q:</strong>
+                                    <div class="ms-2" style="display: inline-block;">${escapeHtml(card.front)}</div>
+                                </div>
+                                <div class="anki-card-back">
+                                    <strong class="text-success small">A:</strong>
+                                    <div class="ms-2" style="display: inline-block;">${escapeHtml(card.back)}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mt-2 pt-2 border-top">
+                            <small class="text-muted">
+                                <i class="fas fa-layer-group me-1"></i>${escapeHtml(card.deck || 'Unknown')}
+                                ${card.tags && card.tags.length > 0 ? `<span class="ms-2"><i class="fas fa-tags me-1"></i>${card.tags.map(t => escapeHtml(t)).join(', ')}</span>` : ''}
+                            </small>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                if (noResults) noResults.style.display = 'block';
+            }
+        } catch (error) {
+            console.error('[ANKI] Search error:', error);
+            if (statusEl) statusEl.style.display = 'none';
+            showFlash('Error searching cards', 'error');
         }
     }
     

@@ -1172,7 +1172,15 @@ def anki_decks():
 @notes_bp.route('/api/anki/flashcard', methods=['POST'])
 @login_required
 def anki_create_flashcard():
-    """Create a flashcard in Anki."""
+    """Create a flashcard in Anki.
+    
+    Request JSON:
+        - front: Front side text (required)
+        - back: Back side text (required)
+        - deck: Deck name (optional, uses user's default)
+        - tags: List of tags (optional)
+        - allow_duplicate: Boolean, allow duplicate cards (default: True)
+    """
     data = request.get_json()
     
     if not data:
@@ -1182,12 +1190,29 @@ def anki_create_flashcard():
     back = data.get('back', '').strip()
     deck_name = data.get('deck', current_user.anki_deck_name or 'FRCR Revision')
     tags = data.get('tags', ['FRCR', 'Radiology'])
+    allow_duplicate = data.get('allow_duplicate', True)
     
     if not front or not back:
         return jsonify({'error': 'Front and back content required'}), 400
     
     # Ensure deck exists
     anki_request('createDeck', deck=deck_name)
+    
+    # Check for duplicates if not allowing them
+    if not allow_duplicate:
+        # Search for existing note with same front and back
+        query = f'Front:"{front}" Back:"{back}"'
+        existing_notes, find_error = anki_request('findNotes', query=query)
+        
+        if find_error:
+            current_app.logger.warning(f"Error checking for duplicates: {find_error}")
+        elif existing_notes and len(existing_notes) > 0:
+            return jsonify({
+                'success': False,
+                'error': 'A card with this content already exists',
+                'duplicate': True,
+                'existing_note_ids': existing_notes
+            }), 200
     
     # Create the note
     result, error = anki_request(
@@ -1201,12 +1226,19 @@ def anki_create_flashcard():
             },
             'tags': tags,
             'options': {
-                'allowDuplicate': False
+                'allowDuplicate': allow_duplicate
             }
         }
     )
     
     if error:
+        # Check if it's a duplicate error and provide better message
+        if 'duplicate' in error.lower() or 'cannot create note' in error.lower():
+            return jsonify({
+                'success': False,
+                'error': 'A card with this content already exists. Set allow_duplicate=true to create anyway.',
+                'duplicate': True
+            }), 200
         return jsonify({'success': False, 'error': error}), 200
     
     return jsonify({
@@ -1219,7 +1251,14 @@ def anki_create_flashcard():
 @notes_bp.route('/api/anki/flashcard/bulk', methods=['POST'])
 @login_required
 def anki_create_bulk_flashcards():
-    """Create multiple flashcards from Q&A pairs."""
+    """Create multiple flashcards from Q&A pairs.
+    
+    Request JSON:
+        - cards: List of {front, back} objects (required)
+        - deck: Deck name (optional)
+        - tags: List of tags (optional)
+        - allow_duplicate: Boolean, allow duplicate cards (default: True)
+    """
     data = request.get_json()
     
     if not data or 'cards' not in data:
@@ -1228,6 +1267,7 @@ def anki_create_bulk_flashcards():
     cards = data.get('cards', [])
     deck_name = data.get('deck', current_user.anki_deck_name or 'FRCR Revision')
     tags = data.get('tags', ['FRCR', 'Radiology'])
+    allow_duplicate = data.get('allow_duplicate', True)
     
     if not cards:
         return jsonify({'error': 'Empty cards list'}), 400
@@ -1251,7 +1291,7 @@ def anki_create_bulk_flashcards():
                 },
                 'tags': tags,
                 'options': {
-                    'allowDuplicate': False
+                    'allowDuplicate': allow_duplicate
                 }
             })
     
@@ -1264,13 +1304,121 @@ def anki_create_bulk_flashcards():
         return jsonify({'success': False, 'error': error}), 200
     
     # Count successful additions (non-null results)
+    # AnkiConnect returns None for duplicates when allowDuplicate=False
     created = sum(1 for r in result if r is not None) if result else 0
+    skipped = len(notes) - created
     
-    return jsonify({
+    response = {
         'success': True,
         'created': created,
         'total': len(notes),
         'deck': deck_name
+    }
+    
+    if skipped > 0:
+        response['skipped'] = skipped
+        response['message'] = f'Created {created} cards, {skipped} skipped (duplicates)'
+    
+    return jsonify(response)
+
+
+@notes_bp.route('/api/anki/search')
+@login_required
+def anki_search():
+    """Search Anki flashcards by query.
+    
+    Query params:
+        - q: Search query (required)
+        - deck: Filter by deck name (optional)
+        - limit: Max results (default 50, max 100)
+    """
+    query = request.args.get('q', '').strip()
+    deck_filter = request.args.get('deck', '')
+    limit = min(int(request.args.get('limit', 50)), 100)
+    
+    if not query:
+        return jsonify({'error': 'Search query required', 'cards': []}), 400
+    
+    # Build Anki search query
+    # Anki uses a special query syntax: https://docs.ankiweb.net/searching.html
+    anki_query = query
+    
+    # If deck filter specified, add it to query
+    if deck_filter:
+        anki_query = f'deck:"{deck_filter}" {anki_query}'
+    
+    # Find notes matching the query
+    note_ids, error = anki_request('findNotes', query=anki_query)
+    
+    if error:
+        return jsonify({'error': error, 'cards': []}), 200
+    
+    if not note_ids:
+        return jsonify({
+            'cards': [],
+            'total': 0,
+            'query': query
+        })
+    
+    # Limit results
+    note_ids = note_ids[:limit]
+    
+    # Get note details
+    notes_info, info_error = anki_request('notesInfo', notes=note_ids)
+    
+    if info_error:
+        return jsonify({'error': info_error, 'cards': []}), 200
+    
+    # Format cards for response
+    cards = []
+    for note in notes_info or []:
+        fields = note.get('fields', {})
+        front = fields.get('Front', {}).get('value', '')
+        back = fields.get('Back', {}).get('value', '')
+        
+        cards.append({
+            'note_id': note.get('noteId'),
+            'front': front,
+            'back': back,
+            'deck': note.get('deckName', ''),
+            'tags': note.get('tags', []),
+            'created': note.get('fields', {}).get('Front', {}).get('value', ''),
+            'modified': note.get('mod', 0)  # Unix timestamp
+        })
+    
+    return jsonify({
+        'cards': cards,
+        'total': len(cards),
+        'query': query
+    })
+
+
+@notes_bp.route('/api/anki/note/<int:note_id>')
+@login_required
+def anki_get_note(note_id):
+    """Get details of a specific Anki note."""
+    notes_info, error = anki_request('notesInfo', notes=[note_id])
+    
+    if error:
+        return jsonify({'error': error}), 200
+    
+    if not notes_info or len(notes_info) == 0:
+        return jsonify({'error': 'Note not found'}), 404
+    
+    note = notes_info[0]
+    fields = note.get('fields', {})
+    front = fields.get('Front', {}).get('value', '')
+    back = fields.get('Back', {}).get('value', '')
+    
+    return jsonify({
+        'note_id': note.get('noteId'),
+        'front': front,
+        'back': back,
+        'deck': note.get('deckName', ''),
+        'tags': note.get('tags', []),
+        'model': note.get('modelName', ''),
+        'created': note.get('fields', {}).get('Front', {}).get('value', ''),
+        'modified': note.get('mod', 0)
     })
 
 
