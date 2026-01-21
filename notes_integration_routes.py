@@ -1422,6 +1422,42 @@ def anki_get_note(note_id):
     })
 
 
+@notes_bp.route('/api/anki/note/<int:note_id>/open', methods=['POST'])
+@login_required
+def anki_open_note(note_id):
+    """
+    Open Anki's browser window and focus on a specific note.
+    
+    This will open Anki desktop's browser window (if not already open)
+    and navigate to the specified note.
+    """
+    # First verify the note exists
+    notes_info, error = anki_request('notesInfo', notes=[note_id])
+    
+    if error:
+        return jsonify({'error': error, 'success': False}), 200
+    
+    if not notes_info or len(notes_info) == 0:
+        return jsonify({'error': 'Note not found', 'success': False}), 404
+    
+    # Open Anki browser and focus on this note
+    # guiBrowse opens the browser with a query that matches this note
+    result, browse_error = anki_request('guiBrowse', query=f'nid:{note_id}')
+    
+    if browse_error:
+        return jsonify({
+            'error': browse_error,
+            'success': False,
+            'message': 'Could not open Anki browser. Make sure Anki desktop is running.'
+        }), 200
+    
+    return jsonify({
+        'success': True,
+        'message': 'Opening card in Anki browser...',
+        'note_id': note_id
+    })
+
+
 def register_notes_blueprint(app):
     """Register notes integration blueprint with the Flask app."""
     app.register_blueprint(notes_bp)

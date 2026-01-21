@@ -611,11 +611,7 @@
     If you need to restore modal functionality, uncomment this section and update
     viewNotionPage() to use the modal instead of redirecting.
 -->
-<!--
-<div id="notionPageModal" class="modal fade notion-page-modal" tabindex="-1" aria-labelledby="notionPageModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
-        <div class="modal-content notion-modal-content">
-            <!-- Cover Image -->
+
             <div id="notionPageCover" class="notion-cover" style="display: none;">
                 <img src="" alt="Page cover" class="notion-cover-img">
             </div>
@@ -6838,6 +6834,16 @@
                                 <i class="fas fa-layer-group me-1"></i>${escapeHtml(card.deck || 'Unknown')}
                                 ${card.tags && card.tags.length > 0 ? `<span class="ms-2"><i class="fas fa-tags me-1"></i>${card.tags.map(t => escapeHtml(t)).join(', ')}</span>` : ''}
                             </small>
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-sm btn-outline-primary" 
+                                        onclick="viewAnkiCardInApp(${card.note_id})" 
+                                        title="View full card in app">
+                                    <i class="fas fa-eye me-1"></i>View
+                                </button>
+                                <button class="btn btn-sm btn-primary" onclick="openAnkiCard(${card.note_id})" title="Open in Anki desktop browser" style="background: #235390; border-color: #235390;">
+                                    <i class="fas fa-external-link-alt me-1"></i>Open in Anki
+                                </button>
+                            </div>
                         </div>
                     </div>
                 `).join('');
@@ -6848,6 +6854,142 @@
             console.error('[ANKI] Search error:', error);
             if (statusEl) statusEl.style.display = 'none';
             showFlash('Error searching cards', 'error');
+        }
+    }
+    
+    /**
+     * View Anki card in app modal
+     */
+    async function viewAnkiCardInApp(noteId) {
+        let modal = document.getElementById('ankiCardModal');
+        if (!modal) {
+            // Create modal if it doesn't exist
+            const modalHTML = `
+                <div class="modal fade" id="ankiCardModal" tabindex="-1" aria-labelledby="ankiCardModalLabel" aria-hidden="true">
+                    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+                        <div class="modal-content">
+                            <div class="modal-header" style="background: linear-gradient(135deg, #235390 0%, #2d6ba3 100%); color: #fff;">
+                                <h5 class="modal-title" id="ankiCardModalLabel">
+                                    <i class="fas fa-brain me-2"></i>Flashcard
+                                </h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body" style="background: #FFFEF8;">
+                                <div id="ankiCardLoading" class="text-center py-4">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                    <p class="mt-2 text-muted">Loading card...</p>
+                                </div>
+                                <div class="anki-card-view" id="ankiCardViewContent" style="display: none;">
+                                    <div class="anki-card-side mb-4 p-4 rounded" style="background: #e3f2fd; border: 2px solid #235390;">
+                                        <div class="d-flex align-items-center mb-2">
+                                            <span class="badge bg-primary me-2">Q</span>
+                                            <strong>Question</strong>
+                                        </div>
+                                        <div id="ankiCardViewFront" class="anki-card-content" style="font-size: 1.1rem; line-height: 1.6; color: #2c3e50; white-space: pre-wrap;"></div>
+                                    </div>
+                                    <div class="anki-card-side p-4 rounded" style="background: #e8f5e9; border: 2px solid #4caf50;">
+                                        <div class="d-flex align-items-center mb-2">
+                                            <span class="badge bg-success me-2">A</span>
+                                            <strong>Answer</strong>
+                                        </div>
+                                        <div id="ankiCardViewBack" class="anki-card-content" style="font-size: 1.1rem; line-height: 1.6; color: #2c3e50; white-space: pre-wrap;"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="modal-footer" style="background: #f8f9fa;">
+                                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                                    <i class="fas fa-times me-1"></i>Close
+                                </button>
+                                <button type="button" class="btn btn-primary" id="ankiCardViewOpenBtn" onclick="openAnkiCardFromModal()" style="background: #235390; border-color: #235390;">
+                                    <i class="fas fa-external-link-alt me-1"></i>Open in Anki
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+            modal = document.getElementById('ankiCardModal');
+        }
+        
+        // Show modal first
+        const bsModal = new bootstrap.Modal(modal);
+        bsModal.show();
+        
+        // Show loading, hide content
+        document.getElementById('ankiCardLoading').style.display = 'block';
+        document.getElementById('ankiCardViewContent').style.display = 'none';
+        
+        // Fetch full card details
+        try {
+            const response = await fetch(`/notes/api/anki/note/${noteId}`);
+            const data = await response.json();
+            
+            if (data.error) {
+                document.getElementById('ankiCardLoading').innerHTML = `
+                    <div class="text-danger">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <p class="mt-2">${escapeHtml(data.error)}</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Set card content
+            document.getElementById('ankiCardViewFront').textContent = data.front || '';
+            document.getElementById('ankiCardViewBack').textContent = data.back || '';
+            document.getElementById('ankiCardViewOpenBtn').setAttribute('data-note-id', noteId);
+            
+            // Hide loading, show content
+            document.getElementById('ankiCardLoading').style.display = 'none';
+            document.getElementById('ankiCardViewContent').style.display = 'block';
+            
+        } catch (error) {
+            console.error('[ANKI] Fetch card error:', error);
+            document.getElementById('ankiCardLoading').innerHTML = `
+                <div class="text-danger">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <p class="mt-2">Error loading card details</p>
+                </div>
+            `;
+        }
+    }
+    
+    /**
+     * Open Anki card in Anki desktop browser
+     */
+    async function openAnkiCard(noteId) {
+        try {
+            const response = await fetch(`/notes/api/anki/note/${noteId}/open`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                showFlash('Opening card in Anki browser...', 'success');
+            } else {
+                showFlash(data.error || 'Could not open Anki. Make sure Anki desktop is running.', 'error');
+            }
+        } catch (error) {
+            console.error('[ANKI] Open card error:', error);
+            showFlash('Error opening card in Anki', 'error');
+        }
+    }
+    
+    /**
+     * Open card from modal
+     */
+    function openAnkiCardFromModal() {
+        const noteId = document.getElementById('ankiCardViewOpenBtn')?.getAttribute('data-note-id');
+        if (noteId) {
+            openAnkiCard(parseInt(noteId));
+            // Close modal after opening
+            const modal = bootstrap.Modal.getInstance(document.getElementById('ankiCardModal'));
+            if (modal) modal.hide();
         }
     }
     
