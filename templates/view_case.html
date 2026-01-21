@@ -803,36 +803,36 @@
         .case-details.student-case-layout .notes-section {
             grid-column: 2 / 3;
             grid-row: 2;
-            display: flex;
-            flex-direction: column;
-            min-height: 400px;
-        }
-        
-        /* Make all containers flex to allow textarea to fill */
-        .case-details.student-case-layout .notes-section #notesTabContent {
-            flex: 1 1 auto;
-            display: flex;
-            flex-direction: column;
-            min-height: 0;
-        }
-        
-        .case-details.student-case-layout .notes-section #notesTabContent .tab-pane {
-            flex: 1 1 auto;
-            display: flex;
-            flex-direction: column;
-            min-height: 0;
-        }
-        
-        .case-details.student-case-layout .notes-section #notesTabContent .tab-pane.active {
             display: flex !important;
+            flex-direction: column !important;
+            min-height: 500px;
+        }
+        
+        /* Make tab content fill notes section */
+        .case-details.student-case-layout .notes-section #notesTabContent {
+            flex: 1 1 auto !important;
+            display: flex !important;
+            flex-direction: column !important;
+            min-height: 0;
+        }
+        
+        /* Override Bootstrap's tab-pane display and make it flex */
+        .case-details.student-case-layout .notes-section #notesTabContent > .tab-pane {
+            flex: 1 1 auto;
+            flex-direction: column;
+            min-height: 0;
+        }
+        
+        .case-details.student-case-layout .notes-section #notesTabContent > .tab-pane.active.show {
+            display: flex !important;
+            flex-direction: column !important;
         }
         
         /* Make notes textarea expand to fill available space */
         .case-details.student-case-layout .notes-section #candidateNoteText {
-            flex: 1 1 auto;
-            min-height: 250px;
-            height: 100% !important;
-            resize: none; /* Disable manual resize since it auto-matches */
+            flex: 1 1 auto !important;
+            min-height: 300px;
+            resize: none;
         }
 
         /* Bottom sections (full width) */
@@ -852,14 +852,28 @@
             display: block; /* Remove grid on mobile */
         }
         
-        /* On mobile, notes textarea has fixed minimum height */
+        /* On mobile, notes section and textarea */
+        .case-details.student-case-layout .notes-section {
+            min-height: 350px;
+            display: flex !important;
+            flex-direction: column !important;
+        }
+        
         .case-details.student-case-layout .notes-section #candidateNoteText {
-            min-height: 250px;
+            flex: 1 1 auto !important;
+            min-height: 200px;
             resize: vertical;
         }
         
-        .case-details.student-case-layout .notes-section {
-            min-height: 300px;
+        .case-details.student-case-layout .notes-section #notesTabContent {
+            flex: 1 1 auto !important;
+            display: flex !important;
+            flex-direction: column !important;
+        }
+        
+        .case-details.student-case-layout .notes-section #notesTabContent > .tab-pane.active.show {
+            display: flex !important;
+            flex-direction: column !important;
         }
     }
 
@@ -2123,6 +2137,7 @@
     /* Notes Tabs styling */
     .notes-tabs {
         border-bottom: 2px solid #F2CC8F;
+        flex-shrink: 0;
     }
     
     .notes-tabs .nav-link {
