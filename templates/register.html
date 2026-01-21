@@ -375,6 +375,24 @@
                 </div>
             </div>
 
+            <!-- Terms and Privacy Agreement -->
+            <div class="form-group">
+                <div class="form-check" style="display: flex; align-items: flex-start; gap: 10px;">
+                    <input 
+                        type="checkbox" 
+                        id="agree_terms" 
+                        name="agree_terms" 
+                        required
+                        style="margin-top: 4px; width: 18px; height: 18px; accent-color: var(--brand-primary); cursor: pointer;"
+                    >
+                    <label for="agree_terms" style="font-weight: 400; font-size: 13px; color: var(--brand-text-secondary); cursor: pointer; margin-bottom: 0;">
+                        I agree to the <a href="/terms" target="_blank" style="color: var(--brand-primary); font-weight: 600;">Terms of Use</a> 
+                        and <a href="/privacy" target="_blank" style="color: var(--brand-primary); font-weight: 600;">Privacy Policy</a>. 
+                        I understand that I must be 18 years or older to use this platform.
+                    </label>
+                </div>
+            </div>
+
             <!-- Register Button -->
             <button type="submit" class="btn-register" id="registerBtn">
                 Create Account
@@ -384,6 +402,17 @@
         <!-- Login Link -->
         <div class="login-link">
             Already have an account? <a href="/auth/login">Log in here</a>
+        </div>
+        
+        <!-- Legal Links -->
+        <div class="text-center mt-3" style="font-size: 12px; color: #888;">
+            <a href="/privacy" style="color: #666; text-decoration: none;">
+                <i class="fas fa-shield-alt me-1"></i>Privacy Policy
+            </a>
+            <span class="mx-2">|</span>
+            <a href="/terms" style="color: #666; text-decoration: none;">
+                <i class="fas fa-file-contract me-1"></i>Terms of Use
+            </a>
         </div>
     </div>
 
@@ -460,8 +489,9 @@
             const hasName = document.getElementById('full_name').value.trim() !== '';
             const requirementsMet = areRequirementsMet();
             const passwordsMatch = doPasswordsMatch();
+            const termsAgreed = document.getElementById('agree_terms').checked;
 
-            registerBtn.disabled = !(hasEmail && hasName && requirementsMet && passwordsMatch);
+            registerBtn.disabled = !(hasEmail && hasName && requirementsMet && passwordsMatch && termsAgreed);
         }
 
         // Toggle password visibility
@@ -485,6 +515,7 @@
         confirmPasswordInput.addEventListener('input', updateFormValidation);
         document.getElementById('email').addEventListener('input', updateFormValidation);
         document.getElementById('full_name').addEventListener('input', updateFormValidation);
+        document.getElementById('agree_terms').addEventListener('change', updateFormValidation);
 
         // Form submission
         registerForm.addEventListener('submit', async (e) => {

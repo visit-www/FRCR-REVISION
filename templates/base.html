@@ -176,9 +176,15 @@
                         <p class="footer-copyright small mb-1">
                             &copy; 2026 FRCR Revision. All rights reserved.
                         </p>
-                        <a href="{{ url_for('privacy_policy') }}" class="text-muted small" style="text-decoration: none;">
-                            <i class="fas fa-shield-alt me-1"></i>Privacy Policy
-                        </a>
+                        <div class="d-flex justify-content-center gap-3">
+                            <a href="{{ url_for('privacy_policy') }}" class="text-muted small" style="text-decoration: none;">
+                                <i class="fas fa-shield-alt me-1"></i>Privacy Policy
+                            </a>
+                            <span class="text-muted">|</span>
+                            <a href="{{ url_for('terms_of_use') }}" class="text-muted small" style="text-decoration: none;">
+                                <i class="fas fa-file-contract me-1"></i>Terms of Use
+                            </a>
+                        </div>
                     </div>
                 </div>
             </div>

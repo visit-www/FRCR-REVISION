@@ -147,6 +147,49 @@
                             </button>
                         </div>
                     </form>
+                    
+                    <hr>
+                    
+                    <!-- Legal & Privacy Section -->
+                    <h5 class="mb-3" style="color: var(--brand-neutral);">
+                        <i class="fas fa-balance-scale me-2"></i>Legal & Privacy
+                    </h5>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <a href="{{ url_for('privacy_policy') }}" class="card text-decoration-none h-100" style="border: 1px solid #e0e0e0; transition: all 0.2s;">
+                                <div class="card-body d-flex align-items-center">
+                                    <div class="me-3" style="color: var(--brand-primary);">
+                                        <i class="fas fa-shield-alt fa-2x"></i>
+                                    </div>
+                                    <div>
+                                        <h6 class="mb-1" style="color: var(--brand-text-primary);">Privacy Policy</h6>
+                                        <small class="text-muted">How we collect, use, and protect your data</small>
+                                    </div>
+                                    <i class="fas fa-external-link-alt ms-auto text-muted"></i>
+                                </div>
+                            </a>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <a href="{{ url_for('terms_of_use') }}" class="card text-decoration-none h-100" style="border: 1px solid #e0e0e0; transition: all 0.2s;">
+                                <div class="card-body d-flex align-items-center">
+                                    <div class="me-3" style="color: var(--brand-neutral);">
+                                        <i class="fas fa-file-contract fa-2x"></i>
+                                    </div>
+                                    <div>
+                                        <h6 class="mb-1" style="color: var(--brand-text-primary);">Terms of Use</h6>
+                                        <small class="text-muted">Rules and guidelines for using FRCR Revision</small>
+                                    </div>
+                                    <i class="fas fa-external-link-alt ms-auto text-muted"></i>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <div class="text-muted small mt-2">
+                        <i class="fas fa-info-circle me-1"></i>
+                        By using FRCR Revision, you agree to our Terms of Use and Privacy Policy.
+                    </div>
                 </div>
             </div>
             

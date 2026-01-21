@@ -210,6 +210,20 @@ def privacy_policy():
     return render_template('privacy_policy.html')
 
 
+@app.route('/terms')
+@app.route('/terms-of-use')
+def terms_of_use():
+    """Terms of Use page - required for legal compliance"""
+    return render_template('terms_of_use.html')
+
+
+@app.route('/terms')
+@app.route('/terms-of-use')
+def terms_of_use():
+    """Terms of Use page - required for GDPR and legal compliance"""
+    return render_template('terms_of_use.html')
+
+
 @app.route('/dashboard')
 @login_required
 def dashboard():
