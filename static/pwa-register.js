@@ -156,23 +156,56 @@ async function handleInstallClick() {
  * Show iOS-specific install instructions
  */
 function showIOSInstallInstructions() {
+  // Don't show if already installed
+  if (isStandalone) {
+    return;
+  }
+  
   const installBanner = document.getElementById('pwa-install-banner');
   if (installBanner) {
-    const bannerContent = installBanner.querySelector('.d-flex');
-    if (bannerContent) {
-      bannerContent.innerHTML = `
-        <div class="d-flex align-items-center">
-          <i class="fas fa-mobile-alt me-2" style="font-size: 1.2rem;"></i>
-          <div>
-            <strong>Install FRCR Revision</strong>
-            <div class="small mt-1">Tap <i class="fas fa-share"></i> Share → "Add to Home Screen"</div>
+    // Check if dismissed recently
+    const installDismissed = localStorage.getItem('pwa-install-dismissed');
+    const dismissTime = installDismissed ? parseInt(installDismissed) : 0;
+    const oneDayAgo = Date.now() - (24 * 60 * 60 * 1000);
+    
+    // Show if not dismissed in last 24 hours
+    if (!installDismissed || dismissTime < oneDayAgo) {
+      const bannerContent = installBanner.querySelector('.d-flex');
+      if (bannerContent) {
+        bannerContent.innerHTML = `
+          <div class="d-flex align-items-center flex-grow-1">
+            <i class="fas fa-mobile-alt me-2" style="font-size: 1.2rem;"></i>
+            <div>
+              <strong>Install FRCR Revision</strong>
+              <div class="small mt-1 d-none d-md-block">Tap <i class="fas fa-share"></i> Share button → "Add to Home Screen"</div>
+              <div class="small mt-1 d-block d-md-none">Tap <i class="fas fa-share"></i> → "Add to Home Screen"</div>
+            </div>
           </div>
-        </div>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert" aria-label="Close"></button>
-      `;
-      installBanner.classList.remove('d-none');
-      installBanner.style.display = 'block';
+          <button type="button" class="btn-close btn-close-white ms-2" data-bs-dismiss="alert" aria-label="Close"></button>
+        `;
+        installBanner.classList.remove('d-none');
+        installBanner.style.display = 'block';
+        
+        // Make it more prominent
+        installBanner.style.animation = 'slideDown 0.3s ease-out';
+      }
     }
+  }
+  
+  // Also show install button in navbar for iOS
+  const installButton = document.getElementById('pwa-install-button');
+  if (installButton) {
+    installButton.innerHTML = '<i class="fas fa-plus-square me-1"></i><span class="d-none d-md-inline">Install</span>';
+    installButton.classList.remove('d-none');
+    installButton.style.display = 'inline-block';
+    installButton.onclick = () => {
+      // Show instructions modal or alert
+      if (typeof showToast === 'function') {
+        showToast('Tap the Share button (square with arrow) at the bottom, then select "Add to Home Screen"', 'info', 8000);
+      } else {
+        alert('To install: Tap the Share button (square with arrow) at the bottom of your screen, then select "Add to Home Screen"');
+      }
+    };
   }
 }
 
@@ -209,31 +242,57 @@ if (isPWA()) {
   hideInstallButton();
 } else {
   console.log('ℹ️ Running in browser');
-  // Check if we should show install prompt after a delay (better UX)
-  setTimeout(() => {
-    // Only show if not dismissed recently (check localStorage)
-    const installDismissed = localStorage.getItem('pwa-install-dismissed');
-    const dismissTime = installDismissed ? parseInt(installDismissed) : 0;
-    const oneDayAgo = Date.now() - (24 * 60 * 60 * 1000);
-    
-    // Show if not dismissed in last 24 hours
-    if (!installDismissed || dismissTime < oneDayAgo) {
-      // iOS: Always show instructions (no beforeinstallprompt)
-      if (isIOS && !isStandalone) {
-        showIOSInstallInstructions();
+  
+  // Show install instructions immediately for iOS (Safari doesn't support beforeinstallprompt)
+  if (isIOS && !isStandalone) {
+    // Show immediately for iOS users
+    setTimeout(() => {
+      showIOSInstallInstructions();
+    }, 1000); // Show after 1 second for iOS
+  } else {
+    // For other platforms, check if we should show install prompt after a delay
+    setTimeout(() => {
+      // Only show if not dismissed recently (check localStorage)
+      const installDismissed = localStorage.getItem('pwa-install-dismissed');
+      const dismissTime = installDismissed ? parseInt(installDismissed) : 0;
+      const oneDayAgo = Date.now() - (24 * 60 * 60 * 1000);
+      
+      // Show if not dismissed in last 24 hours
+      if (!installDismissed || dismissTime < oneDayAgo) {
+        // For non-iOS, wait for beforeinstallprompt event
+        // If it hasn't fired yet, that's okay - it will when browser is ready
       }
-    }
-  }, 3000); // Show after 3 seconds
+    }, 3000); // Show after 3 seconds for other platforms
+  }
 }
 
 // Handle banner dismissal
 document.addEventListener('DOMContentLoaded', () => {
   const installBanner = document.getElementById('pwa-install-banner');
   if (installBanner) {
+    // Use Bootstrap's alert close event
     installBanner.addEventListener('closed.bs.alert', () => {
       // Store dismissal time
       localStorage.setItem('pwa-install-dismissed', Date.now().toString());
     });
+    
+    // Also handle manual close button clicks
+    const closeBtn = installBanner.querySelector('.btn-close');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', () => {
+        setTimeout(() => {
+          localStorage.setItem('pwa-install-dismissed', Date.now().toString());
+        }, 300);
+      });
+    }
+  }
+  
+  // For iOS, show instructions immediately on page load
+  if (isIOS && !isStandalone) {
+    // Small delay to ensure DOM is ready
+    setTimeout(() => {
+      showIOSInstallInstructions();
+    }, 1500);
   }
 });
 

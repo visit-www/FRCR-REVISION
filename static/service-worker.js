@@ -15,8 +15,7 @@ const STATIC_ASSETS = [
   '/static/style.css',
   '/static/config.js',
   '/manifest.json',
-  '/static/images/icon-192x192.png',
-  '/static/images/icon-512x512.png',
+  // Icons are now on Cloudinary, cached by browser automatically
   // Bootstrap & Font Awesome are loaded from CDN, cached by browser automatically
 ];
 
