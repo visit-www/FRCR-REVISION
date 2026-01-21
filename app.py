@@ -4,7 +4,7 @@ load_dotenv()
 
 # ==================== STUDENT CASE BROWSER ====================
 # (Moved below app initialization)
-from flask import Flask, render_template, request, jsonify, redirect, url_for, session, send_file, flash
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session, send_file, send_from_directory, flash
 from models import UserRole
 from flask_cors import CORS
 from flask_login import LoginManager, login_required, current_user
@@ -221,6 +221,12 @@ def terms_of_use():
 def about():
     """About page - app philosophy, design principles, and developer info"""
     return render_template('about.html')
+
+
+@app.route('/manifest.json')
+def manifest():
+    """Serve manifest.json with correct MIME type for PWA installation."""
+    return send_from_directory('static', 'manifest.json', mimetype='application/manifest+json')
 
 
 @app.route('/dashboard')

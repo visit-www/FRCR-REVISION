@@ -3,14 +3,23 @@
   "short_name": "FRCR-Revision",
   "description": "Your companion app for FRCR exam preparation - practice cases, take notes, and build confidence for success.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#5E899E",
   "theme_color": "#5E899E",
   "orientation": "portrait-primary",
+  "dir": "ltr",
+  "lang": "en",
   "icons": [
     {
-      "src": "/static/images/frcr-revision-logo.jpg",
-      "sizes": "512x512",
+      "src": "https://res.cloudinary.com/dx7b7chvn/image/upload/c_fill,w_72,h_72,q_auto/v1768988247/frcr-revision-logo_pco6l0.jpg",
+      "sizes": "72x72",
+      "type": "image/jpeg",
+      "purpose": "any"
+    },
+    {
+      "src": "https://res.cloudinary.com/dx7b7chvn/image/upload/c_fill,w_96,h_96,q_auto/v1768988247/frcr-revision-logo_pco6l0.jpg",
+      "sizes": "96x96",
       "type": "image/jpeg",
       "purpose": "any"
     },
@@ -21,10 +30,22 @@
       "purpose": "any maskable"
     },
     {
+      "src": "https://res.cloudinary.com/dx7b7chvn/image/upload/c_fill,w_192,h_192,q_auto/v1768988247/frcr-revision-logo_pco6l0.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg",
+      "purpose": "any"
+    },
+    {
       "src": "/static/images/icon-512x512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
+    },
+    {
+      "src": "https://res.cloudinary.com/dx7b7chvn/image/upload/c_fill,w_512,h_512,q_auto/v1768988247/frcr-revision-logo_pco6l0.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any"
     }
   ],
   "categories": ["medical", "education", "FRCR", "examination", "FRCR Viva"],
@@ -37,8 +58,8 @@
       "url": "/modules",
       "icons": [
         {
-          "src": "/static/images/frcr-revision-logo.jpg",
-          "sizes": "512x512"
+          "src": "https://res.cloudinary.com/dx7b7chvn/image/upload/c_fill,w_192,h_192,q_auto/v1768988247/frcr-revision-logo_pco6l0.jpg",
+          "sizes": "192x192"
         }
       ]
     },
@@ -49,8 +70,8 @@
       "url": "/cases",
       "icons": [
         {
-          "src": "/static/images/frcr-revision-logo.jpg",
-          "sizes": "512x512"
+          "src": "https://res.cloudinary.com/dx7b7chvn/image/upload/c_fill,w_192,h_192,q_auto/v1768988247/frcr-revision-logo_pco6l0.jpg",
+          "sizes": "192x192"
         }
       ]
     }

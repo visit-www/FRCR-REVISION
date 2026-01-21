@@ -4403,3 +4403,161 @@ tbody tr.case-row:hover {
 .selection-popup button {
     white-space: nowrap;
 }
+
+/* ==================== PWA & MOBILE-FIRST IMPROVEMENTS ==================== */
+
+/* Touch-friendly buttons and interactive elements */
+button, .btn, a.btn, input[type="button"], input[type="submit"] {
+    min-height: 44px; /* iOS recommended touch target size */
+    min-width: 44px;
+    touch-action: manipulation; /* Disable double-tap zoom */
+    -webkit-tap-highlight-color: rgba(94, 137, 158, 0.2);
+}
+
+/* Better touch targets for mobile */
+@media (max-width: 768px) {
+    /* Larger tap targets on mobile */
+    .nav-link, .dropdown-item, .btn-sm {
+        min-height: 44px;
+        padding: 10px 15px;
+        display: flex;
+        align-items: center;
+    }
+    
+    /* Better spacing for touch */
+    .navbar-nav .nav-item {
+        margin-bottom: 4px;
+    }
+    
+    /* Larger form inputs */
+    input, textarea, select {
+        font-size: 16px; /* Prevents iOS zoom on focus */
+        min-height: 44px;
+        padding: 12px;
+    }
+    
+    /* Better modal sizing on mobile */
+    .modal-dialog {
+        margin: 10px;
+        max-width: calc(100% - 20px);
+    }
+    
+    /* Improved card spacing */
+    .card {
+        margin-bottom: 16px;
+    }
+    
+    /* Better table scrolling */
+    .table-responsive {
+        -webkit-overflow-scrolling: touch;
+        touch-action: pan-x;
+    }
+    
+    /* Larger icons for better visibility */
+    .fas, .far, .fab {
+        font-size: 1.1em;
+    }
+}
+
+/* PWA Install Button Styling */
+#pwa-install-button {
+    transition: all 0.2s ease;
+    border-radius: 6px;
+    font-weight: 500;
+}
+
+#pwa-install-button:hover {
+    background: rgba(255, 255, 255, 0.2) !important;
+    transform: translateY(-1px);
+}
+
+#pwa-install-banner {
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        transform: translateY(-100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* Better focus states for accessibility */
+button:focus, .btn:focus, a:focus {
+    outline: 2px solid #5E899E;
+    outline-offset: 2px;
+}
+
+/* Prevent text size adjustment on iOS */
+html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+}
+
+/* Better scrolling on iOS */
+body {
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Safe area insets for notched devices */
+@supports (padding: max(0px)) {
+    body {
+        padding-left: env(safe-area-inset-left);
+        padding-right: env(safe-area-inset-right);
+    }
+    
+    .navbar {
+        padding-left: max(15px, env(safe-area-inset-left));
+        padding-right: max(15px, env(safe-area-inset-right));
+    }
+}
+
+/* Standalone PWA specific styles */
+@media (display-mode: standalone) {
+    /* Remove browser chrome spacing */
+    body {
+        padding-top: 0;
+    }
+    
+    /* Better fullscreen experience */
+    .navbar {
+        padding-top: env(safe-area-inset-top);
+    }
+}
+
+/* Improved loading states */
+.loading-spinner {
+    min-height: 44px;
+    min-width: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Better mobile navigation */
+@media (max-width: 991px) {
+    .navbar-collapse {
+        padding-top: 1rem;
+        padding-bottom: 1rem;
+    }
+    
+    .navbar-nav {
+        gap: 0.5rem;
+    }
+    
+    /* Better dropdown on mobile */
+    .dropdown-menu {
+        border: none;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        margin-top: 8px;
+    }
+    
+    .dropdown-item {
+        padding: 12px 20px;
+        font-size: 1rem;
+    }
+}

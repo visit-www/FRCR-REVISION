@@ -3,13 +3,20 @@
  * Registers the service worker and handles installation prompts
  */
 
+// Platform detection
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+const isAndroid = /Android/.test(navigator.userAgent);
+const isMobile = isIOS || isAndroid;
+const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                     window.navigator.standalone === true;
+
 // Check if service workers are supported by the browser
 if ('serviceWorker' in navigator) {
   
   // Register service worker when page loads
   window.addEventListener('load', () => {
     
-    navigator.serviceWorker.register('/static/service-worker.js')
+    navigator.serviceWorker.register('/static/service-worker.js', { scope: '/' })
       .then((registration) => {
         console.log('✅ Service Worker registered successfully:', registration.scope);
         
@@ -22,6 +29,9 @@ if ('serviceWorker' in navigator) {
             if (newWorker.state === 'activated') {
               console.log('✅ New Service Worker activated');
               // Optionally show a notification to user that app was updated
+              if (typeof showToast === 'function') {
+                showToast('App updated! Refresh to see the latest changes.', 'success');
+              }
             }
           });
         });
@@ -71,39 +81,98 @@ window.addEventListener('appinstalled', (event) => {
 
 /**
  * Show custom install button/banner
- * You can customize this to match your app's design
+ * Platform-aware installation UI
  */
 function showInstallButton() {
-  // Check if there's an element with id="pwa-install-banner"
+  // Don't show if already installed
+  if (isStandalone) {
+    return;
+  }
+  
+  // iOS: Show custom instructions (no beforeinstallprompt support)
+  if (isIOS) {
+    showIOSInstallInstructions();
+    return;
+  }
+  
+  // Android/Desktop: Show install banner and button
   const installBanner = document.getElementById('pwa-install-banner');
   if (installBanner) {
+    installBanner.classList.remove('d-none');
     installBanner.style.display = 'block';
   }
   
-  // Check if there's a button with id="pwa-install-button"
   const installButton = document.getElementById('pwa-install-button');
   if (installButton) {
+    installButton.classList.remove('d-none');
     installButton.style.display = 'inline-block';
     
+    // Remove existing listeners to avoid duplicates
+    const newButton = installButton.cloneNode(true);
+    installButton.parentNode.replaceChild(newButton, installButton);
+    
     // Add click handler to trigger installation
-    installButton.addEventListener('click', async () => {
-      if (deferredPrompt) {
-        // Show the browser's install prompt
-        deferredPrompt.prompt();
-        
-        // Wait for user's response
-        const { outcome } = await deferredPrompt.userChoice;
-        
-        if (outcome === 'accepted') {
-          console.log('✅ User accepted installation');
-        } else {
-          console.log('❌ User declined installation');
+    newButton.addEventListener('click', handleInstallClick);
+  }
+  
+  // Also handle banner button
+  const bannerButton = document.getElementById('pwa-install-banner-button');
+  if (bannerButton) {
+    bannerButton.addEventListener('click', handleInstallClick);
+  }
+}
+
+/**
+ * Handle install button click
+ */
+async function handleInstallClick() {
+  if (deferredPrompt) {
+    try {
+      // Show the browser's install prompt
+      deferredPrompt.prompt();
+      
+      // Wait for user's response
+      const { outcome } = await deferredPrompt.userChoice;
+      
+      if (outcome === 'accepted') {
+        console.log('✅ User accepted installation');
+        if (typeof showToast === 'function') {
+          showToast('App installation started!', 'success');
         }
-        
-        // Clear the deferred prompt
-        deferredPrompt = null;
+      } else {
+        console.log('❌ User declined installation');
       }
-    });
+      
+      // Clear the deferred prompt
+      deferredPrompt = null;
+      hideInstallButton();
+    } catch (error) {
+      console.error('Install error:', error);
+    }
+  }
+}
+
+/**
+ * Show iOS-specific install instructions
+ */
+function showIOSInstallInstructions() {
+  const installBanner = document.getElementById('pwa-install-banner');
+  if (installBanner) {
+    const bannerContent = installBanner.querySelector('.d-flex');
+    if (bannerContent) {
+      bannerContent.innerHTML = `
+        <div class="d-flex align-items-center">
+          <i class="fas fa-mobile-alt me-2" style="font-size: 1.2rem;"></i>
+          <div>
+            <strong>Install FRCR Revision</strong>
+            <div class="small mt-1">Tap <i class="fas fa-share"></i> Share → "Add to Home Screen"</div>
+          </div>
+        </div>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert" aria-label="Close"></button>
+      `;
+      installBanner.classList.remove('d-none');
+      installBanner.style.display = 'block';
+    }
   }
 }
 
@@ -114,11 +183,13 @@ function hideInstallButton() {
   const installBanner = document.getElementById('pwa-install-banner');
   if (installBanner) {
     installBanner.style.display = 'none';
+    installBanner.classList.add('d-none');
   }
   
   const installButton = document.getElementById('pwa-install-button');
   if (installButton) {
     installButton.style.display = 'none';
+    installButton.classList.add('d-none');
   }
 }
 
@@ -134,9 +205,37 @@ function isPWA() {
 // Log PWA status on load
 if (isPWA()) {
   console.log('✅ Running as installed PWA');
+  // Hide install buttons if already installed
+  hideInstallButton();
 } else {
   console.log('ℹ️ Running in browser');
+  // Check if we should show install prompt after a delay (better UX)
+  setTimeout(() => {
+    // Only show if not dismissed recently (check localStorage)
+    const installDismissed = localStorage.getItem('pwa-install-dismissed');
+    const dismissTime = installDismissed ? parseInt(installDismissed) : 0;
+    const oneDayAgo = Date.now() - (24 * 60 * 60 * 1000);
+    
+    // Show if not dismissed in last 24 hours
+    if (!installDismissed || dismissTime < oneDayAgo) {
+      // iOS: Always show instructions (no beforeinstallprompt)
+      if (isIOS && !isStandalone) {
+        showIOSInstallInstructions();
+      }
+    }
+  }, 3000); // Show after 3 seconds
 }
+
+// Handle banner dismissal
+document.addEventListener('DOMContentLoaded', () => {
+  const installBanner = document.getElementById('pwa-install-banner');
+  if (installBanner) {
+    installBanner.addEventListener('closed.bs.alert', () => {
+      // Store dismissal time
+      localStorage.setItem('pwa-install-dismissed', Date.now().toString());
+    });
+  }
+});
 
 /**
  * Network status detection

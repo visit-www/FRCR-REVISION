@@ -1,32 +1,46 @@
 /**
- * FRCR Examiner Service Worker
+ * FRCR Revision Service Worker
  * Provides offline capabilities and PWA installation
  * SAFE: Only caches static files, never interferes with database operations
  */
 
-const CACHE_NAME = 'frcr-examiner-v1';
-const STATIC_CACHE = 'frcr-static-v1';
+const CACHE_VERSION = 'v2';
+const CACHE_NAME = `frcr-revision-${CACHE_VERSION}`;
+const STATIC_CACHE = `frcr-static-${CACHE_VERSION}`;
+const PAGES_CACHE = `frcr-pages-${CACHE_VERSION}`;
 
-// Files to cache for offline use (static assets only)
+// Files to cache immediately on install (critical assets)
 const STATIC_ASSETS = [
   '/',
   '/static/style.css',
   '/static/config.js',
-  '/static/manifest.json',
+  '/manifest.json',
   '/static/images/icon-192x192.png',
   '/static/images/icon-512x512.png',
   // Bootstrap & Font Awesome are loaded from CDN, cached by browser automatically
 ];
 
+// Pages to cache for offline viewing (read-only pages)
+const CACHEABLE_PAGES = [
+  '/',
+  '/modules',
+  '/cases',
+  '/auth/login',
+  '/auth/register',
+  '/about',
+  '/privacy',
+  '/terms'
+];
+
 // Install event - cache static assets
 self.addEventListener('install', (event) => {
-  console.log('[Service Worker] Installing...');
+  console.log('[Service Worker] Installing version', CACHE_VERSION);
   
   event.waitUntil(
-    caches.open(STATIC_CACHE)
-      .then((cache) => {
+    Promise.all([
+      // Cache static assets
+      caches.open(STATIC_CACHE).then((cache) => {
         console.log('[Service Worker] Caching static assets');
-        // Use addAll with error handling for individual files
         return Promise.all(
           STATIC_ASSETS.map((url) => {
             return cache.add(url).catch((err) => {
@@ -34,24 +48,38 @@ self.addEventListener('install', (event) => {
             });
           })
         );
+      }),
+      // Pre-cache important pages
+      caches.open(PAGES_CACHE).then((cache) => {
+        console.log('[Service Worker] Pre-caching pages');
+        return Promise.all(
+          CACHEABLE_PAGES.map((url) => {
+            return cache.add(url).catch((err) => {
+              console.warn(`[Service Worker] Failed to pre-cache ${url}:`, err);
+            });
+          })
+        );
       })
-      .then(() => {
-        console.log('[Service Worker] Installation complete');
-        return self.skipWaiting(); // Activate immediately
-      })
+    ]).then(() => {
+      console.log('[Service Worker] Installation complete');
+      return self.skipWaiting(); // Activate immediately
+    })
   );
 });
 
 // Activate event - clean up old caches
 self.addEventListener('activate', (event) => {
-  console.log('[Service Worker] Activating...');
+  console.log('[Service Worker] Activating version', CACHE_VERSION);
   
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
-          // Delete old caches
-          if (cacheName !== STATIC_CACHE && cacheName !== CACHE_NAME) {
+          // Delete old caches (keep only current version)
+          if (cacheName !== STATIC_CACHE && 
+              cacheName !== PAGES_CACHE && 
+              cacheName !== CACHE_NAME &&
+              cacheName.startsWith('frcr-')) {
             console.log('[Service Worker] Deleting old cache:', cacheName);
             return caches.delete(cacheName);
           }
@@ -98,12 +126,111 @@ self.addEventListener('fetch', (event) => {
     return;
   }
   
-  // For static assets: Cache first, then network
+  // For HTML pages: Network first, fallback to cache
+  if (request.destination === 'document' || 
+      (request.headers.get('accept') && request.headers.get('accept').includes('text/html'))) {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          // Cache successful responses
+          if (response && response.status === 200 && response.type === 'basic') {
+            const responseToCache = response.clone();
+            caches.open(PAGES_CACHE).then((cache) => {
+              cache.put(request, responseToCache);
+            });
+          }
+          return response;
+        })
+        .catch(() => {
+          // Network failed, try cache
+          return caches.match(request).then((cachedResponse) => {
+            if (cachedResponse) {
+              return cachedResponse;
+            }
+            // No cache, show offline page
+            return new Response(
+              `
+              <!DOCTYPE html>
+              <html>
+              <head>
+                <title>Offline - FRCR Revision</title>
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <style>
+                  body { 
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; 
+                    display: flex; 
+                    align-items: center; 
+                    justify-content: center; 
+                    height: 100vh; 
+                    margin: 0;
+                    background: linear-gradient(135deg, #5E899E 0%, #4D7A8D 100%);
+                    color: #fff;
+                  }
+                  .offline-message {
+                    text-align: center;
+                    padding: 3rem 2rem;
+                    background: rgba(255, 255, 255, 0.95);
+                    border-radius: 12px;
+                    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+                    max-width: 400px;
+                    color: #333;
+                  }
+                  .offline-icon { font-size: 4rem; margin-bottom: 1rem; }
+                  h1 { color: #5E899E; margin-bottom: 1rem; }
+                  p { color: #666; line-height: 1.6; }
+                  .retry-btn {
+                    margin-top: 1.5rem;
+                    padding: 10px 20px;
+                    background: #5E899E;
+                    color: white;
+                    border: none;
+                    border-radius: 6px;
+                    cursor: pointer;
+                    font-size: 1rem;
+                  }
+                  .retry-btn:hover { background: #4D7A8D; }
+                </style>
+              </head>
+              <body>
+                <div class="offline-message">
+                  <div class="offline-icon">📡</div>
+                  <h1>You're Offline</h1>
+                  <p>FRCR Revision requires an internet connection for full functionality.</p>
+                  <p>Some cached content may be available.</p>
+                  <button class="retry-btn" onclick="window.location.reload()">Retry</button>
+                </div>
+              </body>
+              </html>
+              `,
+              {
+                headers: { 'Content-Type': 'text/html' }
+              }
+            );
+          });
+        })
+    );
+    return;
+  }
+  
+  // For static assets: Cache first, then network (stale-while-revalidate)
   event.respondWith(
     caches.match(request)
       .then((cachedResponse) => {
+        // Return cached version immediately
         if (cachedResponse) {
-          // Return cached version
+          // Update cache in background (stale-while-revalidate)
+          fetch(request)
+            .then((response) => {
+              if (response && response.status === 200 && response.type === 'basic') {
+                const responseToCache = response.clone();
+                caches.open(STATIC_CACHE).then((cache) => {
+                  cache.put(request, responseToCache);
+                });
+              }
+            })
+            .catch(() => {
+              // Network failed, but we have cache, so that's fine
+            });
           return cachedResponse;
         }
         
@@ -127,52 +254,7 @@ self.addEventListener('fetch', (event) => {
             return response;
           })
           .catch(() => {
-            // Network failed and no cache - show offline message
-            if (request.destination === 'document') {
-              return new Response(
-                `
-                <!DOCTYPE html>
-                <html>
-                <head>
-                  <title>Offline - FRCR Examiner</title>
-                  <style>
-                    body { 
-                      font-family: Arial, sans-serif; 
-                      display: flex; 
-                      align-items: center; 
-                      justify-content: center; 
-                      height: 100vh; 
-                      margin: 0;
-                      background: #f8f9fa;
-                    }
-                    .offline-message {
-                      text-align: center;
-                      padding: 2rem;
-                      background: white;
-                      border-radius: 8px;
-                      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-                    }
-                    .offline-icon { font-size: 4rem; margin-bottom: 1rem; }
-                    h1 { color: #333; }
-                    p { color: #666; }
-                  </style>
-                </head>
-                <body>
-                  <div class="offline-message">
-                    <div class="offline-icon">📡</div>
-                    <h1>You're Offline</h1>
-                    <p>FRCR Examiner requires an internet connection.</p>
-                    <p>Please check your connection and try again.</p>
-                  </div>
-                </body>
-                </html>
-                `,
-                {
-                  headers: { 'Content-Type': 'text/html' }
-                }
-              );
-            }
-            
+            // Network failed and no cache
             return new Response('Offline', { status: 503 });
           });
       })

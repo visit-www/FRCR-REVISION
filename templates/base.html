@@ -6,20 +6,35 @@
     <title>FRCR Quick Revision Companion</title>
     
     <!-- PWA Manifest -->
-    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+    <link rel="manifest" href="{{ url_for('manifest') }}">
     
     <!-- Favicon -->
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/icon-192x192.png') }}">
     <link rel="shortcut icon" type="image/png" href="{{ url_for('static', filename='images/icon-192x192.png') }}">
     
-    <!-- PWA Theme Color (warm orange for confidence and success) -->
-    <meta name="theme-color" content="#ffc107">
+    <!-- PWA Theme Color -->
+    <meta name="theme-color" content="#5E899E">
+    <meta name="msapplication-TileColor" content="#5E899E">
+    <meta name="msapplication-config" content="/browserconfig.xml">
     
     <!-- Apple iOS Specific PWA Meta Tags -->
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="FRCR">
-    <link rel="apple-touch-icon" href="{{ url_for('static', filename='images/icon-192x192.png') }}">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="FRCR Revision">
+    <link rel="apple-touch-icon" href="https://res.cloudinary.com/dx7b7chvn/image/upload/c_fill,w_180,h_180,q_auto/v1768988247/frcr-revision-logo_pco6l0.jpg">
+    <link rel="apple-touch-icon" sizes="152x152" href="https://res.cloudinary.com/dx7b7chvn/image/upload/c_fill,w_152,h_152,q_auto/v1768988247/frcr-revision-logo_pco6l0.jpg">
+    <link rel="apple-touch-icon" sizes="180x180" href="https://res.cloudinary.com/dx7b7chvn/image/upload/c_fill,w_180,h_180,q_auto/v1768988247/frcr-revision-logo_pco6l0.jpg">
+    <link rel="apple-touch-icon" sizes="167x167" href="https://res.cloudinary.com/dx7b7chvn/image/upload/c_fill,w_167,h_167,q_auto/v1768988247/frcr-revision-logo_pco6l0.jpg">
+    
+    <!-- Android/Chrome PWA Meta Tags -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="application-name" content="FRCR Revision">
+    <meta name="format-detection" content="telephone=no">
+    
+    <!-- Splash Screens for iOS -->
+    <link rel="apple-touch-startup-image" media="(device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2)" href="https://res.cloudinary.com/dx7b7chvn/image/upload/c_fill,w_640,h_1136,q_auto/v1768988247/frcr-revision-logo_pco6l0.jpg">
+    <link rel="apple-touch-startup-image" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2)" href="https://res.cloudinary.com/dx7b7chvn/image/upload/c_fill,w_750,h_1334,q_auto/v1768988247/frcr-revision-logo_pco6l0.jpg">
+    <link rel="apple-touch-startup-image" media="(device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3)" href="https://res.cloudinary.com/dx7b7chvn/image/upload/c_fill,w_1242,h_2208,q_auto/v1768988247/frcr-revision-logo_pco6l0.jpg">
     
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -60,6 +75,13 @@
                 </div>
                 
                 <ul class="navbar-nav ms-auto gap-2">
+                    <!-- PWA Install Button (shown when installable) -->
+                    <li class="nav-item">
+                        <button id="pwa-install-button" class="btn btn-sm btn-outline-light d-none" style="display: none; border-color: rgba(255,255,255,0.5);">
+                            <i class="fas fa-download me-1"></i><span class="d-none d-md-inline">Install App</span>
+                        </button>
+                    </li>
+                    
                     {% if current_user.is_authenticated %}
                     <!-- Dashboard - Hidden on mobile (breadcrumb shows Home instead) -->
                     <li class="nav-item d-none d-lg-block">
@@ -85,7 +107,7 @@
                             {% else %}
                                 <i class="fas fa-user-circle me-1"></i>
                             {% endif %}
-                            {{ current_user.email }}
+                            <span class="d-none d-md-inline">{{ current_user.email }}</span>
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
                             <li><a class="dropdown-item" href="/auth/profile"><i class="fas fa-user me-2"></i>Profile</a></li>
@@ -97,12 +119,12 @@
                     <!-- Login/Register Links (when not authenticated) -->
                     <li class="nav-item">
                         <a class="nav-link" href="/auth/login" title="Login to your account">
-                            <i class="fas fa-sign-in-alt me-1"></i>Login
+                            <i class="fas fa-sign-in-alt me-1"></i><span class="d-none d-md-inline">Login</span>
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="/auth/register" title="Create a new account">
-                            <i class="fas fa-user-plus me-1"></i>Register
+                            <i class="fas fa-user-plus me-1"></i><span class="d-none d-md-inline">Register</span>
                         </a>
                     </li>
                     {% endif %}
@@ -128,6 +150,25 @@
 
     <!-- Toast Notification Container -->
     <div id="toast-container" style="position: fixed; top: 20px; right: 20px; z-index: 9999; max-width: 400px;"></div>
+
+    <!-- PWA Install Banner (shown when app can be installed) -->
+    <div id="pwa-install-banner" class="alert alert-info alert-dismissible fade show d-none" role="alert" style="margin: 0; border-radius: 0; background: linear-gradient(135deg, #5E899E 0%, #4D7A8D 100%); color: #fff; border: none; padding: 12px 20px;">
+        <div class="d-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-center">
+                <i class="fas fa-mobile-alt me-2" style="font-size: 1.2rem;"></i>
+                <div>
+                    <strong>Install FRCR Revision</strong>
+                    <span class="d-none d-md-inline ms-2">Get quick access and work offline</span>
+                </div>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <button id="pwa-install-banner-button" class="btn btn-sm btn-light" style="background: #fff; color: #5E899E; border: none;">
+                    <i class="fas fa-download me-1"></i>Install
+                </button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        </div>
+    </div>
 
     <!-- Main Content -->
     <div class="container-fluid main-content">
