@@ -16,6 +16,7 @@ from auth import auth_bp
 from backup_routes import backup_bp
 from admin_routes import admin_bp
 from admin_enrichment_routes import enrichment_bp
+from evernote_routes import evernote_bp
 from ai_prelim import AiPrelimError, generate_prelim_case_data
 from datetime import datetime
 from sqlalchemy.pool import NullPool
@@ -191,6 +192,7 @@ app.register_blueprint(auth_bp)
 app.register_blueprint(backup_bp)
 app.register_blueprint(admin_bp)  # Sprint 2: Admin user management
 app.register_blueprint(enrichment_bp)  # Data migration: Import, enrich, promote cases
+app.register_blueprint(evernote_bp, url_prefix='/evernote')  # Evernote integration for student notes
 
 
 @app.route('/')
@@ -1005,24 +1007,16 @@ def create_case():
         
         case_number = f"{prefix}{max_num + 1:03d}"
     
-    # Parse age_group enum if provided
-    age_group_enum = None
-    if data.get('age_group'):
-        try:
-            from models import AgeGroup
-            age_group_enum = AgeGroup[data['age_group']]
-        except KeyError:
-            pass
-    
-    # Questions/Answers stored in separate Question/Answer tables (not on Case model)
+    # Convert lists to JSON strings for TEXT fields (legacy support)
     try:
         case = Case(
             case_number=case_number,
             diagnosis=data['diagnosis'],
+            questions=json.dumps(questions or []),
+            answers=json.dumps(answers or []),
             discussion=data.get('discussion', ''),
             module=module_enum,
             body_part=body_part_enum,
-            age_group=age_group_enum,
             is_public=data.get('is_public', False),
             created_by_user_id=current_user.id
         )

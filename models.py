@@ -140,6 +140,10 @@ class User(UserMixin, db.Model):
     last_case_viewed = db.Column(db.DateTime, nullable=True)  # When did user last view a case
     last_case_viewed_id = db.Column(db.Integer, nullable=True)  # Which case was viewed
     
+    # === EVERNOTE INTEGRATION ===
+    evernote_access_token = db.Column(db.String(255), nullable=True)  # OAuth access token
+    evernote_connected_at = db.Column(db.DateTime, nullable=True)  # When Evernote was connected
+    
     # Password recovery
     recovery_token = db.Column(db.String(255), unique=True, nullable=True)
     recovery_token_expires = db.Column(db.DateTime, nullable=True)
