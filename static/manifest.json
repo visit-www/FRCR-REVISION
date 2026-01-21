@@ -12,25 +12,25 @@
   "lang": "en",
   "icons": [
     {
-      "src": "https://res.cloudinary.com/dx7b7chvn/image/upload/v1769022136/frcr-revision-logo_kjxka1.png",
+      "src": "https://res.cloudinary.com/dx7b7chvn/image/upload/v1769028760/frcr-revision-logo-1_wyl1rg.png",
       "sizes": "72x72",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "https://res.cloudinary.com/dx7b7chvn/image/upload/v1769022136/frcr-revision-logo_kjxka1.png",
+      "src": "https://res.cloudinary.com/dx7b7chvn/image/upload/v1769028760/frcr-revision-logo-1_wyl1rg.png",
       "sizes": "96x96",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "https://res.cloudinary.com/dx7b7chvn/image/upload/v1769022136/icon-192x192_zkqtvu.png",
+      "src": "https://res.cloudinary.com/dx7b7chvn/image/upload/v1769028760/frcr-revision-logo-1_wyl1rg.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "https://res.cloudinary.com/dx7b7chvn/image/upload/v1769022136/frcr-revision-logo_kjxka1.png",
+      "src": "https://res.cloudinary.com/dx7b7chvn/image/upload/v1769028760/frcr-revision-logo-1_wyl1rg.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
@@ -58,7 +58,7 @@
       "url": "/modules",
       "icons": [
         {
-          "src": "https://res.cloudinary.com/dx7b7chvn/image/upload/v1769022136/frcr-revision-logo_kjxka1.png",
+          "src": "https://res.cloudinary.com/dx7b7chvn/image/upload/v1769028760/frcr-revision-logo-1_wyl1rg.png",
           "sizes": "192x192"
         }
       ]
@@ -70,7 +70,7 @@
       "url": "/cases",
       "icons": [
         {
-          "src": "https://res.cloudinary.com/dx7b7chvn/image/upload/v1769022136/frcr-revision-logo_kjxka1.png",
+          "src": "https://res.cloudinary.com/dx7b7chvn/image/upload/v1769028760/frcr-revision-logo-1_wyl1rg.png",
           "sizes": "192x192"
         }
       ]

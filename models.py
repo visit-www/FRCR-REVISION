@@ -150,6 +150,10 @@ class User(UserMixin, db.Model):
     anki_deck_name = db.Column(db.String(100), nullable=True, default='FRCR Revision')  # Default deck name
     anki_connected_at = db.Column(db.DateTime, nullable=True)  # When Anki was connected
     
+    # === SCIENCE DIRECT INTEGRATION (Student) ===
+    sciencedirect_session_cookies = db.Column(db.Text, nullable=True)  # Serialized session cookies (JSON)
+    sciencedirect_connected_at = db.Column(db.DateTime, nullable=True)  # When ScienceDirect was connected
+    
     # Password recovery
     recovery_token = db.Column(db.String(255), unique=True, nullable=True)
     recovery_token_expires = db.Column(db.DateTime, nullable=True)

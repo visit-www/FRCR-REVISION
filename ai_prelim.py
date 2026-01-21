@@ -436,6 +436,52 @@ def generate_prelim_case_data(case_context, provider="claude"):
     parsed.setdefault("anatomy_image", {})  # Optional field - may be empty
     parsed.setdefault("sources", [])
     parsed.setdefault("warnings", [])
+    
+    # Fix URLs in sources (PMC and RadiologyAssistant)
+    if isinstance(parsed.get("sources"), list):
+        import re
+        for source in parsed["sources"]:
+            if isinstance(source, dict) and "url" in source:
+                url = source["url"]
+                
+                # Fix PMC URLs with duplicate prefix (e.g., PMCPMC10481713)
+                if "pmc.ncbi.nlm.nih.gov" in url or "ncbi.nlm.nih.gov/pmc" in url:
+                    # Extract PMC ID and reconstruct URL correctly
+                    # Match patterns like PMCPMC123 or PMC123
+                    pmc_match = re.search(r'PMC?PMC?(\d+)', url, re.IGNORECASE)
+                    if pmc_match:
+                        pmc_id_clean = pmc_match.group(1)
+                        source["url"] = f"https://www.ncbi.nlm.nih.gov/pmc/articles/PMC{pmc_id_clean}/"
+                
+                # Fix RadiologyAssistant URLs (ensure correct domain and protocol)
+                elif "radiologyassistant" in url.lower():
+                    # Normalize domain: ensure it's radiologyassistant.nl (not .com or other)
+                    url_lower = url.lower()
+                    # Extract the path/query part
+                    if "radiologyassistant.nl" in url_lower:
+                        # Already correct domain, just ensure https://
+                        if not url.startswith("http://") and not url.startswith("https://"):
+                            # Reconstruct with https://
+                            path_part = url.split("radiologyassistant.nl", 1)[1] if "radiologyassistant.nl" in url_lower else ""
+                            source["url"] = f"https://radiologyassistant.nl{path_part}"
+                        elif url.startswith("http://"):
+                            # Upgrade http to https
+                            source["url"] = url.replace("http://", "https://", 1)
+                    elif "radiologyassistant.com" in url_lower or "radiology-assistant" in url_lower:
+                        # Wrong domain, fix to .nl
+                        path_part = ""
+                        for domain in ["radiologyassistant.com", "radiology-assistant"]:
+                            if domain in url_lower:
+                                path_part = url.split(domain, 1)[1] if domain in url else ""
+                                break
+                        # Ensure protocol
+                        if not path_part.startswith("/"):
+                            path_part = "/" + path_part
+                        source["url"] = f"https://radiologyassistant.nl{path_part}"
+                    else:
+                        # Just radiologyassistant mentioned, ensure full URL
+                        if not url.startswith("http://") and not url.startswith("https://"):
+                            source["url"] = f"https://radiologyassistant.nl{url if url.startswith('/') else '/' + url}"
 
     # Validate qa_pairs structure
     validated_pairs = []

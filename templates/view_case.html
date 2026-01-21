@@ -283,6 +283,12 @@
                                     <i class="fas fa-stethoscope me-1" style="color: #6c757d;"></i>RadiologyAssistant
                                 </button>
                             </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="sciencedirectTab" data-bs-toggle="tab" data-bs-target="#sciencedirectPane" type="button" role="tab" aria-controls="sciencedirectPane" aria-selected="false">
+                                    <i class="fas fa-graduation-cap me-1" style="color: #ff6b35;"></i>ScienceDirect
+                                    <span id="sciencedirectStatusBadge" class="badge bg-secondary ms-1" style="display: none;">Not Connected</span>
+                                </button>
+                            </li>
                         </ul>
                         
                         <div class="tab-content" id="notesTabContent">
@@ -630,6 +636,58 @@
                                     </div>
                                 </div>
                             </div>
+                            
+                            <!-- ScienceDirect Tab (Student) -->
+                            <div class="tab-pane fade" id="sciencedirectPane" role="tabpanel" aria-labelledby="sciencedirectTab">
+                                <div class="p-3">
+                                    <h6 class="mb-3"><i class="fas fa-graduation-cap me-2" style="color: #ff6b35;"></i>ScienceDirect</h6>
+                                    
+                                    <!-- Connection Status -->
+                                    <div id="sciencedirectConnectStatus" class="mb-3" style="display: none;">
+                                        <div class="alert alert-info small mb-2">
+                                            <i class="fas fa-info-circle me-2"></i>
+                                            <span id="sciencedirectStatusText">Not connected</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Connect/Disconnect Button -->
+                                    <div class="mb-3">
+                                        <button id="sciencedirectConnectBtn" class="btn w-100" onclick="connectScienceDirect()" style="background: #ff6b35; border-color: #ff6b35; color: white;">
+                                            <i class="fas fa-link me-2"></i>Connect ScienceDirect
+                                        </button>
+                                        <button id="sciencedirectDisconnectBtn" class="btn btn-outline-danger w-100" onclick="disconnectScienceDirect()" style="display: none;">
+                                            <i class="fas fa-unlink me-2"></i>Disconnect
+                                        </button>
+                                    </div>
+                                    
+                                    <!-- Search Button (only shown when connected) -->
+                                    <div id="sciencedirectSearchSection" class="mb-3" style="display: none;">
+                                        <button class="btn w-100" onclick="searchScienceDirectStudent()" style="background: #ff6b35; border-color: #ff6b35; color: white;">
+                                            <i class="fas fa-external-link-alt me-2"></i>Search "{{ case.diagnosis if case else 'Diagnosis' }}" in ScienceDirect
+                                        </button>
+                                        <small class="text-muted d-block mt-2">
+                                            <i class="fas fa-info-circle me-1"></i>Opens advanced search in new window. Your session is remembered.
+                                        </small>
+                                    </div>
+                                    
+                                    <!-- Subscription Info -->
+                                    <div class="alert alert-warning small mb-0">
+                                        <i class="fas fa-exclamation-triangle me-2"></i>
+                                        <strong>Access Note:</strong> Your access to full-text articles depends on your subscription status. 
+                                        {% if current_user.subscription_status.value == 'free' %}
+                                        <strong>You are on a free plan.</strong> Some articles may require a paid subscription for full access.
+                                        {% else %}
+                                        <strong>You have a paid subscription.</strong> You should have access to most full-text articles.
+                                        {% endif %}
+                                    </div>
+                                    
+                                    <div class="alert alert-info small mt-2 mb-0">
+                                        <i class="fas fa-lightbulb me-2"></i>
+                                        <strong>Advanced Search:</strong> Automatically searches for "{{ case.diagnosis if case else 'diagnosis' }}" AND (radiology OR imaging OR diagnosis) to find the most relevant articles.
+                                    </div>
+                                </div>
+                            </div>
+                            
                         </div>
                     </div>
                     {% endif %}
@@ -649,6 +707,31 @@
                 <button type="button" id="floatingNotesBtn" class="floating-notes-button" title="Quick Note" style="display: flex !important;">
                     <i class="fas fa-sticky-note me-2"></i>Notes
                 </button>
+                {% endif %}
+
+                <!-- ScienceDirect Section (Admin Only) -->
+                {% if current_user.is_authenticated and current_user.role and current_user.role.value == 'admin' %}
+                <div class="detail-section mt-4 mb-5 p-4 rounded-3" style="background: linear-gradient(135deg, #FFF5F0 0%, #FFFBF8 100%); border-left: 5px solid #ff6b35;">
+                    <label class="section-title fw-bold mb-3 d-block">
+                        <i class="fas fa-graduation-cap me-2" style="color: #ff6b35;"></i>ScienceDirect Search
+                    </label>
+                    <p class="text-muted small mb-3">Search ScienceDirect for peer-reviewed radiology articles. Advanced search includes radiology, imaging, and diagnosis keywords. Auto-login is handled automatically and session is remembered.</p>
+                    
+                    <!-- Search Button -->
+                    <div class="mb-3">
+                        <button class="btn w-100" onclick="searchScienceDirect()" style="background: #ff6b35; border-color: #ff6b35; color: white;">
+                            <i class="fas fa-external-link-alt me-2"></i>Search "{{ case.diagnosis if case else 'Diagnosis' }}" in ScienceDirect
+                        </button>
+                        <small class="text-muted d-block mt-2">
+                            <i class="fas fa-info-circle me-1"></i>Opens advanced search in new window. Login session is remembered for future searches.
+                        </small>
+                    </div>
+                    
+                    <div class="alert alert-info small mb-0">
+                        <i class="fas fa-lightbulb me-2"></i>
+                        <strong>Advanced Search:</strong> Automatically searches for "{{ case.diagnosis if case else 'diagnosis' }}" AND (radiology OR imaging OR diagnosis) to find the most relevant articles.
+                    </div>
+                </div>
                 {% endif %}
 
                 <!-- Action Buttons - Admin/Content Manager Only -->
@@ -7281,17 +7364,21 @@
         if (noResults) noResults.style.display = 'none';
         
         try {
-            const response = await fetch(`/resources/api/pubmed/search?topic=${encodeURIComponent(query)}&max_results=20&free_full_text=true`);
+            const response = await fetch(`/resources/api/pubmed/search?topic=${encodeURIComponent(query)}&max_results=20`);
             const data = await response.json();
             
             if (statusEl) statusEl.style.display = 'none';
             
-            if (data.error) {
-                showFlash(data.error, 'error');
+            if (!response.ok || data.error) {
+                const errorMsg = data.message || data.error || `HTTP ${response.status}: ${response.statusText}`;
+                console.error('[PUBMED] Search error:', errorMsg, data);
+                showFlash(errorMsg, 'error');
+                if (noResults) noResults.style.display = 'block';
                 return;
             }
             
             if (data.articles && data.articles.length > 0) {
+                console.log(`[PUBMED] Found ${data.articles.length} articles for "${query}"`);
                 resultsDiv.innerHTML = data.articles.map(article => `
                     <div class="pubmed-article mb-3 p-3 rounded" style="background: #fff; border: 1px solid #e0e0e0; border-left: 3px solid #28a745;">
                         <h6 class="mb-2" style="color: #2c3e50;">
@@ -7324,7 +7411,8 @@
         } catch (error) {
             console.error('[PUBMED] Search error:', error);
             if (statusEl) statusEl.style.display = 'none';
-            showFlash('Error searching PubMed', 'error');
+            showFlash(`Error searching PubMed: ${error.message}`, 'error');
+            if (noResults) noResults.style.display = 'block';
         }
     }
     
@@ -7415,22 +7503,41 @@
             
             if (statusEl) statusEl.style.display = 'none';
             
-            if (data.error) {
-                showFlash(data.error, 'error');
+            if (!response.ok || data.error) {
+                const errorMsg = data.message || data.error || `HTTP ${response.status}: ${response.statusText}`;
+                console.error('[TCIA] Search error:', errorMsg, data);
+                showFlash(errorMsg, 'error');
+                if (noResults) noResults.style.display = 'block';
                 return;
             }
             
+            // Show warning if present
+            if (data.warning) {
+                resultsDiv.innerHTML = `
+                    <div class="alert alert-warning mb-3" role="alert">
+                        <i class="fas fa-exclamation-triangle me-2"></i>${escapeHtml(data.warning)}
+                    </div>
+                `;
+            }
+            
             if (data.results && data.results.length > 0) {
-                resultsDiv.innerHTML = data.results.map(result => {
+                console.log(`[TCIA] Found ${data.results.length} results for "${query}"`);
+                const resultsHTML = data.results.map(result => {
                     const collection = result.collection;
                     const study = result.study;
                     const series = result.series || [];
+                    const collectionPageLink = result.collection_page_link || '#';
                     
                     return `
                         <div class="tcia-result mb-3 p-3 rounded" style="background: #fff; border: 1px solid #e0e0e0; border-left: 3px solid #17a2b8;">
-                            <h6 class="mb-2" style="color: #2c3e50;">
-                                <i class="fas fa-database me-2"></i>${escapeHtml(collection.name)}
-                            </h6>
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <h6 class="mb-0" style="color: #2c3e50;">
+                                    <i class="fas fa-database me-2"></i>${escapeHtml(collection.name)}
+                                </h6>
+                                <a href="${collectionPageLink}" target="_blank" class="btn btn-sm btn-outline-primary" title="View collection page">
+                                    <i class="fas fa-external-link-alt me-1"></i>Collection
+                                </a>
+                            </div>
                             <p class="small text-muted mb-2">${escapeHtml(collection.description || '')}</p>
                             <div class="mb-2">
                                 <small class="text-muted">
@@ -7441,10 +7548,17 @@
                             </div>
                             ${series.length > 0 ? `
                                 <div class="mt-2">
-                                    <strong class="small">Available Series:</strong>
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <strong class="small">Available Series:</strong>
+                                        ${series[0] && series[0].study_page_link ? `
+                                            <a href="${series[0].study_page_link}" target="_blank" class="btn btn-sm btn-outline-info" title="View all series in this study">
+                                                <i class="fas fa-list me-1"></i>View Study
+                                            </a>
+                                        ` : ''}
+                                    </div>
                                     <div class="d-flex flex-wrap gap-2 mt-1">
                                         ${series.map(s => `
-                                            <a href="${s.viewer_link}" target="_blank" class="btn btn-sm btn-info" style="background: #17a2b8; border-color: #17a2b8;">
+                                            <a href="${s.viewer_link}" target="_blank" class="btn btn-sm btn-info" style="background: #17a2b8; border-color: #17a2b8;" title="View this series in DICOM viewer">
                                                 <i class="fas fa-eye me-1"></i>${escapeHtml(s.series_description || 'View Series')}
                                             </a>
                                         `).join('')}
@@ -7454,13 +7568,16 @@
                         </div>
                     `;
                 }).join('');
+                
+                resultsDiv.innerHTML = (data.warning ? resultsDiv.innerHTML : '') + resultsHTML;
             } else {
                 if (noResults) noResults.style.display = 'block';
             }
         } catch (error) {
             console.error('[TCIA] Search error:', error);
             if (statusEl) statusEl.style.display = 'none';
-            showFlash('Error searching TCIA', 'error');
+            showFlash(`Error searching TCIA: ${error.message}`, 'error');
+            if (noResults) noResults.style.display = 'block';
         }
     }
     
@@ -7491,10 +7608,170 @@
         }
     }
     
+    // ==================== SCIENCE DIRECT ====================
+    
+    // Check ScienceDirect connection status (for students)
+    async function checkScienceDirectStatus() {
+        try {
+            const response = await fetch('/resources/api/sciencedirect/status');
+            const data = await response.json();
+            
+            if (data.connected) {
+                // Show connected state
+                document.getElementById('sciencedirectConnectBtn').style.display = 'none';
+                document.getElementById('sciencedirectDisconnectBtn').style.display = 'block';
+                document.getElementById('sciencedirectSearchSection').style.display = 'block';
+                document.getElementById('sciencedirectStatusBadge').textContent = 'Connected';
+                document.getElementById('sciencedirectStatusBadge').className = 'badge bg-success ms-1';
+                document.getElementById('sciencedirectStatusBadge').style.display = 'inline';
+                document.getElementById('sciencedirectStatusText').textContent = 'Connected to ScienceDirect';
+                document.getElementById('sciencedirectConnectStatus').style.display = 'block';
+            } else {
+                // Show not connected state
+                document.getElementById('sciencedirectConnectBtn').style.display = 'block';
+                document.getElementById('sciencedirectDisconnectBtn').style.display = 'none';
+                document.getElementById('sciencedirectSearchSection').style.display = 'none';
+                document.getElementById('sciencedirectStatusBadge').textContent = 'Not Connected';
+                document.getElementById('sciencedirectStatusBadge').className = 'badge bg-secondary ms-1';
+                document.getElementById('sciencedirectStatusBadge').style.display = 'inline';
+                document.getElementById('sciencedirectStatusText').textContent = 'Not connected. Connect to access full-text articles.';
+                document.getElementById('sciencedirectConnectStatus').style.display = 'block';
+            }
+        } catch (error) {
+            console.error('[SCIENCEDIRECT] Status check error:', error);
+        }
+    }
+    
+    // Connect to ScienceDirect (opens login page)
+    async function connectScienceDirect() {
+        try {
+            const response = await fetch('/resources/api/sciencedirect/connect', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'}
+            });
+            const data = await response.json();
+            
+            if (data.error) {
+                showFlash(data.error, 'error');
+                return;
+            }
+            
+            // Open ScienceDirect login page
+            window.open(data.connect_url, '_blank', 'width=800,height=600');
+            showFlash('Please complete login on ScienceDirect. Your connection will be remembered.', 'info');
+            
+            // Update UI if connection was successful
+            if (data.connected) {
+                checkScienceDirectStatus();
+            }
+        } catch (error) {
+            console.error('[SCIENCEDIRECT] Connect error:', error);
+            showFlash(`Error connecting to ScienceDirect: ${error.message}`, 'error');
+        }
+    }
+    
+    // Disconnect from ScienceDirect
+    async function disconnectScienceDirect() {
+        if (!confirm('Are you sure you want to disconnect from ScienceDirect?')) {
+            return;
+        }
+        
+        try {
+            const response = await fetch('/resources/api/sciencedirect/disconnect', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'}
+            });
+            const data = await response.json();
+            
+            if (data.error) {
+                showFlash(data.error, 'error');
+                return;
+            }
+            
+            showFlash('Disconnected from ScienceDirect', 'success');
+            checkScienceDirectStatus(); // Refresh status
+        } catch (error) {
+            console.error('[SCIENCEDIRECT] Disconnect error:', error);
+            showFlash(`Error disconnecting: ${error.message}`, 'error');
+        }
+    }
+    
+    // Search ScienceDirect (Admin - uses auto-login)
+    async function searchScienceDirect() {
+        const diagnosis = caseDiagnosis || '';
+        if (!diagnosis) {
+            showFlash('No diagnosis available for this case', 'warning');
+            return;
+        }
+        
+        try {
+            const response = await fetch(`/resources/api/sciencedirect/search?diagnosis=${encodeURIComponent(diagnosis)}`);
+            const data = await response.json();
+            
+            if (!response.ok || data.error) {
+                const errorMsg = data.message || data.error || `HTTP ${response.status}: ${response.statusText}`;
+                console.error('[SCIENCEDIRECT] Search error:', errorMsg, data);
+                
+                // Check if it's an access denied error
+                if (response.status === 403) {
+                    showFlash('Admin access required for ScienceDirect search', 'error');
+                } else {
+                    showFlash(errorMsg, 'error');
+                }
+                return;
+            }
+            
+            // Open search URL in new window
+            window.open(data.search_url, '_blank');
+            const loginStatus = data.logged_in ? ' (session remembered)' : '';
+            showFlash(`Opening ScienceDirect search${loginStatus}...`, 'info');
+        } catch (error) {
+            console.error('[SCIENCEDIRECT] Search error:', error);
+            showFlash(`Error opening ScienceDirect search: ${error.message}`, 'error');
+        }
+    }
+    
+    // Search ScienceDirect (Student - uses their saved session)
+    async function searchScienceDirectStudent() {
+        const diagnosis = caseDiagnosis || '';
+        if (!diagnosis) {
+            showFlash('No diagnosis available for this case', 'warning');
+            return;
+        }
+        
+        try {
+            const response = await fetch(`/resources/api/sciencedirect/search/student?diagnosis=${encodeURIComponent(diagnosis)}`);
+            const data = await response.json();
+            
+            if (!response.ok || data.error) {
+                const errorMsg = data.message || data.error || `HTTP ${response.status}: ${response.statusText}`;
+                console.error('[SCIENCEDIRECT] Student search error:', errorMsg, data);
+                
+                // Check if connection is required
+                if (data.requires_connection || response.status === 400) {
+                    showFlash('Please connect to ScienceDirect first', 'warning');
+                    checkScienceDirectStatus();
+                } else {
+                    showFlash(errorMsg, 'error');
+                }
+                return;
+            }
+            
+            // Open search URL in new window
+            window.open(data.search_url, '_blank');
+            const loginStatus = data.logged_in ? ' (session active)' : '';
+            showFlash(`Opening ScienceDirect search${loginStatus}...`, 'info');
+        } catch (error) {
+            console.error('[SCIENCEDIRECT] Student search error:', error);
+            showFlash(`Error opening ScienceDirect search: ${error.message}`, 'error');
+        }
+    }
+    
     // Initialize integrations on page load
     if (isStudent) {
         checkNotionStatus();
         checkAnkiStatus();
+        checkScienceDirectStatus(); // Check ScienceDirect connection
         
         // Search when Notion tab is clicked
         const notionTab = document.getElementById('notionTab');
@@ -7503,6 +7780,14 @@
                 if (notionConnected && !document.querySelector('.notion-page-card')) {
                     searchNotionPages();
                 }
+            });
+        }
+        
+        // Check ScienceDirect status when tab is clicked
+        const sciencedirectTab = document.getElementById('sciencedirectTab');
+        if (sciencedirectTab) {
+            sciencedirectTab.addEventListener('shown.bs.tab', () => {
+                checkScienceDirectStatus();
             });
         }
     }

@@ -181,5 +181,5 @@ It is designed to be trusted, not noticed.
 Once implemented, it should not be revisited.
 
 The current jpeg logo is stored at following path :
-/Users/zen/myRepos/projects/FRCR_REVISION/static/images/frcr-revision-logo.jpg
+/Users/zen/myRepos/projects/FRCR_REVISION/static/images/frcr-revision-logo.png
 

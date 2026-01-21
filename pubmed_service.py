@@ -96,6 +96,7 @@ def cache_result(cache_key: str, results: List[Dict]):
 def build_pubmed_query(topic: str, filters: Optional[Dict] = None) -> str:
     """
     Build PubMed query string with exam-relevant filters.
+    SIMPLIFIED: Less restrictive query that actually returns results.
     
     Args:
         topic: Search topic (e.g., "BI-RADS", "lung cancer staging")
@@ -106,34 +107,29 @@ def build_pubmed_query(topic: str, filters: Optional[Dict] = None) -> str:
     """
     filters = filters or {}
     
-    # Base query
-    query_parts = [topic]
+    # Simplified query: topic + radiology context (no mandatory journal filter)
+    # This is much less restrictive and will return results
+    query = f"{topic} AND radiology"
     
-    # Add radiology context
-    query_parts.append("radiology[Title/Abstract]")
+    # Only add free full text filter if explicitly requested
+    # Otherwise, we search all and prioritize free ones in results
+    if filters.get('free_full_text_only', False):
+        query += " AND free full text[filter]"
     
-    # Filter for preferred journals
-    journal_query = " OR ".join([f'"{journal}"[Journal]' for journal in PREFERRED_JOURNALS[:5]])  # Limit to avoid query length issues
-    query_parts.append(f"({journal_query})")
-    
-    # Free full-text filter (PMC articles)
-    if filters.get('free_full_text', True):
-        query_parts.append("free full text[filter]")
-    
-    # Article type filters
+    # Article type filters (optional)
     article_types = filters.get('article_type', [])
     if article_types:
-        type_query = " OR ".join([f'"{at}"[Publication Type]' for at in article_types])
-        query_parts.append(f"({type_query})")
+        types = " OR ".join([f'"{t}"[Publication Type]' for t in article_types])
+        query += f" AND ({types})"
     
-    # Date range filter
+    # Date range filter (optional)
     if filters.get('date_range'):
         date_range = filters['date_range']
         if isinstance(date_range, dict):
             if 'from' in date_range:
-                query_parts.append(f"{date_range['from']}:{date_range.get('to', '3000')}[Publication Date]")
+                query += f" AND {date_range['from']}:{date_range.get('to', '3000')}[Publication Date]"
     
-    return " AND ".join(query_parts)
+    return query
 
 
 def search_pubmed(topic: str, max_results: int = 20, filters: Optional[Dict] = None) -> List[Dict]:
@@ -161,6 +157,7 @@ def search_pubmed(topic: str, max_results: int = 20, filters: Optional[Dict] = N
     
     # Build query
     query = build_pubmed_query(topic, filters)
+    print(f"[DEBUG] PubMed query: {query}")
     
     results = []
     
@@ -182,9 +179,26 @@ def search_pubmed(topic: str, max_results: int = 20, filters: Optional[Dict] = N
             handle.close()
             
             pmids = search_results['IdList']
+            print(f"[DEBUG] PubMed found {len(pmids)} results")
             
             if not pmids:
-                return []
+                # Try simpler query as fallback
+                print(f"[DEBUG] No results, trying simpler query: {topic} radiology")
+                simple_query = f"{topic} radiology"
+                handle = Entrez.esearch(
+                    db="pubmed",
+                    term=simple_query,
+                    retmax=max_results,
+                    sort="relevance",
+                    retmode="xml"
+                )
+                search_results = Entrez.read(handle)
+                handle.close()
+                pmids = search_results['IdList']
+                print(f"[DEBUG] Fallback query found {len(pmids)} results")
+                
+                if not pmids:
+                    return []
             
             # Fetch article details
             handle = Entrez.efetch(
@@ -238,7 +252,9 @@ def search_pubmed(topic: str, max_results: int = 20, filters: Optional[Dict] = N
                     for article_id in article_data.get('ELocationID', []):
                         if article_id.attributes.get('EIdType') == 'pmc':
                             pmc_id = str(article_id)
-                            full_text_link = f"https://www.ncbi.nlm.nih.gov/pmc/articles/PMC{pmc_id}/"
+                            # Remove "PMC" prefix if already present
+                            pmc_id_clean = pmc_id.replace('PMC', '').replace('pmc', '').strip()
+                            full_text_link = f"https://www.ncbi.nlm.nih.gov/pmc/articles/PMC{pmc_id_clean}/"
                             break
                     
                     # If no PMC, check PubmedCentral
@@ -246,7 +262,9 @@ def search_pubmed(topic: str, max_results: int = 20, filters: Optional[Dict] = N
                         for id_list in article.get('PubmedData', {}).get('ArticleIdList', []):
                             if id_list.attributes.get('IdType') == 'pmc':
                                 pmc_id = str(id_list)
-                                full_text_link = f"https://www.ncbi.nlm.nih.gov/pmc/articles/PMC{pmc_id}/"
+                                # Remove "PMC" prefix if already present
+                                pmc_id_clean = pmc_id.replace('PMC', '').replace('pmc', '').strip()
+                                full_text_link = f"https://www.ncbi.nlm.nih.gov/pmc/articles/PMC{pmc_id_clean}/"
                                 break
                     
                     # PubMed link
@@ -259,22 +277,30 @@ def search_pubmed(topic: str, max_results: int = 20, filters: Optional[Dict] = N
                             doi = str(id_list)
                             break
                     
-                    results.append({
+                    article_dict = {
                         'pmid': pmid,
                         'title': title,
                         'authors': authors,
                         'journal': journal_title,
                         'journal_iso': journal_iso,
                         'year': year,
-                        'abstract': abstract[:500] + '...' if len(abstract) > 500 else abstract,  # Truncate long abstracts
+                        'abstract': abstract[:500] + '...' if len(abstract) > 500 else abstract,
                         'pubmed_link': pubmed_link,
                         'full_text_link': full_text_link,
                         'doi': doi,
                         'has_free_full_text': full_text_link is not None
-                    })
+                    }
+                    
+                    # Prioritize free full-text articles (add to beginning)
+                    if full_text_link:
+                        results.insert(0, article_dict)
+                    else:
+                        results.append(article_dict)
                     
                 except Exception as e:
                     print(f"Error parsing article: {e}")
+                    import traceback
+                    traceback.print_exc()
                     continue
             
             # Rate limiting (NCBI requires delays)
@@ -299,24 +325,41 @@ def _search_pubmed_requests(query: str, max_results: int) -> List[Dict]:
     """
     Fallback PubMed search using requests (when Bio.Entrez not available).
     Less feature-rich but works without biopython.
+    FIXED: Prioritizes free full-text articles.
     """
-    results = []
+    free_text_articles = []
+    other_articles = []
     
     try:
+        print(f"[DEBUG] Using requests fallback for query: {query}")
         # Search using E-utilities
         search_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi"
         params = {
             'db': 'pubmed',
             'term': query,
-            'retmax': max_results,
+            'retmax': max_results * 2,  # Get more to filter
             'retmode': 'json',
             'sort': 'relevance'
         }
         
         response = requests.get(search_url, params=params, timeout=10)
+        print(f"[DEBUG] PubMed search response status: {response.status_code}")
+        
         if response.status_code == 200:
             data = response.json()
             pmids = data.get('esearchresult', {}).get('idlist', [])
+            print(f"[DEBUG] PubMed found {len(pmids)} PMIDs")
+            
+            if not pmids:
+                # Try even simpler query
+                simple_query = query.split(' AND ')[0] + ' radiology'
+                print(f"[DEBUG] Trying simpler query: {simple_query}")
+                params['term'] = simple_query
+                response = requests.get(search_url, params=params, timeout=10)
+                if response.status_code == 200:
+                    data = response.json()
+                    pmids = data.get('esearchresult', {}).get('idlist', [])
+                    print(f"[DEBUG] Simpler query found {len(pmids)} PMIDs")
             
             if pmids:
                 # Fetch summaries
@@ -343,10 +386,12 @@ def _search_pubmed_requests(query: str, max_results: int) -> List[Dict]:
                                 if aid.get('idtype') == 'pmc':
                                     pmc_id = aid.get('value', '')
                                     if pmc_id:
-                                        full_text_link = f"https://www.ncbi.nlm.nih.gov/pmc/articles/PMC{pmc_id}/"
+                                        # Remove "PMC" prefix if already present
+                                        pmc_id_clean = str(pmc_id).replace('PMC', '').replace('pmc', '').strip()
+                                        full_text_link = f"https://www.ncbi.nlm.nih.gov/pmc/articles/PMC{pmc_id_clean}/"
                                     break
                             
-                            results.append({
+                            article_dict = {
                                 'pmid': pmid,
                                 'title': summary.get('title', 'No title'),
                                 'authors': summary.get('authors', []),
@@ -358,15 +403,24 @@ def _search_pubmed_requests(query: str, max_results: int) -> List[Dict]:
                                 'full_text_link': full_text_link,
                                 'doi': None,
                                 'has_free_full_text': full_text_link is not None
-                            })
+                            }
+                            
+                            # Prioritize free full-text
+                            if full_text_link:
+                                free_text_articles.append(article_dict)
+                            else:
+                                other_articles.append(article_dict)
         
         # Rate limiting
         time.sleep(0.34)
         
     except Exception as e:
         print(f"Requests-based PubMed search error: {e}")
+        import traceback
+        traceback.print_exc()
     
-    return results
+    # Combine: free full-text first
+    return free_text_articles + other_articles
 
 
 def search_latest_guidelines(topic: str, max_results: int = 10) -> List[Dict]:

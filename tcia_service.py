@@ -119,28 +119,41 @@ def search_collections(
         if response.status_code != 200:
             return []
         
+        # Parse simple format: [{"Collection":"name"}, ...]
         collections = response.json()
+        print(f"[DEBUG] TCIA found {len(collections)} collections")
+        
+        if not isinstance(collections, list):
+            print(f"[DEBUG] TCIA unexpected format: {type(collections)}")
+            return []
         
         # Filter collections
         filtered = []
-        for collection in collections:
-            name = collection.get('Collection', '').lower()
-            description = collection.get('Description', '').lower()
-            
-            # Apply filters
-            if cancer_type and cancer_type.lower() not in name and cancer_type.lower() not in description:
+        search_term = (cancer_type or '').lower()
+        
+        for item in collections:
+            # Handle simple format: {"Collection":"name"}
+            collection_name = item.get('Collection', '')
+            if not collection_name:
                 continue
             
-            # Note: Modality and body part filtering would require additional API calls
-            # For now, return all collections and let frontend filter
+            # Filter by search term if provided
+            if search_term:
+                # Simple keyword matching
+                if search_term not in collection_name.lower():
+                    continue
             
+            # Return basic info (description/counts not in simple response)
             filtered.append({
-                'collection_id': collection.get('Collection'),
-                'name': collection.get('Collection'),
-                'description': collection.get('Description'),
-                'subject_count': collection.get('SubjectCount', 0),
-                'image_count': collection.get('ImageCount', 0)
+                'collection_id': collection_name,
+                'name': collection_name,
+                'description': '',  # Not available in simple format
+                'subject_count': 0,  # Not available in simple format
+                'image_count': 0     # Not available in simple format
             })
+            
+            if len(filtered) >= max_results:
+                break
         
         # Cache results
         cache_result(cache_key, filtered)
@@ -149,6 +162,8 @@ def search_collections(
         
     except Exception as e:
         print(f"TCIA search error: {e}")
+        import traceback
+        traceback.print_exc()
         return []
 
 
@@ -235,8 +250,11 @@ def get_study_series(study_instance_uid: str) -> List[Dict]:
         for series in series_list:
             series_uid = series.get('SeriesInstanceUID', '')
             
-            # Generate TCIA viewer link
+            # Generate TCIA viewer link (for image viewing)
             viewer_link = f"https://www.cancerimagingarchive.net/viewer/?studyInstanceUID={study_instance_uid}&seriesInstanceUID={series_uid}"
+            
+            # Generate study page link (for case/study metadata)
+            study_page_link = f"https://www.cancerimagingarchive.net/viewer/?studyInstanceUID={study_instance_uid}"
             
             formatted_series.append({
                 'series_instance_uid': series_uid,
@@ -244,7 +262,8 @@ def get_study_series(study_instance_uid: str) -> List[Dict]:
                 'modality': series.get('Modality', ''),
                 'body_part': series.get('BodyPartExamined', ''),
                 'image_count': series.get('NumberOfSeriesRelatedInstances', 0),
-                'viewer_link': viewer_link,
+                'viewer_link': viewer_link,  # Direct to image viewer
+                'study_page_link': study_page_link,  # Link to study page (all series)
                 'study_instance_uid': study_instance_uid
             })
         
@@ -258,9 +277,61 @@ def get_study_series(study_instance_uid: str) -> List[Dict]:
         return []
 
 
-def search_by_diagnosis(diagnosis: str, modality: Optional[str] = None) -> List[Dict]:
+def _is_cancer_related(diagnosis: str) -> bool:
+    """
+    Check if diagnosis is cancer-related.
+    TCIA is cancer-focused, so non-cancer searches will be irrelevant.
+    """
+    diagnosis_lower = diagnosis.lower()
+    
+    # Cancer-related keywords
+    cancer_keywords = [
+        'cancer', 'carcinoma', 'tumor', 'tumour', 'neoplasm', 'malignancy', 'malignant',
+        'lymphoma', 'sarcoma', 'adenocarcinoma', 'squamous', 'metastasis', 'metastatic',
+        'oncology', 'oncological', 'lesion', 'mass', 'nodule'
+    ]
+    
+    return any(keyword in diagnosis_lower for keyword in cancer_keywords)
+
+
+def _score_collection_relevance(collection_name: str, diagnosis: str) -> int:
+    """
+    Score collection relevance to diagnosis (higher = more relevant).
+    Returns 0 if not relevant.
+    """
+    collection_lower = collection_name.lower()
+    diagnosis_lower = diagnosis.lower()
+    
+    # Extract meaningful keywords (length > 3)
+    diagnosis_keywords = [word for word in diagnosis_lower.split() if len(word) > 3]
+    
+    if not diagnosis_keywords:
+        return 0
+    
+    score = 0
+    
+    # Exact match gets highest score
+    if diagnosis_lower in collection_lower:
+        score += 100
+    
+    # Keyword matches
+    for keyword in diagnosis_keywords:
+        if keyword in collection_lower:
+            score += 10
+    
+    # Cancer-related terms boost score
+    cancer_terms = ['cancer', 'carcinoma', 'tumor', 'tumour', 'neoplasm']
+    for term in cancer_terms:
+        if term in collection_lower and term in diagnosis_lower:
+            score += 20
+    
+    return score
+
+
+def search_by_diagnosis(diagnosis: str, modality: Optional[str] = None) -> Dict:
     """
     Search TCIA collections by diagnosis/keywords.
+    IMPROVED: Better relevance scoring, cancer-focused filtering, and warnings.
     
     Exam Relevance: Helps candidates find relevant cases for specific diagnoses.
     
@@ -269,23 +340,72 @@ def search_by_diagnosis(diagnosis: str, modality: Optional[str] = None) -> List[
         modality: Optional modality filter (CT, MRI, PET)
     
     Returns:
-        List of relevant collections and studies
+        Dict with:
+            - results: List of relevant collections and studies
+            - is_cancer_related: Whether diagnosis appears cancer-related
+            - warning: Optional warning message
     """
-    # Search collections by keywords
-    collections = search_collections(cancer_type=diagnosis, modality=modality)
+    # Check if diagnosis is cancer-related
+    is_cancer = _is_cancer_related(diagnosis)
     
+    # Get all collections first
+    all_collections = search_collections(max_results=200)
+    
+    # Score and rank collections by relevance
+    scored_collections = []
+    for collection in all_collections:
+        score = _score_collection_relevance(collection['name'], diagnosis)
+        if score > 0:  # Only include collections with some relevance
+            scored_collections.append((score, collection))
+    
+    # Sort by relevance score (highest first)
+    scored_collections.sort(key=lambda x: x[0], reverse=True)
+    
+    # Get top relevant collections (limit to top 3 for better relevance)
+    relevant_collections = [col for _, col in scored_collections[:3]]
+    
+    # Warning message if not cancer-related or no matches
+    warning = None
+    if not is_cancer:
+        warning = "TCIA focuses on cancer imaging. Your search may return limited or irrelevant results for non-cancer diagnoses."
+    elif not relevant_collections:
+        warning = f"No relevant cancer imaging collections found for '{diagnosis}'. TCIA may not have datasets for this specific diagnosis."
+    
+    # If no relevant matches, return empty with warning (don't return random collections)
+    if not relevant_collections:
+        return {
+            'results': [],
+            'is_cancer_related': is_cancer,
+            'warning': warning
+        }
+    
+    # Get studies for relevant collections
     results = []
-    for collection in collections[:5]:  # Limit to top 5 collections
+    for collection in relevant_collections:
         collection_id = collection['collection_id']
-        studies = get_collection_studies(collection_id, max_results=5)
-        
-        for study in studies:
-            series_list = get_study_series(study['study_instance_uid'])
+        try:
+            studies = get_collection_studies(collection_id, max_results=2)  # Limit to 2 studies per collection
             
-            results.append({
-                'collection': collection,
-                'study': study,
-                'series': series_list[:3]  # Top 3 series per study
-            })
+            for study in studies:
+                series_list = get_study_series(study['study_instance_uid'])
+                
+                # Add collection page link
+                collection_page_link = f"https://www.cancerimagingarchive.net/collection/{collection_id}/"
+                
+                results.append({
+                    'collection': collection,
+                    'collection_page_link': collection_page_link,  # Link to collection page
+                    'study': study,
+                    'series': series_list[:2]  # Top 2 series per study
+                })
+        except Exception as e:
+            print(f"Error getting studies for {collection_id}: {e}")
+            continue
     
-    return results
+    print(f"[DEBUG] TCIA search_by_diagnosis returning {len(results)} results (cancer-related: {is_cancer})")
+    
+    return {
+        'results': results,
+        'is_cancer_related': is_cancer,
+        'warning': warning
+    }
