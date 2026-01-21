@@ -415,6 +415,23 @@
                                         <button class="btn btn-primary" onclick="connectAnki()" style="background: #235390; border-color: #235390;">
                                             <i class="fas fa-link me-2"></i>Connect Anki
                                         </button>
+                                        
+                                        <!-- CORS Setup Instructions (shown on remote servers) -->
+                                        <div id="ankiCorsInstructions" class="mt-4 p-3 rounded" style="background: #fff3cd; border: 1px solid #ffc107; display: none;">
+                                            <h6 class="mb-2"><i class="fas fa-exclamation-triangle text-warning me-2"></i>CORS Setup Required</h6>
+                                            <p class="small mb-2">If you see CORS errors, configure AnkiConnect to allow requests from this domain:</p>
+                                            <ol class="small mb-2" style="padding-left: 1.5rem;">
+                                                <li>Open Anki desktop</li>
+                                                <li>Go to Tools → Add-ons → AnkiConnect → Config</li>
+                                                <li>Add this domain to <code>webCorsOriginList</code>:</li>
+                                            </ol>
+                                            <code class="small d-block p-2 mb-2" style="background: #fff; border: 1px solid #ddd; border-radius: 4px;">
+                                                "webCorsOriginList": ["<span id="ankiCorsOrigin"></span>"]
+                                            </code>
+                                            <p class="small mb-0 text-muted">
+                                                <i class="fas fa-lightbulb me-1"></i>Or use <code>["*"]</code> to allow all origins (less secure)
+                                            </p>
+                                        </div>
                                     </div>
                                 </div>
                                 
@@ -6537,21 +6554,114 @@
     
     // ==================== ANKI ====================
     
+    /**
+     * Client-side AnkiConnect wrapper for Vercel compatibility
+     * 
+     * AnkiConnect runs on the user's local machine (localhost:8765).
+     * When deployed on Vercel, server-side requests can't reach localhost.
+     * This wrapper makes direct requests from the browser to the user's local Anki instance.
+     */
+    const ANKICONNECT_URL = 'http://localhost:8765';
+    const isRemoteServer = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+    
+    /**
+     * Make a direct request to AnkiConnect from the browser
+     * This works on Vercel because the browser can access localhost:8765
+     */
+    async function ankiRequestClient(action, params = {}) {
+        const payload = {
+            action: action,
+            version: 6,
+            params: params
+        };
+        
+        try {
+            const response = await fetch(ANKICONNECT_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+                mode: 'cors' // Enable CORS
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            const result = await response.json();
+            
+            if (result.error) {
+                return { error: result.error, result: null };
+            }
+            
+            return { error: null, result: result.result };
+        } catch (error) {
+            // Handle CORS errors specifically
+            if (error.message.includes('CORS') || error.message.includes('Failed to fetch')) {
+                return {
+                    error: 'CORS error: AnkiConnect may not be configured to allow requests from this domain. See setup instructions.',
+                    result: null
+                };
+            }
+            
+            return {
+                error: error.message || 'AnkiConnect not running. Please ensure Anki desktop is open with AnkiConnect installed.',
+                result: null
+            };
+        }
+    }
+    
+    /**
+     * Hybrid Anki request - uses client-side on remote servers, server-side on localhost
+     */
+    async function ankiRequestHybrid(action, params = {}) {
+        // On remote servers (Vercel), use client-side direct connection
+        if (isRemoteServer) {
+            return await ankiRequestClient(action, params);
+        }
+        
+        // On localhost, use server-side route (works better for local development)
+        try {
+            // For localhost, we can still use server routes
+            // But we'll prefer client-side for consistency
+            return await ankiRequestClient(action, params);
+        } catch (error) {
+            // Fallback to server-side if client-side fails
+            console.warn('[ANKI] Client-side failed, trying server-side...', error);
+            // Could implement server-side fallback here if needed
+            return { error: error.message, result: null };
+        }
+    }
+    
     async function checkAnkiStatus() {
         try {
-            const response = await fetch('/notes/api/anki/status');
-            const data = await response.json();
-            ankiConnected = data.connected;
+            // Use client-side direct connection
+            const { result, error } = await ankiRequestHybrid('version');
+            
+            ankiConnected = result !== null;
             
             const notConnected = document.getElementById('ankiNotConnected');
             const connected = document.getElementById('ankiConnected');
             const deckName = document.getElementById('ankiDeckName');
+            const corsInstructions = document.getElementById('ankiCorsInstructions');
+            const corsOrigin = document.getElementById('ankiCorsOrigin');
+            
+            // Show CORS instructions on remote servers
+            if (isRemoteServer && corsInstructions && corsOrigin) {
+                corsOrigin.textContent = window.location.origin;
+                corsInstructions.style.display = 'block';
+            }
             
             if (notConnected && connected) {
-                if (data.connected) {
+                if (ankiConnected) {
                     notConnected.style.display = 'none';
                     connected.style.display = 'block';
-                    if (deckName) deckName.textContent = data.deck_name || 'FRCR Revision';
+                    if (corsInstructions) corsInstructions.style.display = 'none';
+                    // Get deck name from user settings or default
+                    if (deckName) {
+                        // Try to get current deck from Anki
+                        const { result: decks } = await ankiRequestHybrid('deckNames');
+                        deckName.textContent = decks && decks.length > 0 ? decks[0] : 'FRCR Revision';
+                    }
                 } else {
                     notConnected.style.display = 'block';
                     connected.style.display = 'none';
@@ -6559,6 +6669,7 @@
             }
         } catch (error) {
             console.error('[ANKI] Status check error:', error);
+            ankiConnected = false;
         }
     }
     
@@ -6571,22 +6682,58 @@
         }
         
         try {
-            const response = await fetch('/notes/api/anki/connect', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ deck_name: 'FRCR Revision' })
-            });
-            const data = await response.json();
+            // Test connection using client-side direct request
+            const { result, error } = await ankiRequestHybrid('version');
             
-            if (data.success) {
-                ankiConnected = true;
-                checkAnkiStatus();
-                showFlash('Connected to Anki!', 'success');
-            } else {
+            if (error) {
+                // Show CORS instructions if CORS error
+                if (error.includes('CORS')) {
+                    const corsInstructions = document.getElementById('ankiCorsInstructions');
+                    const corsOrigin = document.getElementById('ankiCorsOrigin');
+                    if (corsInstructions && corsOrigin) {
+                        corsOrigin.textContent = window.location.origin;
+                        corsInstructions.style.display = 'block';
+                    }
+                }
+                
                 if (statusEl) {
-                    statusEl.innerHTML = `<i class="fas fa-exclamation-circle text-danger me-1"></i>${data.error}`;
+                    let errorMsg = error;
+                    if (error.includes('CORS')) {
+                        errorMsg = 'CORS error: Please configure AnkiConnect. See instructions below.';
+                    }
+                    statusEl.innerHTML = `<i class="fas fa-exclamation-circle text-danger me-1"></i>${errorMsg}`;
                     statusEl.className = 'mt-2 small text-danger';
                 }
+                showFlash(error, 'error');
+                return;
+            }
+            
+            // Connection successful
+            const deckName = 'FRCR Revision';
+            
+            // Create deck if it doesn't exist
+            await ankiRequestHybrid('createDeck', { deck: deckName });
+            
+            // Save deck name to server (for reference, not required for functionality)
+            try {
+                await fetch('/notes/api/anki/connect', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ deck_name: deckName })
+                });
+            } catch (e) {
+                // Server save is optional, continue even if it fails
+                console.warn('[ANKI] Could not save deck name to server:', e);
+            }
+            
+            ankiConnected = true;
+            checkAnkiStatus();
+            showFlash('Connected to Anki!', 'success');
+            
+            if (statusEl) {
+                statusEl.innerHTML = '<i class="fas fa-check-circle text-success me-1"></i>Connected!';
+                statusEl.className = 'mt-2 small text-success';
+                setTimeout(() => { statusEl.style.display = 'none'; }, 2000);
             }
         } catch (error) {
             console.error('[ANKI] Connect error:', error);
@@ -6594,6 +6741,7 @@
                 statusEl.innerHTML = '<i class="fas fa-exclamation-circle text-danger me-1"></i>Connection failed';
                 statusEl.className = 'mt-2 small text-danger';
             }
+            showFlash('Failed to connect to Anki. Make sure Anki desktop is running.', 'error');
         }
     }
     
@@ -6625,48 +6773,53 @@
         }
         
         try {
-            const response = await fetch('/notes/api/anki/flashcard', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    front, 
-                    back, 
-                    tags: ['FRCR', 'Radiology', 'Case-' + caseId],
-                    allow_duplicate: true  // Allow duplicates to prevent errors
-                })
-            });
-            const data = await response.json();
+            // Get deck name (default or from user settings)
+            const deckName = 'FRCR Revision'; // Could be retrieved from user settings
             
-            if (data.success) {
-                document.getElementById('ankiCardFront').value = '';
-                document.getElementById('ankiCardBack').value = '';
+            // Ensure deck exists
+            await ankiRequestHybrid('createDeck', { deck: deckName });
+            
+            // Create the note using client-side direct connection
+            const { result: noteId, error } = await ankiRequestHybrid('addNote', {
+                note: {
+                    deckName: deckName,
+                    modelName: 'Basic',
+                    fields: {
+                        'Front': front,
+                        'Back': back
+                    },
+                    tags: ['FRCR', 'Radiology', 'Case-' + caseId],
+                    options: {
+                        allowDuplicate: true
+                    }
+                }
+            });
+            
+            if (error) {
                 if (statusEl) {
-                    statusEl.innerHTML = '<i class="fas fa-check-circle text-success me-1"></i>Card created!';
-                    statusEl.className = 'mt-2 small text-success';
-                    setTimeout(() => { statusEl.style.display = 'none'; }, 2000);
+                    statusEl.innerHTML = `<i class="fas fa-exclamation-circle text-danger me-1"></i>${error}`;
+                    statusEl.className = 'mt-2 small text-danger';
                 }
-                showFlash('Flashcard created!', 'success');
-            } else {
-                // Handle duplicate gracefully
-                if (data.duplicate) {
-                    if (statusEl) {
-                        statusEl.innerHTML = '<i class="fas fa-info-circle text-warning me-1"></i>Card already exists (duplicate allowed)';
-                        statusEl.className = 'mt-2 small text-warning';
-                    }
-                    showFlash('Card already exists', 'info');
-                } else {
-                    if (statusEl) {
-                        statusEl.innerHTML = `<i class="fas fa-exclamation-circle text-danger me-1"></i>${data.error}`;
-                        statusEl.className = 'mt-2 small text-danger';
-                    }
-                }
+                showFlash(error, 'error');
+                return;
             }
+            
+            // Success
+            document.getElementById('ankiCardFront').value = '';
+            document.getElementById('ankiCardBack').value = '';
+            if (statusEl) {
+                statusEl.innerHTML = '<i class="fas fa-check-circle text-success me-1"></i>Card created!';
+                statusEl.className = 'mt-2 small text-success';
+                setTimeout(() => { statusEl.style.display = 'none'; }, 2000);
+            }
+            showFlash('Flashcard created!', 'success');
         } catch (error) {
             console.error('[ANKI] Create card error:', error);
             if (statusEl) {
                 statusEl.innerHTML = '<i class="fas fa-exclamation-circle text-danger me-1"></i>Failed to create card';
                 statusEl.className = 'mt-2 small text-danger';
             }
+            showFlash('Failed to create card. Make sure Anki is running.', 'error');
         }
     }
     
@@ -6697,28 +6850,45 @@
         }
         
         try {
-            const response = await fetch('/notes/api/anki/flashcard/bulk', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    cards, 
-                    tags: ['FRCR', 'Radiology', 'Case-' + caseId, 'Bulk'],
-                    allow_duplicate: true  // Allow duplicates to prevent errors
-                })
-            });
-            const data = await response.json();
+            const deckName = 'FRCR Revision';
+            const tags = ['FRCR', 'Radiology', 'Case-' + caseId, 'Bulk'];
             
-            if (data.success) {
-                const message = data.skipped 
-                    ? `Created ${data.created} cards, ${data.skipped} skipped (duplicates)`
-                    : `Created ${data.created} flashcards!`;
-                showFlash(message, 'success');
-            } else {
-                showFlash(data.error || 'Failed to create cards', 'error');
+            // Ensure deck exists
+            await ankiRequestHybrid('createDeck', { deck: deckName });
+            
+            // Prepare notes for bulk creation
+            const notes = cards.map(card => ({
+                deckName: deckName,
+                modelName: 'Basic',
+                fields: {
+                    'Front': card.front,
+                    'Back': card.back
+                },
+                tags: tags,
+                options: {
+                    allowDuplicate: true
+                }
+            }));
+            
+            // Create notes in bulk using client-side direct connection
+            const { result, error } = await ankiRequestHybrid('addNotes', { notes: notes });
+            
+            if (error) {
+                showFlash(error || 'Failed to create cards', 'error');
+                return;
             }
+            
+            // Count successful additions (non-null results)
+            const created = result ? result.filter(r => r !== null).length : 0;
+            const skipped = notes.length - created;
+            
+            const message = skipped > 0
+                ? `Created ${created} cards, ${skipped} skipped (duplicates)`
+                : `Created ${created} flashcards!`;
+            showFlash(message, 'success');
         } catch (error) {
             console.error('[ANKI] Bulk create error:', error);
-            showFlash('Failed to create cards', 'error');
+            showFlash('Failed to create cards. Make sure Anki is running.', 'error');
         }
     }
     
@@ -6740,19 +6910,54 @@
         if (noResults) noResults.style.display = 'none';
         
         try {
-            const response = await fetch(`/notes/api/anki/search?q=${encodeURIComponent(query)}&limit=50`);
-            const data = await response.json();
+            // Use client-side direct connection to search
+            const limit = 50;
+            const ankiQuery = query; // Anki search query syntax
+            
+            // Find notes matching the query
+            const { result: noteIds, error: findError } = await ankiRequestHybrid('findNotes', { query: ankiQuery });
             
             if (statusEl) statusEl.style.display = 'none';
             
-            if (data.error) {
-                showFlash(data.error, 'error');
+            if (findError) {
+                showFlash(findError, 'error');
                 return;
             }
             
-            if (data.cards && data.cards.length > 0) {
+            if (!noteIds || noteIds.length === 0) {
+                if (noResults) noResults.style.display = 'block';
+                return;
+            }
+            
+            // Limit results
+            const limitedNoteIds = noteIds.slice(0, limit);
+            
+            // Get note details
+            const { result: notesInfo, error: infoError } = await ankiRequestHybrid('notesInfo', { notes: limitedNoteIds });
+            
+            if (infoError) {
+                showFlash(infoError, 'error');
+                return;
+            }
+            
+            // Format cards for display
+            const cards = (notesInfo || []).map(note => {
+                const fields = note.fields || {};
+                const front = fields.Front?.value || '';
+                const back = fields.Back?.value || '';
+                
+                return {
+                    note_id: note.noteId,
+                    front: front,
+                    back: back,
+                    deck: note.deckName || '',
+                    tags: note.tags || []
+                };
+            });
+            
+            if (cards.length > 0) {
                 // Display cards
-                cardsList.innerHTML = data.cards.map(card => `
+                cardsList.innerHTML = cards.map(card => `
                     <div class="anki-card-result mb-3 p-3 rounded" style="background: #fff; border: 1px solid #e0e0e0; border-left: 3px solid #235390;">
                         <div class="d-flex justify-content-between align-items-start mb-2">
                             <div class="flex-grow-1">
@@ -6859,24 +7064,38 @@
         document.getElementById('ankiCardLoading').style.display = 'block';
         document.getElementById('ankiCardViewContent').style.display = 'none';
         
-        // Fetch full card details
+        // Fetch full card details using client-side direct connection
         try {
-            const response = await fetch(`/notes/api/anki/note/${noteId}`);
-            const data = await response.json();
+            const { result: notesInfo, error } = await ankiRequestHybrid('notesInfo', { notes: [noteId] });
             
-            if (data.error) {
+            if (error) {
                 document.getElementById('ankiCardLoading').innerHTML = `
                     <div class="text-danger">
                         <i class="fas fa-exclamation-triangle"></i>
-                        <p class="mt-2">${escapeHtml(data.error)}</p>
+                        <p class="mt-2">${escapeHtml(error)}</p>
                     </div>
                 `;
                 return;
             }
             
+            if (!notesInfo || notesInfo.length === 0) {
+                document.getElementById('ankiCardLoading').innerHTML = `
+                    <div class="text-danger">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <p class="mt-2">Card not found</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            const note = notesInfo[0];
+            const fields = note.fields || {};
+            const front = fields.Front?.value || '';
+            const back = fields.Back?.value || '';
+            
             // Set card content
-            document.getElementById('ankiCardViewFront').textContent = data.front || '';
-            document.getElementById('ankiCardViewBack').textContent = data.back || '';
+            document.getElementById('ankiCardViewFront').textContent = front;
+            document.getElementById('ankiCardViewBack').textContent = back;
             document.getElementById('ankiCardViewOpenBtn').setAttribute('data-note-id', noteId);
             
             // Hide loading, show content
@@ -6899,18 +7118,15 @@
      */
     async function openAnkiCard(noteId) {
         try {
-            const response = await fetch(`/notes/api/anki/note/${noteId}/open`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' }
-            });
+            // Use client-side direct connection to open Anki browser
+            const { result, error } = await ankiRequestHybrid('guiBrowse', { query: `nid:${noteId}` });
             
-            const data = await response.json();
-            
-            if (data.success) {
-                showFlash('Opening card in Anki browser...', 'success');
-            } else {
-                showFlash(data.error || 'Could not open Anki. Make sure Anki desktop is running.', 'error');
+            if (error) {
+                showFlash(error || 'Could not open Anki. Make sure Anki desktop is running.', 'error');
+                return;
             }
+            
+            showFlash('Opening card in Anki browser...', 'success');
         } catch (error) {
             console.error('[ANKI] Open card error:', error);
             showFlash('Error opening card in Anki', 'error');
