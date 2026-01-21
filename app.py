@@ -16,7 +16,7 @@ from auth import auth_bp
 from backup_routes import backup_bp
 from admin_routes import admin_bp
 from admin_enrichment_routes import enrichment_bp
-from evernote_routes import evernote_bp
+from notes_integration_routes import notes_bp
 from ai_prelim import AiPrelimError, generate_prelim_case_data
 from datetime import datetime
 from sqlalchemy.pool import NullPool
@@ -192,7 +192,7 @@ app.register_blueprint(auth_bp)
 app.register_blueprint(backup_bp)
 app.register_blueprint(admin_bp)  # Sprint 2: Admin user management
 app.register_blueprint(enrichment_bp)  # Data migration: Import, enrich, promote cases
-app.register_blueprint(evernote_bp, url_prefix='/evernote')  # Evernote integration for student notes
+app.register_blueprint(notes_bp)  # Notion + Anki integration for student notes
 
 
 @app.route('/')

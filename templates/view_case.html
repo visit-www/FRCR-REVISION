@@ -258,9 +258,14 @@
                                 </button>
                             </li>
                             <li class="nav-item" role="presentation">
-                                <button class="nav-link" id="evernoteTab" data-bs-toggle="tab" data-bs-target="#evernotePane" type="button" role="tab" aria-controls="evernotePane" aria-selected="false">
-                                    <i class="fas fa-elephant me-1" style="color: #00a82d;"></i>Evernote
-                                    <span id="evernoteNoteCount" class="badge bg-secondary ms-1" style="display: none;">0</span>
+                                <button class="nav-link" id="notionTab" data-bs-toggle="tab" data-bs-target="#notionPane" type="button" role="tab" aria-controls="notionPane" aria-selected="false">
+                                    <i class="fas fa-book me-1" style="color: #000;"></i>Notion
+                                    <span id="notionPageCount" class="badge bg-secondary ms-1" style="display: none;">0</span>
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="ankiTab" data-bs-toggle="tab" data-bs-target="#ankiPane" type="button" role="tab" aria-controls="ankiPane" aria-selected="false">
+                                    <i class="fas fa-brain me-1" style="color: #235390;"></i>Anki
                                 </button>
                             </li>
                         </ul>
@@ -321,56 +326,118 @@
                                 </div>
                             </div>
                             
-                            <!-- Evernote Tab -->
-                            <div class="tab-pane fade" id="evernotePane" role="tabpanel" aria-labelledby="evernoteTab">
+                            <!-- Notion Tab -->
+                            <div class="tab-pane fade" id="notionPane" role="tabpanel" aria-labelledby="notionTab">
                                 <!-- Not Connected State -->
-                                <div id="evernoteNotConnected" style="display: none;">
+                                <div id="notionNotConnected" style="display: none;">
                                     <div class="text-center py-4">
-                                        <i class="fas fa-elephant" style="font-size: 3rem; color: #00a82d; opacity: 0.5;"></i>
-                                        <h5 class="mt-3 mb-2">Connect Evernote</h5>
-                                        <p class="text-muted small mb-3">Search your Evernote notes related to this case diagnosis.</p>
-                                        <a href="/evernote/connect" class="btn btn-success">
-                                            <i class="fas fa-link me-2"></i>Connect Evernote
+                                        <i class="fas fa-book" style="font-size: 3rem; color: #000; opacity: 0.5;"></i>
+                                        <h5 class="mt-3 mb-2">Connect Notion</h5>
+                                        <p class="text-muted small mb-3">Search your Notion workspace for notes related to this case.</p>
+                                        <a href="/notion/connect" class="btn btn-dark">
+                                            <i class="fas fa-link me-2"></i>Connect Notion
                                         </a>
                                     </div>
                                 </div>
                                 
                                 <!-- Connected State -->
-                                <div id="evernoteConnected" style="display: none;">
-                                    <!-- Search Header -->
+                                <div id="notionConnected" style="display: none;">
                                     <div class="d-flex justify-content-between align-items-center mb-3">
                                         <small class="text-muted">
                                             <i class="fas fa-check-circle text-success me-1"></i>Connected
                                         </small>
-                                        <button class="btn btn-sm btn-outline-secondary" onclick="searchEvernoteNotes()">
+                                        <button class="btn btn-sm btn-outline-secondary" onclick="searchNotionPages()">
                                             <i class="fas fa-sync-alt me-1"></i>Refresh
                                         </button>
                                     </div>
                                     
-                                    <!-- Search Status -->
-                                    <div id="evernoteSearchStatus" class="mb-3" style="display: none;">
+                                    <div id="notionSearchStatus" class="mb-3" style="display: none;">
                                         <div class="d-flex align-items-center">
                                             <div class="spinner-border spinner-border-sm me-2" role="status"></div>
-                                            <span class="text-muted small">Searching notes for "<span id="evernoteSearchQuery"></span>"...</span>
+                                            <span class="text-muted small">Searching for "<span id="notionSearchQuery"></span>"...</span>
                                         </div>
                                     </div>
                                     
-                                    <!-- Notes List -->
-                                    <div id="evernoteNotesList" class="evernote-notes-list">
-                                        <!-- Notes will be populated here -->
-                                    </div>
+                                    <div id="notionPagesList" class="notion-pages-list"></div>
                                     
-                                    <!-- No Results -->
-                                    <div id="evernoteNoResults" style="display: none;" class="text-center py-3">
+                                    <div id="notionNoResults" style="display: none;" class="text-center py-3">
                                         <i class="fas fa-search text-muted" style="font-size: 2rem; opacity: 0.5;"></i>
-                                        <p class="text-muted small mt-2 mb-0">No notes found matching this case diagnosis.</p>
+                                        <p class="text-muted small mt-2 mb-0">No pages found matching this case diagnosis.</p>
                                     </div>
                                     
-                                    <!-- Disconnect Link -->
                                     <div class="text-center mt-4 pt-3 border-top">
-                                        <a href="/evernote/disconnect" class="btn btn-sm btn-link text-muted">
-                                            <i class="fas fa-unlink me-1"></i>Disconnect Evernote
+                                        <a href="/notion/disconnect" class="btn btn-sm btn-link text-muted">
+                                            <i class="fas fa-unlink me-1"></i>Disconnect Notion
                                         </a>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Anki Tab -->
+                            <div class="tab-pane fade" id="ankiPane" role="tabpanel" aria-labelledby="ankiTab">
+                                <!-- Not Connected State -->
+                                <div id="ankiNotConnected" style="display: none;">
+                                    <div class="text-center py-4">
+                                        <i class="fas fa-brain" style="font-size: 3rem; color: #235390; opacity: 0.5;"></i>
+                                        <h5 class="mt-3 mb-2">Connect Anki</h5>
+                                        <p class="text-muted small mb-3">Create flashcards from this case in your Anki deck.</p>
+                                        <p class="text-muted small mb-3">
+                                            <i class="fas fa-info-circle me-1"></i>Requires <a href="https://ankiweb.net/shared/info/2055492159" target="_blank">AnkiConnect</a> add-on
+                                        </p>
+                                        <button class="btn btn-primary" onclick="connectAnki()" style="background: #235390; border-color: #235390;">
+                                            <i class="fas fa-link me-2"></i>Connect Anki
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <!-- Connected State -->
+                                <div id="ankiConnected" style="display: none;">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <small class="text-muted">
+                                            <i class="fas fa-check-circle text-success me-1"></i>Connected to Anki
+                                        </small>
+                                        <span class="badge bg-primary" id="ankiDeckName">FRCR Revision</span>
+                                    </div>
+                                    
+                                    <!-- Quick Flashcard Creator -->
+                                    <div class="anki-card-creator p-3 rounded" style="background: #f8f9fa; border: 1px solid #e0e0e0;">
+                                        <h6 class="mb-3"><i class="fas fa-plus-circle me-2" style="color: #235390;"></i>Create Flashcard</h6>
+                                        
+                                        <div class="mb-2">
+                                            <label class="form-label small text-muted mb-1">Front (Question)</label>
+                                            <input type="text" id="ankiCardFront" class="form-control form-control-sm" placeholder="What is the diagnosis?">
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label class="form-label small text-muted mb-1">Back (Answer)</label>
+                                            <textarea id="ankiCardBack" class="form-control form-control-sm" rows="2" placeholder="The diagnosis is..."></textarea>
+                                        </div>
+                                        
+                                        <div class="d-flex gap-2">
+                                            <button class="btn btn-sm btn-primary flex-grow-1" onclick="createAnkiFlashcard()" style="background: #235390; border-color: #235390;">
+                                                <i class="fas fa-plus me-1"></i>Add Card
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-secondary" onclick="autoFillAnkiCard()" title="Auto-fill from case">
+                                                <i class="fas fa-magic"></i>
+                                            </button>
+                                        </div>
+                                        
+                                        <div id="ankiCardStatus" class="mt-2 small" style="display: none;"></div>
+                                    </div>
+                                    
+                                    <!-- Bulk Create from Q&A -->
+                                    <div class="mt-3 p-3 rounded" style="background: #e8f4f8; border: 1px solid #b8d4e3;">
+                                        <h6 class="mb-2"><i class="fas fa-layer-group me-2" style="color: #235390;"></i>Bulk Create</h6>
+                                        <p class="text-muted small mb-2">Create flashcards from all Q&A pairs in this case.</p>
+                                        <button class="btn btn-sm btn-outline-primary" onclick="createBulkAnkiCards()" style="border-color: #235390; color: #235390;">
+                                            <i class="fas fa-copy me-1"></i>Create from Q&A Pairs
+                                        </button>
+                                    </div>
+                                    
+                                    <div class="text-center mt-4 pt-3 border-top">
+                                        <button class="btn btn-sm btn-link text-muted" onclick="disconnectAnki()">
+                                            <i class="fas fa-unlink me-1"></i>Disconnect Anki
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -472,25 +539,25 @@
     </div>
 </div>
 
-<!-- Evernote Note Viewer Modal -->
-<div id="evernoteNoteModal" class="modal fade evernote-note-modal" tabindex="-1" aria-labelledby="evernoteNoteModalLabel" aria-hidden="true">
+<!-- Notion Page Viewer Modal -->
+<div id="notionPageModal" class="modal fade notion-page-modal" tabindex="-1" aria-labelledby="notionPageModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="evernoteNoteModalLabel">
-                    <i class="fas fa-elephant me-2"></i>
-                    <span id="evernoteNoteTitle">Note</span>
+            <div class="modal-header" style="background: #000; color: white;">
+                <h5 class="modal-title" id="notionPageModalLabel">
+                    <i class="fas fa-book me-2"></i>
+                    <span id="notionPageTitle">Page</span>
                 </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <div id="evernoteNoteContentText" class="evernote-note-content">
-                    <!-- Note content will be loaded here -->
+                <div id="notionPageContentText" class="notion-page-content">
+                    <!-- Page content will be loaded here -->
                 </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                <button type="button" id="copyEvernoteToNotes" class="btn copy-to-notes-btn" onclick="copyEvernoteToNotes()">
+                <button type="button" id="copyNotionToNotes" class="btn copy-to-notes-btn" onclick="copyNotionToNotes()">
                     <i class="fas fa-copy me-2"></i>Copy to My Notes
                 </button>
             </div>
@@ -1973,7 +2040,7 @@
         cursor: pointer;
     }
     
-    /* ==================== EVERNOTE INTEGRATION STYLES ==================== */
+    /* ==================== NOTES INTEGRATION STYLES (Notion + Anki) ==================== */
     
     /* Notes Tabs styling */
     .notes-tabs {
@@ -1984,9 +2051,9 @@
         border: none;
         border-bottom: 3px solid transparent;
         color: #666;
-        font-size: 0.9rem;
+        font-size: 0.85rem;
         font-weight: 500;
-        padding: 0.5rem 1rem;
+        padding: 0.4rem 0.8rem;
         margin-bottom: -2px;
         transition: all 0.2s ease;
     }
@@ -2003,13 +2070,13 @@
         background: transparent;
     }
     
-    /* Evernote notes list */
-    .evernote-notes-list {
+    /* Notion pages list */
+    .notion-pages-list {
         max-height: 300px;
         overflow-y: auto;
     }
     
-    .evernote-note-card {
+    .notion-page-card {
         background: white;
         border: 1px solid #e0e0e0;
         border-radius: 8px;
@@ -2019,12 +2086,12 @@
         transition: all 0.2s ease;
     }
     
-    .evernote-note-card:hover {
-        border-color: #00a82d;
-        box-shadow: 0 2px 8px rgba(0, 168, 45, 0.15);
+    .notion-page-card:hover {
+        border-color: #000;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     }
     
-    .evernote-note-card .note-title {
+    .notion-page-card .page-title {
         font-weight: 600;
         color: #333;
         font-size: 0.95rem;
@@ -2034,26 +2101,22 @@
         gap: 8px;
     }
     
-    .evernote-note-card .note-title i {
-        color: #00a82d;
+    .notion-page-card .page-icon {
+        font-size: 1.2rem;
     }
     
-    .evernote-note-card .note-meta {
+    .notion-page-card .page-meta {
         font-size: 0.75rem;
         color: #888;
     }
     
-    /* Evernote note modal */
-    .evernote-note-modal .modal-header {
-        background: linear-gradient(135deg, #00a82d 0%, #00c853 100%);
+    /* Notion page modal */
+    .notion-page-modal .modal-header {
+        background: #000;
         color: white;
     }
     
-    .evernote-note-modal .modal-header .btn-close {
-        filter: invert(1);
-    }
-    
-    .evernote-note-content {
+    .notion-page-content {
         background: #fafafa;
         border: 1px solid #e0e0e0;
         border-radius: 8px;
@@ -2065,6 +2128,16 @@
         white-space: pre-wrap;
     }
     
+    /* Anki styles */
+    .anki-card-creator {
+        transition: all 0.2s ease;
+    }
+    
+    .anki-card-creator:hover {
+        box-shadow: 0 2px 8px rgba(35, 83, 144, 0.1);
+    }
+    
+    /* Copy to notes button */
     .copy-to-notes-btn {
         background: linear-gradient(135deg, #e96304 0%, #ff7b1c 100%);
         border: none;
@@ -5696,111 +5769,118 @@
     
     // ==================== END HIGHLIGHT SYSTEM ====================
     
-    // ==================== EVERNOTE INTEGRATION ====================
+    // ==================== NOTION + ANKI INTEGRATION ====================
     
     const caseDiagnosis = {{ case.diagnosis | tojson | safe }};
-    let evernoteConnected = false;
+    let notionConnected = false;
+    let ankiConnected = false;
     
-    // Check Evernote connection status on page load
-    async function checkEvernoteStatus() {
+    // Helper: Escape HTML
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
+    // Helper: Format date
+    function formatDate(dateStr) {
+        if (!dateStr) return '';
+        const date = new Date(dateStr);
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+    
+    // ==================== NOTION ====================
+    
+    async function checkNotionStatus() {
         try {
-            const response = await fetch('/evernote/status');
+            const response = await fetch('/api/notion/status');
             const data = await response.json();
-            evernoteConnected = data.connected;
+            notionConnected = data.connected;
             
-            const notConnected = document.getElementById('evernoteNotConnected');
-            const connected = document.getElementById('evernoteConnected');
+            const notConnected = document.getElementById('notionNotConnected');
+            const connected = document.getElementById('notionConnected');
             
             if (notConnected && connected) {
                 if (data.connected) {
                     notConnected.style.display = 'none';
                     connected.style.display = 'block';
-                    // Auto-search when tab is clicked
                 } else {
                     notConnected.style.display = 'block';
                     connected.style.display = 'none';
                 }
             }
         } catch (error) {
-            console.error('[EVERNOTE] Status check error:', error);
+            console.error('[NOTION] Status check error:', error);
         }
     }
     
-    // Search Evernote notes by case diagnosis
-    async function searchEvernoteNotes() {
-        if (!evernoteConnected) return;
+    async function searchNotionPages() {
+        if (!notionConnected) return;
         
-        const searchStatus = document.getElementById('evernoteSearchStatus');
-        const searchQuery = document.getElementById('evernoteSearchQuery');
-        const notesList = document.getElementById('evernoteNotesList');
-        const noResults = document.getElementById('evernoteNoResults');
-        const noteCount = document.getElementById('evernoteNoteCount');
+        const searchStatus = document.getElementById('notionSearchStatus');
+        const searchQuery = document.getElementById('notionSearchQuery');
+        const pagesList = document.getElementById('notionPagesList');
+        const noResults = document.getElementById('notionNoResults');
+        const pageCount = document.getElementById('notionPageCount');
         
-        // Show loading state
         if (searchStatus) searchStatus.style.display = 'block';
         if (searchQuery) searchQuery.textContent = caseDiagnosis;
-        if (notesList) notesList.innerHTML = '';
+        if (pagesList) pagesList.innerHTML = '';
         if (noResults) noResults.style.display = 'none';
         
         try {
-            const response = await fetch(`/evernote/api/search?q=${encodeURIComponent(caseDiagnosis)}&limit=10`);
+            const response = await fetch(`/api/notion/search?q=${encodeURIComponent(caseDiagnosis)}&limit=10`);
             const data = await response.json();
             
             if (searchStatus) searchStatus.style.display = 'none';
             
             if (!data.connected) {
-                evernoteConnected = false;
-                checkEvernoteStatus();
+                notionConnected = false;
+                checkNotionStatus();
                 return;
             }
             
-            if (data.notes && data.notes.length > 0) {
-                // Update badge
-                if (noteCount) {
-                    noteCount.textContent = data.notes.length;
-                    noteCount.style.display = 'inline';
+            if (data.pages && data.pages.length > 0) {
+                if (pageCount) {
+                    pageCount.textContent = data.pages.length;
+                    pageCount.style.display = 'inline';
                 }
                 
-                // Render notes
-                notesList.innerHTML = data.notes.map(note => `
-                    <div class="evernote-note-card" onclick="viewEvernoteNote('${note.guid}', '${escapeHtml(note.title)}')">
-                        <div class="note-title">
-                            <i class="fas fa-file-alt"></i>
-                            <span>${escapeHtml(note.title)}</span>
+                pagesList.innerHTML = data.pages.map(page => `
+                    <div class="notion-page-card" onclick="viewNotionPage('${page.id}', '${escapeHtml(page.title)}')">
+                        <div class="page-title">
+                            <span class="page-icon">${page.icon || '📄'}</span>
+                            <span>${escapeHtml(page.title)}</span>
                         </div>
-                        <div class="note-meta">
-                            <i class="fas fa-clock me-1"></i>
-                            ${formatEvernoteDate(note.updated)}
+                        <div class="page-meta">
+                            <i class="fas fa-clock me-1"></i>${formatDate(page.last_edited_time)}
                         </div>
                     </div>
                 `).join('');
             } else {
                 if (noResults) noResults.style.display = 'block';
-                if (noteCount) noteCount.style.display = 'none';
+                if (pageCount) pageCount.style.display = 'none';
             }
         } catch (error) {
-            console.error('[EVERNOTE] Search error:', error);
+            console.error('[NOTION] Search error:', error);
             if (searchStatus) searchStatus.style.display = 'none';
-            if (notesList) notesList.innerHTML = '<p class="text-danger small">Error searching notes. Please try again.</p>';
+            if (pagesList) pagesList.innerHTML = '<p class="text-danger small">Error searching pages.</p>';
         }
     }
     
-    // View a specific Evernote note
-    async function viewEvernoteNote(guid, title) {
-        // Show modal with loading state
-        const modal = new bootstrap.Modal(document.getElementById('evernoteNoteModal'));
-        const modalTitle = document.getElementById('evernoteNoteTitle');
-        const modalContent = document.getElementById('evernoteNoteContentText');
-        const copyBtn = document.getElementById('copyEvernoteToNotes');
+    async function viewNotionPage(pageId, title) {
+        const modal = new bootstrap.Modal(document.getElementById('notionPageModal'));
+        const modalTitle = document.getElementById('notionPageTitle');
+        const modalContent = document.getElementById('notionPageContentText');
+        const copyBtn = document.getElementById('copyNotionToNotes');
         
         if (modalTitle) modalTitle.textContent = title;
-        if (modalContent) modalContent.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-success" role="status"></div><p class="text-muted mt-2">Loading note...</p></div>';
-        if (copyBtn) copyBtn.dataset.guid = guid;
+        if (modalContent) modalContent.innerHTML = '<div class="text-center py-4"><div class="spinner-border" role="status"></div><p class="text-muted mt-2">Loading...</p></div>';
         
         modal.show();
         
         try {
-            const response = await fetch(`/evernote/api/note/${guid}`);
+            const response = await fetch(`/api/notion/page/${pageId}`);
             const data = await response.json();
             
             if (data.error) {
@@ -5808,18 +5888,16 @@
                 return;
             }
             
-            // Display the plain text content
             modalContent.textContent = data.content_text || 'No content';
-            copyBtn.dataset.content = data.content_text || '';
+            if (copyBtn) copyBtn.dataset.content = data.content_text || '';
         } catch (error) {
-            console.error('[EVERNOTE] Fetch note error:', error);
-            modalContent.innerHTML = '<p class="text-danger">Error loading note. Please try again.</p>';
+            console.error('[NOTION] Fetch page error:', error);
+            modalContent.innerHTML = '<p class="text-danger">Error loading page.</p>';
         }
     }
     
-    // Copy Evernote note content to My Notes
-    function copyEvernoteToNotes() {
-        const copyBtn = document.getElementById('copyEvernoteToNotes');
+    function copyNotionToNotes() {
+        const copyBtn = document.getElementById('copyNotionToNotes');
         const content = copyBtn?.dataset.content || '';
         
         if (!content) {
@@ -5829,60 +5907,209 @@
         
         const textarea = document.getElementById('candidateNoteText');
         if (textarea) {
-            // Append to existing notes with separator
             const existingText = textarea.value.trim();
             const separator = existingText ? '\n\n---\n\n' : '';
             const timestamp = new Date().toLocaleDateString();
-            textarea.value = existingText + separator + `[From Evernote - ${timestamp}]\n${content}`;
+            textarea.value = existingText + separator + `[From Notion - ${timestamp}]\n${content}`;
             
-            // Trigger auto-save
             textarea.dispatchEvent(new Event('input', { bubbles: true }));
             
-            // Switch to My Notes tab
             const myNotesTab = document.getElementById('myNotesTab');
-            if (myNotesTab) {
-                const tab = new bootstrap.Tab(myNotesTab);
-                tab.show();
-            }
+            if (myNotesTab) new bootstrap.Tab(myNotesTab).show();
             
-            // Close modal
-            const modal = bootstrap.Modal.getInstance(document.getElementById('evernoteNoteModal'));
+            const modal = bootstrap.Modal.getInstance(document.getElementById('notionPageModal'));
             if (modal) modal.hide();
             
             showFlash('Content copied to notes!', 'success');
         }
     }
     
-    // Helper: Format Evernote timestamp
-    function formatEvernoteDate(timestamp) {
-        if (!timestamp) return '';
-        const date = new Date(timestamp);
-        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    // ==================== ANKI ====================
+    
+    async function checkAnkiStatus() {
+        try {
+            const response = await fetch('/api/anki/status');
+            const data = await response.json();
+            ankiConnected = data.connected;
+            
+            const notConnected = document.getElementById('ankiNotConnected');
+            const connected = document.getElementById('ankiConnected');
+            const deckName = document.getElementById('ankiDeckName');
+            
+            if (notConnected && connected) {
+                if (data.connected) {
+                    notConnected.style.display = 'none';
+                    connected.style.display = 'block';
+                    if (deckName) deckName.textContent = data.deck_name || 'FRCR Revision';
+                } else {
+                    notConnected.style.display = 'block';
+                    connected.style.display = 'none';
+                }
+            }
+        } catch (error) {
+            console.error('[ANKI] Status check error:', error);
+        }
     }
     
-    // Helper: Escape HTML
-    function escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-    
-    // Initialize Evernote on page load
-    if (isStudent) {
-        checkEvernoteStatus();
+    async function connectAnki() {
+        const statusEl = document.getElementById('ankiCardStatus');
+        if (statusEl) {
+            statusEl.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Connecting...';
+            statusEl.style.display = 'block';
+            statusEl.className = 'mt-2 small text-muted';
+        }
         
-        // Search when Evernote tab is clicked
-        const evernoteTab = document.getElementById('evernoteTab');
-        if (evernoteTab) {
-            evernoteTab.addEventListener('shown.bs.tab', () => {
-                if (evernoteConnected && !document.querySelector('.evernote-note-card')) {
-                    searchEvernoteNotes();
+        try {
+            const response = await fetch('/api/anki/connect', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ deck_name: 'FRCR Revision' })
+            });
+            const data = await response.json();
+            
+            if (data.success) {
+                ankiConnected = true;
+                checkAnkiStatus();
+                showFlash('Connected to Anki!', 'success');
+            } else {
+                if (statusEl) {
+                    statusEl.innerHTML = `<i class="fas fa-exclamation-circle text-danger me-1"></i>${data.error}`;
+                    statusEl.className = 'mt-2 small text-danger';
+                }
+            }
+        } catch (error) {
+            console.error('[ANKI] Connect error:', error);
+            if (statusEl) {
+                statusEl.innerHTML = '<i class="fas fa-exclamation-circle text-danger me-1"></i>Connection failed';
+                statusEl.className = 'mt-2 small text-danger';
+            }
+        }
+    }
+    
+    async function disconnectAnki() {
+        try {
+            await fetch('/api/anki/disconnect', { method: 'POST' });
+            ankiConnected = false;
+            checkAnkiStatus();
+            showFlash('Disconnected from Anki', 'info');
+        } catch (error) {
+            console.error('[ANKI] Disconnect error:', error);
+        }
+    }
+    
+    async function createAnkiFlashcard() {
+        const front = document.getElementById('ankiCardFront')?.value.trim();
+        const back = document.getElementById('ankiCardBack')?.value.trim();
+        const statusEl = document.getElementById('ankiCardStatus');
+        
+        if (!front || !back) {
+            showFlash('Please fill in both front and back', 'warning');
+            return;
+        }
+        
+        if (statusEl) {
+            statusEl.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Creating card...';
+            statusEl.style.display = 'block';
+            statusEl.className = 'mt-2 small text-muted';
+        }
+        
+        try {
+            const response = await fetch('/api/anki/flashcard', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ front, back, tags: ['FRCR', 'Radiology', 'Case-' + caseId] })
+            });
+            const data = await response.json();
+            
+            if (data.success) {
+                document.getElementById('ankiCardFront').value = '';
+                document.getElementById('ankiCardBack').value = '';
+                if (statusEl) {
+                    statusEl.innerHTML = '<i class="fas fa-check-circle text-success me-1"></i>Card created!';
+                    statusEl.className = 'mt-2 small text-success';
+                    setTimeout(() => { statusEl.style.display = 'none'; }, 2000);
+                }
+                showFlash('Flashcard created!', 'success');
+            } else {
+                if (statusEl) {
+                    statusEl.innerHTML = `<i class="fas fa-exclamation-circle text-danger me-1"></i>${data.error}`;
+                    statusEl.className = 'mt-2 small text-danger';
+                }
+            }
+        } catch (error) {
+            console.error('[ANKI] Create card error:', error);
+            if (statusEl) {
+                statusEl.innerHTML = '<i class="fas fa-exclamation-circle text-danger me-1"></i>Failed to create card';
+                statusEl.className = 'mt-2 small text-danger';
+            }
+        }
+    }
+    
+    function autoFillAnkiCard() {
+        // Auto-fill with case diagnosis as question
+        document.getElementById('ankiCardFront').value = `What is the diagnosis for this case?`;
+        document.getElementById('ankiCardBack').value = caseDiagnosis;
+        showFlash('Auto-filled from case', 'info');
+    }
+    
+    async function createBulkAnkiCards() {
+        // Get Q&A pairs from the page
+        const questions = document.querySelectorAll('.qa-question');
+        const answers = document.querySelectorAll('.qa-answer');
+        
+        const cards = [];
+        questions.forEach((q, i) => {
+            const qText = q.textContent?.trim();
+            const aText = answers[i]?.textContent?.trim();
+            if (qText && aText) {
+                cards.push({ front: qText, back: aText });
+            }
+        });
+        
+        if (cards.length === 0) {
+            showFlash('No Q&A pairs found', 'warning');
+            return;
+        }
+        
+        try {
+            const response = await fetch('/api/anki/flashcard/bulk', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    cards, 
+                    tags: ['FRCR', 'Radiology', 'Case-' + caseId, 'Bulk'] 
+                })
+            });
+            const data = await response.json();
+            
+            if (data.success) {
+                showFlash(`Created ${data.created} flashcards!`, 'success');
+            } else {
+                showFlash(data.error || 'Failed to create cards', 'error');
+            }
+        } catch (error) {
+            console.error('[ANKI] Bulk create error:', error);
+            showFlash('Failed to create cards', 'error');
+        }
+    }
+    
+    // Initialize integrations on page load
+    if (isStudent) {
+        checkNotionStatus();
+        checkAnkiStatus();
+        
+        // Search when Notion tab is clicked
+        const notionTab = document.getElementById('notionTab');
+        if (notionTab) {
+            notionTab.addEventListener('shown.bs.tab', () => {
+                if (notionConnected && !document.querySelector('.notion-page-card')) {
+                    searchNotionPages();
                 }
             });
         }
     }
     
-    // ==================== END EVERNOTE INTEGRATION ====================
+    // ==================== END NOTION + ANKI INTEGRATION ====================
 
 </script>
 <script src="/static/edit-case-modal.js"></script>

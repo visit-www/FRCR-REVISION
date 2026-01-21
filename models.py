@@ -140,9 +140,15 @@ class User(UserMixin, db.Model):
     last_case_viewed = db.Column(db.DateTime, nullable=True)  # When did user last view a case
     last_case_viewed_id = db.Column(db.Integer, nullable=True)  # Which case was viewed
     
-    # === EVERNOTE INTEGRATION ===
-    evernote_access_token = db.Column(db.String(255), nullable=True)  # OAuth access token
-    evernote_connected_at = db.Column(db.DateTime, nullable=True)  # When Evernote was connected
+    # === NOTION INTEGRATION ===
+    notion_access_token = db.Column(db.String(255), nullable=True)  # OAuth access token
+    notion_workspace_id = db.Column(db.String(100), nullable=True)  # Connected workspace ID
+    notion_connected_at = db.Column(db.DateTime, nullable=True)  # When Notion was connected
+    
+    # === ANKI INTEGRATION ===
+    anki_api_key = db.Column(db.String(255), nullable=True)  # AnkiWeb API key (if using AnkiWeb)
+    anki_deck_name = db.Column(db.String(100), nullable=True, default='FRCR Revision')  # Default deck name
+    anki_connected_at = db.Column(db.DateTime, nullable=True)  # When Anki was connected
     
     # Password recovery
     recovery_token = db.Column(db.String(255), unique=True, nullable=True)
