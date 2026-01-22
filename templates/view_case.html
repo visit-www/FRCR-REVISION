@@ -2945,11 +2945,107 @@
         return html;
     }
     
+    function convertPipeTableInHTML(htmlContent) {
+        /**
+         * Convert pipe tables that are wrapped in HTML tags (from TinyMCE).
+         * Pattern: <p>| header1 | header2 |<br>| data1 | data2 |</p>
+         * Also handles <hr> tags escaped by TinyMCE: <p>&lt;hr&gt;</p>
+         */
+        if (!htmlContent) {
+            return htmlContent;
+        }
+        
+        // Handle <hr> tags that TinyMCE has escaped as <p>&lt;hr&gt;</p>
+        htmlContent = htmlContent.replace(/<p>\s*&lt;hr\s*\/?&gt;\s*<\/p>/gi, '<hr style="border-top: 2px solid #e96304; margin: 0.5rem 0;">');
+        
+        // If no pipe characters, return early (but after hr processing)
+        if (!htmlContent.includes('|')) {
+            return htmlContent;
+        }
+        
+        // Create a temporary container to parse HTML
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = htmlContent;
+        
+        // Find all <p> tags that might contain pipe tables
+        const paragraphs = tempDiv.querySelectorAll('p');
+        
+        paragraphs.forEach(p => {
+            const text = p.textContent || p.innerText || '';
+            
+            // Check if this paragraph contains a pipe table
+            // A pipe table should have multiple rows with | characters
+            if (text.includes('|')) {
+                // Get the HTML content to preserve <br> tags
+                const innerHTML = p.innerHTML;
+                
+                // Check if it has multiple rows (indicated by <br> tags or multiple |)
+                const hasMultipleRows = innerHTML.includes('<br>') || innerHTML.split('|').length > 3;
+                
+                if (hasMultipleRows) {
+                    // Extract table rows - split by <br> or newline
+                    let tableText = innerHTML
+                        .replace(/<br\s*\/?>/gi, '\n')  // Convert <br> to newlines
+                        .replace(/&nbsp;/g, ' ')        // Convert &nbsp; to spaces
+                        .replace(/&plusmn;/g, '±')      // Convert HTML entities
+                        .replace(/&gt;/g, '>')
+                        .replace(/&lt;/g, '<')
+                        .replace(/&amp;/g, '&');
+                    
+                    // Parse the table
+                    const lines = tableText.split('\n').map(line => line.trim()).filter(line => line);
+                    
+                    if (lines.length >= 2 && lines.every(line => line.includes('|'))) {
+                        // This looks like a pipe table - parse it
+                        const table = { headers: null, rows: [] };
+                        
+                        for (let i = 0; i < lines.length; i++) {
+                            const line = lines[i];
+                            
+                            // Skip separator rows
+                            if (/^[\|\s\-]+$/.test(line)) {
+                                continue;
+                            }
+                            
+                            const cells = line.split('|').map(cell => cell.trim()).filter(cell => cell !== '');
+                            
+                            if (cells.length >= 2) {
+                                if (table.headers === null) {
+                                    table.headers = cells;
+                                } else {
+                                    table.rows.push(cells);
+                                }
+                            }
+                        }
+                        
+                        // If we successfully parsed a table, replace the <p> with the table
+                        if (table.headers && table.headers.length >= 2) {
+                            const tableHTML = buildTableHTML(table);
+                            p.outerHTML = tableHTML;
+                        }
+                    }
+                }
+            }
+        });
+        
+        return tempDiv.innerHTML;
+    }
+    
     function convertPipeTableToHTML(text) {
+        /**
+         * Convert pipe tables in plain text format.
+         * This handles plain text pipe tables (not wrapped in HTML).
+         */
         if (!text || !text.includes('|')) {
             return text;
         }
         
+        // If content contains HTML tags, use the HTML-aware converter
+        if (text.includes('<') && text.includes('>')) {
+            return convertPipeTableInHTML(text);
+        }
+        
+        // Plain text processing
         const lines = text.trim().split('\n');
         if (lines.length < 2) {
             return text;
@@ -3134,8 +3230,12 @@
     function renderSafeHTML(htmlContent) {
         if (!htmlContent) return '';
         
-        // First, handle <hr> tags (convert to proper HTML)
-        htmlContent = htmlContent.replace(/<hr\s*\/?>/gi, '<hr style="margin: 1.5rem 0; border: none; border-top: 2px solid #ddd;">');
+        // First, handle <hr> tags that TinyMCE has escaped as <p>&lt;hr&gt;</p>
+        // Pattern: <p>&lt;hr&gt;</p> or <p>&lt;hr /&gt;</p> or variations
+        htmlContent = htmlContent.replace(/<p>\s*&lt;hr\s*\/?&gt;\s*<\/p>/gi, '<hr style="border-top: 2px solid #e96304; margin: 0.5rem 0;">');
+        
+        // Also handle regular <hr> tags (convert to proper HTML)
+        htmlContent = htmlContent.replace(/<hr\s*\/?>/gi, '<hr style="border-top: 2px solid #e96304; margin: 0.5rem 0;">');
         
         // Check if content already has HTML tags BEFORE any processing
         if (htmlContent.includes('<') && htmlContent.includes('>')) {

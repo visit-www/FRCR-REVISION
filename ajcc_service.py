@@ -25,8 +25,9 @@ AJCC_JSON_FILE = "ajcc.json"
 AJCC_BODY_PART_FILE = "ajcc-body-part.txt"
 
 # AJCC Login Credentials (for future admin route)
-AJCC_USERNAME = os.getenv("AJCC_USERNAME", "gaurav0133@gmail.com")
-AJCC_PASSWORD = os.getenv("AJCC_PASSWORD", "AadiArhan!2023")
+# These must be set as environment variables - no hardcoded defaults for security
+AJCC_USERNAME = os.getenv("AJCC_USERNAME")
+AJCC_PASSWORD = os.getenv("AJCC_PASSWORD")
 
 
 def _load_json_file(filepath: str) -> Dict:
