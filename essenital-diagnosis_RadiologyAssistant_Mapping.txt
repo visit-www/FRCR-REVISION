@@ -1,0 +1,158 @@
+
+FRCR 2B – High-Yield Case Mapping to Radiology Assistant Articles
+=================================================================
+
+NOTE:
+- Radiology Assistant articles are thematic; multiple diagnoses map to a single core article.
+- This mapping reflects how candidates are expected to THINK in FRCR 2B viva (pattern-based, not encyclopedic).
+- Article titles follow RadiologyAssistant.nl canonical naming.
+
+-------------------------------------------------
+GI & HEPATOBILIARY
+-------------------------------------------------
+Acute appendicitis, perforation
+→ Radiology Assistant – CT of the Acute Abdomen
+
+Bowel obstruction, closed-loop, volvulus, internal hernia
+→ Radiology Assistant – Bowel Obstruction
+
+Mesenteric ischaemia (acute/chronic)
+→ Radiology Assistant – Mesenteric Ischemia
+
+Inflammatory bowel disease (Crohn, UC)
+→ Radiology Assistant – Inflammatory Bowel Disease
+
+Pancreatic adenocarcinoma, IPMN, chronic pancreatitis
+→ Radiology Assistant – Pancreatic Tumors
+
+Acute pancreatitis, pseudocyst
+→ Radiology Assistant – Acute Pancreatitis
+
+Liver abscess, hydatid disease
+→ Radiology Assistant – Cystic Liver Lesions
+
+Hepatocellular carcinoma
+→ Radiology Assistant – LI-RADS
+
+Cholangiocarcinoma, PSC
+→ Radiology Assistant – Biliary Tumors
+
+Portal hypertension, Budd–Chiari
+→ Radiology Assistant – Portal Hypertension
+
+-------------------------------------------------
+CNS & HEAD–NECK
+-------------------------------------------------
+Acute infarct, MCA stroke, posterior circulation stroke
+→ Radiology Assistant – Stroke Imaging
+
+Intracranial haemorrhage (ICH, SAH, SDH, EDH)
+→ Radiology Assistant – Intracranial Hemorrhage
+
+Brain tumours (glioma, GBM)
+→ Radiology Assistant – Brain Tumors
+
+Ring-enhancing lesions (abscess, metastasis, toxoplasmosis)
+→ Radiology Assistant – Differential Diagnosis of Ring Enhancing Lesions
+
+Multiple sclerosis, demyelination
+→ Radiology Assistant – Multiple Sclerosis
+
+Pituitary adenoma, craniopharyngioma
+→ Radiology Assistant – Pituitary Region
+
+Spinal cord compression, cauda equina
+→ Radiology Assistant – Spinal Emergencies
+
+-------------------------------------------------
+CHEST & CVS
+-------------------------------------------------
+Pulmonary embolism
+→ Radiology Assistant – Pulmonary Embolism
+
+Aortic dissection, intramural hematoma
+→ Radiology Assistant – Acute Aortic Syndromes
+
+Interstitial lung disease (UIP, NSIP)
+→ Radiology Assistant – HRCT of Interstitial Lung Disease
+
+Sarcoidosis
+→ Radiology Assistant – Sarcoidosis
+
+Lung cancer, mediastinal mass
+→ Radiology Assistant – Mediastinal Masses
+
+Pleural disease, empyema
+→ Radiology Assistant – Pleural Disease
+
+-------------------------------------------------
+MSK
+-------------------------------------------------
+Bone tumours (osteosarcoma, Ewing)
+→ Radiology Assistant – Bone Tumors
+
+Bone metastases, myeloma
+→ Radiology Assistant – Bone Metastases
+
+Osteomyelitis, septic arthritis
+→ Radiology Assistant – Osteomyelitis
+
+AVN, insufficiency fracture
+→ Radiology Assistant – Avascular Necrosis
+
+Soft tissue sarcoma
+→ Radiology Assistant – Soft Tissue Tumors
+
+-------------------------------------------------
+GU & GYNAE
+-------------------------------------------------
+Renal cell carcinoma
+→ Radiology Assistant – Renal Masses
+
+Obstructive uropathy, hydronephrosis
+→ Radiology Assistant – Urinary Obstruction
+
+Adrenal adenoma vs pheochromocytoma
+→ Radiology Assistant – Adrenal Lesions
+
+Ovarian torsion, adnexal mass
+→ Radiology Assistant – Adnexal Masses
+
+Ectopic pregnancy
+→ Radiology Assistant – Acute Pelvic Pain
+
+Prostate cancer
+→ Radiology Assistant – PI-RADS
+
+-------------------------------------------------
+PAEDIATRICS
+-------------------------------------------------
+Intussusception
+→ Radiology Assistant – Acute Abdomen in Children
+
+Hypertrophic pyloric stenosis
+→ Radiology Assistant – Vomiting in Infants
+
+Congenital heart disease
+→ Radiology Assistant – Congenital Heart Disease
+
+Wilms tumor, neuroblastoma
+→ Radiology Assistant – Pediatric Abdominal Tumors
+
+-------------------------------------------------
+BREAST / NUCLEAR / IR
+-------------------------------------------------
+Breast carcinoma
+→ Radiology Assistant – BI-RADS
+
+PET-CT in lymphoma
+→ Radiology Assistant – PET-CT in Oncology
+
+Bone scan metastases
+→ Radiology Assistant – Nuclear Medicine Bone Scan
+
+TIPS, embolisation complications
+→ Radiology Assistant – Interventional Radiology Complications
+
+-------------------------------------------------
+END OF FILE

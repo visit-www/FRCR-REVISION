@@ -2910,6 +2910,41 @@
     /**
      * Convert pipe-separated text to HTML table (client-side, matches server-side logic)
      */
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
+    function buildTableHTML(table) {
+        if (!table.headers || table.headers.length === 0) {
+            return '';
+        }
+        
+        let html = '<table class="table table-bordered table-sm" style="margin: 1rem 0;">';
+        html += '<thead><tr>';
+        table.headers.forEach(header => {
+            html += `<th style="background-color: #f8f9fa; font-weight: 600;">${escapeHtml(header)}</th>`;
+        });
+        html += '</tr></thead><tbody>';
+        
+        table.rows.forEach(row => {
+            html += '<tr>';
+            // Pad row to match header count
+            while (row.length < table.headers.length) {
+                row.push('');
+            }
+            row.slice(0, table.headers.length).forEach(cell => {
+                html += `<td>${escapeHtml(cell)}</td>`;
+            });
+            html += '</tr>';
+        });
+        
+        html += '</tbody></table>';
+        return html;
+    }
+    
     function convertPipeTableToHTML(text) {
         if (!text || !text.includes('|')) {
             return text;
@@ -2920,47 +2955,62 @@
             return text;
         }
         
-        const firstLine = lines[0].trim();
-        if (!firstLine.includes('|')) {
-            return text;
-        }
+        // Process line by line, building tables
+        let result = '';
+        let currentTable = null;
+        let inTable = false;
         
-        // Parse header row
-        const headers = firstLine.split('|').map(cell => cell.trim());
-        if (headers.length < 2) {
-            return text;
-        }
-        
-        // Build table HTML
-        let tableHTML = '<table><thead><tr>';
-        headers.forEach(header => {
-            tableHTML += `<th>${header}</th>`;
-        });
-        tableHTML += '</tr></thead><tbody>';
-        
-        // Parse data rows
-        for (let i = 1; i < lines.length; i++) {
+        for (let i = 0; i < lines.length; i++) {
             const line = lines[i].trim();
-            if (!line || !line.includes('|')) {
+            
+            // Check if this is a separator row (contains only dashes and pipes)
+            const isSeparator = /^[\|\s\-]+$/.test(line) && line.includes('|');
+            
+            // Check if this is a table row (contains |)
+            const isTableRow = line.includes('|') && !isSeparator;
+            
+            if (isTableRow) {
+                if (!inTable) {
+                    // Start new table
+                    inTable = true;
+                    currentTable = { headers: null, rows: [] };
+                }
+                
+                const cells = line.split('|').map(cell => cell.trim()).filter(cell => cell !== '');
+                
+                if (currentTable.headers === null) {
+                    // First row is header
+                    currentTable.headers = cells;
+                } else {
+                    // Data row
+                    currentTable.rows.push(cells);
+                }
+            } else if (isSeparator) {
+                // Skip separator rows (they're just formatting)
                 continue;
+            } else {
+                // Not a table row - close current table if any, then add this line
+                if (inTable && currentTable) {
+                    result += buildTableHTML(currentTable);
+                    currentTable = null;
+                    inTable = false;
+                }
+                
+                // Handle <hr> tags - convert to actual horizontal rule
+                if (line === '<hr>' || line === '<hr />' || line === '<hr/>') {
+                    result += '<hr style="margin: 1.5rem 0; border: none; border-top: 2px solid #ddd;">';
+                } else {
+                    result += line + '\n';
+                }
             }
-            
-            const cells = line.split('|').map(cell => cell.trim());
-            // Pad or trim to match header count
-            while (cells.length < headers.length) {
-                cells.push('');
-            }
-            cells.splice(headers.length);
-            
-            tableHTML += '<tr>';
-            cells.forEach(cell => {
-                tableHTML += `<td>${cell}</td>`;
-            });
-            tableHTML += '</tr>';
         }
         
-        tableHTML += '</tbody></table>';
-        return tableHTML;
+        // Close any remaining table
+        if (inTable && currentTable) {
+            result += buildTableHTML(currentTable);
+        }
+        
+        return result;
     }
     
     /**
@@ -3084,8 +3134,10 @@
     function renderSafeHTML(htmlContent) {
         if (!htmlContent) return '';
         
+        // First, handle <hr> tags (convert to proper HTML)
+        htmlContent = htmlContent.replace(/<hr\s*\/?>/gi, '<hr style="margin: 1.5rem 0; border: none; border-top: 2px solid #ddd;">');
+        
         // Check if content already has HTML tags BEFORE any processing
-        // If it has HTML tags, it's already sanitized HTML from server - use as-is
         if (htmlContent.includes('<') && htmlContent.includes('>')) {
             // Already contains HTML tags, render as-is (already sanitized server-side)
             // Convert pipe tables to HTML first (in case there are pipe tables mixed with HTML)
@@ -3094,10 +3146,9 @@
         }
         
         // Plain text - browser already decoded HTML entities from data attribute
-        // No need to decode again (which could lose structure)
-        // Just convert pipe tables and return (caller will wrap with CSS formatting)
+        // Convert pipe tables and return
         let processed = convertPipeTableToHTML(htmlContent);
-        return processed;  // Return as-is, structure (newlines, bullets) preserved
+        return processed;
     }
     
     /**

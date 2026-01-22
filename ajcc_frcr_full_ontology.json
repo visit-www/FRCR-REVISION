@@ -1,0 +1,143 @@
+{
+  "source": "AJCC Portal PDFs (user supplied)",
+  "sections": [
+    {
+      "ajcc_section": "Bone",
+      "disease_sites": [
+        "Bone"
+      ]
+    },
+    {
+      "ajcc_section": "Breast",
+      "disease_sites": [
+        "Breast"
+      ]
+    },
+    {
+      "ajcc_section": "Central Nervous System",
+      "disease_sites": [
+        "Brain and Spinal Cord"
+      ]
+    },
+    {
+      "ajcc_section": "Endocrine System",
+      "disease_sites": [
+        "Adrenal Gland",
+        "Parathyroid",
+        "Thyroid"
+      ]
+    },
+    {
+      "ajcc_section": "Female Reproductive Organs",
+      "disease_sites": [
+        "Cervix Uteri",
+        "Corpus Uteri Carcinoma and Carcinosarcoma",
+        "Corpus Uteri Sarcoma",
+        "Gestational Trophoblastic Neoplasms",
+        "Ovary, Fallopian Tube, and Primary Peritoneal Carcinoma"
+      ]
+    },
+    {
+      "ajcc_section": "Head and Neck",
+      "disease_sites": [
+        "Oral Cavity",
+        "Oropharynx",
+        "Hypopharynx",
+        "Larynx"
+      ]
+    },
+    {
+      "ajcc_section": "Hematologic Malignancies",
+      "disease_sites": [
+        "Hematologic Malignancies"
+      ]
+    },
+    {
+      "ajcc_section": "Hepatobiliary System",
+      "disease_sites": [
+        "Liver",
+        "Intrahepatic Bile Ducts",
+        "Perihilar Bile Ducts",
+        "Distal Bile Duct",
+        "Gallbladder"
+      ]
+    },
+    {
+      "ajcc_section": "Lower Gastrointestinal Tract",
+      "disease_sites": [
+        "Colon",
+        "Rectum",
+        "Anal Canal"
+      ]
+    },
+    {
+      "ajcc_section": "Male Genital Organs",
+      "disease_sites": [
+        "Penis",
+        "Prostate",
+        "Testis"
+      ]
+    },
+    {
+      "ajcc_section": "Neuroendocrine Tumors",
+      "disease_sites": [
+        "Neuroendocrine Tumors"
+      ]
+    },
+    {
+      "ajcc_section": "Ophthalmic Sites",
+      "disease_sites": [
+        "Conjunctival Carcinoma",
+        "Conjunctival Melanoma",
+        "Eyelid Carcinoma",
+        "Lacrimal Gland Carcinoma",
+        "Ocular Adnexal Lymphoma",
+        "Orbital Sarcoma",
+        "Retinoblastoma",
+        "Uveal Melanoma"
+      ]
+    },
+    {
+      "ajcc_section": "Skin",
+      "disease_sites": [
+        "Merkel Cell Carcinoma",
+        "Melanoma of the Skin"
+      ]
+    },
+    {
+      "ajcc_section": "Soft Tissue Sarcoma",
+      "disease_sites": [
+        "Soft Tissue Sarcoma of the Abdomen and Thoracic Visceral Organs",
+        "Gastrointestinal Stromal Tumor",
+        "Soft Tissue Sarcoma of the Head and Neck",
+        "Soft Tissue Sarcoma of the Retroperitoneum",
+        "Soft Tissue Sarcoma of the Trunk and Extremities"
+      ]
+    },
+    {
+      "ajcc_section": "Thorax",
+      "disease_sites": [
+        "Lung",
+        "Pleural Mesothelioma",
+        "Thymus"
+      ]
+    },
+    {
+      "ajcc_section": "Upper Gastrointestinal Tract",
+      "disease_sites": [
+        "Esophagus and Esophagogastric Junction",
+        "Small Intestine",
+        "Stomach"
+      ]
+    },
+    {
+      "ajcc_section": "Urinary Tract",
+      "disease_sites": [
+        "Urinary Bladder",
+        "Kidney",
+        "Renal Pelvis and Ureter",
+        "Urethra"
+      ]
+    }
+  ]
+}

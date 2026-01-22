@@ -1,0 +1,88 @@
+AJCC → FRCR Full Site Tree
+
+Bone
+├── Bone
+
+Breast
+├── Breast
+
+Central Nervous System
+├── Brain and Spinal Cord
+
+Endocrine System
+├── Adrenal Gland
+├── Parathyroid
+├── Thyroid
+
+Female Reproductive Organs
+├── Cervix Uteri
+├── Corpus Uteri Carcinoma and Carcinosarcoma
+├── Corpus Uteri Sarcoma
+├── Gestational Trophoblastic Neoplasms
+├── Ovary, Fallopian Tube, and Primary Peritoneal Carcinoma
+
+Head and Neck
+├── Oral Cavity
+├── Oropharynx
+├── Hypopharynx
+├── Larynx
+
+Hematologic Malignancies
+├── Hematologic Malignancies
+
+Hepatobiliary System
+├── Liver
+├── Intrahepatic Bile Ducts
+├── Perihilar Bile Ducts
+├── Distal Bile Duct
+├── Gallbladder
+
+Lower Gastrointestinal Tract
+├── Colon
+├── Rectum
+├── Anal Canal
+
+Male Genital Organs
+├── Penis
+├── Prostate
+├── Testis
+
+Neuroendocrine Tumors
+├── Neuroendocrine Tumors
+
+Ophthalmic Sites
+├── Conjunctival Carcinoma
+├── Conjunctival Melanoma
+├── Eyelid Carcinoma
+├── Lacrimal Gland Carcinoma
+├── Ocular Adnexal Lymphoma
+├── Orbital Sarcoma
+├── Retinoblastoma
+├── Uveal Melanoma
+
+Skin
+├── Merkel Cell Carcinoma
+├── Melanoma of the Skin
+
+Soft Tissue Sarcoma
+├── Soft Tissue Sarcoma of the Abdomen and Thoracic Visceral Organs
+├── Gastrointestinal Stromal Tumor
+├── Soft Tissue Sarcoma of the Head and Neck
+├── Soft Tissue Sarcoma of the Retroperitoneum
+├── Soft Tissue Sarcoma of the Trunk and Extremities
+
+Thorax
+├── Lung
+├── Pleural Mesothelioma
+├── Thymus
+
+Upper Gastrointestinal Tract
+├── Esophagus and Esophagogastric Junction
+├── Small Intestine
+├── Stomach
+
+Urinary Tract
+├── Urinary Bladder
+├── Kidney
+├── Renal Pelvis and Ureter
+├── Urethra

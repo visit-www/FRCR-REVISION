@@ -1,0 +1,21 @@
+Site Structure:
+/
+└── en
+    ├── bone
+    ├── breast
+    ├── central-nervous-system
+    ├── endocrine-system
+    ├── female-reproductive-organs
+    ├── general-information-on-cancer-staging
+    ├── head-and-neck
+    ├── hematologic-malignancies
+    ├── hepatobiliary-system
+    ├── lower-gastrointestinal-tract
+    ├── male-genital-organs
+    ├── neuroendocrine-tumors
+    ├── ophthalmic-sites
+    ├── skin
+    ├── soft-tissue-sarcoma
+    ├── thorax
+    ├── upper-gastrointestinal-tract
+    └── urinary-tract

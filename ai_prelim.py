@@ -160,11 +160,36 @@ Focus on:
 • What differentiates stable vs unstable
 • What MUST be mentioned in a report
 
-If staging/grading/classification exists:
+If staging/grading/classification exists (non-cancer):
 • Do NOT give full TNM or full scoring tables
 • Instead give only:
   - The 2-4 most important differentiating features
-  - What specifically changes management"""
+  - What specifically changes management
+
+TNM CLASSIFICATION (CANCER ONLY):
+• If the diagnosis contains the word "cancer", include AJCC TNM classification table in this section
+• Format using pipe tables (|) for clear structure
+• Include:
+  - T Stage definitions (T1, T2, T3, T4, etc.)
+  - N Stage definitions (N0, N1, N2, N3, etc.)
+  - M Stage definitions (M0, M1, etc.)
+  - Stage groupings (Stage I, II, III, IV with corresponding T N M combinations)
+• Example format:
+  | T Stage | Definition |
+  |---------|------------|
+  | T1      | ...        |
+  | T2      | ...        |
+  | N Stage | Definition |
+  |---------|------------|
+  | N0      | ...        |
+  | M Stage | Definition |
+  |---------|------------|
+  | M0      | ...        |
+  | Stage Grouping | T N M |
+  |----------------|-------|
+  | Stage I        | T1N0M0 |
+• Only include TNM classification if diagnosis contains "cancer" keyword
+• Keep the table concise - focus on the most clinically relevant stages"""
 
     # Section 3: Safety checklist
     safety_section = """
@@ -263,8 +288,26 @@ If no suitable normal anatomy image is known, leave anatomy_image as empty objec
 
 List 2-5 reputable sources for your information:
 • Include title, url, and pmid (if applicable)
-• Prefer: Radiopaedia, Radiology Assistant, ACR, NICE guidelines
-• Only cite sources you are confident exist and ensure the URL and links are valid"""
+• Include pdf_url field when PDF version is available (for journal articles)
+
+PREFERRED JOURNALS (prioritize these for high-quality pictorial essays and anatomical/pathological correlations):
+• Radiographics (pictorial reviews, case-based learning) - https://pubs.rsna.org/journal/radiographics
+• AJNR (American Journal of Neuroradiology) - pictorial essays and case reports
+• IJR (Indian Journal of Radiology) - pictorial articles
+• RadiologyAssistant (radiologyassistant.nl) - comprehensive pictorial reviews
+• Radiopaedia (radiopaedia.org) - case-based learning
+• ScienceDirect - peer-reviewed radiology articles with full-text access
+• Clinical Key - comprehensive medical reference with imaging correlations
+
+IMPORTANT GUIDELINES:
+• PREFER pictorial articles and articles with anatomical/pathological correlations
+• PREFER case reviews and teaching files over general review articles
+• Include PDF links when available (especially for Radiographics, AJNR, ScienceDirect)
+• DO NOT link to generic journal homepages or main pages (e.g., acr.org main page, journal index pages)
+• DO NOT invent or guess URLs - only use URLs you can verify exist
+• Only cite sources you are confident exist and ensure the URL and links are valid
+• For Radiopaedia: Use exact case/article slugs from search results, not guessed URLs
+• For journal articles: Link to specific article DOIs, not journal homepages"""
 
     # Section 7: Warnings
     warnings_section = """
@@ -437,12 +480,23 @@ def generate_prelim_case_data(case_context, provider="claude"):
     parsed.setdefault("sources", [])
     parsed.setdefault("warnings", [])
     
-    # Fix URLs in sources (PMC and RadiologyAssistant)
+    # Fix URLs in sources (PMC, RadiologyAssistant, Radiopaedia, and journal articles)
     if isinstance(parsed.get("sources"), list):
         import re
+        from urllib.parse import urlparse
+        
+        filtered_sources = []
+        generic_urls = [
+            "acr.org/clinical-resources/clinical-tools-and-reference/appropriateness-criteria",
+            "acr.org/clinical-resources",
+            "pubs.rsna.org/journal/radiographics",  # Journal homepage, not specific article
+            "ajnr.org",  # Journal homepage
+        ]
+        
         for source in parsed["sources"]:
             if isinstance(source, dict) and "url" in source:
                 url = source["url"]
+                url_lower = url.lower()
                 
                 # Fix PMC URLs with duplicate prefix (e.g., PMCPMC10481713)
                 if "pmc.ncbi.nlm.nih.gov" in url or "ncbi.nlm.nih.gov/pmc" in url:
@@ -482,6 +536,62 @@ def generate_prelim_case_data(case_context, provider="claude"):
                         # Just radiologyassistant mentioned, ensure full URL
                         if not url.startswith("http://") and not url.startswith("https://"):
                             source["url"] = f"https://radiologyassistant.nl{url if url.startswith('/') else '/' + url}"
+                
+                # Fix Radiopaedia URLs (detect truncation and validate)
+                elif "radiopaedia.org" in url.lower():
+                    url_lower = url.lower()
+                    # Ensure proper protocol
+                    if not url.startswith("http://") and not url.startswith("https://"):
+                        source["url"] = f"https://{url}"
+                    elif url.startswith("http://"):
+                        source["url"] = url.replace("http://", "https://", 1)
+                    # Note: We can't easily validate truncated URLs without making HTTP requests
+                    # The model should be instructed to use exact URLs, and we'll add warnings if needed
+                
+                # Filter out generic/homepage URLs
+                is_generic = any(generic in url_lower for generic in generic_urls)
+                # Also check if it's just a domain or main page
+                parsed_url = urlparse(url if url.startswith("http") else f"https://{url}")
+                if is_generic or (parsed_url.path in ["/", ""] and not parsed_url.query and not parsed_url.fragment):
+                    # Mark for removal - we'll filter these out
+                    source["_should_remove"] = True
+                    if "warnings" not in parsed:
+                        parsed["warnings"] = []
+                    parsed["warnings"].append(f"Removed generic URL: {url}")
+                
+                # Generate PDF links for journal articles
+                if "pubs.rsna.org/doi/full" in url_lower or "pubs.rsna.org/doi/abs" in url_lower:
+                    # Convert to PDF link
+                    doi_match = re.search(r'10\.\d+/[^\s/]+', url)
+                    if doi_match:
+                        doi = doi_match.group(0)
+                        pdf_url = f"https://pubs.rsna.org/doi/pdf/{doi}"
+                        source["pdf_url"] = pdf_url
+                elif "ajnr.org/content" in url_lower:
+                    # AJNR article - try to generate PDF link
+                    # AJNR PDF links typically follow pattern: ajnr.org/content/{vol}/{issue}/{page}.full.pdf
+                    # We'll keep the article URL and note that PDF may be available
+                    source["pdf_note"] = "PDF may be available on article page"
+                elif "sciencedirect.com" in url_lower and "/article/" in url_lower:
+                    # ScienceDirect article - PDF link typically available
+                    # Format: sciencedirect.com/science/article/pii/{pii}/pdfft
+                    pii_match = re.search(r'/pii/([A-Z0-9]+)', url_lower)
+                    if pii_match:
+                        pii = pii_match.group(1)
+                        pdf_url = url.replace("/article/", "/article/pii/").replace("?via%3Dihub", "") + "/pdfft"
+                        source["pdf_url"] = pdf_url
+                
+                # Only add source if not marked for removal
+                if not source.get("_should_remove", False):
+                    # Remove the temporary flag
+                    source.pop("_should_remove", None)
+                    filtered_sources.append(source)
+            else:
+                # Keep sources without URLs or invalid structure
+                filtered_sources.append(source)
+        
+        # Update sources list with filtered results
+        parsed["sources"] = filtered_sources
 
     # Validate qa_pairs structure
     validated_pairs = []
@@ -499,6 +609,40 @@ def generate_prelim_case_data(case_context, provider="claude"):
             item.strip() for item in parsed["safety_checklist"]
             if isinstance(item, str) and item.strip()
         ]
+    
+    # Optional: Enhance discussion with AJCC URL reference if cancer diagnosis and TNM present
+    diagnosis = case_context.get("diagnosis", "").strip()
+    discussion = parsed.get("discussion", "")
+    
+    if diagnosis and "cancer" in diagnosis.lower():
+        # Check if discussion contains TNM table (look for table markers or stage references)
+        has_tnm = (
+            "| T Stage" in discussion or
+            "| N Stage" in discussion or
+            "| M Stage" in discussion or
+            "Stage I" in discussion or
+            "T1N0M0" in discussion or
+            "TNM" in discussion.upper()
+        )
+        
+        if has_tnm:
+            try:
+                from ajcc_service import map_diagnosis_to_ajcc
+                body_part = case_context.get("body_part", "").strip()
+                ajcc_info = map_diagnosis_to_ajcc(diagnosis, body_part)
+                
+                if ajcc_info and ajcc_info.get("url"):
+                    # Add AJCC reference at the end of discussion
+                    ajcc_ref = f"\n\n**AJCC Staging Reference:** [View full TNM staging criteria for {ajcc_info['disease_site']} ({ajcc_info['ajcc_section']})]({ajcc_info['url']})"
+                    if ajcc_ref not in discussion:
+                        parsed["discussion"] = discussion + ajcc_ref
+            except ImportError:
+                # ajcc_service not available, skip enhancement
+                pass
+            except Exception as e:
+                # Log error but don't break the flow
+                import sys
+                print(f"[AI_PRELIM] Error enhancing discussion with AJCC URL: {e}", file=sys.stderr)
 
     return {
         "provider": provider,

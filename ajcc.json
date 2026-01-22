@@ -1,0 +1,122 @@
+[
+  {
+    "slug": "ajcc-staging-home",
+    "display_name": "AJCC Staging Online – Home",
+    "url": "https://ajccstaging.org/en",
+    "type": "entry_point"
+  },
+  {
+    "slug": "ajcc-login",
+    "display_name": "AJCC Staging Online – Login",
+    "url": "https://login.facs.org/oauth2/v1/authorize?redirect_uri=https://ajccstaging.org/auth/okta&client_id=0oabuyb8n6zbTGYaw697&response_type=code&scope=openid%20email%20profile&state=/&nonce=YmI4NjdkOWQtMzRiZS00ZDcxLThmMWEtYjMwNjRmZDA1NGJj",
+    "type": "authentication"
+  },
+  {
+    "slug": "general-information-on-cancer-staging",
+    "display_name": "General Information on Cancer Staging",
+    "url": "https://ajccstaging.org/en/general-information-on-cancer-staging",
+    "type": "body_system"
+  },
+  {
+    "slug": "head-and-neck",
+    "display_name": "Head and Neck",
+    "url": "https://ajccstaging.org/en/head-and-neck",
+    "type": "body_system"
+  },
+  {
+    "slug": "upper-gastrointestinal-tract",
+    "display_name": "Upper Gastrointestinal Tract",
+    "url": "https://ajccstaging.org/en/upper-gastrointestinal-tract",
+    "type": "body_system"
+  },
+  {
+    "slug": "lower-gastrointestinal-tract",
+    "display_name": "Lower Gastrointestinal Tract",
+    "url": "https://ajccstaging.org/en/lower-gastrointestinal-tract",
+    "type": "body_system"
+  },
+  {
+    "slug": "hepatobiliary-system",
+    "display_name": "Hepatobiliary System",
+    "url": "https://ajccstaging.org/en/hepatobiliary-system",
+    "type": "body_system"
+  },
+  {
+    "slug": "neuroendocrine-tumors",
+    "display_name": "Neuroendocrine Tumors",
+    "url": "https://ajccstaging.org/en/neuroendocrine-tumors",
+    "type": "body_system"
+  },
+  {
+    "slug": "thorax",
+    "display_name": "Thorax",
+    "url": "https://ajccstaging.org/en/thorax",
+    "type": "body_system"
+  },
+  {
+    "slug": "bone",
+    "display_name": "Bone",
+    "url": "https://ajccstaging.org/en/bone",
+    "type": "body_system"
+  },
+  {
+    "slug": "soft-tissue-sarcoma",
+    "display_name": "Soft Tissue Sarcoma",
+    "url": "https://ajccstaging.org/en/soft-tissue-sarcoma",
+    "type": "body_system"
+  },
+  {
+    "slug": "skin",
+    "display_name": "Skin",
+    "url": "https://ajccstaging.org/en/skin",
+    "type": "body_system"
+  },
+  {
+    "slug": "breast",
+    "display_name": "Breast",
+    "url": "https://ajccstaging.org/en/breast",
+    "type": "body_system"
+  },
+  {
+    "slug": "female-reproductive-organs",
+    "display_name": "Female Reproductive Organs",
+    "url": "https://ajccstaging.org/en/female-reproductive-organs",
+    "type": "body_system"
+  },
+  {
+    "slug": "male-genital-organs",
+    "display_name": "Male Genital Organs",
+    "url": "https://ajccstaging.org/en/male-genital-organs",
+    "type": "body_system"
+  },
+  {
+    "slug": "urinary-tract",
+    "display_name": "Urinary Tract",
+    "url": "https://ajccstaging.org/en/urinary-tract",
+    "type": "body_system"
+  },
+  {
+    "slug": "ophthalmic-sites",
+    "display_name": "Ophthalmic Sites",
+    "url": "https://ajccstaging.org/en/ophthalmic-sites",
+    "type": "body_system"
+  },
+  {
+    "slug": "central-nervous-system",
+    "display_name": "Central Nervous System",
+    "url": "https://ajccstaging.org/en/central-nervous-system",
+    "type": "body_system"
+  },
+  {
+    "slug": "endocrine-system",
+    "display_name": "Endocrine System",
+    "url": "https://ajccstaging.org/en/endocrine-system",
+    "type": "body_system"
+  },
+  {
+    "slug": "hematologic-malignancies",
+    "display_name": "Hematologic Malignancies",
+    "url": "https://ajccstaging.org/en/hematologic-malignancies",
+    "type": "body_system"
+  }
+]
