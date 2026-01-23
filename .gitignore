@@ -77,3 +77,4 @@ cache/tcia/*.json
 !cache/tcia/.gitkeep
 .env.vercel
 .env.vercel
+.ajcc_cookies.json

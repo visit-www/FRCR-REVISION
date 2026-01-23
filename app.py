@@ -18,6 +18,9 @@ from admin_routes import admin_bp
 from admin_enrichment_routes import enrichment_bp
 from notes_integration_routes import notes_bp
 from resources_routes import resources_bp
+# AJCC TNM Module - imports blueprints from the reusable module
+from ajcc_tnm import get_blueprints, init_app as init_ajcc_tnm
+admin_tnm_bp, tnm_bp = get_blueprints()
 from ai_prelim import AiPrelimError, generate_prelim_case_data
 from datetime import datetime
 from sqlalchemy.pool import NullPool
@@ -195,6 +198,10 @@ app.register_blueprint(admin_bp)  # Sprint 2: Admin user management
 app.register_blueprint(enrichment_bp)  # Data migration: Import, enrich, promote cases
 app.register_blueprint(notes_bp)  # Notion + Anki integration for student notes
 app.register_blueprint(resources_bp)  # PubMed, TCIA, RadiologyAssistant resources
+# Initialize AJCC TNM module and register its blueprints
+init_ajcc_tnm(app)
+app.register_blueprint(admin_tnm_bp)  # AJCC TNM staging system - admin routes
+app.register_blueprint(tnm_bp)  # AJCC TNM staging system - public routes
 
 
 @app.route('/')

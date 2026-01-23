@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block mobile_breadcrumb %}
+    <li class="breadcrumb-item active text-white" aria-current="page">
+        <i class="fas fa-stethoscope me-1"></i>AJCC TNM Staging
+    </li>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-5 mb-5">
+    <!-- Breadcrumb Navigation -->
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="/"><i class="fas fa-home"></i> Home</a></li>
+            <li class="breadcrumb-item active" aria-current="page"><i class="fas fa-stethoscope"></i> AJCC TNM Staging</li>
+        </ol>
+    </nav>
+
+    <h1 class="mb-4"><i class="fas fa-stethoscope"></i> AJCC TNM Staging System</h1>
+    <p class="lead mb-5">Browse cancer staging information by body section.</p>
+
+    <!-- Body Sections Grid -->
+    <div class="row g-4">
+        {% for section in sections %}
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="fas fa-folder-open text-primary me-2"></i>
+                        {{ section.section_name }}
+                    </h5>
+                    <p class="card-text text-muted">View diseases in this section</p>
+                </div>
+                <div class="card-footer bg-transparent">
+                    <a href="/tnm/{{ section.slug }}" class="btn btn-brand-secondary w-100">
+                        <i class="fas fa-arrow-right me-1"></i>Browse Diseases
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

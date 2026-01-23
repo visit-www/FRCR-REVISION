@@ -7,6 +7,7 @@ and generate URLs to AJCC disease staging pages.
 For use in:
 - AI prompt enhancement (optional AJCC URL reference in discussion)
 - Future admin route for dedicated TNM retrieval
+- Linking to TNM pages from case discussions
 
 Note: This service will be extended later for a separate admin route focused
 on TNM classification extraction.
@@ -16,6 +17,7 @@ import json
 import os
 from typing import Optional, Dict, List
 from urllib.parse import quote
+from flask import url_for
 
 
 # AJCC Configuration
@@ -344,3 +346,78 @@ def extract_tnm_from_page(url: str) -> Optional[Dict]:
     # - Extract stage groupings
     # - Return structured data
     return None
+
+
+# ============================================================================
+# TNM PAGE LINKING (for case discussions)
+# ============================================================================
+
+def get_tnm_url_for_diagnosis(diagnosis: str, app_context=None) -> Optional[str]:
+    """
+    Get TNM page URL for a cancer diagnosis if TNM data exists.
+    
+    Args:
+        diagnosis: Cancer diagnosis text (e.g., "Lung cancer", "Breast carcinoma")
+        app_context: Flask app context (optional, for database queries)
+        
+    Returns:
+        URL to TNM page (e.g., "/tnm/thorax/lung") or None if not found
+    """
+    if not diagnosis or 'cancer' not in diagnosis.lower():
+        return None
+    
+    # Try to import models only if app context is available
+    try:
+        from models import AJCCDiseaseSite, AJCCStagingData, AJCCDiagnosisYear, db
+        
+        if app_context is None:
+            # Try to get current app context
+            from flask import has_app_context, current_app
+            if not has_app_context():
+                return None
+            app_context = current_app.app_context()
+        
+        with app_context:
+            # Search for matching disease site
+            diagnosis_lower = diagnosis.lower()
+            
+            # Try to find disease site by name matching
+            disease_sites = AJCCDiseaseSite.query.all()
+            for disease_site in disease_sites:
+                disease_name_lower = disease_site.disease_name.lower()
+                
+                # Check if diagnosis contains disease name or vice versa
+                if disease_name_lower in diagnosis_lower or diagnosis_lower in disease_name_lower:
+                    # Check if TNM data exists for this disease
+                    staging_data = AJCCStagingData.query.filter_by(
+                        disease_site_id=disease_site.id
+                    ).first()
+                    
+                    if staging_data:
+                        # Get section slug
+                        section = disease_site.body_section
+                        if section:
+                            return f"/tnm/{section.slug}/{disease_site.slug}"
+            
+            return None
+    except ImportError:
+        # Models not available, return None
+        return None
+    except Exception as e:
+        print(f"[AJCC] Error getting TNM URL: {e}")
+        return None
+
+
+def check_tnm_data_exists(diagnosis: str, app_context=None) -> bool:
+    """
+    Check if TNM data exists for a diagnosis.
+    
+    Args:
+        diagnosis: Cancer diagnosis text
+        app_context: Flask app context (optional)
+        
+    Returns:
+        True if TNM data exists, False otherwise
+    """
+    url = get_tnm_url_for_diagnosis(diagnosis, app_context)
+    return url is not None

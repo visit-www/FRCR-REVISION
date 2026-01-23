@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+
+{% block mobile_breadcrumb %}
+    <li class="breadcrumb-item"><a href="/tnm" class="text-white">TNM Staging</a></li>
+    <li class="breadcrumb-item"><a href="/tnm/{{ section.slug }}" class="text-white">{{ section.section_name }}</a></li>
+    <li class="breadcrumb-item"><a href="/tnm/{{ section.slug }}/{{ disease_site.slug }}" class="text-white">{{ disease_site.disease_name }}</a></li>
+    <li class="breadcrumb-item active text-white" aria-current="page">{{ section_name }}</li>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-5 mb-5">
+    <!-- Breadcrumb Navigation -->
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="/"><i class="fas fa-home"></i> Home</a></li>
+            <li class="breadcrumb-item"><a href="/tnm"><i class="fas fa-stethoscope"></i> TNM Staging</a></li>
+            <li class="breadcrumb-item"><a href="/tnm/{{ section.slug }}">{{ section.section_name }}</a></li>
+            <li class="breadcrumb-item"><a href="/tnm/{{ section.slug }}/{{ disease_site.slug }}">{{ disease_site.disease_name }}</a></li>
+            <li class="breadcrumb-item active" aria-current="page">{{ section_name }}</li>
+        </ol>
+    </nav>
+
+    <div class="row">
+        <!-- Sidebar Navigation -->
+        <div class="col-md-3 mb-4">
+            <div class="card sticky-top" style="top: 20px;">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Navigation</h5>
+                </div>
+                <div class="list-group list-group-flush">
+                    {% for num, info in section_info.items() %}
+                    <a href="/tnm/{{ section.slug }}/{{ disease_site.slug }}/{{ info.slug }}?year={{ year_used }}" 
+                       class="list-group-item list-group-item-action {% if num == section_number %}active{% endif %}">
+                        {{ num }}. {{ info.name }}
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+            
+            <!-- Year Selector -->
+            {% if available_years %}
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h6 class="mb-0">Diagnosis Year</h6>
+                </div>
+                <div class="card-body">
+                    <select class="form-select" id="yearSelector">
+                        {% for y in available_years %}
+                        <option value="{{ y }}" {% if y == year_used %}selected{% endif %}>{{ y }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Main Content -->
+        <div class="col-md-9">
+            <h1 class="mb-4">{{ section_name }}</h1>
+            <p class="text-muted mb-4">{{ disease_site.disease_name }} - Year {{ year_used }}</p>
+
+            {% if section_html %}
+                <div class="tnm-content">
+                    {{ section_html|safe }}
+                </div>
+            {% else %}
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    This section is not available for this disease/year combination.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const yearSelector = document.getElementById('yearSelector');
+    if (yearSelector) {
+        yearSelector.addEventListener('change', function() {
+            const year = this.value;
+            const currentUrl = window.location.pathname;
+            window.location.href = currentUrl + '?year=' + year;
+        });
+    }
+});
+</script>
+{% endblock %}

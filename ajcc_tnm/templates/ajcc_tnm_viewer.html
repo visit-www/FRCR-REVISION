@@ -1,0 +1,457 @@
+{% extends "base.html" %}
+
+{% block mobile_breadcrumb %}
+<li class="breadcrumb-item">
+    <a href="{{ url_for('tnm.browse') }}" class="text-white text-decoration-none">
+        <i class="fas fa-sitemap me-1"></i>TNM Staging
+    </a>
+</li>
+<li class="breadcrumb-item">
+    <a href="{{ url_for('tnm.section_page', section_slug=section.slug) }}" class="text-white text-decoration-none">
+        <i class="fas fa-folder me-1"></i>{{ section.section_name }}
+    </a>
+</li>
+<li class="breadcrumb-item active text-white" aria-current="page">
+    <i class="fas fa-file-medical me-1"></i>{{ disease_site.disease_name }}
+</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12 px-2 px-md-4">
+        
+        <!-- Breadcrumb Navigation (Desktop) -->
+        <nav aria-label="breadcrumb" class="mb-4 d-none d-md-block">
+            <ol class="breadcrumb breadcrumb-custom">
+                <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}"><i class="fas fa-home me-1"></i>Home</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('tnm.browse') }}"><i class="fas fa-sitemap me-1"></i>TNM Staging</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('tnm.section_page', section_slug=section.slug) }}"><i class="fas fa-folder me-1"></i>{{ section.section_name }}</a></li>
+                <li class="breadcrumb-item active"><i class="fas fa-file-medical me-1"></i>{{ disease_site.disease_name }}</li>
+            </ol>
+        </nav>
+        
+        <!-- Main Content Row -->
+        <div class="row">
+            <!-- Sidebar -->
+            <div class="col-lg-3 col-md-4 mb-4">
+                <div class="card sidebar-card sticky-top" style="top: 80px;">
+                    <!-- Year Selector -->
+                    <div class="card-header bg-primary text-white">
+                        <h6 class="mb-0"><i class="fas fa-calendar-alt me-2"></i>Diagnosis Year</h6>
+                    </div>
+                    <div class="card-body py-2">
+                        <select class="form-select form-select-sm" id="yearSelector" onchange="changeYear(this.value)">
+                            {% for year in available_years %}
+                            <option value="{{ year }}" {% if year == year_used %}selected{% endif %}>{{ year }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <!-- Section Navigation -->
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0"><i class="fas fa-list me-2"></i>Sections</h6>
+                    </div>
+                    <ul class="list-group list-group-flush section-nav">
+                        {% for num, info in section_info.items() %}
+                        <li class="list-group-item section-nav-item {% if active_section == num %}active{% endif %}">
+                            <a href="#section-{{ num }}" class="d-flex align-items-center text-decoration-none">
+                                <span class="badge bg-secondary me-2">{{ num }}</span>
+                                <span class="section-name">{{ info.name }}</span>
+                            </a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    
+                    <!-- Stage Calculator -->
+                    <div class="card-header bg-warning">
+                        <h6 class="mb-0"><i class="fas fa-calculator me-2"></i>Stage Calculator</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-2">
+                            <label class="form-label small mb-1">T Stage:</label>
+                            <select class="form-select form-select-sm" id="t-stage">
+                                <option value="">Select...</option>
+                                {% if staging_data and staging_data.get_t_definitions() %}
+                                    {% for subsite in staging_data.get_t_definitions() %}
+                                        {% for cat in subsite.get('categories', []) %}
+                                        <option value="{{ cat.category }}">{{ cat.category }}</option>
+                                        {% endfor %}
+                                    {% endfor %}
+                                {% else %}
+                                <option value="TX">TX</option>
+                                <option value="Tis">Tis</option>
+                                <option value="T1">T1</option>
+                                <option value="T2">T2</option>
+                                <option value="T3">T3</option>
+                                <option value="T4">T4</option>
+                                {% endif %}
+                            </select>
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label small mb-1">N Stage:</label>
+                            <select class="form-select form-select-sm" id="n-stage">
+                                <option value="">Select...</option>
+                                {% if staging_data and staging_data.get_n_definitions() %}
+                                    {% set n_defs = staging_data.get_n_definitions() %}
+                                    {% for cat in n_defs.get('clinical', []) %}
+                                    <option value="{{ cat.category }}">{{ cat.category }}</option>
+                                    {% endfor %}
+                                {% else %}
+                                <option value="NX">NX</option>
+                                <option value="N0">N0</option>
+                                <option value="N1">N1</option>
+                                <option value="N2">N2</option>
+                                <option value="N3">N3</option>
+                                {% endif %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small mb-1">M Stage:</label>
+                            <select class="form-select form-select-sm" id="m-stage">
+                                <option value="">Select...</option>
+                                {% if staging_data and staging_data.get_m_definitions() %}
+                                    {% for cat in staging_data.get_m_definitions() %}
+                                    <option value="{{ cat.category }}">{{ cat.category }}</option>
+                                    {% endfor %}
+                                {% else %}
+                                <option value="M0">M0</option>
+                                <option value="M1">M1</option>
+                                {% endif %}
+                            </select>
+                        </div>
+                        <button class="btn btn-warning btn-sm w-100" onclick="calculateStage()">
+                            <i class="fas fa-calculator me-1"></i>Calculate
+                        </button>
+                        <div id="stage-result" class="mt-2 text-center" style="display: none;">
+                            <strong>Stage: </strong><span id="stage-value" class="badge bg-success fs-5"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Main Content -->
+            <div class="col-lg-9 col-md-8">
+                <!-- Disease Title -->
+                <div class="card mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <h4 class="mb-0">
+                            <i class="fas fa-file-medical me-2"></i>
+                            {{ disease_site.disease_name }} - TNM Staging ({{ year_used }})
+                        </h4>
+                    </div>
+                </div>
+                
+                {% if not staging_data %}
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    No staging data available for this disease/year combination.
+                    {% if current_user.is_authenticated and current_user.role.value == 'admin' %}
+                    <a href="{{ url_for('admin_tnm.tnm_management_page') }}" class="alert-link">Extract data in Admin</a>
+                    {% endif %}
+                </div>
+                {% else %}
+                
+                <!-- Section 1: Staging Quick Reference -->
+                <div class="card mb-4" id="section-1">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">
+                            <span class="badge bg-primary me-2">1</span>
+                            Staging Quick Reference
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        {% set tnm_data = staging_data.get_tnm_data() %}
+                        {% if tnm_data %}
+                        
+                        <!-- T Definitions -->
+                        {% if tnm_data.t_definitions %}
+                        <h6 class="text-primary mb-3"><i class="fas fa-tumor me-2"></i>T Stage (Primary Tumor)</h6>
+                        {% for subsite in tnm_data.t_definitions %}
+                            {% if subsite.subsite and subsite.subsite != 'Default' %}
+                            <p class="text-muted mb-2"><em>{{ subsite.subsite }}</em></p>
+                            {% endif %}
+                            <div class="table-responsive mb-4">
+                                <table class="table table-bordered table-hover tnm-table">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th style="width: 80px;">Category</th>
+                                            <th>Criteria</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for cat in subsite.categories %}
+                                        <tr>
+                                            <td class="fw-bold">{{ cat.category }}</td>
+                                            <td>{{ cat.criteria }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% endfor %}
+                        {% endif %}
+                        
+                        <!-- N Definitions -->
+                        {% if tnm_data.n_definitions %}
+                        <h6 class="text-primary mb-3"><i class="fas fa-circle-nodes me-2"></i>N Stage (Regional Lymph Nodes)</h6>
+                        {% if tnm_data.n_definitions.clinical %}
+                        <p class="text-muted mb-2"><em>Clinical (cN)</em></p>
+                        <div class="table-responsive mb-4">
+                            <table class="table table-bordered table-hover tnm-table">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width: 80px;">Category</th>
+                                        <th>Criteria</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for cat in tnm_data.n_definitions.clinical %}
+                                    <tr>
+                                        <td class="fw-bold">{{ cat.category }}</td>
+                                        <td>{{ cat.criteria }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% endif %}
+                        {% if tnm_data.n_definitions.pathological %}
+                        <p class="text-muted mb-2"><em>Pathological (pN)</em></p>
+                        <div class="table-responsive mb-4">
+                            <table class="table table-bordered table-hover tnm-table">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width: 80px;">Category</th>
+                                        <th>Criteria</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for cat in tnm_data.n_definitions.pathological %}
+                                    <tr>
+                                        <td class="fw-bold">{{ cat.category }}</td>
+                                        <td>{{ cat.criteria }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% endif %}
+                        {% endif %}
+                        
+                        <!-- M Definitions -->
+                        {% if tnm_data.m_definitions %}
+                        <h6 class="text-primary mb-3"><i class="fas fa-arrows-alt me-2"></i>M Stage (Distant Metastasis)</h6>
+                        <div class="table-responsive mb-4">
+                            <table class="table table-bordered table-hover tnm-table">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width: 80px;">Category</th>
+                                        <th>Criteria</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for cat in tnm_data.m_definitions %}
+                                    <tr>
+                                        <td class="fw-bold">{{ cat.category }}</td>
+                                        <td>{{ cat.criteria }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% endif %}
+                        
+                        <!-- Stage Groups -->
+                        {% if tnm_data.stage_groups %}
+                        <h6 class="text-primary mb-3"><i class="fas fa-layer-group me-2"></i>Prognostic Stage Groups</h6>
+                        <div class="table-responsive mb-4">
+                            <table class="table table-bordered table-hover stage-table">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>T</th>
+                                        <th>N</th>
+                                        <th>M</th>
+                                        <th class="table-warning">Stage</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for sg in tnm_data.stage_groups %}
+                                    <tr>
+                                        <td>{{ sg.T }}</td>
+                                        <td>{{ sg.N }}</td>
+                                        <td>{{ sg.M }}</td>
+                                        <td class="table-warning fw-bold">{{ sg.stage }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% endif %}
+                        
+                        {% else %}
+                        <!-- Fallback to HTML -->
+                        {% set section_html = staging_data.get_section_html(1) %}
+                        {% if section_html %}
+                        <div class="tnm-html-content">
+                            {{ section_html|safe }}
+                        </div>
+                        {% else %}
+                        <p class="text-muted">No data available for this section.</p>
+                        {% endif %}
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <!-- Other Sections (2-10) - Rendered from HTML -->
+                {% for section_num in range(2, 11) %}
+                <div class="card mb-4" id="section-{{ section_num }}">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">
+                            <span class="badge bg-secondary me-2">{{ section_num }}</span>
+                            {{ section_info[section_num].name }}
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        {% set section_html = staging_data.get_section_html(section_num) %}
+                        {% if section_html %}
+                        <div class="tnm-html-content">
+                            {{ section_html|safe }}
+                        </div>
+                        {% else %}
+                        <p class="text-muted">No data available for this section.</p>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+                
+                {% endif %}
+                
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.sidebar-card {
+    max-height: calc(100vh - 100px);
+    overflow-y: auto;
+}
+
+.section-nav-item a {
+    color: inherit;
+    padding: 0.5rem 0;
+}
+
+.section-nav-item.active {
+    background-color: #e9ecef;
+    border-left: 3px solid #0d6efd;
+}
+
+.section-nav-item:hover {
+    background-color: #f8f9fa;
+}
+
+.tnm-table th {
+    background-color: #f8f9fa;
+}
+
+.tnm-table .fw-bold {
+    font-family: monospace;
+    font-size: 1.1em;
+}
+
+.stage-table th,
+.stage-table td {
+    text-align: center;
+}
+
+.tnm-html-content table {
+    width: 100%;
+    margin-bottom: 1rem;
+    border-collapse: collapse;
+}
+
+.tnm-html-content table th,
+.tnm-html-content table td {
+    padding: 0.75rem;
+    border: 1px solid #dee2e6;
+}
+
+.tnm-html-content img {
+    max-width: 100%;
+    height: auto;
+    cursor: pointer;
+}
+
+@media (max-width: 767px) {
+    .sidebar-card {
+        position: relative !important;
+        top: 0 !important;
+        max-height: none;
+    }
+}
+</style>
+
+<script>
+function changeYear(year) {
+    const url = new URL(window.location.href);
+    url.searchParams.set('year', year);
+    window.location.href = url.toString();
+}
+
+function calculateStage() {
+    const t = document.getElementById('t-stage').value;
+    const n = document.getElementById('n-stage').value;
+    const m = document.getElementById('m-stage').value;
+    
+    if (!t || !n || !m) {
+        alert('Please select T, N, and M stages');
+        return;
+    }
+    
+    // Call the API to calculate stage
+    fetch(`/api/admin/tnm/calculate-stage?disease_site_id={{ disease_site.id }}&year={{ year_used }}&t=${t}&n=${n}&m=${m}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.stage) {
+                document.getElementById('stage-value').textContent = data.stage;
+                document.getElementById('stage-result').style.display = 'block';
+            } else {
+                document.getElementById('stage-value').textContent = 'Not Found';
+                document.getElementById('stage-value').className = 'badge bg-danger fs-5';
+                document.getElementById('stage-result').style.display = 'block';
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error calculating stage. Please try again.');
+        });
+}
+
+// Smooth scroll for section navigation
+document.querySelectorAll('.section-nav-item a').forEach(link => {
+    link.addEventListener('click', function(e) {
+        e.preventDefault();
+        const targetId = this.getAttribute('href');
+        const target = document.querySelector(targetId);
+        if (target) {
+            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            // Update active state
+            document.querySelectorAll('.section-nav-item').forEach(item => item.classList.remove('active'));
+            this.closest('.section-nav-item').classList.add('active');
+        }
+    });
+});
+
+// Lightbox for images
+document.querySelectorAll('.tnm-html-content img').forEach(img => {
+    img.addEventListener('click', function() {
+        const modal = document.createElement('div');
+        modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);display:flex;align-items:center;justify-content:center;z-index:9999;cursor:pointer;';
+        modal.innerHTML = `<img src="${this.src}" style="max-width:90%;max-height:90%;object-fit:contain;">`;
+        modal.addEventListener('click', () => modal.remove());
+        document.body.appendChild(modal);
+    });
+});
+</script>
+{% endblock %}

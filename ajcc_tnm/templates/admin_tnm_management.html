@@ -1,0 +1,401 @@
+{% extends "base.html" %}
+
+{% block mobile_breadcrumb %}
+    <li class="breadcrumb-item active text-white" aria-current="page">
+        <i class="fas fa-stethoscope me-1"></i>AJCC TNM Management
+    </li>
+{% endblock %}
+
+{% block content %}
+<div class="admin-dashboard-container container mt-5 mb-5">
+    <!-- Breadcrumb Navigation -->
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="/"><i class="fas fa-home"></i> Home</a></li>
+            <li class="breadcrumb-item"><a href="/admin"><i class="fas fa-cog"></i> Admin</a></li>
+            <li class="breadcrumb-item active" aria-current="page"><i class="fas fa-stethoscope"></i> AJCC TNM Management</li>
+        </ol>
+    </nav>
+
+    <h1 class="mb-4"><i class="fas fa-stethoscope"></i> AJCC TNM Staging Management</h1>
+
+    <!-- Authentication Status Banner -->
+    <div class="card mb-4" id="authStatusCard">
+        <div class="card-body py-2">
+            <div class="d-flex align-items-center justify-content-between">
+                <div id="authStatus">
+                    <i class="fas fa-spinner fa-spin me-2"></i> Checking authentication...
+                </div>
+                <button class="btn btn-sm btn-outline-primary" onclick="checkAuthStatus()">
+                    <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Extraction Section -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="fas fa-download"></i> Extract TNM Data</h5>
+        </div>
+        <div class="card-body">
+            <form id="extractForm">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Body Section</label>
+                        <select class="form-select" id="sectionSelect" required>
+                            <option value="">Select Section...</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Disease</label>
+                        <select class="form-select" id="diseaseSelect" required disabled>
+                            <option value="">Select Disease...</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Diagnosis Year</label>
+                        <select class="form-select" id="yearSelect" required>
+                            <option value="2026" selected>2026 (Default)</option>
+                            <option value="2025">2025</option>
+                            <option value="2024">2024</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <button type="submit" class="btn btn-primary" id="extractBtn">
+                        <i class="fas fa-download me-1"></i>Extract TNM Data
+                    </button>
+                    <span id="extractStatus" class="ms-3"></span>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label">Filter by Section</label>
+                    <select class="form-select" id="filterSection">
+                        <option value="">All Sections</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Filter by Year</label>
+                    <select class="form-select" id="filterYear">
+                        <option value="">All Years</option>
+                        <option value="2026">2026</option>
+                        <option value="2025">2025</option>
+                        <option value="2024">2024</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <button class="btn btn-secondary w-100" id="refreshBtn">
+                        <i class="fas fa-sync-alt me-1"></i>Refresh
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Extracted Data List -->
+    <div class="card">
+        <div class="card-header bg-secondary text-white">
+            <h5 class="mb-0"><i class="fas fa-list"></i> Extracted TNM Data</h5>
+        </div>
+        <div class="card-body">
+            <div id="stagingDataList">
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            </div>
+            <!-- Pagination -->
+            <div id="pagination" class="d-flex justify-content-center mt-4"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    let currentPage = 1;
+    
+    // Load sections
+    fetch('/api/admin/tnm/sections')
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                const sectionSelect = document.getElementById('sectionSelect');
+                const filterSection = document.getElementById('filterSection');
+                data.sections.forEach(section => {
+                    const option1 = document.createElement('option');
+                    option1.value = section.id;
+                    option1.textContent = section.section_name;
+                    sectionSelect.appendChild(option1);
+                    
+                    const option2 = document.createElement('option');
+                    option2.value = section.id;
+                    option2.textContent = section.section_name;
+                    filterSection.appendChild(option2);
+                });
+            }
+        });
+    
+    // Load diseases when section selected
+    document.getElementById('sectionSelect').addEventListener('change', function() {
+        const sectionId = this.value;
+        const diseaseSelect = document.getElementById('diseaseSelect');
+        diseaseSelect.innerHTML = '<option value="">Select Disease...</option>';
+        diseaseSelect.disabled = !sectionId;
+        
+        if (sectionId) {
+            fetch(`/api/admin/tnm/diseases?section_id=${sectionId}`)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        data.diseases.forEach(disease => {
+                            const option = document.createElement('option');
+                            option.value = disease.id;
+                            option.setAttribute('data-slug', disease.slug);
+                            option.setAttribute('data-section-slug', disease.ajcc_url_path.split('/')[0]);
+                            option.textContent = disease.disease_name;
+                            diseaseSelect.appendChild(option);
+                        });
+                    }
+                });
+        }
+    });
+    
+    // Extract form submission
+    document.getElementById('extractForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const diseaseSelect = document.getElementById('diseaseSelect');
+        const diseaseId = diseaseSelect.value;
+        const selectedOption = diseaseSelect.options[diseaseSelect.selectedIndex];
+        const sectionSlug = selectedOption.getAttribute('data-section-slug');
+        const diseaseSlug = selectedOption.getAttribute('data-slug');
+        const year = document.getElementById('yearSelect').value;
+        
+        const extractBtn = document.getElementById('extractBtn');
+        const extractStatus = document.getElementById('extractStatus');
+        
+        extractBtn.disabled = true;
+        extractStatus.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Extracting...';
+        
+        fetch('/api/admin/tnm/extract', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                disease_site_id: parseInt(diseaseId),
+                diagnosis_year: parseInt(year),
+                section_slug: sectionSlug,
+                disease_slug: diseaseSlug
+            })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                extractStatus.innerHTML = '<span class="text-success"><i class="fas fa-check"></i> Extraction successful!</span>';
+                loadStagingData();
+                setTimeout(() => extractStatus.innerHTML = '', 3000);
+            } else {
+                extractStatus.innerHTML = `<span class="text-danger"><i class="fas fa-times"></i> ${data.error}</span>`;
+            }
+            extractBtn.disabled = false;
+        })
+        .catch(err => {
+            extractStatus.innerHTML = `<span class="text-danger"><i class="fas fa-times"></i> Error: ${err.message}</span>`;
+            extractBtn.disabled = false;
+        });
+    });
+    
+    // Load staging data
+    function loadStagingData(page = 1) {
+        currentPage = page;
+        const sectionId = document.getElementById('filterSection').value;
+        const year = document.getElementById('filterYear').value;
+        
+        let url = `/api/admin/tnm/list?page=${page}&per_page=20`;
+        if (sectionId) url += `&section_id=${sectionId}`;
+        if (year) url += `&year=${year}`;
+        
+        fetch(url)
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    const listDiv = document.getElementById('stagingDataList');
+                    if (data.data.length === 0) {
+                        listDiv.innerHTML = '<p class="text-muted text-center py-5">No TNM data extracted yet.</p>';
+                        document.getElementById('pagination').innerHTML = '';
+                        return;
+                    }
+                    
+                    listDiv.innerHTML = `
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Section</th>
+                                        <th>Disease</th>
+                                        <th>Year</th>
+                                        <th>Extracted</th>
+                                        <th>Last Updated</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${data.data.map(item => `
+                                        <tr>
+                                            <td>${item.section_name}</td>
+                                            <td>${item.disease_name}</td>
+                                            <td>${item.year}</td>
+                                            <td>${item.extracted_at ? new Date(item.extracted_at).toLocaleDateString() : 'N/A'}</td>
+                                            <td>${item.last_updated_at ? new Date(item.last_updated_at).toLocaleDateString() : 'N/A'}</td>
+                                            <td>
+                                                <a href="/tnm/${item.section_slug}/${item.disease_slug}?year=${item.year}" 
+                                                   class="btn btn-sm btn-info me-1" target="_blank" title="View in TNM Viewer">
+                                                    <i class="fas fa-eye"></i> View
+                                                </a>
+                                                <a href="/api/admin/tnm/edit-page/${item.disease_site_id}/${item.year}" class="btn btn-sm btn-primary me-1" title="Edit sections">
+                                                    <i class="fas fa-edit"></i> Edit
+                                                </a>
+                                                <button class="btn btn-sm btn-danger" onclick="deleteTNMData(${item.disease_site_id}, ${item.year}, '${item.disease_name}')" title="Delete staging data">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    `;
+                    
+                    // Pagination
+                    if (data.pages > 1) {
+                        let paginationHTML = '<nav><ul class="pagination">';
+                        if (data.page > 1) {
+                            paginationHTML += `<li class="page-item"><a class="page-link" href="#" onclick="loadStagingData(${data.page - 1}); return false;">Previous</a></li>`;
+                        }
+                        for (let i = 1; i <= data.pages; i++) {
+                            if (i === data.page) {
+                                paginationHTML += `<li class="page-item active"><span class="page-link">${i}</span></li>`;
+                            } else {
+                                paginationHTML += `<li class="page-item"><a class="page-link" href="#" onclick="loadStagingData(${i}); return false;">${i}</a></li>`;
+                            }
+                        }
+                        if (data.page < data.pages) {
+                            paginationHTML += `<li class="page-item"><a class="page-link" href="#" onclick="loadStagingData(${data.page + 1}); return false;">Next</a></li>`;
+                        }
+                        paginationHTML += '</ul></nav>';
+                        document.getElementById('pagination').innerHTML = paginationHTML;
+                    } else {
+                        document.getElementById('pagination').innerHTML = '';
+                    }
+                }
+            });
+    }
+    
+    // Refresh button
+    document.getElementById('refreshBtn').addEventListener('click', () => loadStagingData(1));
+    
+    // Initial load
+    loadStagingData(1);
+    
+    // Make loadStagingData available globally for pagination
+    window.loadStagingData = loadStagingData;
+    
+    // Authentication status check
+    function checkAuthStatus() {
+        const statusDiv = document.getElementById('authStatus');
+        const card = document.getElementById('authStatusCard');
+        
+        statusDiv.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Checking authentication...';
+        card.className = 'card mb-4';
+        
+        fetch('/api/admin/tnm/auth-status')
+            .then(r => r.json())
+            .then(data => {
+                if (data.authenticated) {
+                    card.className = 'card mb-4 border-success';
+                    statusDiv.innerHTML = `
+                        <span class="text-success">
+                            <i class="fas fa-check-circle me-2"></i>
+                            <strong>Authenticated</strong> - ${data.method} 
+                            ${data.expires ? `(expires: ${new Date(data.expires).toLocaleString()})` : ''}
+                        </span>`;
+                } else {
+                    card.className = 'card mb-4 border-warning';
+                    let message = '<span class="text-warning"><i class="fas fa-exclamation-triangle me-2"></i><strong>Not Authenticated</strong>';
+                    
+                    if (data.playwright_available) {
+                        message += ' - <a href="#" onclick="triggerPlaywrightAuth(); return false;">Click to auto-login with Playwright</a>';
+                    } else if (data.extension_hint) {
+                        message += ` - ${data.extension_hint}`;
+                    } else {
+                        message += ' - Install browser extension or Playwright';
+                    }
+                    message += '</span>';
+                    statusDiv.innerHTML = message;
+                }
+            })
+            .catch(err => {
+                card.className = 'card mb-4 border-danger';
+                statusDiv.innerHTML = `<span class="text-danger"><i class="fas fa-times-circle me-2"></i> Error checking auth: ${err.message}</span>`;
+            });
+    }
+    
+    // Trigger Playwright authentication
+    function triggerPlaywrightAuth() {
+        const statusDiv = document.getElementById('authStatus');
+        statusDiv.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Authenticating with Playwright (this may take a moment)...';
+        
+        fetch('/api/admin/tnm/playwright-auth', { method: 'POST' })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    checkAuthStatus();
+                } else {
+                    statusDiv.innerHTML = `<span class="text-danger"><i class="fas fa-times"></i> ${data.error}</span>`;
+                }
+            })
+            .catch(err => {
+                statusDiv.innerHTML = `<span class="text-danger"><i class="fas fa-times"></i> Error: ${err.message}</span>`;
+            });
+    }
+    window.triggerPlaywrightAuth = triggerPlaywrightAuth;
+    window.checkAuthStatus = checkAuthStatus;
+    
+    // Check auth status on page load
+    checkAuthStatus();
+    
+    // Function to delete TNM data
+    window.deleteTNMData = function(diseaseSiteId, year, diseaseName) {
+        if (!confirm(`Are you sure you want to delete staging data for "${diseaseName}" (${year})?\n\nThis action cannot be undone.`)) {
+            return;
+        }
+        
+        fetch(`/api/admin/tnm/delete/${diseaseSiteId}/${year}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message || 'Staging data deleted successfully');
+                loadStagingData(1); // Refresh the list
+            } else {
+                alert('Error deleting: ' + (data.error || 'Unknown error'));
+            }
+        })
+        .catch(err => {
+            alert('Error deleting: ' + err.message);
+        });
+    };
+});
+</script>
+{% endblock %}

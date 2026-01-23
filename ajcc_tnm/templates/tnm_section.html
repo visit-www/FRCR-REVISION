@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block mobile_breadcrumb %}
+    <li class="breadcrumb-item"><a href="/tnm" class="text-white">TNM Staging</a></li>
+    <li class="breadcrumb-item active text-white" aria-current="page">{{ section.section_name }}</li>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-5 mb-5">
+    <!-- Breadcrumb Navigation -->
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="/"><i class="fas fa-home"></i> Home</a></li>
+            <li class="breadcrumb-item"><a href="/tnm"><i class="fas fa-stethoscope"></i> TNM Staging</a></li>
+            <li class="breadcrumb-item active" aria-current="page">{{ section.section_name }}</li>
+        </ol>
+    </nav>
+
+    <h1 class="mb-4">{{ section.section_name }}</h1>
+    <p class="lead mb-5">Select a disease to view TNM staging information.</p>
+
+    <!-- Diseases List -->
+    <div class="row g-4">
+        {% for disease in diseases %}
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="fas fa-lungs text-primary me-2"></i>
+                        {{ disease.disease_name }}
+                    </h5>
+                </div>
+                <div class="card-footer bg-transparent">
+                    <a href="/tnm/{{ section.slug }}/{{ disease.slug }}" class="btn btn-brand-primary w-100">
+                        <i class="fas fa-arrow-right me-1"></i>View Staging
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

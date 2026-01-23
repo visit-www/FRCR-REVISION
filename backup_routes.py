@@ -8,7 +8,10 @@ from models import (
     db, User, Case, CaseImage, Question, Answer,
     RevisionSession, RevisionHistory, CaseFlag, TextHighlight, CandidateNote,
     ImportedCaseStaging, UserRole, FRCRModule, BodyPart, AgeGroup,
-    ForumMessage, ForumMessageVote, ForumMessageFlag
+    ForumMessage, ForumMessageVote, ForumMessageFlag,
+    # AJCC TNM Models
+    AJCCBodySection, AJCCDiseaseSite, AJCCDiagnosisYear, 
+    AJCCStagingData, AJCCDiseaseMapping, AJCCStagingTimePrefix
 )
 from datetime import datetime, timedelta
 from sqlalchemy import inspect
@@ -47,7 +50,7 @@ def download_backup():
             'metadata': {
                 'backup_date': datetime.utcnow().isoformat(),
                 'database_type': 'postgresql' if os.getenv('DATABASE_URL') or os.getenv('DATABASE_POSTGRES_URL_NON_POOLING') else 'sqlite',
-                'version': '2.2',  # Bumped for complete data coverage
+                'version': '2.3',  # Bumped for AJCC TNM data
                 'app_name': 'FRCR_REVISION'
             },
             'users': [],
@@ -64,6 +67,13 @@ def download_backup():
             'forum_messages': [],
             'forum_votes': [],
             'forum_flags': [],
+            # AJCC TNM Staging data
+            'ajcc_body_sections': [],
+            'ajcc_disease_sites': [],
+            'ajcc_diagnosis_years': [],
+            'ajcc_staging_data': [],
+            'ajcc_disease_mappings': [],
+            'ajcc_staging_time_prefixes': [],
         }
         
         # Export users (with passwords for sync purposes)
@@ -222,6 +232,100 @@ def download_backup():
                 'reason': flag.reason,
                 'details': flag.details,
                 'created_at': flag.created_at.isoformat() if flag.created_at else None,
+            })
+        
+        # ==================== AJCC TNM DATA ====================
+        
+        # Export AJCC Body Sections
+        for section in AJCCBodySection.query.order_by(AJCCBodySection.display_order).all():
+            backup_data['ajcc_body_sections'].append({
+                'id': section.id,
+                'section_name': section.section_name,
+                'slug': section.slug,
+                'display_order': section.display_order,
+                'created_at': section.created_at.isoformat() if section.created_at else None,
+                'updated_at': section.updated_at.isoformat() if section.updated_at else None,
+            })
+        
+        # Export AJCC Disease Sites
+        for disease in AJCCDiseaseSite.query.all():
+            backup_data['ajcc_disease_sites'].append({
+                'id': disease.id,
+                'body_section_id': disease.body_section_id,
+                'disease_name': disease.disease_name,
+                'slug': disease.slug,
+                'ajcc_url_path': disease.ajcc_url_path,
+                'created_at': disease.created_at.isoformat() if disease.created_at else None,
+                'updated_at': disease.updated_at.isoformat() if disease.updated_at else None,
+            })
+        
+        # Export AJCC Diagnosis Years
+        for year in AJCCDiagnosisYear.query.all():
+            backup_data['ajcc_diagnosis_years'].append({
+                'id': year.id,
+                'year': year.year,
+                'is_default': year.is_default,
+                'created_at': year.created_at.isoformat() if year.created_at else None,
+            })
+        
+        # Export AJCC Staging Data (the extracted TNM content)
+        for staging in AJCCStagingData.query.all():
+            staging_entry = {
+                'id': staging.id,
+                'disease_site_id': staging.disease_site_id,
+                'diagnosis_year_id': staging.diagnosis_year_id,
+                'extracted_at': staging.extracted_at.isoformat() if staging.extracted_at else None,
+                'extracted_by_user_id': staging.extracted_by_user_id,
+                'last_updated_at': staging.last_updated_at.isoformat() if staging.last_updated_at else None,
+                'data_version': staging.data_version,
+                # JSON data columns
+                'tnm_data_json': staging.tnm_data_json,
+                'cancers_staged_json': staging.cancers_staged_json,
+                'cancers_not_staged_json': staging.cancers_not_staged_json,
+                'summary_changes_json': staging.summary_changes_json,
+                'primary_sites_json': staging.primary_sites_json,
+                'histopathologic_types_json': staging.histopathologic_types_json,
+                'imaging_workup_json': staging.imaging_workup_json,
+                'staging_rules_json': staging.staging_rules_json,
+                'common_scenarios_json': staging.common_scenarios_json,
+                'notes_json': staging.notes_json,
+                # HTML section columns
+                'section_1_quick_reference_html': staging.section_1_quick_reference_html,
+                'section_2_cancers_staged_html': staging.section_2_cancers_staged_html,
+                'section_3_cancers_not_staged_html': staging.section_3_cancers_not_staged_html,
+                'section_4_summary_changes_html': staging.section_4_summary_changes_html,
+                'section_5_primary_site_html': staging.section_5_primary_site_html,
+                'section_6_histopathologic_type_html': staging.section_6_histopathologic_type_html,
+                'section_7_clinical_staging_workup_html': staging.section_7_clinical_staging_workup_html,
+                'section_8_staging_rules_html': staging.section_8_staging_rules_html,
+                'section_9_common_scenarios_html': staging.section_9_common_scenarios_html,
+                'section_10_explanatory_notes_html': staging.section_10_explanatory_notes_html,
+                # Raw HTML content (full page backup)
+                'raw_html_content': staging.raw_html_content,
+            }
+            backup_data['ajcc_staging_data'].append(staging_entry)
+        
+        # Export AJCC Disease Mappings (links to FRCR modules/body parts)
+        for mapping in AJCCDiseaseMapping.query.all():
+            backup_data['ajcc_disease_mappings'].append({
+                'id': mapping.id,
+                'disease_site_id': mapping.disease_site_id,
+                'frcr_module': mapping.frcr_module.value if mapping.frcr_module else None,
+                'body_part': mapping.body_part.value if mapping.body_part else None,
+                'notes': mapping.notes,
+                'created_at': mapping.created_at.isoformat() if mapping.created_at else None,
+                'updated_at': mapping.updated_at.isoformat() if mapping.updated_at else None,
+            })
+        
+        # Export AJCC Staging Time Prefixes
+        for prefix in AJCCStagingTimePrefix.query.all():
+            backup_data['ajcc_staging_time_prefixes'].append({
+                'id': prefix.id,
+                'prefix': prefix.prefix,
+                'name': prefix.name,
+                'description': prefix.description,
+                'display_order': prefix.display_order,
+                'created_at': prefix.created_at.isoformat() if prefix.created_at else None,
             })
         
         # Create JSON file in memory
@@ -1554,6 +1658,269 @@ def restore_backup():
                 db.session.rollback()
                 print(f"[IMPORT] ERROR during forum commit: {forum_error}")
         
+        # ==================== IMPORT AJCC TNM DATA ====================
+        stats['ajcc_body_sections'] = {'added': 0, 'updated': 0, 'skipped': 0}
+        stats['ajcc_disease_sites'] = {'added': 0, 'updated': 0, 'skipped': 0}
+        stats['ajcc_diagnosis_years'] = {'added': 0, 'skipped': 0}
+        stats['ajcc_staging_data'] = {'added': 0, 'updated': 0, 'skipped': 0}
+        stats['ajcc_disease_mappings'] = {'added': 0, 'skipped': 0}
+        stats['ajcc_staging_time_prefixes'] = {'added': 0, 'skipped': 0}
+        
+        # Maps for ID translation during import
+        ajcc_section_id_map = {}  # old section_id -> new section_id
+        ajcc_disease_id_map = {}  # old disease_id -> new disease_id
+        ajcc_year_id_map = {}  # old year_id -> new year_id
+        
+        # Import AJCC Body Sections
+        for section_data in backup_data.get('ajcc_body_sections', []):
+            if not isinstance(section_data, dict):
+                continue
+            
+            old_id = section_data.get('id')
+            slug = section_data.get('slug')
+            
+            if not slug:
+                continue
+            
+            existing = AJCCBodySection.query.filter_by(slug=slug).first()
+            if existing:
+                if overwrite_existing:
+                    existing.section_name = section_data.get('section_name', existing.section_name)
+                    existing.display_order = section_data.get('display_order', existing.display_order)
+                    stats['ajcc_body_sections']['updated'] += 1
+                else:
+                    stats['ajcc_body_sections']['skipped'] += 1
+                if old_id:
+                    ajcc_section_id_map[old_id] = existing.id
+            else:
+                section = AJCCBodySection(
+                    section_name=section_data.get('section_name', ''),
+                    slug=slug,
+                    display_order=section_data.get('display_order', 0),
+                )
+                db.session.add(section)
+                db.session.flush()
+                if old_id:
+                    ajcc_section_id_map[old_id] = section.id
+                stats['ajcc_body_sections']['added'] += 1
+        
+        # Import AJCC Disease Sites
+        for disease_data in backup_data.get('ajcc_disease_sites', []):
+            if not isinstance(disease_data, dict):
+                continue
+            
+            old_id = disease_data.get('id')
+            slug = disease_data.get('slug')
+            old_section_id = disease_data.get('body_section_id')
+            
+            if not slug:
+                continue
+            
+            # Map section_id from backup to new ID
+            new_section_id = ajcc_section_id_map.get(old_section_id)
+            if not new_section_id:
+                # Try to find section by looking up existing sections
+                print(f"[IMPORT] Warning: Could not map body_section_id {old_section_id} for disease {slug}")
+                continue
+            
+            existing = AJCCDiseaseSite.query.filter_by(slug=slug, body_section_id=new_section_id).first()
+            if existing:
+                if overwrite_existing:
+                    existing.disease_name = disease_data.get('disease_name', existing.disease_name)
+                    existing.ajcc_url_path = disease_data.get('ajcc_url_path', existing.ajcc_url_path)
+                    stats['ajcc_disease_sites']['updated'] += 1
+                else:
+                    stats['ajcc_disease_sites']['skipped'] += 1
+                if old_id:
+                    ajcc_disease_id_map[old_id] = existing.id
+            else:
+                disease = AJCCDiseaseSite(
+                    body_section_id=new_section_id,
+                    disease_name=disease_data.get('disease_name', ''),
+                    slug=slug,
+                    ajcc_url_path=disease_data.get('ajcc_url_path'),
+                )
+                db.session.add(disease)
+                db.session.flush()
+                if old_id:
+                    ajcc_disease_id_map[old_id] = disease.id
+                stats['ajcc_disease_sites']['added'] += 1
+        
+        # Import AJCC Diagnosis Years
+        for year_data in backup_data.get('ajcc_diagnosis_years', []):
+            if not isinstance(year_data, dict):
+                continue
+            
+            old_id = year_data.get('id')
+            year_value = year_data.get('year')
+            
+            if not year_value:
+                continue
+            
+            existing = AJCCDiagnosisYear.query.filter_by(year=year_value).first()
+            if existing:
+                stats['ajcc_diagnosis_years']['skipped'] += 1
+                if old_id:
+                    ajcc_year_id_map[old_id] = existing.id
+            else:
+                year = AJCCDiagnosisYear(
+                    year=year_value,
+                    is_default=year_data.get('is_default', False),
+                )
+                db.session.add(year)
+                db.session.flush()
+                if old_id:
+                    ajcc_year_id_map[old_id] = year.id
+                stats['ajcc_diagnosis_years']['added'] += 1
+        
+        # Import AJCC Staging Data
+        for staging_data in backup_data.get('ajcc_staging_data', []):
+            if not isinstance(staging_data, dict):
+                continue
+            
+            old_disease_id = staging_data.get('disease_site_id')
+            old_year_id = staging_data.get('diagnosis_year_id')
+            
+            new_disease_id = ajcc_disease_id_map.get(old_disease_id)
+            new_year_id = ajcc_year_id_map.get(old_year_id)
+            
+            if not new_disease_id or not new_year_id:
+                print(f"[IMPORT] Warning: Could not map staging data - disease_id: {old_disease_id}->{new_disease_id}, year_id: {old_year_id}->{new_year_id}")
+                stats['ajcc_staging_data']['skipped'] += 1
+                continue
+            
+            existing = AJCCStagingData.query.filter_by(
+                disease_site_id=new_disease_id,
+                diagnosis_year_id=new_year_id
+            ).first()
+            
+            # Column names to update
+            json_columns = [
+                'tnm_data_json', 'cancers_staged_json', 'cancers_not_staged_json',
+                'summary_changes_json', 'primary_sites_json', 'histopathologic_types_json',
+                'imaging_workup_json', 'staging_rules_json', 'common_scenarios_json', 'notes_json'
+            ]
+            html_columns = [
+                'section_1_quick_reference_html', 'section_2_cancers_staged_html',
+                'section_3_cancers_not_staged_html', 'section_4_summary_changes_html',
+                'section_5_primary_site_html', 'section_6_histopathologic_type_html',
+                'section_7_clinical_staging_workup_html', 'section_8_staging_rules_html',
+                'section_9_common_scenarios_html', 'section_10_explanatory_notes_html'
+            ]
+            
+            if existing:
+                if overwrite_existing:
+                    # Update all JSON and HTML columns
+                    for col in json_columns + html_columns:
+                        if staging_data.get(col) is not None:
+                            setattr(existing, col, staging_data[col])
+                    if staging_data.get('raw_html_content') is not None:
+                        existing.raw_html_content = staging_data['raw_html_content']
+                    if staging_data.get('data_version') is not None:
+                        existing.data_version = staging_data['data_version']
+                    existing.last_updated_at = datetime.utcnow()
+                    stats['ajcc_staging_data']['updated'] += 1
+                else:
+                    stats['ajcc_staging_data']['skipped'] += 1
+            else:
+                staging = AJCCStagingData(
+                    disease_site_id=new_disease_id,
+                    diagnosis_year_id=new_year_id,
+                )
+                # Set all JSON and HTML columns
+                for col in json_columns + html_columns:
+                    if staging_data.get(col) is not None:
+                        setattr(staging, col, staging_data[col])
+                if staging_data.get('raw_html_content') is not None:
+                    staging.raw_html_content = staging_data['raw_html_content']
+                if staging_data.get('data_version') is not None:
+                    staging.data_version = staging_data['data_version']
+                # Set extracted_at from backup
+                if staging_data.get('extracted_at'):
+                    try:
+                        staging.extracted_at = datetime.fromisoformat(staging_data['extracted_at']) if isinstance(staging_data['extracted_at'], str) else staging_data['extracted_at']
+                    except (ValueError, TypeError):
+                        pass
+                # Set extracted_by_user_id using user_id_map
+                if staging_data.get('extracted_by_user_id'):
+                    old_user_id = staging_data['extracted_by_user_id']
+                    staging.extracted_by_user_id = user_id_map.get(old_user_id) if old_user_id else None
+                db.session.add(staging)
+                stats['ajcc_staging_data']['added'] += 1
+        
+        # Import AJCC Disease Mappings
+        for mapping_data in backup_data.get('ajcc_disease_mappings', []):
+            if not isinstance(mapping_data, dict):
+                continue
+            
+            old_disease_id = mapping_data.get('disease_site_id')
+            new_disease_id = ajcc_disease_id_map.get(old_disease_id)
+            
+            if not new_disease_id:
+                stats['ajcc_disease_mappings']['skipped'] += 1
+                continue
+            
+            # Check for existing mapping
+            frcr_module_value = mapping_data.get('frcr_module')
+            body_part_value = mapping_data.get('body_part')
+            
+            existing = AJCCDiseaseMapping.query.filter_by(disease_site_id=new_disease_id).first()
+            if existing:
+                stats['ajcc_disease_mappings']['skipped'] += 1
+                continue
+            
+            mapping = AJCCDiseaseMapping(disease_site_id=new_disease_id)
+            
+            if frcr_module_value:
+                try:
+                    mapping.frcr_module = FRCRModule(frcr_module_value)
+                except (ValueError, KeyError):
+                    pass
+            
+            if body_part_value:
+                try:
+                    mapping.body_part = BodyPart(body_part_value)
+                except (ValueError, KeyError):
+                    pass
+            
+            # Add notes if present
+            if mapping_data.get('notes'):
+                mapping.notes = mapping_data['notes']
+            
+            db.session.add(mapping)
+            stats['ajcc_disease_mappings']['added'] += 1
+        
+        # Import AJCC Staging Time Prefixes
+        for prefix_data in backup_data.get('ajcc_staging_time_prefixes', []):
+            if not isinstance(prefix_data, dict):
+                continue
+            
+            prefix_value = prefix_data.get('prefix')
+            if not prefix_value:
+                continue
+            
+            existing = AJCCStagingTimePrefix.query.filter_by(prefix=prefix_value).first()
+            if existing:
+                stats['ajcc_staging_time_prefixes']['skipped'] += 1
+                continue
+            
+            prefix = AJCCStagingTimePrefix(
+                prefix=prefix_value,
+                name=prefix_data.get('name', ''),
+                description=prefix_data.get('description', ''),
+                display_order=prefix_data.get('display_order', 0),
+            )
+            db.session.add(prefix)
+            stats['ajcc_staging_time_prefixes']['added'] += 1
+        
+        # Commit AJCC data
+        try:
+            db.session.commit()
+            print(f"[IMPORT] AJCC data imported: {stats['ajcc_body_sections']['added']} sections, {stats['ajcc_disease_sites']['added']} diseases, {stats['ajcc_staging_data']['added']} staging entries")
+        except Exception as ajcc_error:
+            db.session.rollback()
+            print(f"[IMPORT] ERROR during AJCC commit: {ajcc_error}")
+        
         # Build response message
         message_parts = ['Database imported successfully']
         if stats['staging']['added'] > 0:
@@ -1657,6 +2024,12 @@ def backup_status():
         'total_images': CaseImage.query.count(),
         'total_sessions': RevisionSession.query.count(),
         'total_flags': CaseFlag.query.count(),
+        # AJCC TNM stats
+        'ajcc_body_sections': AJCCBodySection.query.count(),
+        'ajcc_disease_sites': AJCCDiseaseSite.query.count(),
+        'ajcc_diagnosis_years': AJCCDiagnosisYear.query.count(),
+        'ajcc_staging_data': AJCCStagingData.query.count(),
+        'ajcc_disease_mappings': AJCCDiseaseMapping.query.count(),
     }
     
     return jsonify({

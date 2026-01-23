@@ -1,0 +1,298 @@
+{
+  "disease_name": "Larynx",
+  "diagnosis_year": 2026,
+  "tnm_staging": {
+    "title": "Larynx Staging - Quick Reference",
+    "t_definitions": [
+      {
+        "subsite": "Glottis",
+        "categories": [
+          {
+            "category": "TX",
+            "criteria": "Primary tumor cannot be assessed"
+          },
+          {
+            "category": "Tis",
+            "criteria": "Carcinoma in situ"
+          },
+          {
+            "category": "T1",
+            "criteria": "Tumor limited to the vocal cord(s) (may involve anterior or posterior commissure) with normal mobility"
+          },
+          {
+            "category": "T1a",
+            "criteria": "Tumor limited to one vocal cord"
+          },
+          {
+            "category": "T1b",
+            "criteria": "Tumor involves both vocal cords"
+          },
+          {
+            "category": "T2",
+            "criteria": "Tumor extends to supraglottis and/or subglottis, and/or with impaired vocal cord mobility"
+          },
+          {
+            "category": "T3",
+            "criteria": "Tumor limited to the larynx with vocal cord fixation and/or invasion of paraglottic space and/or inner cortex of the thyroid cartilage"
+          },
+          {
+            "category": "T4",
+            "criteria": "Moderately advanced or very advanced local disease"
+          },
+          {
+            "category": "T4a",
+            "criteria": "Moderately advanced local disease. Tumor invades through the outer cortex of the thyroid cartilage and/or invades tissues beyond the larynx (e.g., trachea, soft tissues of neck including deep extrinsic muscle of the tongue, strap muscles, thyroid, or esophagus)"
+          },
+          {
+            "category": "T4b",
+            "criteria": "Very advanced local disease. Tumor invades prevertebral space, encases carotid artery, or invades mediastinal structures"
+          }
+        ]
+      },
+      {
+        "subsite": "Not Otherwise Specified",
+        "categories": [
+          {
+            "category": "TX",
+            "criteria": "Primary tumor cannot be assessed"
+          }
+        ]
+      },
+      {
+        "subsite": "Subglottis",
+        "categories": [
+          {
+            "category": "TX",
+            "criteria": "Primary tumor cannot be assessed"
+          },
+          {
+            "category": "Tis",
+            "criteria": "Carcinoma in situ"
+          },
+          {
+            "category": "T1",
+            "criteria": "Tumor limited to the subglottis"
+          },
+          {
+            "category": "T2",
+            "criteria": "Tumor extends to vocal cord(s) with normal or impaired mobility"
+          },
+          {
+            "category": "T3",
+            "criteria": "Tumor limited to larynx with vocal cord fixation and/or invasion of paraglottic space and/or inner cortex of the thyroid cartilage"
+          },
+          {
+            "category": "T4",
+            "criteria": "Moderately advanced or very advanced local disease"
+          },
+          {
+            "category": "T4a",
+            "criteria": "Moderately advanced local disease. Tumor invades cricoid or thyroid cartilage and/or invades tissues beyond the larynx (e.g., trachea, soft tissues of neck including deep extrinsic muscles of the tongue, strap muscles, thyroid, or esophagus)"
+          },
+          {
+            "category": "T4b",
+            "criteria": "Very advanced local disease. Tumor invades prevertebral space, encases carotid artery, or invades mediastinal structures"
+          }
+        ]
+      },
+      {
+        "subsite": "Supraglottis",
+        "categories": [
+          {
+            "category": "TX",
+            "criteria": "Primary tumor cannot be assessed"
+          },
+          {
+            "category": "Tis",
+            "criteria": "Carcinoma in situ"
+          },
+          {
+            "category": "T1",
+            "criteria": "Tumor limited to one subsite of supraglottis with normal vocal cord mobility"
+          },
+          {
+            "category": "T2",
+            "criteria": "Tumor invades mucosa of more than one adjacent subsite of supraglottis or glottis or region outside the supraglottis (e.g., mucosa of base of tongue, vallecula, medial wall of pyriform sinus) without fixation of the larynx"
+          },
+          {
+            "category": "T3",
+            "criteria": "Tumor limited to larynx with vocal cord fixation and/or invades any of the following: postcricoid area, preepiglottic space, paraglottic space, and/or inner cortex of thyroid cartilage"
+          },
+          {
+            "category": "T4",
+            "criteria": "Moderately advanced or very advanced local disease"
+          },
+          {
+            "category": "T4a",
+            "criteria": "Moderately advanced local disease. Tumor invades through the outer cortex of the thyroid cartilage and/or invades tissues beyond the larynx (e.g., trachea, soft tissues of neck including deep extrinsic muscle of the tongue, strap muscles, thyroid, or esophagus)."
+          },
+          {
+            "category": "T4b",
+            "criteria": "Very advanced local disease. Tumor invades prevertebral space, encases carotid artery, or invades mediastinal structures"
+          }
+        ]
+      }
+    ],
+    "n_definitions": {
+      "clinical": [
+        {
+          "category": "NX",
+          "criteria": "Regional lymph nodes cannot be assessed"
+        },
+        {
+          "category": "N0",
+          "criteria": "No regional lymph node metastasis"
+        },
+        {
+          "category": "N1",
+          "criteria": "Metastasis in a single ipsilateral lymph node, 3 cm or smaller in greatest dimension and ENE(-)"
+        },
+        {
+          "category": "N2",
+          "criteria": "Metastasis in a single ipsilateral node, larger than 3 cm but not larger than 6 cm in greatest dimension and ENE(-); or metastases in multiple ipsilateral lymph nodes, none larger than 6 cm in greatest dimension and ENE(-); or metastasis in bilateral or contralateral lymph nodes, none larger than 6 cm in greatest dimension and ENE(-)"
+        },
+        {
+          "category": "N2a",
+          "criteria": "Metastasis in a single ipsilateral node, larger than 3 cm but not larger than 6 cm in greatest dimension and ENE(-)"
+        },
+        {
+          "category": "N2b",
+          "criteria": "Metastases in multiple ipsilateral nodes, none larger than 6 cm in greatest dimension and ENE(-)"
+        },
+        {
+          "category": "N2c",
+          "criteria": "Metastasis in bilateral or contralateral lymph nodes, none larger than 6 cm in greatest dimension and ENE(-)"
+        },
+        {
+          "category": "N3",
+          "criteria": "Metastasis in a lymph node, larger than 6 cm in greatest dimension and ENE(-); or metastasis in any lymph node(s) with clinically overt ENE(+)"
+        },
+        {
+          "category": "N3a",
+          "criteria": "Metastasis in a lymph node, larger than 6 cm in greatest dimension and ENE(-)"
+        },
+        {
+          "category": "N3b",
+          "criteria": "Metastasis in any lymph node(s) with clinically overt ENE(+)"
+        }
+      ],
+      "pathological": [
+        {
+          "category": "NX",
+          "criteria": "Regional lymph nodes cannot be assessed"
+        },
+        {
+          "category": "N0",
+          "criteria": "No regional lymph node metastasis"
+        },
+        {
+          "category": "N1",
+          "criteria": "Metastasis in a single ipsilateral lymph node, 3 cm or smaller in greatest dimension and ENE(-)"
+        },
+        {
+          "category": "N2",
+          "criteria": "Metastasis in a single ipsilateral lymph node, 3 cm or smaller in greatest dimension and ENE(+); or larger than 3 cm but not larger than 6 cm in greatest dimension and ENE(-); or metastases in multiple ipsilateral lymph nodes, none larger than 6 cm in greatest dimension and ENE(-); or in bilateral or contralateral lymph node(s), none larger than 6 cm in greatest dimension and ENE(-)"
+        },
+        {
+          "category": "N2a",
+          "criteria": "Metastasis in a single ipsilateral node, 3 cm or smaller in greatest dimension and ENE(+); or metastasis in a single ipsilateral node, larger than 3 cm but not larger than 6 cm in greatest dimension and ENE(-)"
+        },
+        {
+          "category": "N2b",
+          "criteria": "Metastases in multiple ipsilateral nodes, none larger than 6 cm in greatest dimension and ENE(-)"
+        },
+        {
+          "category": "N2c",
+          "criteria": "Metastasis in bilateral or contralateral lymph node(s), none larger than 6 cm in greatest dimension and ENE(-)"
+        },
+        {
+          "category": "N3",
+          "criteria": "Metastasis in a lymph node, larger than 6 cm in greatest dimension and ENE(-); or metastasis in a single ipsilateral node, larger than 3 cm in greatest dimension and ENE(+); or multiple ipsilateral, contralateral, or bilateral lymph nodes any with ENE(+); or a single contralateral node of any size and ENE(+)."
+        },
+        {
+          "category": "N3a",
+          "criteria": "Metastasis in a lymph node, larger than 6 cm in greatest dimension and ENE(-)"
+        },
+        {
+          "category": "N3b",
+          "criteria": "Metastasis in a single ipsilateral node, larger than 3 cm in greatest dimension and ENE(+); ormultiple ipsilateral, contralateral, or bilateral lymph nodes any with ENE(+); or a single contralateral node of any size and ENE(+)"
+        }
+      ]
+    },
+    "m_definitions": [
+      {
+        "category": "M0",
+        "criteria": "No distant metastasis"
+      },
+      {
+        "category": "M1",
+        "criteria": "Distant metastasis"
+      }
+    ],
+    "stage_groups": [
+      {
+        "T": "Tis",
+        "N": "N0",
+        "M": "M0",
+        "stage": "0"
+      },
+      {
+        "T": "T1",
+        "N": "N0",
+        "M": "M0",
+        "stage": "I"
+      },
+      {
+        "T": "T2",
+        "N": "N0",
+        "M": "M0",
+        "stage": "II"
+      },
+      {
+        "T": "T3",
+        "N": "N0",
+        "M": "M0",
+        "stage": "III"
+      },
+      {
+        "T": "T1, T2, T3",
+        "N": "N1",
+        "M": "M0",
+        "stage": "III"
+      },
+      {
+        "T": "T4a",
+        "N": "N0, N1",
+        "M": "M0",
+        "stage": "IVA"
+      },
+      {
+        "T": "T1, T2, T3, T4a",
+        "N": "N2",
+        "M": "M0",
+        "stage": "IVA"
+      },
+      {
+        "T": "Any T",
+        "N": "N3",
+        "M": "M0",
+        "stage": "IVB"
+      },
+      {
+        "T": "T4b",
+        "N": "Any N",
+        "M": "M0",
+        "stage": "IVB"
+      },
+      {
+        "T": "Any T",
+        "N": "Any N",
+        "M": "M1",
+        "stage": "IVC"
+      }
+    ],
+    "notes": [
+      "Note: A designation of “U” or “L” may be used for any N category to indicate metastasis above the lower border of the cricoid (U) or below the lower border of the cricoid (L). Similarly, clinical and pathological ENE should be recorded as ENE(-) or ENE(+)."
+    ]
+  }
+}
