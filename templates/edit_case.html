@@ -1498,12 +1498,45 @@ function selectPrimarySite(candidate, skipDiagnosisCheck = false) {
         tnmBtn.title = `Click to generate TNM staging for ${candidate.disease_name}`;
         tnmBtn.style.opacity = '1';
         tnmBtn.disabled = false;
+        // Remove any info message
+        removeTnmInfoMessage();
     } else {
         tnmBtn.innerHTML = `<i class="fas fa-dna me-1"></i>TNM: ${candidate.disease_name} (No Data)`;
-        tnmBtn.title = `No staging data available for ${candidate.disease_name}. Use dropdown to change.`;
+        tnmBtn.title = `No staging data available for ${candidate.disease_name}`;
         tnmBtn.style.opacity = '0.7';
         tnmBtn.disabled = true;
+        // Show info message about fetching data
+        showTnmInfoMessage(candidate.disease_name);
     }
+}
+
+// Show info message when no staging data available
+function showTnmInfoMessage(diseaseName) {
+    removeTnmInfoMessage(); // Remove any existing message
+    
+    const btnGroup = document.getElementById('tnmIntelBtnGroup');
+    if (!btnGroup) return;
+    
+    const infoMsg = document.createElement('div');
+    infoMsg.id = 'tnmNoDataInfo';
+    infoMsg.className = 'alert alert-info py-2 px-3 mb-0 mt-2';
+    infoMsg.style.cssText = 'font-size: 12px; display: flex; align-items: center; gap: 8px;';
+    infoMsg.innerHTML = `
+        <i class="fas fa-info-circle"></i>
+        <span>No AJCC staging data for <strong>${diseaseName}</strong>. 
+        <a href="/api/admin/tnm/management" target="_blank" style="text-decoration: underline;">
+            Fetch AJCC data first
+        </a> before using TNM Intelligence AI.</span>
+    `;
+    
+    // Insert after the button group
+    btnGroup.parentNode.insertBefore(infoMsg, btnGroup.nextSibling);
+}
+
+// Remove TNM info message
+function removeTnmInfoMessage() {
+    const existing = document.getElementById('tnmNoDataInfo');
+    if (existing) existing.remove();
 }
 
 // Group similar disease sites for clarity
