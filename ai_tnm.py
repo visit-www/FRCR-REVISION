@@ -601,14 +601,20 @@ def get_tnm_reference_only(
     if not ajcc_match:
         return None
     
-    # Build internal link
+    # Build internal link (consistent format with generate_tnm_intelligence)
     section_slug = ajcc_match.get("section_slug", "")
     disease_slug = ajcc_match.get("disease_slug", "")
+    tnm_version = ajcc_match.get("tnm_version", "AJCC 8th Edition")
+    
+    # Extract year from tnm_version if present
+    import re
+    year_match = re.search(r'\((\d{4})\)', tnm_version)
+    year = year_match.group(1) if year_match else "2026"
     
     if section_slug and disease_slug:
-        tnm_link = f"/tnm/{section_slug}/{disease_slug}/student"
-        if from_case_id:
-            tnm_link += f"?from_case={from_case_id}"
+        tnm_link = f"/tnm/{section_slug}/{disease_slug}?year={year}"
+        if from_case_id is not None:
+            tnm_link += f"&from_case={from_case_id}"
     else:
         tnm_link = None
     
@@ -1178,7 +1184,7 @@ def generate_tnm_intelligence(
     
     # Build TNM link with year parameter
     tnm_link = f"/tnm/{section_slug}/{disease_slug}?year={year}"
-    if from_case_id:
+    if from_case_id is not None:
         tnm_link += f"&from_case={from_case_id}"
     
     # Return Markdown content with metadata
