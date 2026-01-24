@@ -73,7 +73,11 @@ def list_diseases():
                 'disease_name': d.disease_name,
                 'slug': d.slug,
                 'ajcc_url_path': d.ajcc_url_path,
-                'body_section_id': d.body_section_id
+                'body_section_id': d.body_section_id,
+                # FRCR mapping fields
+                'frcr_module': getattr(d, 'frcr_module', None),
+                'frcr_body_part': getattr(d, 'frcr_body_part', None),
+                'frcr_age_group': getattr(d, 'frcr_age_group', None),
             } for d in diseases]
         })
     except Exception as e:
@@ -549,6 +553,73 @@ def delete_staging_data(disease_site_id, year):
     except Exception as e:
         db.session.rollback()
         logger.error(f"Error deleting staging data: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_tnm_bp.route('/disease-site/<int:disease_site_id>', methods=['GET'])
+@require_admin
+def get_disease_site(disease_site_id):
+    """
+    Get a disease site by ID with its FRCR settings.
+    """
+    try:
+        disease_site = AJCCDiseaseSite.query.get(disease_site_id)
+        if not disease_site:
+            return jsonify({'success': False, 'error': 'Disease site not found'}), 404
+        
+        return jsonify({
+            'success': True,
+            'disease_site': {
+                'id': disease_site.id,
+                'disease_name': disease_site.disease_name,
+                'slug': disease_site.slug,
+                'section_name': disease_site.body_section.section_name if disease_site.body_section else None,
+                'frcr_module': disease_site.frcr_module,
+                'frcr_body_part': disease_site.frcr_body_part,
+                'frcr_age_group': disease_site.frcr_age_group
+            }
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_tnm_bp.route('/disease-site/<int:disease_site_id>', methods=['PUT'])
+@require_admin
+def update_disease_site(disease_site_id):
+    """
+    Update disease site settings including FRCR mappings.
+    """
+    try:
+        disease_site = AJCCDiseaseSite.query.get(disease_site_id)
+        if not disease_site:
+            return jsonify({'success': False, 'error': 'Disease site not found'}), 404
+        
+        data = request.get_json()
+        
+        # Update FRCR settings
+        if 'frcr_module' in data:
+            disease_site.frcr_module = data['frcr_module'] or None
+        if 'frcr_body_part' in data:
+            disease_site.frcr_body_part = data['frcr_body_part'] or None
+        if 'frcr_age_group' in data:
+            disease_site.frcr_age_group = data['frcr_age_group'] or None
+        
+        # Update basic info if provided
+        if 'disease_name' in data and data['disease_name']:
+            disease_site.disease_name = data['disease_name']
+        
+        db.session.commit()
+        
+        logger.info(f"Updated disease site {disease_site.disease_name} by user {current_user.id}")
+        
+        return jsonify({
+            'success': True,
+            'message': f'Successfully updated {disease_site.disease_name}'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error updating disease site: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 

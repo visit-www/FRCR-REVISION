@@ -18,6 +18,11 @@ class AJCCDiseaseSite(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
+    # FRCR App Integration - maps AJCC sites to app's module/body_part/age_group
+    frcr_module = db.Column(db.String(50), nullable=True)  # e.g., "FRCR_2A", "FRCR_2B"
+    frcr_body_part = db.Column(db.String(50), nullable=True)  # e.g., "CHEST", "HEAD_NECK"
+    frcr_age_group = db.Column(db.String(50), nullable=True)  # e.g., "ADULT", "PAEDIATRIC"
+    
     # Relationships
     mappings = db.relationship('AJCCDiseaseMapping', backref='disease_site', lazy=True, cascade='all, delete-orphan')
     staging_data = db.relationship('AJCCStagingData', backref='disease_site', lazy=True, cascade='all, delete-orphan')

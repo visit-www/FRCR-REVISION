@@ -187,9 +187,129 @@ def unauthorized():
 with app.app_context():
     try:
         db.create_all()
+        
+        # Auto-seed AJCC body sections and disease sites if not present
+        _seed_ajcc_data_if_needed()
+        
     except Exception as e:
         print(f"Error initializing database: {e}")
         raise
+
+
+def _seed_ajcc_data_if_needed():
+    """
+    Auto-seed AJCC body sections and disease sites if the tables are empty.
+    This ensures TNM functionality works on fresh deployments.
+    """
+    from models import AJCCBodySection, AJCCDiseaseSite
+    
+    # Check if data already exists
+    existing_sections = AJCCBodySection.query.count()
+    existing_sites = AJCCDiseaseSite.query.count()
+    
+    if existing_sections > 0 and existing_sites > 0:
+        print(f"[SEED] AJCC data exists: {existing_sections} sections, {existing_sites} sites")
+        return
+    
+    print("[SEED] Auto-seeding AJCC body sections and disease sites...")
+    
+    # Body sections
+    BODY_SECTIONS = [
+        ("Head and Neck", "head-and-neck"),
+        ("Thorax", "thorax"),
+        ("Lower Gastrointestinal Tract", "lower-gastrointestinal-tract"),
+        ("Upper Gastrointestinal Tract", "upper-gastrointestinal-tract"),
+        ("Hepatobiliary System", "hepatobiliary-system"),
+        ("Breast", "breast"),
+        ("Urinary System", "urinary-system"),
+        ("Male Reproductive Organs", "male-reproductive-organs"),
+        ("Female Reproductive Organs", "female-reproductive-organs"),
+        ("Endocrine System", "endocrine-system"),
+        ("Bone", "bone"),
+        ("Soft Tissue Sarcoma", "soft-tissue-sarcoma"),
+        ("Skin", "skin"),
+        ("Neuroendocrine Tumors", "neuroendocrine-tumors"),
+        ("Central Nervous System", "central-nervous-system"),
+    ]
+    
+    # Disease sites by section
+    DISEASE_SITES = {
+        "head-and-neck": [
+            ("Larynx", "larynx", "head-and-neck/larynx"),
+            ("Oral Cavity", "oral-cavity", "head-and-neck/oral-cavity"),
+            ("Oropharynx (HPV-Mediated)", "oropharynx-hpv-mediated", "head-and-neck/oropharynx-hpv-mediated"),
+            ("Nasopharynx", "nasopharynx", "head-and-neck/nasopharynx"),
+            ("Hypopharynx", "hypopharynx", "head-and-neck/hypopharynx"),
+        ],
+        "thorax": [("Lung", "lung", "thorax/lung")],
+        "breast": [("Breast", "breast", "breast/breast")],
+        "upper-gastrointestinal-tract": [
+            ("Esophagus and Esophagogastric Junction", "esophagus", "upper-gastrointestinal-tract/esophagus"),
+            ("Stomach", "stomach", "upper-gastrointestinal-tract/stomach"),
+        ],
+        "lower-gastrointestinal-tract": [("Colon and Rectum", "colon-and-rectum", "lower-gastrointestinal-tract/colon-and-rectum")],
+        "hepatobiliary-system": [
+            ("Liver", "liver", "hepatobiliary-system/liver"),
+            ("Pancreas", "pancreas", "hepatobiliary-system/pancreas"),
+        ],
+        "urinary-system": [
+            ("Kidney", "kidney", "urinary-system/kidney"),
+            ("Urinary Bladder", "bladder", "urinary-system/bladder"),
+        ],
+        "male-reproductive-organs": [
+            ("Prostate", "prostate", "male-reproductive-organs/prostate"),
+            ("Testis", "testis", "male-reproductive-organs/testis"),
+        ],
+        "female-reproductive-organs": [
+            ("Cervix Uteri", "cervix", "female-reproductive-organs/cervix"),
+            ("Ovary", "ovary", "female-reproductive-organs/ovary"),
+        ],
+        "endocrine-system": [("Thyroid", "thyroid", "endocrine-system/thyroid")],
+        "bone": [("Bone", "bone", "bone/bone")],
+        "soft-tissue-sarcoma": [("Soft Tissue Sarcoma", "soft-tissue", "soft-tissue-sarcoma/soft-tissue")],
+        "skin": [("Cutaneous Melanoma", "melanoma", "skin/melanoma")],
+        "central-nervous-system": [("Brain and Spinal Cord", "brain", "central-nervous-system/brain")],
+    }
+    
+    try:
+        # Seed body sections
+        section_map = {}
+        for name, slug in BODY_SECTIONS:
+            existing = AJCCBodySection.query.filter_by(slug=slug).first()
+            if not existing:
+                section = AJCCBodySection(section_name=name, slug=slug)
+                db.session.add(section)
+                db.session.flush()
+                section_map[slug] = section
+            else:
+                section_map[slug] = existing
+        
+        # Seed disease sites
+        for section_slug, diseases in DISEASE_SITES.items():
+            section = section_map.get(section_slug)
+            if not section:
+                continue
+            for disease_name, disease_slug, url_path in diseases:
+                existing = AJCCDiseaseSite.query.filter_by(slug=disease_slug).first()
+                if not existing:
+                    site = AJCCDiseaseSite(
+                        disease_name=disease_name,
+                        slug=disease_slug,
+                        body_section_id=section.id,
+                        ajcc_url_path=url_path
+                    )
+                    db.session.add(site)
+        
+        db.session.commit()
+        
+        final_sections = AJCCBodySection.query.count()
+        final_sites = AJCCDiseaseSite.query.count()
+        print(f"[SEED] Complete: {final_sections} sections, {final_sites} disease sites")
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"[SEED] Error seeding AJCC data: {e}")
+
 
 # Register blueprints
 app.register_blueprint(auth_bp)
