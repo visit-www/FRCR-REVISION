@@ -194,12 +194,29 @@ If no superadmin exists, creates one:
 - Config: `vercel.json`
 
 ### Environment Variables
-```
-DATABASE_POSTGRES_URL_NON_POOLING  # Production DB
-SECRET_KEY                         # Session encryption
-CLAUDE_API_KEY                     # AI features
-CLOUDINARY_URL                     # Image hosting
-```
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `SECRET_KEY` | Yes | Session encryption (generate with `python -c "import secrets; print(secrets.token_hex(32))"`) |
+| `DATABASE_POSTGRES_URL_NON_POOLING` | Production | Neon PostgreSQL connection string |
+| `CLAUDE_API_KEY` | Yes | Anthropic Claude API key for AI features |
+| `CLOUDINARY_URL` | Yes | Cloudinary URL for image uploads |
+| `RESEND_API_KEY` | Yes | Resend.com API key for password recovery emails |
+| `EMAIL_FROM` | No | Sender email address (default: `onboarding@resend.dev`) |
+| `APP_URL` | No | Application URL for email links (default: `https://frcr-examiner.vercel.app`) |
+
+### Email Service
+
+Password recovery emails are sent via [Resend](https://resend.com):
+- **Free tier**: 100 emails/day, 3000/month
+- **SDK**: `resend` Python package
+- **Function**: `send_recovery_email()` in `auth.py`
+
+To configure:
+1. Sign up at [resend.com](https://resend.com)
+2. Create an API key
+3. Add `RESEND_API_KEY` to environment variables
+4. (Optional) Verify your domain for custom sender address
 
 ---
 

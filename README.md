@@ -136,7 +136,20 @@ SECRET_KEY=your-secret-key
 DATABASE_POSTGRES_URL_NON_POOLING=postgresql://...
 CLAUDE_API_KEY=sk-ant-...
 CLOUDINARY_URL=cloudinary://...
+
+# Email (password recovery)
+RESEND_API_KEY=re_xxxxxxxxx
 ```
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `SECRET_KEY` | Yes | Session encryption key |
+| `DATABASE_POSTGRES_URL_NON_POOLING` | Production | Neon PostgreSQL URL |
+| `CLAUDE_API_KEY` | Yes | Anthropic Claude API key |
+| `CLOUDINARY_URL` | Yes | Image upload service |
+| `RESEND_API_KEY` | Yes | Email service (resend.com) |
+| `EMAIL_FROM` | No | Sender email (default: onboarding@resend.dev) |
+| `APP_URL` | No | App URL for email links |
 
 ---
 
