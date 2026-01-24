@@ -1,235 +1,176 @@
 # FRCR Revision
 
-Your companion app for FRCR exam preparation. Practice with real cases, take notes, highlight key points, and build confidence for success in the Fellowship of the Royal College of Radiologists examination.
+A comprehensive exam preparation platform for FRCR (Fellowship of the Royal College of Radiologists) candidates. Practice with real cases, generate AI-powered content, explore TNM staging, and build confidence for exam success.
 
-## 🌐 Production Deployment
+## 🌐 Live Application
 
-**Live Application**: TBD (Coming Soon)
+**Production**: [https://frcr-revision.vercel.app](https://frcr-revision.vercel.app)
 
-## ✨ Features
+---
 
-### Exam Management
-- Create and manage multiple examination sessions
-- Organize cases into packets for structured delivery
-- Track exam dates, times, and session metadata
+## ✨ Key Features
 
-### Case Management  
-- Add detailed medical cases with diagnoses and discussions
-- Attach multiple images to each case with descriptions
-- Create question-and-answer pairs for each case
-- Rich text support in discussions (HTML, links, formatting)
-- Responsive grey-themed Q&A table layout (desktop/mobile optimized)
+### 📚 Case Management
+- Create and manage medical cases with diagnoses and discussions
+- Attach multiple images via Cloudinary
+- Rich text editor with TinyMCE
+- Question & answer pairs for each case
 
-### Candidate Tracking
-- Register candidates with unique identifiers
-- Assign packet numbers to candidates
-- View candidate-specific case packets
+### 🤖 AI-Powered Features
+- **Case Generation**: Auto-generate preliminary case data from diagnoses
+- **TNM Intelligence**: RAG-based AJCC TNM staging summaries
+- **Reference Finder**: Search PubMed, Crossref, Radiopaedia
 
-### User Authentication
-- Secure registration and login system
-- User data isolation (each user sees only their own data)
-- Admin dashboard for first registered user
-- Profile management and password recovery
+### 🏥 AJCC TNM Staging
+- Complete AJCC 8th Edition staging data
+- Interactive TNM viewers (student & admin)
+- Intelligent staging summaries with images
+- Quick reference tables
 
-### Backup & Restore
-- Download complete database backups as JSON
-- Upload and restore from previous backups
-- 24-hour automatic backup reminders
-- Admin-only access for data management
+### 📝 Study Tools
+- Personal notes and highlights on cases
+- Anki flashcard integration
+- PubMed article search
+- TCIA imaging datasets
 
-### Image Viewer
-- Full-screen image viewer with modal display
-- Keyboard navigation (←/→ arrow keys)
-- Click-based navigation controls
-- Image counter and descriptions
-- Supports multiple images per case
+### 👥 User Management
+- Role-based access (Admin, Content Manager, Student)
+- Secure authentication with Flask-Login
+- Profile management
+
+### 💾 Backup System
+- Complete JSON export/import
+- AJCC data backup
+- 24-hour backup reminders
+
+---
 
 ## 🛠️ Technology Stack
 
-- **Backend**: Flask 2.3.3, Python 3.9+
-- **Database**: PostgreSQL (Neon) for production, SQLite for local development
-- **ORM**: SQLAlchemy 2.0.45, Flask-SQLAlchemy 3.0.5
-- **Authentication**: Flask-Login 0.6.2, Werkzeug password hashing
-- **Frontend**: Bootstrap 5, vanilla JavaScript
-- **Deployment**: Vercel serverless functions
-- **Session Management**: Flask sessions with secure cookies
+| Layer | Technology |
+|-------|------------|
+| **Backend** | Flask 2.3.3, Python 3.9+ |
+| **Database** | PostgreSQL (Neon), SQLite (dev) |
+| **ORM** | SQLAlchemy 2.0, Flask-Migrate |
+| **AI** | Claude API (Anthropic) |
+| **Frontend** | Bootstrap 5, TinyMCE, Vanilla JS |
+| **Deployment** | Vercel Serverless |
+| **Images** | Cloudinary |
 
-## 📦 Project Structure
+---
+
+## 📁 Project Structure
 
 ```
-├── api/
-│   └── index.py              # Vercel serverless entry point
-├── app.py                     # Main Flask application
-├── auth.py                    # Authentication routes and logic
-├── backup_routes.py          # Backup/restore API endpoints
-├── models.py                  # SQLAlchemy database models
-├── requirements.txt           # Python dependencies
-├── vercel.json               # Vercel deployment configuration
-├── static/
-│   ├── config.js             # API configuration
-│   ├── style.css              # Custom styles
-│   ├── edit-case-modal.js    # Case editing functionality
-│   └── images/               # Application images
-├── templates/                 # HTML templates (Jinja2)
-└── instance/                  # Local SQLite database (dev only)
+FRCR_REVISION/
+├── app.py                 # Flask application
+├── models.py              # Database models
+├── ai_prelim.py           # AI case generation
+├── ai_tnm.py              # TNM intelligence
+├── ajcc_tnm/              # AJCC TNM module
+├── templates/             # HTML templates
+├── static/                # CSS, JS, images
+├── docs/                  # Documentation
+│   ├── STYLE_GUIDE.md     # Brand colors & styles
+│   └── APP_STRUCTURE.md   # Full architecture
+├── scripts/utilities/     # Maintenance scripts
+└── migrations/            # Database migrations
 ```
 
-## 🚀 Local Development
+See [docs/APP_STRUCTURE.md](docs/APP_STRUCTURE.md) for detailed architecture.
+
+---
+
+## 🚀 Quick Start
 
 ### Prerequisites
-- Python 3.9 or higher
-- pip (Python package installer)
+- Python 3.9+
+- pip
 
-### Setup
+### Local Development
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/visit-www/Frcr-examiner.git
-   cd Frcr-examiner
-   ```
+```bash
+# Clone repository
+git clone https://github.com/visit-www/FRCR-REVISION.git
+cd FRCR-REVISION
 
-2. **Create virtual environment**
-   ```bash
-   python3 -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
+# Create virtual environment
+python3 -m venv venv
+source venv/bin/activate
 
-3. **Install dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
+# Install dependencies
+pip install -r requirements.txt
 
-4. **Set environment variables** (required for production, optional for local development)
-   ```bash
-   # .env.local (for local development)
-   DATABASE_URL=postgresql://...  # Optional: use PostgreSQL instead of SQLite
-   SECRET_KEY=your-secret-key     # Required in production, optional for local dev
-   ```
-   
-   **Important**: In production, `SECRET_KEY` must be set via environment variable. The app will fail to start if `SECRET_KEY` is not set in production environments.
+# Run application
+flask run
+```
 
-5. **Run the application**
-   ```bash
-   python3 app.py
-   ```
+Access at [http://localhost:5000](http://localhost:5000)
 
-6. **Access the application**
-   - Open browser to [http://localhost:5000](http://localhost:5000)
-   - Register a new account (first user becomes admin)
+### Environment Variables
 
-## 🌍 Production Deployment
+```bash
+# Required for production
+SECRET_KEY=your-secret-key
+DATABASE_POSTGRES_URL_NON_POOLING=postgresql://...
+CLAUDE_API_KEY=sk-ant-...
+CLOUDINARY_URL=cloudinary://...
+```
 
-### Vercel Deployment
+---
 
-1. **Push to GitHub**
-   ```bash
-   git push origin main
-   ```
+## 🎨 Brand Colors
 
-2. **Connect to Vercel**
-   - Import your GitHub repository in Vercel dashboard
-   - Configure environment variables:
-     - `DATABASE_URL`: PostgreSQL connection string (Neon recommended)
-     - `SECRET_KEY`: Strong random key for session encryption
-     - `CLAUDE_API_KEY`: Anthropic API key for AI features
+| Color | Hex | Usage |
+|-------|-----|-------|
+| Peachy Orange | `#e96304` | Primary actions |
+| Soft Green | `#a8d5ba` | Success states |
+| Teal Blue | `#5E899E` | Headers, neutral |
+| Dark Text | `#2c3e50` | Primary text |
 
-3. **Deploy**
-   - Vercel automatically deploys on every push to main branch
-   - Access your app at `https://your-project.vercel.app`
+See [docs/STYLE_GUIDE.md](docs/STYLE_GUIDE.md) for complete style reference.
 
-### Database Setup (Production)
+---
 
-The application uses Neon PostgreSQL for production:
+## 📚 Documentation
 
-1. Create a Neon project at [neon.tech](https://neon.tech)
-2. Get your PostgreSQL connection string from Connection Details
-3. Add to Vercel environment variables as `DATABASE_URL`
-4. Database tables are created automatically on first run
+| Document | Description |
+|----------|-------------|
+| [STYLE_GUIDE.md](docs/STYLE_GUIDE.md) | Brand colors, button styles, typography |
+| [APP_STRUCTURE.md](docs/APP_STRUCTURE.md) | Architecture, modules, API endpoints |
+| [AI_INTEGRATION_REFERENCE.md](docs/AI_INTEGRATION_REFERENCE.md) | Claude API integration |
 
-See `VERCEL_ENV_SETUP.md` for detailed environment variable configuration.
+---
 
-## 🔐 Authentication & Security
+## 🔧 Utility Scripts
 
-- Passwords hashed with Werkzeug's generate_password_hash
-- Session-based authentication with Flask-Login
-- CSRF protection on all forms
-- User data isolation (queries filtered by `user_id`)
-- Admin role assigned to first registered user
-- Secure password requirements enforced client-side
+Located in `scripts/utilities/`:
 
-## 💾 Backup System
+| Script | Purpose |
+|--------|---------|
+| `init_database.py` | Initialize database |
+| `run_migration.py` | Run migrations |
+| `check_users_in_db.py` | List users |
+| `clear_all_notes.py` | Clear user notes |
 
-### Creating Backups
-1. Log in as admin (first registered user)
-2. Navigate to Admin Dashboard
-3. Click "Download Backup" to save complete database as JSON
-4. Store backup file securely
+---
 
-### Restoring Backups
-1. Log in as admin
-2. Navigate to Backup Manager
-3. Upload previously downloaded JSON backup file
-4. Confirm overwrite (destructive operation)
-5. Database is restored from backup
+## 🚀 Deployment
 
-**Note**: Backups are recommended every 24 hours. The system sends browser notifications as reminders.
+### Vercel
 
-## 📚 Database Schema
+```bash
+# Deploy to production
+vercel --prod
+```
 
-### Core Models
-- **User**: Email, password hash, full name, admin status
-- **ExamSession**: Date, time, session name, user relationship
-- **Packet**: Packet number/ID, belongs to exam session
-- **Case**: Case number, diagnosis, questions, answers, discussion
-- **Candidate**: Name, number, assigned packet
-- **CaseImage**: Binary image data, filename, type, description
-- **Question**: Question text, number, case relationship
-- **Answer**: Answer text, number, case relationship
+Automatic deployments on push to `main` branch.
 
-### Relationships
-- User → ExamSessions (one-to-many)
-- ExamSession → Packets (one-to-many)
-- Packet → Cases (one-to-many)  
-- ExamSession → Candidates (one-to-many)
-- Case → CaseImages (one-to-many)
-- Case → Questions (one-to-many)
-- Case → Answers (one-to-many)
-
-## 🤝 Contributing
-
-This is a production application. For bug reports or feature requests, please open an issue on GitHub.
+---
 
 ## 📄 License
 
 Copyright © 2026. All rights reserved.
-
-## 🆘 Support
-
-For technical support or questions:
-- Open an issue on GitHub
-- Email: support@example.com
-
-## 🔄 Version History
-
-### v1.2.0 (Current)
-- Image viewer with keyboard navigation
-- Visual navigation controls for images
-- Grey-themed Q&A responsive layouts
-- HTML support in discussion fields
-- Auto-linkify URLs in discussions
-- Production-ready codebase cleanup
-
-### v1.1.0  
-- User authentication system
-- Multi-user data isolation
-- Admin dashboard
-- Profile management
-
-### v1.0.0 (FRCR-Examiner app- intial inspiration !)
-- Initial release
-- Exam session management
-- Case and candidate tracking
-- Backup/restore system
 
 ---
 
