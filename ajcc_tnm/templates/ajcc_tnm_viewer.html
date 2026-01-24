@@ -30,6 +30,15 @@
             </ol>
         </nav>
         
+        {% if from_case_id %}
+        <!-- Return to Case Button -->
+        <div class="mb-3">
+            <a href="/case/{{ from_case_id }}" class="btn btn-primary">
+                <i class="fas fa-arrow-left me-2"></i>Return to Case
+            </a>
+        </div>
+        {% endif %}
+        
         <!-- Main Content Row -->
         <div class="row">
             <!-- Sidebar -->

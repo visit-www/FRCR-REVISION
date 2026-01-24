@@ -104,6 +104,7 @@ def disease_main_page(section_slug, disease_slug):
     
     year = request.args.get('year', type=int)
     view_mode = request.args.get('view', 'full')  # 'full' (enhanced) is now default, 'simple' for old
+    from_case_id = request.args.get('from_case', type=int)  # For "Return to Case" button
     
     staging_data, year_used, available_years = get_staging_data_with_fallback(
         disease_site.id, year
@@ -122,7 +123,8 @@ def disease_main_page(section_slug, disease_slug):
             year_used=None,
             available_years=available_years or [],
             section_info=SECTION_INFO,
-            active_section=1
+            active_section=1,
+            from_case_id=from_case_id
         )
     
     return render_template(
@@ -133,7 +135,8 @@ def disease_main_page(section_slug, disease_slug):
         year_used=year_used,
         available_years=available_years,
         section_info=SECTION_INFO,
-        active_section=1
+        active_section=1,
+        from_case_id=from_case_id
     )
 
 
@@ -147,6 +150,7 @@ def disease_viewer_page(section_slug, disease_slug):
     ).first_or_404()
     
     year = request.args.get('year', type=int)
+    from_case_id = request.args.get('from_case', type=int)  # For "Return to Case" button
     staging_data, year_used, available_years = get_staging_data_with_fallback(
         disease_site.id, year
     )
@@ -159,7 +163,8 @@ def disease_viewer_page(section_slug, disease_slug):
         year_used=year_used,
         available_years=available_years or [],
         section_info=SECTION_INFO,
-        active_section=1
+        active_section=1,
+        from_case_id=from_case_id
     )
 
 
