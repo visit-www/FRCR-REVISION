@@ -1569,26 +1569,31 @@ let knownAjccSites = null;
 
 // Fetch known AJCC disease sites
 async function fetchKnownAjccSites() {
-    if (knownAjccSites) return knownAjccSites;
+    if (knownAjccSites && knownAjccSites.length > 0) return knownAjccSites;
     
     try {
         const response = await fetch('/tnm/api/disease-sites');
         if (response.ok) {
             const data = await response.json();
-            knownAjccSites = data.sites || [];
-            return knownAjccSites;
+            // Only use API result if it has data
+            if (data.sites && data.sites.length > 0) {
+                knownAjccSites = data.sites;
+                return knownAjccSites;
+            }
         }
     } catch (err) {
         console.error('[TNM] Failed to fetch AJCC sites:', err);
     }
     
-    // Fallback list if API fails
+    // Fallback list if API fails or returns empty
     knownAjccSites = [
         'Larynx', 'Lung', 'Breast', 'Liver', 'Kidney', 'Bladder', 'Prostate',
         'Thyroid', 'Stomach', 'Esophagus', 'Colon', 'Pancreas', 'Ovary',
         'Cervix', 'Endometrium', 'Testis', 'Brain', 'Bone', 'Soft Tissue',
         'Oral Cavity', 'Oropharynx', 'Nasopharynx', 'Hypopharynx', 'Skin',
-        'Melanoma', 'Adrenal', 'Small Intestine', 'Appendix', 'Gallbladder'
+        'Melanoma', 'Adrenal', 'Small Intestine', 'Appendix', 'Gallbladder',
+        'Head and Neck', 'Rectum', 'Anus', 'Penis', 'Vulva', 'Vagina',
+        'Mesothelioma', 'Neuroendocrine', 'Carcinoid', 'Sarcoma'
     ];
     return knownAjccSites;
 }
