@@ -159,6 +159,33 @@ Core database models:
 
 ---
 
+## Auto-Initialization
+
+On startup, `app.py` automatically performs these initialization tasks:
+
+### 1. AJCC Data Seeding (`_seed_ajcc_data_if_needed()`)
+
+If AJCC tables are empty, seeds:
+- **15 Body Sections**: Head and Neck, Thorax, Breast, etc.
+- **23 Disease Sites**: Lung, Larynx, Breast, Colon, etc.
+
+This ensures TNM functionality works on fresh deployments.
+
+### 2. Superadmin Creation (`_ensure_superadmin_exists()`)
+
+If no superadmin exists, creates one:
+- **Email**: `lotusheart2016@gmail.com`
+- **Password**: Cryptographically secure random (16 chars)
+- **Role**: Admin
+
+**Security Notes**:
+- Password is generated using `secrets.choice()` (cryptographically secure)
+- Password is only displayed ONCE in console at creation time
+- Password is NOT stored in code or logs
+- User should change password immediately after first login
+
+---
+
 ## Deployment
 
 ### Vercel

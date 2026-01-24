@@ -107,6 +107,27 @@ flask run
 
 Access at [http://localhost:5000](http://localhost:5000)
 
+### Auto-Initialization
+
+On first run, the app automatically:
+
+1. **Seeds AJCC Data**: Creates 15 body sections and 23 common disease sites for TNM staging
+2. **Creates Superadmin**: If no superadmin exists, creates one with a secure random password
+
+```
+============================================================
+[ADMIN] SUPERADMIN ACCOUNT CREATED
+============================================================
+  Email:    lotusheart2016@gmail.com
+  Password: [random-secure-password]
+============================================================
+  ⚠️  SAVE THIS PASSWORD NOW - IT WILL NOT BE SHOWN AGAIN!
+  ⚠️  Change this password immediately after first login.
+============================================================
+```
+
+**Important**: The superadmin password is only displayed once in the console. Save it immediately!
+
 ### Environment Variables
 
 ```bash

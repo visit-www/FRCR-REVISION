@@ -191,9 +191,68 @@ with app.app_context():
         # Auto-seed AJCC body sections and disease sites if not present
         _seed_ajcc_data_if_needed()
         
+        # Ensure superadmin account exists
+        _ensure_superadmin_exists()
+        
     except Exception as e:
         print(f"Error initializing database: {e}")
         raise
+
+
+def _ensure_superadmin_exists():
+    """
+    Ensure superadmin account exists. Creates one with a secure random password
+    if it doesn't exist. The password is only shown once in the console/logs
+    on first creation and should be changed immediately.
+    
+    SECURITY: Password is generated using cryptographically secure random bytes.
+    It is NOT stored in code and is only displayed once at creation time.
+    """
+    import secrets
+    import string
+    
+    SUPERADMIN_EMAIL = "lotusheart2016@gmail.com"
+    
+    # Check if superadmin already exists
+    existing_admin = User.query.filter_by(email=SUPERADMIN_EMAIL).first()
+    
+    if existing_admin:
+        print(f"[ADMIN] Superadmin exists: {SUPERADMIN_EMAIL}")
+        return
+    
+    # Generate a cryptographically secure random password
+    # 16 characters with uppercase, lowercase, digits, and special chars
+    alphabet = string.ascii_letters + string.digits + "!@#$%^&*"
+    password = ''.join(secrets.choice(alphabet) for _ in range(16))
+    
+    try:
+        # Create superadmin user
+        superadmin = User(
+            email=SUPERADMIN_EMAIL,
+            full_name="Super Admin",
+            role=UserRole.ADMIN,
+            is_active=True,
+            is_deleted=False
+        )
+        superadmin.set_password(password)
+        
+        db.session.add(superadmin)
+        db.session.commit()
+        
+        # Print password ONCE - this is the only time it will be visible
+        print("\n" + "=" * 60)
+        print("[ADMIN] SUPERADMIN ACCOUNT CREATED")
+        print("=" * 60)
+        print(f"  Email:    {SUPERADMIN_EMAIL}")
+        print(f"  Password: {password}")
+        print("=" * 60)
+        print("  ⚠️  SAVE THIS PASSWORD NOW - IT WILL NOT BE SHOWN AGAIN!")
+        print("  ⚠️  Change this password immediately after first login.")
+        print("=" * 60 + "\n")
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"[ADMIN] Error creating superadmin: {e}")
 
 
 def _seed_ajcc_data_if_needed():
