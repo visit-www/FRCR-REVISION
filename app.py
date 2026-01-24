@@ -180,23 +180,8 @@ def unauthorized():
     return redirect(url_for('auth.login'))
 
 
-# ==================== HELPER FUNCTIONS ====================
-
-
-
-with app.app_context():
-    try:
-        db.create_all()
-        
-        # Auto-seed AJCC body sections and disease sites if not present
-        _seed_ajcc_data_if_needed()
-        
-        # Ensure superadmin account exists
-        _ensure_superadmin_exists()
-        
-    except Exception as e:
-        print(f"Error initializing database: {e}")
-        raise
+# ==================== INITIALIZATION HELPER FUNCTIONS ====================
+# These functions MUST be defined before they are called in app.app_context()
 
 
 def _ensure_superadmin_exists():
@@ -210,15 +195,22 @@ def _ensure_superadmin_exists():
     """
     import secrets
     import string
+    from sqlalchemy import text
     
     SUPERADMIN_EMAIL = "lotusheart2016@gmail.com"
     
-    # Check if superadmin already exists
-    existing_admin = User.query.filter_by(email=SUPERADMIN_EMAIL).first()
-    
-    if existing_admin:
-        print(f"[ADMIN] Superadmin exists: {SUPERADMIN_EMAIL}")
-        return
+    # Use raw SQL to check if superadmin exists (avoids model column mismatch during migrations)
+    try:
+        result = db.session.execute(
+            text("SELECT COUNT(*) FROM user WHERE email = :email"),
+            {"email": SUPERADMIN_EMAIL}
+        ).scalar()
+        if result and result > 0:
+            print(f"[ADMIN] Superadmin exists: {SUPERADMIN_EMAIL}")
+            return
+    except Exception:
+        # Table doesn't exist yet, continue to create
+        pass
     
     # Generate a cryptographically secure random password
     # 16 characters with uppercase, lowercase, digits, and special chars
@@ -261,10 +253,16 @@ def _seed_ajcc_data_if_needed():
     This ensures TNM functionality works on fresh deployments.
     """
     from models import AJCCBodySection, AJCCDiseaseSite
+    from sqlalchemy import text
     
-    # Check if data already exists
-    existing_sections = AJCCBodySection.query.count()
-    existing_sites = AJCCDiseaseSite.query.count()
+    # Use raw SQL for count to avoid model column mismatch during migrations
+    try:
+        existing_sections = db.session.execute(text("SELECT COUNT(*) FROM ajcc_body_section")).scalar() or 0
+        existing_sites = db.session.execute(text("SELECT COUNT(*) FROM ajcc_disease_site")).scalar() or 0
+    except Exception:
+        # Tables don't exist yet
+        existing_sections = 0
+        existing_sites = 0
     
     if existing_sections > 0 and existing_sites > 0:
         print(f"[SEED] AJCC data exists: {existing_sections} sections, {existing_sites} sites")
@@ -368,6 +366,23 @@ def _seed_ajcc_data_if_needed():
     except Exception as e:
         db.session.rollback()
         print(f"[SEED] Error seeding AJCC data: {e}")
+
+
+# ==================== DATABASE INITIALIZATION ====================
+
+with app.app_context():
+    try:
+        db.create_all()
+        
+        # Auto-seed AJCC body sections and disease sites if not present
+        _seed_ajcc_data_if_needed()
+        
+        # Ensure superadmin account exists
+        _ensure_superadmin_exists()
+        
+    except Exception as e:
+        print(f"Error initializing database: {e}")
+        raise
 
 
 # Register blueprints
