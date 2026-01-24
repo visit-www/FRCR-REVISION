@@ -46,6 +46,11 @@
                 <i class="fas fa-stethoscope"></i> AJCC TNM Management
             </a>
         </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="docs-tab" data-bs-toggle="tab" data-bs-target="#docs-content" type="button" role="tab" aria-controls="docs-content" aria-selected="false">
+                <i class="fas fa-book"></i> App Documents
+            </button>
+        </li>
     </ul>
 
     <!-- Tab Content -->
@@ -287,6 +292,51 @@
             </div>
         </div>
         <!-- End Database Management Tab -->
+
+        <!-- App Documents Tab -->
+        <div class="tab-pane fade" id="docs-content" role="tabpanel" aria-labelledby="docs-tab">
+            <h2 class="mb-4 admin-section-title"><i class="fas fa-book"></i> App Documents</h2>
+            
+            <div class="row">
+                <!-- Document List Sidebar -->
+                <div class="col-md-3 mb-4">
+                    <div class="card sticky-top" style="top: 80px; max-height: calc(100vh - 120px); overflow-y: auto;">
+                        <div class="card-header" style="background: linear-gradient(135deg, #5E899E 0%, #4a7285 100%); color: white;">
+                            <h6 class="mb-0"><i class="fas fa-folder-open me-2"></i>Documents</h6>
+                        </div>
+                        <div class="list-group list-group-flush" id="docsListContainer">
+                            <div class="text-center py-4">
+                                <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Document Viewer -->
+                <div class="col-md-9">
+                    <div class="card" id="docViewerCard">
+                        <div class="card-header d-flex justify-content-between align-items-center" style="background: #f8f9fa;">
+                            <h5 class="mb-0" id="docTitle">
+                                <i class="fas fa-file-alt me-2 text-muted"></i>
+                                <span>Select a document to view</span>
+                            </h5>
+                            <button class="btn btn-sm btn-outline-secondary" id="toggleRawBtn" style="display: none;">
+                                <i class="fas fa-code me-1"></i>View Raw
+                            </button>
+                        </div>
+                        <div class="card-body" id="docContent" style="min-height: 400px;">
+                            <div class="text-center text-muted py-5">
+                                <i class="fas fa-book-open fa-3x mb-3" style="color: #c5cad1;"></i>
+                                <p>Select a document from the sidebar to view its contents.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- End App Documents Tab -->
     </div>
 </div>
 
@@ -1010,6 +1060,190 @@
         }
     });
 
+    // ============================================================================
+    // APP DOCUMENTS TAB
+    // ============================================================================
+    
+    let currentDocPath = null;
+    let showingRaw = false;
+    let currentRawContent = '';
+    
+    // Load docs when tab is clicked
+    document.getElementById('docs-tab').addEventListener('shown.bs.tab', function() {
+        loadDocsList();
+    });
+    
+    async function loadDocsList() {
+        const container = document.getElementById('docsListContainer');
+        container.innerHTML = `
+            <div class="text-center py-4">
+                <div class="spinner-border spinner-border-sm text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        `;
+        
+        try {
+            const response = await fetch('/api/admin/docs');
+            const data = await response.json();
+            
+            if (data.success && data.docs) {
+                container.innerHTML = '';
+                renderDocsList(data.docs, container);
+            } else {
+                container.innerHTML = '<div class="list-group-item text-muted">No documents found</div>';
+            }
+        } catch (e) {
+            console.error('[DOCS] Error loading docs:', e);
+            container.innerHTML = '<div class="list-group-item text-danger">Error loading documents</div>';
+        }
+    }
+    
+    function renderDocsList(items, container, level = 0) {
+        items.forEach(item => {
+            if (item.is_folder) {
+                // Folder header
+                const folderDiv = document.createElement('div');
+                folderDiv.className = 'list-group-item bg-light';
+                folderDiv.style.paddingLeft = `${12 + (level * 16)}px`;
+                folderDiv.innerHTML = `<i class="fas fa-folder text-warning me-2"></i><strong>${item.name}</strong>`;
+                container.appendChild(folderDiv);
+                
+                // Render children
+                if (item.children && item.children.length > 0) {
+                    renderDocsList(item.children, container, level + 1);
+                }
+            } else {
+                // Document link
+                const docLink = document.createElement('a');
+                docLink.href = '#';
+                docLink.className = 'list-group-item list-group-item-action doc-link';
+                docLink.style.paddingLeft = `${12 + (level * 16)}px`;
+                docLink.dataset.path = item.path;
+                docLink.innerHTML = `<i class="fas fa-file-alt text-secondary me-2"></i>${item.title}`;
+                docLink.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    loadDocument(item.path);
+                    // Update active state
+                    document.querySelectorAll('.doc-link').forEach(l => l.classList.remove('active'));
+                    docLink.classList.add('active');
+                });
+                container.appendChild(docLink);
+            }
+        });
+    }
+    
+    async function loadDocument(path) {
+        const titleEl = document.getElementById('docTitle');
+        const contentEl = document.getElementById('docContent');
+        const toggleBtn = document.getElementById('toggleRawBtn');
+        
+        titleEl.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Loading...';
+        contentEl.innerHTML = `
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        `;
+        
+        try {
+            const response = await fetch(`/api/admin/docs/${encodeURIComponent(path)}`);
+            const data = await response.json();
+            
+            if (data.success) {
+                currentDocPath = path;
+                currentRawContent = data.raw_content;
+                showingRaw = false;
+                
+                titleEl.innerHTML = `<i class="fas fa-file-alt me-2 text-primary"></i><span>${data.title}</span>`;
+                contentEl.innerHTML = `<div class="markdown-body">${data.content_html}</div>`;
+                toggleBtn.style.display = 'inline-block';
+                toggleBtn.innerHTML = '<i class="fas fa-code me-1"></i>View Raw';
+                
+                // Style the markdown content
+                styleMarkdownContent();
+            } else {
+                titleEl.innerHTML = '<i class="fas fa-exclamation-circle me-2 text-danger"></i>Error';
+                contentEl.innerHTML = `<div class="alert alert-danger">${data.error || 'Failed to load document'}</div>`;
+            }
+        } catch (e) {
+            console.error('[DOCS] Error loading document:', e);
+            titleEl.innerHTML = '<i class="fas fa-exclamation-circle me-2 text-danger"></i>Error';
+            contentEl.innerHTML = '<div class="alert alert-danger">Failed to load document</div>';
+        }
+    }
+    
+    // Toggle raw/rendered view
+    document.getElementById('toggleRawBtn').addEventListener('click', function() {
+        const contentEl = document.getElementById('docContent');
+        const toggleBtn = this;
+        
+        if (showingRaw) {
+            // Switch to rendered
+            loadDocument(currentDocPath);
+        } else {
+            // Switch to raw
+            showingRaw = true;
+            contentEl.innerHTML = `<pre style="background: #f8f9fa; padding: 15px; border-radius: 8px; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;"><code>${escapeHtml(currentRawContent)}</code></pre>`;
+            toggleBtn.innerHTML = '<i class="fas fa-eye me-1"></i>View Rendered';
+        }
+    });
+    
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+    
+    function styleMarkdownContent() {
+        const container = document.querySelector('.markdown-body');
+        if (!container) return;
+        
+        // Style tables
+        container.querySelectorAll('table').forEach(table => {
+            table.classList.add('table', 'table-bordered', 'table-striped', 'table-sm');
+        });
+        
+        // Style code blocks
+        container.querySelectorAll('pre').forEach(pre => {
+            pre.style.background = '#f8f9fa';
+            pre.style.padding = '12px';
+            pre.style.borderRadius = '6px';
+            pre.style.overflow = 'auto';
+        });
+        
+        // Style inline code
+        container.querySelectorAll('code:not(pre code)').forEach(code => {
+            code.style.background = '#f0f0f0';
+            code.style.padding = '2px 6px';
+            code.style.borderRadius = '4px';
+            code.style.color = '#e96304';
+        });
+        
+        // Style headings
+        container.querySelectorAll('h1, h2, h3, h4, h5, h6').forEach(heading => {
+            heading.style.color = '#2c3e50';
+            heading.style.marginTop = '1.5rem';
+            heading.style.marginBottom = '0.75rem';
+            heading.style.borderBottom = heading.tagName === 'H1' || heading.tagName === 'H2' ? '1px solid #e9ecef' : 'none';
+            heading.style.paddingBottom = heading.tagName === 'H1' || heading.tagName === 'H2' ? '0.5rem' : '0';
+        });
+        
+        // Style blockquotes
+        container.querySelectorAll('blockquote').forEach(bq => {
+            bq.style.borderLeft = '4px solid #5E899E';
+            bq.style.paddingLeft = '16px';
+            bq.style.color = '#5a6270';
+            bq.style.fontStyle = 'italic';
+        });
+        
+        // Style links
+        container.querySelectorAll('a').forEach(link => {
+            link.style.color = '#5E899E';
+        });
+    }
+
 </script>
 
 <style>
@@ -1142,6 +1376,59 @@
 
 #forumMessagesList .card.border-warning {
     border-width: 2px;
+}
+
+/* App Documents Styles */
+.doc-link {
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+}
+
+.doc-link:hover {
+    background-color: #f8f9fa;
+}
+
+.doc-link.active {
+    background-color: #5E899E !important;
+    color: white !important;
+    border-color: #5E899E !important;
+}
+
+.doc-link.active i {
+    color: white !important;
+}
+
+.markdown-body {
+    font-size: 0.95rem;
+    line-height: 1.7;
+    color: #2c3e50;
+}
+
+.markdown-body h1 { font-size: 1.8rem; }
+.markdown-body h2 { font-size: 1.5rem; }
+.markdown-body h3 { font-size: 1.25rem; }
+.markdown-body h4 { font-size: 1.1rem; }
+
+.markdown-body ul, .markdown-body ol {
+    padding-left: 1.5rem;
+}
+
+.markdown-body li {
+    margin-bottom: 0.25rem;
+}
+
+.markdown-body p {
+    margin-bottom: 1rem;
+}
+
+.markdown-body hr {
+    border: none;
+    border-top: 2px solid #e9ecef;
+    margin: 1.5rem 0;
+}
+
+#docViewerCard {
+    min-height: 500px;
 }
 </style>
 {% endblock %}

@@ -3,13 +3,15 @@ Admin Routes - User Management & Case Management API Endpoints
 Provides CRUD operations for user management and case management with role-based access control
 """
 
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, render_template_string
 from flask_login import login_required, current_user
 from models import db, User, UserRole, SubscriptionStatus, CaseAuditLog, Case
 from access_control import require_admin, require_role, soft_delete_user, upgrade_to_paid, downgrade_to_free
 from datetime import datetime
 from sqlalchemy import or_, and_
 import logging
+import os
+import markdown
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/api/admin')
 logger = logging.getLogger(__name__)
@@ -653,6 +655,107 @@ def get_case(case_id):
         'created_by_name': creator_name,
         'created_at': case.created_at.isoformat() if case.created_at else None,
     }), 200
+
+# ============================================================================
+# APP DOCUMENTATION ENDPOINTS
+# ============================================================================
+
+@admin_bp.route('/docs', methods=['GET'])
+@require_admin
+def list_docs():
+    """
+    List all markdown documentation files in the docs/ folder
+    Returns: { docs: [{ name, path, title }] }
+    """
+    docs_dir = os.path.join(os.path.dirname(__file__), 'docs')
+    docs = []
+    
+    def scan_dir(directory, prefix=''):
+        """Recursively scan directory for .md files"""
+        items = []
+        try:
+            for item in sorted(os.listdir(directory)):
+                item_path = os.path.join(directory, item)
+                relative_path = os.path.join(prefix, item) if prefix else item
+                
+                if os.path.isdir(item_path):
+                    # Recursively scan subdirectories
+                    subitems = scan_dir(item_path, relative_path)
+                    if subitems:
+                        items.append({
+                            'name': item,
+                            'path': relative_path,
+                            'is_folder': True,
+                            'children': subitems
+                        })
+                elif item.endswith('.md'):
+                    # Generate title from filename
+                    title = item.replace('.md', '').replace('_', ' ').replace('-', ' ')
+                    items.append({
+                        'name': item,
+                        'path': relative_path,
+                        'title': title,
+                        'is_folder': False
+                    })
+        except Exception as e:
+            logger.error(f"Error scanning docs directory: {e}")
+        return items
+    
+    docs = scan_dir(docs_dir)
+    return jsonify({'success': True, 'docs': docs})
+
+
+@admin_bp.route('/docs/<path:doc_path>', methods=['GET'])
+@require_admin
+def get_doc(doc_path):
+    """
+    Get a specific markdown document rendered as HTML
+    Returns: { title, content_html, raw_content }
+    """
+    docs_dir = os.path.join(os.path.dirname(__file__), 'docs')
+    file_path = os.path.join(docs_dir, doc_path)
+    
+    # Security: Ensure path is within docs directory
+    real_docs_dir = os.path.realpath(docs_dir)
+    real_file_path = os.path.realpath(file_path)
+    
+    if not real_file_path.startswith(real_docs_dir):
+        return jsonify({'success': False, 'error': 'Invalid path'}), 403
+    
+    if not os.path.exists(file_path):
+        return jsonify({'success': False, 'error': 'Document not found'}), 404
+    
+    if not file_path.endswith('.md'):
+        return jsonify({'success': False, 'error': 'Invalid file type'}), 400
+    
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            raw_content = f.read()
+        
+        # Convert markdown to HTML with extensions
+        md = markdown.Markdown(extensions=[
+            'tables',
+            'fenced_code',
+            'codehilite',
+            'toc',
+            'nl2br'
+        ])
+        content_html = md.convert(raw_content)
+        
+        # Generate title from filename
+        title = os.path.basename(doc_path).replace('.md', '').replace('_', ' ').replace('-', ' ')
+        
+        return jsonify({
+            'success': True,
+            'title': title,
+            'path': doc_path,
+            'content_html': content_html,
+            'raw_content': raw_content
+        })
+    except Exception as e:
+        logger.error(f"Error reading doc {doc_path}: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 
 # ============================================================================
 # ERROR HANDLERS
