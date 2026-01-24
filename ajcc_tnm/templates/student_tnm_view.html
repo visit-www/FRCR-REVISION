@@ -1,0 +1,712 @@
+{% extends "base.html" %}
+
+{% block title %}TNM Staging - {{ disease.disease_name }} | FRCR Revision{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header with Back to Case button -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-2">
+                    <li class="breadcrumb-item"><a href="/tnm">TNM Staging</a></li>
+                    <li class="breadcrumb-item"><a href="/tnm/{{ section.slug }}">{{ section.section_name }}</a></li>
+                    <li class="breadcrumb-item active">{{ disease.disease_name }}</li>
+                </ol>
+            </nav>
+            <h2 class="mb-0">
+                <i class="fas fa-dna me-2 text-primary"></i>
+                {{ disease.disease_name }} - TNM Staging
+            </h2>
+            <p class="text-muted mb-0">{{ tnm_version }}</p>
+        </div>
+        <div>
+            {% if from_case_id %}
+            <a href="/case/{{ from_case_id }}" class="btn btn-primary">
+                <i class="fas fa-arrow-left me-2"></i>Return to Case
+            </a>
+            {% endif %}
+            <button class="btn btn-outline-secondary ms-2" onclick="window.print()">
+                <i class="fas fa-print me-1"></i>Print
+            </button>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Main Content -->
+        <div class="col-lg-8">
+            <!-- Quick Reference TNM Tables -->
+            <div class="card mb-4 shadow-sm">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-table me-2"></i>TNM Classification</h5>
+                    <button class="btn btn-sm btn-light" onclick="copySection('tnm-classification')">
+                        <i class="fas fa-copy me-1"></i>Copy All
+                    </button>
+                </div>
+                <div class="card-body" id="tnm-classification">
+                    {% if staging_data %}
+                        <!-- T Stage -->
+                        <div class="mb-4">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h6 class="text-primary mb-0"><strong>T - Primary Tumor</strong></h6>
+                                <button class="btn btn-sm btn-outline-primary" onclick="copySection('t-stage-section')">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </div>
+                            <div id="t-stage-section">
+                                {% if t_definitions %}
+                                <table class="table table-sm table-bordered">
+                                    <thead class="table-light">
+                                        <tr><th width="80">Stage</th><th>Definition</th></tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for t in t_definitions %}
+                                        <tr>
+                                            <td><strong>{{ t.category }}</strong></td>
+                                            <td>{{ t.definition }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                                {% else %}
+                                <p class="text-muted">T-stage definitions not available</p>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- N Stage -->
+                        <div class="mb-4">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h6 class="text-success mb-0"><strong>N - Regional Lymph Nodes</strong></h6>
+                                <button class="btn btn-sm btn-outline-success" onclick="copySection('n-stage-section')">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </div>
+                            <div id="n-stage-section">
+                                {% if n_definitions %}
+                                    {% if n_definitions.clinical %}
+                                    <p class="small text-muted mb-1">Clinical (cN):</p>
+                                    <table class="table table-sm table-bordered mb-3">
+                                        <tbody>
+                                            {% for n in n_definitions.clinical %}
+                                            <tr>
+                                                <td width="80"><strong>{{ n.category }}</strong></td>
+                                                <td>{{ n.definition }}</td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                    {% endif %}
+                                    {% if n_definitions.pathological %}
+                                    <p class="small text-muted mb-1">Pathological (pN):</p>
+                                    <table class="table table-sm table-bordered">
+                                        <tbody>
+                                            {% for n in n_definitions.pathological %}
+                                            <tr>
+                                                <td width="80"><strong>{{ n.category }}</strong></td>
+                                                <td>{{ n.definition }}</td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                    {% endif %}
+                                {% else %}
+                                <p class="text-muted">N-stage definitions not available</p>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- M Stage -->
+                        <div class="mb-4">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h6 class="text-danger mb-0"><strong>M - Distant Metastasis</strong></h6>
+                                <button class="btn btn-sm btn-outline-danger" onclick="copySection('m-stage-section')">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </div>
+                            <div id="m-stage-section">
+                                {% if m_definitions %}
+                                <table class="table table-sm table-bordered">
+                                    <tbody>
+                                        {% for m in m_definitions %}
+                                        <tr>
+                                            <td width="80"><strong>{{ m.category }}</strong></td>
+                                            <td>{{ m.definition }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                                {% else %}
+                                <p class="text-muted">M-stage definitions not available</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% else %}
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        TNM staging data has not been extracted for this disease site yet.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Stage Groupings -->
+            {% if stage_groups %}
+            <div class="card mb-4 shadow-sm">
+                <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-layer-group me-2"></i>Prognostic Stage Groups</h5>
+                    <button class="btn btn-sm btn-light" onclick="copySection('stage-groups')">
+                        <i class="fas fa-copy me-1"></i>Copy
+                    </button>
+                </div>
+                <div class="card-body" id="stage-groups">
+                    <table class="table table-sm table-bordered">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Stage</th>
+                                <th>T</th>
+                                <th>N</th>
+                                <th>M</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for sg in stage_groups %}
+                            <tr>
+                                <td><strong>{{ sg.stage }}</strong></td>
+                                <td>{{ sg.T }}</td>
+                                <td>{{ sg.N }}</td>
+                                <td>{{ sg.M }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Explanatory Notes -->
+            {% if explanatory_notes_html %}
+            <div class="card mb-4 shadow-sm">
+                <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-book-open me-2"></i>Explanatory Notes (AJCC)</h5>
+                    <button class="btn btn-sm btn-light" onclick="copySection('explanatory-notes')">
+                        <i class="fas fa-copy me-1"></i>Copy
+                    </button>
+                </div>
+                <div class="card-body" id="explanatory-notes">
+                    <div class="ajcc-content">
+                        {{ explanatory_notes_html | safe }}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Intelligent TNM Analysis (AI-Generated) -->
+            {% if intelligent_data %}
+            <div class="card mb-4 shadow-sm border-warning" id="intelligent-tnm-card">
+                <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-brain me-2"></i>Radiologist's TNM Intelligence</h5>
+                    <div>
+                        <span class="badge bg-dark">AI-Assisted</span>
+                        {% if current_user.is_authenticated and current_user.role.value in ['admin', 'content_manager'] %}
+                        <button class="btn btn-sm btn-outline-dark ms-2" id="editIntelligenceBtn" onclick="toggleEditMode()">
+                            <i class="fas fa-edit me-1"></i>Edit
+                        </button>
+                        <button class="btn btn-sm btn-success ms-1 d-none" id="saveIntelligenceBtn" onclick="saveIntelligentData()">
+                            <i class="fas fa-save me-1"></i>Save
+                        </button>
+                        <button class="btn btn-sm btn-secondary ms-1 d-none" id="cancelEditBtn" onclick="cancelEditMode()">
+                            <i class="fas fa-times me-1"></i>Cancel
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="card-body">
+                    <!-- Memory Aid -->
+                    <div class="mb-4">
+                        <h6 class="border-bottom pb-2"><i class="fas fa-lightbulb me-2 text-warning"></i>TNM Memory Aid</h6>
+                        <div class="row">
+                            <div class="col-md-4 mb-2">
+                                <div class="card bg-light h-100">
+                                    <div class="card-body py-2">
+                                        <strong class="text-primary">T:</strong>
+                                        <p class="mb-0 small view-mode" data-field="memory_aid_T">{{ intelligent_data.tnm_memory_aid.T if intelligent_data.tnm_memory_aid else '' }}</p>
+                                        <textarea class="form-control form-control-sm edit-mode d-none" data-field="memory_aid_T" rows="3">{{ intelligent_data.tnm_memory_aid.T if intelligent_data.tnm_memory_aid else '' }}</textarea>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4 mb-2">
+                                <div class="card bg-light h-100">
+                                    <div class="card-body py-2">
+                                        <strong class="text-success">N:</strong>
+                                        <p class="mb-0 small view-mode" data-field="memory_aid_N">{{ intelligent_data.tnm_memory_aid.N if intelligent_data.tnm_memory_aid else '' }}</p>
+                                        <textarea class="form-control form-control-sm edit-mode d-none" data-field="memory_aid_N" rows="3">{{ intelligent_data.tnm_memory_aid.N if intelligent_data.tnm_memory_aid else '' }}</textarea>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4 mb-2">
+                                <div class="card bg-light h-100">
+                                    <div class="card-body py-2">
+                                        <strong class="text-danger">M:</strong>
+                                        <p class="mb-0 small view-mode" data-field="memory_aid_M">{{ intelligent_data.tnm_memory_aid.M if intelligent_data.tnm_memory_aid else '' }}</p>
+                                        <textarea class="form-control form-control-sm edit-mode d-none" data-field="memory_aid_M" rows="3">{{ intelligent_data.tnm_memory_aid.M if intelligent_data.tnm_memory_aid else '' }}</textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Upstaging Triggers -->
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="mb-0"><i class="fas fa-arrow-up me-2 text-danger"></i>Upstaging Triggers (MDT-Critical)</h6>
+                            <button class="btn btn-sm btn-outline-danger view-mode" onclick="copySection('upstaging-triggers')">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                        <div id="upstaging-triggers">
+                            <ul class="list-group list-group-flush view-mode">
+                                {% for trigger in intelligent_data.upstaging_triggers or [] %}
+                                <li class="list-group-item list-group-item-danger py-2">
+                                    <i class="fas fa-exclamation-circle me-2"></i>{{ trigger }}
+                                </li>
+                                {% endfor %}
+                            </ul>
+                            <textarea class="form-control edit-mode d-none" data-field="upstaging_triggers" rows="5" placeholder="Enter each trigger on a new line">{% for trigger in intelligent_data.upstaging_triggers or [] %}{{ trigger }}{% if not loop.last %}
+{% endif %}{% endfor %}</textarea>
+                            <small class="text-muted edit-mode d-none">Enter each trigger on a new line</small>
+                        </div>
+                    </div>
+
+                    <!-- Radiologist Key Points -->
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="mb-0"><i class="fas fa-check-circle me-2 text-success"></i>Key Reporting Points</h6>
+                            <button class="btn btn-sm btn-outline-success view-mode" onclick="copySection('key-points')">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                        <div id="key-points">
+                            <ul class="list-group list-group-flush view-mode">
+                                {% for point in intelligent_data.radiologist_key_points or [] %}
+                                <li class="list-group-item py-2">
+                                    <i class="fas fa-check me-2 text-success"></i>{{ point }}
+                                </li>
+                                {% endfor %}
+                            </ul>
+                            <textarea class="form-control edit-mode d-none" data-field="radiologist_key_points" rows="5" placeholder="Enter each key point on a new line">{% for point in intelligent_data.radiologist_key_points or [] %}{{ point }}{% if not loop.last %}
+{% endif %}{% endfor %}</textarea>
+                            <small class="text-muted edit-mode d-none">Enter each key point on a new line</small>
+                        </div>
+                    </div>
+
+                    <!-- MDT Critical Findings -->
+                    {% if intelligent_data.mdt_critical_findings %}
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="mb-0"><i class="fas fa-users me-2 text-primary"></i>MDT Decision Points</h6>
+                            <button class="btn btn-sm btn-outline-primary" onclick="copySection('mdt-findings')">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                        <div id="mdt-findings">
+                            <ul class="list-group list-group-flush">
+                                {% for finding in intelligent_data.mdt_critical_findings %}
+                                <li class="list-group-item list-group-item-info py-2">
+                                    <i class="fas fa-info-circle me-2"></i>{{ finding }}
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Copy Blocks (Report Templates) -->
+                    {% if intelligent_data.copy_blocks %}
+                    <div class="mb-4">
+                        <h6 class="border-bottom pb-2"><i class="fas fa-file-alt me-2 text-secondary"></i>Report Templates</h6>
+                        {% if intelligent_data.copy_blocks.T_stage_template %}
+                        <div class="mb-2">
+                            <div class="d-flex justify-content-between">
+                                <small class="text-muted">T-Stage Template:</small>
+                                <button class="btn btn-sm btn-link p-0" onclick="copyText('{{ intelligent_data.copy_blocks.T_stage_template | e }}')">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </div>
+                            <div class="bg-light p-2 rounded small font-monospace">{{ intelligent_data.copy_blocks.T_stage_template }}</div>
+                        </div>
+                        {% endif %}
+                        {% if intelligent_data.copy_blocks.structured_report_block %}
+                        <div class="mb-2">
+                            <div class="d-flex justify-content-between">
+                                <small class="text-muted">Structured Report Block:</small>
+                                <button class="btn btn-sm btn-link p-0" onclick="copyText('{{ intelligent_data.copy_blocks.structured_report_block | e }}')">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </div>
+                            <div class="bg-light p-2 rounded small font-monospace">{{ intelligent_data.copy_blocks.structured_report_block }}</div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- Stage Calculator -->
+            <div class="card mb-4 shadow-sm sticky-top" style="top: 1rem;">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0"><i class="fas fa-calculator me-2"></i>Stage Calculator</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label">T Stage</label>
+                        <select id="calc-t-stage" class="form-select form-select-sm" onchange="calculateStage()">
+                            <option value="">Select T...</option>
+                            {% for t in t_definitions %}
+                            <option value="{{ t.category }}">{{ t.category }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">N Stage</label>
+                        <select id="calc-n-stage" class="form-select form-select-sm" onchange="calculateStage()">
+                            <option value="">Select N...</option>
+                            {% if n_definitions.clinical %}
+                                {% for n in n_definitions.clinical %}
+                                <option value="{{ n.category }}">{{ n.category }}</option>
+                                {% endfor %}
+                            {% endif %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">M Stage</label>
+                        <select id="calc-m-stage" class="form-select form-select-sm" onchange="calculateStage()">
+                            <option value="">Select M...</option>
+                            {% for m in m_definitions %}
+                            <option value="{{ m.category }}">{{ m.category }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="alert alert-primary mb-0" id="stage-result">
+                        <strong>Overall Stage:</strong> <span id="calculated-stage">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Imaging Checklist -->
+            {% if intelligent_data %}
+            <div class="card mb-4 shadow-sm">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="fas fa-clipboard-check me-2"></i>Imaging Checklist</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled mb-0 view-mode">
+                        {% for item in intelligent_data.imaging_checklist or [] %}
+                        <li class="mb-2">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="check-{{ loop.index }}">
+                                <label class="form-check-label" for="check-{{ loop.index }}">{{ item }}</label>
+                            </div>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    <textarea class="form-control edit-mode d-none" data-field="imaging_checklist" rows="5" placeholder="Enter each checklist item on a new line">{% for item in intelligent_data.imaging_checklist or [] %}{{ item }}{% if not loop.last %}
+{% endif %}{% endfor %}</textarea>
+                    <small class="text-muted edit-mode d-none">Enter each checklist item on a new line</small>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Reference Images -->
+            {% if images %}
+            <div class="card mb-4 shadow-sm">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="fas fa-images me-2"></i>Reference Images</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-2">
+                        {% for img in images %}
+                        <div class="col-6">
+                            <a href="{{ img }}" target="_blank" class="d-block">
+                                <img src="{{ img }}" class="img-fluid rounded border" alt="Staging reference">
+                            </a>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Quick Actions -->
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-bolt me-2"></i>Quick Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-outline-primary" onclick="copyAllForReport()">
+                            <i class="fas fa-file-medical me-2"></i>Copy for Report
+                        </button>
+                        {% if from_case_id %}
+                        <a href="/case/{{ from_case_id }}" class="btn btn-primary">
+                            <i class="fas fa-arrow-left me-2"></i>Back to Case
+                        </a>
+                        {% endif %}
+                        <a href="/tnm/{{ section.slug }}/{{ disease.slug }}" class="btn btn-outline-secondary" target="_blank">
+                            <i class="fas fa-external-link-alt me-2"></i>Full TNM Page
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast for copy confirmation -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3">
+    <div id="copyToast" class="toast" role="alert">
+        <div class="toast-body bg-success text-white rounded">
+            <i class="fas fa-check me-2"></i>Copied to clipboard!
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Stage groups data for calculator
+const stageGroups = {{ stage_groups | tojson | safe if stage_groups else '[]' }};
+
+function calculateStage() {
+    const t = document.getElementById('calc-t-stage').value;
+    const n = document.getElementById('calc-n-stage').value;
+    const m = document.getElementById('calc-m-stage').value;
+    
+    if (!t || !n || !m) {
+        document.getElementById('calculated-stage').textContent = 'Select all values';
+        return;
+    }
+    
+    // Find matching stage
+    let matchedStage = null;
+    for (const sg of stageGroups) {
+        if (matchesTNM(t, sg.T) && matchesTNM(n, sg.N) && matchesTNM(m, sg.M)) {
+            matchedStage = sg.stage;
+            break;
+        }
+    }
+    
+    document.getElementById('calculated-stage').textContent = matchedStage || 'No match found';
+}
+
+function matchesTNM(selected, pattern) {
+    if (!pattern) return false;
+    // Handle "Any" or "Any T" patterns
+    if (pattern.toLowerCase().includes('any')) return true;
+    // Handle comma-separated values
+    const patterns = pattern.split(',').map(p => p.trim());
+    return patterns.some(p => selected.startsWith(p) || p.startsWith(selected));
+}
+
+function copySection(sectionId) {
+    const section = document.getElementById(sectionId);
+    if (!section) return;
+    
+    const text = section.innerText || section.textContent;
+    copyText(text);
+}
+
+function copyText(text) {
+    navigator.clipboard.writeText(text).then(() => {
+        showCopyToast();
+    }).catch(err => {
+        console.error('Copy failed:', err);
+    });
+}
+
+function showCopyToast() {
+    const toast = new bootstrap.Toast(document.getElementById('copyToast'));
+    toast.show();
+}
+
+function copyAllForReport() {
+    let reportText = '';
+    
+    // Add disease name
+    reportText += `TNM Staging: {{ disease.disease_name }}\n`;
+    reportText += `{{ tnm_version }}\n\n`;
+    
+    // Add T stage
+    const tSection = document.getElementById('t-stage-section');
+    if (tSection) {
+        reportText += 'T STAGE:\n' + tSection.innerText + '\n\n';
+    }
+    
+    // Add N stage
+    const nSection = document.getElementById('n-stage-section');
+    if (nSection) {
+        reportText += 'N STAGE:\n' + nSection.innerText + '\n\n';
+    }
+    
+    // Add M stage
+    const mSection = document.getElementById('m-stage-section');
+    if (mSection) {
+        reportText += 'M STAGE:\n' + mSection.innerText + '\n\n';
+    }
+    
+    copyText(reportText);
+}
+
+// ============================================================================
+// ADMIN EDIT MODE FUNCTIONS
+// ============================================================================
+
+let isEditMode = false;
+const originalData = {};
+
+function toggleEditMode() {
+    isEditMode = !isEditMode;
+    
+    const editBtn = document.getElementById('editIntelligenceBtn');
+    const saveBtn = document.getElementById('saveIntelligenceBtn');
+    const cancelBtn = document.getElementById('cancelEditBtn');
+    const viewElements = document.querySelectorAll('.view-mode');
+    const editElements = document.querySelectorAll('.edit-mode');
+    
+    if (isEditMode) {
+        // Store original values
+        document.querySelectorAll('[data-field]').forEach(el => {
+            if (el.tagName === 'TEXTAREA') {
+                originalData[el.dataset.field] = el.value;
+            }
+        });
+        
+        // Show edit mode
+        editBtn.classList.add('d-none');
+        saveBtn.classList.remove('d-none');
+        cancelBtn.classList.remove('d-none');
+        viewElements.forEach(el => el.classList.add('d-none'));
+        editElements.forEach(el => el.classList.remove('d-none'));
+        
+        // Highlight the card
+        document.getElementById('intelligent-tnm-card').classList.add('border-primary');
+        document.getElementById('intelligent-tnm-card').classList.remove('border-warning');
+    } else {
+        // Show view mode
+        editBtn.classList.remove('d-none');
+        saveBtn.classList.add('d-none');
+        cancelBtn.classList.add('d-none');
+        viewElements.forEach(el => el.classList.remove('d-none'));
+        editElements.forEach(el => el.classList.add('d-none'));
+        
+        // Reset card style
+        document.getElementById('intelligent-tnm-card').classList.remove('border-primary');
+        document.getElementById('intelligent-tnm-card').classList.add('border-warning');
+    }
+}
+
+function cancelEditMode() {
+    // Restore original values
+    document.querySelectorAll('[data-field]').forEach(el => {
+        if (el.tagName === 'TEXTAREA' && originalData[el.dataset.field] !== undefined) {
+            el.value = originalData[el.dataset.field];
+        }
+    });
+    
+    toggleEditMode();
+}
+
+async function saveIntelligentData() {
+    // Collect data from form fields
+    const data = {
+        disease_site_id: {{ disease.id }},
+        tnm_memory_aid: {
+            T: document.querySelector('[data-field="memory_aid_T"]')?.value || '',
+            N: document.querySelector('[data-field="memory_aid_N"]')?.value || '',
+            M: document.querySelector('[data-field="memory_aid_M"]')?.value || ''
+        },
+        upstaging_triggers: (document.querySelector('[data-field="upstaging_triggers"]')?.value || '')
+            .split('\n').map(s => s.trim()).filter(s => s),
+        radiologist_key_points: (document.querySelector('[data-field="radiologist_key_points"]')?.value || '')
+            .split('\n').map(s => s.trim()).filter(s => s),
+        imaging_checklist: (document.querySelector('[data-field="imaging_checklist"]')?.value || '')
+            .split('\n').map(s => s.trim()).filter(s => s)
+    };
+    
+    // Show saving indicator
+    const saveBtn = document.getElementById('saveIntelligenceBtn');
+    const originalHtml = saveBtn.innerHTML;
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Saving...';
+    
+    try {
+        const response = await fetch('/tnm/api/save-intelligence', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(result.error || 'Failed to save');
+        }
+        
+        // Update view mode elements with new values
+        updateViewModeElements(data);
+        
+        // Exit edit mode
+        toggleEditMode();
+        
+        // Show success message
+        showCopyToast();
+        alert('Intelligent TNM data saved successfully!\n\nThis data will now be available for all cases with this cancer type.');
+        
+    } catch (error) {
+        console.error('Save error:', error);
+        alert('Failed to save: ' + error.message);
+    } finally {
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = originalHtml;
+    }
+}
+
+function updateViewModeElements(data) {
+    // Update memory aid display
+    const memoryAidT = document.querySelector('p.view-mode[data-field="memory_aid_T"]');
+    const memoryAidN = document.querySelector('p.view-mode[data-field="memory_aid_N"]');
+    const memoryAidM = document.querySelector('p.view-mode[data-field="memory_aid_M"]');
+    
+    if (memoryAidT) memoryAidT.textContent = data.tnm_memory_aid.T;
+    if (memoryAidN) memoryAidN.textContent = data.tnm_memory_aid.N;
+    if (memoryAidM) memoryAidM.textContent = data.tnm_memory_aid.M;
+    
+    // Update upstaging triggers list
+    const triggersContainer = document.querySelector('#upstaging-triggers ul.view-mode');
+    if (triggersContainer) {
+        triggersContainer.innerHTML = data.upstaging_triggers.map(t => 
+            `<li class="list-group-item list-group-item-danger py-2">
+                <i class="fas fa-exclamation-circle me-2"></i>${t}
+            </li>`
+        ).join('');
+    }
+    
+    // Update key points list
+    const keyPointsContainer = document.querySelector('#key-points ul.view-mode');
+    if (keyPointsContainer) {
+        keyPointsContainer.innerHTML = data.radiologist_key_points.map(p => 
+            `<li class="list-group-item py-2">
+                <i class="fas fa-check me-2 text-success"></i>${p}
+            </li>`
+        ).join('');
+    }
+}
+</script>
+{% endblock %}

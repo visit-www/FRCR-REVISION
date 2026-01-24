@@ -330,6 +330,16 @@ console.log('[TinyMCE Loader] Script URL was:', "{{ url_for('static', filename='
                         <i class="fas fa-times me-2"></i>Cancel Generation
                     </button>
                     
+                    <!-- TNM Intelligence Button Group (conditionally shown for oncologic cases) -->
+                    <div class="btn-group m-2" id="tnmIntelBtnGroup" style="display: none;">
+                        <button type="button" class="btn btn-lg" id="tnmIntelBtn" style="background: linear-gradient(135deg, #6b46c1 0%, #9f7aea 100%); border: none; color: white;" onclick="generateTnmIntelligence(event)">
+                            <i class="fas fa-dna me-1"></i>TNM
+                        </button>
+                        <button type="button" class="btn btn-lg" id="tnmDropdownToggle" style="background: linear-gradient(135deg, #5a3ca8 0%, #8a6ad4 100%); border: none; border-left: 1px solid rgba(255,255,255,0.3); color: white;" onclick="showTnmSiteDropdown(event)" title="Change primary site">
+                            <i class="fas fa-caret-down"></i>
+                        </button>
+                    </div>
+                    
                     <button type="button" class="btn btn-lg btn-primary m-2" id="saveCaseButton" onclick="handleSaveCase(event)">
                         <i class="fas fa-save me-2"></i>Save All Changes
                     </button>
@@ -431,6 +441,42 @@ console.log('[TinyMCE Loader] Script URL was:', "{{ url_for('static', filename='
         background-attachment: fixed;
     }
 
+    /* TNM Modal Styling */
+    #tnmIntelModal .tnm-quick-ref table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 0.5rem 0;
+    }
+    
+    #tnmIntelModal .tnm-quick-ref th,
+    #tnmIntelModal .tnm-quick-ref td {
+        border: 1px solid #dee2e6;
+        padding: 0.4rem 0.6rem;
+        font-size: 0.85rem;
+    }
+    
+    #tnmIntelModal .tnm-quick-ref th {
+        background-color: #f8f9fa;
+        font-weight: 600;
+    }
+    
+    #tnmIntelModal .tnm-quick-ref img {
+        max-width: 100%;
+        height: auto;
+        margin: 0.5rem 0;
+    }
+    
+    #tnmIntelModal .nav-tabs .nav-link {
+        color: #6b46c1;
+        font-weight: 500;
+    }
+    
+    #tnmIntelModal .nav-tabs .nav-link.active {
+        color: #fff;
+        background: linear-gradient(135deg, #6b46c1 0%, #9f7aea 100%);
+        border-color: #6b46c1;
+    }
+    
     /* Rich Text Editor styling */
     .tox {
         background-color: #ffffff !important;
@@ -601,6 +647,8 @@ function initializeDiscussionEditor() {
         link_assume_external_targets: true,
         content_css: 'default',
         skin: 'oxide',
+        // Custom context menu with Find Reference
+        contextmenu: 'findreference | link image table',
         content_style: `
             body {
                 font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
@@ -632,6 +680,32 @@ function initializeDiscussionEditor() {
         setup: function(editor) {
             editor.on('change', function() {
                 tinymce.triggerSave();
+            });
+            
+            // Register custom "Find Reference" menu item
+            editor.ui.registry.addMenuItem('findreference', {
+                text: 'Find Reference Article',
+                icon: 'search',
+                onAction: function() {
+                    const selectedText = editor.selection.getContent({ format: 'text' }).trim();
+                    if (selectedText && selectedText.length > 2) {
+                        if (typeof window.findReferenceForSelection === 'function') {
+                            window.findReferenceForSelection();
+                        } else {
+                            alert('Reference finder not loaded. Please refresh the page.');
+                        }
+                    } else {
+                        alert('Please select some text first (at least 3 characters).');
+                    }
+                }
+            });
+            
+            // Also add as context menu item
+            editor.ui.registry.addContextMenu('findreference', {
+                update: function(element) {
+                    const selectedText = editor.selection.getContent({ format: 'text' }).trim();
+                    return selectedText && selectedText.length > 2 ? 'findreference' : '';
+                }
             });
         }
     });
@@ -1167,5 +1241,1631 @@ document.addEventListener('DOMContentLoaded', function() {
         updateVisibilityUI(statusSelect.value);
     }, 100);
 });
+
+// ============================================================================
+// TNM INTELLIGENCE INTEGRATION
+// ============================================================================
+
+// Global state for TNM candidates
+let tnmCandidates = [];
+let selectedPrimarySite = null;
+
+// Check if diagnosis is oncologic and get ALL candidate sites
+function checkTnmAvailability() {
+    const diagnosis = document.getElementById('editCaseDiagnosis')?.value.trim();
+    const tnmBtn = document.getElementById('tnmIntelBtn');
+    const tnmDropdown = document.getElementById('tnmSiteDropdown');
+    
+    if (!diagnosis || !tnmBtn) return;
+    
+    // Reset state
+    tnmCandidates = [];
+    selectedPrimarySite = null;
+    if (tnmDropdown) tnmDropdown.remove();
+    
+    fetch(`/tnm/api/check-candidates?diagnosis=${encodeURIComponent(diagnosis)}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.is_oncologic && data.candidates && data.candidates.length > 0) {
+                tnmCandidates = data.candidates;
+                
+                // Show button group
+                const btnGroup = document.getElementById('tnmIntelBtnGroup');
+                if (btnGroup) btnGroup.style.display = 'inline-flex';
+                
+                tnmBtn.disabled = false;
+                tnmBtn.style.opacity = '1';
+                
+                // Show neutral button - user must select primary site
+                tnmBtn.innerHTML = `<i class="fas fa-dna me-1"></i>TNM`;
+                tnmBtn.title = `Select primary cancer site (${data.candidates.length} detected)`;
+                selectedPrimarySite = null;
+                
+            } else if (data.is_oncologic) {
+                // Oncologic but no candidates - allow manual entry
+                tnmCandidates = [];
+                const btnGroup = document.getElementById('tnmIntelBtnGroup');
+                if (btnGroup) btnGroup.style.display = 'inline-flex';
+                tnmBtn.disabled = false;
+                tnmBtn.style.opacity = '1';
+                tnmBtn.innerHTML = `<i class="fas fa-dna me-1"></i>TNM`;
+                tnmBtn.title = 'Click to enter cancer site manually';
+            } else {
+                const btnGroup = document.getElementById('tnmIntelBtnGroup');
+                if (btnGroup) btnGroup.style.display = 'none';
+            }
+        })
+        .catch(err => {
+            console.error('[TNM Check] Error:', err);
+            const btnGroup = document.getElementById('tnmIntelBtnGroup');
+            if (btnGroup) btnGroup.style.display = 'none';
+        });
+}
+
+// Show dropdown menu for selecting primary site
+function showTnmSiteDropdown(event) {
+    event.stopPropagation();
+    
+    // Remove existing dropdown
+    const existing = document.getElementById('tnmSiteDropdown');
+    if (existing) {
+        existing.remove();
+        return;
+    }
+    
+    const tnmBtnGroup = document.getElementById('tnmIntelBtnGroup');
+    const btnRect = tnmBtnGroup.getBoundingClientRect();
+    
+    const dropdown = document.createElement('div');
+    dropdown.id = 'tnmSiteDropdown';
+    dropdown.className = 'tnm-site-dropdown';
+    
+    // Calculate dropdown height estimate (header + items + other)
+    const estimatedHeight = 60 + (tnmCandidates.length * 45) + 50;
+    const maxHeight = 350;
+    const dropdownHeight = Math.min(estimatedHeight, maxHeight);
+    
+    // Position ABOVE the button
+    dropdown.style.cssText = `
+        position: fixed;
+        bottom: ${window.innerHeight - btnRect.top + 5}px;
+        left: ${btnRect.left}px;
+        min-width: 280px;
+        max-height: ${maxHeight}px;
+        overflow-y: auto;
+        background: white;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+        box-shadow: 0 -4px 15px rgba(0,0,0,0.2);
+        z-index: 10000;
+        padding: 8px 0;
+    `;
+    
+    // Header
+    dropdown.innerHTML = `
+        <div style="padding: 8px 15px; border-bottom: 1px solid #eee; color: #666; font-size: 12px;">
+            <i class="fas fa-crosshairs me-1"></i>Select Primary Cancer Site
+        </div>
+    `;
+    
+    // If a site is already selected and has data, show "Generate Now" button at top
+    if (selectedPrimarySite && selectedPrimarySite.has_staging_data) {
+        const generateBtn = document.createElement('div');
+        generateBtn.style.cssText = `
+            padding: 12px 15px;
+            cursor: pointer;
+            background: linear-gradient(135deg, #6b46c1 0%, #9f7aea 100%);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin: 5px 10px;
+            border-radius: 5px;
+            transition: opacity 0.2s;
+        `;
+        generateBtn.innerHTML = `<i class="fas fa-bolt me-2"></i>Generate TNM for ${selectedPrimarySite.disease_name}`;
+        generateBtn.onmouseover = () => generateBtn.style.opacity = '0.9';
+        generateBtn.onmouseout = () => generateBtn.style.opacity = '1';
+        generateBtn.onclick = () => {
+            closeTnmDropdown();
+            generateTnmIntelligenceForSite(selectedPrimarySite.disease_name);
+        };
+        dropdown.appendChild(generateBtn);
+        
+        // Separator
+        const sep = document.createElement('div');
+        sep.style.cssText = 'border-top: 1px solid #ddd; margin: 8px 0; padding: 0 15px;';
+        sep.innerHTML = '<span style="font-size: 11px; color: #888;">Or select a different site:</span>';
+        dropdown.appendChild(sep);
+    }
+    
+    // Group similar disease sites (e.g., Oropharynx HPV+/-, Neuroendocrine variants)
+    const groupedSites = groupSimilarSites(tnmCandidates);
+    
+    // Check if there are ambiguous groups that need user clarification
+    const ambiguousGroups = Object.entries(groupedSites).filter(([key, sites]) => sites.length > 1);
+    
+    if (ambiguousGroups.length > 0) {
+        const warningDiv = document.createElement('div');
+        warningDiv.style.cssText = 'padding: 8px 15px; background: #fff3cd; border-bottom: 1px solid #ffc107; font-size: 11px; color: #856404;';
+        warningDiv.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i>Multiple similar sites detected. Please select the specific subtype.';
+        dropdown.appendChild(warningDiv);
+    }
+    
+    // All candidates are clickable - sorted by score (recommended first)
+    tnmCandidates.forEach(candidate => {
+        const item = document.createElement('div');
+        item.className = 'tnm-dropdown-item';
+        
+        // Check if this is the currently selected site
+        const isSelected = selectedPrimarySite && 
+            selectedPrimarySite.disease_name === candidate.disease_name;
+        
+        item.style.cssText = `
+            padding: 10px 15px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: background 0.2s;
+            ${isSelected ? 'background: #e8f5e9; border-left: 3px solid #4caf50;' : ''}
+        `;
+        
+        const hasData = candidate.has_staging_data;
+        item.innerHTML = `
+            <span>
+                ${isSelected ? '<i class="fas fa-check text-success me-2"></i>' : ''}
+                <strong>${candidate.disease_name}</strong>
+                ${!hasData ? '<span style="color: #dc3545; font-size: 10px; margin-left: 5px;">(no data)</span>' : ''}
+                <span style="color: #888; font-size: 11px; margin-left: 5px;">${candidate.section_name || ''}</span>
+            </span>
+            ${candidate.is_recommended && !isSelected ? '<span class="badge bg-success" style="font-size: 10px;">Recommended</span>' : ''}
+            ${isSelected ? '<span class="badge bg-primary" style="font-size: 10px;">Selected</span>' : ''}
+        `;
+        item.onmouseover = () => { if (!isSelected) item.style.background = '#f0f0f0'; };
+        item.onmouseout = () => { if (!isSelected) item.style.background = 'white'; };
+        item.onclick = () => selectPrimarySite(candidate);
+        dropdown.appendChild(item);
+    });
+    
+    // Separator
+    const sep2 = document.createElement('div');
+    sep2.style.cssText = 'border-top: 1px solid #ddd; margin: 8px 0;';
+    dropdown.appendChild(sep2);
+    
+    // "Other" option for manual entry
+    const otherItem = document.createElement('div');
+    otherItem.className = 'tnm-dropdown-item';
+    otherItem.style.cssText = `
+        padding: 10px 15px;
+        cursor: pointer;
+        color: #6b46c1;
+        display: flex;
+        align-items: center;
+        transition: background 0.2s;
+    `;
+    otherItem.innerHTML = `<i class="fas fa-edit me-2"></i><strong>Other...</strong> <span style="color: #888; font-size: 11px; margin-left: 5px;">(enter manually)</span>`;
+    otherItem.onmouseover = () => otherItem.style.background = '#f0f0f0';
+    otherItem.onmouseout = () => otherItem.style.background = 'white';
+    otherItem.onclick = () => showManualSiteEntry();
+    dropdown.appendChild(otherItem);
+    
+    document.body.appendChild(dropdown);
+    
+    // Close when clicking outside
+    setTimeout(() => {
+        document.addEventListener('click', closeTnmDropdown, { once: true });
+    }, 10);
+}
+
+function closeTnmDropdown() {
+    const dropdown = document.getElementById('tnmSiteDropdown');
+    if (dropdown) dropdown.remove();
+}
+
+// Select a primary site - just update button, don't generate yet
+function selectPrimarySite(candidate, skipDiagnosisCheck = false) {
+    const diagnosis = document.getElementById('editCaseDiagnosis')?.value.trim().toLowerCase() || '';
+    const diseaseName = candidate.disease_name.toLowerCase();
+    
+    // Check if selected primary appears in diagnosis
+    if (!skipDiagnosisCheck && !diagnosis.includes(diseaseName)) {
+        // Check for common variants (e.g., "laryngeal" for "larynx")
+        const variants = getOrganVariants(diseaseName);
+        const foundInDiagnosis = variants.some(v => diagnosis.includes(v));
+        
+        if (!foundInDiagnosis) {
+            const confirmed = confirm(
+                `Warning: "${candidate.disease_name}" does not appear to match the diagnosis:\n\n` +
+                `"${diagnosis}"\n\n` +
+                `Are you sure you want to use "${candidate.disease_name}" as the primary site?\n\n` +
+                `Click OK to continue, or Cancel to choose a different primary.`
+            );
+            if (!confirmed) {
+                return; // Don't close dropdown, let user choose again
+            }
+        }
+    }
+    
+    closeTnmDropdown();
+    selectedPrimarySite = candidate;
+    
+    const tnmBtn = document.getElementById('tnmIntelBtn');
+    
+    if (candidate.has_staging_data) {
+        tnmBtn.innerHTML = `<i class="fas fa-dna me-1"></i>TNM: ${candidate.disease_name}`;
+        tnmBtn.title = `Click to generate TNM staging for ${candidate.disease_name}`;
+        tnmBtn.style.opacity = '1';
+        tnmBtn.disabled = false;
+    } else {
+        tnmBtn.innerHTML = `<i class="fas fa-dna me-1"></i>TNM: ${candidate.disease_name} (No Data)`;
+        tnmBtn.title = `No staging data available for ${candidate.disease_name}. Use dropdown to change.`;
+        tnmBtn.style.opacity = '0.7';
+        tnmBtn.disabled = true;
+    }
+}
+
+// Group similar disease sites for clarity
+function groupSimilarSites(candidates) {
+    const groups = {};
+    const groupPatterns = [
+        { pattern: /oropharynx/i, key: 'Oropharynx' },
+        { pattern: /neuroendocrine/i, key: 'Neuroendocrine Tumors' },
+        { pattern: /soft tissue sarcoma/i, key: 'Soft Tissue Sarcoma' },
+        { pattern: /thyroid/i, key: 'Thyroid' },
+        { pattern: /bile duct/i, key: 'Bile Duct' },
+        { pattern: /lymphoma/i, key: 'Lymphoma' },
+        { pattern: /melanoma/i, key: 'Melanoma' },
+        { pattern: /corpus uteri/i, key: 'Corpus Uteri' },
+    ];
+    
+    candidates.forEach(candidate => {
+        let groupKey = 'Other';
+        for (const { pattern, key } of groupPatterns) {
+            if (pattern.test(candidate.disease_name)) {
+                groupKey = key;
+                break;
+            }
+        }
+        if (!groups[groupKey]) groups[groupKey] = [];
+        groups[groupKey].push(candidate);
+    });
+    
+    return groups;
+}
+
+// Get organ name variants for matching
+function getOrganVariants(organName) {
+    const variantMap = {
+        'larynx': ['larynx', 'laryngeal', 'glottic', 'supraglottic', 'subglottic'],
+        'lung': ['lung', 'pulmonary', 'bronchogenic', 'bronchial'],
+        'liver': ['liver', 'hepatic', 'hepatocellular', 'hcc'],
+        'kidney': ['kidney', 'renal', 'rcc'],
+        'breast': ['breast', 'mammary'],
+        'stomach': ['stomach', 'gastric'],
+        'esophagus': ['esophagus', 'esophageal', 'oesophagus', 'oesophageal'],
+        'colon': ['colon', 'colonic', 'colorectal', 'rectal', 'rectum'],
+        'pancreas': ['pancreas', 'pancreatic'],
+        'bladder': ['bladder', 'vesical', 'urothelial'],
+        'prostate': ['prostate', 'prostatic'],
+        'thyroid': ['thyroid'],
+        'ovary': ['ovary', 'ovarian'],
+        'cervix': ['cervix', 'cervical'],
+        'endometrium': ['endometrium', 'endometrial', 'uterus', 'uterine'],
+        'testis': ['testis', 'testicular'],
+        'brain': ['brain', 'cerebral', 'intracranial', 'glioma', 'glioblastoma'],
+        'bone': ['bone', 'osseous', 'skeletal', 'osteosarcoma'],
+        'oral': ['oral', 'tongue', 'buccal', 'floor of mouth'],
+        'oropharynx': ['oropharynx', 'oropharyngeal', 'tonsil', 'tonsillar'],
+        'nasopharynx': ['nasopharynx', 'nasopharyngeal'],
+        'hypopharynx': ['hypopharynx', 'hypopharyngeal', 'pyriform'],
+    };
+    return variantMap[organName] || [organName];
+}
+
+// Known AJCC disease sites (fetched from server or cached)
+let knownAjccSites = null;
+
+// Fetch known AJCC disease sites
+async function fetchKnownAjccSites() {
+    if (knownAjccSites) return knownAjccSites;
+    
+    try {
+        const response = await fetch('/tnm/api/disease-sites');
+        if (response.ok) {
+            const data = await response.json();
+            knownAjccSites = data.sites || [];
+            return knownAjccSites;
+        }
+    } catch (err) {
+        console.error('[TNM] Failed to fetch AJCC sites:', err);
+    }
+    
+    // Fallback list if API fails
+    knownAjccSites = [
+        'Larynx', 'Lung', 'Breast', 'Liver', 'Kidney', 'Bladder', 'Prostate',
+        'Thyroid', 'Stomach', 'Esophagus', 'Colon', 'Pancreas', 'Ovary',
+        'Cervix', 'Endometrium', 'Testis', 'Brain', 'Bone', 'Soft Tissue',
+        'Oral Cavity', 'Oropharynx', 'Nasopharynx', 'Hypopharynx', 'Skin',
+        'Melanoma', 'Adrenal', 'Small Intestine', 'Appendix', 'Gallbladder'
+    ];
+    return knownAjccSites;
+}
+
+// Show manual entry dialog with validation
+async function showManualSiteEntry() {
+    closeTnmDropdown();
+    
+    // Fetch known sites
+    const sites = await fetchKnownAjccSites();
+    const sitesList = sites.join(', ');
+    
+    const siteName = prompt(
+        `Enter the primary cancer site.\n\n` +
+        `Valid AJCC sites include:\n${sitesList}\n\n` +
+        `Enter site name:`
+    );
+    
+    if (!siteName || !siteName.trim()) return;
+    
+    const enteredSite = siteName.trim();
+    const enteredLower = enteredSite.toLowerCase();
+    
+    // Check if entered site matches any known site
+    const matchedSite = sites.find(s => 
+        s.toLowerCase() === enteredLower || 
+        s.toLowerCase().includes(enteredLower) ||
+        enteredLower.includes(s.toLowerCase())
+    );
+    
+    if (!matchedSite) {
+        alert(
+            `"${enteredSite}" is not a recognized AJCC disease site.\n\n` +
+            `Please select from the dropdown or enter a valid site name.\n\n` +
+            `Valid sites include: ${sitesList}`
+        );
+        // Reopen dropdown
+        setTimeout(() => {
+            const tnmBtn = document.getElementById('tnmIntelBtn');
+            if (tnmBtn) showTnmSiteDropdown({ stopPropagation: () => {} });
+        }, 100);
+        return;
+    }
+    
+    // Check diagnosis alignment
+    const diagnosis = document.getElementById('editCaseDiagnosis')?.value.trim().toLowerCase() || '';
+    const variants = getOrganVariants(matchedSite.toLowerCase());
+    const foundInDiagnosis = variants.some(v => diagnosis.includes(v));
+    
+    if (!foundInDiagnosis) {
+        const confirmed = confirm(
+            `Warning: "${matchedSite}" does not appear to match the diagnosis:\n\n` +
+            `"${diagnosis}"\n\n` +
+            `Are you sure you want to use "${matchedSite}" as the primary site?`
+        );
+        if (!confirmed) {
+            // Reopen dropdown
+            setTimeout(() => {
+                const tnmBtn = document.getElementById('tnmIntelBtn');
+                if (tnmBtn) showTnmSiteDropdown({ stopPropagation: () => {} });
+            }, 100);
+            return;
+        }
+    }
+    
+    // Find if this site exists in candidates
+    const existingCandidate = tnmCandidates.find(c => 
+        c.disease_name.toLowerCase() === matchedSite.toLowerCase()
+    );
+    
+    if (existingCandidate) {
+        selectPrimarySite(existingCandidate, true); // Skip diagnosis check, already done
+    } else {
+        // Create a custom candidate
+        selectedPrimarySite = {
+            disease_name: matchedSite,
+            has_staging_data: true, // Will fail gracefully if not
+            is_custom: true
+        };
+        
+        const tnmBtn = document.getElementById('tnmIntelBtn');
+        tnmBtn.innerHTML = `<i class="fas fa-dna me-1"></i>TNM: ${matchedSite}`;
+        tnmBtn.title = `Click to generate TNM staging for ${matchedSite}`;
+        tnmBtn.style.opacity = '1';
+        tnmBtn.disabled = false;
+    }
+}
+
+// Generate TNM Intelligence for a specific site
+async function generateTnmIntelligenceForSite(primarySiteName, forceRegenerate = false) {
+    const tnmBtn = document.getElementById('tnmIntelBtn');
+    const caseIdField = document.getElementById('editCaseId')?.value;
+    const diagnosis = document.getElementById('editCaseDiagnosis')?.value.trim();
+    const module = document.getElementById('editCaseModule')?.value || '';
+    const bodyPart = document.getElementById('editCaseBodyPart')?.value || '';
+    
+    if (!diagnosis) {
+        alert('Please enter a diagnosis first.');
+        return;
+    }
+    
+    // Parse case ID
+    const isStagingCase = caseIdField && caseIdField.toString().startsWith('staging-');
+    const isNew = !caseIdField || caseIdField === 'new' || caseIdField.toString().startsWith('new-');
+    let caseId = null;
+    
+    if (!isNew && !isStagingCase) {
+        caseId = parseInt(caseIdField);
+    }
+    
+    // Check for existing intelligent data (unless force regenerate)
+    if (caseId && !forceRegenerate && selectedPrimarySite?.disease_site_id) {
+        try {
+            const checkResponse = await fetch(
+                `/tnm/api/check-existing-intelligence?case_id=${caseId}&disease_site_id=${selectedPrimarySite.disease_site_id}`
+            );
+            const checkData = await checkResponse.json();
+            
+            if (checkData.exists && checkData.data) {
+                // Show dialog to use existing or regenerate
+                const useExisting = confirm(
+                    `Intelligent TNM data already exists for this case.\n\n` +
+                    `Generated: ${checkData.generated_at ? new Date(checkData.generated_at).toLocaleString() : 'Unknown'}\n\n` +
+                    `Click OK to use the existing data.\n` +
+                    `Click Cancel to regenerate (old data will be replaced when you save).`
+                );
+                
+                if (useExisting) {
+                    // Insert existing data links directly into discussion
+                    insertTnmLinksDirectly({
+                        ...checkData.data,
+                        ajcc_match: selectedPrimarySite,
+                        tnm_link: selectedPrimarySite.tnm_link || `/tnm/${selectedPrimarySite.section_slug}/${selectedPrimarySite.disease_slug}?year=2026`,
+                        is_cached: true
+                    });
+                    return;
+                } else {
+                    // User wants to regenerate - warn about replacement
+                    alert(
+                        'Generating new TNM intelligence...\n\n' +
+                        'Note: When you save this case, the old intelligent data will be replaced with the new generation.'
+                    );
+                }
+            }
+        } catch (err) {
+            console.log('[TNM] Could not check for existing data:', err);
+            // Continue with generation
+        }
+    }
+    
+    // Disable button and show loading
+    const originalHtml = tnmBtn.innerHTML;
+    tnmBtn.disabled = true;
+    tnmBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Generating...';
+    
+    try {
+        // Use the explicit primary site in the diagnosis for the API call
+        // This overrides any auto-detection
+        const response = await fetch('/tnm/api/generate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                diagnosis: `${primarySiteName} cancer`, // Use explicit primary site
+                original_diagnosis: diagnosis,          // Keep original for context
+                module: module,
+                body_part: bodyPart,
+                case_id: caseId,
+                primary_site_override: primarySiteName  // Explicit override
+            })
+        });
+        
+        const responseData = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(responseData.error || `HTTP ${response.status}`);
+        }
+        
+        if (!responseData.success) {
+            throw new Error(responseData.error || 'Generation failed');
+        }
+        
+        // Extract the actual result from the API response
+        const result = responseData.data || {};
+        
+        // Mark as newly generated (not cached)
+        result.is_cached = false;
+        result.is_regenerated = forceRegenerate;
+        
+        // Add ajcc_match and tnm_link if missing
+        if (!result.ajcc_match && selectedPrimarySite) {
+            result.ajcc_match = selectedPrimarySite;
+        }
+        if (!result.tnm_link && selectedPrimarySite) {
+            result.tnm_link = selectedPrimarySite.tnm_link || `/tnm/${selectedPrimarySite.section_slug}/${selectedPrimarySite.disease_slug}?year=2026`;
+        }
+        
+        // Insert TNM intelligence directly into discussion
+        insertTnmLinksDirectly(result);
+        
+    } catch (error) {
+        console.error('[TNM Generate] Error:', error);
+        alert(`Failed to generate TNM intelligence: ${error.message}`);
+    } finally {
+        // Restore button
+        tnmBtn.disabled = false;
+        tnmBtn.innerHTML = originalHtml;
+    }
+}
+
+// Original button click handler
+function generateTnmIntelligence(e) {
+    // If a site is already selected and has data, generate directly
+    if (selectedPrimarySite && selectedPrimarySite.disease_name && selectedPrimarySite.has_staging_data) {
+        generateTnmIntelligenceForSite(selectedPrimarySite.disease_name);
+    } else {
+        // No site selected or no data - show dropdown to let user choose
+        showTnmSiteDropdown(e || event || window.event);
+    }
+}
+
+// Get TNM view link with year parameter
+function getTnmLink(ajccMatch) {
+    if (!ajccMatch || !ajccMatch.section_slug || !ajccMatch.disease_slug) {
+        return null;
+    }
+    // Extract year from tnm_version if present, default to 2026
+    const tnmVersion = ajccMatch.tnm_version || '';
+    const yearMatch = tnmVersion.match(/\((\d{4})\)/);
+    const year = yearMatch ? yearMatch[1] : '2026';
+    return `/tnm/${ajccMatch.section_slug}/${ajccMatch.disease_slug}?year=${year}`;
+}
+
+// Alias for backward compatibility
+function getAdminTnmLink(ajccMatch) {
+    return getTnmLink(ajccMatch);
+}
+
+// Regenerate TNM intelligence (called from modal when using cached data)
+function regenerateTnmIntelligence() {
+    if (!selectedPrimarySite || !selectedPrimarySite.disease_name) {
+        alert('No primary site selected. Please select a primary site first.');
+        return;
+    }
+    
+    const confirmed = confirm(
+        'Regenerate TNM Intelligence?\n\n' +
+        'This will create new AI-generated content. ' +
+        'When you save the case, the old cached data will be replaced.\n\n' +
+        'Continue?'
+    );
+    
+    if (confirmed) {
+        closeTnmModal();
+        generateTnmIntelligenceForSite(selectedPrimarySite.disease_name, true); // Force regenerate
+    }
+}
+
+// Display TNM Intelligence Modal
+function showTnmIntelligenceModal(data) {
+    // Remove any existing modal
+    const existingModal = document.getElementById('tnmIntelModal');
+    if (existingModal) existingModal.remove();
+    
+    const memoryAid = data.tnm_memory_aid || {};
+    const keyPoints = data.radiologist_key_points || [];
+    const upstaging = data.upstaging_triggers || [];
+    const mdtCritical = data.mdt_critical_findings || [];
+    const copyBlocks = data.copy_blocks || {};
+    const checklist = data.imaging_checklist || [];
+    const warnings = data.warnings || [];
+    const ajccMatch = data.ajcc_match || {};
+    const stagingTables = data.staging_tables || {};
+    
+    // Build staging tables HTML
+    let stagingTablesHtml = '';
+    
+    // T Definitions Table
+    const tDefs = stagingTables.t_definitions || [];
+    if (tDefs.length > 0) {
+        stagingTablesHtml += `
+        <div class="mb-4">
+            <h6 class="text-danger"><i class="fas fa-crosshairs me-1"></i>T Stage (Primary Tumor)</h6>
+            <table class="table table-sm table-bordered table-striped small">
+                <thead class="table-danger">
+                    <tr><th style="width: 80px;">Category</th><th>Definition</th></tr>
+                </thead>
+                <tbody>
+                    ${tDefs.map(t => `<tr><td><strong>${typeof t === 'object' ? (t.category || 'T?') : t}</strong></td><td>${typeof t === 'object' ? (t.definition || '') : ''}</td></tr>`).join('')}
+                </tbody>
+            </table>
+        </div>`;
+    }
+    
+    // N Definitions Table  
+    const nDefs = stagingTables.n_definitions || {};
+    const nClinical = nDefs.clinical || (Array.isArray(nDefs) ? nDefs : []);
+    const nPathological = nDefs.pathological || [];
+    
+    if (nClinical.length > 0 || nPathological.length > 0) {
+        stagingTablesHtml += `
+        <div class="mb-4">
+            <h6 class="text-warning"><i class="fas fa-sitemap me-1"></i>N Stage (Regional Lymph Nodes)</h6>`;
+        
+        if (nClinical.length > 0) {
+            stagingTablesHtml += `
+            <p class="small text-muted mb-1">Clinical (cN):</p>
+            <table class="table table-sm table-bordered table-striped small mb-2">
+                <thead class="table-warning">
+                    <tr><th style="width: 80px;">Category</th><th>Definition</th></tr>
+                </thead>
+                <tbody>
+                    ${nClinical.map(n => `<tr><td><strong>${typeof n === 'object' ? (n.category || 'N?') : n}</strong></td><td>${typeof n === 'object' ? (n.definition || '') : ''}</td></tr>`).join('')}
+                </tbody>
+            </table>`;
+        }
+        
+        if (nPathological.length > 0) {
+            stagingTablesHtml += `
+            <p class="small text-muted mb-1">Pathological (pN):</p>
+            <table class="table table-sm table-bordered table-striped small">
+                <thead class="table-warning">
+                    <tr><th style="width: 80px;">Category</th><th>Definition</th></tr>
+                </thead>
+                <tbody>
+                    ${nPathological.map(n => `<tr><td><strong>${typeof n === 'object' ? (n.category || 'N?') : n}</strong></td><td>${typeof n === 'object' ? (n.definition || '') : ''}</td></tr>`).join('')}
+                </tbody>
+            </table>`;
+        }
+        stagingTablesHtml += `</div>`;
+    }
+    
+    // M Definitions Table
+    const mDefs = stagingTables.m_definitions || [];
+    if (mDefs.length > 0) {
+        stagingTablesHtml += `
+        <div class="mb-4">
+            <h6 class="text-dark"><i class="fas fa-globe me-1"></i>M Stage (Distant Metastasis)</h6>
+            <table class="table table-sm table-bordered table-striped small">
+                <thead class="table-dark">
+                    <tr><th style="width: 80px;">Category</th><th>Definition</th></tr>
+                </thead>
+                <tbody>
+                    ${mDefs.map(m => `<tr><td><strong>${typeof m === 'object' ? (m.category || 'M?') : m}</strong></td><td>${typeof m === 'object' ? (m.definition || '') : ''}</td></tr>`).join('')}
+                </tbody>
+            </table>
+        </div>`;
+    }
+    
+    // Stage Groups Table
+    const stageGroups = stagingTables.stage_groups || [];
+    if (stageGroups.length > 0) {
+        stagingTablesHtml += `
+        <div class="mb-4">
+            <h6 class="text-primary"><i class="fas fa-layer-group me-1"></i>Stage Groupings</h6>
+            <table class="table table-sm table-bordered table-striped small">
+                <thead class="table-primary">
+                    <tr><th>Stage</th><th>T</th><th>N</th><th>M</th></tr>
+                </thead>
+                <tbody>
+                    ${stageGroups.slice(0, 20).map(sg => `<tr><td><strong>${sg.stage || '?'}</strong></td><td>${sg.T || '-'}</td><td>${sg.N || '-'}</td><td>${sg.M || '-'}</td></tr>`).join('')}
+                </tbody>
+            </table>
+        </div>`;
+    }
+    
+    const modal = document.createElement('div');
+    modal.id = 'tnmIntelModal';
+    modal.className = 'modal fade show';
+    modal.style.cssText = 'display: block; background: rgba(0,0,0,0.5);';
+    modal.innerHTML = `
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header" style="background: linear-gradient(135deg, #6b46c1 0%, #9f7aea 100%); color: white;">
+                    <h5 class="modal-title">
+                        <i class="fas fa-dna me-2"></i>TNM Intelligence: ${ajccMatch.disease_name || 'Unknown'}
+                        ${data.is_cached ? '<span class="badge bg-warning text-dark ms-2" style="font-size: 10px;">Cached</span>' : ''}
+                        ${data.is_regenerated ? '<span class="badge bg-success ms-2" style="font-size: 10px;">Regenerated</span>' : ''}
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" onclick="closeTnmModal()"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Version Info -->
+                    <div class="alert ${data.is_cached ? 'alert-warning' : 'alert-info'} mb-4">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <i class="fas fa-info-circle me-2"></i>
+                                <strong>${ajccMatch.tnm_version || 'AJCC 8th Edition'}</strong> - 
+                                ${ajccMatch.section_name || 'Section'}
+                                ${stagingTables.year_used ? ` (Year ${stagingTables.year_used})` : ''}
+                                ${data.is_cached ? '<br><small class="text-muted"><i class="fas fa-clock me-1"></i>Using previously generated data</small>' : ''}
+                            </div>
+                            <div>
+                                ${data.tnm_link ? `<a href="${data.tnm_link}" target="_blank" class="btn btn-sm btn-outline-primary me-1" title="Student-friendly view"><i class="fas fa-user-graduate"></i></a>` : ''}
+                                ${getAdminTnmLink(ajccMatch) ? `<a href="${getAdminTnmLink(ajccMatch)}" target="_blank" class="btn btn-sm btn-outline-secondary me-2" title="Full admin view"><i class="fas fa-user-shield"></i></a>` : ''}
+                                ${data.is_cached ? `<button type="button" class="btn btn-sm btn-warning" onclick="regenerateTnmIntelligence()"><i class="fas fa-sync-alt me-1"></i>Regenerate</button>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Nav Tabs for organized content -->
+                    <ul class="nav nav-tabs mb-3" id="tnmIntelTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="staging-tab" data-bs-toggle="tab" data-bs-target="#staging-pane" type="button" role="tab">
+                                <i class="fas fa-table me-1"></i>Staging Tables
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="intelligence-tab" data-bs-toggle="tab" data-bs-target="#intelligence-pane" type="button" role="tab">
+                                <i class="fas fa-brain me-1"></i>AI Intelligence
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="templates-tab" data-bs-toggle="tab" data-bs-target="#templates-pane" type="button" role="tab">
+                                <i class="fas fa-copy me-1"></i>Report Templates
+                            </button>
+                        </li>
+                    </ul>
+                    
+                    <div class="tab-content" id="tnmIntelTabContent">
+                        <!-- Staging Tables Tab -->
+                        <div class="tab-pane fade show active" id="staging-pane" role="tabpanel">
+                            ${stagingTablesHtml || '<p class="text-muted">No staging tables available.</p>'}
+                            
+                            ${stagingTables.quick_reference_html ? `
+                            <div class="mt-4">
+                                <h6><i class="fas fa-book-open me-1"></i>Full Quick Reference</h6>
+                                <div class="border rounded p-3 bg-light tnm-quick-ref" style="max-height: 400px; overflow-y: auto;">
+                                    ${stagingTables.quick_reference_html}
+                                </div>
+                            </div>
+                            ` : ''}
+                        </div>
+                        
+                        <!-- AI Intelligence Tab -->
+                        <div class="tab-pane fade" id="intelligence-pane" role="tabpanel">
+                            <!-- TNM Memory Aid -->
+                            <div class="card mb-4 border-primary">
+                                <div class="card-header bg-primary text-white">
+                                    <i class="fas fa-brain me-2"></i>TNM Memory Aid (Imaging Focus)
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <h6 class="text-danger"><i class="fas fa-crosshairs me-1"></i>T Stage</h6>
+                                            <p class="small">${memoryAid.T || 'No T-stage summary available'}</p>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <h6 class="text-warning"><i class="fas fa-sitemap me-1"></i>N Stage</h6>
+                                            <p class="small">${memoryAid.N || 'No N-stage summary available'}</p>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <h6 class="text-dark"><i class="fas fa-globe me-1"></i>M Stage</h6>
+                                            <p class="small">${memoryAid.M || 'No M-stage summary available'}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Upstaging Triggers -->
+                            ${upstaging.length > 0 ? `
+                            <div class="card mb-4 border-danger">
+                                <div class="card-header bg-danger text-white">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>Upstaging Triggers (MDT Critical)
+                                </div>
+                                <div class="card-body">
+                                    <ul class="mb-0">
+                                        ${upstaging.map(t => `<li class="small">${t}</li>`).join('')}
+                                    </ul>
+                                </div>
+                            </div>
+                            ` : ''}
+                            
+                            <!-- Radiologist Key Points -->
+                            ${keyPoints.length > 0 ? `
+                            <div class="card mb-4">
+                                <div class="card-header bg-success text-white">
+                                    <i class="fas fa-check-circle me-2"></i>Radiologist Key Points
+                                </div>
+                                <div class="card-body">
+                                    <ul class="mb-0">
+                                        ${keyPoints.map(p => `<li class="small">${p}</li>`).join('')}
+                                    </ul>
+                                </div>
+                            </div>
+                            ` : ''}
+                            
+                            <!-- Imaging Checklist -->
+                            ${checklist.length > 0 ? `
+                            <div class="card mb-4">
+                                <div class="card-header bg-info text-white">
+                                    <i class="fas fa-clipboard-list me-2"></i>Imaging Checklist
+                                </div>
+                                <div class="card-body">
+                                    <ul class="mb-0">
+                                        ${checklist.map(c => `<li class="small"><i class="fas fa-square me-1 text-muted"></i>${c}</li>`).join('')}
+                                    </ul>
+                                </div>
+                            </div>
+                            ` : ''}
+                            
+                            <!-- Warnings -->
+                            ${warnings.length > 0 ? `
+                            <div class="alert alert-warning">
+                                <h6><i class="fas fa-exclamation-circle me-2"></i>Caveats</h6>
+                                <ul class="mb-0 small">
+                                    ${warnings.map(w => `<li>${w}</li>`).join('')}
+                                </ul>
+                            </div>
+                            ` : ''}
+                        </div>
+                        
+                        <!-- Report Templates Tab -->
+                        <div class="tab-pane fade" id="templates-pane" role="tabpanel">
+                            ${Object.keys(copyBlocks).length > 0 ? `
+                            <div class="card mb-4">
+                                <div class="card-header bg-secondary text-white">
+                                    <i class="fas fa-copy me-2"></i>Copy-Friendly Report Templates
+                                </div>
+                                <div class="card-body">
+                                    ${copyBlocks.T_stage_template ? `
+                                    <div class="mb-3">
+                                        <label class="form-label small fw-bold">T Stage Template:</label>
+                                        <div class="bg-light p-2 rounded small" style="white-space: pre-wrap;">${copyBlocks.T_stage_template}</div>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary mt-1" onclick="copyToClipboard('${encodeURIComponent(copyBlocks.T_stage_template)}')">
+                                            <i class="fas fa-copy me-1"></i>Copy
+                                        </button>
+                                    </div>
+                                    ` : ''}
+                                    ${copyBlocks.N_stage_template ? `
+                                    <div class="mb-3">
+                                        <label class="form-label small fw-bold">N Stage Template:</label>
+                                        <div class="bg-light p-2 rounded small" style="white-space: pre-wrap;">${copyBlocks.N_stage_template}</div>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary mt-1" onclick="copyToClipboard('${encodeURIComponent(copyBlocks.N_stage_template)}')">
+                                            <i class="fas fa-copy me-1"></i>Copy
+                                        </button>
+                                    </div>
+                                    ` : ''}
+                                    ${copyBlocks.M_stage_template ? `
+                                    <div class="mb-3">
+                                        <label class="form-label small fw-bold">M Stage Template:</label>
+                                        <div class="bg-light p-2 rounded small" style="white-space: pre-wrap;">${copyBlocks.M_stage_template}</div>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary mt-1" onclick="copyToClipboard('${encodeURIComponent(copyBlocks.M_stage_template)}')">
+                                            <i class="fas fa-copy me-1"></i>Copy
+                                        </button>
+                                    </div>
+                                    ` : ''}
+                                    ${copyBlocks.structured_report_block ? `
+                                    <div class="mb-3">
+                                        <label class="form-label small fw-bold">Structured Report Block:</label>
+                                        <div class="bg-light p-2 rounded small" style="white-space: pre-wrap; font-family: monospace;">
+                                            ${copyBlocks.structured_report_block}
+                                        </div>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary mt-2" onclick="copyToClipboard('${encodeURIComponent(copyBlocks.structured_report_block)}')">
+                                            <i class="fas fa-copy me-1"></i>Copy
+                                        </button>
+                                    </div>
+                                    ` : ''}
+                                    ${copyBlocks.negative_report_template ? `
+                                    <div class="mb-3">
+                                        <label class="form-label small fw-bold">Negative/Early Stage Template:</label>
+                                        <div class="bg-light p-2 rounded small" style="white-space: pre-wrap;">${copyBlocks.negative_report_template}</div>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary mt-1" onclick="copyToClipboard('${encodeURIComponent(copyBlocks.negative_report_template)}')">
+                                            <i class="fas fa-copy me-1"></i>Copy
+                                        </button>
+                                    </div>
+                                    ` : ''}
+                                </div>
+                            </div>
+                            ` : '<p class="text-muted">No report templates available.</p>'}
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeTnmModal()">Close</button>
+                    <button type="button" class="btn btn-success" onclick="insertTnmToDiscussion()">
+                        <i class="fas fa-plus me-1"></i>Add Link to Discussion
+                    </button>
+                    ${data.tnm_link ? `
+                    <a href="${data.tnm_link}" target="_blank" class="btn btn-primary">
+                        <i class="fas fa-user-graduate me-1"></i>Student TNM View
+                    </a>
+                    ` : ''}
+                    ${getAdminTnmLink(ajccMatch) ? `
+                    <a href="${getAdminTnmLink(ajccMatch)}" target="_blank" class="btn btn-outline-secondary">
+                        <i class="fas fa-user-shield me-1"></i>Admin TNM View
+                    </a>
+                    ` : ''}
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Store data for later use
+    modal.dataset.tnmData = JSON.stringify(data);
+    
+    document.body.appendChild(modal);
+    document.body.style.overflow = 'hidden';
+    
+    // Initialize Bootstrap tabs
+    const tabEls = modal.querySelectorAll('button[data-bs-toggle="tab"]');
+    tabEls.forEach(tabEl => {
+        tabEl.addEventListener('click', function(event) {
+            event.preventDefault();
+            const target = this.getAttribute('data-bs-target');
+            
+            // Remove active from all tabs and panes
+            modal.querySelectorAll('.nav-link').forEach(t => t.classList.remove('active'));
+            modal.querySelectorAll('.tab-pane').forEach(p => {
+                p.classList.remove('show', 'active');
+            });
+            
+            // Add active to clicked tab and target pane
+            this.classList.add('active');
+            const pane = modal.querySelector(target);
+            if (pane) {
+                pane.classList.add('show', 'active');
+            }
+        });
+    });
+}
+
+// Close TNM modal
+function closeTnmModal() {
+    const modal = document.getElementById('tnmIntelModal');
+    if (modal) {
+        modal.remove();
+        document.body.style.overflow = '';
+    }
+}
+
+// Copy text to clipboard
+function copyToClipboard(encodedText) {
+    const text = decodeURIComponent(encodedText);
+    navigator.clipboard.writeText(text).then(() => {
+        alert('Copied to clipboard!');
+    }).catch(err => {
+        console.error('Copy failed:', err);
+    });
+}
+
+// Convert Markdown to HTML for TinyMCE
+function markdownToHtml(markdown) {
+    if (!markdown) return '';
+    
+    let html = markdown;
+    
+    // Convert headers
+    html = html.replace(/^#### (.+)$/gm, '<h4>$1</h4>');
+    html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+    html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+    
+    // Convert bold
+    html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    
+    // Convert italic
+    html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+    
+    // Convert bullet points (handle nested levels)
+    html = html.replace(/^- (.+)$/gm, '<li>$1</li>');
+    
+    // Wrap consecutive <li> items in <ul>
+    html = html.replace(/(<li>.*<\/li>\n?)+/g, function(match) {
+        return '<ul>' + match + '</ul>';
+    });
+    
+    // Convert line breaks to paragraphs for non-list, non-header lines
+    html = html.replace(/^(?!<[hul]|<li)(.+)$/gm, '<p>$1</p>');
+    
+    // Clean up empty paragraphs
+    html = html.replace(/<p>\s*<\/p>/g, '');
+    
+    // Convert horizontal rules
+    html = html.replace(/^---$/gm, '<hr>');
+    
+    // Convert links
+    html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+    
+    // Handle emoji indicators
+    html = html.replace(/🔴/g, '<span style="color: #dc2626;">●</span>');
+    html = html.replace(/⚠️/g, '<span style="color: #f59e0b;">⚠</span>');
+    
+    return html;
+}
+
+// Insert TNM Intelligence directly into discussion
+function insertTnmLinksDirectly(data) {
+    const ajccMatch = data.ajcc_match || selectedPrimarySite || {};
+    const diseaseName = data.disease_name || ajccMatch.disease_name || 'Cancer';
+    const tnmVersion = data.tnm_version || ajccMatch.tnm_version || 'AJCC 8th Edition';
+    const isCached = data.is_cached;
+    const isRegenerated = data.is_regenerated;
+    
+    // Build TNM link - single link for both student and admin
+    let tnmLink = data.tnm_link;
+    if (!tnmLink && ajccMatch.section_slug && ajccMatch.disease_slug) {
+        // Extract year from version string or default to 2026
+        const yearMatch = tnmVersion.match(/\((\d{4})\)/);
+        const year = yearMatch ? yearMatch[1] : '2026';
+        tnmLink = `/tnm/${ajccMatch.section_slug}/${ajccMatch.disease_slug}?year=${year}`;
+    }
+    
+    // Get the Markdown content from Claude
+    const markdownContent = data.tnm_intelligence_markdown || '';
+    
+    if (!tnmLink && !markdownContent) {
+        alert('No TNM data available for this cancer type.');
+        return;
+    }
+    
+    // Convert Markdown to HTML
+    const intelligenceHtml = markdownToHtml(markdownContent);
+    
+    // Build the full HTML block with:
+    // 1. TNM Viewer link header (single link for all users)
+    // 2. AI-Generated badge with pending review notice
+    // 3. The intelligent content
+    const fullHtml = `
+<div class="tnm-intelligence-block" style="border: 1px solid #e5e7eb; border-radius: 8px; margin: 1.5rem 0; overflow: hidden;">
+    
+    <!-- Header with TNM Viewer Link -->
+    <div style="background: linear-gradient(135deg, #6b46c1 0%, #9f7aea 100%); padding: 12px 16px;">
+        <a href="${tnmLink}" target="_blank" style="color: white; font-weight: 600; text-decoration: none; font-size: 1.1em;">
+            <i class="fas fa-dna me-2"></i>View AJCC TNM Staging – ${diseaseName}
+            <i class="fas fa-external-link-alt ms-2" style="font-size: 0.8em;"></i>
+        </a>
+    </div>
+    
+    <!-- AI-Generated Badge -->
+    <div style="background: #fef3c7; border-bottom: 1px solid #fcd34d; padding: 8px 16px; display: flex; align-items: center; gap: 8px;">
+        <span style="background: #f59e0b; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.75em; font-weight: 600;">
+            <i class="fas fa-robot me-1"></i>AI-Generated
+        </span>
+        <span style="color: #92400e; font-size: 0.85em;">
+            Pending Admin Review – Verify before use in MDT
+        </span>
+    </div>
+    
+    <!-- TNM Intelligence Content -->
+    <div class="tnm-intelligence-content" style="padding: 16px 20px; background: #fafafa; font-size: 0.95em; line-height: 1.6;">
+        ${intelligenceHtml}
+    </div>
+    
+    <!-- Footer -->
+    <div style="background: #f3f4f6; padding: 8px 16px; border-top: 1px solid #e5e7eb; font-size: 0.8em; color: #6b7280;">
+        <i class="fas fa-info-circle me-1"></i>
+        Generated: ${new Date().toLocaleString()} | Edition: ${tnmVersion}
+        ${isCached ? ' | <span style="color: #d97706;">From Cache</span>' : ''}
+        ${isRegenerated ? ' | <span style="color: #059669;">Regenerated</span>' : ''}
+    </div>
+</div>
+`;
+    
+    // Insert into TinyMCE or textarea
+    if (typeof tinymce !== 'undefined' && tinymce.get('editCaseDiscussion')) {
+        const editor = tinymce.get('editCaseDiscussion');
+        const currentContent = editor.getContent();
+        editor.setContent(currentContent + fullHtml);
+    } else {
+        const textarea = document.getElementById('editCaseDiscussion');
+        if (textarea) {
+            textarea.value += '\n\n' + fullHtml;
+        }
+    }
+    
+    // Show confirmation
+    alert(`TNM Imaging Intelligence added to discussion!\n\n✓ AJCC staging definitions link\n✓ AI-generated clinical intelligence\n\nPlease review before saving.`);
+}
+
+// Legacy: Insert TNM link into discussion from modal (kept for backward compatibility)
+function insertTnmToDiscussion() {
+    const modal = document.getElementById('tnmIntelModal');
+    if (!modal) return;
+    
+    try {
+        const data = JSON.parse(modal.dataset.tnmData);
+        insertTnmLinksDirectly(data);
+        closeTnmModal();
+    } catch (err) {
+        console.error('[TNM Insert] Error:', err);
+        alert('Failed to insert TNM link');
+    }
+}
+
+// Listen for diagnosis changes to check TNM availability
+document.addEventListener('DOMContentLoaded', function() {
+    const diagnosisField = document.getElementById('editCaseDiagnosis');
+    if (diagnosisField) {
+        // Check on initial load (with delay to ensure case is loaded)
+        setTimeout(checkTnmAvailability, 1000);
+        
+        // Check when diagnosis changes
+        let debounceTimer;
+        diagnosisField.addEventListener('input', function() {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(checkTnmAvailability, 500);
+        });
+    }
+});
+
+// ============================================================================
+// REFERENCE FINDER - Context Menu for Admin
+// ============================================================================
+
+// Create custom context menu for text selection
+let referenceContextMenu = null;
+
+function createReferenceContextMenu() {
+    // Remove any existing menu
+    if (referenceContextMenu) {
+        referenceContextMenu.remove();
+    }
+    
+    const menu = document.createElement('div');
+    menu.id = 'referenceContextMenu';
+    menu.style.cssText = `
+        position: fixed;
+        background: white;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 10000;
+        display: none;
+        min-width: 200px;
+        font-size: 14px;
+    `;
+    
+    menu.innerHTML = `
+        <div class="ref-menu-item" onclick="findReferenceForSelection()" style="padding: 10px 15px; cursor: pointer; display: flex; align-items: center; gap: 8px; border-radius: 6px;">
+            <i class="fas fa-search" style="color: #28a745;"></i>
+            <span>Find Reference Article</span>
+        </div>
+    `;
+    
+    // Hover effect
+    menu.querySelector('.ref-menu-item').addEventListener('mouseenter', function() {
+        this.style.background = '#f0f0f0';
+    });
+    menu.querySelector('.ref-menu-item').addEventListener('mouseleave', function() {
+        this.style.background = 'white';
+    });
+    
+    document.body.appendChild(menu);
+    referenceContextMenu = menu;
+    return menu;
+}
+
+function showReferenceContextMenu(x, y) {
+    const menu = referenceContextMenu || createReferenceContextMenu();
+    menu.style.left = `${x}px`;
+    menu.style.top = `${y}px`;
+    menu.style.display = 'block';
+}
+
+function hideReferenceContextMenu() {
+    if (referenceContextMenu) {
+        referenceContextMenu.style.display = 'none';
+    }
+}
+
+// Get selected text from TinyMCE editor
+function getSelectedText() {
+    if (typeof tinymce !== 'undefined') {
+        const editor = tinymce.get('editCaseDiscussion');
+        if (editor) {
+            const selection = editor.selection.getContent({ format: 'text' });
+            if (selection && selection.trim()) {
+                return selection.trim();
+            }
+        }
+    }
+    return '';
+}
+
+// Find reference for selected text
+async function findReferenceForSelection() {
+    hideReferenceContextMenu();
+    
+    const selectedText = getSelectedText();
+    if (!selectedText) {
+        alert('Please select some text first.');
+        return;
+    }
+    
+    // Show loading modal
+    showReferenceSearchModal(selectedText);
+    
+    try {
+        const response = await fetch('/resources/api/find-reference', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                query: selectedText,
+                strict: true
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(data.error || `HTTP ${response.status}`);
+        }
+        
+        updateReferenceSearchModal(data);
+        
+    } catch (error) {
+        console.error('[Reference Finder] Error:', error);
+        updateReferenceSearchModal({
+            error: error.message,
+            message: 'Failed to search for references. Please try again.'
+        });
+    }
+}
+
+// Show reference search modal
+function showReferenceSearchModal(query) {
+    // Remove existing modal
+    const existing = document.getElementById('referenceSearchModal');
+    if (existing) existing.remove();
+    
+    const modal = document.createElement('div');
+    modal.id = 'referenceSearchModal';
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.5);
+        z-index: 10001;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    `;
+    
+    modal.innerHTML = `
+        <div style="background: #fdfdfb; border-radius: 12px; max-width: 600px; width: 90%; max-height: 80vh; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.25);">
+            <div style="background: linear-gradient(135deg, #5E899E 0%, #4a7285 100%); padding: 15px 20px; display: flex; justify-content: space-between; align-items: center;">
+                <h5 style="margin: 0; color: white; font-weight: 600;">
+                    <i class="fas fa-search me-2"></i>Find Reference Article
+                </h5>
+                <button onclick="closeReferenceSearchModal()" style="background: none; border: none; color: white; font-size: 20px; cursor: pointer;">&times;</button>
+            </div>
+            <div style="padding: 20px; max-height: calc(80vh - 60px); overflow-y: auto;">
+                <div style="background: #a8d5ba30; border: 1px solid #a8d5ba; padding: 12px; border-radius: 6px; margin-bottom: 15px;">
+                    <small style="color: #5a6270;">Searching for:</small>
+                    <div style="font-weight: 500; color: #2c3e50; word-break: break-word;">"${escapeHtml(query)}"</div>
+                </div>
+                <div id="referenceSearchResults" style="text-align: center; padding: 30px;">
+                    <div class="spinner-border" role="status" style="color: #e96304;"></div>
+                    <p style="color: #5a6270; margin-top: 0.5rem; margin-bottom: 0;">Searching PubMed, Radiopaedia, Crossref, and Radiology Assistant...</p>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Close on background click
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) {
+            closeReferenceSearchModal();
+        }
+    });
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function closeReferenceSearchModal() {
+    const modal = document.getElementById('referenceSearchModal');
+    if (modal) modal.remove();
+}
+
+// Search with a new/modified query
+async function searchWithNewQuery(newQuery) {
+    if (!newQuery || !newQuery.trim()) {
+        alert('Please enter a search query.');
+        return;
+    }
+    
+    const query = newQuery.trim();
+    
+    // Update the search box in modal
+    const searchInput = document.getElementById('modifySearchInput');
+    if (searchInput) searchInput.value = query;
+    
+    // Update the query display
+    const modal = document.getElementById('referenceSearchModal');
+    if (modal) {
+        const queryDisplay = modal.querySelector('[style*="background: #a8d5ba30"]');
+        if (queryDisplay) {
+            queryDisplay.innerHTML = `
+                <small style="color: #5a6270;">Searching for:</small>
+                <div style="font-weight: 500; color: #2c3e50; word-break: break-word;">"${escapeHtml(query)}"</div>
+            `;
+        }
+    }
+    
+    // Show loading
+    const resultsDiv = document.getElementById('referenceSearchResults');
+    if (resultsDiv) {
+        resultsDiv.innerHTML = `
+            <div style="text-align: center; padding: 30px;">
+                <div class="spinner-border" role="status" style="color: #e96304;"></div>
+                <p style="color: #5a6270; margin-top: 0.5rem; margin-bottom: 0;">Searching...</p>
+            </div>
+        `;
+    }
+    
+    try {
+        const response = await fetch('/resources/api/find-reference', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                query: query,
+                strict: true
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(data.error || `HTTP ${response.status}`);
+        }
+        
+        updateReferenceSearchModal(data);
+        
+    } catch (error) {
+        console.error('[Reference Finder] Error:', error);
+        updateReferenceSearchModal({
+            error: error.message,
+            message: 'Failed to search for references. Please try again.'
+        });
+    }
+}
+
+function updateReferenceSearchModal(data) {
+    const resultsDiv = document.getElementById('referenceSearchResults');
+    if (!resultsDiv) return;
+    
+    if (data.error) {
+        resultsDiv.innerHTML = `
+            <div style="text-align: center; color: #e96304;">
+                <i class="fas fa-exclamation-circle" style="font-size: 2rem;"></i>
+                <p style="margin-top: 0.5rem; margin-bottom: 0; color: #5a6270;">${escapeHtml(data.message || data.error)}</p>
+            </div>
+        `;
+        return;
+    }
+    
+    let html = '';
+    
+    if (data.exact_match) {
+        html += `
+            <div style="background: #a8d5ba30; border: 1px solid #a8d5ba; border-radius: 8px; padding: 15px; margin-bottom: 15px;">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+                    <span style="background: #e96304; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.75em; font-weight: 600;">EXACT MATCH</span>
+                </div>
+                ${renderArticle(data.exact_match)}
+            </div>
+        `;
+    }
+    
+    if (data.close_matches && data.close_matches.length > 0) {
+        if (!data.exact_match) {
+            html += `<p style="color: #5a6270; margin-bottom: 0.75rem;"><i class="fas fa-info-circle me-1" style="color: #5E899E;"></i>${escapeHtml(data.message)}</p>`;
+        }
+        if (data.used_correction) {
+            html += `<p style="font-size: 0.85em; color: #e96304; margin-bottom: 0.5rem;"><i class="fas fa-spell-check me-1"></i>Auto-corrected to: "${escapeHtml(data.used_correction)}"</p>`;
+        }
+        if (data.sources_searched && data.sources_searched.length > 0) {
+            html += `<p style="font-size: 0.85em; color: #8b94a3; margin-bottom: 0.5rem;"><i class="fas fa-check-circle me-1" style="color: #a8d5ba;"></i>Searched: ${data.sources_searched.join(', ')}</p>`;
+        }
+        html += `<div style="text-align: left;">`;
+        data.close_matches.forEach((article, i) => {
+            html += `
+                <div style="background: #ffffff; border: 1px solid #c5cad1; border-radius: 8px; padding: 12px; margin-bottom: 10px;">
+                    ${renderArticle(article)}
+                </div>
+            `;
+        });
+        html += `</div>`;
+    }
+    
+    // Show search links separately (Radiopaedia, Radiology Assistant)
+    if (data.search_links && data.search_links.length > 0) {
+        html += `
+            <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #c5cad1;">
+                <p style="font-size: 0.85em; color: #5a6270; margin-bottom: 8px;"><i class="fas fa-external-link-alt me-1"></i>Also search in:</p>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+        `;
+        data.search_links.forEach(link => {
+            const sourceColors = {
+                'Radiopaedia': '#e96304',      // Brand primary
+                'Radiology Assistant': '#5E899E' // Brand neutral
+            };
+            const color = sourceColors[link.source] || '#5E899E';
+            html += `
+                <a href="${link.link}" target="_blank" class="btn btn-sm" style="background: ${color}; color: white; border: none;">
+                    <i class="fas fa-search me-1"></i>${escapeHtml(link.source)}
+                </a>
+            `;
+        });
+        html += `</div></div>`;
+    }
+    
+    // Show suggestions and modify option if no results
+    if (data.allow_modify) {
+        html += `
+            <div style="text-align: center; padding: 15px; background: #fdfdfb; border-radius: 8px; margin-bottom: 15px;">
+                <i class="fas fa-search" style="font-size: 1.5rem; color: #5E899E; opacity: 0.7;"></i>
+                <p style="margin: 0.5rem 0; color: #5a6270;">${escapeHtml(data.message)}</p>
+        `;
+        
+        // Show suggestions if available
+        if (data.suggestions && data.suggestions.length > 0) {
+            html += `<div style="margin-top: 12px; display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;">`;
+            data.suggestions.forEach(suggestion => {
+                html += `
+                    <button class="btn btn-sm" style="background: #a8d5ba; color: #2c3e50; border: none;" 
+                            onclick="searchWithNewQuery('${escapeHtml(suggestion.query)}')">
+                        <i class="fas fa-redo me-1"></i>${escapeHtml(suggestion.description)}
+                    </button>
+                `;
+            });
+            html += `</div>`;
+        }
+        
+        // Add custom search input
+        html += `
+            <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #c5cad1;">
+                <p style="font-size: 0.85em; color: #5a6270; margin-bottom: 8px;">Or modify your search:</p>
+                <div style="display: flex; gap: 8px;">
+                    <input type="text" id="modifySearchInput" value="${escapeHtml(data.query)}" 
+                           style="flex: 1; padding: 8px 12px; border: 1px solid #c5cad1; border-radius: 6px; font-size: 0.9em;"
+                           onkeypress="if(event.key==='Enter') searchWithNewQuery(this.value)">
+                    <button class="btn btn-sm" style="background: #e96304; color: white; border: none; padding: 8px 16px;"
+                            onclick="searchWithNewQuery(document.getElementById('modifySearchInput').value)">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        `;
+    }
+    
+    if (!data.exact_match && (!data.close_matches || data.close_matches.length === 0) && !data.allow_modify && (!data.search_links || data.search_links.length === 0)) {
+        html = `
+            <div style="text-align: center; color: #5a6270;">
+                <i class="fas fa-search" style="font-size: 2rem; opacity: 0.5; color: #5E899E;"></i>
+                <p style="margin-top: 0.5rem; margin-bottom: 0;">${escapeHtml(data.message || 'No references found.')}</p>
+                <p style="font-size: 0.85em; margin-top: 0.5rem; color: #8b94a3;">Try selecting fewer words for a broader search.</p>
+            </div>
+        `;
+    } else if (!data.exact_match && (!data.close_matches || data.close_matches.length === 0) && !data.allow_modify && data.search_links && data.search_links.length > 0) {
+        // Only search links, no real articles
+        html = `<p style="color: #5a6270; margin-bottom: 0.75rem;"><i class="fas fa-info-circle me-1" style="color: #5E899E;"></i>${escapeHtml(data.message)}</p>` + html;
+    }
+    
+    resultsDiv.innerHTML = html;
+}
+
+function renderArticle(article) {
+    const authors = article.authors ? article.authors.filter(a => a).slice(0, 3).join(', ') : '';
+    const link = article.link || article.pubmed_link || article.doi_link || '#';
+    const isSearchLink = article.is_search_link || false;
+    
+    // Brand color palette
+    const sourceColors = {
+        'PubMed': '#5E899E',           // Brand neutral teal
+        'Radiopaedia': '#e96304',      // Brand primary peachy orange
+        'Radiology Assistant': '#5a6270', // Soft charcoal
+        'Crossref': '#a8d5ba'          // Brand success green
+    };
+    const sourceColor = sourceColors[article.source] || '#5E899E';
+    
+    // For search links, show a simpler card
+    if (isSearchLink) {
+        return `
+            <div>
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                    <span style="background: ${sourceColor}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.7em; font-weight: 600;">${escapeHtml(article.source)}</span>
+                </div>
+                <p style="margin: 0 0 10px 0; color: #5a6270; font-size: 0.9em;">
+                    <i class="fas fa-search me-1"></i>Search ${escapeHtml(article.source)} for related articles
+                </p>
+                <a href="${link}" target="_blank" class="btn btn-sm" style="background: ${sourceColor}; color: white; border: none;">
+                    <i class="fas fa-external-link-alt me-1"></i>Open Search
+                </a>
+            </div>
+        `;
+    }
+    
+    return `
+        <div>
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+                <span style="background: ${sourceColor}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.7em; font-weight: 600;">${escapeHtml(article.source)}</span>
+            </div>
+            <h6 style="margin: 0 0 8px 0; color: #2c3e50; font-size: 0.95em; line-height: 1.4;">
+                ${escapeHtml(article.title)}
+            </h6>
+            <div style="font-size: 0.85em; color: #5a6270; margin-bottom: 8px;">
+                ${authors ? `<i class="fas fa-users me-1"></i>${escapeHtml(authors)}` : ''}
+                ${article.journal ? `<span class="ms-2"><i class="fas fa-book me-1"></i>${escapeHtml(article.journal)}</span>` : ''}
+                ${article.year ? `<span class="ms-2"><i class="fas fa-calendar me-1"></i>${escapeHtml(article.year)}</span>` : ''}
+            </div>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <a href="${link}" target="_blank" class="btn btn-sm" style="background: #e96304; color: white; border: none;">
+                    <i class="fas fa-external-link-alt me-1"></i>View Article
+                </a>
+                ${article.doi ? `
+                    <button class="btn btn-sm" style="background: transparent; color: #5a6270; border: 1px solid #c5cad1;" onclick="copyToClipboard('${escapeHtml(article.doi)}'); this.innerHTML='<i class=\\'fas fa-check\\'></i> Copied!';">
+                        <i class="fas fa-copy me-1"></i>Copy DOI
+                    </button>
+                ` : ''}
+                <button class="btn btn-sm" style="background: #a8d5ba; color: #2c3e50; border: none;" onclick="insertReferenceToDiscussion('${escapeHtml(article.title)}', '${escapeHtml(article.journal || '')}', '${escapeHtml(article.year || '')}', '${link}')">
+                    <i class="fas fa-plus me-1"></i>Add to Discussion
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+function insertReferenceToDiscussion(title, journal, year, link) {
+    const refHtml = `
+<p style="margin: 0.5rem 0; padding: 8px 12px; background: #fdfdfb; border-left: 3px solid #5E899E; border-radius: 4px;">
+    <strong style="color: #e96304;"><i class="fas fa-book-medical"></i> Reference:</strong>
+    <a href="${link}" target="_blank" style="color: #2c3e50; font-weight: 500;">${title}</a>
+    ${journal || year ? `<br><small style="color: #5a6270;">${journal}${year ? ` (${year})` : ''}</small>` : ''}
+</p>
+`;
+    
+    // Insert into TinyMCE
+    if (typeof tinymce !== 'undefined' && tinymce.get('editCaseDiscussion')) {
+        const editor = tinymce.get('editCaseDiscussion');
+        const currentContent = editor.getContent();
+        editor.setContent(currentContent + refHtml);
+    } else {
+        const textarea = document.getElementById('editCaseDiscussion');
+        if (textarea) {
+            textarea.value += '\n\n' + refHtml;
+        }
+    }
+    
+    closeReferenceSearchModal();
+    alert('Reference added to discussion!');
+}
+
+// Note: Context menu is now integrated into TinyMCE's context menu system
+// The "Find Reference Article" option appears when you right-click selected text in the editor
+
+// Make functions globally accessible
+window.generateTnmIntelligence = generateTnmIntelligence;
+window.generateTnmIntelligenceForSite = generateTnmIntelligenceForSite;
+window.checkTnmAvailability = checkTnmAvailability;
+window.showTnmIntelligenceModal = showTnmIntelligenceModal;
+window.showTnmSiteDropdown = showTnmSiteDropdown;
+window.closeTnmDropdown = closeTnmDropdown;
+window.selectPrimarySite = selectPrimarySite;
+window.closeTnmModal = closeTnmModal;
+window.insertTnmToDiscussion = insertTnmToDiscussion;
+window.insertTnmLinksDirectly = insertTnmLinksDirectly;
+window.copyToClipboard = copyToClipboard;
+window.regenerateTnmIntelligence = regenerateTnmIntelligence;
+window.getAdminTnmLink = getAdminTnmLink;
+window.findReferenceForSelection = findReferenceForSelection;
+window.closeReferenceSearchModal = closeReferenceSearchModal;
+window.insertReferenceToDiscussion = insertReferenceToDiscussion;
+window.searchWithNewQuery = searchWithNewQuery;
 </script>
 {% endblock %}

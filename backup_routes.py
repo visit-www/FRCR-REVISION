@@ -11,7 +11,8 @@ from models import (
     ForumMessage, ForumMessageVote, ForumMessageFlag,
     # AJCC TNM Models
     AJCCBodySection, AJCCDiseaseSite, AJCCDiagnosisYear, 
-    AJCCStagingData, AJCCDiseaseMapping, AJCCStagingTimePrefix
+    AJCCStagingData, AJCCDiseaseMapping, AJCCStagingTimePrefix,
+    IntelligentTNMData
 )
 from datetime import datetime, timedelta
 from sqlalchemy import inspect
@@ -74,6 +75,7 @@ def download_backup():
             'ajcc_staging_data': [],
             'ajcc_disease_mappings': [],
             'ajcc_staging_time_prefixes': [],
+            'intelligent_tnm_data': [],  # AI-generated TNM intelligence
         }
         
         # Export users (with passwords for sync purposes)
@@ -326,6 +328,29 @@ def download_backup():
                 'description': prefix.description,
                 'display_order': prefix.display_order,
                 'created_at': prefix.created_at.isoformat() if prefix.created_at else None,
+            })
+        
+        # Export Intelligent TNM Data (AI-generated, human-verified)
+        for intel in IntelligentTNMData.query.all():
+            backup_data['intelligent_tnm_data'].append({
+                'id': intel.id,
+                'disease_site_id': intel.disease_site_id,
+                'diagnosis_year_id': intel.diagnosis_year_id,
+                'tnm_memory_aid_t': intel.tnm_memory_aid_t,
+                'tnm_memory_aid_n': intel.tnm_memory_aid_n,
+                'tnm_memory_aid_m': intel.tnm_memory_aid_m,
+                'radiologist_key_points_json': intel.radiologist_key_points_json,
+                'upstaging_triggers_json': intel.upstaging_triggers_json,
+                'mdt_critical_findings_json': intel.mdt_critical_findings_json,
+                'copy_blocks_json': intel.copy_blocks_json,
+                'imaging_checklist_json': intel.imaging_checklist_json,
+                'reference_images_json': intel.reference_images_json,
+                'warnings_json': intel.warnings_json,
+                'verified_by_user_id': intel.verified_by_user_id,
+                'source_case_id': intel.source_case_id,
+                'version': intel.version,
+                'created_at': intel.created_at.isoformat() if intel.created_at else None,
+                'updated_at': intel.updated_at.isoformat() if intel.updated_at else None,
             })
         
         # Create JSON file in memory
@@ -1913,10 +1938,71 @@ def restore_backup():
             db.session.add(prefix)
             stats['ajcc_staging_time_prefixes']['added'] += 1
         
+        # Import Intelligent TNM Data (AI-generated, human-verified)
+        stats['intelligent_tnm_data'] = {'added': 0, 'updated': 0, 'skipped': 0}
+        for intel_data in backup_data.get('intelligent_tnm_data', []):
+            if not isinstance(intel_data, dict):
+                continue
+            
+            old_disease_id = intel_data.get('disease_site_id')
+            old_year_id = intel_data.get('diagnosis_year_id')
+            
+            new_disease_id = ajcc_disease_id_map.get(old_disease_id)
+            new_year_id = ajcc_year_id_map.get(old_year_id) if old_year_id else None
+            
+            if not new_disease_id:
+                stats['intelligent_tnm_data']['skipped'] += 1
+                continue
+            
+            existing = IntelligentTNMData.query.filter_by(
+                disease_site_id=new_disease_id,
+                diagnosis_year_id=new_year_id
+            ).first()
+            
+            if existing:
+                if overwrite_existing:
+                    existing.tnm_memory_aid_t = intel_data.get('tnm_memory_aid_t')
+                    existing.tnm_memory_aid_n = intel_data.get('tnm_memory_aid_n')
+                    existing.tnm_memory_aid_m = intel_data.get('tnm_memory_aid_m')
+                    existing.radiologist_key_points_json = intel_data.get('radiologist_key_points_json')
+                    existing.upstaging_triggers_json = intel_data.get('upstaging_triggers_json')
+                    existing.mdt_critical_findings_json = intel_data.get('mdt_critical_findings_json')
+                    existing.copy_blocks_json = intel_data.get('copy_blocks_json')
+                    existing.imaging_checklist_json = intel_data.get('imaging_checklist_json')
+                    existing.reference_images_json = intel_data.get('reference_images_json')
+                    existing.warnings_json = intel_data.get('warnings_json')
+                    existing.version = intel_data.get('version', 1)
+                    stats['intelligent_tnm_data']['updated'] += 1
+                else:
+                    stats['intelligent_tnm_data']['skipped'] += 1
+            else:
+                intel = IntelligentTNMData(
+                    disease_site_id=new_disease_id,
+                    diagnosis_year_id=new_year_id,
+                    tnm_memory_aid_t=intel_data.get('tnm_memory_aid_t'),
+                    tnm_memory_aid_n=intel_data.get('tnm_memory_aid_n'),
+                    tnm_memory_aid_m=intel_data.get('tnm_memory_aid_m'),
+                    radiologist_key_points_json=intel_data.get('radiologist_key_points_json'),
+                    upstaging_triggers_json=intel_data.get('upstaging_triggers_json'),
+                    mdt_critical_findings_json=intel_data.get('mdt_critical_findings_json'),
+                    copy_blocks_json=intel_data.get('copy_blocks_json'),
+                    imaging_checklist_json=intel_data.get('imaging_checklist_json'),
+                    reference_images_json=intel_data.get('reference_images_json'),
+                    warnings_json=intel_data.get('warnings_json'),
+                    version=intel_data.get('version', 1),
+                )
+                # Map user IDs
+                if intel_data.get('verified_by_user_id'):
+                    intel.verified_by_user_id = user_id_map.get(intel_data['verified_by_user_id'])
+                if intel_data.get('source_case_id'):
+                    intel.source_case_id = case_id_map.get(intel_data['source_case_id'])
+                db.session.add(intel)
+                stats['intelligent_tnm_data']['added'] += 1
+        
         # Commit AJCC data
         try:
             db.session.commit()
-            print(f"[IMPORT] AJCC data imported: {stats['ajcc_body_sections']['added']} sections, {stats['ajcc_disease_sites']['added']} diseases, {stats['ajcc_staging_data']['added']} staging entries")
+            print(f"[IMPORT] AJCC data imported: {stats['ajcc_body_sections']['added']} sections, {stats['ajcc_disease_sites']['added']} diseases, {stats['ajcc_staging_data']['added']} staging entries, {stats['intelligent_tnm_data']['added']} intelligent TNM records")
         except Exception as ajcc_error:
             db.session.rollback()
             print(f"[IMPORT] ERROR during AJCC commit: {ajcc_error}")
@@ -2030,6 +2116,7 @@ def backup_status():
         'ajcc_diagnosis_years': AJCCDiagnosisYear.query.count(),
         'ajcc_staging_data': AJCCStagingData.query.count(),
         'ajcc_disease_mappings': AJCCDiseaseMapping.query.count(),
+        'intelligent_tnm_data': IntelligentTNMData.query.count(),
     }
     
     return jsonify({

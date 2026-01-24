@@ -610,39 +610,79 @@ def generate_prelim_case_data(case_context, provider="claude"):
             if isinstance(item, str) and item.strip()
         ]
     
-    # Optional: Enhance discussion with AJCC URL reference if cancer diagnosis and TNM present
-    diagnosis = case_context.get("diagnosis", "").strip()
-    discussion = parsed.get("discussion", "")
+    # =========================================================================
+    # TNM INTELLIGENCE ENHANCEMENT (uses internal AJCC database)
+    # =========================================================================
+    # If oncologic diagnosis detected, add TNM metadata to output.
+    # This does NOT call Claude for TNM - that's done separately via ai_tnm.py
+    # when user explicitly requests it. Here we just add reference info.
     
-    if diagnosis and "cancer" in diagnosis.lower():
-        # Check if discussion contains TNM table (look for table markers or stage references)
-        has_tnm = (
-            "| T Stage" in discussion or
-            "| N Stage" in discussion or
-            "| M Stage" in discussion or
-            "Stage I" in discussion or
-            "T1N0M0" in discussion or
-            "TNM" in discussion.upper()
-        )
-        
-        if has_tnm:
-            try:
-                from ajcc_service import map_diagnosis_to_ajcc
-                body_part = case_context.get("body_part", "").strip()
-                ajcc_info = map_diagnosis_to_ajcc(diagnosis, body_part)
+    diagnosis = case_context.get("diagnosis", "").strip()
+    module = case_context.get("module", "").strip()
+    body_part = case_context.get("body_part", "").strip()
+    case_id = case_context.get("case_id")  # Optional: for link generation
+    
+    # Initialize TNM metadata (will be populated if oncologic)
+    parsed["tnm_metadata"] = None
+    
+    if diagnosis:
+        try:
+            from ai_tnm import is_oncologic_diagnosis, get_tnm_reference_only
+            
+            if is_oncologic_diagnosis(diagnosis):
+                # Get TNM reference from internal database
+                tnm_ref = get_tnm_reference_only(
+                    diagnosis=diagnosis,
+                    module=module,
+                    body_part=body_part,
+                    from_case_id=case_id
+                )
                 
-                if ajcc_info and ajcc_info.get("url"):
-                    # Add AJCC reference at the end of discussion
-                    ajcc_ref = f"\n\n**AJCC Staging Reference:** [View full TNM staging criteria for {ajcc_info['disease_site']} ({ajcc_info['ajcc_section']})]({ajcc_info['url']})"
-                    if ajcc_ref not in discussion:
-                        parsed["discussion"] = discussion + ajcc_ref
-            except ImportError:
-                # ajcc_service not available, skip enhancement
-                pass
-            except Exception as e:
-                # Log error but don't break the flow
-                import sys
-                print(f"[AI_PRELIM] Error enhancing discussion with AJCC URL: {e}", file=sys.stderr)
+                if tnm_ref:
+                    # Add TNM metadata to output
+                    parsed["tnm_metadata"] = {
+                        "is_oncologic": True,
+                        "has_staging_data": tnm_ref.get("has_staging_data", False),
+                        "disease_name": tnm_ref["ajcc_match"].get("disease_name") if tnm_ref.get("ajcc_match") else None,
+                        "section_name": tnm_ref["ajcc_match"].get("section_name") if tnm_ref.get("ajcc_match") else None,
+                        "tnm_link": tnm_ref.get("tnm_link"),
+                        "disease_site_id": tnm_ref["ajcc_match"].get("disease_site_id") if tnm_ref.get("ajcc_match") else None,
+                    }
+                    
+                    # If TNM data exists, add reference to discussion
+                    discussion = parsed.get("discussion", "")
+                    if tnm_ref.get("has_staging_data") and tnm_ref.get("tnm_link"):
+                        disease_name = tnm_ref["ajcc_match"].get("disease_name", "this cancer")
+                        section_name = tnm_ref["ajcc_match"].get("section_name", "")
+                        tnm_link = tnm_ref["tnm_link"]
+                        
+                        # Add internal TNM reference
+                        tnm_ref_text = f"\n\n**TNM Staging Reference:** [View AJCC TNM staging for {disease_name}]({tnm_link}) - Detailed T/N/M definitions, stage groupings, and imaging-specific guidance available."
+                        
+                        if tnm_ref_text not in discussion:
+                            parsed["discussion"] = discussion + tnm_ref_text
+                else:
+                    # Oncologic but no AJCC match found
+                    parsed["tnm_metadata"] = {
+                        "is_oncologic": True,
+                        "has_staging_data": False,
+                        "disease_name": None,
+                        "tnm_link": None,
+                        "message": "TNM staging data not yet available in database for this cancer type."
+                    }
+                    
+        except ImportError:
+            # ai_tnm not available, skip enhancement
+            import sys
+            print("[AI_PRELIM] ai_tnm module not available, skipping TNM enhancement", file=sys.stderr)
+        except Exception as e:
+            # Log error but don't break the flow
+            import sys
+            print(f"[AI_PRELIM] Error during TNM enhancement: {e}", file=sys.stderr)
+            parsed["tnm_metadata"] = {
+                "is_oncologic": True,
+                "error": str(e)
+            }
 
     return {
         "provider": provider,
