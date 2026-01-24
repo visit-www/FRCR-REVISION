@@ -15,56 +15,51 @@ auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
 
 def send_recovery_email(email, token):
     """
-    Send password recovery email using free service
-    Using Resend.com (free tier) or fallback to console for development
+    Send password recovery email using Resend SDK
+    Free tier: 100 emails/day, 3000/month
     """
+    import resend
+    
     recovery_url = os.getenv('APP_URL', 'https://frcr-examiner.vercel.app') + url_for('auth.reset_password', token=token, _external=False)
     
-    # For development, just log the recovery URL (no email sent)
-    if os.getenv('FLASK_ENV') == 'development':
-        return True
+    # Get API key from environment
+    resend_key = os.getenv('RESEND_API_KEY')
     
-    # For production, use Resend (free tier: 100 emails/day)
+    if not resend_key:
+        print("[EMAIL] RESEND_API_KEY not configured - cannot send recovery email")
+        return False
+    
+    resend.api_key = resend_key
+    
+    # Use verified domain or Resend's test domain
+    from_email = os.getenv('EMAIL_FROM', 'FRCR Revision <onboarding@resend.dev>')
+    
     try:
-        import requests
-        resend_key = os.getenv('RESEND_API_KEY')
+        params = {
+            "from": from_email,
+            "to": [email],
+            "subject": "Reset Your FRCR Revision Password",
+            "html": f"""
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <h2 style="color: #2c3e50;">Password Reset Request</h2>
+                <p>We received a request to reset your password for FRCR Revision.</p>
+                <p style="margin: 30px 0;">
+                    <a href="{recovery_url}" style="background-color: #e96304; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">
+                        Reset Password
+                    </a>
+                </p>
+                <p style="color: #666;">If you didn't request this, you can safely ignore this email.</p>
+                <p style="color: #999; font-size: 12px;">This link expires in 24 hours.</p>
+            </div>
+            """
+        }
         
-        if not resend_key:
-            return False
-        
-        # Use onboarding@resend.dev for testing (Resend's test domain)
-        # For production, replace with your verified domain
-        from_email = os.getenv('EMAIL_FROM', 'onboarding@resend.dev')
-        
-        response = requests.post(
-            "https://api.resend.com/emails",
-            headers={
-                "Authorization": f"Bearer {resend_key}",
-                "Content-Type": "application/json"
-            },
-            json={
-                "from": from_email,
-                "to": [email],
-                "subject": "Reset Your FRCR Examiner Password",
-                "html": f"""
-                <h2>Password Reset Request</h2>
-                <p>We received a request to reset your password.</p>
-                <p><a href="{recovery_url}" style="background-color: #896b90; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
-                    Reset Password
-                </a></p>
-                <p>If you didn't request this, you can ignore this email.</p>
-                <p><small>Link expires in 24 hours</small></p>
-                """
-            },
-            timeout=10
-        )
-        
-        if response.status_code != 200:
-            return False
-        
+        response = resend.Emails.send(params)
+        print(f"[EMAIL] Recovery email sent to {email}: {response}")
         return True
         
     except Exception as e:
+        print(f"[EMAIL] Failed to send recovery email to {email}: {e}")
         return False
 
 
