@@ -280,62 +280,145 @@ def _seed_ajcc_data_if_needed():
     except Exception:
         pass
     
-    # Body sections
+    # Body sections - Complete AJCC 8th Edition
     BODY_SECTIONS = [
         ("Head and Neck", "head-and-neck"),
-        ("Thorax", "thorax"),
-        ("Lower Gastrointestinal Tract", "lower-gastrointestinal-tract"),
         ("Upper Gastrointestinal Tract", "upper-gastrointestinal-tract"),
+        ("Lower Gastrointestinal Tract", "lower-gastrointestinal-tract"),
         ("Hepatobiliary System", "hepatobiliary-system"),
-        ("Breast", "breast"),
-        ("Urinary System", "urinary-system"),
-        ("Male Reproductive Organs", "male-reproductive-organs"),
-        ("Female Reproductive Organs", "female-reproductive-organs"),
-        ("Endocrine System", "endocrine-system"),
+        ("Neuroendocrine Tumors", "neuroendocrine-tumors"),
+        ("Thorax", "thorax"),
         ("Bone", "bone"),
         ("Soft Tissue Sarcoma", "soft-tissue-sarcoma"),
         ("Skin", "skin"),
-        ("Neuroendocrine Tumors", "neuroendocrine-tumors"),
+        ("Breast", "breast"),
+        ("Female Reproductive Organs", "female-reproductive-organs"),
+        ("Male Genital Organs", "male-genital-organs"),
+        ("Urinary Tract", "urinary-tract"),
+        ("Ophthalmic Sites", "ophthalmic-sites"),
         ("Central Nervous System", "central-nervous-system"),
+        ("Endocrine System", "endocrine-system"),
+        ("Hematologic Malignancies", "hematologic-malignancies"),
     ]
     
-    # Disease sites by section
+    # Disease sites by section - Complete AJCC 8th Edition ontology
     DISEASE_SITES = {
+        # Head and Neck (4 sites)
         "head-and-neck": [
-            ("Larynx", "larynx", "head-and-neck/larynx"),
             ("Oral Cavity", "oral-cavity", "head-and-neck/oral-cavity"),
-            ("Oropharynx (HPV-Mediated)", "oropharynx-hpv-mediated", "head-and-neck/oropharynx-hpv-mediated"),
-            ("Nasopharynx", "nasopharynx", "head-and-neck/nasopharynx"),
+            ("Oropharynx", "oropharynx", "head-and-neck/oropharynx"),
             ("Hypopharynx", "hypopharynx", "head-and-neck/hypopharynx"),
+            ("Larynx", "larynx", "head-and-neck/larynx"),
+            ("Nasopharynx", "nasopharynx", "head-and-neck/nasopharynx"),
+            ("Nasal Cavity and Paranasal Sinuses", "nasal-cavity", "head-and-neck/nasal-cavity"),
+            ("Salivary Glands", "salivary-glands", "head-and-neck/salivary-glands"),
+            ("Lip", "lip", "head-and-neck/lip"),
         ],
-        "thorax": [("Lung", "lung", "thorax/lung")],
-        "breast": [("Breast", "breast", "breast/breast")],
+        # Upper Gastrointestinal Tract (3 sites)
         "upper-gastrointestinal-tract": [
             ("Esophagus and Esophagogastric Junction", "esophagus", "upper-gastrointestinal-tract/esophagus"),
+            ("Small Intestine", "small-intestine", "upper-gastrointestinal-tract/small-intestine"),
             ("Stomach", "stomach", "upper-gastrointestinal-tract/stomach"),
         ],
-        "lower-gastrointestinal-tract": [("Colon and Rectum", "colon-and-rectum", "lower-gastrointestinal-tract/colon-and-rectum")],
+        # Lower Gastrointestinal Tract (3 sites)
+        "lower-gastrointestinal-tract": [
+            ("Colon", "colon", "lower-gastrointestinal-tract/colon"),
+            ("Rectum", "rectum", "lower-gastrointestinal-tract/rectum"),
+            ("Anal Canal", "anal-canal", "lower-gastrointestinal-tract/anal-canal"),
+        ],
+        # Hepatobiliary System (6 sites)
         "hepatobiliary-system": [
             ("Liver", "liver", "hepatobiliary-system/liver"),
+            ("Intrahepatic Bile Ducts", "intrahepatic-bile-ducts", "hepatobiliary-system/intrahepatic-bile-ducts"),
+            ("Perihilar Bile Ducts", "perihilar-bile-ducts", "hepatobiliary-system/perihilar-bile-ducts"),
+            ("Distal Bile Duct", "distal-bile-duct", "hepatobiliary-system/distal-bile-duct"),
+            ("Gallbladder", "gallbladder", "hepatobiliary-system/gallbladder"),
             ("Pancreas", "pancreas", "hepatobiliary-system/pancreas"),
         ],
-        "urinary-system": [
-            ("Kidney", "kidney", "urinary-system/kidney"),
-            ("Urinary Bladder", "bladder", "urinary-system/bladder"),
+        # Neuroendocrine Tumors (5 sites)
+        "neuroendocrine-tumors": [
+            ("Neuroendocrine Tumors of the Stomach", "net-stomach", "neuroendocrine-tumors/stomach"),
+            ("Neuroendocrine Tumors of the Duodenum and Ampulla", "net-duodenum", "neuroendocrine-tumors/duodenum"),
+            ("Neuroendocrine Tumors of the Jejunum and Ileum", "net-jejunum-ileum", "neuroendocrine-tumors/jejunum-ileum"),
+            ("Neuroendocrine Tumors of the Appendix", "net-appendix", "neuroendocrine-tumors/appendix"),
+            ("Neuroendocrine Tumors of the Colon and Rectum", "net-colon-rectum", "neuroendocrine-tumors/colon-rectum"),
+            ("Neuroendocrine Tumors of the Pancreas", "net-pancreas", "neuroendocrine-tumors/pancreas"),
         ],
-        "male-reproductive-organs": [
-            ("Prostate", "prostate", "male-reproductive-organs/prostate"),
-            ("Testis", "testis", "male-reproductive-organs/testis"),
+        # Thorax (3 sites)
+        "thorax": [
+            ("Lung", "lung", "thorax/lung"),
+            ("Pleural Mesothelioma", "pleural-mesothelioma", "thorax/pleural-mesothelioma"),
+            ("Thymus", "thymus", "thorax/thymus"),
         ],
+        # Bone (1 site)
+        "bone": [
+            ("Bone", "bone", "bone/bone"),
+        ],
+        # Soft Tissue Sarcoma (5 sites)
+        "soft-tissue-sarcoma": [
+            ("Soft Tissue Sarcoma of the Trunk and Extremities", "soft-tissue-trunk-extremities", "soft-tissue-sarcoma/trunk-extremities"),
+            ("Soft Tissue Sarcoma of the Head and Neck", "soft-tissue-head-neck", "soft-tissue-sarcoma/head-neck"),
+            ("Soft Tissue Sarcoma of the Abdomen and Thoracic Visceral Organs", "soft-tissue-abdomen-thorax", "soft-tissue-sarcoma/abdomen-thorax"),
+            ("Soft Tissue Sarcoma of the Retroperitoneum", "soft-tissue-retroperitoneum", "soft-tissue-sarcoma/retroperitoneum"),
+            ("Gastrointestinal Stromal Tumor", "gist", "soft-tissue-sarcoma/gist"),
+        ],
+        # Skin (2 sites)
+        "skin": [
+            ("Melanoma of the Skin", "melanoma", "skin/melanoma"),
+            ("Merkel Cell Carcinoma", "merkel-cell", "skin/merkel-cell"),
+        ],
+        # Breast (1 site)
+        "breast": [
+            ("Breast", "breast", "breast/breast"),
+        ],
+        # Female Reproductive Organs (5 sites)
         "female-reproductive-organs": [
             ("Cervix Uteri", "cervix", "female-reproductive-organs/cervix"),
-            ("Ovary", "ovary", "female-reproductive-organs/ovary"),
+            ("Corpus Uteri Carcinoma and Carcinosarcoma", "corpus-uteri-carcinoma", "female-reproductive-organs/corpus-uteri-carcinoma"),
+            ("Corpus Uteri Sarcoma", "corpus-uteri-sarcoma", "female-reproductive-organs/corpus-uteri-sarcoma"),
+            ("Ovary, Fallopian Tube, and Primary Peritoneal Carcinoma", "ovary-fallopian-tube", "female-reproductive-organs/ovary"),
+            ("Gestational Trophoblastic Neoplasms", "gestational-trophoblastic", "female-reproductive-organs/gestational-trophoblastic"),
+            ("Vagina", "vagina", "female-reproductive-organs/vagina"),
+            ("Vulva", "vulva", "female-reproductive-organs/vulva"),
         ],
-        "endocrine-system": [("Thyroid", "thyroid", "endocrine-system/thyroid")],
-        "bone": [("Bone", "bone", "bone/bone")],
-        "soft-tissue-sarcoma": [("Soft Tissue Sarcoma", "soft-tissue", "soft-tissue-sarcoma/soft-tissue")],
-        "skin": [("Cutaneous Melanoma", "melanoma", "skin/melanoma")],
-        "central-nervous-system": [("Brain and Spinal Cord", "brain", "central-nervous-system/brain")],
+        # Male Genital Organs (3 sites)
+        "male-genital-organs": [
+            ("Penis", "penis", "male-genital-organs/penis"),
+            ("Prostate", "prostate", "male-genital-organs/prostate"),
+            ("Testis", "testis", "male-genital-organs/testis"),
+        ],
+        # Urinary Tract (4 sites)
+        "urinary-tract": [
+            ("Kidney", "kidney", "urinary-tract/kidney"),
+            ("Renal Pelvis and Ureter", "renal-pelvis-ureter", "urinary-tract/renal-pelvis-ureter"),
+            ("Urinary Bladder", "bladder", "urinary-tract/bladder"),
+            ("Urethra", "urethra", "urinary-tract/urethra"),
+        ],
+        # Ophthalmic Sites (8 sites)
+        "ophthalmic-sites": [
+            ("Conjunctival Carcinoma", "conjunctival-carcinoma", "ophthalmic-sites/conjunctival-carcinoma"),
+            ("Conjunctival Melanoma", "conjunctival-melanoma", "ophthalmic-sites/conjunctival-melanoma"),
+            ("Eyelid Carcinoma", "eyelid-carcinoma", "ophthalmic-sites/eyelid-carcinoma"),
+            ("Lacrimal Gland Carcinoma", "lacrimal-gland", "ophthalmic-sites/lacrimal-gland"),
+            ("Ocular Adnexal Lymphoma", "ocular-adnexal-lymphoma", "ophthalmic-sites/ocular-adnexal-lymphoma"),
+            ("Orbital Sarcoma", "orbital-sarcoma", "ophthalmic-sites/orbital-sarcoma"),
+            ("Retinoblastoma", "retinoblastoma", "ophthalmic-sites/retinoblastoma"),
+            ("Uveal Melanoma", "uveal-melanoma", "ophthalmic-sites/uveal-melanoma"),
+        ],
+        # Central Nervous System (1 site)
+        "central-nervous-system": [
+            ("Brain and Spinal Cord", "brain-spinal-cord", "central-nervous-system/brain-spinal-cord"),
+        ],
+        # Endocrine System (3 sites)
+        "endocrine-system": [
+            ("Thyroid", "thyroid", "endocrine-system/thyroid"),
+            ("Adrenal Gland", "adrenal-gland", "endocrine-system/adrenal-gland"),
+            ("Parathyroid", "parathyroid", "endocrine-system/parathyroid"),
+        ],
+        # Hematologic Malignancies (1 site - typically not TNM staged)
+        "hematologic-malignancies": [
+            ("Hematologic Malignancies", "hematologic-malignancies", "hematologic-malignancies/hematologic-malignancies"),
+        ],
     }
     
     # Use raw SQL for count to avoid model column mismatch during migrations
