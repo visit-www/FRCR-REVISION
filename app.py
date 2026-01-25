@@ -304,7 +304,7 @@ def _seed_ajcc_data_if_needed():
     # Disease sites by section - AJCC Cancer Staging Manual 8th Edition
     # Slugs must match existing database entries to avoid duplicates
     DISEASE_SITES = {
-        # Head and Neck (12 sites)
+        # Head and Neck (11 sites)
         "head-and-neck": [
             ("Staging Principles of Head and Neck Cancers", "staging-head-and-neck-cancers", "head-and-neck/staging-head-and-neck-cancers/staging-head-and-neck-cancers"),
             ("Oral Cavity", "oral-cavity", "head-and-neck/oral-cavity"),
@@ -384,7 +384,7 @@ def _seed_ajcc_data_if_needed():
             ("Vagina", "vagina", "female-reproductive-organs/vagina"),
             ("Cervix Uteri", "cervix-uteri", "female-reproductive-organs/cervix-uteri"),
             ("Corpus Uteri: Carcinoma and Carcinosarcoma", "corpus-uteri-carcinoma-and-carcinosarcoma", "female-reproductive-organs/corpus-uteri-carcinoma-and-carcinosarcoma"),
-            ("Corpus Uteri: Sarcoma", "corpus-uteri-sarcoma", "female-reproductive-organs/corpus-uteri-sarcoma"),
+            ("Corpus Uteri Sarcoma", "corpus-uteri-sarcoma", "female-reproductive-organs/corpus-uteri-sarcoma"),
             ("Ovary, Fallopian Tube, and Primary Peritoneal Carcinoma", "ovary-fallopian-tube-and-primary-peritoneal-carcinoma", "female-reproductive-organs/ovary-fallopian-tube-and-primary-peritoneal-carcinoma"),
             ("Gestational Trophoblastic Neoplasms", "gestational-trophoblastic-neoplasms", "female-reproductive-organs/gestational-trophoblastic-neoplasms"),
         ],
@@ -419,7 +419,7 @@ def _seed_ajcc_data_if_needed():
         # Endocrine System (5 sites)
         "endocrine-system": [
             ("Thyroid: Differentiated and Anaplastic Carcinoma", "throid-differentiated-and-anaplastic-carcinoma", "endocrine-system/throid-differentiated-and-anaplastic-carcinoma"),
-            ("Thyroid: Medullary", "thyroid-medullary", "endocrine-system/thyroid-medullary"),
+            ("Thyroid - Medullary", "thyroid-medullary", "endocrine-system/thyroid-medullary"),
             ("Parathyroid", "parathyroid", "endocrine-system/parathyroid"),
             ("Adrenal Cortical Carcinoma", "adrenal-cortical-carcinoma", "endocrine-system/adrenal-cortical-carcinoma"),
             ("Adrenal Neuroendocrine Tumors", "adrenal-neuroendocrine-tumors", "endocrine-system/adrenal-neuroendocrine-tumors"),

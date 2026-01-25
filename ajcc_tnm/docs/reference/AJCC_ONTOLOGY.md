@@ -9,65 +9,57 @@ This document provides the complete mapping of anatomical sections and disease s
 | Metric | Count |
 |--------|-------|
 | **Total Sections** | 17 |
-| **Total Disease Sites** | 72 |
+| **Total Disease Sites** | 78 |
 
 ---
 
 ## Complete Site Map
 
-### 1. Head and Neck (10 sites)
+### 1. Head and Neck (11 sites)
 
-| Disease Site | Slug | URL Path |
+| Disease Site | Slug | API Path |
 |--------------|------|----------|
-| Lip | `lip` | head-and-neck/lip |
+| Staging Principles of Head and Neck Cancers | `staging-head-and-neck-cancers` | head-and-neck/staging-head-and-neck-cancers/staging-head-and-neck-cancers |
 | Oral Cavity | `oral-cavity` | head-and-neck/oral-cavity |
-| Oropharynx (HPV-Mediated) | `oropharynx-hpv` | head-and-neck/oropharynx-hpv |
-| Oropharynx (Non-HPV) | `oropharynx` | head-and-neck/oropharynx |
-| Nasopharynx | `nasopharynx` | head-and-neck/nasopharynx |
-| Hypopharynx | `hypopharynx` | head-and-neck/hypopharynx |
-| Larynx | `larynx` | head-and-neck/larynx |
-| Nasal Cavity and Paranasal Sinuses | `nasal-cavity` | head-and-neck/nasal-cavity |
 | Salivary Glands | `salivary-glands` | head-and-neck/salivary-glands |
-| Unknown Primary of the Head and Neck | `unknown-primary-head-neck` | head-and-neck/unknown-primary |
+| Oropharynx (HPV-Associated) | `oropharynx-hpv-associated` | head-and-neck/oropharynx-hpv-associated |
+| Oropharynx (HPV-Independent) and Hypopharynx | `oropharynx-hpv-independent-and-hypopharynx` | head-and-neck/oropharynx-hpv-independent-and-hypopharynx |
+| Nasopharynx | `nasopharynx` | head-and-neck/nasopharynx |
+| Larynx | `larynx` | head-and-neck/larynx |
+| Nasal Cavity and Paranasal Sinuses | `nasal-cavity-and-paranasal-sinuses` | head-and-neck/nasal-cavity-and-paranasal-sinuses |
+| Mucosal Melanoma of the Head and Neck | `mucosal-melanoma-of-the-head-and-neck` | head-and-neck/mucosal-melanoma-of-the-head-and-neck |
+| Cutaneous Carcinoma of the Head and Neck | `cutaneous-carcinoma-of-the-head-and-neck` | head-and-neck/cutaneous-carcinoma-of-the-head-and-neck |
+| Cervical Lymph Nodes and Unknown Primary Tumors of the Head and Neck | `cervical-lymph-nodes-and-unknown-primary-tumors-of-the-head-and-neck` | head-and-neck/cervical-lymph-nodes-and-unknown-primary-tumors-of-the-head-and-neck |
 
-**Clinical Notes:**
-- HPV-mediated oropharyngeal carcinoma has a distinct staging system due to its better prognosis
-- Unknown primary is staged when cervical lymph node metastasis is present without identifiable primary
+**Notes:**
+- "Staging Principles" is a year-less entry (no year in URL path)
+- HPV-associated oropharyngeal carcinoma has distinct staging due to better prognosis
 
 ---
 
 ### 2. Upper Gastrointestinal Tract (3 sites)
 
-| Disease Site | Slug | URL Path |
+| Disease Site | Slug | API Path |
 |--------------|------|----------|
-| Esophagus and Esophagogastric Junction | `esophagus` | upper-gastrointestinal-tract/esophagus |
+| Esophagus and Esophagogastric Junction | `esophagus-and-esophagogastric-junction` | upper-gastrointestinal-tract/esophagus-and-esophagogastric-junction |
 | Stomach | `stomach` | upper-gastrointestinal-tract/stomach |
 | Small Intestine | `small-intestine` | upper-gastrointestinal-tract/small-intestine |
 
-**Clinical Notes:**
-- Esophagogastric junction (Siewert) tumors are staged with esophageal system
-- Small intestine includes duodenum, jejunum, and ileum (adenocarcinoma)
-
 ---
 
-### 3. Lower Gastrointestinal Tract (4 sites)
+### 3. Lower Gastrointestinal Tract (3 sites)
 
-| Disease Site | Slug | URL Path |
+| Disease Site | Slug | API Path |
 |--------------|------|----------|
 | Appendix | `appendix` | lower-gastrointestinal-tract/appendix |
-| Colon | `colon` | lower-gastrointestinal-tract/colon |
-| Rectum | `rectum` | lower-gastrointestinal-tract/rectum |
-| Anal Canal | `anal-canal` | lower-gastrointestinal-tract/anal-canal |
-
-**Clinical Notes:**
-- Appendix has separate staging for mucinous neoplasms vs. carcinoma
-- Rectosigmoid junction tumors staged as rectal cancer
+| Colon and Rectum | `colon-and-rectum` | lower-gastrointestinal-tract/colon-and-rectum |
+| Anus | `anus` | lower-gastrointestinal-tract/anus |
 
 ---
 
 ### 4. Hepatobiliary System (7 sites)
 
-| Disease Site | Slug | URL Path |
+| Disease Site | Slug | API Path |
 |--------------|------|----------|
 | Liver | `liver` | hepatobiliary-system/liver |
 | Intrahepatic Bile Ducts | `intrahepatic-bile-ducts` | hepatobiliary-system/intrahepatic-bile-ducts |
@@ -75,210 +67,179 @@ This document provides the complete mapping of anatomical sections and disease s
 | Distal Bile Duct | `distal-bile-duct` | hepatobiliary-system/distal-bile-duct |
 | Ampulla of Vater | `ampulla-of-vater` | hepatobiliary-system/ampulla-of-vater |
 | Gallbladder | `gallbladder` | hepatobiliary-system/gallbladder |
-| Pancreas | `pancreas` | hepatobiliary-system/pancreas |
-
-**Clinical Notes:**
-- Liver staging applies to hepatocellular carcinoma (HCC)
-- Perihilar (Klatskin) tumors have distinct staging from intrahepatic cholangiocarcinoma
-- Pancreas staging is for exocrine (ductal) adenocarcinoma
+| Exocrine Pancreas | `exocrine-pancreas` | hepatobiliary-system/exocrine-pancreas |
 
 ---
 
 ### 5. Neuroendocrine Tumors (6 sites)
 
-| Disease Site | Slug | URL Path |
+| Disease Site | Slug | API Path |
 |--------------|------|----------|
-| Neuroendocrine Tumors of the Stomach | `net-stomach` | neuroendocrine-tumors/stomach |
-| Neuroendocrine Tumors of the Duodenum and Ampulla of Vater | `net-duodenum` | neuroendocrine-tumors/duodenum |
-| Neuroendocrine Tumors of the Jejunum and Ileum | `net-jejunum-ileum` | neuroendocrine-tumors/jejunum-ileum |
-| Neuroendocrine Tumors of the Appendix | `net-appendix` | neuroendocrine-tumors/appendix |
-| Neuroendocrine Tumors of the Colon and Rectum | `net-colon-rectum` | neuroendocrine-tumors/colon-rectum |
-| Neuroendocrine Tumors of the Pancreas | `net-pancreas` | neuroendocrine-tumors/pancreas |
-
-**Clinical Notes:**
-- Each site has organ-specific T staging based on tumor size and local invasion
-- Well-differentiated NETs (G1-G2) and poorly differentiated NECs (G3) use same TNM
-- Ki-67 index and mitotic rate determine grade
+| Neuroendocrine Tumors of the Stomach | `neuroendocrine-tumors-of-the-stomach` | neuroendocrine-tumors/neuroendocrine-tumors-of-the-stomach |
+| Neuroendocrine Tumors of the Duodenum and Ampulla of Vater | `neuroendocrine-tumors-of-the-duodenum-and-ampulla-of-vater` | neuroendocrine-tumors/neuroendocrine-tumors-of-the-duodenum-and-ampulla-of-vater |
+| Neuroendocrine Tumors of the Jejunum and Ileum | `neuroendocrine-tumors-of-the-jejunum-and-ileum` | neuroendocrine-tumors/neuroendocrine-tumors-of-the-jejunum-and-ileum |
+| Neuroendocrine Tumors of the Appendix | `neuroendocrine-tumors-of-the-appendix` | neuroendocrine-tumors/neuroendocrine-tumors-of-the-appendix |
+| Neuroendocrine Tumors of the Colon and Rectum | `neuroendocrine-tumors-of-the-colon-and-rectum` | neuroendocrine-tumors/neuroendocrine-tumors-of-the-colon-and-rectum |
+| Neuroendocrine Tumors of the Pancreas | `neuroendocrine-tumors-of-the-pancreas` | neuroendocrine-tumors/neuroendocrine-tumors-of-the-pancreas |
 
 ---
 
 ### 6. Thorax (3 sites)
 
-| Disease Site | Slug | URL Path |
+| Disease Site | Slug | API Path |
 |--------------|------|----------|
 | Lung | `lung` | thorax/lung |
-| Pleural Mesothelioma | `pleural-mesothelioma` | thorax/pleural-mesothelioma |
+| Diffuse Pleural Mesothelioma | `diffuse-pleural-mesothelioma` | thorax/diffuse-pleural-mesothelioma |
 | Thymus | `thymus` | thorax/thymus |
-
-**Clinical Notes:**
-- Lung staging includes NSCLC, SCLC, and carcinoid tumors
-- Mesothelioma has unique staging reflecting pleural spread patterns
-- Thymic tumors include thymoma and thymic carcinoma
 
 ---
 
 ### 7. Bone (1 site)
 
-| Disease Site | Slug | URL Path |
+| Disease Site | Slug | API Path |
 |--------------|------|----------|
 | Bone | `bone` | bone/bone |
 
-**Clinical Notes:**
-- Applies to primary bone sarcomas (osteosarcoma, chondrosarcoma, Ewing sarcoma)
-- T staging based on size (≤8 cm vs >8 cm) and skip metastases
+---
+
+### 8. Soft Tissue Sarcoma (7 sites)
+
+| Disease Site | Slug | API Path |
+|--------------|------|----------|
+| Introduction to Soft Tissue Sarcoma | `introduction-to-soft-tissue-sarcoma` | soft-tissue-sarcoma/introduction-to-soft-tissue-sarcoma/introduction-to-soft-tissue-sarcoma |
+| Soft Tissue Sarcoma of the Head and Neck | `soft-tissue-sarcoma-of-the-head-and-neck` | soft-tissue-sarcoma/soft-tissue-sarcoma-of-the-head-and-neck |
+| Soft Tissue Sarcoma of the Trunk and Extremities | `soft-tissue-sarcoma-of-the-trunk-and-extremities` | soft-tissue-sarcoma/soft-tissue-sarcoma-of-the-trunk-and-extremities |
+| Soft Tissue Sarcoma of the Abdomen and Thoracic Visceral Organs | `soft-tissue-sarcoma-of-the-abdomen-and-thoracic-visceral-organs` | soft-tissue-sarcoma/soft-tissue-sarcoma-of-the-abdomen-and-thoracic-visceral-organs |
+| Soft Tissue Sarcoma of the Retroperitoneum | `soft-tissue-sarcoma-of-the-retroperitoneum` | soft-tissue-sarcoma/soft-tissue-sarcoma-of-the-retroperitoneum |
+| Soft Tissue Sarcoma - Unusual Histologies and Sites | `soft-tissue-sarcoma-unusual-histologies-and-sites` | soft-tissue-sarcoma/soft-tissue-sarcoma-unusual-histologies-and-sites |
+| Gastrointestinal Stromal Tumor | `gastrointestinal-stromal-tumor` | soft-tissue-sarcoma/gastrointestinal-stromal-tumor |
+
+**Notes:**
+- "Introduction to Soft Tissue Sarcoma" is a year-less entry
 
 ---
 
-### 8. Soft Tissue Sarcoma (5 sites)
+### 9. Skin (2 sites)
 
-| Disease Site | Slug | URL Path |
+| Disease Site | Slug | API Path |
 |--------------|------|----------|
-| Soft Tissue Sarcoma of the Head and Neck | `soft-tissue-head-neck` | soft-tissue-sarcoma/head-neck |
-| Soft Tissue Sarcoma of the Trunk and Extremities | `soft-tissue-trunk-extremities` | soft-tissue-sarcoma/trunk-extremities |
-| Soft Tissue Sarcoma of the Abdomen and Thoracic Visceral Organs | `soft-tissue-abdomen-thorax` | soft-tissue-sarcoma/abdomen-thorax |
-| Soft Tissue Sarcoma of the Retroperitoneum | `soft-tissue-retroperitoneum` | soft-tissue-sarcoma/retroperitoneum |
-| Gastrointestinal Stromal Tumor | `gist` | soft-tissue-sarcoma/gist |
-
-**Clinical Notes:**
-- Site-specific staging reflects different prognostic implications
-- GIST has separate staging based on mitotic rate and tumor location
-- Grade (FNCLCC) is integral to staging
-
----
-
-### 9. Skin (3 sites)
-
-| Disease Site | Slug | URL Path |
-|--------------|------|----------|
-| Melanoma of the Skin | `melanoma` | skin/melanoma |
-| Merkel Cell Carcinoma | `merkel-cell` | skin/merkel-cell |
-| Cutaneous Squamous Cell Carcinoma | `cutaneous-scc` | skin/cutaneous-scc |
-
-**Clinical Notes:**
-- Melanoma staging based on Breslow thickness, ulceration, mitotic rate
-- Cutaneous SCC of head and neck has specific high-risk features
-- Merkel cell is rare neuroendocrine carcinoma with aggressive behavior
+| Melanoma of the Skin | `melanoma-of-the-skin` | skin/melanoma-of-the-skin |
+| Merkel Cell Carcinoma | `merkel-cell-carcinoma` | skin/merkel-cell-carcinoma |
 
 ---
 
 ### 10. Breast (1 site)
 
-| Disease Site | Slug | URL Path |
+| Disease Site | Slug | API Path |
 |--------------|------|----------|
 | Breast | `breast` | breast/breast |
-
-**Clinical Notes:**
-- 8th Edition introduced prognostic staging incorporating biomarkers (ER, PR, HER2, grade)
-- Anatomic staging still available for resource-limited settings
 
 ---
 
 ### 11. Female Reproductive Organs (7 sites)
 
-| Disease Site | Slug | URL Path |
+| Disease Site | Slug | API Path |
 |--------------|------|----------|
 | Vulva | `vulva` | female-reproductive-organs/vulva |
 | Vagina | `vagina` | female-reproductive-organs/vagina |
-| Cervix Uteri | `cervix` | female-reproductive-organs/cervix |
-| Corpus Uteri Carcinoma and Carcinosarcoma | `corpus-uteri-carcinoma` | female-reproductive-organs/corpus-uteri-carcinoma |
+| Cervix Uteri | `cervix-uteri` | female-reproductive-organs/cervix-uteri |
+| Corpus Uteri: Carcinoma and Carcinosarcoma | `corpus-uteri-carcinoma-and-carcinosarcoma` | female-reproductive-organs/corpus-uteri-carcinoma-and-carcinosarcoma |
 | Corpus Uteri Sarcoma | `corpus-uteri-sarcoma` | female-reproductive-organs/corpus-uteri-sarcoma |
-| Ovary, Fallopian Tube, and Primary Peritoneal Carcinoma | `ovary-fallopian-tube` | female-reproductive-organs/ovary |
-| Gestational Trophoblastic Neoplasms | `gestational-trophoblastic` | female-reproductive-organs/gestational-trophoblastic |
-
-**Clinical Notes:**
-- Cervix staging is clinical (FIGO) and does not require pathologic confirmation
-- Endometrial carcinoma and sarcoma have separate staging systems
-- Ovarian/tubal/peritoneal carcinomas unified under single system
+| Ovary, Fallopian Tube, and Primary Peritoneal Carcinoma | `ovary-fallopian-tube-and-primary-peritoneal-carcinoma` | female-reproductive-organs/ovary-fallopian-tube-and-primary-peritoneal-carcinoma |
+| Gestational Trophoblastic Neoplasms | `gestational-trophoblastic-neoplasms` | female-reproductive-organs/gestational-trophoblastic-neoplasms |
 
 ---
 
 ### 12. Male Genital Organs (3 sites)
 
-| Disease Site | Slug | URL Path |
+| Disease Site | Slug | API Path |
 |--------------|------|----------|
 | Penis | `penis` | male-genital-organs/penis |
 | Prostate | `prostate` | male-genital-organs/prostate |
 | Testis | `testis` | male-genital-organs/testis |
 
-**Clinical Notes:**
-- Prostate staging incorporates PSA and Gleason grade groups
-- Testis staging includes serum tumor markers (AFP, hCG, LDH)
-
 ---
 
 ### 13. Urinary Tract (4 sites)
 
-| Disease Site | Slug | URL Path |
+| Disease Site | Slug | API Path |
 |--------------|------|----------|
 | Kidney | `kidney` | urinary-tract/kidney |
-| Renal Pelvis and Ureter | `renal-pelvis-ureter` | urinary-tract/renal-pelvis-ureter |
-| Urinary Bladder | `bladder` | urinary-tract/bladder |
+| Renal Pelvis and Ureter | `renal-pelvis-and-ureter` | urinary-tract/renal-pelvis-and-ureter |
+| Urinary Bladder | `urinary-bladder` | urinary-tract/urinary-bladder |
 | Urethra | `urethra` | urinary-tract/urethra |
-
-**Clinical Notes:**
-- Kidney staging for renal cell carcinoma
-- Upper tract urothelial carcinoma (renal pelvis/ureter) staged separately from bladder
 
 ---
 
 ### 14. Ophthalmic Sites (8 sites)
 
-| Disease Site | Slug | URL Path |
+| Disease Site | Slug | API Path |
 |--------------|------|----------|
-| Eyelid Carcinoma | `eyelid-carcinoma` | ophthalmic-sites/eyelid-carcinoma |
 | Conjunctival Carcinoma | `conjunctival-carcinoma` | ophthalmic-sites/conjunctival-carcinoma |
 | Conjunctival Melanoma | `conjunctival-melanoma` | ophthalmic-sites/conjunctival-melanoma |
-| Uveal Melanoma | `uveal-melanoma` | ophthalmic-sites/uveal-melanoma |
-| Retinoblastoma | `retinoblastoma` | ophthalmic-sites/retinoblastoma |
-| Lacrimal Gland Carcinoma | `lacrimal-gland` | ophthalmic-sites/lacrimal-gland |
-| Orbital Sarcoma | `orbital-sarcoma` | ophthalmic-sites/orbital-sarcoma |
+| Eyelid Carcinoma | `eyelid-carcinoma` | ophthalmic-sites/eyelid-carcinoma |
+| Lacrimal Gland Carcinoma | `lacrimal-gland-carcinoma` | ophthalmic-sites/lacrimal-gland-carcinoma |
 | Ocular Adnexal Lymphoma | `ocular-adnexal-lymphoma` | ophthalmic-sites/ocular-adnexal-lymphoma |
-
-**Clinical Notes:**
-- Uveal melanoma (iris, ciliary body, choroid) has unique metastatic pattern (liver)
-- Retinoblastoma uses International Retinoblastoma Staging System (IRSS)
+| Orbital Sarcoma | `orbital-sarcoma` | ophthalmic-sites/orbital-sarcoma |
+| Retinoblastoma | `retinoblastoma` | ophthalmic-sites/retinoblastoma |
+| Uveal Melanoma | `uveal-melanoma` | ophthalmic-sites/uveal-melanoma |
 
 ---
 
 ### 15. Central Nervous System (1 site)
 
-| Disease Site | Slug | URL Path |
+| Disease Site | Slug | API Path |
 |--------------|------|----------|
-| Brain and Spinal Cord | `brain` | central-nervous-system/brain |
+| Brain and Spinal Cord | `brain-and-spinal-cord` | central-nervous-system/brain-and-spinal-cord |
 
-**Clinical Notes:**
-- CNS tumors use WHO grading rather than traditional TNM
-- Staging based on extent of resection and molecular markers
-- Includes gliomas, meningiomas, and other primary CNS tumors
+**Notes:**
+- CNS tumors typically use WHO grading rather than traditional TNM
 
 ---
 
-### 16. Endocrine System (4 sites)
+### 16. Endocrine System (5 sites)
 
-| Disease Site | Slug | URL Path |
+| Disease Site | Slug | API Path |
 |--------------|------|----------|
-| Thyroid - Differentiated and Anaplastic | `thyroid-differentiated` | endocrine-system/thyroid-differentiated |
+| Thyroid: Differentiated and Anaplastic Carcinoma | `throid-differentiated-and-anaplastic-carcinoma` | endocrine-system/throid-differentiated-and-anaplastic-carcinoma |
 | Thyroid - Medullary | `thyroid-medullary` | endocrine-system/thyroid-medullary |
 | Parathyroid | `parathyroid` | endocrine-system/parathyroid |
-| Adrenal Cortical Carcinoma | `adrenal-cortical` | endocrine-system/adrenal-cortical |
+| Adrenal Cortical Carcinoma | `adrenal-cortical-carcinoma` | endocrine-system/adrenal-cortical-carcinoma |
+| Adrenal Neuroendocrine Tumors | `adrenal-neuroendocrine-tumors` | endocrine-system/adrenal-neuroendocrine-tumors |
 
-**Clinical Notes:**
-- Differentiated thyroid (papillary, follicular) staging includes age (<55 vs ≥55)
-- Medullary thyroid carcinoma has separate staging system
-- Anaplastic thyroid carcinoma is always Stage IV
+**Notes:**
+- The slug `throid-differentiated-and-anaplastic-carcinoma` uses AJCC's URL typo ("throid" instead of "thyroid")
 
 ---
 
-### 17. Hematologic Malignancies (2 sites)
+### 17. Hematologic Malignancies (6 sites)
 
-| Disease Site | Slug | URL Path |
+| Disease Site | Slug | API Path |
 |--------------|------|----------|
-| Hodgkin and Non-Hodgkin Lymphomas | `lymphomas` | hematologic-malignancies/lymphomas |
-| Primary Cutaneous Lymphomas | `cutaneous-lymphomas` | hematologic-malignancies/cutaneous-lymphomas |
+| Introduction to Hematologic Malignancies | `introduction-to-hematologic-malignancies` | hematologic-malignancies/introduction-to-hematologic-malignancies/introduction-to-hematologic-malignancies |
+| Hodgkin and Non-Hodgkin Lymphomas | `hodgkin-and-non-hodgkin-lymphomas` | hematologic-malignancies/hodgkin-and-non-hodgkin-lymphomas |
+| Pediatric Hodgkin and Non-Hodgkin Lymphomas | `pediatric-hodgkin-and-non-hodgkin-lymphomas` | hematologic-malignancies/pediatric-hodgkin-and-non-hodgkin-lymphomas |
+| Primary Cutaneous Lymphomas | `primary-cutaneous-lymphomas` | hematologic-malignancies/primary-cutaneous-lymphomas |
+| Plasma Cell Myeloma and Plasma Cell Disorders | `plasma-cell-myeloma-and-plasma-cell-disorders` | hematologic-malignancies/plasma-cell-myeloma-and-plasma-cell-disorders |
+| Leukemia: Unspecified or Other Type | `leukemia` | hematologic-malignancies/leukemia |
 
-**Clinical Notes:**
+**Notes:**
+- "Introduction to Hematologic Malignancies" is a year-less entry
 - Uses Lugano classification (modified Ann Arbor) rather than TNM
-- Cutaneous lymphomas (mycosis fungoides, Sézary syndrome) have specific staging
+
+---
+
+## Year-less Entries
+
+Some AJCC pages don't use a year in their URL path. These are typically introductory or principles pages:
+
+| Disease Site | API Path Pattern |
+|--------------|------------------|
+| Staging Principles of Head and Neck Cancers | `.../staging-head-and-neck-cancers/staging-head-and-neck-cancers` |
+| Introduction to Soft Tissue Sarcoma | `.../introduction-to-soft-tissue-sarcoma/introduction-to-soft-tissue-sarcoma` |
+| Introduction to Hematologic Malignancies | `.../introduction-to-hematologic-malignancies/introduction-to-hematologic-malignancies` |
+
+The extractor detects these by checking if the last two path segments are identical.
 
 ---
 
@@ -298,35 +259,12 @@ This document provides the complete mapping of anatomical sections and disease s
 |-------|------|-------------|
 | `id` | Integer | Primary key |
 | `disease_name` | String(200) | Display name |
-| `slug` | String(100) | URL-friendly identifier |
+| `slug` | String(200) | URL-friendly identifier |
 | `body_section_id` | Integer | Foreign key to body section |
-| `ajcc_url_path` | String(200) | Path for AJCC portal |
-| `frcr_module` | Enum | Mapped FRCR exam module |
-| `frcr_body_part` | Enum | Mapped body part category |
-| `frcr_age_group` | Enum | Adult or Pediatric |
-
----
-
-## FRCR Module Mapping
-
-Disease sites can be mapped to FRCR 2B exam modules:
-
-| FRCR Module | Example Disease Sites |
-|-------------|----------------------|
-| Cardiothoracic and Vascular | Lung, Pleural Mesothelioma, Thymus |
-| Gastro-intestinal | Esophagus, Stomach, Colon, Liver, Pancreas |
-| Genito-urinary, Adrenal, O&G and Breast | Kidney, Bladder, Prostate, Breast, Ovary |
-| Musculoskeletal and Trauma | Bone, Soft Tissue Sarcomas |
-| CNS and Head & Neck | Brain, Larynx, Oral Cavity, Thyroid |
-| Paediatric | Retinoblastoma, select pediatric tumors |
-
----
-
-## File Locations
-
-- **Ontology JSON**: `ajcc_tnm/data/ajcc_frcr_full_ontology.json`
-- **Seed Data**: `app.py` → `_seed_ajcc_data_if_needed()`
-- **Models**: `ajcc_tnm/models/`
+| `ajcc_url_path` | String(300) | Path for AJCC API |
+| `frcr_module` | String(100) | Mapped FRCR exam module |
+| `frcr_body_part` | String(100) | Mapped body part category |
+| `frcr_age_group` | String(100) | Adult or Pediatric |
 
 ---
 
@@ -334,8 +272,9 @@ Disease sites can be mapped to FRCR 2B exam modules:
 
 | Date | Version | Changes |
 |------|---------|---------|
-| 2026-01-25 | 1.0 | Complete AJCC 8th Edition ontology with 72 disease sites |
+| 2026-01-26 | 2.0 | Updated to 78 disease sites with correct AJCC API paths |
+| 2026-01-25 | 1.0 | Initial AJCC 8th Edition ontology |
 
 ---
 
-*This document is auto-generated from the AJCC Cancer Staging Manual 8th Edition structure.*
+*This document reflects the current production database state.*
