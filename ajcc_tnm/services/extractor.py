@@ -430,12 +430,20 @@ class TNMExtractor:
         """
         try:
             # Check if this is a year-less entry (introduction/staging principles pages)
-            # Year-less entries have api_path where the last two segments are identical
+            # Year-less entries are detected by:
+            # 1. Last two segments are identical (e.g., intro-to-X/intro-to-X)
+            # 2. Path contains year-less keywords like "introduction", "overview", "key-concepts"
             is_yearless = False
             if api_path:
                 path_parts = api_path.strip('/').split('/')
+                # Check if last two segments match
                 if len(path_parts) >= 2 and path_parts[-1] == path_parts[-2]:
                     is_yearless = True
+                # Check for year-less keywords in the path
+                yearless_keywords = ['introduction', 'overview', 'key-concepts', 'staging-principles']
+                if any(keyword in api_path.lower() for keyword in yearless_keywords):
+                    is_yearless = True
+                if is_yearless:
                     print(f"[TNM_EXTRACTOR] Detected year-less entry: {api_path}")
             
             # Determine year
