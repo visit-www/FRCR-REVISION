@@ -432,6 +432,13 @@ def forgot_password():
     return render_template('forgot_password.html')
 
 
+@auth_bp.route('/reset-password-test', methods=['GET'])
+def reset_password_test():
+    """Test route to verify reset password template works"""
+    print("[AUTH] Reset password TEST page accessed")
+    return render_template('reset_password.html', token='test-token-12345')
+
+
 @auth_bp.route('/reset-password/<token>', methods=['GET', 'POST'])
 def reset_password(token):
     """Reset password with token"""
