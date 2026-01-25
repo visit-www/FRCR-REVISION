@@ -280,23 +280,6 @@ def _seed_ajcc_data_if_needed():
     except Exception:
         pass
     
-    # Use raw SQL for count to avoid model column mismatch during migrations
-    try:
-        existing_sections = db.session.execute(text("SELECT COUNT(*) FROM ajcc_body_section")).scalar() or 0
-        existing_sites = db.session.execute(text("SELECT COUNT(*) FROM ajcc_disease_site")).scalar() or 0
-    except Exception as e:
-        # Tables don't exist yet
-        print(f"[SEED] AJCC tables check error (may be normal): {e}")
-        db.session.rollback()
-        existing_sections = 0
-        existing_sites = 0
-    
-    if existing_sections > 0 and existing_sites > 0:
-        print(f"[SEED] AJCC data exists: {existing_sections} sections, {existing_sites} sites")
-        return
-    
-    print("[SEED] Auto-seeding AJCC body sections and disease sites...")
-    
     # Body sections
     BODY_SECTIONS = [
         ("Head and Neck", "head-and-neck"),
@@ -355,6 +338,27 @@ def _seed_ajcc_data_if_needed():
         "central-nervous-system": [("Brain and Spinal Cord", "brain", "central-nervous-system/brain")],
     }
     
+    # Use raw SQL for count to avoid model column mismatch during migrations
+    try:
+        existing_sections = db.session.execute(text("SELECT COUNT(*) FROM ajcc_body_section")).scalar() or 0
+        existing_sites = db.session.execute(text("SELECT COUNT(*) FROM ajcc_disease_site")).scalar() or 0
+    except Exception as e:
+        # Tables don't exist yet
+        print(f"[SEED] AJCC tables check error (may be normal): {e}")
+        db.session.rollback()
+        existing_sections = 0
+        existing_sites = 0
+    
+    # Count expected disease sites
+    expected_sites = sum(len(diseases) for diseases in DISEASE_SITES.values())
+    
+    # Check if we need to add missing entries (incremental seeding)
+    if existing_sections >= len(BODY_SECTIONS) and existing_sites >= expected_sites:
+        print(f"[SEED] AJCC data complete: {existing_sections} sections, {existing_sites} sites")
+        return
+    
+    print(f"[SEED] Adding missing AJCC data (have {existing_sections}/{len(BODY_SECTIONS)} sections, {existing_sites}/{expected_sites} sites)...")
+    
     try:
         # Seed body sections
         section_map = {}
@@ -369,12 +373,17 @@ def _seed_ajcc_data_if_needed():
                 section_map[slug] = existing
         
         # Seed disease sites
+        added_sites = 0
         for section_slug, diseases in DISEASE_SITES.items():
             section = section_map.get(section_slug)
             if not section:
                 continue
             for disease_name, disease_slug, url_path in diseases:
-                existing = AJCCDiseaseSite.query.filter_by(slug=disease_slug).first()
+                # Check by both slug and body_section_id to ensure correct parent
+                existing = AJCCDiseaseSite.query.filter_by(
+                    slug=disease_slug, 
+                    body_section_id=section.id
+                ).first()
                 if not existing:
                     site = AJCCDiseaseSite(
                         disease_name=disease_name,
@@ -383,12 +392,16 @@ def _seed_ajcc_data_if_needed():
                         ajcc_url_path=url_path
                     )
                     db.session.add(site)
+                    added_sites += 1
         
         db.session.commit()
         
         final_sections = AJCCBodySection.query.count()
         final_sites = AJCCDiseaseSite.query.count()
-        print(f"[SEED] Complete: {final_sections} sections, {final_sites} disease sites")
+        if added_sites > 0:
+            print(f"[SEED] Added {added_sites} new disease sites. Total: {final_sections} sections, {final_sites} disease sites")
+        else:
+            print(f"[SEED] Complete: {final_sections} sections, {final_sites} disease sites")
         
     except Exception as e:
         db.session.rollback()
