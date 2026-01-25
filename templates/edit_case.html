@@ -1856,8 +1856,11 @@ async function generateTnmIntelligenceForSite(primarySiteName, forceRegenerate =
             result.tnm_link = selectedPrimarySite.tnm_link || `/tnm/${selectedPrimarySite.section_slug}/${selectedPrimarySite.disease_slug}/student?year=2026`;
         }
         
-        // Auto-save the generated intelligence for future reuse
-        if (caseId && selectedPrimarySite?.disease_site_id) {
+        // Auto-save the generated intelligence for future reuse (only if structured data exists)
+        // Note: AI currently returns Markdown (tnm_intelligence_markdown), not structured fields
+        // Only save if we have structured data fields
+        const hasStructuredData = result.tnm_memory_aid || result.radiologist_key_points || result.upstaging_triggers;
+        if (caseId && selectedPrimarySite?.disease_site_id && hasStructuredData) {
             try {
                 const saveResponse = await fetch('/tnm/api/save-intelligence', {
                     method: 'POST',
@@ -1884,6 +1887,8 @@ async function generateTnmIntelligenceForSite(primarySiteName, forceRegenerate =
                 console.warn('[TNM] Could not auto-save intelligence:', saveErr);
                 // Don't block the flow - saving is optional optimization
             }
+        } else if (caseId && selectedPrimarySite?.disease_site_id) {
+            console.log('[TNM] Skipping auto-save: AI returned Markdown only, no structured data');
         }
         
         // Insert TNM intelligence directly into discussion
