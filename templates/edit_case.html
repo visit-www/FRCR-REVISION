@@ -636,6 +636,11 @@ function initializeDiscussionEditor() {
         plugins: 'table link image code',
         // Use CDN for assets (themes, skins, etc.) since we only have the minified JS locally
         base_url: 'https://cdn.jsdelivr.net/npm/tinymce@6',
+        // CRITICAL: Prevent TinyMCE from converting absolute URLs to relative
+        // This fixes the /view-case/tnm/... issue
+        relative_urls: false,
+        convert_urls: false,
+        remove_script_host: false,
         table_advtab: false,
         table_cell_advtab: false,
         table_default_attributes: {
