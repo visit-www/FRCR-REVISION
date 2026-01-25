@@ -709,13 +709,32 @@ class UserManagement {
     }
     
     async submitApprovalCode() {
-        const code = document.getElementById('approvalCodeInput').value.trim().toUpperCase();
+        const codeInput = document.getElementById('approvalCodeInput');
+        if (!codeInput) {
+            console.error('Approval code input not found');
+            return;
+        }
+        
+        const code = codeInput.value.trim().toUpperCase();
         if (!code || code.length !== 8) {
             this.showApprovalError('Please enter a valid 8-character approval code');
             return;
         }
         
+        if (!this.pendingApproval) {
+            console.error('No pending approval found');
+            this.showApprovalError('Session expired. Please try again.');
+            return;
+        }
+        
         const { action, userId, newValue } = this.pendingApproval;
+        
+        // Disable button to prevent double-clicks
+        const submitBtn = document.querySelector('#approvalCodeModal .btn-success');
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying...';
+        }
         
         try {
             let response;
@@ -732,12 +751,19 @@ class UserManagement {
             }
             
             const data = await response.json();
+            console.log('Approval response:', response.status, data);
             
             if (!response.ok) {
+                // Re-enable button
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<i class="fas fa-check"></i> Submit Code';
+                }
+                
                 // Handle specific error cases with user-friendly messages
-                if (response.status === 403 && data.requires_approval) {
+                if (response.status === 403) {
                     this.showApprovalError('Invalid code or code has expired. Please check and try again.');
-                } else if (response.status === 503 && data.action_blocked) {
+                } else if (response.status === 503) {
                     this.showApprovalError('Unable to complete action. Please try again later.');
                 } else {
                     this.showApprovalError(data.error || 'Action failed. Please try again.');
@@ -745,6 +771,7 @@ class UserManagement {
                 return;
             }
             
+            // Success - close everything and refresh
             this.closeApprovalModal();
             this.showSuccess('✅ Action completed successfully');
             this.closeModal();
@@ -752,38 +779,62 @@ class UserManagement {
             
         } catch (error) {
             console.error('Approval code error:', error);
+            // Re-enable button
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-check"></i> Submit Code';
+            }
             this.showApprovalError('An error occurred. Please try again.');
         }
     }
     
     showApprovalError(message) {
-        // Show error in the approval modal instead of ugly alert
+        console.log('showApprovalError called:', message);
+        
+        // Show error in the approval modal
         const modal = document.getElementById('approvalCodeModal');
+        console.log('Modal found:', !!modal);
+        
         if (modal) {
+            // Find or create error div
             let errorDiv = modal.querySelector('.approval-error');
             if (!errorDiv) {
                 errorDiv = document.createElement('div');
                 errorDiv.className = 'approval-error';
-                errorDiv.style.cssText = 'background: #fff5f5; border: 1px solid #f5c6cb; color: #721c24; padding: 10px 15px; border-radius: 5px; margin-top: 10px; font-size: 14px;';
+                errorDiv.style.cssText = 'background: #fff5f5; border: 1px solid #f5c6cb; color: #721c24; padding: 10px 15px; border-radius: 8px; margin: 15px 0; font-size: 14px; text-align: center;';
+                
+                // Insert after the input field
                 const input = modal.querySelector('#approvalCodeInput');
-                if (input) {
+                if (input && input.parentNode) {
                     input.parentNode.insertBefore(errorDiv, input.nextSibling);
+                } else {
+                    // Fallback - append to modal content
+                    const modalContent = modal.querySelector('div > div');
+                    if (modalContent) {
+                        modalContent.appendChild(errorDiv);
+                    }
                 }
             }
-            errorDiv.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${message}`;
             
-            // Shake the input
+            errorDiv.innerHTML = `<i class="fas fa-exclamation-circle" style="margin-right: 8px;"></i>${message}`;
+            errorDiv.style.display = 'block';
+            
+            // Highlight input with red border and shake
             const input = document.getElementById('approvalCodeInput');
             if (input) {
                 input.style.borderColor = '#dc3545';
+                input.style.boxShadow = '0 0 0 3px rgba(220, 53, 69, 0.25)';
                 input.classList.add('shake');
+                input.value = ''; // Clear the invalid code
+                input.focus();
                 setTimeout(() => {
                     input.classList.remove('shake');
                 }, 500);
             }
         } else {
             // Fallback to alert if modal not found
-            alert(message);
+            console.log('Modal not found, using alert');
+            alert(`Error: ${message}`);
         }
     }
     
