@@ -435,8 +435,24 @@ def forgot_password():
 @auth_bp.route('/reset-password-test', methods=['GET'])
 def reset_password_test():
     """Test route to verify reset password template works"""
-    print("[AUTH] Reset password TEST page accessed")
-    return render_template('reset_password.html', token='test-token-12345')
+    print("[AUTH] Reset password TEST page accessed - starting")
+    try:
+        print("[AUTH] About to render template...")
+        result = render_template('reset_password.html', token='test-token-12345')
+        print("[AUTH] Template rendered successfully")
+        return result
+    except Exception as e:
+        print(f"[AUTH] Template render error: {e}")
+        import traceback
+        traceback.print_exc()
+        return f"<h1>Template Error</h1><pre>{e}</pre>", 500
+
+
+@auth_bp.route('/reset-password-simple', methods=['GET'])
+def reset_password_simple():
+    """Minimal test route"""
+    print("[AUTH] Simple test accessed")
+    return "<h1>Reset Password</h1><p>This is a simple test page.</p>", 200
 
 
 @auth_bp.route('/reset-password/<token>', methods=['GET', 'POST'])
