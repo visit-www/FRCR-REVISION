@@ -234,51 +234,62 @@
     </div>
 </div>
 
-<!-- Delete Account Confirmation Modal -->
-<div class="modal fade" id="deleteAccountModal" tabindex="-1" aria-labelledby="deleteAccountModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title" id="deleteAccountModalLabel">
-                    <i class="fas fa-exclamation-triangle me-2"></i>Delete Your Account?
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+<!-- Delete Account Confirmation Popup (Custom Styled) -->
+<div id="deleteAccountOverlay" class="delete-overlay" style="display: none;">
+    <div class="delete-popup">
+        <!-- Header -->
+        <div class="delete-popup-header">
+            <div class="delete-header-icon">
+                <i class="fas fa-exclamation-triangle"></i>
             </div>
-            <div class="modal-body">
-                <p>This action will deactivate your account and start the account deletion process.</p>
-                
-                <div class="mb-3">
-                    <strong>What will happen:</strong>
-                    <ul class="mt-2 mb-0">
-                        <li>Your account will be soft deleted</li>
-                        <li>All active subscriptions will be <strong>permanently lost</strong></li>
-                        <li>You will immediately lose access to paid features</li>
-                        <li>Your personal data and activity will be retained temporarily for recovery</li>
-                    </ul>
-                </div>
-                
-                <div class="mb-3">
-                    <strong>Important notes:</strong>
-                    <ul class="mt-2 mb-0">
-                        <li>Any public posts or forum messages you have shared will remain visible and are never deleted.</li>
-                        <li>Your account can be recovered within <strong>30 days</strong></li>
-                        <li>After 30 days, your account and all associated data will be permanently deleted (except publicly posted comments and images)</li>
-                    </ul>
-                </div>
-                
-                <div class="alert alert-danger mb-0">
-                    <strong><i class="fas fa-exclamation-circle me-1"></i>Warning:</strong>
-                    This action cannot be undone after the recovery period ends.
-                </div>
+            <h4>Delete Your Account?</h4>
+            <button type="button" class="delete-close-btn" onclick="hideDeleteAccountPopup()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <!-- Body -->
+        <div class="delete-popup-body">
+            <p class="delete-intro">
+                This action will deactivate your account and start the account deletion process.
+            </p>
+            
+            <!-- What will happen -->
+            <div class="delete-section delete-section-warning">
+                <h6><i class="fas fa-bolt me-2"></i>What will happen:</h6>
+                <ul>
+                    <li>Your account will be soft deleted</li>
+                    <li>All active subscriptions will be <strong>permanently lost</strong></li>
+                    <li>You will immediately lose access to paid features</li>
+                    <li>Your personal data and activity will be retained temporarily for recovery</li>
+                </ul>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                    <i class="fas fa-times me-1"></i>Cancel
-                </button>
-                <button type="button" class="btn btn-danger" onclick="confirmDeleteAccount()">
-                    <i class="fas fa-trash-alt me-1"></i>Confirm Account Deletion
-                </button>
+            
+            <!-- Important notes -->
+            <div class="delete-section delete-section-info">
+                <h6><i class="fas fa-info-circle me-2"></i>Important notes:</h6>
+                <ul>
+                    <li>Any public posts or forum messages you have shared will remain visible and are never deleted.</li>
+                    <li>Your account can be recovered within <strong>30 days</strong></li>
+                    <li>After 30 days, your account and all associated data will be permanently deleted (except publicly posted comments and images)</li>
+                </ul>
             </div>
+            
+            <!-- Warning -->
+            <div class="delete-warning-box">
+                <i class="fas fa-exclamation-circle"></i>
+                <strong>Warning:</strong> This action cannot be undone after the recovery period ends.
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <div class="delete-popup-footer">
+            <button type="button" class="delete-btn-cancel" onclick="hideDeleteAccountPopup()">
+                <i class="fas fa-times me-1"></i>Cancel
+            </button>
+            <button type="button" class="delete-btn-confirm" onclick="confirmDeleteAccount()">
+                <i class="fas fa-trash-alt me-1"></i>Confirm Account Deletion
+            </button>
         </div>
     </div>
 </div>
@@ -304,6 +315,232 @@
     align-items: center;
     justify-content: center;
     background: linear-gradient(135deg, #f0f6f9 0%, #d9e6ee 100%);
+}
+
+/* ========== Delete Account Popup Styles ========== */
+.delete-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(44, 62, 80, 0.7);
+    backdrop-filter: blur(4px);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.delete-popup {
+    background: #ffffff;
+    border-radius: 12px;
+    max-width: 480px;
+    width: 100%;
+    box-shadow: 0 20px 60px rgba(44, 62, 80, 0.25);
+    overflow: hidden;
+    animation: slideUp 0.3s ease-out;
+}
+
+.delete-popup-header {
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+    color: white;
+    padding: 18px 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: relative;
+}
+
+.delete-header-icon {
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+}
+
+.delete-popup-header h4 {
+    margin: 0;
+    font-size: 1.15rem;
+    font-weight: 600;
+    flex: 1;
+}
+
+.delete-close-btn {
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 18px;
+    cursor: pointer;
+    padding: 5px;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.delete-close-btn:hover {
+    color: white;
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.delete-popup-body {
+    padding: 24px;
+    color: #2c3e50;
+}
+
+.delete-intro {
+    font-size: 14px;
+    color: #5a6270;
+    margin-bottom: 20px;
+    line-height: 1.6;
+}
+
+.delete-section {
+    margin-bottom: 16px;
+    padding: 14px 16px;
+    border-radius: 8px;
+}
+
+.delete-section h6 {
+    margin: 0 0 10px 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+.delete-section ul {
+    margin: 0;
+    padding-left: 18px;
+}
+
+.delete-section li {
+    font-size: 13px;
+    color: #5a6270;
+    margin-bottom: 6px;
+    line-height: 1.5;
+}
+
+.delete-section li:last-child {
+    margin-bottom: 0;
+}
+
+.delete-section-warning {
+    background: #fff8e6;
+    border-left: 3px solid #ffc107;
+}
+
+.delete-section-warning h6 {
+    color: #856404;
+}
+
+.delete-section-info {
+    background: #f0f6f9;
+    border-left: 3px solid #5E899E;
+}
+
+.delete-section-info h6 {
+    color: #5E899E;
+}
+
+.delete-warning-box {
+    background: linear-gradient(135deg, #fff5f5 0%, #ffe8e8 100%);
+    border: 1px solid #f5c6cb;
+    border-radius: 8px;
+    padding: 14px 16px;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    color: #721c24;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.delete-warning-box i {
+    color: #dc3545;
+    font-size: 16px;
+    margin-top: 2px;
+}
+
+.delete-popup-footer {
+    background: #f8f9fa;
+    border-top: 1px solid #e9ecef;
+    padding: 16px 24px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.delete-btn-cancel {
+    background: transparent;
+    border: 1px solid #c5cad1;
+    color: #5a6270;
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.delete-btn-cancel:hover {
+    background: #f5f5f3;
+    border-color: #adb5bd;
+}
+
+.delete-btn-confirm {
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+    border: none;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.delete-btn-confirm:hover {
+    background: linear-gradient(135deg, #c82333 0%, #bd2130 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+}
+
+.delete-btn-confirm:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Mobile responsive */
+@media (max-width: 500px) {
+    .delete-popup {
+        margin: 10px;
+    }
+    
+    .delete-popup-footer {
+        flex-direction: column-reverse;
+    }
+    
+    .delete-btn-cancel,
+    .delete-btn-confirm {
+        width: 100%;
+        text-align: center;
+    }
 }
 </style>
 
@@ -466,17 +703,17 @@ document.getElementById('passwordForm').addEventListener('submit', function(e) {
 
 // Delete Account Functions
 function showDeleteAccountModal() {
-    const modal = new bootstrap.Modal(document.getElementById('deleteAccountModal'));
-    modal.show();
+    document.getElementById('deleteAccountOverlay').style.display = 'flex';
+    document.body.style.overflow = 'hidden'; // Prevent background scroll
+}
+
+function hideDeleteAccountPopup() {
+    document.getElementById('deleteAccountOverlay').style.display = 'none';
+    document.body.style.overflow = ''; // Restore scroll
 }
 
 function confirmDeleteAccount() {
-    // Close the modal
-    const modal = bootstrap.Modal.getInstance(document.getElementById('deleteAccountModal'));
-    modal.hide();
-    
-    // Show loading state
-    const btn = document.querySelector('#deleteAccountModal .btn-danger');
+    const btn = document.querySelector('.delete-btn-confirm');
     const originalText = btn.innerHTML;
     btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Deleting...';
     btn.disabled = true;
@@ -490,6 +727,7 @@ function confirmDeleteAccount() {
     .then(data => {
         if (data.success) {
             // Show success message and redirect to logout
+            hideDeleteAccountPopup();
             alert('Your account has been deactivated. You will be logged out now.\n\nYou can recover your account within 30 days by logging in again.');
             window.location.href = '/auth/logout-redirect';
         } else {
@@ -505,5 +743,19 @@ function confirmDeleteAccount() {
         btn.disabled = false;
     });
 }
+
+// Close popup on overlay click (outside the popup)
+document.getElementById('deleteAccountOverlay')?.addEventListener('click', function(e) {
+    if (e.target === this) {
+        hideDeleteAccountPopup();
+    }
+});
+
+// Close popup on Escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && document.getElementById('deleteAccountOverlay').style.display === 'flex') {
+        hideDeleteAccountPopup();
+    }
+});
 </script>
 {% endblock %}
