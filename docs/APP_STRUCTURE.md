@@ -33,6 +33,7 @@ FRCR_REVISION/
 │   ├── FULL_AI_PROMPT.md           # Complete AI prompt documentation
 │   ├── STYLE_GUIDE.md              # Quick style/branding reference
 │   └── plans/                      # Feature planning docs
+│       └── BUSINESS_MODEL_PLAN.md  # Monetization & subscription strategy
 │
 ├── migrations/                     # Alembic migrations
 │   └── versions/                   # Migration scripts
