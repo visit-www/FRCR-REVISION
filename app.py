@@ -301,9 +301,10 @@ def _seed_ajcc_data_if_needed():
         ("Hematologic Malignancies", "hematologic-malignancies"),
     ]
     
-    # Disease sites by section - Complete AJCC 8th Edition ontology
+    # Disease sites by section - AJCC 8th Edition ontology
+    # Slugs must match existing database entries to avoid duplicates
     DISEASE_SITES = {
-        # Head and Neck (4 sites)
+        # Head and Neck - from AJCC ontology
         "head-and-neck": [
             ("Oral Cavity", "oral-cavity", "head-and-neck/oral-cavity"),
             ("Oropharynx", "oropharynx", "head-and-neck/oropharynx"),
@@ -313,20 +314,21 @@ def _seed_ajcc_data_if_needed():
             ("Nasal Cavity and Paranasal Sinuses", "nasal-cavity", "head-and-neck/nasal-cavity"),
             ("Salivary Glands", "salivary-glands", "head-and-neck/salivary-glands"),
             ("Lip", "lip", "head-and-neck/lip"),
+            ("Unknown Primary of the Head and Neck", "unknown-primary-head-neck", "head-and-neck/unknown-primary"),
         ],
-        # Upper Gastrointestinal Tract (3 sites)
+        # Upper Gastrointestinal Tract
         "upper-gastrointestinal-tract": [
             ("Esophagus and Esophagogastric Junction", "esophagus", "upper-gastrointestinal-tract/esophagus"),
             ("Small Intestine", "small-intestine", "upper-gastrointestinal-tract/small-intestine"),
             ("Stomach", "stomach", "upper-gastrointestinal-tract/stomach"),
         ],
-        # Lower Gastrointestinal Tract (3 sites)
+        # Lower Gastrointestinal Tract
         "lower-gastrointestinal-tract": [
             ("Colon", "colon", "lower-gastrointestinal-tract/colon"),
             ("Rectum", "rectum", "lower-gastrointestinal-tract/rectum"),
             ("Anal Canal", "anal-canal", "lower-gastrointestinal-tract/anal-canal"),
         ],
-        # Hepatobiliary System (6 sites)
+        # Hepatobiliary System
         "hepatobiliary-system": [
             ("Liver", "liver", "hepatobiliary-system/liver"),
             ("Intrahepatic Bile Ducts", "intrahepatic-bile-ducts", "hepatobiliary-system/intrahepatic-bile-ducts"),
@@ -335,26 +337,21 @@ def _seed_ajcc_data_if_needed():
             ("Gallbladder", "gallbladder", "hepatobiliary-system/gallbladder"),
             ("Pancreas", "pancreas", "hepatobiliary-system/pancreas"),
         ],
-        # Neuroendocrine Tumors (5 sites)
+        # Neuroendocrine Tumors - single entry per AJCC ontology
         "neuroendocrine-tumors": [
-            ("Neuroendocrine Tumors of the Stomach", "net-stomach", "neuroendocrine-tumors/stomach"),
-            ("Neuroendocrine Tumors of the Duodenum and Ampulla", "net-duodenum", "neuroendocrine-tumors/duodenum"),
-            ("Neuroendocrine Tumors of the Jejunum and Ileum", "net-jejunum-ileum", "neuroendocrine-tumors/jejunum-ileum"),
-            ("Neuroendocrine Tumors of the Appendix", "net-appendix", "neuroendocrine-tumors/appendix"),
-            ("Neuroendocrine Tumors of the Colon and Rectum", "net-colon-rectum", "neuroendocrine-tumors/colon-rectum"),
-            ("Neuroendocrine Tumors of the Pancreas", "net-pancreas", "neuroendocrine-tumors/pancreas"),
+            ("Neuroendocrine Tumors", "neuroendocrine-tumors", "neuroendocrine-tumors/neuroendocrine-tumors"),
         ],
-        # Thorax (3 sites)
+        # Thorax
         "thorax": [
             ("Lung", "lung", "thorax/lung"),
             ("Pleural Mesothelioma", "pleural-mesothelioma", "thorax/pleural-mesothelioma"),
             ("Thymus", "thymus", "thorax/thymus"),
         ],
-        # Bone (1 site)
+        # Bone
         "bone": [
             ("Bone", "bone", "bone/bone"),
         ],
-        # Soft Tissue Sarcoma (5 sites)
+        # Soft Tissue Sarcoma
         "soft-tissue-sarcoma": [
             ("Soft Tissue Sarcoma of the Trunk and Extremities", "soft-tissue-trunk-extremities", "soft-tissue-sarcoma/trunk-extremities"),
             ("Soft Tissue Sarcoma of the Head and Neck", "soft-tissue-head-neck", "soft-tissue-sarcoma/head-neck"),
@@ -362,16 +359,16 @@ def _seed_ajcc_data_if_needed():
             ("Soft Tissue Sarcoma of the Retroperitoneum", "soft-tissue-retroperitoneum", "soft-tissue-sarcoma/retroperitoneum"),
             ("Gastrointestinal Stromal Tumor", "gist", "soft-tissue-sarcoma/gist"),
         ],
-        # Skin (2 sites)
+        # Skin
         "skin": [
             ("Melanoma of the Skin", "melanoma", "skin/melanoma"),
             ("Merkel Cell Carcinoma", "merkel-cell", "skin/merkel-cell"),
         ],
-        # Breast (1 site)
+        # Breast
         "breast": [
             ("Breast", "breast", "breast/breast"),
         ],
-        # Female Reproductive Organs (5 sites)
+        # Female Reproductive Organs
         "female-reproductive-organs": [
             ("Cervix Uteri", "cervix", "female-reproductive-organs/cervix"),
             ("Corpus Uteri Carcinoma and Carcinosarcoma", "corpus-uteri-carcinoma", "female-reproductive-organs/corpus-uteri-carcinoma"),
@@ -381,20 +378,20 @@ def _seed_ajcc_data_if_needed():
             ("Vagina", "vagina", "female-reproductive-organs/vagina"),
             ("Vulva", "vulva", "female-reproductive-organs/vulva"),
         ],
-        # Male Genital Organs (3 sites)
+        # Male Genital Organs
         "male-genital-organs": [
             ("Penis", "penis", "male-genital-organs/penis"),
             ("Prostate", "prostate", "male-genital-organs/prostate"),
             ("Testis", "testis", "male-genital-organs/testis"),
         ],
-        # Urinary Tract (4 sites)
+        # Urinary Tract
         "urinary-tract": [
             ("Kidney", "kidney", "urinary-tract/kidney"),
             ("Renal Pelvis and Ureter", "renal-pelvis-ureter", "urinary-tract/renal-pelvis-ureter"),
             ("Urinary Bladder", "bladder", "urinary-tract/bladder"),
             ("Urethra", "urethra", "urinary-tract/urethra"),
         ],
-        # Ophthalmic Sites (8 sites)
+        # Ophthalmic Sites
         "ophthalmic-sites": [
             ("Conjunctival Carcinoma", "conjunctival-carcinoma", "ophthalmic-sites/conjunctival-carcinoma"),
             ("Conjunctival Melanoma", "conjunctival-melanoma", "ophthalmic-sites/conjunctival-melanoma"),
@@ -405,17 +402,17 @@ def _seed_ajcc_data_if_needed():
             ("Retinoblastoma", "retinoblastoma", "ophthalmic-sites/retinoblastoma"),
             ("Uveal Melanoma", "uveal-melanoma", "ophthalmic-sites/uveal-melanoma"),
         ],
-        # Central Nervous System (1 site)
+        # Central Nervous System - single site (slug matches original "brain")
         "central-nervous-system": [
-            ("Brain and Spinal Cord", "brain-spinal-cord", "central-nervous-system/brain-spinal-cord"),
+            ("Brain and Spinal Cord", "brain", "central-nervous-system/brain"),
         ],
-        # Endocrine System (3 sites)
+        # Endocrine System
         "endocrine-system": [
             ("Thyroid", "thyroid", "endocrine-system/thyroid"),
             ("Adrenal Gland", "adrenal-gland", "endocrine-system/adrenal-gland"),
             ("Parathyroid", "parathyroid", "endocrine-system/parathyroid"),
         ],
-        # Hematologic Malignancies (1 site - typically not TNM staged)
+        # Hematologic Malignancies (not TNM staged)
         "hematologic-malignancies": [
             ("Hematologic Malignancies", "hematologic-malignancies", "hematologic-malignancies/hematologic-malignancies"),
         ],
@@ -435,12 +432,13 @@ def _seed_ajcc_data_if_needed():
     # Count expected disease sites
     expected_sites = sum(len(diseases) for diseases in DISEASE_SITES.values())
     
-    # Check if we need to add missing entries (incremental seeding)
-    if existing_sections >= len(BODY_SECTIONS) and existing_sites >= expected_sites:
+    # Check if we need to add missing entries or cleanup duplicates
+    # Always run if counts don't match exactly (duplicates can inflate count)
+    if existing_sections == len(BODY_SECTIONS) and existing_sites == expected_sites:
         print(f"[SEED] AJCC data complete: {existing_sections} sections, {existing_sites} sites")
         return
     
-    print(f"[SEED] Adding missing AJCC data (have {existing_sections}/{len(BODY_SECTIONS)} sections, {existing_sites}/{expected_sites} sites)...")
+    print(f"[SEED] Syncing AJCC data (have {existing_sections}/{len(BODY_SECTIONS)} sections, {existing_sites}/{expected_sites} sites)...")
     
     try:
         # Seed body sections
@@ -479,10 +477,31 @@ def _seed_ajcc_data_if_needed():
         
         db.session.commit()
         
+        # Cleanup: Remove disease sites with slugs not in the seed data
+        # This handles cases where slug changed (e.g., "brain-spinal-cord" -> "brain")
+        valid_slugs = set()
+        for diseases in DISEASE_SITES.values():
+            for _, slug, _ in diseases:
+                valid_slugs.add(slug)
+        
+        # Find and remove orphaned/duplicate entries
+        all_sites = AJCCDiseaseSite.query.all()
+        removed_sites = 0
+        for site in all_sites:
+            if site.slug not in valid_slugs:
+                # Check if this site has staging data - if so, skip
+                if not site.staging_data:
+                    db.session.delete(site)
+                    removed_sites += 1
+                    print(f"[SEED] Removed orphaned disease site: {site.disease_name} (slug: {site.slug})")
+        
+        if removed_sites > 0:
+            db.session.commit()
+        
         final_sections = AJCCBodySection.query.count()
         final_sites = AJCCDiseaseSite.query.count()
-        if added_sites > 0:
-            print(f"[SEED] Added {added_sites} new disease sites. Total: {final_sections} sections, {final_sites} disease sites")
+        if added_sites > 0 or removed_sites > 0:
+            print(f"[SEED] Updated: +{added_sites} added, -{removed_sites} removed. Total: {final_sections} sections, {final_sites} disease sites")
         else:
             print(f"[SEED] Complete: {final_sections} sections, {final_sites} disease sites")
         
