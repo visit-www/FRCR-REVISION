@@ -382,35 +382,46 @@ def forgot_password():
     """Request password recovery"""
     if request.method == 'POST':
         try:
+            print("[AUTH] Forgot password - processing request")
             data = request.get_json() if request.is_json else request.form
             email = data.get('email', '').strip().lower()
+            print(f"[AUTH] Forgot password - email: {email}")
             
             if not email:
                 return jsonify({'error': 'Email required'}), 400
             
             user = User.query.filter_by(email=email).first()
+            print(f"[AUTH] Forgot password - user found: {user is not None}")
             
             if user:
                 # Generate recovery token
+                print("[AUTH] Generating recovery token...")
                 token = user.generate_recovery_token()
+                print(f"[AUTH] Token generated, committing to DB...")
                 db.session.commit()
+                print("[AUTH] Token saved to DB")
                 
                 # Send email
                 try:
+                    print("[AUTH] Attempting to send recovery email...")
                     email_sent = send_recovery_email(email, token)
+                    print(f"[AUTH] Email sent result: {email_sent}")
                     
                     if not email_sent:
                         print(f"[AUTH] Recovery email failed to send for {email}")
-                        # Don't reveal this to user (security) - just show generic success
                 except Exception as email_error:
                     print(f"[AUTH] Email sending exception for {email}: {email_error}")
-                    # Don't reveal this to user (security) - just show generic success
+                    import traceback
+                    traceback.print_exc()
             
             # Always return success (don't reveal if email exists or not)
+            print("[AUTH] Returning success response")
             return jsonify({'success': True, 'message': 'If an account with that email exists, you will receive a recovery link shortly.'}), 200
             
         except Exception as e:
             print(f"[AUTH] Forgot password error: {e}")
+            import traceback
+            traceback.print_exc()
             db.session.rollback()
             return jsonify({'error': 'An error occurred. Please try again.'}), 500
     
