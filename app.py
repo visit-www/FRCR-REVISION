@@ -971,7 +971,7 @@ def student_profile():
 @login_required
 def admin_dashboard():
     """Admin dashboard - only accessible to admins"""
-    if not current_user.is_admin:
+    if current_user.role != UserRole.ADMIN:
         return redirect(url_for('dashboard'))
     return render_template('admin_dashboard.html')
 
@@ -982,7 +982,7 @@ def review_staging_cases():
     """Review and manage staging cases - ADMIN ONLY"""
     from models import ImportedCaseStaging
     
-    if not current_user.is_admin:
+    if current_user.role != UserRole.ADMIN:
         return redirect(url_for('dashboard'))
     
     # Get status filter from query params
@@ -1018,7 +1018,7 @@ def review_staging_cases():
 @login_required
 def case_list():
     """Case management page - list, create, edit, delete cases"""
-    if not current_user.is_admin:
+    if current_user.role not in [UserRole.ADMIN, UserRole.CONTENT_MANAGER]:
         return redirect(url_for('dashboard'))
     return render_template('case_list.html')
 

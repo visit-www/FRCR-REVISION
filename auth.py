@@ -604,7 +604,7 @@ def verify_db_users():
     Verify that users and password hashes are stored in the database.
     Admin only - shows user info but NOT full password hashes (security).
     """
-    if not current_user.is_admin:
+    if current_user.role != UserRole.ADMIN:
         return jsonify({'error': 'Admin access required'}), 403
     
     try:
@@ -653,7 +653,7 @@ def verify_db_users():
 @login_required
 def promote_user():
     """Promote a user to admin - only accessible by existing admins"""
-    if not current_user.is_admin:
+    if current_user.role != UserRole.ADMIN:
         return jsonify({'error': 'Admin access required'}), 403
     
     data = request.get_json()
@@ -681,7 +681,7 @@ def promote_user():
 @login_required  
 def list_users():
     """List all users with their admin status - admin only"""
-    if not current_user.is_admin:
+    if current_user.role != UserRole.ADMIN:
         return jsonify({'error': 'Admin access required'}), 403
     
     users = User.query.order_by(User.created_at).all()
