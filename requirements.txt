@@ -18,5 +18,5 @@ notion-client==2.2.1
 beautifulsoup4==4.12.2
 lxml==4.9.3
 # biopython==1.81  # Optional: for enhanced PubMed integration
-# playwright>=1.40.0  # Local only: for AJCC data extractionresend
+# playwright>=1.40.0  # Local only: for AJCC data extraction
 resend==2.21.0

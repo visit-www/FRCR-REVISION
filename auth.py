@@ -381,27 +381,38 @@ def logout():
 def forgot_password():
     """Request password recovery"""
     if request.method == 'POST':
-        data = request.get_json() if request.is_json else request.form
-        email = data.get('email', '').strip().lower()
-        
-        if not email:
-            return jsonify({'error': 'Email required'}), 400
-        
-        user = User.query.filter_by(email=email).first()
-        
-        if user:
-            # Generate recovery token
-            token = user.generate_recovery_token()
-            db.session.commit()
+        try:
+            data = request.get_json() if request.is_json else request.form
+            email = data.get('email', '').strip().lower()
             
-            # Send email
-            email_sent = send_recovery_email(email, token)
+            if not email:
+                return jsonify({'error': 'Email required'}), 400
             
-            if not email_sent:
-                return jsonify({'error': 'Failed to send recovery email. Please try again or contact support.'}), 500
-        
-        # Return success if user exists and email sent (don't reveal if email doesn't exist)
-        return jsonify({'success': True, 'message': 'Check your email for recovery link'}), 200
+            user = User.query.filter_by(email=email).first()
+            
+            if user:
+                # Generate recovery token
+                token = user.generate_recovery_token()
+                db.session.commit()
+                
+                # Send email
+                try:
+                    email_sent = send_recovery_email(email, token)
+                    
+                    if not email_sent:
+                        print(f"[AUTH] Recovery email failed to send for {email}")
+                        # Don't reveal this to user (security) - just show generic success
+                except Exception as email_error:
+                    print(f"[AUTH] Email sending exception for {email}: {email_error}")
+                    # Don't reveal this to user (security) - just show generic success
+            
+            # Always return success (don't reveal if email exists or not)
+            return jsonify({'success': True, 'message': 'If an account with that email exists, you will receive a recovery link shortly.'}), 200
+            
+        except Exception as e:
+            print(f"[AUTH] Forgot password error: {e}")
+            db.session.rollback()
+            return jsonify({'error': 'An error occurred. Please try again.'}), 500
     
     return render_template('forgot_password.html')
 
