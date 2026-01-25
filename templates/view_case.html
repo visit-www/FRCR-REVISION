@@ -7961,18 +7961,24 @@
         
         try {
             // Check if TNM data exists via backend
-            const response = await fetch(`/api/tnm/check?diagnosis=${encodeURIComponent(diagnosis)}`);
+            const response = await fetch(`/tnm/check?diagnosis=${encodeURIComponent(diagnosis)}`);
+            
+            if (!response.ok) {
+                console.log('[TNM] Check endpoint returned:', response.status);
+                return;
+            }
+            
             const data = await response.json();
             
             if (data.exists && data.url) {
                 tnmContainer.innerHTML = `
-                    <a href="${data.url}" class="btn btn-sm btn-primary" target="_blank" title="View AJCC TNM Staging">
-                        <i class="fas fa-stethoscope me-1"></i>View TNM Staging
+                    <a href="${data.url}" class="btn btn-sm" style="background: linear-gradient(135deg, #f4a896 0%, #e89580 100%); color: white;" target="_blank" title="View AJCC TNM Staging">
+                        <i class="fas fa-book-medical me-1"></i>View TNM Staging
                     </a>
                 `;
             }
         } catch (error) {
-            console.error('[TNM] Error checking TNM data:', error);
+            console.log('[TNM] TNM check not available:', error.message);
         }
     }
     

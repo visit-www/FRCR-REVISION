@@ -2415,10 +2415,10 @@ function insertTnmLinksDirectly(data) {
         return;
     }
     
-    // Build simple orange button for AJCC staging link
+    // Build styled button matching app design (Bootstrap with app palette)
     const fullHtml = `
 <p style="margin: 1rem 0;">
-    <a href="${tnmLink}" target="_blank" style="display: inline-block; background: #e96304; color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 0.95em;">
+    <a href="${tnmLink}" target="_blank" class="btn" style="background: linear-gradient(135deg, #f4a896 0%, #e89580 100%); color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-weight: 600; box-shadow: 0 2px 8px rgba(244, 168, 150, 0.3);">
         <i class="fas fa-book-medical me-2"></i>Click to view detailed AJCC staging document – ${diseaseName}
     </a>
 </p>
