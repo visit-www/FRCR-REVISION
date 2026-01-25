@@ -71,7 +71,7 @@ def send_recovery_email(email, token):
 
 
 def send_admin_approval_email(requesting_admin_email, requesting_admin_name, target_user_email, 
-                               target_user_name, action, code):
+                               target_user_name, action, code, action_details=None):
     """
     Send approval code email to superadmin when a non-superadmin admin tries to perform
     a restricted action (promote to admin, delete admin, etc.)
@@ -83,59 +83,145 @@ def send_admin_approval_email(requesting_admin_email, requesting_admin_name, tar
         target_user_name: Name of the user being affected
         action: Description of the action (e.g., "promote to Admin", "delete user")
         code: The 8-character approval code
+        action_details: Dict with additional details (old_role, new_role, etc.)
+    
+    Returns:
+        dict: {'success': bool, 'error': str or None, 'email_id': str or None}
     """
     import resend
+    from datetime import datetime
     
     SUPERADMIN_EMAIL = "lotusheart2016@gmail.com"
     
     resend_key = os.getenv('RESEND_API_KEY')
     
     if not resend_key:
-        print("[EMAIL] RESEND_API_KEY not configured - cannot send approval email")
-        return False
+        error_msg = "RESEND_API_KEY not configured"
+        print(f"[EMAIL] {error_msg} - cannot send approval email")
+        return {'success': False, 'error': error_msg, 'email_id': None}
     
     resend.api_key = resend_key
     from_email = os.getenv('EMAIL_FROM', 'FRCR Revision <onboarding@resend.dev>')
+    
+    # Build details section
+    details_html = ""
+    if action_details:
+        if 'old_role' in action_details and 'new_role' in action_details:
+            details_html = f"""
+            <p><strong>Role Change:</strong> {action_details.get('old_role', 'Unknown').upper()} → 
+               <span style="color: #e96304; font-weight: bold;">{action_details.get('new_role', 'Unknown').upper()}</span></p>
+            """
+        elif 'target_role' in action_details:
+            details_html = f"""
+            <p><strong>Target's Current Role:</strong> {action_details.get('target_role', 'Unknown').upper()}</p>
+            """
+    
+    # Create mailto link for easy reply
+    reply_subject = f"RE: Approval Code for {action}"
+    reply_body = f"Approval Code: {code}%0A%0AThis approves the following action:%0A- {action}%0A- Target: {target_user_name} ({target_user_email})"
+    mailto_link = f"mailto:{requesting_admin_email}?subject={reply_subject}&body={reply_body}"
+    
+    timestamp = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')
     
     try:
         params = {
             "from": from_email,
             "to": [SUPERADMIN_EMAIL],
-            "subject": f"Admin Action Approval Required: {action}",
+            "subject": f"🔐 Admin Action Approval Required: {action}",
             "html": f"""
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                <h2 style="color: #e96304;">Admin Action Approval Required</h2>
-                
-                <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                    <p><strong>Requesting Admin:</strong> {requesting_admin_name} ({requesting_admin_email})</p>
-                    <p><strong>Action:</strong> {action}</p>
-                    <p><strong>Target User:</strong> {target_user_name} ({target_user_email})</p>
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 12px; overflow: hidden;">
+                <!-- Header -->
+                <div style="background: linear-gradient(135deg, #e96304 0%, #c75002 100%); color: white; padding: 20px; text-align: center;">
+                    <h2 style="margin: 0;">⚠️ Admin Action Approval Required</h2>
                 </div>
                 
-                <p>The admin above is requesting to perform the action shown. To approve this action, 
-                provide them with the following code:</p>
-                
-                <div style="background-color: #2c3e50; color: white; padding: 20px; text-align: center; 
-                            border-radius: 8px; margin: 20px 0; font-size: 28px; letter-spacing: 4px; font-family: monospace;">
-                    {code}
+                <!-- Content -->
+                <div style="padding: 25px;">
+                    <!-- Request Summary Box -->
+                    <div style="background-color: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 15px; margin-bottom: 20px;">
+                        <h3 style="margin: 0 0 10px 0; color: #856404;">📋 Request Summary</h3>
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <tr>
+                                <td style="padding: 5px 0; color: #666;"><strong>Requested By:</strong></td>
+                                <td style="padding: 5px 0;">{requesting_admin_name}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 5px 0; color: #666;"><strong>Admin Email:</strong></td>
+                                <td style="padding: 5px 0;">
+                                    <a href="mailto:{requesting_admin_email}" style="color: #5E899E;">{requesting_admin_email}</a>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 5px 0; color: #666;"><strong>Action Requested:</strong></td>
+                                <td style="padding: 5px 0; color: #dc3545; font-weight: bold;">{action}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 5px 0; color: #666;"><strong>Target User:</strong></td>
+                                <td style="padding: 5px 0;">{target_user_name} ({target_user_email})</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 5px 0; color: #666;"><strong>Timestamp:</strong></td>
+                                <td style="padding: 5px 0;">{timestamp}</td>
+                            </tr>
+                        </table>
+                        {details_html}
+                    </div>
+                    
+                    <!-- Approval Code Box -->
+                    <div style="text-align: center; margin: 25px 0;">
+                        <p style="margin-bottom: 10px; color: #666;">To <strong>APPROVE</strong> this action, share this code with the requesting admin:</p>
+                        <div style="background-color: #2c3e50; color: white; padding: 20px 30px; 
+                                    border-radius: 8px; font-size: 32px; letter-spacing: 6px; 
+                                    font-family: 'Courier New', monospace; display: inline-block;">
+                            {code}
+                        </div>
+                        <p style="margin-top: 10px; color: #999; font-size: 12px;">
+                            Code expires in <strong>24 hours</strong> • Single use only
+                        </p>
+                    </div>
+                    
+                    <!-- Quick Reply Button -->
+                    <div style="text-align: center; margin: 25px 0;">
+                        <a href="{mailto_link}" 
+                           style="display: inline-block; background: linear-gradient(135deg, #5E899E 0%, #4a7085 100%); 
+                                  color: white; padding: 12px 30px; text-decoration: none; 
+                                  border-radius: 6px; font-weight: bold;">
+                            📧 Send Approval Code to Admin
+                        </a>
+                        <p style="margin-top: 10px; color: #666; font-size: 12px;">
+                            Click above to send the code directly to {requesting_admin_name}
+                        </p>
+                    </div>
+                    
+                    <!-- To Reject -->
+                    <div style="background-color: #f8f9fa; border-radius: 8px; padding: 15px; margin-top: 20px;">
+                        <p style="margin: 0; color: #666;">
+                            <strong>To REJECT:</strong> Simply ignore this email. The code will expire automatically.
+                            If you suspect unauthorized activity, investigate the requesting admin's account.
+                        </p>
+                    </div>
                 </div>
                 
-                <p style="color: #666;">This code expires in 24 hours.</p>
-                <p style="color: #dc3545; font-size: 12px;">
-                    <strong>Security Note:</strong> Only share this code if you approve the action. 
-                    If you did not expect this request, please investigate immediately.
-                </p>
+                <!-- Footer -->
+                <div style="background-color: #2c3e50; color: #aaa; padding: 15px; text-align: center; font-size: 12px;">
+                    <p style="margin: 0;">FRCR Revision Admin System</p>
+                    <p style="margin: 5px 0 0 0;">This is an automated security notification.</p>
+                </div>
             </div>
             """
         }
         
         response = resend.Emails.send(params)
-        print(f"[EMAIL] Approval code email sent to superadmin for action '{action}': {response}")
-        return True
+        email_id = response.get('id') if isinstance(response, dict) else str(response)
+        print(f"[EMAIL] ✅ Approval email sent to superadmin for '{action}': ID={email_id}")
+        return {'success': True, 'error': None, 'email_id': email_id}
         
     except Exception as e:
-        print(f"[EMAIL] Failed to send approval email: {e}")
-        return False
+        error_msg = str(e)
+        print(f"[EMAIL] ❌ Failed to send approval email: {error_msg}")
+        import traceback
+        traceback.print_exc()
+        return {'success': False, 'error': error_msg, 'email_id': None}
 
 
 def generate_approval_code():

@@ -257,33 +257,47 @@ def update_user_role(user_id):
             else:
                 # Generate new approval code and send email
                 code = generate_approval_code()
+                action_details = {'old_role': old_role, 'new_role': new_role}
                 
-                # Create pending approval record
-                pending_approval = AdminApprovalCode(
-                    code=code,
-                    requesting_admin_id=current_user.id,
-                    target_user_id=user.id,
-                    action=action_description,
-                    action_details={'old_role': old_role, 'new_role': new_role},
-                    expires_at=datetime.utcnow() + timedelta(hours=24)
-                )
-                db.session.add(pending_approval)
-                db.session.commit()
-                
-                # Send email to superadmin
-                email_sent = send_admin_approval_email(
+                # Send email to superadmin FIRST - action blocked if email fails
+                email_result = send_admin_approval_email(
                     requesting_admin_email=current_user.email,
                     requesting_admin_name=current_user.full_name,
                     target_user_email=user.email,
                     target_user_name=user.full_name,
                     action=action_description,
-                    code=code
+                    code=code,
+                    action_details=action_details
                 )
+                
+                # BLOCK action if email delivery fails
+                if not email_result.get('success'):
+                    logger.error(f"[AUDIT] BLOCKED: Admin {current_user.email} tried to {action_description} - email failed: {email_result.get('error')}")
+                    return jsonify({
+                        'error': 'Unable to notify Super Admin. Action not completed.',
+                        'detail': 'Email delivery failed. Please try again later or contact the Super Admin directly.',
+                        'action_blocked': True
+                    }), 503
+                
+                # Create pending approval record (only after email succeeds)
+                pending_approval = AdminApprovalCode(
+                    code=code,
+                    requesting_admin_id=current_user.id,
+                    target_user_id=user.id,
+                    action=action_description,
+                    action_details=action_details,
+                    expires_at=datetime.utcnow() + timedelta(hours=24)
+                )
+                db.session.add(pending_approval)
+                db.session.commit()
+                
+                # Audit log
+                logger.info(f"[AUDIT] PENDING: Admin {current_user.email} requested to {action_description} - awaiting Super Admin approval (email_id: {email_result.get('email_id')})")
                 
                 return jsonify({
                     'requires_approval': True,
-                    'message': 'This action requires superadmin approval. An email has been sent with an approval code.',
-                    'email_sent': email_sent,
+                    'message': 'This action requires Super Admin approval. An email notification has been sent.',
+                    'status': 'pending_approval',
                     'action': action_description
                 }), 202
         
@@ -446,12 +460,15 @@ def delete_user(user_id):
         # Get approval code from request
         approval_code = request.args.get('approval_code', '').strip().upper()
         
-        # Determine if approval is required
+        # Determine if approval is required (Admin deleting Admin or Content Manager)
         requires_approval = False
-        if not is_superadmin and user.role == UserRole.ADMIN:
+        if not is_superadmin and user.role in [UserRole.ADMIN, UserRole.CONTENT_MANAGER]:
             requires_approval = True
         
         if requires_approval:
+            role_display = 'Admin' if user.role == UserRole.ADMIN else 'Content Manager'
+            action_description = f"delete {role_display} {user.full_name}"
+            
             if approval_code:
                 # Verify the approval code
                 pending = AdminApprovalCode.query.filter_by(
@@ -462,6 +479,7 @@ def delete_user(user_id):
                 ).first()
                 
                 if not pending or not pending.is_valid():
+                    logger.warning(f"[AUDIT] REJECTED: Admin {current_user.email} provided invalid approval code for {action_description}")
                     return jsonify({
                         'error': 'Invalid or expired approval code',
                         'requires_approval': True
@@ -471,36 +489,51 @@ def delete_user(user_id):
                 pending.mark_used()
                 db.session.commit()
                 
-                logger.info(f"Admin {current_user.email} used approval code to delete admin {email}")
+                logger.info(f"[AUDIT] APPROVED: Admin {current_user.email} used approval code to {action_description}")
             else:
-                # Generate new approval code and send email
+                # Generate new approval code and send email FIRST
                 code = generate_approval_code()
-                action_description = f"delete Admin {user.full_name}"
+                action_details = {'target_role': user_role, 'action_type': 'deletion'}
                 
-                pending_approval = AdminApprovalCode(
-                    code=code,
-                    requesting_admin_id=current_user.id,
-                    target_user_id=user.id,
-                    action=action_description,
-                    action_details={'target_role': user_role},
-                    expires_at=datetime.utcnow() + timedelta(hours=24)
-                )
-                db.session.add(pending_approval)
-                db.session.commit()
-                
-                email_sent = send_admin_approval_email(
+                # Send email to superadmin FIRST - action blocked if email fails
+                email_result = send_admin_approval_email(
                     requesting_admin_email=current_user.email,
                     requesting_admin_name=current_user.full_name,
                     target_user_email=user.email,
                     target_user_name=user.full_name,
                     action=action_description,
-                    code=code
+                    code=code,
+                    action_details=action_details
                 )
+                
+                # BLOCK action if email delivery fails
+                if not email_result.get('success'):
+                    logger.error(f"[AUDIT] BLOCKED: Admin {current_user.email} tried to {action_description} - email failed: {email_result.get('error')}")
+                    return jsonify({
+                        'error': 'Unable to notify Super Admin. Action not completed.',
+                        'detail': 'Email delivery failed. Please try again later or contact the Super Admin directly.',
+                        'action_blocked': True
+                    }), 503
+                
+                # Create pending approval record (only after email succeeds)
+                pending_approval = AdminApprovalCode(
+                    code=code,
+                    requesting_admin_id=current_user.id,
+                    target_user_id=user.id,
+                    action=action_description,
+                    action_details=action_details,
+                    expires_at=datetime.utcnow() + timedelta(hours=24)
+                )
+                db.session.add(pending_approval)
+                db.session.commit()
+                
+                # Audit log
+                logger.info(f"[AUDIT] PENDING: Admin {current_user.email} requested to {action_description} - awaiting Super Admin approval (email_id: {email_result.get('email_id')})")
                 
                 return jsonify({
                     'requires_approval': True,
-                    'message': 'Deleting an admin requires superadmin approval. An email has been sent with an approval code.',
-                    'email_sent': email_sent,
+                    'message': f'Deleting a {role_display} requires Super Admin approval. An email notification has been sent.',
+                    'status': 'pending_approval',
                     'action': action_description
                 }), 202
         
