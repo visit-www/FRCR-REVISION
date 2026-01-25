@@ -1790,7 +1790,7 @@ async function generateTnmIntelligenceForSite(primarySiteName, forceRegenerate =
                     insertTnmLinksDirectly({
                         ...checkData.data,
                         ajcc_match: selectedPrimarySite,
-                        tnm_link: selectedPrimarySite.tnm_link || `/tnm/${selectedPrimarySite.section_slug}/${selectedPrimarySite.disease_slug}?year=2026`,
+                        tnm_link: selectedPrimarySite.tnm_link || `/tnm/${selectedPrimarySite.section_slug}/${selectedPrimarySite.disease_slug}/student?year=2026`,
                         is_cached: true
                     });
                     return;
@@ -1853,7 +1853,37 @@ async function generateTnmIntelligenceForSite(primarySiteName, forceRegenerate =
             result.ajcc_match = selectedPrimarySite;
         }
         if (!result.tnm_link && selectedPrimarySite) {
-            result.tnm_link = selectedPrimarySite.tnm_link || `/tnm/${selectedPrimarySite.section_slug}/${selectedPrimarySite.disease_slug}?year=2026`;
+            result.tnm_link = selectedPrimarySite.tnm_link || `/tnm/${selectedPrimarySite.section_slug}/${selectedPrimarySite.disease_slug}/student?year=2026`;
+        }
+        
+        // Auto-save the generated intelligence for future reuse
+        if (caseId && selectedPrimarySite?.disease_site_id) {
+            try {
+                const saveResponse = await fetch('/tnm/api/save-intelligence', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        case_id: caseId,
+                        disease_site_id: selectedPrimarySite.disease_site_id,
+                        tnm_intelligence: {
+                            tnm_memory_aid: result.tnm_memory_aid,
+                            radiologist_key_points: result.radiologist_key_points,
+                            upstaging_triggers: result.upstaging_triggers,
+                            mdt_critical_findings: result.mdt_critical_findings,
+                            copy_blocks: result.copy_blocks,
+                            imaging_checklist: result.imaging_checklist,
+                            reference_images: result.reference_images,
+                            warnings: result.warnings
+                        }
+                    })
+                });
+                if (saveResponse.ok) {
+                    console.log('[TNM] Intelligence auto-saved for future use');
+                }
+            } catch (saveErr) {
+                console.warn('[TNM] Could not auto-save intelligence:', saveErr);
+                // Don't block the flow - saving is optional optimization
+            }
         }
         
         // Insert TNM intelligence directly into discussion
@@ -1889,7 +1919,8 @@ function getTnmLink(ajccMatch) {
     const tnmVersion = ajccMatch.tnm_version || '';
     const yearMatch = tnmVersion.match(/\((\d{4})\)/);
     const year = yearMatch ? yearMatch[1] : '2026';
-    return `/tnm/${ajccMatch.section_slug}/${ajccMatch.disease_slug}?year=${year}`;
+    // Use /student suffix for direct content access
+    return `/tnm/${ajccMatch.section_slug}/${ajccMatch.disease_slug}/student?year=${year}`;
 }
 
 // Alias for backward compatibility
@@ -2352,13 +2383,13 @@ function insertTnmLinksDirectly(data) {
     const isCached = data.is_cached;
     const isRegenerated = data.is_regenerated;
     
-    // Build TNM link - single link for both student and admin
+    // Build TNM link - use /student suffix for direct content access
     let tnmLink = data.tnm_link;
     if (!tnmLink && ajccMatch.section_slug && ajccMatch.disease_slug) {
         // Extract year from version string or default to 2026
         const yearMatch = tnmVersion.match(/\((\d{4})\)/);
         const year = yearMatch ? yearMatch[1] : '2026';
-        tnmLink = `/tnm/${ajccMatch.section_slug}/${ajccMatch.disease_slug}?year=${year}`;
+        tnmLink = `/tnm/${ajccMatch.section_slug}/${ajccMatch.disease_slug}/student?year=${year}`;
     }
     
     // Get the Markdown content from Claude

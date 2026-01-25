@@ -231,16 +231,17 @@ def student_tnm_view(section_slug, disease_slug):
         # Check if curated data exists
         is_curated = staging_data.is_curated
         
-        # For students: only show curated data
-        # For admins: show raw data (for reference) or curated data
+        # Show curated content if available, otherwise show raw extracted data
+        # Both admins and students can see content, but students get a warning if not curated
         if is_curated:
-            # Use curated content
+            # Use curated content (preferred)
             quick_reference_html = staging_data.curated_quick_reference_html
             explanatory_notes_html = staging_data.curated_explanatory_notes_html
-        elif is_admin:
-            # Admin can see raw data
+        else:
+            # Show raw extracted data with warning
+            # This allows students to access content immediately while curation is in progress
+            quick_reference_html = staging_data.section_1_quick_reference_html
             explanatory_notes_html = staging_data.section_10_explanatory_notes_html
-        # else: students see nothing if not curated
         
         # Always try to get structured TNM definitions (from JSON)
         t_definitions = staging_data.get_t_definitions()

@@ -616,7 +616,8 @@ def get_tnm_reference_only(
     year = year_match.group(1) if year_match else "2026"
     
     if section_slug and disease_slug:
-        tnm_link = f"/tnm/{section_slug}/{disease_slug}?year={year}"
+        # Use /student suffix for direct access to content view
+        tnm_link = f"/tnm/{section_slug}/{disease_slug}/student?year={year}"
         if from_case_id is not None:
             tnm_link += f"&from_case={from_case_id}"
     else:
@@ -1186,8 +1187,8 @@ def generate_tnm_intelligence(
     year_match = re.search(r'\((\d{4})\)', tnm_version)
     year = year_match.group(1) if year_match else "2026"
     
-    # Build TNM link with year parameter
-    tnm_link = f"/tnm/{section_slug}/{disease_slug}?year={year}"
+    # Build TNM link with year parameter - use /student suffix for direct content access
+    tnm_link = f"/tnm/{section_slug}/{disease_slug}/student?year={year}"
     if from_case_id is not None:
         tnm_link += f"&from_case={from_case_id}"
     
