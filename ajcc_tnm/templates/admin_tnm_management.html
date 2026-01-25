@@ -105,6 +105,81 @@
         </div>
     </div>
 
+    <!-- Extraction Progress Tracker -->
+    <div class="card mb-4">
+        <div class="card-header" style="background: linear-gradient(135deg, #e96304 0%, #c55003 100%); color: white;">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-tasks"></i> Extraction Progress Tracker</h5>
+                <button class="btn btn-sm btn-light" onclick="loadExtractionStatus()">
+                    <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+            </div>
+        </div>
+        <div class="card-body">
+            <!-- Summary Stats -->
+            <div class="row mb-3" id="extractionSummary">
+                <div class="col-md-3 col-6 mb-2">
+                    <div class="card text-center h-100">
+                        <div class="card-body py-2">
+                            <h4 class="mb-0" id="totalSites">-</h4>
+                            <small class="text-muted">Total Sites</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-6 mb-2">
+                    <div class="card text-center h-100 border-success">
+                        <div class="card-body py-2">
+                            <h4 class="mb-0 text-success" id="extractedCount">-</h4>
+                            <small class="text-muted">Extracted</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-6 mb-2">
+                    <div class="card text-center h-100 border-primary">
+                        <div class="card-body py-2">
+                            <h4 class="mb-0 text-primary" id="curatedCount">-</h4>
+                            <small class="text-muted">Curated</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-6 mb-2">
+                    <div class="card text-center h-100 border-warning">
+                        <div class="card-body py-2">
+                            <h4 class="mb-0 text-warning" id="pendingCount">-</h4>
+                            <small class="text-muted">Pending</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Progress Bar -->
+            <div class="progress mb-3" style="height: 25px;">
+                <div class="progress-bar bg-primary" role="progressbar" id="curatedBar" style="width: 0%"></div>
+                <div class="progress-bar bg-success" role="progressbar" id="extractedBar" style="width: 0%"></div>
+                <div class="progress-bar bg-warning" role="progressbar" id="pendingBar" style="width: 0%"></div>
+            </div>
+            
+            <!-- Pending Sites List (collapsible) -->
+            <div class="accordion" id="pendingSitesAccordion">
+                <div class="accordion-item">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#pendingSitesList">
+                            <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+                            <span id="pendingSitesTitle">Sites Pending Extraction</span>
+                        </button>
+                    </h2>
+                    <div id="pendingSitesList" class="accordion-collapse collapse" data-bs-parent="#pendingSitesAccordion">
+                        <div class="accordion-body" id="pendingSitesContent">
+                            <div class="text-center py-2">
+                                <div class="spinner-border spinner-border-sm" role="status"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Disease Sites Management -->
     <div class="card mb-4">
         <div class="card-header" style="background: linear-gradient(135deg, #5E899E 0%, #4a7285 100%); color: white;">
@@ -494,6 +569,114 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Load disease sites list
     loadDiseaseSites();
+    
+    // Load extraction status tracker
+    loadExtractionStatus();
+    
+    // Function to load extraction status
+    function loadExtractionStatus() {
+        fetch('/api/admin/tnm/extraction-status?year=2026', { credentials: 'include' })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    const summary = data.summary;
+                    
+                    // Update summary stats
+                    document.getElementById('totalSites').textContent = summary.total_sites;
+                    document.getElementById('extractedCount').textContent = summary.extracted;
+                    document.getElementById('curatedCount').textContent = summary.curated;
+                    document.getElementById('pendingCount').textContent = summary.pending;
+                    
+                    // Update progress bars
+                    const total = summary.total_sites || 1;
+                    const curatedPct = (summary.curated / total * 100).toFixed(1);
+                    const extractedPct = ((summary.extracted - summary.curated) / total * 100).toFixed(1);
+                    const pendingPct = (summary.pending / total * 100).toFixed(1);
+                    
+                    document.getElementById('curatedBar').style.width = curatedPct + '%';
+                    document.getElementById('curatedBar').textContent = curatedPct > 5 ? curatedPct + '% curated' : '';
+                    document.getElementById('extractedBar').style.width = extractedPct + '%';
+                    document.getElementById('extractedBar').textContent = extractedPct > 5 ? extractedPct + '% extracted' : '';
+                    document.getElementById('pendingBar').style.width = pendingPct + '%';
+                    document.getElementById('pendingBar').textContent = pendingPct > 5 ? pendingPct + '% pending' : '';
+                    
+                    // Update pending sites title
+                    document.getElementById('pendingSitesTitle').textContent = 
+                        `Sites Pending Extraction (${summary.pending} remaining)`;
+                    
+                    // Build pending sites list
+                    let pendingHtml = '';
+                    data.sections.forEach(section => {
+                        const pendingDiseases = section.diseases.filter(d => !d.extracted);
+                        if (pendingDiseases.length > 0) {
+                            pendingHtml += `<div class="mb-3">
+                                <h6 class="text-primary"><i class="fas fa-folder me-1"></i>${section.name}</h6>
+                                <ul class="list-unstyled ms-3">`;
+                            pendingDiseases.forEach(disease => {
+                                pendingHtml += `<li class="mb-1">
+                                    <i class="fas fa-circle text-warning" style="font-size: 0.5rem; vertical-align: middle;"></i>
+                                    <span class="ms-2">${disease.name}</span>
+                                    <button class="btn btn-sm btn-outline-primary ms-2 py-0" 
+                                            onclick="quickExtract(${disease.id}, '${section.slug}', '${disease.slug}', '${disease.name.replace(/'/g, "\\'")}')">
+                                        <i class="fas fa-download"></i> Extract
+                                    </button>
+                                </li>`;
+                            });
+                            pendingHtml += `</ul></div>`;
+                        }
+                    });
+                    
+                    if (pendingHtml === '') {
+                        pendingHtml = '<div class="text-center text-success py-3"><i class="fas fa-check-circle me-2"></i>All disease sites have been extracted!</div>';
+                    }
+                    
+                    document.getElementById('pendingSitesContent').innerHTML = pendingHtml;
+                }
+            })
+            .catch(err => {
+                console.error('Error loading extraction status:', err);
+            });
+    }
+    window.loadExtractionStatus = loadExtractionStatus;
+    
+    // Quick extract function for pending sites
+    function quickExtract(diseaseSiteId, sectionSlug, diseaseSlug, diseaseName) {
+        if (!confirm(`Extract TNM data for "${diseaseName}"?`)) return;
+        
+        const btn = event.target.closest('button');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        
+        fetch('/api/admin/tnm/extract', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            credentials: 'include',
+            body: JSON.stringify({
+                disease_site_id: diseaseSiteId,
+                diagnosis_year: 2026,
+                section_slug: sectionSlug,
+                disease_slug: diseaseSlug
+            })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                loadExtractionStatus();
+                loadStagingData(1);
+                alert('Extraction successful!');
+            } else {
+                alert('Extraction failed: ' + data.error);
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-download"></i> Extract';
+            }
+        })
+        .catch(err => {
+            alert('Error: ' + err.message);
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-download"></i> Extract';
+        });
+    }
+    window.quickExtract = quickExtract;
     
     // Function to delete TNM data
     window.deleteTNMData = function(diseaseSiteId, year, diseaseName) {

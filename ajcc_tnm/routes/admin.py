@@ -267,6 +267,83 @@ def list_staging_data():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@admin_tnm_bp.route('/extraction-status', methods=['GET'])
+@require_admin
+def extraction_status():
+    """Get extraction status for all disease sites - shows which need extraction."""
+    try:
+        year = request.args.get('year', 2026, type=int)
+        
+        # Get diagnosis year
+        diagnosis_year = AJCCDiagnosisYear.query.filter_by(year=year).first()
+        
+        # Get all disease sites grouped by section
+        sections = AJCCBodySection.query.order_by(AJCCBodySection.section_name).all()
+        
+        result = {
+            'success': True,
+            'year': year,
+            'sections': [],
+            'summary': {
+                'total_sites': 0,
+                'extracted': 0,
+                'curated': 0,
+                'pending': 0
+            }
+        }
+        
+        for section in sections:
+            section_data = {
+                'id': section.id,
+                'name': section.section_name,
+                'slug': section.slug,
+                'diseases': [],
+                'extracted_count': 0,
+                'curated_count': 0,
+                'total_count': 0
+            }
+            
+            for disease in section.disease_sites:
+                # Check if staging data exists for this disease + year
+                staging_data = None
+                if diagnosis_year:
+                    staging_data = AJCCStagingData.query.filter_by(
+                        disease_site_id=disease.id,
+                        diagnosis_year_id=diagnosis_year.id
+                    ).first()
+                
+                disease_info = {
+                    'id': disease.id,
+                    'name': disease.disease_name,
+                    'slug': disease.slug,
+                    'api_path': disease.ajcc_url_path,
+                    'extracted': staging_data is not None,
+                    'curated': staging_data.is_curated if staging_data else False,
+                    'extracted_at': staging_data.extracted_at.isoformat() if staging_data and staging_data.extracted_at else None
+                }
+                
+                section_data['diseases'].append(disease_info)
+                section_data['total_count'] += 1
+                result['summary']['total_sites'] += 1
+                
+                if staging_data:
+                    section_data['extracted_count'] += 1
+                    result['summary']['extracted'] += 1
+                    if staging_data.is_curated:
+                        section_data['curated_count'] += 1
+                        result['summary']['curated'] += 1
+                else:
+                    result['summary']['pending'] += 1
+            
+            result['sections'].append(section_data)
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"Error getting extraction status: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @admin_tnm_bp.route('/clean-data/<int:disease_site_id>/<int:year>', methods=['POST'])
 @require_admin
 def clean_staging_data(disease_site_id, year):
