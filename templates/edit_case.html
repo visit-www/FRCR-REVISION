@@ -1528,12 +1528,11 @@ function showTnmInfoMessage(diseaseName) {
     
     const infoMsg = document.createElement('div');
     infoMsg.id = 'tnmNoDataInfo';
-    infoMsg.className = 'alert alert-info py-2 px-3 mb-0 mt-2';
-    infoMsg.style.cssText = 'font-size: 12px; display: flex; align-items: center; gap: 8px;';
+    infoMsg.style.cssText = 'background: #fdfdfb; border-left: 3px solid #5E899E; padding: 8px 12px; border-radius: 4px; margin-top: 8px; font-size: 12px; display: flex; align-items: center; gap: 8px; color: #5a6270;';
     infoMsg.innerHTML = `
-        <i class="fas fa-info-circle"></i>
-        <span>No AJCC staging data for <strong>${diseaseName}</strong>. 
-        <a href="/api/admin/tnm/management" target="_blank" style="text-decoration: underline;">
+        <i class="fas fa-info-circle" style="color: #5E899E;"></i>
+        <span>No AJCC staging data for <strong style="color: #2c3e50;">${diseaseName}</strong>. 
+        <a href="/api/admin/tnm/management" target="_blank" style="color: #e96304; text-decoration: underline;">
             Fetch AJCC data first
         </a> before using TNM Intelligence AI.</span>
     `;
@@ -1551,13 +1550,12 @@ function showTnmNotCuratedMessage(diseaseName, diseaseSiteId) {
     
     const infoMsg = document.createElement('div');
     infoMsg.id = 'tnmNoDataInfo';
-    infoMsg.className = 'alert alert-warning py-2 px-3 mb-0 mt-2';
-    infoMsg.style.cssText = 'font-size: 12px; display: flex; align-items: center; gap: 8px;';
+    infoMsg.style.cssText = 'background: #ffc107; padding: 8px 12px; border-radius: 4px; margin-top: 8px; font-size: 12px; display: flex; align-items: center; gap: 8px; color: #2c3e50;';
     infoMsg.innerHTML = `
         <i class="fas fa-exclamation-triangle"></i>
         <span>TNM data for <strong>${diseaseName}</strong> is not yet curated. 
         Students will not see this content.
-        <a href="/api/admin/tnm/curate/${diseaseSiteId}/2024" target="_blank" style="text-decoration: underline; margin-left: 4px;">
+        <a href="/api/admin/tnm/curate/${diseaseSiteId}/2024" target="_blank" style="color: #2c3e50; text-decoration: underline; margin-left: 4px; font-weight: 600;">
             Curate now
         </a></span>
     `;

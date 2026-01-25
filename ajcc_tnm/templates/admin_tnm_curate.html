@@ -26,29 +26,29 @@
             </h2>
             <p class="text-muted mb-0">
                 {% if staging_data and staging_data.is_curated %}
-                    <span class="badge bg-success"><i class="fas fa-check me-1"></i>Curated</span>
+                    <span style="background: #a8d5ba; color: #2c3e50; padding: 4px 10px; border-radius: 4px; font-size: 0.8em;"><i class="fas fa-check me-1"></i>Curated</span>
                     Last curated: {{ staging_data.curated_at.strftime('%Y-%m-%d %H:%M') if staging_data.curated_at else 'Unknown' }}
                 {% else %}
-                    <span class="badge bg-warning text-dark"><i class="fas fa-exclamation-triangle me-1"></i>Not Yet Curated</span>
+                    <span style="background: #ffc107; color: #2c3e50; padding: 4px 10px; border-radius: 4px; font-size: 0.8em;"><i class="fas fa-exclamation-triangle me-1"></i>Not Yet Curated</span>
                 {% endif %}
             </p>
         </div>
         <div>
             {% if from_case_id %}
-            <a href="/case/{{ from_case_id }}/edit" class="btn btn-outline-primary">
+            <a href="/case/{{ from_case_id }}/edit" class="btn" style="background: #e96304; color: white; border: none;">
                 <i class="fas fa-arrow-left me-2"></i>Return to Case
             </a>
             {% endif %}
-            <a href="/api/admin/tnm/management" class="btn btn-outline-secondary">
+            <a href="/api/admin/tnm/management" class="btn" style="background: transparent; color: #5a6270; border: 1px solid #c5cad1;">
                 <i class="fas fa-list me-1"></i>Back to Management
             </a>
         </div>
     </div>
 
     <!-- Instructions -->
-    <div class="alert alert-info mb-4">
-        <h6><i class="fas fa-info-circle me-2"></i>Curation Workflow</h6>
-        <ol class="mb-0 small">
+    <div style="background: #fdfdfb; border-left: 3px solid #5E899E; padding: 16px; border-radius: 4px; margin-bottom: 1.5rem;">
+        <h6 style="color: #2c3e50; margin-bottom: 12px;"><i class="fas fa-info-circle me-2" style="color: #5E899E;"></i>Curation Workflow</h6>
+        <ol class="mb-0 small" style="color: #5a6270;">
             <li><strong>Review</strong> the raw AJCC data in the "Raw AJCC Data" tab (reference only)</li>
             <li><strong>Edit</strong> the two curated sections:
                 <ul>
@@ -82,10 +82,10 @@
     <div class="tab-content" id="curationTabContent">
         <!-- Raw AJCC Data (Read-only Reference) -->
         <div class="tab-pane fade show active" id="raw-content" role="tabpanel">
-            <div class="card">
-                <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+            <div class="card" style="border: 1px solid #c5cad1;">
+                <div class="card-header d-flex justify-content-between align-items-center" style="background: linear-gradient(135deg, #5E899E 0%, #4a7285 100%); color: white;">
                     <h5 class="mb-0"><i class="fas fa-database me-2"></i>Raw AJCC Data (Read-Only Reference)</h5>
-                    <span class="badge bg-light text-dark">For Reference Only - Do Not Show to Students</span>
+                    <span style="background: #fdfdfb; color: #5a6270; padding: 4px 10px; border-radius: 4px; font-size: 0.75em;">For Reference Only</span>
                 </div>
                 <div class="card-body" style="max-height: 70vh; overflow-y: auto;">
                     {% if raw_html_combined %}
@@ -93,10 +93,10 @@
                             {{ raw_html_combined | safe }}
                         </div>
                     {% else %}
-                        <div class="alert alert-warning">
+                        <div style="background: #ffc107; color: #2c3e50; padding: 12px 16px; border-radius: 6px;">
                             <i class="fas fa-exclamation-triangle me-2"></i>
                             No raw AJCC data has been extracted for this disease site yet.
-                            <a href="/api/admin/tnm/management" class="alert-link">Go to TNM Management to extract data.</a>
+                            <a href="/api/admin/tnm/management" style="color: #2c3e50; font-weight: 600; text-decoration: underline;">Go to TNM Management to extract data.</a>
                         </div>
                     {% endif %}
                 </div>
@@ -105,10 +105,10 @@
 
         <!-- Quick Reference Editor -->
         <div class="tab-pane fade" id="quick-ref-content" role="tabpanel">
-            <div class="card">
-                <div class="card-header bg-primary text-white">
+            <div class="card" style="border: 1px solid #c5cad1;">
+                <div class="card-header" style="background: linear-gradient(135deg, #e96304 0%, #d05a00 100%); color: white;">
                     <h5 class="mb-0"><i class="fas fa-table me-2"></i>Quick Reference (TNM Tables & Core Definitions)</h5>
-                    <small>Keep this section concise - primarily TNM staging tables and essential definitions</small>
+                    <small style="opacity: 0.9;">Keep this section concise - primarily TNM staging tables and essential definitions</small>
                 </div>
                 <div class="card-body">
                     <textarea id="quick-reference-editor">{{ curated_quick_reference or '' }}</textarea>
@@ -118,10 +118,10 @@
 
         <!-- Explanatory Notes Editor -->
         <div class="tab-pane fade" id="notes-content" role="tabpanel">
-            <div class="card">
-                <div class="card-header bg-info text-white">
+            <div class="card" style="border: 1px solid #c5cad1;">
+                <div class="card-header" style="background: linear-gradient(135deg, #5E899E 0%, #4a7285 100%); color: white;">
                     <h5 class="mb-0"><i class="fas fa-book-open me-2"></i>Explanatory Notes (Curated Content)</h5>
-                    <small>Add interpretations, clarifications, high-yield points, and teaching notes here</small>
+                    <small style="opacity: 0.9;">Add interpretations, clarifications, high-yield points, and teaching notes here</small>
                 </div>
                 <div class="card-body">
                     <textarea id="explanatory-notes-editor">{{ curated_explanatory_notes or '' }}</textarea>
@@ -131,16 +131,16 @@
     </div>
 
     <!-- Save Actions -->
-    <div class="card mt-4 border-success">
+    <div class="card mt-4" style="border: 1px solid #a8d5ba;">
         <div class="card-body d-flex justify-content-between align-items-center">
             <div>
                 <span id="saveStatus"></span>
             </div>
             <div>
-                <button class="btn btn-outline-secondary me-2" onclick="previewCurated()">
+                <button class="btn me-2" style="background: transparent; color: #5a6270; border: 1px solid #c5cad1;" onclick="previewCurated()">
                     <i class="fas fa-eye me-1"></i>Preview
                 </button>
-                <button class="btn btn-success btn-lg" id="saveBtn" onclick="saveCuratedData()">
+                <button class="btn btn-lg" id="saveBtn" style="background: #a8d5ba; color: #2c3e50; border: none;" onclick="saveCuratedData()">
                     <i class="fas fa-save me-1"></i>Save Curated Data
                 </button>
             </div>
@@ -152,7 +152,7 @@
 <div class="modal fade" id="previewModal" tabindex="-1">
     <div class="modal-dialog modal-xl">
         <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
+            <div class="modal-header" style="background: linear-gradient(135deg, #5E899E 0%, #4a7285 100%); color: white;">
                 <h5 class="modal-title"><i class="fas fa-eye me-2"></i>Preview: Student View</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
@@ -160,7 +160,7 @@
                 <div id="previewContent"></div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn" style="background: transparent; color: #5a6270; border: 1px solid #c5cad1;" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
@@ -279,20 +279,20 @@ function previewCurated() {
     
     const previewContent = document.getElementById('previewContent');
     previewContent.innerHTML = `
-        <div class="card mb-3">
-            <div class="card-header bg-primary text-white">
+        <div class="card mb-3" style="border: 1px solid #c5cad1;">
+            <div class="card-header" style="background: linear-gradient(135deg, #e96304 0%, #d05a00 100%); color: white;">
                 <h5 class="mb-0"><i class="fas fa-table me-2"></i>Quick Reference</h5>
             </div>
             <div class="card-body">
-                ${quickRef || '<p class="text-muted">No quick reference content yet.</p>'}
+                ${quickRef || '<p style="color: #8b94a3;">No quick reference content yet.</p>'}
             </div>
         </div>
-        <div class="card">
-            <div class="card-header bg-info text-white">
+        <div class="card" style="border: 1px solid #c5cad1;">
+            <div class="card-header" style="background: linear-gradient(135deg, #5E899E 0%, #4a7285 100%); color: white;">
                 <h5 class="mb-0"><i class="fas fa-book-open me-2"></i>Explanatory Notes</h5>
             </div>
             <div class="card-body">
-                ${notes || '<p class="text-muted">No explanatory notes content yet.</p>'}
+                ${notes || '<p style="color: #8b94a3;">No explanatory notes content yet.</p>'}
             </div>
         </div>
     `;
@@ -307,8 +307,8 @@ function previewCurated() {
     font-size: 14px;
 }
 .ajcc-raw-content h2.section-title {
-    color: #0d6efd;
-    border-bottom: 2px solid #0d6efd;
+    color: #5E899E;
+    border-bottom: 2px solid #5E899E;
     padding-bottom: 8px;
     margin-top: 24px;
 }
