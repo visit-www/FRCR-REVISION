@@ -5,6 +5,7 @@ Provides public-facing endpoints for browsing and viewing TNM staging data.
 """
 
 from flask import Blueprint, request, render_template, jsonify, abort
+from flask_login import current_user
 from sqlalchemy import or_
 
 # Import from main app's models (kept in main app for shared use)
