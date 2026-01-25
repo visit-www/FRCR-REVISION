@@ -159,10 +159,12 @@
                     <label class="form-label">FRCR Module</label>
                     <select class="form-select" id="editFrcrModule">
                         <option value="">-- Not Mapped --</option>
-                        <option value="FRCR_2A">FRCR 2A</option>
-                        <option value="FRCR_2B">FRCR 2B</option>
-                        <option value="PHYSICS">Physics</option>
-                        <option value="ANATOMY">Anatomy</option>
+                        <option value="Cardiothoracic and Vascular">Cardiothoracic and Vascular</option>
+                        <option value="Musculoskeletal and Trauma">Musculoskeletal and Trauma</option>
+                        <option value="Gastro-intestinal (incl. liver, biliary, pancreas, spleen)">Gastro-intestinal</option>
+                        <option value="Genito-urinary, Adrenal, O&G and Breast">Genito-urinary, Adrenal, O&G and Breast</option>
+                        <option value="Paediatric">Paediatric</option>
+                        <option value="CNS and Head & Neck (incl. spine, eyes, ENT, salivary, dental)">CNS and Head & Neck</option>
                     </select>
                     <small class="text-muted">Which FRCR exam module this disease relates to</small>
                 </div>
@@ -171,16 +173,36 @@
                     <label class="form-label">Body Part</label>
                     <select class="form-select" id="editFrcrBodyPart">
                         <option value="">-- Not Mapped --</option>
-                        <option value="CHEST">Chest</option>
-                        <option value="ABDOMEN">Abdomen</option>
-                        <option value="HEAD_NECK">Head & Neck</option>
-                        <option value="MSK">MSK (Musculoskeletal)</option>
-                        <option value="NEURO">Neuro</option>
-                        <option value="PAEDIATRIC">Paediatric</option>
-                        <option value="BREAST">Breast</option>
-                        <option value="CARDIAC">Cardiac</option>
-                        <option value="GI">GI (Gastrointestinal)</option>
-                        <option value="GU">GU (Genitourinary)</option>
+                        <optgroup label="Cardiothoracic">
+                            <option value="Cardiovascular">Cardiovascular</option>
+                            <option value="Lung and Mediastinum">Lung and Mediastinum</option>
+                            <option value="Chest Wall">Chest Wall</option>
+                        </optgroup>
+                        <optgroup label="Gastrointestinal">
+                            <option value="Gastrointestinal">Gastrointestinal</option>
+                            <option value="Hepatopancreaticobiliary">Hepatopancreaticobiliary</option>
+                            <option value="Spleen">Spleen</option>
+                        </optgroup>
+                        <optgroup label="Genitourinary & Endocrine">
+                            <option value="KUB">KUB (Kidneys, Ureter, Bladder)</option>
+                            <option value="Adrenal">Adrenal</option>
+                            <option value="Thyroid and Parathyroid">Thyroid and Parathyroid</option>
+                            <option value="Gynaecology">Gynaecology</option>
+                            <option value="Breast">Breast</option>
+                        </optgroup>
+                        <optgroup label="Musculoskeletal">
+                            <option value="Upper Limb">Upper Limb</option>
+                            <option value="Lower Limb">Lower Limb</option>
+                            <option value="Bones">Bones</option>
+                        </optgroup>
+                        <optgroup label="CNS & Head/Neck">
+                            <option value="Brain and Pituitary">Brain and Pituitary</option>
+                            <option value="Spine">Spine</option>
+                            <option value="Head and Neck">Head and Neck</option>
+                        </optgroup>
+                        <optgroup label="Other">
+                            <option value="Multisystem">Multisystem</option>
+                        </optgroup>
                     </select>
                     <small class="text-muted">Primary body region for this disease</small>
                 </div>
@@ -189,9 +211,8 @@
                     <label class="form-label">Age Group</label>
                     <select class="form-select" id="editFrcrAgeGroup">
                         <option value="">-- Not Mapped --</option>
-                        <option value="ADULT">Adult</option>
-                        <option value="PAEDIATRIC">Paediatric</option>
-                        <option value="BOTH">Both (Adult & Paediatric)</option>
+                        <option value="Adult">Adult</option>
+                        <option value="Pediatric">Pediatric</option>
                     </select>
                     <small class="text-muted">Target patient age group</small>
                 </div>
