@@ -945,7 +945,12 @@ def list_docs():
     """
     List all markdown documentation files in the docs/ folder
     Returns: { docs: [{ name, path, title }] }
+    
+    NOTE: Only superadmin can access the full docs list.
     """
+    # Restrict to superadmin only
+    if not current_user.is_superadmin:
+        return jsonify({'success': False, 'error': 'Access denied. Superadmin only.'}), 403
     docs_dir = os.path.join(os.path.dirname(__file__), 'docs')
     docs = []
     
@@ -990,7 +995,18 @@ def get_doc(doc_path):
     """
     Get a specific markdown document rendered as HTML
     Returns: { title, content_html, raw_content }
+    
+    NOTE: Only superadmin can access most docs.
+    Admins can only access USER_ROLES_WORKFLOWS.md
     """
+    # List of docs accessible to all admins (not just superadmin)
+    ADMIN_ACCESSIBLE_DOCS = ['USER_ROLES_WORKFLOWS.md']
+    
+    # Check access permissions
+    doc_filename = os.path.basename(doc_path)
+    if not current_user.is_superadmin and doc_filename not in ADMIN_ACCESSIBLE_DOCS:
+        return jsonify({'success': False, 'error': 'Access denied. Superadmin only.'}), 403
+    
     docs_dir = os.path.join(os.path.dirname(__file__), 'docs')
     file_path = os.path.join(docs_dir, doc_path)
     
@@ -1030,6 +1046,74 @@ def get_doc(doc_path):
             'path': doc_path,
             'content_html': content_html,
             'raw_content': raw_content
+        })
+    except Exception as e:
+        logger.error(f"Error reading doc {doc_path}: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/docs/content', methods=['GET'])
+@require_admin
+def get_doc_content():
+    """
+    Get a specific markdown document rendered as HTML via query parameter.
+    Used by Role Guide modal which is accessible to all admins.
+    
+    Query params:
+        path: The document path (e.g., USER_ROLES_WORKFLOWS.md)
+    
+    Returns: { html, title }
+    """
+    doc_path = request.args.get('path', '')
+    
+    if not doc_path:
+        return jsonify({'success': False, 'error': 'Path parameter required'}), 400
+    
+    # List of docs accessible to all admins (not just superadmin)
+    ADMIN_ACCESSIBLE_DOCS = ['USER_ROLES_WORKFLOWS.md']
+    
+    # Check access permissions
+    doc_filename = os.path.basename(doc_path)
+    if not current_user.is_superadmin and doc_filename not in ADMIN_ACCESSIBLE_DOCS:
+        return jsonify({'success': False, 'error': 'Access denied. Superadmin only.'}), 403
+    
+    docs_dir = os.path.join(os.path.dirname(__file__), 'docs')
+    file_path = os.path.join(docs_dir, doc_path)
+    
+    # Security: Ensure path is within docs directory
+    real_docs_dir = os.path.realpath(docs_dir)
+    real_file_path = os.path.realpath(file_path)
+    
+    if not real_file_path.startswith(real_docs_dir):
+        return jsonify({'success': False, 'error': 'Invalid path'}), 403
+    
+    if not os.path.exists(file_path):
+        return jsonify({'success': False, 'error': 'Document not found'}), 404
+    
+    if not file_path.endswith('.md'):
+        return jsonify({'success': False, 'error': 'Invalid file type'}), 400
+    
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            raw_content = f.read()
+        
+        # Convert markdown to HTML with extensions
+        md = markdown.Markdown(extensions=[
+            'tables',
+            'fenced_code',
+            'codehilite',
+            'toc',
+            'nl2br'
+        ])
+        html = md.convert(raw_content)
+        
+        # Generate title from filename
+        title = os.path.basename(doc_path).replace('.md', '').replace('_', ' ').replace('-', ' ')
+        
+        return jsonify({
+            'success': True,
+            'title': title,
+            'html': html
         })
     except Exception as e:
         logger.error(f"Error reading doc {doc_path}: {e}")
