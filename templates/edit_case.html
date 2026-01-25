@@ -2415,47 +2415,13 @@ function insertTnmLinksDirectly(data) {
         return;
     }
     
-    // Convert Markdown to HTML
-    const intelligenceHtml = markdownToHtml(markdownContent);
-    
-    // Build the full HTML block with:
-    // 1. TNM Viewer link header (single link for all users)
-    // 2. AI-Generated badge with pending review notice
-    // 3. The intelligent content
+    // Build simple orange button for AJCC staging link
     const fullHtml = `
-<div class="tnm-intelligence-block" style="border: 1px solid #e5e7eb; border-radius: 8px; margin: 1.5rem 0; overflow: hidden;">
-    
-    <!-- Header with TNM Viewer Link -->
-    <div style="background: linear-gradient(135deg, #6b46c1 0%, #9f7aea 100%); padding: 12px 16px;">
-        <a href="${tnmLink}" target="_blank" style="color: white; font-weight: 600; text-decoration: none; font-size: 1.1em;">
-            <i class="fas fa-dna me-2"></i>View AJCC TNM Staging – ${diseaseName}
-            <i class="fas fa-external-link-alt ms-2" style="font-size: 0.8em;"></i>
-        </a>
-    </div>
-    
-    <!-- AI-Generated Badge -->
-    <div style="background: #fef3c7; border-bottom: 1px solid #fcd34d; padding: 8px 16px; display: flex; align-items: center; gap: 8px;">
-        <span style="background: #f59e0b; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.75em; font-weight: 600;">
-            <i class="fas fa-robot me-1"></i>AI-Generated
-        </span>
-        <span style="color: #92400e; font-size: 0.85em;">
-            Pending Admin Review – Verify before use in MDT
-        </span>
-    </div>
-    
-    <!-- TNM Intelligence Content -->
-    <div class="tnm-intelligence-content" style="padding: 16px 20px; background: #fafafa; font-size: 0.95em; line-height: 1.6;">
-        ${intelligenceHtml}
-    </div>
-    
-    <!-- Footer -->
-    <div style="background: #f3f4f6; padding: 8px 16px; border-top: 1px solid #e5e7eb; font-size: 0.8em; color: #6b7280;">
-        <i class="fas fa-info-circle me-1"></i>
-        Generated: ${new Date().toLocaleString()} | Edition: ${tnmVersion}
-        ${isCached ? ' | <span style="color: #d97706;">From Cache</span>' : ''}
-        ${isRegenerated ? ' | <span style="color: #059669;">Regenerated</span>' : ''}
-    </div>
-</div>
+<p style="margin: 1rem 0;">
+    <a href="${tnmLink}" target="_blank" style="display: inline-block; background: #e96304; color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-weight: 600; font-size: 0.95em;">
+        <i class="fas fa-book-medical me-2"></i>Click to view detailed AJCC staging document – ${diseaseName}
+    </a>
+</p>
 `;
     
     // Insert into TinyMCE or textarea
@@ -2471,7 +2437,7 @@ function insertTnmLinksDirectly(data) {
     }
     
     // Show confirmation
-    alert(`TNM Imaging Intelligence added to discussion!\n\n✓ AJCC staging definitions link\n✓ AI-generated clinical intelligence\n\nPlease review before saving.`);
+    alert(`AJCC staging link added to discussion!\n\nClick the orange button to view detailed TNM staging for ${diseaseName}.`);
 }
 
 // Legacy: Insert TNM link into discussion from modal (kept for backward compatibility)
