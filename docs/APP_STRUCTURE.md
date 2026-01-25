@@ -26,9 +26,12 @@ FRCR_REVISION/
 ├── cache/                          # API response cache
 │
 ├── docs/                           # Documentation
-│   ├── APP_STRUCTURE.md            # This file
-│   ├── USER_ROLES_WORKFLOWS.md     # User roles & admin workflows
-│   ├── STYLE_GUIDE.md              # Quick style reference
+│   ├── APP_STRUCTURE.md            # This file - project overview
+│   ├── USER_ROLES_WORKFLOWS.md     # User roles, permissions & admin workflows
+│   ├── AI_INTEGRATION_REFERENCE.md # AI Prelim Case generation
+│   ├── TNM_INTELLIGENCE_WORKFLOW.md # TNM staging AI workflow & prompts
+│   ├── FULL_AI_PROMPT.md           # Complete AI prompt documentation
+│   ├── STYLE_GUIDE.md              # Quick style/branding reference
 │   └── plans/                      # Feature planning docs
 │
 ├── migrations/                     # Alembic migrations
@@ -125,16 +128,29 @@ Core database models:
 
 ## AI Features
 
+> **Full Documentation:**
+> - [AI Integration Reference](AI_INTEGRATION_REFERENCE.md) - Prelim case workflow
+> - [TNM Intelligence Workflow](TNM_INTELLIGENCE_WORKFLOW.md) - TNM staging AI
+> - [Full AI Prompt](FULL_AI_PROMPT.md) - Complete prompt structure
+
 ### Case Generation (`ai_prelim.py`)
-- Detects oncologic diagnoses
-- Generates preliminary case data
-- Claude API integration
+- Generates preliminary case data from diagnosis
+- Outputs: Q&A pairs, discussion, safety checklist, teaching images
+- Claude API with detailed prompt (v2)
+- Caching by diagnosis hash
+- Auto-detects oncologic cases and adds TNM metadata
 
 ### TNM Intelligence (`ai_tnm.py`)
-- RAG-based TNM staging
-- AJCC data retrieval
-- Intelligent summaries
-- Figure injection
+- Expert onco-radiologist perspective for MDT/tumour boards
+- Uses internal AJCC database as source of truth
+- Score-based matching with anatomical exclusion patterns
+- Outputs structured Markdown with 6 sections:
+  1. Practical Application on Imaging
+  2. Critical Stage-Changing Findings
+  3. High-Yield Explanatory Note Pearls
+  4. MDT Discussion Points
+  5. AJCC Figures & Diagrams
+  6. Suggested Reading (descriptive only - no URLs)
 
 ---
 
