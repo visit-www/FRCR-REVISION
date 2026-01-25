@@ -838,26 +838,43 @@ class AdminApprovalCode(db.Model):
     # Status
     used = db.Column(db.Boolean, default=False, index=True)
     used_at = db.Column(db.DateTime, nullable=True)
+    cancelled = db.Column(db.Boolean, default=False, index=True)
+    cancelled_at = db.Column(db.DateTime, nullable=True)
+    cancelled_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     
     # Relationships
     requesting_admin = db.relationship('User', foreign_keys=[requesting_admin_id], backref='requested_approvals')
     target_user = db.relationship('User', foreign_keys=[target_user_id], backref='approval_targets')
+    cancelled_by = db.relationship('User', foreign_keys=[cancelled_by_user_id])
     
     def is_valid(self):
-        """Check if code is still valid (not used, not expired)"""
+        """Check if code is still valid (not used, not expired, not cancelled)"""
         if self.used:
+            return False
+        if self.cancelled:
             return False
         if datetime.utcnow() > self.expires_at:
             return False
         return True
+    
+    def is_pending(self):
+        """Check if this approval is still pending (not used, not cancelled, not expired)"""
+        return self.is_valid()
     
     def mark_used(self):
         """Mark the code as used"""
         self.used = True
         self.used_at = datetime.utcnow()
     
+    def mark_cancelled(self, cancelled_by_id):
+        """Mark the code as cancelled by superadmin"""
+        self.cancelled = True
+        self.cancelled_at = datetime.utcnow()
+        self.cancelled_by_user_id = cancelled_by_id
+    
     def __repr__(self):
-        return f'<AdminApprovalCode {self.code} Action:{self.action} Valid:{self.is_valid()}>'
+        status = 'CANCELLED' if self.cancelled else ('USED' if self.used else ('VALID' if self.is_valid() else 'EXPIRED'))
+        return f'<AdminApprovalCode {self.code} Action:{self.action} Status:{status}>'
 
 
 class AccountRecoveryCode(db.Model):

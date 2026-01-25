@@ -255,9 +255,44 @@ def update_user_role(user_id):
                 # Proceed with role change (code verified)
                 logger.info(f"Admin {current_user.email} used approval code to {action_description}")
             else:
+                action_details = {'old_role': old_role, 'new_role': new_role}
+                resend_requested = request.json.get('resend_code', False)
+                
+                # Check for existing pending approval for the same action
+                existing_pending = AdminApprovalCode.query.filter(
+                    AdminApprovalCode.requesting_admin_id == current_user.id,
+                    AdminApprovalCode.target_user_id == user.id,
+                    AdminApprovalCode.used == False,
+                    AdminApprovalCode.cancelled == False,
+                    AdminApprovalCode.expires_at > datetime.utcnow(),
+                    AdminApprovalCode.action_details['new_role'].astext == new_role
+                ).first()
+                
+                if existing_pending and not resend_requested:
+                    # Pending approval already exists - don't send new code
+                    time_remaining = existing_pending.expires_at - datetime.utcnow()
+                    hours_remaining = int(time_remaining.total_seconds() // 3600)
+                    minutes_remaining = int((time_remaining.total_seconds() % 3600) // 60)
+                    
+                    return jsonify({
+                        'requires_approval': True,
+                        'already_pending': True,
+                        'message': f'A request for this action is already pending Super Admin approval.',
+                        'status': 'already_pending',
+                        'action': action_description,
+                        'pending_id': existing_pending.id,
+                        'expires_in': f'{hours_remaining}h {minutes_remaining}m',
+                        'created_at': existing_pending.created_at.isoformat()
+                    }), 202
+                
+                # If resend requested or no existing pending, generate new code
+                if existing_pending and resend_requested:
+                    # Cancel old code before generating new one
+                    existing_pending.mark_cancelled(current_user.id)
+                    logger.info(f"[AUDIT] Admin {current_user.email} requested resend - old code {existing_pending.code} cancelled")
+                
                 # Generate new approval code and send email
                 code = generate_approval_code()
-                action_details = {'old_role': old_role, 'new_role': new_role}
                 
                 # Send email to superadmin FIRST - action blocked if email fails
                 email_result = send_admin_approval_email(
@@ -491,9 +526,44 @@ def delete_user(user_id):
                 
                 logger.info(f"[AUDIT] APPROVED: Admin {current_user.email} used approval code to {action_description}")
             else:
+                action_details = {'target_role': user_role, 'action_type': 'deletion'}
+                resend_requested = request.args.get('resend_code', 'false').lower() == 'true'
+                
+                # Check for existing pending approval for deletion of this user
+                existing_pending = AdminApprovalCode.query.filter(
+                    AdminApprovalCode.requesting_admin_id == current_user.id,
+                    AdminApprovalCode.target_user_id == user.id,
+                    AdminApprovalCode.used == False,
+                    AdminApprovalCode.cancelled == False,
+                    AdminApprovalCode.expires_at > datetime.utcnow(),
+                    AdminApprovalCode.action_details['action_type'].astext == 'deletion'
+                ).first()
+                
+                if existing_pending and not resend_requested:
+                    # Pending approval already exists - don't send new code
+                    time_remaining = existing_pending.expires_at - datetime.utcnow()
+                    hours_remaining = int(time_remaining.total_seconds() // 3600)
+                    minutes_remaining = int((time_remaining.total_seconds() % 3600) // 60)
+                    
+                    return jsonify({
+                        'requires_approval': True,
+                        'already_pending': True,
+                        'message': f'A request to delete this {role_display} is already pending Super Admin approval.',
+                        'status': 'already_pending',
+                        'action': action_description,
+                        'pending_id': existing_pending.id,
+                        'expires_in': f'{hours_remaining}h {minutes_remaining}m',
+                        'created_at': existing_pending.created_at.isoformat()
+                    }), 202
+                
+                # If resend requested or no existing pending, generate new code
+                if existing_pending and resend_requested:
+                    # Cancel old code before generating new one
+                    existing_pending.mark_cancelled(current_user.id)
+                    logger.info(f"[AUDIT] Admin {current_user.email} requested resend - old code {existing_pending.code} cancelled")
+                
                 # Generate new approval code and send email FIRST
                 code = generate_approval_code()
-                action_details = {'target_role': user_role, 'action_type': 'deletion'}
                 
                 # Send email to superadmin FIRST - action blocked if email fails
                 email_result = send_admin_approval_email(
@@ -950,6 +1020,196 @@ def get_doc(doc_path):
     except Exception as e:
         logger.error(f"Error reading doc {doc_path}: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================================================
+# APPROVAL CODE MANAGEMENT (Superadmin Only)
+# ============================================================================
+
+@admin_bp.route('/approvals/pending', methods=['GET'])
+@require_admin
+def get_pending_approvals():
+    """
+    Get all pending approval requests (Superadmin only)
+    Returns list of pending approvals that haven't been used, cancelled, or expired
+    """
+    from models import AdminApprovalCode
+    
+    # Only superadmin can view pending approvals
+    is_superadmin = getattr(current_user, 'is_superadmin', False)
+    if not is_superadmin:
+        return jsonify({'error': 'Only Super Admin can view pending approvals'}), 403
+    
+    try:
+        pending_approvals = AdminApprovalCode.query.filter(
+            AdminApprovalCode.used == False,
+            AdminApprovalCode.cancelled == False,
+            AdminApprovalCode.expires_at > datetime.utcnow()
+        ).order_by(AdminApprovalCode.created_at.desc()).all()
+        
+        result = []
+        for approval in pending_approvals:
+            time_remaining = approval.expires_at - datetime.utcnow()
+            hours_remaining = int(time_remaining.total_seconds() // 3600)
+            minutes_remaining = int((time_remaining.total_seconds() % 3600) // 60)
+            
+            result.append({
+                'id': approval.id,
+                'code': approval.code,  # Show code to superadmin
+                'action': approval.action,
+                'action_details': approval.action_details,
+                'requesting_admin': {
+                    'id': approval.requesting_admin.id,
+                    'email': approval.requesting_admin.email,
+                    'name': approval.requesting_admin.full_name
+                },
+                'target_user': {
+                    'id': approval.target_user.id,
+                    'email': approval.target_user.email,
+                    'name': approval.target_user.full_name,
+                    'role': approval.target_user.role.value if approval.target_user.role else None
+                },
+                'created_at': approval.created_at.isoformat(),
+                'expires_at': approval.expires_at.isoformat(),
+                'expires_in': f'{hours_remaining}h {minutes_remaining}m'
+            })
+        
+        return jsonify({
+            'success': True,
+            'pending_count': len(result),
+            'approvals': result
+        })
+    except Exception as e:
+        logger.error(f"Error fetching pending approvals: {e}")
+        return jsonify({'error': 'Failed to fetch pending approvals'}), 500
+
+
+@admin_bp.route('/approvals/<int:approval_id>/cancel', methods=['POST'])
+@require_admin
+def cancel_approval(approval_id):
+    """
+    Cancel a pending approval request (Superadmin only)
+    This invalidates the approval code, preventing the action from being completed
+    """
+    from models import AdminApprovalCode
+    
+    # Only superadmin can cancel approvals
+    is_superadmin = getattr(current_user, 'is_superadmin', False)
+    if not is_superadmin:
+        return jsonify({'error': 'Only Super Admin can cancel approval requests'}), 403
+    
+    try:
+        approval = AdminApprovalCode.query.get(approval_id)
+        
+        if not approval:
+            return jsonify({'error': 'Approval request not found'}), 404
+        
+        if approval.used:
+            return jsonify({'error': 'This approval code has already been used'}), 400
+        
+        if approval.cancelled:
+            return jsonify({'error': 'This approval request was already cancelled'}), 400
+        
+        if not approval.is_valid():
+            return jsonify({'error': 'This approval request has already expired'}), 400
+        
+        # Cancel the approval
+        approval.mark_cancelled(current_user.id)
+        db.session.commit()
+        
+        # Audit log
+        logger.info(f"[AUDIT] CANCELLED: Super Admin {current_user.email} cancelled approval request {approval.code} for action: {approval.action}")
+        
+        return jsonify({
+            'success': True,
+            'message': f'Approval request cancelled successfully',
+            'cancelled_action': approval.action,
+            'requesting_admin': approval.requesting_admin.email
+        })
+    except Exception as e:
+        logger.error(f"Error cancelling approval {approval_id}: {e}")
+        db.session.rollback()
+        return jsonify({'error': 'Failed to cancel approval request'}), 500
+
+
+@admin_bp.route('/approvals/history', methods=['GET'])
+@require_admin
+def get_approval_history():
+    """
+    Get approval history including used and cancelled requests (Superadmin only)
+    Optional query params: limit (default 50), status ('used', 'cancelled', 'expired', 'all')
+    """
+    from models import AdminApprovalCode
+    
+    # Only superadmin can view approval history
+    is_superadmin = getattr(current_user, 'is_superadmin', False)
+    if not is_superadmin:
+        return jsonify({'error': 'Only Super Admin can view approval history'}), 403
+    
+    try:
+        limit = request.args.get('limit', 50, type=int)
+        status_filter = request.args.get('status', 'all')
+        
+        query = AdminApprovalCode.query
+        
+        if status_filter == 'used':
+            query = query.filter(AdminApprovalCode.used == True)
+        elif status_filter == 'cancelled':
+            query = query.filter(AdminApprovalCode.cancelled == True)
+        elif status_filter == 'expired':
+            query = query.filter(
+                AdminApprovalCode.used == False,
+                AdminApprovalCode.cancelled == False,
+                AdminApprovalCode.expires_at <= datetime.utcnow()
+            )
+        # 'all' shows everything
+        
+        approvals = query.order_by(AdminApprovalCode.created_at.desc()).limit(limit).all()
+        
+        result = []
+        for approval in approvals:
+            # Determine status
+            if approval.used:
+                status = 'used'
+            elif approval.cancelled:
+                status = 'cancelled'
+            elif datetime.utcnow() > approval.expires_at:
+                status = 'expired'
+            else:
+                status = 'pending'
+            
+            result.append({
+                'id': approval.id,
+                'code': approval.code,
+                'action': approval.action,
+                'action_details': approval.action_details,
+                'status': status,
+                'requesting_admin': {
+                    'id': approval.requesting_admin.id if approval.requesting_admin else None,
+                    'email': approval.requesting_admin.email if approval.requesting_admin else 'Unknown',
+                    'name': approval.requesting_admin.full_name if approval.requesting_admin else 'Unknown'
+                },
+                'target_user': {
+                    'id': approval.target_user.id if approval.target_user else None,
+                    'email': approval.target_user.email if approval.target_user else 'Deleted',
+                    'name': approval.target_user.full_name if approval.target_user else 'Deleted'
+                },
+                'created_at': approval.created_at.isoformat(),
+                'expires_at': approval.expires_at.isoformat(),
+                'used_at': approval.used_at.isoformat() if approval.used_at else None,
+                'cancelled_at': approval.cancelled_at.isoformat() if approval.cancelled_at else None,
+                'cancelled_by': approval.cancelled_by.email if approval.cancelled_by else None
+            })
+        
+        return jsonify({
+            'success': True,
+            'count': len(result),
+            'filter': status_filter,
+            'approvals': result
+        })
+    except Exception as e:
+        logger.error(f"Error fetching approval history: {e}")
+        return jsonify({'error': 'Failed to fetch approval history'}), 500
 
 
 # ============================================================================

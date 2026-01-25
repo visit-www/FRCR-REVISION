@@ -405,13 +405,22 @@ class UserManagement {
                 
                 // Handle approval required (202 response)
                 if (roleResponse.status === 202 && roleData.requires_approval) {
-                    this.showApprovalCodeModal('role', this.selectedUser.id, newRole, roleData.action);
+                    if (roleData.already_pending) {
+                        // Show already pending modal with option to resend
+                        this.showAlreadyPendingModal('role', this.selectedUser.id, newRole, roleData);
+                    } else {
+                        this.showApprovalCodeModal('role', this.selectedUser.id, newRole, roleData.action);
+                    }
                     return;
                 }
                 
                 if (!roleResponse.ok) {
                     if (roleData.requires_approval) {
-                        this.showApprovalCodeModal('role', this.selectedUser.id, newRole, roleData.action || 'change role');
+                        if (roleData.already_pending) {
+                            this.showAlreadyPendingModal('role', this.selectedUser.id, newRole, roleData);
+                        } else {
+                            this.showApprovalCodeModal('role', this.selectedUser.id, newRole, roleData.action || 'change role');
+                        }
                         return;
                     }
                     errors.push(`Role update failed: ${roleData.error || 'Unknown error'}`);
@@ -491,6 +500,174 @@ class UserManagement {
         document.getElementById('approvalCodeInput').focus();
     }
     
+    showAlreadyPendingModal(action, userId, newValue, responseData) {
+        // Store pending action for resend and code entry
+        this.pendingApproval = { 
+            action, 
+            userId, 
+            newValue, 
+            actionDescription: responseData.action,
+            pendingId: responseData.pending_id
+        };
+        
+        const createdAt = new Date(responseData.created_at).toLocaleString();
+        
+        // Create modal HTML showing pending status with options
+        const modalHtml = `
+            <div id="alreadyPendingModal" class="custom-modal show" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; display: flex; align-items: center; justify-content: center;">
+                <div style="background: white; padding: 30px; border-radius: 10px; max-width: 500px; width: 90%;">
+                    <h4 style="color: #5E899E; margin-bottom: 15px;">
+                        <i class="fas fa-clock"></i> Approval Already Requested
+                    </h4>
+                    
+                    <div style="background: #f0f6f9; padding: 15px; border-radius: 8px; border-left: 3px solid #5E899E; margin-bottom: 15px;">
+                        <p style="margin: 0 0 10px 0;"><strong>Action:</strong> ${responseData.action}</p>
+                        <p style="margin: 0 0 10px 0;"><strong>Requested:</strong> ${createdAt}</p>
+                        <p style="margin: 0;"><strong>Expires in:</strong> ${responseData.expires_in}</p>
+                    </div>
+                    
+                    <p style="color: #666; font-size: 14px; margin-bottom: 15px;">
+                        A request for this action is already pending Super Admin approval.
+                        You can either enter the approval code if you have it, or resend the notification email.
+                    </p>
+                    
+                    <!-- Option 1: Enter existing code -->
+                    <div style="background: #fff8e6; padding: 15px; border-radius: 8px; border-left: 3px solid #ffc107; margin-bottom: 15px;">
+                        <h6 style="margin: 0 0 10px 0; color: #856404;">
+                            <i class="fas fa-key"></i> Have the approval code?
+                        </h6>
+                        <input type="text" id="pendingApprovalCodeInput" placeholder="Enter 8-character code" 
+                               style="width: 100%; padding: 10px; font-size: 16px; text-align: center; 
+                                      letter-spacing: 3px; text-transform: uppercase; border: 2px solid #ddd; 
+                                      border-radius: 5px; margin-bottom: 10px;" maxlength="8">
+                        <button onclick="userMgmt.submitPendingApprovalCode()" class="btn btn-success" style="width: 100%;">
+                            <i class="fas fa-check"></i> Submit Code
+                        </button>
+                    </div>
+                    
+                    <!-- Option 2: Resend email -->
+                    <div style="background: #f5f5f3; padding: 15px; border-radius: 8px; border-left: 3px solid #6c757d; margin-bottom: 15px;">
+                        <h6 style="margin: 0 0 10px 0; color: #5a6270;">
+                            <i class="fas fa-envelope"></i> Need a new code?
+                        </h6>
+                        <p style="font-size: 13px; color: #666; margin-bottom: 10px;">
+                            This will cancel the previous code and send a new one to the Super Admin.
+                        </p>
+                        <button onclick="userMgmt.resendApprovalCode()" class="btn btn-outline-secondary" style="width: 100%;" id="resendCodeBtn">
+                            <i class="fas fa-redo"></i> Resend Approval Request
+                        </button>
+                    </div>
+                    
+                    <button onclick="userMgmt.closeAlreadyPendingModal()" class="btn btn-secondary" style="width: 100%;">
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        document.getElementById('pendingApprovalCodeInput').focus();
+    }
+    
+    closeAlreadyPendingModal() {
+        const modal = document.getElementById('alreadyPendingModal');
+        if (modal) modal.remove();
+        this.pendingApproval = null;
+    }
+    
+    async submitPendingApprovalCode() {
+        const code = document.getElementById('pendingApprovalCodeInput').value.trim().toUpperCase();
+        if (!code || code.length !== 8) {
+            alert('Please enter a valid 8-character approval code');
+            return;
+        }
+        
+        const { action, userId, newValue } = this.pendingApproval || {};
+        if (!action) return;
+        
+        // Close the already pending modal
+        this.closeAlreadyPendingModal();
+        
+        // Submit the code directly
+        try {
+            let response;
+            if (action === 'role') {
+                response = await fetch(`/api/admin/users/${userId}/role`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ role: newValue, approval_code: code })
+                });
+            } else if (action === 'delete') {
+                response = await fetch(`/api/admin/users/${userId}?confirmed=true&approval_code=${code}`, {
+                    method: 'DELETE'
+                });
+            }
+            
+            const data = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(data.error || 'Action failed');
+            }
+            
+            this.showSuccess(`✅ Action completed: ${data.message || 'Success'}`);
+            this.pendingApproval = null;
+            await this.loadUsers();
+            
+            // Refresh user detail if modal is open
+            if (this.selectedUser && action === 'role') {
+                setTimeout(() => this.showUserDetail(userId, 'view'), 300);
+            } else {
+                this.closeModal();
+            }
+            
+        } catch (error) {
+            console.error('Error submitting approval code:', error);
+            this.showError(`Failed: ${error.message}`);
+        }
+    }
+    
+    async resendApprovalCode() {
+        const { action, userId, newValue } = this.pendingApproval || {};
+        if (!action) return;
+        
+        const btn = document.getElementById('resendCodeBtn');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+        btn.disabled = true;
+        
+        try {
+            let response;
+            if (action === 'role') {
+                response = await fetch(`/api/admin/users/${userId}/role`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ role: newValue, resend_code: true })
+                });
+            } else if (action === 'delete') {
+                response = await fetch(`/api/admin/users/${userId}?resend_code=true`, {
+                    method: 'DELETE'
+                });
+            }
+            
+            const data = await response.json();
+            
+            if (response.status === 202 && data.status === 'pending_approval') {
+                // Success - new code sent
+                this.closeAlreadyPendingModal();
+                this.showApprovalCodeModal(action, userId, newValue, data.action);
+                this.showSuccess('✅ New approval request sent to Super Admin');
+            } else if (!response.ok) {
+                throw new Error(data.error || 'Failed to resend');
+            }
+            
+        } catch (error) {
+            console.error('Error resending approval code:', error);
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+            this.showError(`Failed to resend: ${error.message}`);
+        }
+    }
+    
     closeApprovalModal() {
         const modal = document.getElementById('approvalCodeModal');
         if (modal) modal.remove();
@@ -566,7 +743,12 @@ class UserManagement {
             
             // Handle approval required (202 response)
             if (response.status === 202 && data.requires_approval) {
-                this.showApprovalCodeModal('delete', userId, null, data.action);
+                if (data.already_pending) {
+                    // Show already pending modal with option to resend
+                    this.showAlreadyPendingModal('delete', userId, null, data);
+                } else {
+                    this.showApprovalCodeModal('delete', userId, null, data.action);
+                }
                 return;
             }
             
@@ -591,7 +773,11 @@ class UserManagement {
             
             if (!response.ok) {
                 if (data.requires_approval) {
-                    this.showApprovalCodeModal('delete', userId, null, data.action || 'delete user');
+                    if (data.already_pending) {
+                        this.showAlreadyPendingModal('delete', userId, null, data);
+                    } else {
+                        this.showApprovalCodeModal('delete', userId, null, data.action || 'delete user');
+                    }
                     return;
                 }
                 throw new Error(data.error || 'Failed to delete user');
