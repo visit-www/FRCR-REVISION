@@ -6,7 +6,7 @@ Provides CRUD operations for user management and case management with role-based
 from flask import Blueprint, request, jsonify, render_template_string
 from flask_login import login_required, current_user
 from models import db, User, UserRole, SubscriptionStatus, CaseAuditLog, Case
-from access_control import require_admin, require_role, soft_delete_user, upgrade_to_paid, downgrade_to_free
+from access_control import require_admin, require_role, delete_user_completely, can_delete_user, upgrade_to_paid, downgrade_to_free
 from datetime import datetime
 from sqlalchemy import or_, and_
 import logging
@@ -52,10 +52,6 @@ def list_users():
         
         # Build query
         query = User.query
-        
-        # Filter deleted users
-        if not include_deleted:
-            query = query.filter(User.is_deleted == False)
         
         # Search by email or name
         if search:
@@ -302,98 +298,58 @@ def toggle_user_active(user_id):
 
 
 # ============================================================================
-# USER DELETION ENDPOINTS
+# USER DELETION ENDPOINT
 # ============================================================================
 
 @admin_bp.route('/users/<int:user_id>', methods=['DELETE'])
 @require_admin
 def delete_user(user_id):
     """
-    Delete a user (soft delete by default, permanent if ?permanent=true)
+    Permanently delete a user and clean up related data.
     
-    Query Parameters:
-    - permanent: bool (default false)
+    DELETES: Private data (notes, highlights, revision sessions, view logs, votes, flags)
+    PRESERVES: Forum messages (anonymized), case data (author references nullified)
     
-    Soft delete: marks user as deleted, preserves data
-    Permanent delete: removes user completely from database
-    """
-    try:
-        # Check if trying to delete self
-        if user_id == current_user.id:
-            return jsonify({
-                'error': 'Cannot delete your own account',
-                'warning': 'Use another admin account to delete this admin'
-            }), 400
-        
-        user = User.query.get(user_id)
-        if not user:
-            return jsonify({'error': 'User not found'}), 404
-        
-        permanent = request.args.get('permanent', 'false').lower() == 'true'
-        
-        if permanent:
-            # Permanent delete
-            email = user.email
-            db.session.delete(user)
-            db.session.commit()
-            logger.warning(f"Admin {current_user.email} PERMANENTLY DELETED user {email}")
-            
-            return jsonify({
-                'message': f'User permanently deleted: {email}',
-                'user_id': user_id,
-                'permanent': True
-            }), 200
-        else:
-            # Soft delete
-            soft_delete_user(user, current_user.id)
-            db.session.commit()
-            logger.info(f"Admin {current_user.email} soft-deleted user {user.email}")
-            
-            return jsonify({
-                'message': f'User soft-deleted: {user.email}',
-                'user_id': user.id,
-                'permanent': False,
-                'deleted_at': user.deleted_at.isoformat() if user.deleted_at else None
-            }), 200
-    
-    except Exception as e:
-        db.session.rollback()
-        logger.error(f"Error deleting user: {str(e)}")
-        return jsonify({'error': str(e)}), 500
-
-
-@admin_bp.route('/users/<int:user_id>/restore', methods=['POST'])
-@require_admin
-def restore_user(user_id):
-    """
-    Restore a soft-deleted user
-    
-    Only works for soft-deleted users (not permanently deleted)
+    This is a hard delete - the user and their private data are permanently removed.
     """
     try:
         user = User.query.get(user_id)
         if not user:
             return jsonify({'error': 'User not found'}), 404
         
-        if not user.is_deleted:
-            return jsonify({'error': 'User is not deleted'}), 400
+        # Check if allowed to delete
+        can_delete, error_msg = can_delete_user(user, current_user)
+        if not can_delete:
+            return jsonify({'error': error_msg}), 400
         
-        # Restore
-        user.is_deleted = False
-        user.deleted_at = None
-        user.deleted_by_user_id = None
-        db.session.commit()
+        email = user.email
+        user_role = user.role.value if hasattr(user.role, 'value') else str(user.role)
         
-        logger.info(f"Admin {current_user.email} restored user {user.email}")
+        # Perform complete deletion with cleanup
+        success, result = delete_user_completely(user)
+        
+        if not success:
+            logger.error(f"Failed to delete user {email}: {result}")
+            return jsonify({'error': f'Failed to delete user: {result}'}), 500
+        
+        # Log the deletion with stats
+        stats = result
+        logger.warning(
+            f"Admin {current_user.email} DELETED user {email} (role: {user_role}). "
+            f"Cleanup: {stats['notes_deleted']} notes, {stats['highlights_deleted']} highlights, "
+            f"{stats['forum_messages_anonymized']} forum messages anonymized, "
+            f"{stats['cases_updated']} case references updated"
+        )
         
         return jsonify({
-            'message': f'User restored: {user.email}',
-            'user_id': user.id
+            'message': f'User permanently deleted: {email}',
+            'user_id': user_id,
+            'cleanup_stats': stats
         }), 200
     
     except Exception as e:
         db.session.rollback()
-        logger.error(f"Error restoring user: {str(e)}")
+        logger.error(f"Error deleting user: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 
@@ -407,31 +363,31 @@ def users_stats_overview():
     """
     Get overview statistics about users
     
-    Returns: Total users, by role, by subscription, active vs deleted
+    Returns: Total users, by role, by subscription, active/inactive counts
     """
     try:
         from models import Case, CaseViewLog
         
         total_users = User.query.count()
-        active_users = User.query.filter(User.is_deleted == False).count()
-        deleted_users = User.query.filter(User.is_deleted == True).count()
+        active_users = User.query.filter(User.is_active == True).count()
+        inactive_users = User.query.filter(User.is_active == False).count()
         
         # By role
         by_role = {}
         for role in UserRole:
-            count = User.query.filter_by(role=role, is_deleted=False).count()
+            count = User.query.filter_by(role=role).count()
             by_role[role.value] = count
         
         # By subscription
         by_subscription = {}
         for status in SubscriptionStatus:
-            count = User.query.filter_by(subscription_status=status, is_deleted=False).count()
+            count = User.query.filter_by(subscription_status=status).count()
             by_subscription[status.value] = count
         
         return jsonify({
             'total_users': total_users,
             'active_users': active_users,
-            'deleted_users': deleted_users,
+            'inactive_users': inactive_users,
             'by_role': by_role,
             'by_subscription': by_subscription
         }), 200

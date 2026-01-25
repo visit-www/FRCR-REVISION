@@ -86,8 +86,6 @@ def require_content_manager(f):
             abort(401)
         if current_user.role not in [UserRole.CONTENT_MANAGER, UserRole.ADMIN]:
             abort(403)
-        if current_user.is_deleted:
-            abort(403)  # Prevent deleted users from accessing
         return f(*args, **kwargs)
     return decorated_function
 
@@ -98,8 +96,6 @@ def require_student(f):
     def decorated_function(*args, **kwargs):
         if not current_user.is_authenticated:
             abort(401)
-        if current_user.is_deleted:
-            abort(403)  # Prevent deleted users from accessing
         return f(*args, **kwargs)
     return decorated_function
 
@@ -346,67 +342,151 @@ def log_case_view(case_id, user_id, time_spent_seconds=None):
     return view
 
 
-# ==================== SOFT DELETE HELPERS ====================
+# ==================== USER DELETE HELPERS ====================
 
-def soft_delete_user(target_user, deleted_by_user_id):
+def delete_user_completely(target_user):
     """
-    Soft delete a user (mark as deleted without removing data).
-    Preserves all user's data for audit purposes.
-    """
-    from models import db
-    from datetime import datetime
+    Permanently delete a user and clean up related data sensibly.
     
-    target_user.is_deleted = True
-    target_user.deleted_at = datetime.utcnow()
-    target_user.deleted_by_user_id = deleted_by_user_id
-    db.session.commit()
-    return target_user
-
-
-def permanently_delete_user(target_user):
-    """
-    Permanently delete a user from database.
-    WARNING: This action cannot be undone. Should require admin confirmation.
+    DELETES (private user data):
+    - CandidateNote (private notes)
+    - TextHighlight (private highlights)  
+    - RevisionSession (revision tracking)
+    - RevisionHistory (revision history)
+    - CaseViewLog (view analytics)
+    - ForumMessageVote (user's votes)
+    - ForumMessageFlag (user's flags - as flagger)
     
-    Note: Related data (cases, notes, etc.) is preserved for data integrity.
-    Only user record itself is deleted.
-    """
-    from models import db
+    PRESERVES (public/shared content):
+    - ForumMessage (forum comments stay, but user_id set to NULL)
+    - Forum message images (preserved with the message)
+    - Profile picture URL (just a string, no cleanup needed)
     
-    db.session.delete(target_user)
-    db.session.commit()
-
-
-def can_soft_delete_user(target_user, deleting_user=None):
+    NULLIFIES (case-related references for admin/content managers):
+    - Case.created_by_user_id -> NULL
+    - Case.approved_by_user_id -> NULL
+    - CaseAuditLog.user_id -> NULL (preserve audit trail)
+    - CaseApprovalQueue.submitted_by_user_id -> NULL
+    - ImportedCaseStaging.*_user_id -> NULL
+    - AiDiagnosisCache.first_user_id -> NULL
+    
+    Returns dict with cleanup stats.
     """
-    Check if user can soft delete another user.
-    Only admins can soft delete. Provides warning if admin is deleting themselves.
+    from models import (
+        db, CandidateNote, TextHighlight, RevisionSession, RevisionHistory,
+        CaseViewLog, ForumMessage, ForumMessageVote, ForumMessageFlag,
+        Case, CaseAuditLog, CaseApprovalQueue, ImportedCaseStaging, AiDiagnosisCache
+    )
+    
+    user_id = target_user.id
+    stats = {
+        'notes_deleted': 0,
+        'highlights_deleted': 0,
+        'revision_sessions_deleted': 0,
+        'revision_history_deleted': 0,
+        'view_logs_deleted': 0,
+        'votes_deleted': 0,
+        'flags_deleted': 0,
+        'forum_messages_anonymized': 0,
+        'cases_updated': 0,
+        'audit_logs_updated': 0,
+    }
+    
+    try:
+        # ===== DELETE PRIVATE DATA =====
+        
+        # Delete candidate notes (private)
+        stats['notes_deleted'] = CandidateNote.query.filter_by(user_id=user_id).delete()
+        
+        # Delete text highlights (private)
+        stats['highlights_deleted'] = TextHighlight.query.filter_by(user_id=user_id).delete()
+        
+        # Delete revision sessions (private)
+        stats['revision_sessions_deleted'] = RevisionSession.query.filter_by(user_id=user_id).delete()
+        
+        # Delete revision history (private)
+        stats['revision_history_deleted'] = RevisionHistory.query.filter_by(user_id=user_id).delete()
+        
+        # Delete case view logs (analytics, not critical)
+        stats['view_logs_deleted'] = CaseViewLog.query.filter_by(user_id=user_id).delete()
+        
+        # Delete forum votes (user's votes on messages)
+        stats['votes_deleted'] = ForumMessageVote.query.filter_by(user_id=user_id).delete()
+        
+        # Delete forum flags (where user was the flagger)
+        stats['flags_deleted'] = ForumMessageFlag.query.filter_by(user_id=user_id).delete()
+        
+        # ===== ANONYMIZE FORUM MESSAGES (preserve content, remove author link) =====
+        stats['forum_messages_anonymized'] = ForumMessage.query.filter_by(user_id=user_id).update(
+            {'user_id': None}, synchronize_session=False
+        )
+        
+        # ===== NULLIFY CASE REFERENCES (preserve cases, remove author link) =====
+        
+        # Cases created by this user
+        cases_created = Case.query.filter_by(created_by_user_id=user_id).update(
+            {'created_by_user_id': None}, synchronize_session=False
+        )
+        
+        # Cases approved by this user
+        cases_approved = Case.query.filter_by(approved_by_user_id=user_id).update(
+            {'approved_by_user_id': None}, synchronize_session=False
+        )
+        stats['cases_updated'] = cases_created + cases_approved
+        
+        # Audit logs (preserve trail, remove user link)
+        stats['audit_logs_updated'] = CaseAuditLog.query.filter_by(user_id=user_id).update(
+            {'user_id': None}, synchronize_session=False
+        )
+        
+        # Approval queue
+        CaseApprovalQueue.query.filter_by(submitted_by_user_id=user_id).update(
+            {'submitted_by_user_id': None}, synchronize_session=False
+        )
+        
+        # Imported case staging
+        ImportedCaseStaging.query.filter_by(enriched_by_user_id=user_id).update(
+            {'enriched_by_user_id': None}, synchronize_session=False
+        )
+        ImportedCaseStaging.query.filter_by(approved_by_user_id=user_id).update(
+            {'approved_by_user_id': None}, synchronize_session=False
+        )
+        
+        # AI diagnosis cache
+        AiDiagnosisCache.query.filter_by(first_user_id=user_id).update(
+            {'first_user_id': None}, synchronize_session=False
+        )
+        
+        # Flag resolution references
+        ForumMessageFlag.query.filter_by(resolved_by_user_id=user_id).update(
+            {'resolved_by_user_id': None}, synchronize_session=False
+        )
+        
+        # ===== DELETE THE USER =====
+        db.session.delete(target_user)
+        db.session.commit()
+        
+        return True, stats
+        
+    except Exception as e:
+        db.session.rollback()
+        return False, str(e)
+
+
+def can_delete_user(target_user, deleting_user=None):
+    """
+    Check if user can delete another user.
+    Only admins can delete users.
     """
     deleting_user = deleting_user or current_user
     
     if not deleting_user.is_authenticated or deleting_user.role != UserRole.ADMIN:
         return False, "Only admins can delete users"
     
-    warning = None
     if deleting_user.id == target_user.id:
-        warning = "WARNING: You are deleting your own admin account. You will be logged out."
+        return False, "Cannot delete your own account. Use another admin account."
     
-    return True, warning
-
-
-def can_permanently_delete_user(target_user, deleting_user=None):
-    """
-    Check if user can permanently delete another user.
-    Only admins can permanently delete. Requires explicit confirmation.
-    """
-    deleting_user = deleting_user or current_user
-    
-    if not deleting_user.is_authenticated or deleting_user.role != UserRole.ADMIN:
-        return False, "Only admins can permanently delete users"
-    
-    warning = "DANGER: This will permanently delete this user record. This action cannot be undone."
-    
-    return True, warning
+    return True, None
 
 
 # ==================== SUBSCRIPTION HELPERS ====================

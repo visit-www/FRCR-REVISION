@@ -71,13 +71,11 @@ class UserManagement {
         // Edit/View toggle - use event delegation with closest() to handle nested elements
         document.addEventListener('click', (e) => {
             // Use closest() to find the button element even when clicking on nested children
-            const softDeleteBtn = e.target.closest('#confirmSoftDeleteBtn');
-            const permanentDeleteBtn = e.target.closest('#confirmPermanentDeleteBtn');
             const editBtn = e.target.closest('#editUserBtn');
             const cancelBtn = e.target.closest('#cancelEditBtn');
             const saveBtn = e.target.closest('#saveChangesBtn');
             const deleteBtn = e.target.closest('#deleteUserBtn');
-            const restoreBtn = e.target.closest('#restoreUserBtn');
+            const confirmDeleteBtn = e.target.closest('#confirmDeleteBtn');
             
             // Check by ID first (for direct clicks), then by closest element
             if (e.target.id === 'editUserBtn' || editBtn) {
@@ -87,17 +85,11 @@ class UserManagement {
             } else if (e.target.id === 'saveChangesBtn' || saveBtn) {
                 this.saveAllChanges();
             } else if (e.target.id === 'deleteUserBtn' || deleteBtn) {
-                this.showDeleteOptions();
-            } else if (e.target.id === 'confirmSoftDeleteBtn' || softDeleteBtn) {
+                this.showDeleteConfirmation();
+            } else if (e.target.id === 'confirmDeleteBtn' || confirmDeleteBtn) {
                 e.preventDefault();
                 e.stopPropagation();
-                this.confirmSoftDelete();
-            } else if (e.target.id === 'confirmPermanentDeleteBtn' || permanentDeleteBtn) {
-                e.preventDefault();
-                e.stopPropagation();
-                this.confirmPermanentDelete();
-            } else if (e.target.id === 'restoreUserBtn' || restoreBtn) {
-                this.restoreUser();
+                this.confirmDeleteUser();
             }
         });
     }
@@ -144,7 +136,7 @@ class UserManagement {
         }
         
         tbody.innerHTML = this.users.map(user => `
-            <tr class="${user.is_deleted ? 'status-deleted' : ''}">
+            <tr>
                 <td>${this.escapeHtml(user.email)}</td>
                 <td>${this.escapeHtml(user.full_name)}</td>
                 <td>
@@ -167,14 +159,12 @@ class UserManagement {
                         <button class="btn btn-sm btn-view" onclick="userMgmt.showUserDetail(${user.id}, 'view')" title="View user details">
                             <i class="fas fa-eye"></i> View
                         </button>
-                        ${user.is_deleted ? '' : `
-                            <button class="btn btn-sm btn-edit" onclick="userMgmt.showUserDetail(${user.id}, 'edit')" title="Edit user">
-                                <i class="fas fa-edit"></i> Edit
-                            </button>
-                            <button class="btn btn-sm btn-delete" onclick="userMgmt.deleteUserFromTable(${user.id}, '${this.escapeHtml(user.email)}')" title="Delete user">
-                                <i class="fas fa-trash"></i> Delete
-                            </button>
-                        `}
+                        <button class="btn btn-sm btn-edit" onclick="userMgmt.showUserDetail(${user.id}, 'edit')" title="Edit user">
+                            <i class="fas fa-edit"></i> Edit
+                        </button>
+                        <button class="btn btn-sm btn-delete" onclick="userMgmt.deleteUserFromTable(${user.id}, '${this.escapeHtml(user.email)}')" title="Delete user">
+                            <i class="fas fa-trash"></i> Delete
+                        </button>
                     </div>
                 </td>
             </tr>
@@ -291,26 +281,13 @@ class UserManagement {
                     ${isReadOnly ? `
                         <!-- View Mode Buttons -->
                         <div class="d-flex gap-2 flex-wrap">
-                            ${!user.is_deleted ? `
-                                <button id="editUserBtn" class="btn btn-edit flex-grow-1">
-                                    <i class="fas fa-edit"></i> Edit User
-                                </button>
-                                <button id="deleteUserBtn" class="btn btn-delete flex-grow-1">
-                                    <i class="fas fa-trash"></i> Delete User
-                                </button>
-                            ` : `
-                                <button id="restoreUserBtn" class="btn btn-restore flex-grow-1">
-                                    <i class="fas fa-undo"></i> Restore User
-                                </button>
-                            `}
+                            <button id="editUserBtn" class="btn btn-edit flex-grow-1">
+                                <i class="fas fa-edit"></i> Edit User
+                            </button>
+                            <button id="deleteUserBtn" class="btn btn-delete flex-grow-1">
+                                <i class="fas fa-trash"></i> Delete User
+                            </button>
                         </div>
-                        ${user.is_deleted ? `
-                            <div class="soft-delete-info mt-3">
-                                <strong><i class="fas fa-info-circle"></i> Soft Deleted</strong><br>
-                                <small>Deleted: ${new Date(user.deleted_at).toLocaleString()}<br>
-                                Data is preserved and can be restored at any time.</small>
-                            </div>
-                        ` : ''}
                     ` : `
                         <!-- Edit Mode Buttons -->
                         <div class="d-flex gap-2 flex-wrap">
@@ -324,20 +301,22 @@ class UserManagement {
                     `}
                 </div>
                 
-                <!-- Delete Options Section (Hidden by default) -->
-                <div id="deleteOptionsDiv" style="display:none;">
+                <!-- Delete Confirmation Section (Hidden by default) -->
+                <div id="deleteConfirmDiv" style="display:none;">
                     <div class="delete-options-section">
-                        <h5><i class="fas fa-exclamation-triangle"></i> Delete User: Choose Option</h5>
-                        <p>How would you like to delete this user?</p>
-                        <button id="confirmSoftDeleteBtn" class="delete-option-button soft-delete">
-                            <span class="btn-title">🔄 Soft Delete (Recommended)</span>
-                            <span class="btn-description">Preserve user data • Can be restored later</span>
+                        <h5><i class="fas fa-exclamation-triangle text-danger"></i> Confirm Delete</h5>
+                        <p class="text-danger"><strong>This action cannot be undone!</strong></p>
+                        <p>This will permanently delete the user and:</p>
+                        <ul class="small text-muted">
+                            <li>Remove their private notes and highlights</li>
+                            <li>Remove their revision history and view logs</li>
+                            <li>Anonymize their forum comments (content preserved)</li>
+                            <li>Preserve any cases they created (author cleared)</li>
+                        </ul>
+                        <button id="confirmDeleteBtn" class="btn btn-danger w-100 mb-2">
+                            <i class="fas fa-trash"></i> Yes, Delete User Permanently
                         </button>
-                        <button id="confirmPermanentDeleteBtn" class="delete-option-button permanent-delete">
-                            <span class="btn-title">🗑️ Permanent Delete (Irreversible)</span>
-                            <span class="btn-description">Remove all user data • Cannot be undone</span>
-                        </button>
-                        <button class="btn btn-secondary w-100 mt-2" onclick="document.getElementById('deleteOptionsDiv').style.display='none'">
+                        <button class="btn btn-secondary w-100" onclick="document.getElementById('deleteConfirmDiv').style.display='none'">
                             <i class="fas fa-times"></i> Cancel
                         </button>
                     </div>
@@ -414,41 +393,38 @@ class UserManagement {
         }
     }
     
-    showDeleteOptions() {
-        const deleteDiv = document.getElementById('deleteOptionsDiv');
+    showDeleteConfirmation() {
+        const deleteDiv = document.getElementById('deleteConfirmDiv');
         if (deleteDiv) {
             deleteDiv.style.display = deleteDiv.style.display === 'none' ? 'block' : 'none';
         }
     }
     
-    async confirmSoftDelete() {
+    async confirmDeleteUser() {
         if (!this.selectedUser) return;
-        if (confirm('Soft delete preserves user data and can be restored. Continue?')) {
-            this.softDeleteUser(this.selectedUser.id);
-        }
+        await this.deleteUser(this.selectedUser.id);
     }
     
-    async confirmPermanentDelete() {
-        if (!this.selectedUser) return;
-        if (confirm('⚠️ WARNING: Permanent delete removes ALL data for this user and cannot be undone!\n\nContinue?')) {
-            if (confirm('Click OK to confirm permanent deletion.')) {
-                this.permanentDeleteUser(this.selectedUser.id);
-            }
-        }
-    }
-    
-    async softDeleteUser(userId) {
+    async deleteUser(userId) {
         try {
             const response = await fetch(`/api/admin/users/${userId}`, {
                 method: 'DELETE'
             });
             
+            const data = await response.json();
+            
             if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.error || 'Failed to delete user');
+                throw new Error(data.error || 'Failed to delete user');
             }
             
-            this.showSuccess('✅ User soft-deleted. Data preserved. Can be restored.');
+            // Show success with cleanup stats
+            const stats = data.cleanup_stats || {};
+            let message = '✅ User permanently deleted.';
+            if (stats.notes_deleted || stats.highlights_deleted || stats.forum_messages_anonymized) {
+                message += ` Cleaned up: ${stats.notes_deleted || 0} notes, ${stats.highlights_deleted || 0} highlights.`;
+            }
+            
+            this.showSuccess(message);
             this.closeModal();
             this.loadUsers();
             
@@ -458,71 +434,10 @@ class UserManagement {
         }
     }
     
-    async permanentDeleteUser(userId) {
-        try {
-            const response = await fetch(`/api/admin/users/${userId}?permanent=true`, {
-                method: 'DELETE'
-            });
-            
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.error || 'Failed to permanently delete user');
-            }
-            
-            this.showSuccess('🗑️ User permanently deleted');
-            this.closeModal();
-            this.loadUsers();
-            
-        } catch (error) {
-            console.error('Error permanently deleting user:', error);
-            this.showError(`Failed to permanently delete user: ${error.message}`);
-        }
-    }
-    
-    async restoreUser() {
-        if (!this.selectedUser) return;
-        if (confirm('Restore this user? All data will be recovered.')) {
-            try {
-                const response = await fetch(`/api/admin/users/${this.selectedUser.id}/restore`, {
-                    method: 'POST'
-                });
-                
-                if (!response.ok) {
-                    const error = await response.json();
-                    throw new Error(error.error || 'Failed to restore user');
-                }
-                
-                this.showSuccess('User restored successfully');
-                this.closeModal();
-                this.loadUsers();
-                
-            } catch (error) {
-                console.error('Error restoring user:', error);
-                this.showError(`Failed to restore user: ${error.message}`);
-            }
-        }
-    }
-    
     async deleteUserFromTable(userId, userEmail) {
-        // Show confirmation dialog with options
-        const deleteChoice = confirm(
-            `Delete user: ${userEmail}\n\n` +
-            `Click OK for Soft Delete (recommended - preserves data, can be restored)\n` +
-            `Click Cancel to see more options in the detail view`
-        );
-        
-        if (deleteChoice) {
-            // Soft delete
-            if (confirm(`Soft delete ${userEmail}? Data will be preserved and can be restored.`)) {
-                await this.softDeleteUser(userId);
-            }
-        } else {
-            // Show user detail modal with delete options
-            await this.showUserDetail(userId, 'view');
-            // Trigger delete options display
-            setTimeout(() => {
-                this.showDeleteOptions();
-            }, 300);
+        // Show confirmation dialog
+        if (confirm(`Delete user: ${userEmail}?\n\nThis will permanently remove the user and their private data.\nForum comments will be preserved (anonymized).`)) {
+            await this.deleteUser(userId);
         }
     }
     

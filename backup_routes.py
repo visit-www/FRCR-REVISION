@@ -79,7 +79,7 @@ def download_backup():
         }
         
         # Export users (with passwords for sync purposes)
-        for user in User.query.filter_by(is_deleted=False).all():
+        for user in User.query.all():
             user_data = {
                 'id': user.id,  # Include ID for proper mapping
                 'email': user.email,
@@ -2103,7 +2103,7 @@ def backup_status():
     
     # Count records
     stats = {
-        'total_users': User.query.filter_by(is_deleted=False).count(),
+        'total_users': User.query.count(),
         'total_cases': Case.query.count(),
         'total_questions': Question.query.count(),
         'total_answers': Answer.query.count(),
