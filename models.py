@@ -860,6 +860,60 @@ class AdminApprovalCode(db.Model):
         return f'<AdminApprovalCode {self.code} Action:{self.action} Valid:{self.is_valid()}>'
 
 
+class AccountRecoveryCode(db.Model):
+    """
+    Stores recovery codes for soft-deleted student accounts.
+    Students can recover their accounts within 31 days using a code sent via email.
+    """
+    __tablename__ = 'account_recovery_code'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    code = db.Column(db.String(8), unique=True, nullable=False, index=True)  # 8-char code
+    
+    # User requesting recovery
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+    
+    # Request metadata for security logging
+    request_ip = db.Column(db.String(50), nullable=True)
+    request_user_agent = db.Column(db.String(500), nullable=True)
+    
+    # Timestamps
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    expires_at = db.Column(db.DateTime, nullable=False)  # 15 minutes by default
+    
+    # Status
+    used = db.Column(db.Boolean, default=False, index=True)
+    used_at = db.Column(db.DateTime, nullable=True)
+    
+    # Rate limiting - track attempts
+    attempts = db.Column(db.Integer, default=0)
+    last_attempt_at = db.Column(db.DateTime, nullable=True)
+    
+    # Relationship
+    user = db.relationship('User', backref='recovery_codes')
+    
+    def is_valid(self):
+        """Check if code is still valid (not used, not expired)"""
+        if self.used:
+            return False
+        if datetime.utcnow() > self.expires_at:
+            return False
+        return True
+    
+    def mark_used(self):
+        """Mark the code as used"""
+        self.used = True
+        self.used_at = datetime.utcnow()
+    
+    def record_attempt(self):
+        """Record a verification attempt"""
+        self.attempts += 1
+        self.last_attempt_at = datetime.utcnow()
+    
+    def __repr__(self):
+        return f'<AccountRecoveryCode {self.code} User:{self.user_id} Valid:{self.is_valid()}>'
+
+
 # ==================== AJCC TNM STAGING MODELS ====================
 
 class AJCCBodySection(db.Model):

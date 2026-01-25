@@ -377,6 +377,19 @@
                     setTimeout(() => {
                         window.location.href = '/';
                     }, 500);
+                } else if (data.account_deleted && data.recoverable) {
+                    // Account is soft-deleted but recoverable - redirect to recovery page
+                    const params = new URLSearchParams({
+                        email: data.email || email,
+                        deletion_date: data.deletion_date || 'Unknown',
+                        days_remaining: data.days_remaining || 0
+                    });
+                    window.location.href = '/auth/account-deactivated?' + params.toString();
+                } else if (data.account_deleted && !data.recoverable) {
+                    // Account is permanently deleted
+                    showAlert('This account has been permanently deleted and cannot be recovered.', 'danger');
+                    loginBtn.disabled = false;
+                    loginText.innerHTML = 'Sign In';
                 } else {
                     showAlert(data.error || 'Login failed', 'danger');
                     loginBtn.disabled = false;

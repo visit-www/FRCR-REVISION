@@ -5,13 +5,16 @@ Handles login, signup, password recovery, and session management
 from flask import Blueprint, render_template, request, jsonify, redirect, url_for, session, flash
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from models import db, User, UserRole
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 import secrets
 import cloudinary
 import cloudinary.uploader
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
+
+# Account recovery period (days after soft delete during which account can be recovered)
+RECOVERY_PERIOD_DAYS = 31  # 30 days + 1 day grace period
 
 def send_recovery_email(email, token):
     """
@@ -263,6 +266,33 @@ def login():
         
         if not user.is_active:
             return jsonify({'error': 'Account is disabled'}), 403
+        
+        # Check if account is soft-deleted (recoverable)
+        if user.is_deleted:
+            days_remaining = 0
+            deletion_date = None
+            
+            if user.deleted_at:
+                days_since_deletion = (datetime.utcnow() - user.deleted_at).days
+                days_remaining = max(0, RECOVERY_PERIOD_DAYS - days_since_deletion)
+                deletion_date = user.deleted_at.strftime('%B %d, %Y')
+                
+                # Check if recovery period expired
+                if days_remaining <= 0:
+                    return jsonify({
+                        'error': 'This account has been permanently deleted.',
+                        'account_deleted': True,
+                        'recoverable': False
+                    }), 403
+            
+            return jsonify({
+                'error': 'Account is deactivated',
+                'account_deleted': True,
+                'recoverable': True,
+                'deletion_date': deletion_date,
+                'days_remaining': days_remaining,
+                'email': user.email
+            }), 403
         
         try:
             # Update last login
@@ -582,6 +612,333 @@ def test_send_email():
             'error': str(e),
             'traceback': traceback.format_exc()
         }), 500
+
+
+@auth_bp.route('/logout-redirect', methods=['GET'])
+def logout_redirect():
+    """Logout and redirect to login page"""
+    logout_user()
+    return redirect(url_for('auth.login'))
+
+
+@auth_bp.route('/account-deactivated', methods=['GET'])
+def account_deactivated_page():
+    """Show account deactivated/recovery page"""
+    return render_template('account_deactivated.html')
+
+
+# ==================== STUDENT ACCOUNT SOFT DELETE & RECOVERY ====================
+
+
+@auth_bp.route('/account/soft-delete', methods=['POST'])
+@login_required
+def soft_delete_account():
+    """
+    Soft delete the current user's account (students only).
+    Account can be recovered within 31 days.
+    """
+    try:
+        # Only students can self-delete
+        if current_user.role != UserRole.STUDENT:
+            return jsonify({'error': 'Only student accounts can be self-deleted. Contact support for other account types.'}), 403
+        
+        # Check if already deleted
+        if current_user.is_deleted:
+            return jsonify({'error': 'Account is already deactivated'}), 400
+        
+        # Clear subscription (this is permanent - not restored on recovery)
+        from models import SubscriptionStatus, PaymentStatus
+        current_user.subscription_status = SubscriptionStatus.CANCELED
+        current_user.payment_status = PaymentStatus.NO_SUBSCRIPTION
+        current_user.subscription_end_date = datetime.utcnow()
+        
+        # Mark as soft deleted
+        current_user.is_deleted = True
+        current_user.deleted_at = datetime.utcnow()
+        current_user.deleted_by_user_id = current_user.id  # Self-deleted
+        
+        db.session.commit()
+        
+        # Log the deletion
+        print(f"[AUTH] User {current_user.email} soft-deleted their account")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Account deactivated. You can recover within 30 days.',
+            'recovery_deadline': (datetime.utcnow() + timedelta(days=RECOVERY_PERIOD_DAYS)).isoformat()
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"[AUTH] Soft delete error: {e}")
+        return jsonify({'error': 'Failed to delete account'}), 500
+
+
+def send_recovery_code_email(email, code, request_metadata=None):
+    """Send account recovery code email"""
+    import resend
+    
+    resend_key = os.getenv('RESEND_API_KEY')
+    if not resend_key:
+        print("[EMAIL] RESEND_API_KEY not configured")
+        return False
+    
+    resend.api_key = resend_key
+    from_email = os.getenv('EMAIL_FROM', 'FRCR Revision <onboarding@resend.dev>')
+    
+    metadata_html = ""
+    if request_metadata:
+        metadata_html = f"<p><small>Request IP: {request_metadata.get('ip', 'Unknown')}<br>Device: {request_metadata.get('user_agent', 'Unknown')[:50]}...</small></p>"
+    
+    try:
+        params = {
+            "from": from_email,
+            "to": [email],
+            "subject": "Account Recovery Request – FRCR Revision",
+            "html": f"""
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <h2 style="color: #5E899E;">Account Recovery Request</h2>
+                
+                <p>We received a request to recover your account.</p>
+                
+                <div style="background-color: #f8f9fa; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                    <p><strong>Account details:</strong></p>
+                    <ul>
+                        <li>Email: {email}</li>
+                        <li>Request date: {datetime.utcnow().strftime('%B %d, %Y at %H:%M UTC')}</li>
+                    </ul>
+                    {metadata_html}
+                </div>
+                
+                <p><strong>Your recovery code:</strong></p>
+                
+                <div style="background-color: #2c3e50; color: white; padding: 20px; text-align: center; 
+                            border-radius: 8px; margin: 20px 0; font-size: 32px; letter-spacing: 6px; font-family: monospace;">
+                    {code}
+                </div>
+                
+                <p style="color: #666;">If this was not you, you can safely ignore this email.</p>
+                <p style="color: #dc3545; font-size: 12px;"><strong>This code will expire in 15 minutes.</strong></p>
+            </div>
+            """
+        }
+        
+        response = resend.Emails.send(params)
+        print(f"[EMAIL] Recovery code sent to {email}: {response}")
+        return True
+        
+    except Exception as e:
+        print(f"[EMAIL] Failed to send recovery code: {e}")
+        return False
+
+
+@auth_bp.route('/account/request-recovery', methods=['POST'])
+def request_account_recovery():
+    """
+    Request a recovery code for a soft-deleted account.
+    Rate limited to prevent abuse.
+    """
+    try:
+        data = request.get_json() or {}
+        email = data.get('email', '').strip().lower()
+        
+        if not email:
+            return jsonify({'error': 'Email required'}), 400
+        
+        # Find the user
+        user = User.query.filter_by(email=email).first()
+        
+        if not user:
+            # Don't reveal if email exists
+            return jsonify({'success': True, 'message': 'If the account exists and is recoverable, a code has been sent.'}), 200
+        
+        if not user.is_deleted:
+            # Account is active - shouldn't be trying to recover
+            return jsonify({'error': 'This account is active. Please login normally.'}), 400
+        
+        # Check if recovery period has expired
+        if user.deleted_at:
+            days_since_deletion = (datetime.utcnow() - user.deleted_at).days
+            if days_since_deletion >= RECOVERY_PERIOD_DAYS:
+                return jsonify({'error': 'Recovery period has expired. This account cannot be recovered.'}), 400
+        
+        # Rate limiting - check recent recovery code requests
+        from models import AccountRecoveryCode
+        recent_codes = AccountRecoveryCode.query.filter(
+            AccountRecoveryCode.user_id == user.id,
+            AccountRecoveryCode.created_at > datetime.utcnow() - timedelta(minutes=5)
+        ).count()
+        
+        if recent_codes >= 3:
+            return jsonify({'error': 'Too many recovery attempts. Please wait 5 minutes.'}), 429
+        
+        # Generate recovery code
+        import string
+        alphabet = string.ascii_uppercase + string.digits
+        code = ''.join(secrets.choice(alphabet) for _ in range(8))
+        
+        # Store the code
+        recovery_code = AccountRecoveryCode(
+            code=code,
+            user_id=user.id,
+            request_ip=request.remote_addr,
+            request_user_agent=request.headers.get('User-Agent', '')[:500],
+            expires_at=datetime.utcnow() + timedelta(minutes=15)
+        )
+        db.session.add(recovery_code)
+        db.session.commit()
+        
+        # Send email
+        metadata = {
+            'ip': request.remote_addr,
+            'user_agent': request.headers.get('User-Agent', '')
+        }
+        email_sent = send_recovery_code_email(email, code, metadata)
+        
+        if not email_sent:
+            return jsonify({'error': 'Failed to send recovery email. Please try again.'}), 500
+        
+        # Calculate days remaining
+        days_remaining = RECOVERY_PERIOD_DAYS - (datetime.utcnow() - user.deleted_at).days if user.deleted_at else RECOVERY_PERIOD_DAYS
+        
+        return jsonify({
+            'success': True,
+            'message': 'Recovery code sent to your email.',
+            'days_remaining': days_remaining
+        }), 200
+        
+    except Exception as e:
+        print(f"[AUTH] Request recovery error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': 'An error occurred'}), 500
+
+
+@auth_bp.route('/account/verify-recovery', methods=['POST'])
+def verify_recovery_code():
+    """
+    Verify a recovery code and return a recovery token.
+    User must then set a new password.
+    """
+    try:
+        data = request.get_json() or {}
+        email = data.get('email', '').strip().lower()
+        code = data.get('code', '').strip().upper()
+        
+        if not email or not code:
+            return jsonify({'error': 'Email and code required'}), 400
+        
+        # Find the user
+        user = User.query.filter_by(email=email).first()
+        if not user or not user.is_deleted:
+            return jsonify({'error': 'Invalid recovery request'}), 400
+        
+        # Find the recovery code
+        from models import AccountRecoveryCode
+        recovery = AccountRecoveryCode.query.filter_by(
+            user_id=user.id,
+            code=code
+        ).first()
+        
+        if not recovery:
+            return jsonify({'error': 'Invalid recovery code'}), 400
+        
+        # Record the attempt
+        recovery.record_attempt()
+        db.session.commit()
+        
+        # Check if too many attempts
+        if recovery.attempts > 5:
+            return jsonify({'error': 'Too many attempts. Please request a new code.'}), 429
+        
+        if not recovery.is_valid():
+            return jsonify({'error': 'Recovery code expired. Please request a new one.'}), 400
+        
+        # Mark code as used
+        recovery.mark_used()
+        
+        # Generate a recovery token for password reset
+        recovery_token = secrets.token_urlsafe(32)
+        user.recovery_token = recovery_token
+        user.recovery_token_expires = datetime.utcnow() + timedelta(hours=1)
+        
+        db.session.commit()
+        
+        print(f"[AUTH] Recovery code verified for {email}")
+        
+        return jsonify({
+            'success': True,
+            'recovery_token': recovery_token,
+            'message': 'Code verified. Please set a new password.'
+        }), 200
+        
+    except Exception as e:
+        print(f"[AUTH] Verify recovery error: {e}")
+        return jsonify({'error': 'An error occurred'}), 500
+
+
+@auth_bp.route('/account/complete-recovery', methods=['POST'])
+def complete_account_recovery():
+    """
+    Complete account recovery by setting a new password.
+    This reactivates the account.
+    """
+    try:
+        data = request.get_json() or {}
+        recovery_token = data.get('recovery_token', '')
+        new_password = data.get('new_password', '')
+        
+        if not recovery_token or not new_password:
+            return jsonify({'error': 'Recovery token and new password required'}), 400
+        
+        if len(new_password) < 8:
+            return jsonify({'error': 'Password must be at least 8 characters'}), 400
+        
+        # Find user by recovery token
+        user = User.query.filter_by(recovery_token=recovery_token).first()
+        
+        if not user:
+            return jsonify({'error': 'Invalid recovery token'}), 400
+        
+        # Check token expiry
+        if not user.recovery_token_expires or user.recovery_token_expires < datetime.utcnow():
+            return jsonify({'error': 'Recovery token expired. Please start over.'}), 400
+        
+        # Check password is not the same as before
+        if user.check_password(new_password):
+            return jsonify({'error': 'New password cannot be the same as your previous password'}), 400
+        
+        # Reactivate account
+        user.is_deleted = False
+        user.deleted_at = None
+        user.deleted_by_user_id = None
+        
+        # Set new password
+        user.set_password(new_password)
+        
+        # Clear recovery token
+        user.recovery_token = None
+        user.recovery_token_expires = None
+        
+        # Note: Subscription is NOT restored (as per spec)
+        
+        db.session.commit()
+        
+        print(f"[AUTH] Account recovered successfully for {user.email}")
+        
+        # Log the user in
+        login_user(user)
+        
+        return jsonify({
+            'success': True,
+            'message': 'Account recovered successfully!',
+            'subscription_note': 'Your previous subscription was not restored.'
+        }), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"[AUTH] Complete recovery error: {e}")
+        return jsonify({'error': 'An error occurred'}), 500
 
 
 @auth_bp.route('/debug', methods=['GET'])

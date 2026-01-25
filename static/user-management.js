@@ -13,6 +13,36 @@ class UserManagement {
         this.init();
     }
     
+    /**
+     * Get display label for role
+     */
+    getRoleDisplayLabel(role, isSuperadmin = false) {
+        if (isSuperadmin) return 'Super Admin';
+        const labels = {
+            'admin': 'Admin',
+            'content_manager': 'Content Manager',
+            'student': 'Student'
+        };
+        return labels[role] || role.replace(/_/g, ' ').toUpperCase();
+    }
+    
+    /**
+     * Get badge class for role highlighting
+     * - superadmin: red
+     * - admin: orange
+     * - content_manager: blue
+     * - student: green
+     */
+    getRoleBadgeClass(role, isSuperadmin = false) {
+        if (isSuperadmin) return 'role-superadmin';
+        const classes = {
+            'admin': 'role-admin',
+            'content_manager': 'role-content-manager',
+            'student': 'role-student'
+        };
+        return classes[role] || 'role-student';
+    }
+    
     init() {
         this.setupEventListeners();
         this.loadUsers();
@@ -139,13 +169,10 @@ class UserManagement {
         tbody.innerHTML = this.users.map(user => `
             <tr>
                 <td>${this.escapeHtml(user.email)}</td>
+                <td>${this.escapeHtml(user.full_name)}</td>
                 <td>
-                    ${this.escapeHtml(user.full_name)}
-                    ${user.is_superadmin ? '<span class="badge" style="background:#e96304;color:white;font-size:10px;margin-left:5px;">SUPERADMIN</span>' : ''}
-                </td>
-                <td>
-                    <span class="badge badge-${user.role}">
-                        ${user.role.replace(/_/g, ' ').toUpperCase()}
+                    <span class="badge ${this.getRoleBadgeClass(user.role, user.is_superadmin)}">
+                        ${this.getRoleDisplayLabel(user.role, user.is_superadmin)}
                     </span>
                 </td>
                 <td>
@@ -224,8 +251,8 @@ class UserManagement {
                     <div class="detail-row">
                         <label><i class="fas fa-user-tag"></i> Role:</label>
                         ${isReadOnly ? `
-                            <span class="badge badge-${user.role}">
-                                ${user.role.replace(/_/g, ' ').toUpperCase()}
+                            <span class="badge ${this.getRoleBadgeClass(user.role, user.is_superadmin)}">
+                                ${this.getRoleDisplayLabel(user.role, user.is_superadmin)}
                             </span>
                         ` : `
                             <select id="editRole" class="form-select">

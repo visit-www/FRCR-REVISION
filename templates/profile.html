@@ -194,6 +194,34 @@
                         <i class="fas fa-info-circle me-1"></i>
                         By using FRCR Revision, you agree to our Terms of Use and Privacy Policy.
                     </div>
+                    
+                    {% if current_user.role and current_user.role.value == 'student' %}
+                    <hr class="my-4">
+                    
+                    <!-- Account Settings / Delete Account Section (Students Only) -->
+                    <h5 class="mb-3" style="color: #dc3545;">
+                        <i class="fas fa-user-cog me-2"></i>Account Settings
+                    </h5>
+                    
+                    <div class="card border-danger">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center justify-content-between">
+                                <div>
+                                    <h6 class="text-danger mb-1">
+                                        <i class="fas fa-exclamation-triangle me-2"></i>Danger Zone
+                                    </h6>
+                                    <p class="text-muted small mb-0">
+                                        Permanently delete your account and all associated data.
+                                        This action cannot be fully undone after 30 days.
+                                    </p>
+                                </div>
+                                <button type="button" class="btn btn-outline-danger" onclick="showDeleteAccountModal()">
+                                    <i class="fas fa-trash-alt me-2"></i>Delete My Account
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
             
@@ -201,6 +229,55 @@
                 <a href="/dashboard" class="btn btn-outline-secondary">
                     <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
                 </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Account Confirmation Modal -->
+<div class="modal fade" id="deleteAccountModal" tabindex="-1" aria-labelledby="deleteAccountModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="deleteAccountModalLabel">
+                    <i class="fas fa-exclamation-triangle me-2"></i>Delete Your Account?
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>This action will deactivate your account and start the account deletion process.</p>
+                
+                <div class="mb-3">
+                    <strong>What will happen:</strong>
+                    <ul class="mt-2 mb-0">
+                        <li>Your account will be soft deleted</li>
+                        <li>All active subscriptions will be <strong>permanently lost</strong></li>
+                        <li>You will immediately lose access to paid features</li>
+                        <li>Your personal data and activity will be retained temporarily for recovery</li>
+                    </ul>
+                </div>
+                
+                <div class="mb-3">
+                    <strong>Important notes:</strong>
+                    <ul class="mt-2 mb-0">
+                        <li>Any public posts or forum messages you have shared will remain visible and are never deleted.</li>
+                        <li>Your account can be recovered within <strong>30 days</strong></li>
+                        <li>After 30 days, your account and all associated data will be permanently deleted (except publicly posted comments and images)</li>
+                    </ul>
+                </div>
+                
+                <div class="alert alert-danger mb-0">
+                    <strong><i class="fas fa-exclamation-circle me-1"></i>Warning:</strong>
+                    This action cannot be undone after the recovery period ends.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i>Cancel
+                </button>
+                <button type="button" class="btn btn-danger" onclick="confirmDeleteAccount()">
+                    <i class="fas fa-trash-alt me-1"></i>Confirm Account Deletion
+                </button>
             </div>
         </div>
     </div>
@@ -386,5 +463,47 @@ document.getElementById('passwordForm').addEventListener('submit', function(e) {
         alert('Error updating password');
     });
 });
+
+// Delete Account Functions
+function showDeleteAccountModal() {
+    const modal = new bootstrap.Modal(document.getElementById('deleteAccountModal'));
+    modal.show();
+}
+
+function confirmDeleteAccount() {
+    // Close the modal
+    const modal = bootstrap.Modal.getInstance(document.getElementById('deleteAccountModal'));
+    modal.hide();
+    
+    // Show loading state
+    const btn = document.querySelector('#deleteAccountModal .btn-danger');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Deleting...';
+    btn.disabled = true;
+    
+    // Call the soft delete API
+    fetch('/auth/account/soft-delete', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'}
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            // Show success message and redirect to logout
+            alert('Your account has been deactivated. You will be logged out now.\n\nYou can recover your account within 30 days by logging in again.');
+            window.location.href = '/auth/logout-redirect';
+        } else {
+            alert(data.error || 'Failed to delete account. Please try again.');
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        alert('Error deleting account. Please try again.');
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    });
+}
 </script>
 {% endblock %}

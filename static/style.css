@@ -3299,19 +3299,42 @@ pre {
     font-size: 0.85rem;
 }
 
+/* Role Badges - New Naming Convention */
+.admin-dashboard-container .role-superadmin {
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+    color: white;
+    font-weight: 600;
+}
+
+.admin-dashboard-container .role-admin {
+    background: linear-gradient(135deg, #e96304 0%, #c75002 100%);
+    color: white;
+}
+
+.admin-dashboard-container .role-content-manager {
+    background: linear-gradient(135deg, #5E899E 0%, #4a7085 100%);
+    color: white;
+}
+
+.admin-dashboard-container .role-student {
+    background: linear-gradient(135deg, #28a745 0%, #218838 100%);
+    color: white;
+}
+
+/* Legacy badge classes - keep for backward compatibility */
 .admin-dashboard-container .badge-admin {
     background: linear-gradient(135deg, #e96304 0%, #c75002 100%);
     color: white;
 }
 
-.admin-dashboard_container .badge-content_manager {
-    background: linear-gradient(135deg, #ffc107 0%, #ffcd39 100%);
-    color: #333;
+.admin-dashboard-container .badge-content_manager {
+    background: linear-gradient(135deg, #5E899E 0%, #4a7085 100%);
+    color: white;
 }
 
 .admin-dashboard-container .badge-student {
-    background: linear-gradient(135deg, #a8d5ba 0%, #8bc9a3 100%);
-    color: #2c2c2c;
+    background: linear-gradient(135deg, #28a745 0%, #218838 100%);
+    color: white;
 }
 
 .admin-dashboard-container .badge-paid {
