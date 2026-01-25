@@ -259,14 +259,21 @@ def update_user_role(user_id):
                 resend_requested = request.json.get('resend_code', False)
                 
                 # Check for existing pending approval for the same action
-                existing_pending = AdminApprovalCode.query.filter(
+                # Use Python filtering for JSON field (works on both SQLite and PostgreSQL)
+                pending_approvals = AdminApprovalCode.query.filter(
                     AdminApprovalCode.requesting_admin_id == current_user.id,
                     AdminApprovalCode.target_user_id == user.id,
                     AdminApprovalCode.used == False,
                     AdminApprovalCode.cancelled == False,
-                    AdminApprovalCode.expires_at > datetime.utcnow(),
-                    AdminApprovalCode.action_details['new_role'].astext == new_role
-                ).first()
+                    AdminApprovalCode.expires_at > datetime.utcnow()
+                ).all()
+                
+                # Filter by action_details in Python (database-agnostic)
+                existing_pending = next(
+                    (p for p in pending_approvals 
+                     if p.action_details and p.action_details.get('new_role') == new_role),
+                    None
+                )
                 
                 if existing_pending and not resend_requested:
                     # Pending approval already exists - don't send new code
@@ -530,14 +537,21 @@ def delete_user(user_id):
                 resend_requested = request.args.get('resend_code', 'false').lower() == 'true'
                 
                 # Check for existing pending approval for deletion of this user
-                existing_pending = AdminApprovalCode.query.filter(
+                # Use Python filtering for JSON field (works on both SQLite and PostgreSQL)
+                pending_approvals = AdminApprovalCode.query.filter(
                     AdminApprovalCode.requesting_admin_id == current_user.id,
                     AdminApprovalCode.target_user_id == user.id,
                     AdminApprovalCode.used == False,
                     AdminApprovalCode.cancelled == False,
-                    AdminApprovalCode.expires_at > datetime.utcnow(),
-                    AdminApprovalCode.action_details['action_type'].astext == 'deletion'
-                ).first()
+                    AdminApprovalCode.expires_at > datetime.utcnow()
+                ).all()
+                
+                # Filter by action_details in Python (database-agnostic)
+                existing_pending = next(
+                    (p for p in pending_approvals 
+                     if p.action_details and p.action_details.get('action_type') == 'deletion'),
+                    None
+                )
                 
                 if existing_pending and not resend_requested:
                     # Pending approval already exists - don't send new code
