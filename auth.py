@@ -91,7 +91,9 @@ def send_admin_approval_email(requesting_admin_email, requesting_admin_name, tar
     import resend
     from datetime import datetime
     
-    SUPERADMIN_EMAIL = "lotusheart2016@gmail.com"
+    # Superadmin email - configurable via env for testing with Resend free tier
+    # In production with verified domain, this should always be the real superadmin
+    SUPERADMIN_EMAIL = os.getenv('SUPERADMIN_EMAIL', 'lotusheart2016@gmail.com')
     
     resend_key = os.getenv('RESEND_API_KEY')
     
