@@ -1,55 +1,36 @@
 {
-  "source": "AJCC Portal PDFs (user supplied)",
+  "source": "AJCC Cancer Staging Manual 8th Edition",
   "sections": [
-    {
-      "ajcc_section": "Bone",
-      "disease_sites": [
-        "Bone"
-      ]
-    },
-    {
-      "ajcc_section": "Breast",
-      "disease_sites": [
-        "Breast"
-      ]
-    },
-    {
-      "ajcc_section": "Central Nervous System",
-      "disease_sites": [
-        "Brain and Spinal Cord"
-      ]
-    },
-    {
-      "ajcc_section": "Endocrine System",
-      "disease_sites": [
-        "Adrenal Gland",
-        "Parathyroid",
-        "Thyroid"
-      ]
-    },
-    {
-      "ajcc_section": "Female Reproductive Organs",
-      "disease_sites": [
-        "Cervix Uteri",
-        "Corpus Uteri Carcinoma and Carcinosarcoma",
-        "Corpus Uteri Sarcoma",
-        "Gestational Trophoblastic Neoplasms",
-        "Ovary, Fallopian Tube, and Primary Peritoneal Carcinoma"
-      ]
-    },
     {
       "ajcc_section": "Head and Neck",
       "disease_sites": [
+        "Lip",
         "Oral Cavity",
-        "Oropharynx",
+        "Oropharynx (HPV-Mediated)",
+        "Oropharynx (Non-HPV)",
+        "Nasopharynx",
         "Hypopharynx",
-        "Larynx"
+        "Larynx",
+        "Nasal Cavity and Paranasal Sinuses",
+        "Salivary Glands",
+        "Unknown Primary of the Head and Neck"
       ]
     },
     {
-      "ajcc_section": "Hematologic Malignancies",
+      "ajcc_section": "Upper Gastrointestinal Tract",
       "disease_sites": [
-        "Hematologic Malignancies"
+        "Esophagus and Esophagogastric Junction",
+        "Stomach",
+        "Small Intestine"
+      ]
+    },
+    {
+      "ajcc_section": "Lower Gastrointestinal Tract",
+      "disease_sites": [
+        "Appendix",
+        "Colon",
+        "Rectum",
+        "Anal Canal"
       ]
     },
     {
@@ -59,59 +40,20 @@
         "Intrahepatic Bile Ducts",
         "Perihilar Bile Ducts",
         "Distal Bile Duct",
-        "Gallbladder"
-      ]
-    },
-    {
-      "ajcc_section": "Lower Gastrointestinal Tract",
-      "disease_sites": [
-        "Colon",
-        "Rectum",
-        "Anal Canal"
-      ]
-    },
-    {
-      "ajcc_section": "Male Genital Organs",
-      "disease_sites": [
-        "Penis",
-        "Prostate",
-        "Testis"
+        "Ampulla of Vater",
+        "Gallbladder",
+        "Pancreas"
       ]
     },
     {
       "ajcc_section": "Neuroendocrine Tumors",
       "disease_sites": [
-        "Neuroendocrine Tumors"
-      ]
-    },
-    {
-      "ajcc_section": "Ophthalmic Sites",
-      "disease_sites": [
-        "Conjunctival Carcinoma",
-        "Conjunctival Melanoma",
-        "Eyelid Carcinoma",
-        "Lacrimal Gland Carcinoma",
-        "Ocular Adnexal Lymphoma",
-        "Orbital Sarcoma",
-        "Retinoblastoma",
-        "Uveal Melanoma"
-      ]
-    },
-    {
-      "ajcc_section": "Skin",
-      "disease_sites": [
-        "Merkel Cell Carcinoma",
-        "Melanoma of the Skin"
-      ]
-    },
-    {
-      "ajcc_section": "Soft Tissue Sarcoma",
-      "disease_sites": [
-        "Soft Tissue Sarcoma of the Abdomen and Thoracic Visceral Organs",
-        "Gastrointestinal Stromal Tumor",
-        "Soft Tissue Sarcoma of the Head and Neck",
-        "Soft Tissue Sarcoma of the Retroperitoneum",
-        "Soft Tissue Sarcoma of the Trunk and Extremities"
+        "Neuroendocrine Tumors of the Stomach",
+        "Neuroendocrine Tumors of the Duodenum and Ampulla of Vater",
+        "Neuroendocrine Tumors of the Jejunum and Ileum",
+        "Neuroendocrine Tumors of the Appendix",
+        "Neuroendocrine Tumors of the Colon and Rectum",
+        "Neuroendocrine Tumors of the Pancreas"
       ]
     },
     {
@@ -123,20 +65,97 @@
       ]
     },
     {
-      "ajcc_section": "Upper Gastrointestinal Tract",
+      "ajcc_section": "Bone",
       "disease_sites": [
-        "Esophagus and Esophagogastric Junction",
-        "Small Intestine",
-        "Stomach"
+        "Bone"
+      ]
+    },
+    {
+      "ajcc_section": "Soft Tissue Sarcoma",
+      "disease_sites": [
+        "Soft Tissue Sarcoma of the Head and Neck",
+        "Soft Tissue Sarcoma of the Trunk and Extremities",
+        "Soft Tissue Sarcoma of the Abdomen and Thoracic Visceral Organs",
+        "Soft Tissue Sarcoma of the Retroperitoneum",
+        "Gastrointestinal Stromal Tumor"
+      ]
+    },
+    {
+      "ajcc_section": "Skin",
+      "disease_sites": [
+        "Melanoma of the Skin",
+        "Merkel Cell Carcinoma",
+        "Cutaneous Squamous Cell Carcinoma"
+      ]
+    },
+    {
+      "ajcc_section": "Breast",
+      "disease_sites": [
+        "Breast"
+      ]
+    },
+    {
+      "ajcc_section": "Female Reproductive Organs",
+      "disease_sites": [
+        "Vulva",
+        "Vagina",
+        "Cervix Uteri",
+        "Corpus Uteri Carcinoma and Carcinosarcoma",
+        "Corpus Uteri Sarcoma",
+        "Ovary, Fallopian Tube, and Primary Peritoneal Carcinoma",
+        "Gestational Trophoblastic Neoplasms"
+      ]
+    },
+    {
+      "ajcc_section": "Male Genital Organs",
+      "disease_sites": [
+        "Penis",
+        "Prostate",
+        "Testis"
       ]
     },
     {
       "ajcc_section": "Urinary Tract",
       "disease_sites": [
-        "Urinary Bladder",
         "Kidney",
         "Renal Pelvis and Ureter",
+        "Urinary Bladder",
         "Urethra"
+      ]
+    },
+    {
+      "ajcc_section": "Ophthalmic Sites",
+      "disease_sites": [
+        "Eyelid Carcinoma",
+        "Conjunctival Carcinoma",
+        "Conjunctival Melanoma",
+        "Uveal Melanoma",
+        "Retinoblastoma",
+        "Lacrimal Gland Carcinoma",
+        "Orbital Sarcoma",
+        "Ocular Adnexal Lymphoma"
+      ]
+    },
+    {
+      "ajcc_section": "Central Nervous System",
+      "disease_sites": [
+        "Brain and Spinal Cord"
+      ]
+    },
+    {
+      "ajcc_section": "Endocrine System",
+      "disease_sites": [
+        "Thyroid - Differentiated and Anaplastic",
+        "Thyroid - Medullary",
+        "Parathyroid",
+        "Adrenal Cortical Carcinoma"
+      ]
+    },
+    {
+      "ajcc_section": "Hematologic Malignancies",
+      "disease_sites": [
+        "Hodgkin and Non-Hodgkin Lymphomas",
+        "Primary Cutaneous Lymphomas"
       ]
     }
   ]

@@ -301,120 +301,131 @@ def _seed_ajcc_data_if_needed():
         ("Hematologic Malignancies", "hematologic-malignancies"),
     ]
     
-    # Disease sites by section - AJCC 8th Edition ontology
+    # Disease sites by section - AJCC Cancer Staging Manual 8th Edition
     # Slugs must match existing database entries to avoid duplicates
     DISEASE_SITES = {
-        # Head and Neck - from AJCC ontology
+        # Head and Neck (10 sites)
         "head-and-neck": [
+            ("Lip", "lip", "head-and-neck/lip"),
             ("Oral Cavity", "oral-cavity", "head-and-neck/oral-cavity"),
-            ("Oropharynx", "oropharynx", "head-and-neck/oropharynx"),
+            ("Oropharynx (HPV-Mediated)", "oropharynx-hpv", "head-and-neck/oropharynx-hpv"),
+            ("Oropharynx (Non-HPV)", "oropharynx", "head-and-neck/oropharynx"),
+            ("Nasopharynx", "nasopharynx", "head-and-neck/nasopharynx"),
             ("Hypopharynx", "hypopharynx", "head-and-neck/hypopharynx"),
             ("Larynx", "larynx", "head-and-neck/larynx"),
-            ("Nasopharynx", "nasopharynx", "head-and-neck/nasopharynx"),
             ("Nasal Cavity and Paranasal Sinuses", "nasal-cavity", "head-and-neck/nasal-cavity"),
             ("Salivary Glands", "salivary-glands", "head-and-neck/salivary-glands"),
-            ("Lip", "lip", "head-and-neck/lip"),
             ("Unknown Primary of the Head and Neck", "unknown-primary-head-neck", "head-and-neck/unknown-primary"),
         ],
-        # Upper Gastrointestinal Tract
+        # Upper Gastrointestinal Tract (3 sites)
         "upper-gastrointestinal-tract": [
             ("Esophagus and Esophagogastric Junction", "esophagus", "upper-gastrointestinal-tract/esophagus"),
-            ("Small Intestine", "small-intestine", "upper-gastrointestinal-tract/small-intestine"),
             ("Stomach", "stomach", "upper-gastrointestinal-tract/stomach"),
+            ("Small Intestine", "small-intestine", "upper-gastrointestinal-tract/small-intestine"),
         ],
-        # Lower Gastrointestinal Tract
+        # Lower Gastrointestinal Tract (4 sites)
         "lower-gastrointestinal-tract": [
+            ("Appendix", "appendix", "lower-gastrointestinal-tract/appendix"),
             ("Colon", "colon", "lower-gastrointestinal-tract/colon"),
             ("Rectum", "rectum", "lower-gastrointestinal-tract/rectum"),
             ("Anal Canal", "anal-canal", "lower-gastrointestinal-tract/anal-canal"),
         ],
-        # Hepatobiliary System
+        # Hepatobiliary System (7 sites)
         "hepatobiliary-system": [
             ("Liver", "liver", "hepatobiliary-system/liver"),
             ("Intrahepatic Bile Ducts", "intrahepatic-bile-ducts", "hepatobiliary-system/intrahepatic-bile-ducts"),
             ("Perihilar Bile Ducts", "perihilar-bile-ducts", "hepatobiliary-system/perihilar-bile-ducts"),
             ("Distal Bile Duct", "distal-bile-duct", "hepatobiliary-system/distal-bile-duct"),
+            ("Ampulla of Vater", "ampulla-of-vater", "hepatobiliary-system/ampulla-of-vater"),
             ("Gallbladder", "gallbladder", "hepatobiliary-system/gallbladder"),
             ("Pancreas", "pancreas", "hepatobiliary-system/pancreas"),
         ],
-        # Neuroendocrine Tumors - single entry per AJCC ontology
+        # Neuroendocrine Tumors (6 sites)
         "neuroendocrine-tumors": [
-            ("Neuroendocrine Tumors", "neuroendocrine-tumors", "neuroendocrine-tumors/neuroendocrine-tumors"),
+            ("Neuroendocrine Tumors of the Stomach", "net-stomach", "neuroendocrine-tumors/stomach"),
+            ("Neuroendocrine Tumors of the Duodenum and Ampulla of Vater", "net-duodenum", "neuroendocrine-tumors/duodenum"),
+            ("Neuroendocrine Tumors of the Jejunum and Ileum", "net-jejunum-ileum", "neuroendocrine-tumors/jejunum-ileum"),
+            ("Neuroendocrine Tumors of the Appendix", "net-appendix", "neuroendocrine-tumors/appendix"),
+            ("Neuroendocrine Tumors of the Colon and Rectum", "net-colon-rectum", "neuroendocrine-tumors/colon-rectum"),
+            ("Neuroendocrine Tumors of the Pancreas", "net-pancreas", "neuroendocrine-tumors/pancreas"),
         ],
-        # Thorax
+        # Thorax (3 sites)
         "thorax": [
             ("Lung", "lung", "thorax/lung"),
             ("Pleural Mesothelioma", "pleural-mesothelioma", "thorax/pleural-mesothelioma"),
             ("Thymus", "thymus", "thorax/thymus"),
         ],
-        # Bone
+        # Bone (1 site)
         "bone": [
             ("Bone", "bone", "bone/bone"),
         ],
-        # Soft Tissue Sarcoma
+        # Soft Tissue Sarcoma (5 sites)
         "soft-tissue-sarcoma": [
-            ("Soft Tissue Sarcoma of the Trunk and Extremities", "soft-tissue-trunk-extremities", "soft-tissue-sarcoma/trunk-extremities"),
             ("Soft Tissue Sarcoma of the Head and Neck", "soft-tissue-head-neck", "soft-tissue-sarcoma/head-neck"),
+            ("Soft Tissue Sarcoma of the Trunk and Extremities", "soft-tissue-trunk-extremities", "soft-tissue-sarcoma/trunk-extremities"),
             ("Soft Tissue Sarcoma of the Abdomen and Thoracic Visceral Organs", "soft-tissue-abdomen-thorax", "soft-tissue-sarcoma/abdomen-thorax"),
             ("Soft Tissue Sarcoma of the Retroperitoneum", "soft-tissue-retroperitoneum", "soft-tissue-sarcoma/retroperitoneum"),
             ("Gastrointestinal Stromal Tumor", "gist", "soft-tissue-sarcoma/gist"),
         ],
-        # Skin
+        # Skin (3 sites)
         "skin": [
             ("Melanoma of the Skin", "melanoma", "skin/melanoma"),
             ("Merkel Cell Carcinoma", "merkel-cell", "skin/merkel-cell"),
+            ("Cutaneous Squamous Cell Carcinoma", "cutaneous-scc", "skin/cutaneous-scc"),
         ],
-        # Breast
+        # Breast (1 site)
         "breast": [
             ("Breast", "breast", "breast/breast"),
         ],
-        # Female Reproductive Organs
+        # Female Reproductive Organs (7 sites)
         "female-reproductive-organs": [
+            ("Vulva", "vulva", "female-reproductive-organs/vulva"),
+            ("Vagina", "vagina", "female-reproductive-organs/vagina"),
             ("Cervix Uteri", "cervix", "female-reproductive-organs/cervix"),
             ("Corpus Uteri Carcinoma and Carcinosarcoma", "corpus-uteri-carcinoma", "female-reproductive-organs/corpus-uteri-carcinoma"),
             ("Corpus Uteri Sarcoma", "corpus-uteri-sarcoma", "female-reproductive-organs/corpus-uteri-sarcoma"),
             ("Ovary, Fallopian Tube, and Primary Peritoneal Carcinoma", "ovary-fallopian-tube", "female-reproductive-organs/ovary"),
             ("Gestational Trophoblastic Neoplasms", "gestational-trophoblastic", "female-reproductive-organs/gestational-trophoblastic"),
-            ("Vagina", "vagina", "female-reproductive-organs/vagina"),
-            ("Vulva", "vulva", "female-reproductive-organs/vulva"),
         ],
-        # Male Genital Organs
+        # Male Genital Organs (3 sites)
         "male-genital-organs": [
             ("Penis", "penis", "male-genital-organs/penis"),
             ("Prostate", "prostate", "male-genital-organs/prostate"),
             ("Testis", "testis", "male-genital-organs/testis"),
         ],
-        # Urinary Tract
+        # Urinary Tract (4 sites)
         "urinary-tract": [
             ("Kidney", "kidney", "urinary-tract/kidney"),
             ("Renal Pelvis and Ureter", "renal-pelvis-ureter", "urinary-tract/renal-pelvis-ureter"),
             ("Urinary Bladder", "bladder", "urinary-tract/bladder"),
             ("Urethra", "urethra", "urinary-tract/urethra"),
         ],
-        # Ophthalmic Sites
+        # Ophthalmic Sites (8 sites)
         "ophthalmic-sites": [
+            ("Eyelid Carcinoma", "eyelid-carcinoma", "ophthalmic-sites/eyelid-carcinoma"),
             ("Conjunctival Carcinoma", "conjunctival-carcinoma", "ophthalmic-sites/conjunctival-carcinoma"),
             ("Conjunctival Melanoma", "conjunctival-melanoma", "ophthalmic-sites/conjunctival-melanoma"),
-            ("Eyelid Carcinoma", "eyelid-carcinoma", "ophthalmic-sites/eyelid-carcinoma"),
-            ("Lacrimal Gland Carcinoma", "lacrimal-gland", "ophthalmic-sites/lacrimal-gland"),
-            ("Ocular Adnexal Lymphoma", "ocular-adnexal-lymphoma", "ophthalmic-sites/ocular-adnexal-lymphoma"),
-            ("Orbital Sarcoma", "orbital-sarcoma", "ophthalmic-sites/orbital-sarcoma"),
-            ("Retinoblastoma", "retinoblastoma", "ophthalmic-sites/retinoblastoma"),
             ("Uveal Melanoma", "uveal-melanoma", "ophthalmic-sites/uveal-melanoma"),
+            ("Retinoblastoma", "retinoblastoma", "ophthalmic-sites/retinoblastoma"),
+            ("Lacrimal Gland Carcinoma", "lacrimal-gland", "ophthalmic-sites/lacrimal-gland"),
+            ("Orbital Sarcoma", "orbital-sarcoma", "ophthalmic-sites/orbital-sarcoma"),
+            ("Ocular Adnexal Lymphoma", "ocular-adnexal-lymphoma", "ophthalmic-sites/ocular-adnexal-lymphoma"),
         ],
-        # Central Nervous System - single site (slug matches original "brain")
+        # Central Nervous System (1 site)
         "central-nervous-system": [
             ("Brain and Spinal Cord", "brain", "central-nervous-system/brain"),
         ],
-        # Endocrine System
+        # Endocrine System (4 sites)
         "endocrine-system": [
-            ("Thyroid", "thyroid", "endocrine-system/thyroid"),
-            ("Adrenal Gland", "adrenal-gland", "endocrine-system/adrenal-gland"),
+            ("Thyroid - Differentiated and Anaplastic", "thyroid-differentiated", "endocrine-system/thyroid-differentiated"),
+            ("Thyroid - Medullary", "thyroid-medullary", "endocrine-system/thyroid-medullary"),
             ("Parathyroid", "parathyroid", "endocrine-system/parathyroid"),
+            ("Adrenal Cortical Carcinoma", "adrenal-cortical", "endocrine-system/adrenal-cortical"),
         ],
-        # Hematologic Malignancies (not TNM staged)
+        # Hematologic Malignancies (2 sites)
         "hematologic-malignancies": [
-            ("Hematologic Malignancies", "hematologic-malignancies", "hematologic-malignancies/hematologic-malignancies"),
+            ("Hodgkin and Non-Hodgkin Lymphomas", "lymphomas", "hematologic-malignancies/lymphomas"),
+            ("Primary Cutaneous Lymphomas", "cutaneous-lymphomas", "hematologic-malignancies/cutaneous-lymphomas"),
         ],
     }
     
