@@ -199,27 +199,35 @@ def _ensure_superadmin_exists():
     
     SUPERADMIN_EMAIL = "lotusheart2016@gmail.com"
     
+    # Clear any failed transactions from previous operations
+    try:
+        db.session.rollback()
+    except Exception:
+        pass
+    
     # Use raw SQL to check if superadmin exists (avoids model column mismatch during migrations)
     try:
         result = db.session.execute(
-            text("SELECT COUNT(*) FROM user WHERE email = :email"),
+            text('SELECT COUNT(*) FROM "user" WHERE email = :email'),
             {"email": SUPERADMIN_EMAIL}
         ).scalar()
         if result and result > 0:
             # Ensure the superadmin flag is set (for existing users before this feature)
             try:
                 db.session.execute(
-                    text("UPDATE user SET is_superadmin = 1 WHERE email = :email AND (is_superadmin IS NULL OR is_superadmin = 0)"),
+                    text('UPDATE "user" SET is_superadmin = true WHERE email = :email AND (is_superadmin IS NULL OR is_superadmin = false)'),
                     {"email": SUPERADMIN_EMAIL}
                 )
                 db.session.commit()
             except Exception:
-                pass  # Column might not exist yet during migrations
+                db.session.rollback()  # Clear failed transaction
             print(f"[ADMIN] Superadmin exists: {SUPERADMIN_EMAIL}")
             return
-    except Exception:
-        # Table doesn't exist yet, continue to create
-        pass
+    except Exception as e:
+        # Table doesn't exist yet or other error
+        print(f"[ADMIN] Check superadmin error (may be normal): {e}")
+        db.session.rollback()
+        return  # Don't try to create if we can't even check
     
     # Generate a cryptographically secure random password
     # 16 characters with uppercase, lowercase, digits, and special chars
@@ -266,12 +274,20 @@ def _seed_ajcc_data_if_needed():
     from models import AJCCBodySection, AJCCDiseaseSite
     from sqlalchemy import text
     
+    # Clear any failed transactions
+    try:
+        db.session.rollback()
+    except Exception:
+        pass
+    
     # Use raw SQL for count to avoid model column mismatch during migrations
     try:
         existing_sections = db.session.execute(text("SELECT COUNT(*) FROM ajcc_body_section")).scalar() or 0
         existing_sites = db.session.execute(text("SELECT COUNT(*) FROM ajcc_disease_site")).scalar() or 0
-    except Exception:
+    except Exception as e:
         # Tables don't exist yet
+        print(f"[SEED] AJCC tables check error (may be normal): {e}")
+        db.session.rollback()
         existing_sections = 0
         existing_sites = 0
     
