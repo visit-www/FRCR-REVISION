@@ -504,8 +504,8 @@ def delete_user(user_id):
                     'action': action_description
                 }), 202
         
-        # For superadmin, return a preview of what will be deleted/preserved
-        if is_superadmin and not request.args.get('confirmed'):
+        # Return a preview of what will be deleted/preserved (for ALL admins)
+        if not request.args.get('confirmed'):
             # Get deletion preview stats
             from models import CandidateNote, TextHighlight, RevisionSession, ForumMessage, Case
             preview = {

@@ -105,7 +105,8 @@ class UserManagement {
                 per_page: 10,
                 search: search,
                 role: role,
-                subscription: subscription
+                subscription: subscription,
+                _: Date.now()  // Cache-busting
             });
             
             const response = await fetch(`/api/admin/users?${params}`);
@@ -178,7 +179,8 @@ class UserManagement {
     
     async showUserDetail(userId, mode = 'view') {
         try {
-            const response = await fetch(`/api/admin/users/${userId}`);
+            // Add cache-busting parameter to ensure fresh data
+            const response = await fetch(`/api/admin/users/${userId}?_=${Date.now()}`);
             if (!response.ok) {
                 throw new Error(`Failed to load user: ${response.status}`);
             }
@@ -407,8 +409,12 @@ class UserManagement {
             
             if (errors.length === 0) {
                 this.showSuccess('✅ All changes saved successfully');
-                this.loadUsers();
-                setTimeout(() => this.showUserDetail(this.selectedUser.id, 'view'), 500);
+                // Store userId before selectedUser might change
+                const userId = this.selectedUser.id;
+                // Force refresh the user list first
+                await this.loadUsers();
+                // Then reload the user detail with fresh data
+                setTimeout(() => this.showUserDetail(userId, 'view'), 300);
             } else {
                 this.showError(errors.join(' | '));
             }
