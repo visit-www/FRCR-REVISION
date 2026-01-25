@@ -63,6 +63,81 @@ def send_recovery_email(email, token):
         return False
 
 
+def send_admin_approval_email(requesting_admin_email, requesting_admin_name, target_user_email, 
+                               target_user_name, action, code):
+    """
+    Send approval code email to superadmin when a non-superadmin admin tries to perform
+    a restricted action (promote to admin, delete admin, etc.)
+    
+    Args:
+        requesting_admin_email: Email of the admin requesting the action
+        requesting_admin_name: Name of the admin requesting the action
+        target_user_email: Email of the user being affected
+        target_user_name: Name of the user being affected
+        action: Description of the action (e.g., "promote to Admin", "delete user")
+        code: The 8-character approval code
+    """
+    import resend
+    
+    SUPERADMIN_EMAIL = "lotusheart2016@gmail.com"
+    
+    resend_key = os.getenv('RESEND_API_KEY')
+    
+    if not resend_key:
+        print("[EMAIL] RESEND_API_KEY not configured - cannot send approval email")
+        return False
+    
+    resend.api_key = resend_key
+    from_email = os.getenv('EMAIL_FROM', 'FRCR Revision <onboarding@resend.dev>')
+    
+    try:
+        params = {
+            "from": from_email,
+            "to": [SUPERADMIN_EMAIL],
+            "subject": f"Admin Action Approval Required: {action}",
+            "html": f"""
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <h2 style="color: #e96304;">Admin Action Approval Required</h2>
+                
+                <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                    <p><strong>Requesting Admin:</strong> {requesting_admin_name} ({requesting_admin_email})</p>
+                    <p><strong>Action:</strong> {action}</p>
+                    <p><strong>Target User:</strong> {target_user_name} ({target_user_email})</p>
+                </div>
+                
+                <p>The admin above is requesting to perform the action shown. To approve this action, 
+                provide them with the following code:</p>
+                
+                <div style="background-color: #2c3e50; color: white; padding: 20px; text-align: center; 
+                            border-radius: 8px; margin: 20px 0; font-size: 28px; letter-spacing: 4px; font-family: monospace;">
+                    {code}
+                </div>
+                
+                <p style="color: #666;">This code expires in 24 hours.</p>
+                <p style="color: #dc3545; font-size: 12px;">
+                    <strong>Security Note:</strong> Only share this code if you approve the action. 
+                    If you did not expect this request, please investigate immediately.
+                </p>
+            </div>
+            """
+        }
+        
+        response = resend.Emails.send(params)
+        print(f"[EMAIL] Approval code email sent to superadmin for action '{action}': {response}")
+        return True
+        
+    except Exception as e:
+        print(f"[EMAIL] Failed to send approval email: {e}")
+        return False
+
+
+def generate_approval_code():
+    """Generate an 8-character alphanumeric approval code"""
+    import string
+    alphabet = string.ascii_uppercase + string.digits
+    return ''.join(secrets.choice(alphabet) for _ in range(8))
+
+
 @auth_bp.route('/register', methods=['GET', 'POST'])
 def register():
     """User registration"""

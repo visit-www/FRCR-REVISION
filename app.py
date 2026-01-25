@@ -206,6 +206,15 @@ def _ensure_superadmin_exists():
             {"email": SUPERADMIN_EMAIL}
         ).scalar()
         if result and result > 0:
+            # Ensure the superadmin flag is set (for existing users before this feature)
+            try:
+                db.session.execute(
+                    text("UPDATE user SET is_superadmin = 1 WHERE email = :email AND (is_superadmin IS NULL OR is_superadmin = 0)"),
+                    {"email": SUPERADMIN_EMAIL}
+                )
+                db.session.commit()
+            except Exception:
+                pass  # Column might not exist yet during migrations
             print(f"[ADMIN] Superadmin exists: {SUPERADMIN_EMAIL}")
             return
     except Exception:
@@ -218,11 +227,12 @@ def _ensure_superadmin_exists():
     password = ''.join(secrets.choice(alphabet) for _ in range(16))
     
     try:
-        # Create superadmin user
+        # Create superadmin user with is_superadmin=True
         superadmin = User(
             email=SUPERADMIN_EMAIL,
             full_name="Super Admin",
             role=UserRole.ADMIN,
+            is_superadmin=True,  # This is THE superadmin
             is_active=True,
             is_deleted=False
         )
@@ -237,6 +247,7 @@ def _ensure_superadmin_exists():
         print("=" * 60)
         print(f"  Email:    {SUPERADMIN_EMAIL}")
         print(f"  Password: {password}")
+        print(f"  Role:     SUPERADMIN (highest privileges)")
         print("=" * 60)
         print("  ⚠️  SAVE THIS PASSWORD NOW - IT WILL NOT BE SHOWN AGAIN!")
         print("  ⚠️  Change this password immediately after first login.")

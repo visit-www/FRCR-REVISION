@@ -138,7 +138,10 @@ class UserManagement {
         tbody.innerHTML = this.users.map(user => `
             <tr>
                 <td>${this.escapeHtml(user.email)}</td>
-                <td>${this.escapeHtml(user.full_name)}</td>
+                <td>
+                    ${this.escapeHtml(user.full_name)}
+                    ${user.is_superadmin ? '<span class="badge" style="background:#e96304;color:white;font-size:10px;margin-left:5px;">SUPERADMIN</span>' : ''}
+                </td>
                 <td>
                     <span class="badge badge-${user.role}">
                         ${user.role.replace(/_/g, ' ').toUpperCase()}
@@ -159,12 +162,14 @@ class UserManagement {
                         <button class="btn btn-sm btn-view" onclick="userMgmt.showUserDetail(${user.id}, 'view')" title="View user details">
                             <i class="fas fa-eye"></i> View
                         </button>
-                        <button class="btn btn-sm btn-edit" onclick="userMgmt.showUserDetail(${user.id}, 'edit')" title="Edit user">
-                            <i class="fas fa-edit"></i> Edit
-                        </button>
-                        <button class="btn btn-sm btn-delete" onclick="userMgmt.deleteUserFromTable(${user.id}, '${this.escapeHtml(user.email)}')" title="Delete user">
-                            <i class="fas fa-trash"></i> Delete
-                        </button>
+                        ${user.is_superadmin ? '' : `
+                            <button class="btn btn-sm btn-edit" onclick="userMgmt.showUserDetail(${user.id}, 'edit')" title="Edit user">
+                                <i class="fas fa-edit"></i> Edit
+                            </button>
+                            <button class="btn btn-sm btn-delete" onclick="userMgmt.deleteUserFromTable(${user.id}, '${this.escapeHtml(user.email)}')" title="Delete user">
+                                <i class="fas fa-trash"></i> Delete
+                            </button>
+                        `}
                     </div>
                 </td>
             </tr>
@@ -278,7 +283,13 @@ class UserManagement {
                 
                 <!-- Action Buttons Section -->
                 <div class="modal-actions">
-                    ${isReadOnly ? `
+                    ${user.is_superadmin ? `
+                        <!-- Superadmin - Read Only -->
+                        <div class="alert alert-warning" style="margin: 0;">
+                            <i class="fas fa-shield-alt"></i> <strong>Protected Account</strong><br>
+                            <small>The superadmin account cannot be edited or deleted.</small>
+                        </div>
+                    ` : isReadOnly ? `
                         <!-- View Mode Buttons -->
                         <div class="d-flex gap-2 flex-wrap">
                             <button id="editUserBtn" class="btn btn-edit flex-grow-1">
@@ -360,9 +371,24 @@ class UserManagement {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ role: newRole })
                 });
+                
+                const roleData = await roleResponse.json();
+                
+                // Handle approval required (202 response)
+                if (roleResponse.status === 202 && roleData.requires_approval) {
+                    this.showApprovalCodeModal('role', this.selectedUser.id, newRole, roleData.action);
+                    return;
+                }
+                
                 if (!roleResponse.ok) {
-                    const error = await roleResponse.json();
-                    errors.push(`Role update failed: ${error.error || 'Unknown error'}`);
+                    if (roleData.requires_approval) {
+                        this.showApprovalCodeModal('role', this.selectedUser.id, newRole, roleData.action || 'change role');
+                        return;
+                    }
+                    errors.push(`Role update failed: ${roleData.error || 'Unknown error'}`);
+                } else if (roleData.warning) {
+                    // Show warning for superadmin
+                    this.showWarning(roleData.warning);
                 }
             }
             
@@ -393,6 +419,94 @@ class UserManagement {
         }
     }
     
+    showApprovalCodeModal(action, userId, newValue, actionDescription) {
+        // Store pending action
+        this.pendingApproval = { action, userId, newValue, actionDescription };
+        
+        // Create modal HTML
+        const modalHtml = `
+            <div id="approvalCodeModal" class="custom-modal show" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; display: flex; align-items: center; justify-content: center;">
+                <div style="background: white; padding: 30px; border-radius: 10px; max-width: 450px; width: 90%;">
+                    <h4 style="color: #e96304; margin-bottom: 15px;">
+                        <i class="fas fa-lock"></i> Superadmin Approval Required
+                    </h4>
+                    <p>This action requires superadmin approval:</p>
+                    <p style="background: #f8f9fa; padding: 10px; border-radius: 5px; font-weight: bold;">
+                        ${actionDescription}
+                    </p>
+                    <p style="color: #666; font-size: 14px;">
+                        An email has been sent to the superadmin with an approval code.
+                        Enter the code below to complete this action.
+                    </p>
+                    <input type="text" id="approvalCodeInput" placeholder="Enter 8-character code" 
+                           style="width: 100%; padding: 12px; font-size: 18px; text-align: center; 
+                                  letter-spacing: 3px; text-transform: uppercase; border: 2px solid #ddd; 
+                                  border-radius: 5px; margin: 15px 0;" maxlength="8">
+                    <div style="display: flex; gap: 10px; margin-top: 15px;">
+                        <button onclick="userMgmt.submitApprovalCode()" class="btn btn-success" style="flex: 1;">
+                            <i class="fas fa-check"></i> Submit Code
+                        </button>
+                        <button onclick="userMgmt.closeApprovalModal()" class="btn btn-secondary" style="flex: 1;">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        document.getElementById('approvalCodeInput').focus();
+    }
+    
+    closeApprovalModal() {
+        const modal = document.getElementById('approvalCodeModal');
+        if (modal) modal.remove();
+        this.pendingApproval = null;
+    }
+    
+    async submitApprovalCode() {
+        const code = document.getElementById('approvalCodeInput').value.trim().toUpperCase();
+        if (!code || code.length !== 8) {
+            alert('Please enter a valid 8-character approval code');
+            return;
+        }
+        
+        const { action, userId, newValue } = this.pendingApproval;
+        
+        try {
+            let response;
+            if (action === 'role') {
+                response = await fetch(`/api/admin/users/${userId}/role`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ role: newValue, approval_code: code })
+                });
+            } else if (action === 'delete') {
+                response = await fetch(`/api/admin/users/${userId}?approval_code=${code}&confirmed=true`, {
+                    method: 'DELETE'
+                });
+            }
+            
+            const data = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(data.error || 'Action failed');
+            }
+            
+            this.closeApprovalModal();
+            this.showSuccess('✅ Action completed successfully');
+            this.closeModal();
+            this.loadUsers();
+            
+        } catch (error) {
+            alert(`Error: ${error.message}`);
+        }
+    }
+    
+    showWarning(message) {
+        alert(`⚠️ Warning:\n\n${message}`);
+    }
+    
     showDeleteConfirmation() {
         const deleteDiv = document.getElementById('deleteConfirmDiv');
         if (deleteDiv) {
@@ -405,15 +519,48 @@ class UserManagement {
         await this.deleteUser(this.selectedUser.id);
     }
     
-    async deleteUser(userId) {
+    async deleteUser(userId, confirmed = false) {
         try {
-            const response = await fetch(`/api/admin/users/${userId}`, {
+            const url = confirmed 
+                ? `/api/admin/users/${userId}?confirmed=true` 
+                : `/api/admin/users/${userId}`;
+                
+            const response = await fetch(url, {
                 method: 'DELETE'
             });
             
             const data = await response.json();
             
+            // Handle approval required (202 response)
+            if (response.status === 202 && data.requires_approval) {
+                this.showApprovalCodeModal('delete', userId, null, data.action);
+                return;
+            }
+            
+            // Handle confirmation required (superadmin preview)
+            if (response.ok && data.requires_confirmation) {
+                const preview = data.preview;
+                const confirmMsg = `Delete ${data.target_user.name} (${data.target_user.email})?\n\n` +
+                    `WILL DELETE:\n` +
+                    `  - ${preview.will_delete.notes} notes\n` +
+                    `  - ${preview.will_delete.highlights} highlights\n` +
+                    `  - ${preview.will_delete.revision_sessions} revision sessions\n\n` +
+                    `WILL PRESERVE:\n` +
+                    `  - ${preview.will_preserve.forum_messages} forum comments (anonymized)\n` +
+                    `  - ${preview.will_preserve.cases_created} cases created\n\n` +
+                    `This action CANNOT be undone!`;
+                
+                if (confirm(confirmMsg)) {
+                    await this.deleteUser(userId, true);
+                }
+                return;
+            }
+            
             if (!response.ok) {
+                if (data.requires_approval) {
+                    this.showApprovalCodeModal('delete', userId, null, data.action || 'delete user');
+                    return;
+                }
                 throw new Error(data.error || 'Failed to delete user');
             }
             

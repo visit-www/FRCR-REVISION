@@ -124,6 +124,7 @@ class User(UserMixin, db.Model):
     
     # === NEW FIELDS: ROLE-BASED ACCESS CONTROL ===
     role = db.Column(db.Enum(UserRole), default=UserRole.STUDENT, nullable=False, index=True)
+    is_superadmin = db.Column(db.Boolean, default=False, index=True)  # Only one superadmin (lotusheart2016@gmail.com)
     
     # === NEW FIELDS: SUBSCRIPTION & PAYMENT ===
     subscription_status = db.Column(db.Enum(SubscriptionStatus), default=SubscriptionStatus.FREE, nullable=False, index=True)
@@ -801,6 +802,62 @@ class ForumMessageFlag(db.Model):
     
     def __repr__(self):
         return f'<ForumMessageFlag Msg:{self.message_id} User:{self.user_id} Reason:{self.reason}>'
+
+
+# ==================== ADMIN APPROVAL SYSTEM ====================
+
+class AdminApprovalCode(db.Model):
+    """
+    Stores approval codes for sensitive admin actions.
+    When a non-superadmin tries to perform restricted actions (like promoting to admin
+    or deleting another admin), a code is generated and emailed to the superadmin.
+    The requesting admin must enter this code to complete the action.
+    """
+    __tablename__ = 'admin_approval_code'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    code = db.Column(db.String(8), unique=True, nullable=False, index=True)  # Random 8-char code
+    
+    # Who is requesting the action
+    requesting_admin_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+    
+    # Who is the target of the action
+    target_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+    
+    # What action is being requested
+    # Values: 'promote_to_admin', 'promote_to_content_manager', 'demote_admin', 'delete_admin'
+    action = db.Column(db.String(50), nullable=False)
+    
+    # Additional context (e.g., new role value)
+    action_details = db.Column(db.JSON, nullable=True)
+    
+    # Timestamps
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    expires_at = db.Column(db.DateTime, nullable=False)  # 24 hour expiry by default
+    
+    # Status
+    used = db.Column(db.Boolean, default=False, index=True)
+    used_at = db.Column(db.DateTime, nullable=True)
+    
+    # Relationships
+    requesting_admin = db.relationship('User', foreign_keys=[requesting_admin_id], backref='requested_approvals')
+    target_user = db.relationship('User', foreign_keys=[target_user_id], backref='approval_targets')
+    
+    def is_valid(self):
+        """Check if code is still valid (not used, not expired)"""
+        if self.used:
+            return False
+        if datetime.utcnow() > self.expires_at:
+            return False
+        return True
+    
+    def mark_used(self):
+        """Mark the code as used"""
+        self.used = True
+        self.used_at = datetime.utcnow()
+    
+    def __repr__(self):
+        return f'<AdminApprovalCode {self.code} Action:{self.action} Valid:{self.is_valid()}>'
 
 
 # ==================== AJCC TNM STAGING MODELS ====================

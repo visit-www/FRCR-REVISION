@@ -24,13 +24,13 @@ import uuid
 backup_bp = Blueprint('backup', __name__, url_prefix='/api/backup')
 
 def check_admin():
-    """Check if current user is admin"""
+    """Check if current user is admin (Content Managers do NOT have backup access)"""
     try:
         if not current_user.is_authenticated:
             return False
-        # Check if user is admin or content manager
+        # Only admins can access backup/restore functionality
         return (hasattr(current_user, 'role') and 
-                current_user.role in [UserRole.ADMIN, UserRole.CONTENT_MANAGER])
+                current_user.role == UserRole.ADMIN)
     except Exception as e:
         return False
 

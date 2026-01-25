@@ -91,6 +91,7 @@ def list_users():
                 'email': user.email,
                 'full_name': user.full_name,
                 'role': user.role.value if user.role else None,
+                'is_superadmin': user.is_superadmin,
                 'subscription_status': user.subscription_status.value if user.subscription_status else None,
                 'payment_status': user.payment_status.value if user.payment_status else None,
                 'is_active': user.is_active,
@@ -135,6 +136,7 @@ def get_user_detail(user_id):
             'email': user.email,
             'full_name': user.full_name,
             'role': user.role.value if user.role else None,
+            'is_superadmin': user.is_superadmin,  # Special superadmin flag
             'subscription_status': user.subscription_status.value if user.subscription_status else None,
             'payment_status': user.payment_status.value if user.payment_status else None,
             'is_active': user.is_active,
@@ -169,41 +171,145 @@ def update_user_role(user_id):
     """
     Change a user's role (STUDENT, CONTENT_MANAGER, ADMIN)
     
-    Body: { "role": "content_manager" }
+    Body: { "role": "content_manager", "approval_code": "ABCD1234" (optional) }
+    
+    Approval code required for non-superadmins when:
+    - Promoting anyone to ADMIN
+    - Promoting to CONTENT_MANAGER
+    - Changing any ADMIN's role
     """
+    from models import AdminApprovalCode
+    from auth import send_admin_approval_email, generate_approval_code
+    from datetime import timedelta
+    
     try:
         # Get target user
         user = User.query.get(user_id)
         if not user:
             return jsonify({'error': 'User not found'}), 404
         
-        # Check if trying to demote self
+        # Check if trying to change own role
         if user.id == current_user.id:
             return jsonify({'error': 'Cannot change your own role'}), 400
+        
+        # Cannot change superadmin's role
+        if user.is_superadmin:
+            return jsonify({'error': 'Cannot change the superadmin role'}), 403
         
         # Get new role from request
         data = request.get_json()
         new_role = data.get('role', '').lower()
+        approval_code = data.get('approval_code', '').strip().upper()
         
         # Validate role
         valid_roles = [r.value for r in UserRole]
         if new_role not in valid_roles:
             return jsonify({'error': f'Invalid role. Valid: {valid_roles}'}), 400
         
-        # Update role
-        old_role = user.role.value if user.role else None
-        user.role = UserRole(new_role)
+        old_role = user.role.value if user.role else 'student'
+        new_role_enum = UserRole(new_role)
+        
+        # No change needed
+        if old_role == new_role:
+            return jsonify({'message': 'Role unchanged', 'user_id': user.id, 'role': new_role}), 200
+        
+        # Determine if approval is required
+        requires_approval = False
+        action_description = ""
+        
+        # Check if current user is superadmin
+        is_superadmin = getattr(current_user, 'is_superadmin', False)
+        
+        if not is_superadmin:
+            # Non-superadmin admins need approval for certain actions
+            if new_role == 'admin':
+                requires_approval = True
+                action_description = f"promote {user.full_name} to Admin"
+            elif new_role == 'content_manager' and old_role == 'student':
+                requires_approval = True
+                action_description = f"promote {user.full_name} to Content Manager"
+            elif old_role == 'admin':
+                requires_approval = True
+                action_description = f"demote Admin {user.full_name} to {new_role.replace('_', ' ').title()}"
+        
+        if requires_approval:
+            if approval_code:
+                # Verify the approval code
+                pending = AdminApprovalCode.query.filter_by(
+                    code=approval_code,
+                    requesting_admin_id=current_user.id,
+                    target_user_id=user.id,
+                    used=False
+                ).first()
+                
+                if not pending or not pending.is_valid():
+                    return jsonify({
+                        'error': 'Invalid or expired approval code',
+                        'requires_approval': True
+                    }), 403
+                
+                # Mark code as used
+                pending.mark_used()
+                db.session.commit()
+                
+                # Proceed with role change (code verified)
+                logger.info(f"Admin {current_user.email} used approval code to {action_description}")
+            else:
+                # Generate new approval code and send email
+                code = generate_approval_code()
+                
+                # Create pending approval record
+                pending_approval = AdminApprovalCode(
+                    code=code,
+                    requesting_admin_id=current_user.id,
+                    target_user_id=user.id,
+                    action=action_description,
+                    action_details={'old_role': old_role, 'new_role': new_role},
+                    expires_at=datetime.utcnow() + timedelta(hours=24)
+                )
+                db.session.add(pending_approval)
+                db.session.commit()
+                
+                # Send email to superadmin
+                email_sent = send_admin_approval_email(
+                    requesting_admin_email=current_user.email,
+                    requesting_admin_name=current_user.full_name,
+                    target_user_email=user.email,
+                    target_user_name=user.full_name,
+                    action=action_description,
+                    code=code
+                )
+                
+                return jsonify({
+                    'requires_approval': True,
+                    'message': 'This action requires superadmin approval. An email has been sent with an approval code.',
+                    'email_sent': email_sent,
+                    'action': action_description
+                }), 202
+        
+        # Perform the role change
+        user.role = new_role_enum
         db.session.commit()
         
-        # Log action
-        logger.info(f"Admin {current_user.email} changed {user.email} role from {old_role} to {new_role}")
-        
-        return jsonify({
+        # Build response with warning for superadmin
+        response = {
             'message': f'User role updated to {new_role}',
             'user_id': user.id,
             'old_role': old_role,
             'new_role': new_role
-        }), 200
+        }
+        
+        # Add warning for superadmin when promoting to privileged roles
+        if is_superadmin and new_role in ['admin', 'content_manager']:
+            warnings = {
+                'admin': 'This user now has FULL admin access including user management, backup/restore, and TNM data management.',
+                'content_manager': 'This user can now create and edit cases, but cannot manage users or access admin features.'
+            }
+            response['warning'] = warnings.get(new_role, '')
+        
+        logger.info(f"Admin {current_user.email} changed {user.email} role from {old_role} to {new_role}")
+        
+        return jsonify(response), 200
     
     except Exception as e:
         db.session.rollback()
@@ -307,23 +413,124 @@ def delete_user(user_id):
     """
     Permanently delete a user and clean up related data.
     
+    Query params:
+    - approval_code: Required for non-superadmins deleting admins
+    
     DELETES: Private data (notes, highlights, revision sessions, view logs, votes, flags)
     PRESERVES: Forum messages (anonymized), case data (author references nullified)
     
-    This is a hard delete - the user and their private data are permanently removed.
+    Superadmin: Can delete anyone with a warning showing what will be deleted/preserved
+    Admin: Can delete students/content managers freely, needs approval code for admins
     """
+    from models import AdminApprovalCode
+    from auth import send_admin_approval_email, generate_approval_code
+    from datetime import timedelta
+    
     try:
         user = User.query.get(user_id)
         if not user:
             return jsonify({'error': 'User not found'}), 404
         
-        # Check if allowed to delete
-        can_delete, error_msg = can_delete_user(user, current_user)
-        if not can_delete:
-            return jsonify({'error': error_msg}), 400
+        # Cannot delete self
+        if user.id == current_user.id:
+            return jsonify({'error': 'Cannot delete your own account'}), 400
+        
+        # Cannot delete the superadmin
+        if user.is_superadmin:
+            return jsonify({'error': 'Cannot delete the superadmin account'}), 403
         
         email = user.email
         user_role = user.role.value if hasattr(user.role, 'value') else str(user.role)
+        is_superadmin = getattr(current_user, 'is_superadmin', False)
+        
+        # Get approval code from request
+        approval_code = request.args.get('approval_code', '').strip().upper()
+        
+        # Determine if approval is required
+        requires_approval = False
+        if not is_superadmin and user.role == UserRole.ADMIN:
+            requires_approval = True
+        
+        if requires_approval:
+            if approval_code:
+                # Verify the approval code
+                pending = AdminApprovalCode.query.filter_by(
+                    code=approval_code,
+                    requesting_admin_id=current_user.id,
+                    target_user_id=user.id,
+                    used=False
+                ).first()
+                
+                if not pending or not pending.is_valid():
+                    return jsonify({
+                        'error': 'Invalid or expired approval code',
+                        'requires_approval': True
+                    }), 403
+                
+                # Mark code as used
+                pending.mark_used()
+                db.session.commit()
+                
+                logger.info(f"Admin {current_user.email} used approval code to delete admin {email}")
+            else:
+                # Generate new approval code and send email
+                code = generate_approval_code()
+                action_description = f"delete Admin {user.full_name}"
+                
+                pending_approval = AdminApprovalCode(
+                    code=code,
+                    requesting_admin_id=current_user.id,
+                    target_user_id=user.id,
+                    action=action_description,
+                    action_details={'target_role': user_role},
+                    expires_at=datetime.utcnow() + timedelta(hours=24)
+                )
+                db.session.add(pending_approval)
+                db.session.commit()
+                
+                email_sent = send_admin_approval_email(
+                    requesting_admin_email=current_user.email,
+                    requesting_admin_name=current_user.full_name,
+                    target_user_email=user.email,
+                    target_user_name=user.full_name,
+                    action=action_description,
+                    code=code
+                )
+                
+                return jsonify({
+                    'requires_approval': True,
+                    'message': 'Deleting an admin requires superadmin approval. An email has been sent with an approval code.',
+                    'email_sent': email_sent,
+                    'action': action_description
+                }), 202
+        
+        # For superadmin, return a preview of what will be deleted/preserved
+        if is_superadmin and not request.args.get('confirmed'):
+            # Get deletion preview stats
+            from models import CandidateNote, TextHighlight, RevisionSession, ForumMessage, Case
+            preview = {
+                'will_delete': {
+                    'notes': CandidateNote.query.filter_by(user_id=user.id).count(),
+                    'highlights': TextHighlight.query.filter_by(user_id=user.id).count(),
+                    'revision_sessions': RevisionSession.query.filter_by(user_id=user.id).count(),
+                },
+                'will_preserve': {
+                    'forum_messages': ForumMessage.query.filter_by(user_id=user.id).count(),
+                    'cases_created': Case.query.filter_by(created_by_user_id=user.id).count(),
+                }
+            }
+            
+            return jsonify({
+                'requires_confirmation': True,
+                'message': 'Please confirm deletion. Add ?confirmed=true to proceed.',
+                'target_user': {
+                    'email': email,
+                    'name': user.full_name,
+                    'role': user_role
+                },
+                'preview': preview,
+                'warning': 'This action cannot be undone!'
+            }), 200
         
         # Perform complete deletion with cleanup
         success, result = delete_user_completely(user)
@@ -332,7 +539,6 @@ def delete_user(user_id):
             logger.error(f"Failed to delete user {email}: {result}")
             return jsonify({'error': f'Failed to delete user: {result}'}), 500
         
-        # Log the deletion with stats
         stats = result
         logger.warning(
             f"Admin {current_user.email} DELETED user {email} (role: {user_role}). "
