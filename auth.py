@@ -20,7 +20,11 @@ def send_recovery_email(email, token):
     """
     import resend
     
-    recovery_url = os.getenv('APP_URL', 'https://frcr-examiner.vercel.app') + url_for('auth.reset_password', token=token, _external=False)
+    # Build recovery URL properly
+    app_url = os.getenv('APP_URL', 'https://frcr-examiner.vercel.app').rstrip('/')
+    reset_path = url_for('auth.reset_password', token=token, _external=False)
+    recovery_url = f"{app_url}{reset_path}"
+    print(f"[EMAIL] Recovery URL generated: {recovery_url}")
     
     # Get API key from environment
     resend_key = os.getenv('RESEND_API_KEY')
@@ -431,33 +435,46 @@ def forgot_password():
 @auth_bp.route('/reset-password/<token>', methods=['GET', 'POST'])
 def reset_password(token):
     """Reset password with token"""
-    user = User.query.filter_by(recovery_token=token).first()
-    
-    if not user:
-        print(f"[AUTH] Reset password: No user found for token")
-        return render_template('reset_password_expired.html'), 401
-    
-    if not user.verify_recovery_token(token):
-        print(f"[AUTH] Reset password: Token verification failed for {user.email}")
-        print(f"[AUTH] Token expires: {user.recovery_token_expires}, Now: {datetime.utcnow()}")
-        return render_template('reset_password_expired.html'), 401
-    
-    if request.method == 'POST':
-        data = request.get_json() if request.is_json else request.form
-        new_password = data.get('password', '')
+    try:
+        print(f"[AUTH] Reset password page accessed with token: {token[:20]}...")
         
-        if not new_password or len(new_password) < 8:
-            return jsonify({'error': 'Password must be at least 8 characters'}), 400
+        user = User.query.filter_by(recovery_token=token).first()
         
-        # Set new password
-        user.set_password(new_password)
-        user.clear_recovery_token()
-        db.session.commit()
+        if not user:
+            print(f"[AUTH] Reset password: No user found for token")
+            return render_template('reset_password_expired.html'), 401
         
-        login_user(user)
-        return jsonify({'success': True, 'message': 'Password reset successful'}), 200
-    
-    return render_template('reset_password.html', token=token)
+        print(f"[AUTH] Reset password: User found - {user.email}")
+        
+        if not user.verify_recovery_token(token):
+            print(f"[AUTH] Reset password: Token verification failed for {user.email}")
+            print(f"[AUTH] Token expires: {user.recovery_token_expires}, Now: {datetime.utcnow()}")
+            return render_template('reset_password_expired.html'), 401
+        
+        print(f"[AUTH] Reset password: Token valid, showing reset form")
+        
+        if request.method == 'POST':
+            data = request.get_json() if request.is_json else request.form
+            new_password = data.get('password', '')
+            
+            if not new_password or len(new_password) < 8:
+                return jsonify({'error': 'Password must be at least 8 characters'}), 400
+            
+            # Set new password
+            user.set_password(new_password)
+            user.clear_recovery_token()
+            db.session.commit()
+            
+            login_user(user)
+            return jsonify({'success': True, 'message': 'Password reset successful'}), 200
+        
+        return render_template('reset_password.html', token=token)
+        
+    except Exception as e:
+        print(f"[AUTH] Reset password error: {e}")
+        import traceback
+        traceback.print_exc()
+        return render_template('reset_password_expired.html'), 500
 
 
 @auth_bp.route('/profile', methods=['GET'])
