@@ -203,7 +203,7 @@ If no superadmin exists, creates one:
 | `CLOUDINARY_URL` | Yes | Cloudinary URL for image uploads |
 | `RESEND_API_KEY` | Yes | Resend.com API key for password recovery emails |
 | `EMAIL_FROM` | No | Sender email address (default: `onboarding@resend.dev`) |
-| `APP_URL` | No | Application URL for email links (default: `https://frcr-examiner.vercel.app`) |
+| `APP_URL` | No | Application URL for email links (default: `https://frcr-revision.vercel.app`) |
 
 ### Email Service
 

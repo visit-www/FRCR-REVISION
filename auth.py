@@ -21,7 +21,7 @@ def send_recovery_email(email, token):
     import resend
     
     # Build recovery URL properly
-    app_url = os.getenv('APP_URL', 'https://frcr-examiner.vercel.app').rstrip('/')
+    app_url = os.getenv('APP_URL', 'https://frcr-revision.vercel.app').rstrip('/')
     reset_path = url_for('auth.reset_password', token=token, _external=False)
     recovery_url = f"{app_url}{reset_path}"
     print(f"[EMAIL] Recovery URL generated: {recovery_url}")
@@ -529,7 +529,7 @@ def test_email():
             'resend_key_set': bool(resend_key),
             'resend_key_length': len(resend_key) if resend_key else 0,
             'requests_available': True,
-            'app_url': os.getenv('APP_URL', 'https://frcr-examiner.vercel.app'),
+            'app_url': os.getenv('APP_URL', 'https://frcr-revision.vercel.app'),
             'email_from': os.getenv('EMAIL_FROM', 'onboarding@resend.dev')
         }
         
