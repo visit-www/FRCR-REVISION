@@ -306,7 +306,7 @@ def _seed_ajcc_data_if_needed():
     DISEASE_SITES = {
         # Head and Neck (11 sites)
         "head-and-neck": [
-            ("Staging Principles of Head and Neck Cancers", "staging-head-and-neck-cancers", "head-and-neck/staging-head-and-neck-cancers/staging-head-and-neck-cancers"),
+            ("Staging Principles of Head and Neck Cancers", "staging-head-and-neck-cancers", "head-and-neck/staging-head-and-neck-cancers/introduction-and-overview-of-key-concepts"),
             ("Oral Cavity", "oral-cavity", "head-and-neck/oral-cavity"),
             ("Salivary Glands", "salivary-glands", "head-and-neck/salivary-glands"),
             ("Oropharynx (HPV-Associated)", "oropharynx-hpv-associated", "head-and-neck/oropharynx-hpv-associated"),

@@ -19,7 +19,7 @@ This document provides the complete mapping of anatomical sections and disease s
 
 | Disease Site | Slug | API Path |
 |--------------|------|----------|
-| Staging Principles of Head and Neck Cancers | `staging-head-and-neck-cancers` | head-and-neck/staging-head-and-neck-cancers/staging-head-and-neck-cancers |
+| Staging Principles of Head and Neck Cancers | `staging-head-and-neck-cancers` | head-and-neck/staging-head-and-neck-cancers/introduction-and-overview-of-key-concepts |
 | Oral Cavity | `oral-cavity` | head-and-neck/oral-cavity |
 | Salivary Glands | `salivary-glands` | head-and-neck/salivary-glands |
 | Oropharynx (HPV-Associated) | `oropharynx-hpv-associated` | head-and-neck/oropharynx-hpv-associated |
@@ -235,7 +235,7 @@ Some AJCC pages don't use a year in their URL path. These are typically introduc
 
 | Disease Site | API Path Pattern |
 |--------------|------------------|
-| Staging Principles of Head and Neck Cancers | `.../staging-head-and-neck-cancers/staging-head-and-neck-cancers` |
+| Staging Principles of Head and Neck Cancers | `.../staging-head-and-neck-cancers/introduction-and-overview-of-key-concepts` |
 | Introduction to Soft Tissue Sarcoma | `.../introduction-to-soft-tissue-sarcoma/introduction-to-soft-tissue-sarcoma` |
 | Introduction to Hematologic Malignancies | `.../introduction-to-hematologic-malignancies/introduction-to-hematologic-malignancies` |
 
