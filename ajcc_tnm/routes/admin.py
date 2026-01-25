@@ -172,9 +172,10 @@ def extract_tnm():
         if not disease_site:
             return jsonify({'success': False, 'error': 'Disease site not found'}), 404
         
-        # Extract TNM data
+        # Extract TNM data - pass api_path to support year-less entries
         extractor = TNMExtractor()
-        result = extractor.extract_tnm_for_disease(section_slug, disease_slug, diagnosis_year)
+        api_path = disease_site.ajcc_url_path if hasattr(disease_site, 'ajcc_url_path') else None
+        result = extractor.extract_tnm_for_disease(section_slug, disease_slug, diagnosis_year, api_path=api_path)
         
         if not result:
             return jsonify({
@@ -263,6 +264,66 @@ def list_staging_data():
         })
     except Exception as e:
         logger.error(f"Error listing staging data: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_tnm_bp.route('/clean-data/<int:disease_site_id>/<int:year>', methods=['POST'])
+@require_admin
+def clean_staging_data(disease_site_id, year):
+    """Clean DITA junk from existing staging data without re-extracting."""
+    try:
+        from ..services.extractor import TNMDataCleaner
+        
+        diagnosis_year = AJCCDiagnosisYear.query.filter_by(year=year).first()
+        if not diagnosis_year:
+            return jsonify({'success': False, 'error': f'Year {year} not found'}), 404
+        
+        staging_data = AJCCStagingData.query.filter_by(
+            disease_site_id=disease_site_id,
+            diagnosis_year_id=diagnosis_year.id
+        ).first()
+        
+        if not staging_data:
+            return jsonify({'success': False, 'error': 'Staging data not found'}), 404
+        
+        # Clean each HTML section
+        sections_cleaned = 0
+        for i in range(1, 11):
+            section_attr = f'section_{i}_{"quick_reference" if i == 1 else ["cancers_staged", "cancers_not_staged", "summary_changes", "primary_site", "histopathologic_type", "clinical_staging_workup", "staging_rules", "common_scenarios", "explanatory_notes"][i-2] if i > 1 else ""}_html'
+            
+            # Map section numbers to actual attribute names
+            attr_map = {
+                1: 'section_1_quick_reference_html',
+                2: 'section_2_cancers_staged_html',
+                3: 'section_3_cancers_not_staged_html',
+                4: 'section_4_summary_changes_html',
+                5: 'section_5_primary_site_html',
+                6: 'section_6_histopathologic_type_html',
+                7: 'section_7_clinical_staging_workup_html',
+                8: 'section_8_staging_rules_html',
+                9: 'section_9_common_scenarios_html',
+                10: 'section_10_explanatory_notes_html'
+            }
+            
+            attr_name = attr_map.get(i)
+            if attr_name and hasattr(staging_data, attr_name):
+                html = getattr(staging_data, attr_name)
+                if html:
+                    cleaned_html = TNMDataCleaner.clean_html_section(html)
+                    setattr(staging_data, attr_name, cleaned_html)
+                    sections_cleaned += 1
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Cleaned {sections_cleaned} sections for {staging_data.disease_site.disease_name}',
+            'sections_cleaned': sections_cleaned
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error cleaning staging data: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
@@ -858,6 +919,9 @@ def curate_tnm_page(disease_site_id, year):
         if not disease:
             return render_template('error.html', message='Disease site not found'), 404
         
+        # Get the body section for this disease
+        section = AJCCBodySection.query.get(disease.body_section_id) if disease.body_section_id else None
+        
         # Get diagnosis year
         diagnosis_year = AJCCDiagnosisYear.query.filter_by(year=year).first()
         if not diagnosis_year:
@@ -888,6 +952,7 @@ def curate_tnm_page(disease_site_id, year):
         return render_template(
             'admin_tnm_curate.html',
             disease=disease,
+            section=section,
             year=year,
             staging_data=staging_data,
             raw_html_combined=raw_html_combined,

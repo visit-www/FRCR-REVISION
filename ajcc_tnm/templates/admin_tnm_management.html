@@ -26,9 +26,14 @@
                 <div id="authStatus">
                     <i class="fas fa-spinner fa-spin me-2"></i> Checking authentication...
                 </div>
-                <button class="btn btn-sm btn-outline-primary" onclick="checkAuthStatus()">
-                    <i class="fas fa-sync-alt"></i> Refresh
-                </button>
+                <div>
+                    <button class="btn btn-sm btn-outline-primary me-2" onclick="checkAuthStatus()">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                    <button class="btn btn-sm" style="background: #e96304; color: white; border: none;" onclick="triggerPlaywrightAuth()">
+                        <i class="fas fa-key"></i> Force Re-authenticate
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -375,6 +380,9 @@ document.addEventListener('DOMContentLoaded', function() {
                                                 <a href="/api/admin/tnm/curate/${item.disease_site_id}/${item.year}" class="btn btn-sm me-1" style="background: #a8d5ba; color: #2c3e50; border: none;" title="Curate for students">
                                                     <i class="fas fa-check-double"></i> Curate
                                                 </a>
+                                                <button class="btn btn-sm btn-warning me-1" onclick="cleanTNMData(${item.disease_site_id}, ${item.year}, '${item.disease_name}')" title="Clean DITA junk from data">
+                                                    <i class="fas fa-broom"></i>
+                                                </button>
                                                 <button class="btn btn-sm btn-danger" onclick="deleteTNMData(${item.disease_site_id}, ${item.year}, '${item.disease_name}')" title="Delete staging data">
                                                     <i class="fas fa-trash"></i>
                                                 </button>
@@ -499,7 +507,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 'Content-Type': 'application/json'
             },
             credentials: 'include'
-            }
         })
         .then(r => r.json())
         .then(data => {
@@ -512,6 +519,33 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .catch(err => {
             alert('Error deleting: ' + err.message);
+        });
+    };
+    
+    // Function to clean TNM data (remove DITA junk)
+    window.cleanTNMData = function(diseaseSiteId, year, diseaseName) {
+        if (!confirm(`Clean DITA/XML junk from "${diseaseName}" (${year})?\n\nThis will remove formatting artifacts like [/concept/...] from the data.`)) {
+            return;
+        }
+        
+        fetch(`/api/admin/tnm/clean-data/${diseaseSiteId}/${year}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            credentials: 'include'
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message || 'Data cleaned successfully');
+                loadStagingData(1); // Refresh the list
+            } else {
+                alert('Error cleaning: ' + (data.error || 'Unknown error'));
+            }
+        })
+        .catch(err => {
+            alert('Error cleaning: ' + err.message);
         });
     };
     

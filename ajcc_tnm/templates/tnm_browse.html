@@ -1,8 +1,11 @@
 {% extends "base.html" %}
 
 {% block mobile_breadcrumb %}
+    {% if current_user.is_authenticated and (current_user.role.name == 'ADMIN' or current_user.is_superadmin) %}
+    <li class="breadcrumb-item"><a href="/api/admin/tnm/management" class="text-white">TNM Mgmt</a></li>
+    {% endif %}
     <li class="breadcrumb-item active text-white" aria-current="page">
-        <i class="fas fa-stethoscope me-1"></i>AJCC TNM Staging
+        <i class="fas fa-stethoscope me-1"></i>Browse TNM Staging
     </li>
 {% endblock %}
 
@@ -12,11 +15,14 @@
     <nav aria-label="breadcrumb" class="mb-4">
         <ol class="breadcrumb">
             <li class="breadcrumb-item"><a href="/"><i class="fas fa-home"></i> Home</a></li>
-            <li class="breadcrumb-item active" aria-current="page"><i class="fas fa-stethoscope"></i> AJCC TNM Staging</li>
+            {% if current_user.is_authenticated and (current_user.role.name == 'ADMIN' or current_user.is_superadmin) %}
+            <li class="breadcrumb-item"><a href="/api/admin/tnm/management"><i class="fas fa-cog"></i> TNM Management</a></li>
+            {% endif %}
+            <li class="breadcrumb-item active" aria-current="page"><i class="fas fa-stethoscope"></i> Browse TNM Staging Sections</li>
         </ol>
     </nav>
 
-    <h1 class="mb-4"><i class="fas fa-stethoscope"></i> AJCC TNM Staging System</h1>
+    <h1 class="mb-4"><i class="fas fa-stethoscope"></i> Browse TNM Staging Sections</h1>
     <p class="lead mb-5">Browse cancer staging information by body section.</p>
 
     <!-- Body Sections Grid -->

@@ -9,7 +9,10 @@
         <div>
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb mb-2">
-                    <li class="breadcrumb-item"><a href="/tnm">TNM Staging</a></li>
+                    {% if current_user.is_authenticated and (current_user.role.name == 'ADMIN' or current_user.is_superadmin) %}
+                    <li class="breadcrumb-item"><a href="/api/admin/tnm/management"><i class="fas fa-cog"></i> TNM Management</a></li>
+                    {% endif %}
+                    <li class="breadcrumb-item"><a href="/tnm">Browse TNM Staging</a></li>
                     <li class="breadcrumb-item"><a href="/tnm/{{ section.slug }}">{{ section.section_name }}</a></li>
                     <li class="breadcrumb-item active">{{ disease.disease_name }}</li>
                 </ol>

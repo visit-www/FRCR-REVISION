@@ -3,7 +3,7 @@
 {% block mobile_breadcrumb %}
 <li class="breadcrumb-item">
     <a href="{{ url_for('tnm.browse') }}" class="text-white text-decoration-none">
-        <i class="fas fa-sitemap me-1"></i>TNM Staging
+        <i class="fas fa-sitemap me-1"></i>Browse TNM Staging
     </a>
 </li>
 <li class="breadcrumb-item">
@@ -24,7 +24,7 @@
         <nav aria-label="breadcrumb" class="mb-4 d-none d-md-block">
             <ol class="breadcrumb breadcrumb-custom">
                 <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}"><i class="fas fa-home me-1"></i>Home</a></li>
-                <li class="breadcrumb-item"><a href="{{ url_for('tnm.browse') }}"><i class="fas fa-sitemap me-1"></i>TNM Staging</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('tnm.browse') }}"><i class="fas fa-sitemap me-1"></i>Browse TNM Staging</a></li>
                 <li class="breadcrumb-item"><a href="{{ url_for('tnm.section_page', section_slug=section.slug) }}"><i class="fas fa-folder me-1"></i>{{ section.section_name }}</a></li>
                 <li class="breadcrumb-item active"><i class="fas fa-file-medical me-1"></i>{{ disease_site.disease_name }}</li>
             </ol>

@@ -41,26 +41,67 @@ class TNMDataCleaner:
         soup = BeautifulSoup(cell_html, 'html.parser')
         text = soup.get_text()
         
-        # Try to find the TNM code pattern - it's usually between ") " and " ("
+        # FIRST: Try to extract value from DITA pattern: {""}) VALUE (validvalue]
+        # This is the most reliable way to get the TNM value
+        dita_match = re.search(r'\{\s*""\s*\}\s*\)\s*([A-Za-z0-9_\(\)\+\-]+)\s*\(validvalue\]', text)
+        if dita_match:
+            value = dita_match.group(1).strip()
+            if value and len(value) > 1:
+                return value
+        
+        # Try alternate DITA pattern with just the value between markers
+        dita_match2 = re.search(r'\)\s*([cpTNM][A-Za-z0-9]+)\s*\(', text)
+        if dita_match2:
+            value = dita_match2.group(1).strip()
+            if value and len(value) > 1:
+                return value
+        
+        # Clean out DITA junk that's corrupting the text
+        text = re.sub(r'\[/concept/[^\]]*', '', text)  # Remove [/concept/... (may not have closing ])
+        text = re.sub(r'\[/[^\]]*\]?', '', text)       # Remove other path-like patterns
+        text = re.sub(r'\{["\s]*\}\s*\)?', '', text)   # Remove {""}) 
+        text = re.sub(r'\(validvalue\]', '', text, flags=re.IGNORECASE)
+        text = re.sub(r'\[validvalue\]', '', text, flags=re.IGNORECASE)
+        text = re.sub(r'validvalue', '', text, flags=re.IGNORECASE)
+        text = re.sub(r'\(\s*\)', '', text)
+        text = re.sub(r'\[\s*\]', '', text)
+        text = ' '.join(text.split())  # Normalize whitespace
+        
+        # Try to find the TNM code pattern - comprehensive list
         tnm_patterns = [
-            r'\)\s*(Tis)\s*\(',                 # Tis specifically (carcinoma in situ)
-            r'\)\s*(TX)\s*\(',                  # TX specifically
-            r'\)\s*(T[0-4][ab]?)\s*\(',         # T categories
-            r'\)\s*(N[X0-3][abc]?)\s*\(',       # N categories
-            r'\)\s*(M[01X])\s*\(',              # M categories
-            r'\b(Tis)\b',                        # Fallback for Tis
-            r'\b(TX|T[0-4][ab]?)\b',             # Fallback for T
-            r'\b(NX|N[0-3][abc]?)\b',            # Fallback for N
-            r'\b(MX|M[01])\b',                   # Fallback for M
+            # Clinical/Pathological prefixed patterns (cN1, pT2, etc.)
+            r'\b([cp]?Tis[a-z]*)\b',             # Tis, cTis, pTis variants
+            r'\b([cp]?TX)\b',                     # TX, cTX, pTX
+            r'\b([cp]?T[0-4][a-d]?)\b',           # T0-T4, T1a, T2b, etc.
+            r'\b([cp]?NX)\b',                     # NX, cNX, pNX
+            r'\b([cp]?N[0-3][a-c]?)\b',           # N0-N3, N1a, N2b, etc.
+            r'\b([cp]?N[0-3]\([a-z]+[+-]?\))\b',  # N1(sn), N1(mol+), etc.
+            r'\b([cp]?MX)\b',                     # MX
+            r'\b([cp]?M[0-1][a-c]?)\b',           # M0, M1, M1a, M1b, etc.
+            # Standalone patterns (without prefix)
+            r'(?:^|\s)(Tis)\b',                   # Tis at start or after space
+            r'(?:^|\s)(T[X0-4][a-d]?)\b',         # TX, T0-T4 variants
+            r'(?:^|\s)(N[X0-3][a-c]?)\b',         # NX, N0-N3 variants
+            r'(?:^|\s)(M[X0-1][a-c]?)\b',         # MX, M0-M1 variants
+            # Stage patterns
+            r'\b(Stage\s*[0IV]+[ABC]?)\b',        # Stage 0, I, II, III, IV, etc.
         ]
         
         for pattern in tnm_patterns:
             match = re.search(pattern, text, re.IGNORECASE)
             if match:
-                return match.group(1).strip()
+                value = match.group(1).strip()
+                # Don't return just 'c' or 'p' alone
+                if len(value) > 1:
+                    return value
         
+        # If no TNM pattern found, try to get a clean short value
         cleaned = TNMDataCleaner.clean_text(text)
-        return cleaned if len(cleaned) < 10 else ""
+        # Don't return single letters (like 'c' or 'p' alone)
+        if cleaned and len(cleaned) > 1 and len(cleaned) < 15:
+            return cleaned
+        
+        return ""
     
     @staticmethod
     def parse_tnm_table(table_soup, table_type: str = 'T') -> List[Dict[str, str]]:
@@ -276,6 +317,35 @@ class TNMDataCleaner:
         }
     
     @staticmethod
+    def clean_html_section(html: str) -> str:
+        """
+        Clean DITA/XML junk from HTML content while preserving structure.
+        """
+        if not html:
+            return html
+        
+        # Remove DITA path patterns like [/concept/Tdefinition/...]
+        html = re.sub(r'\[/concept/[^\]]*\]?', '', html)
+        html = re.sub(r'\[/[a-zA-Z]+definition[^\]]*\]?', '', html)
+        
+        # Remove {""}) pattern
+        html = re.sub(r'\{\s*""\s*\}\s*\)?', '', html)
+        
+        # Remove (validvalue] and [validvalue] patterns
+        html = re.sub(r'\(validvalue\]', '', html, flags=re.IGNORECASE)
+        html = re.sub(r'\[validvalue\]', '', html, flags=re.IGNORECASE)
+        
+        # Remove empty brackets
+        html = re.sub(r'\(\s*\)', '', html)
+        html = re.sub(r'\[\s*\]', '', html)
+        
+        # Clean up excessive whitespace (but preserve HTML structure)
+        html = re.sub(r'>\s+<', '> <', html)
+        html = re.sub(r'\s{2,}', ' ', html)
+        
+        return html.strip()
+    
+    @staticmethod
     def parse_staging_rules_to_json(html: str) -> Dict[str, Any]:
         """Parse Staging Rules section to JSON."""
         soup = BeautifulSoup(html, 'html.parser')
@@ -345,7 +415,7 @@ class TNMExtractor:
             print(f"[TNM_EXTRACTOR] Error getting available years: {e}")
             return [2026, 2025, 2024]  # Fallback
     
-    def extract_tnm_for_disease(self, section_slug: str, disease_slug: str, year: Optional[int] = None) -> Optional[Dict]:
+    def extract_tnm_for_disease(self, section_slug: str, disease_slug: str, year: Optional[int] = None, api_path: Optional[str] = None) -> Optional[Dict]:
         """
         Extract TNM data for a specific disease.
         
@@ -353,35 +423,52 @@ class TNMExtractor:
             section_slug: AJCC section slug (e.g., "thorax")
             disease_slug: Disease slug (e.g., "lung")
             year: Diagnosis year (defaults to 2026, falls back to latest available)
+            api_path: Optional full API path (e.g., "thorax/lung" or "head-and-neck/staging-head-and-neck-cancers/staging-head-and-neck-cancers" for year-less entries)
             
         Returns:
             Dict with all 10 sections, or None if extraction fails
         """
         try:
+            # Check if this is a year-less entry (introduction/staging principles pages)
+            # Year-less entries have api_path where the last two segments are identical
+            is_yearless = False
+            if api_path:
+                path_parts = api_path.strip('/').split('/')
+                if len(path_parts) >= 2 and path_parts[-1] == path_parts[-2]:
+                    is_yearless = True
+                    print(f"[TNM_EXTRACTOR] Detected year-less entry: {api_path}")
+            
             # Determine year
             if year is None:
                 year = 2026  # Default
             
-            print(f"[TNM_EXTRACTOR] Starting extraction for {section_slug}/{disease_slug}/{year}")
+            print(f"[TNM_EXTRACTOR] Starting extraction for {section_slug}/{disease_slug}/{year} (yearless={is_yearless})")
             
-            # Get available years and verify
-            print(f"[TNM_EXTRACTOR] Getting available years...")
-            available_years = self.get_available_years(section_slug, disease_slug)
-            print(f"[TNM_EXTRACTOR] Available years: {available_years}")
-            
-            if year not in available_years:
-                # Fallback to latest available
-                if available_years:
-                    year = available_years[0]
-                    print(f"[TNM_EXTRACTOR] Year not available, using latest: {year}")
-                else:
-                    print(f"[TNM_EXTRACTOR] No years available for {section_slug}/{disease_slug}")
-                    return None
+            # For year-less entries, skip year checking
+            if not is_yearless:
+                # Get available years and verify
+                print(f"[TNM_EXTRACTOR] Getting available years...")
+                available_years = self.get_available_years(section_slug, disease_slug)
+                print(f"[TNM_EXTRACTOR] Available years: {available_years}")
+                
+                if year not in available_years:
+                    # Fallback to latest available
+                    if available_years:
+                        year = available_years[0]
+                        print(f"[TNM_EXTRACTOR] Year not available, using latest: {year}")
+                    else:
+                        print(f"[TNM_EXTRACTOR] No years available for {section_slug}/{disease_slug}")
+                        return None
             
             # Fetch content
             print(f"[TNM_EXTRACTOR] Getting authenticated session...")
             session = get_ajcc_session()
-            url = f"{self.api_base}/content/{section_slug}/{disease_slug}/{year}?locale=en&add-headers=true"
+            
+            # Build URL - use api_path for year-less entries, otherwise construct with year
+            if is_yearless and api_path:
+                url = f"{self.api_base}/content/{api_path}?locale=en&add-headers=true"
+            else:
+                url = f"{self.api_base}/content/{section_slug}/{disease_slug}/{year}?locale=en&add-headers=true"
             print(f"[TNM_EXTRACTOR] Fetching URL: {url}")
             
             # Debug: Show cookies being sent
