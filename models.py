@@ -209,7 +209,7 @@ class User(UserMixin, db.Model):
         """Verify recovery token is valid and not expired"""
         if not self.recovery_token or self.recovery_token != token:
             return False
-        if self.recovery_token_expires < datetime.utcnow():
+        if not self.recovery_token_expires or self.recovery_token_expires < datetime.utcnow():
             return False
         return True
     

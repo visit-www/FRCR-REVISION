@@ -411,7 +411,13 @@ def reset_password(token):
     """Reset password with token"""
     user = User.query.filter_by(recovery_token=token).first()
     
-    if not user or not user.verify_recovery_token(token):
+    if not user:
+        print(f"[AUTH] Reset password: No user found for token")
+        return render_template('reset_password_expired.html'), 401
+    
+    if not user.verify_recovery_token(token):
+        print(f"[AUTH] Reset password: Token verification failed for {user.email}")
+        print(f"[AUTH] Token expires: {user.recovery_token_expires}, Now: {datetime.utcnow()}")
         return render_template('reset_password_expired.html'), 401
     
     if request.method == 'POST':
