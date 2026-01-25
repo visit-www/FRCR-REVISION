@@ -1494,12 +1494,21 @@ function selectPrimarySite(candidate, skipDiagnosisCheck = false) {
     const tnmBtn = document.getElementById('tnmIntelBtn');
     
     if (candidate.has_staging_data) {
-        tnmBtn.innerHTML = `<i class="fas fa-dna me-1"></i>TNM: ${candidate.disease_name}`;
-        tnmBtn.title = `Click to generate TNM staging for ${candidate.disease_name}`;
-        tnmBtn.style.opacity = '1';
-        tnmBtn.disabled = false;
-        // Remove any info message
-        removeTnmInfoMessage();
+        if (candidate.is_curated) {
+            // Curated data available - ready for students
+            tnmBtn.innerHTML = `<i class="fas fa-dna me-1"></i>TNM: ${candidate.disease_name}`;
+            tnmBtn.title = `Click to generate TNM staging for ${candidate.disease_name}`;
+            tnmBtn.style.opacity = '1';
+            tnmBtn.disabled = false;
+            removeTnmInfoMessage();
+        } else {
+            // Data exists but not curated - warn admin
+            tnmBtn.innerHTML = `<i class="fas fa-dna me-1"></i>TNM: ${candidate.disease_name} (Not Curated)`;
+            tnmBtn.title = `Data exists but not curated - students won't see it`;
+            tnmBtn.style.opacity = '0.85';
+            tnmBtn.disabled = false;
+            showTnmNotCuratedMessage(candidate.disease_name, candidate.disease_site_id);
+        }
     } else {
         tnmBtn.innerHTML = `<i class="fas fa-dna me-1"></i>TNM: ${candidate.disease_name} (No Data)`;
         tnmBtn.title = `No staging data available for ${candidate.disease_name}`;
@@ -1527,6 +1536,30 @@ function showTnmInfoMessage(diseaseName) {
         <a href="/api/admin/tnm/management" target="_blank" style="text-decoration: underline;">
             Fetch AJCC data first
         </a> before using TNM Intelligence AI.</span>
+    `;
+    
+    // Insert after the button group
+    btnGroup.parentNode.insertBefore(infoMsg, btnGroup.nextSibling);
+}
+
+// Show warning when data exists but is not curated
+function showTnmNotCuratedMessage(diseaseName, diseaseSiteId) {
+    removeTnmInfoMessage(); // Remove any existing message
+    
+    const btnGroup = document.getElementById('tnmIntelBtnGroup');
+    if (!btnGroup) return;
+    
+    const infoMsg = document.createElement('div');
+    infoMsg.id = 'tnmNoDataInfo';
+    infoMsg.className = 'alert alert-warning py-2 px-3 mb-0 mt-2';
+    infoMsg.style.cssText = 'font-size: 12px; display: flex; align-items: center; gap: 8px;';
+    infoMsg.innerHTML = `
+        <i class="fas fa-exclamation-triangle"></i>
+        <span>TNM data for <strong>${diseaseName}</strong> is not yet curated. 
+        Students will not see this content.
+        <a href="/api/admin/tnm/curate/${diseaseSiteId}/2024" target="_blank" style="text-decoration: underline; margin-left: 4px;">
+            Curate now
+        </a></span>
     `;
     
     // Insert after the button group

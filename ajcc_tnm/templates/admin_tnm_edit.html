@@ -71,7 +71,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let editors = {};
     
     // Load all sections
-    fetch(`/api/admin/tnm/edit/${diseaseSiteId}/${year}`)
+    fetch(`/api/admin/tnm/edit/${diseaseSiteId}/${year}`, { credentials: 'include' })
         .then(r => r.json())
         .then(data => {
             if (data.success) {
@@ -202,6 +202,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     fetch(`/api/admin/tnm/edit/${diseaseSiteId}/${year}/${section.section_number}`, {
                         method: 'PUT',
                         headers: {'Content-Type': 'application/json'},
+                        credentials: 'include',
                         body: JSON.stringify({html_content: htmlContent})
                     })
                 );
@@ -233,6 +234,7 @@ document.addEventListener('DOMContentLoaded', function() {
         fetch(`/api/admin/tnm/edit/${diseaseSiteId}/${year}/${sectionNumber}`, {
             method: 'PUT',
             headers: {'Content-Type': 'application/json'},
+            credentials: 'include',
             body: JSON.stringify({html_content: htmlContent})
         })
         .then(r => r.json())

@@ -35,7 +35,39 @@
     <div class="row">
         <!-- Main Content -->
         <div class="col-lg-8">
-            <!-- Quick Reference TNM Tables -->
+            <!-- Admin Warning if Not Curated -->
+            {% if is_admin and not is_curated %}
+            <div class="alert alert-warning mb-4">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Not Curated:</strong> This TNM data has not been curated yet. Students cannot see this content.
+                    </div>
+                    <a href="/api/admin/tnm/curate/{{ disease.id }}/{{ year_used or 2024 }}{% if from_case_id %}?from_case_id={{ from_case_id }}{% endif %}" class="btn btn-warning btn-sm">
+                        <i class="fas fa-edit me-1"></i>Curate Now
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- Curated Quick Reference (if available) -->
+            {% if quick_reference_html %}
+            <div class="card mb-4 shadow-sm">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-table me-2"></i>Quick Reference</h5>
+                    <button class="btn btn-sm btn-light" onclick="copySection('quick-reference')">
+                        <i class="fas fa-copy me-1"></i>Copy
+                    </button>
+                </div>
+                <div class="card-body" id="quick-reference">
+                    <div class="curated-content">
+                        {{ quick_reference_html | safe }}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Quick Reference TNM Tables (Structured from JSON) -->
             <div class="card mb-4 shadow-sm">
                 <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                     <h5 class="mb-0"><i class="fas fa-table me-2"></i>TNM Classification</h5>
@@ -44,7 +76,7 @@
                     </button>
                 </div>
                 <div class="card-body" id="tnm-classification">
-                    {% if staging_data %}
+                    {% if staging_data and (t_definitions or n_definitions or m_definitions) %}
                         <!-- T Stage -->
                         <div class="mb-4">
                             <div class="d-flex justify-content-between align-items-center mb-2">
@@ -144,7 +176,12 @@
                     {% else %}
                     <div class="alert alert-warning">
                         <i class="fas fa-exclamation-triangle me-2"></i>
-                        TNM staging data has not been extracted for this disease site yet.
+                        {% if is_admin %}
+                            TNM staging data has not been extracted or curated for this disease site yet.
+                            <a href="/api/admin/tnm/management" class="alert-link">Go to TNM Management</a>
+                        {% else %}
+                            TNM staging information is not yet available for this disease site.
+                        {% endif %}
                     </div>
                     {% endif %}
                 </div>
@@ -184,17 +221,31 @@
             </div>
             {% endif %}
 
-            <!-- Explanatory Notes -->
+            <!-- Explanatory Notes (Curated) -->
             {% if explanatory_notes_html %}
             <div class="card mb-4 shadow-sm">
                 <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0"><i class="fas fa-book-open me-2"></i>Explanatory Notes (AJCC)</h5>
-                    <button class="btn btn-sm btn-light" onclick="copySection('explanatory-notes')">
-                        <i class="fas fa-copy me-1"></i>Copy
-                    </button>
+                    <h5 class="mb-0">
+                        <i class="fas fa-book-open me-2"></i>Explanatory Notes
+                        {% if is_curated %}
+                        <span class="badge bg-light text-info ms-2" style="font-size: 0.7em;">Curated</span>
+                        {% elif is_admin %}
+                        <span class="badge bg-warning text-dark ms-2" style="font-size: 0.7em;">Raw AJCC</span>
+                        {% endif %}
+                    </h5>
+                    <div>
+                        {% if is_admin %}
+                        <a href="/api/admin/tnm/curate/{{ disease.id }}/{{ year_used or 2024 }}{% if from_case_id %}?from_case_id={{ from_case_id }}{% endif %}" class="btn btn-sm btn-outline-light me-2">
+                            <i class="fas fa-edit me-1"></i>Edit
+                        </a>
+                        {% endif %}
+                        <button class="btn btn-sm btn-light" onclick="copySection('explanatory-notes')">
+                            <i class="fas fa-copy me-1"></i>Copy
+                        </button>
+                    </div>
                 </div>
                 <div class="card-body" id="explanatory-notes">
-                    <div class="ajcc-content">
+                    <div class="curated-content">
                         {{ explanatory_notes_html | safe }}
                     </div>
                 </div>
@@ -650,6 +701,7 @@ async function saveIntelligentData() {
             headers: {
                 'Content-Type': 'application/json',
             },
+            credentials: 'include',
             body: JSON.stringify(data)
         });
         

@@ -214,30 +214,50 @@ def student_tnm_view(section_slug, disease_slug):
         disease_site.id, year
     )
     
+    # Check if user is admin (admins can see raw data, students only see curated)
+    is_admin = current_user.is_authenticated and hasattr(current_user, 'role') and current_user.role.value in ['admin', 'superadmin', 'content_manager']
+    
     # Get TNM definitions
     t_definitions = []
     n_definitions = {}
     m_definitions = []
     stage_groups = []
     explanatory_notes_html = None
+    quick_reference_html = None
     images = []
+    is_curated = False
     
     if staging_data:
+        # Check if curated data exists
+        is_curated = staging_data.is_curated
+        
+        # For students: only show curated data
+        # For admins: show raw data (for reference) or curated data
+        if is_curated:
+            # Use curated content
+            quick_reference_html = staging_data.curated_quick_reference_html
+            explanatory_notes_html = staging_data.curated_explanatory_notes_html
+        elif is_admin:
+            # Admin can see raw data
+            explanatory_notes_html = staging_data.section_10_explanatory_notes_html
+        # else: students see nothing if not curated
+        
+        # Always try to get structured TNM definitions (from JSON)
         t_definitions = staging_data.get_t_definitions()
         n_definitions = staging_data.get_n_definitions()
         m_definitions = staging_data.get_m_definitions()
         stage_groups = staging_data.get_stage_groups()
-        explanatory_notes_html = staging_data.section_10_explanatory_notes_html
         
-        # Extract images from HTML content
-        for html in [staging_data.section_1_quick_reference_html, 
-                     staging_data.section_7_clinical_staging_workup_html,
-                     staging_data.section_10_explanatory_notes_html]:
-            if html:
-                img_matches = re.findall(r'<img[^>]+src=["\']([^"\']+)["\']', html)
-                for src in img_matches:
-                    if src not in images:
-                        images.append(src)
+        # Extract images from curated content if available, else from raw
+        source_html = quick_reference_html or explanatory_notes_html
+        if is_admin and not is_curated:
+            source_html = staging_data.section_1_quick_reference_html or staging_data.section_10_explanatory_notes_html
+        
+        if source_html:
+            img_matches = re.findall(r'<img[^>]+src=["\']([^"\']+)["\']', source_html)
+            for src in img_matches:
+                if src not in images:
+                    images.append(src)
     
     # Get diagnosis year for intelligent data lookup
     diagnosis_year_id = None
@@ -269,13 +289,16 @@ def student_tnm_view(section_slug, disease_slug):
         n_definitions=n_definitions,
         m_definitions=m_definitions,
         stage_groups=stage_groups,
+        quick_reference_html=quick_reference_html,
         explanatory_notes_html=explanatory_notes_html,
         images=images,
         intelligent_data=intelligent_data,
         tnm_version=tnm_version,
         year_used=year_used,
         available_years=available_years or [],
-        from_case_id=from_case_id
+        from_case_id=from_case_id,
+        is_curated=is_curated,
+        is_admin=is_admin
     )
 
 

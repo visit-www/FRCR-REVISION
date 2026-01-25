@@ -489,6 +489,9 @@ def _build_ajcc_result(disease_site) -> Dict:
         if year:
             tnm_link += f"?year={year}"
     
+    # Check if data is curated (for student visibility)
+    is_curated = staging_data.is_curated if staging_data else False
+    
     return {
         "disease_site_id": disease_site.id,
         "disease_name": disease_site.disease_name,
@@ -498,6 +501,7 @@ def _build_ajcc_result(disease_site) -> Dict:
         "tnm_link": tnm_link,
         "tnm_version": f"AJCC 8th Edition ({year})" if year else "AJCC 8th Edition",
         "has_staging_data": staging_data is not None,
+        "is_curated": is_curated,
         "staging_data_id": staging_data.id if staging_data else None,
     }
 

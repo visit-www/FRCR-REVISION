@@ -1057,8 +1057,25 @@ class AJCCStagingData(db.Model):
     last_updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     data_version = db.Column(db.Integer, default=2)  # 1=HTML only, 2=JSON+HTML
     
+    # ============================================
+    # CURATED DATA: Admin-edited content for student viewing
+    # ============================================
+    # Original AJCC data is preserved above; curated versions are shown to students
+    
+    # Quick Reference: TNM tables + core staging definitions (largely unchanged from AJCC)
+    curated_quick_reference_html = db.Column(db.Text, nullable=True)
+    
+    # Explanatory Notes: Admin-curated content with interpretations, clarifications, high-yield points
+    curated_explanatory_notes_html = db.Column(db.Text, nullable=True)
+    
+    # Curation status
+    is_curated = db.Column(db.Boolean, default=False, index=True)  # True when admin has curated this data
+    curated_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    curated_at = db.Column(db.DateTime, nullable=True)
+    
     # Relationships
     extracted_by = db.relationship('User', foreign_keys=[extracted_by_user_id], backref='extracted_tnm_data')
+    curated_by = db.relationship('User', foreign_keys=[curated_by_user_id], backref='curated_tnm_data')
     
     # Unique constraint: one staging data record per disease/year combination
     __table_args__ = (
@@ -1253,6 +1270,62 @@ class AJCCStagingData(db.Model):
         field_name = section_map.get(section_number)
         if field_name:
             setattr(self, field_name, html_content)
+    
+    # ============================================
+    # Curated Data Methods
+    # ============================================
+    
+    def get_all_raw_html_combined(self):
+        """Get all raw AJCC HTML sections combined into a single HTML string for curation editing."""
+        sections = []
+        section_names = {
+            1: "Quick Reference",
+            2: "Cancers Staged",
+            3: "Cancers Not Staged", 
+            4: "Summary of Changes",
+            5: "Primary Site",
+            6: "Histopathologic Type",
+            7: "Clinical Staging Workup",
+            8: "Staging Rules",
+            9: "Common Scenarios",
+            10: "Explanatory Notes"
+        }
+        
+        for i in range(1, 11):
+            html = self.get_section_html(i)
+            if html:
+                sections.append(f'<div class="ajcc-section" data-section="{i}">')
+                sections.append(f'<h2 class="section-title">{section_names.get(i, f"Section {i}")}</h2>')
+                sections.append(html)
+                sections.append('</div>')
+                sections.append('<hr class="section-divider">')
+        
+        return '\n'.join(sections)
+    
+    def set_curated_data(self, quick_reference_html, explanatory_notes_html, user_id=None):
+        """Set curated data and mark as curated."""
+        from datetime import datetime
+        self.curated_quick_reference_html = quick_reference_html
+        self.curated_explanatory_notes_html = explanatory_notes_html
+        self.is_curated = True
+        self.curated_at = datetime.utcnow()
+        if user_id:
+            self.curated_by_user_id = user_id
+    
+    def get_student_view_data(self):
+        """
+        Get data for student viewing.
+        Returns curated data if available, otherwise returns None (students shouldn't see uncurated).
+        """
+        if not self.is_curated:
+            return None
+        
+        return {
+            'quick_reference_html': self.curated_quick_reference_html,
+            'explanatory_notes_html': self.curated_explanatory_notes_html,
+            'curated_at': self.curated_at,
+            'is_curated': True
+        }
 
 
 class AJCCStagingTimePrefix(db.Model):

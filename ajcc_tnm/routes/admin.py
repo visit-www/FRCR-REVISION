@@ -252,6 +252,8 @@ def list_staging_data():
                 'section_name': sd.disease_site.body_section.section_name,
                 'section_slug': sd.disease_site.body_section.slug,
                 'year': sd.diagnosis_year.year,
+                'is_curated': sd.is_curated,
+                'curated_at': sd.curated_at.isoformat() if sd.curated_at else None,
                 'extracted_at': sd.extracted_at.isoformat() if sd.extracted_at else None,
                 'last_updated_at': sd.last_updated_at.isoformat() if sd.last_updated_at else None
             } for sd in pagination.items],
@@ -836,4 +838,176 @@ def trigger_playwright_auth():
             
     except Exception as e:
         logger.error(f"Playwright authentication error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================================================
+# TNM Data Curation Routes (Admin Only)
+# ============================================================================
+
+@admin_tnm_bp.route('/curate/<int:disease_site_id>/<int:year>', methods=['GET'])
+@require_admin
+def curate_tnm_page(disease_site_id, year):
+    """
+    Render the TNM curation page.
+    Shows raw AJCC data and allows editing into Quick Reference + Explanatory Notes.
+    """
+    try:
+        # Get disease site
+        disease = AJCCDiseaseSite.query.get(disease_site_id)
+        if not disease:
+            return render_template('error.html', message='Disease site not found'), 404
+        
+        # Get diagnosis year
+        diagnosis_year = AJCCDiagnosisYear.query.filter_by(year=year).first()
+        if not diagnosis_year:
+            # Create the year if it doesn't exist
+            diagnosis_year = AJCCDiagnosisYear(year=year)
+            db.session.add(diagnosis_year)
+            db.session.commit()
+        
+        # Get staging data
+        staging_data = AJCCStagingData.query.filter_by(
+            disease_site_id=disease_site_id,
+            diagnosis_year_id=diagnosis_year.id
+        ).first()
+        
+        # Get raw HTML combined for reference
+        raw_html_combined = None
+        curated_quick_reference = None
+        curated_explanatory_notes = None
+        
+        if staging_data:
+            raw_html_combined = staging_data.get_all_raw_html_combined()
+            curated_quick_reference = staging_data.curated_quick_reference_html
+            curated_explanatory_notes = staging_data.curated_explanatory_notes_html
+        
+        # Check if came from a case
+        from_case_id = request.args.get('from_case_id', type=int)
+        
+        return render_template(
+            'admin_tnm_curate.html',
+            disease=disease,
+            year=year,
+            staging_data=staging_data,
+            raw_html_combined=raw_html_combined,
+            curated_quick_reference=curated_quick_reference,
+            curated_explanatory_notes=curated_explanatory_notes,
+            from_case_id=from_case_id
+        )
+        
+    except Exception as e:
+        logger.error(f"Error loading curation page: {e}")
+        return render_template('error.html', message=str(e)), 500
+
+
+@admin_tnm_bp.route('/curate/save', methods=['POST'])
+@require_admin
+def save_curated_tnm():
+    """
+    Save curated TNM data.
+    Receives Quick Reference + Explanatory Notes and stores them.
+    """
+    try:
+        data = request.get_json()
+        
+        disease_site_id = data.get('disease_site_id')
+        year = data.get('year', 2024)  # Default to current edition
+        quick_reference_html = data.get('quick_reference_html', '')
+        explanatory_notes_html = data.get('explanatory_notes_html', '')
+        
+        if not disease_site_id:
+            return jsonify({'success': False, 'error': 'Disease site ID required'}), 400
+        
+        # Get or create diagnosis year
+        diagnosis_year = AJCCDiagnosisYear.query.filter_by(year=year).first()
+        if not diagnosis_year:
+            diagnosis_year = AJCCDiagnosisYear(year=year)
+            db.session.add(diagnosis_year)
+            db.session.flush()
+        
+        # Get or create staging data record
+        staging_data = AJCCStagingData.query.filter_by(
+            disease_site_id=disease_site_id,
+            diagnosis_year_id=diagnosis_year.id
+        ).first()
+        
+        if not staging_data:
+            # Create a new staging data record for curation (without raw AJCC data)
+            staging_data = AJCCStagingData(
+                disease_site_id=disease_site_id,
+                diagnosis_year_id=diagnosis_year.id,
+                data_version=2
+            )
+            db.session.add(staging_data)
+        
+        # Set curated data
+        staging_data.set_curated_data(
+            quick_reference_html=quick_reference_html,
+            explanatory_notes_html=explanatory_notes_html,
+            user_id=current_user.id
+        )
+        
+        db.session.commit()
+        
+        logger.info(f"Curated TNM data saved for disease_site_id={disease_site_id}, year={year} by user {current_user.id}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Curated data saved successfully',
+            'is_curated': True,
+            'curated_at': staging_data.curated_at.isoformat() if staging_data.curated_at else None
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error saving curated TNM data: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_tnm_bp.route('/curate/check/<int:disease_site_id>', methods=['GET'])
+@require_admin
+def check_curated_status(disease_site_id):
+    """
+    Check if a disease site has curated TNM data.
+    Used by case editor to determine if TNM link can be created.
+    """
+    try:
+        year = request.args.get('year', 2024, type=int)
+        
+        diagnosis_year = AJCCDiagnosisYear.query.filter_by(year=year).first()
+        if not diagnosis_year:
+            return jsonify({
+                'success': True,
+                'is_curated': False,
+                'has_raw_data': False,
+                'message': 'No TNM data exists for this disease site'
+            })
+        
+        staging_data = AJCCStagingData.query.filter_by(
+            disease_site_id=disease_site_id,
+            diagnosis_year_id=diagnosis_year.id
+        ).first()
+        
+        if not staging_data:
+            return jsonify({
+                'success': True,
+                'is_curated': False,
+                'has_raw_data': False,
+                'message': 'No TNM data exists for this disease site'
+            })
+        
+        # Check if has raw data
+        has_raw_data = bool(staging_data.section_1_quick_reference_html or staging_data.raw_html_content)
+        
+        return jsonify({
+            'success': True,
+            'is_curated': staging_data.is_curated,
+            'has_raw_data': has_raw_data,
+            'curated_at': staging_data.curated_at.isoformat() if staging_data.curated_at else None,
+            'message': 'Curated data available' if staging_data.is_curated else 'Data not yet curated'
+        })
+        
+    except Exception as e:
+        logger.error(f"Error checking curated status: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500

@@ -232,7 +232,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let currentPage = 1;
     
     // Load sections
-    fetch('/api/admin/tnm/sections')
+    fetch('/api/admin/tnm/sections', { credentials: 'include' })
         .then(r => r.json())
         .then(data => {
             if (data.success) {
@@ -260,7 +260,7 @@ document.addEventListener('DOMContentLoaded', function() {
         diseaseSelect.disabled = !sectionId;
         
         if (sectionId) {
-            fetch(`/api/admin/tnm/diseases?section_id=${sectionId}`)
+            fetch(`/api/admin/tnm/diseases?section_id=${sectionId}`, { credentials: 'include' })
                 .then(r => r.json())
                 .then(data => {
                     if (data.success) {
@@ -296,6 +296,7 @@ document.addEventListener('DOMContentLoaded', function() {
         fetch('/api/admin/tnm/extract', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
+            credentials: 'include',
             body: JSON.stringify({
                 disease_site_id: parseInt(diseaseId),
                 diagnosis_year: parseInt(year),
@@ -330,7 +331,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (sectionId) url += `&section_id=${sectionId}`;
         if (year) url += `&year=${year}`;
         
-        fetch(url)
+        fetch(url, { credentials: 'include' })
             .then(r => r.json())
             .then(data => {
                 if (data.success) {
@@ -349,8 +350,8 @@ document.addEventListener('DOMContentLoaded', function() {
                                         <th>Section</th>
                                         <th>Disease</th>
                                         <th>Year</th>
+                                        <th>Status</th>
                                         <th>Extracted</th>
-                                        <th>Last Updated</th>
                                         <th>Actions</th>
                                     </tr>
                                 </thead>
@@ -360,15 +361,19 @@ document.addEventListener('DOMContentLoaded', function() {
                                             <td>${item.section_name}</td>
                                             <td>${item.disease_name}</td>
                                             <td>${item.year}</td>
+                                            <td>
+                                                ${item.is_curated 
+                                                    ? '<span class="badge bg-success"><i class="fas fa-check me-1"></i>Curated</span>' 
+                                                    : '<span class="badge bg-warning text-dark"><i class="fas fa-exclamation-triangle me-1"></i>Not Curated</span>'}
+                                            </td>
                                             <td>${item.extracted_at ? new Date(item.extracted_at).toLocaleDateString() : 'N/A'}</td>
-                                            <td>${item.last_updated_at ? new Date(item.last_updated_at).toLocaleDateString() : 'N/A'}</td>
                                             <td>
                                                 <a href="/tnm/${item.section_slug}/${item.disease_slug}?year=${item.year}" 
                                                    class="btn btn-sm btn-info me-1" target="_blank" title="View in TNM Viewer">
-                                                    <i class="fas fa-eye"></i> View
+                                                    <i class="fas fa-eye"></i>
                                                 </a>
-                                                <a href="/api/admin/tnm/edit-page/${item.disease_site_id}/${item.year}" class="btn btn-sm btn-primary me-1" title="Edit sections">
-                                                    <i class="fas fa-edit"></i> Edit
+                                                <a href="/api/admin/tnm/curate/${item.disease_site_id}/${item.year}" class="btn btn-sm btn-success me-1" title="Curate for students">
+                                                    <i class="fas fa-check-double"></i> Curate
                                                 </a>
                                                 <button class="btn btn-sm btn-danger" onclick="deleteTNMData(${item.disease_site_id}, ${item.year}, '${item.disease_name}')" title="Delete staging data">
                                                     <i class="fas fa-trash"></i>
@@ -423,7 +428,7 @@ document.addEventListener('DOMContentLoaded', function() {
         statusDiv.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Checking authentication...';
         card.className = 'card mb-4';
         
-        fetch('/api/admin/tnm/auth-status')
+        fetch('/api/admin/tnm/auth-status', { credentials: 'include' })
             .then(r => r.json())
             .then(data => {
                 if (data.authenticated) {
@@ -460,7 +465,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const statusDiv = document.getElementById('authStatus');
         statusDiv.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Authenticating with Playwright (this may take a moment)...';
         
-        fetch('/api/admin/tnm/playwright-auth', { method: 'POST' })
+        fetch('/api/admin/tnm/playwright-auth', { method: 'POST', credentials: 'include' })
             .then(r => r.json())
             .then(data => {
                 if (data.success) {
@@ -492,6 +497,8 @@ document.addEventListener('DOMContentLoaded', function() {
             method: 'DELETE',
             headers: {
                 'Content-Type': 'application/json'
+            },
+            credentials: 'include'
             }
         })
         .then(r => r.json())
@@ -535,7 +542,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 for (const section of sectionsData.sections) {
                     // Fetch diseases for this section
-                    const diseasesResp = await fetch(`/api/admin/tnm/diseases?section_id=${section.id}`);
+                    const diseasesResp = await fetch(`/api/admin/tnm/diseases?section_id=${section.id}`, { credentials: 'include' });
                     const diseasesData = await diseasesResp.json();
                     
                     if (diseasesData.success && diseasesData.diseases.length > 0) {
@@ -598,7 +605,7 @@ document.addEventListener('DOMContentLoaded', function() {
     window.loadDiseaseSites = loadDiseaseSites;
     
     function editDiseaseSite(diseaseSiteId) {
-        fetch(`/api/admin/tnm/disease-site/${diseaseSiteId}`)
+        fetch(`/api/admin/tnm/disease-site/${diseaseSiteId}`, { credentials: 'include' })
             .then(r => r.json())
             .then(data => {
                 if (data.success) {
@@ -630,6 +637,7 @@ document.addEventListener('DOMContentLoaded', function() {
         fetch(`/api/admin/tnm/disease-site/${diseaseSiteId}`, {
             method: 'PUT',
             headers: {'Content-Type': 'application/json'},
+            credentials: 'include',
             body: JSON.stringify(data)
         })
         .then(r => r.json())

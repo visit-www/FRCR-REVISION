@@ -1,0 +1,333 @@
+{% extends "base.html" %}
+
+{% block title %}Curate TNM Data - {{ disease.disease_name }} | Admin{% endblock %}
+
+{% block mobile_breadcrumb %}
+    <li class="breadcrumb-item active text-white" aria-current="page">
+        <i class="fas fa-edit me-1"></i>Curate TNM
+    </li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-2">
+                    <li class="breadcrumb-item"><a href="/admin"><i class="fas fa-cog"></i> Admin</a></li>
+                    <li class="breadcrumb-item"><a href="/api/admin/tnm/management">TNM Management</a></li>
+                    <li class="breadcrumb-item active">Curate: {{ disease.disease_name }}</li>
+                </ol>
+            </nav>
+            <h2 class="mb-0">
+                <i class="fas fa-edit me-2 text-primary"></i>
+                Curate TNM Data: {{ disease.disease_name }}
+            </h2>
+            <p class="text-muted mb-0">
+                {% if staging_data and staging_data.is_curated %}
+                    <span class="badge bg-success"><i class="fas fa-check me-1"></i>Curated</span>
+                    Last curated: {{ staging_data.curated_at.strftime('%Y-%m-%d %H:%M') if staging_data.curated_at else 'Unknown' }}
+                {% else %}
+                    <span class="badge bg-warning text-dark"><i class="fas fa-exclamation-triangle me-1"></i>Not Yet Curated</span>
+                {% endif %}
+            </p>
+        </div>
+        <div>
+            {% if from_case_id %}
+            <a href="/case/{{ from_case_id }}/edit" class="btn btn-outline-primary">
+                <i class="fas fa-arrow-left me-2"></i>Return to Case
+            </a>
+            {% endif %}
+            <a href="/api/admin/tnm/management" class="btn btn-outline-secondary">
+                <i class="fas fa-list me-1"></i>Back to Management
+            </a>
+        </div>
+    </div>
+
+    <!-- Instructions -->
+    <div class="alert alert-info mb-4">
+        <h6><i class="fas fa-info-circle me-2"></i>Curation Workflow</h6>
+        <ol class="mb-0 small">
+            <li><strong>Review</strong> the raw AJCC data in the "Raw AJCC Data" tab (reference only)</li>
+            <li><strong>Edit</strong> the two curated sections:
+                <ul>
+                    <li><strong>Quick Reference:</strong> TNM tables & core staging definitions (keep concise, minimal changes)</li>
+                    <li><strong>Explanatory Notes:</strong> Your curated content - interpretations, high-yield points, teaching notes</li>
+                </ul>
+            </li>
+            <li><strong>Save</strong> when done - curated data will be shown to students</li>
+        </ol>
+    </div>
+
+    <!-- Tabs -->
+    <ul class="nav nav-tabs mb-4" id="curationTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="raw-tab" data-bs-toggle="tab" data-bs-target="#raw-content" type="button" role="tab">
+                <i class="fas fa-database me-1"></i>Raw AJCC Data (Reference)
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="quick-ref-tab" data-bs-toggle="tab" data-bs-target="#quick-ref-content" type="button" role="tab">
+                <i class="fas fa-table me-1"></i>Quick Reference
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="notes-tab" data-bs-toggle="tab" data-bs-target="#notes-content" type="button" role="tab">
+                <i class="fas fa-book-open me-1"></i>Explanatory Notes
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="curationTabContent">
+        <!-- Raw AJCC Data (Read-only Reference) -->
+        <div class="tab-pane fade show active" id="raw-content" role="tabpanel">
+            <div class="card">
+                <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-database me-2"></i>Raw AJCC Data (Read-Only Reference)</h5>
+                    <span class="badge bg-light text-dark">For Reference Only - Do Not Show to Students</span>
+                </div>
+                <div class="card-body" style="max-height: 70vh; overflow-y: auto;">
+                    {% if raw_html_combined %}
+                        <div class="ajcc-raw-content">
+                            {{ raw_html_combined | safe }}
+                        </div>
+                    {% else %}
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            No raw AJCC data has been extracted for this disease site yet.
+                            <a href="/api/admin/tnm/management" class="alert-link">Go to TNM Management to extract data.</a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Reference Editor -->
+        <div class="tab-pane fade" id="quick-ref-content" role="tabpanel">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-table me-2"></i>Quick Reference (TNM Tables & Core Definitions)</h5>
+                    <small>Keep this section concise - primarily TNM staging tables and essential definitions</small>
+                </div>
+                <div class="card-body">
+                    <textarea id="quick-reference-editor">{{ curated_quick_reference or '' }}</textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- Explanatory Notes Editor -->
+        <div class="tab-pane fade" id="notes-content" role="tabpanel">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="fas fa-book-open me-2"></i>Explanatory Notes (Curated Content)</h5>
+                    <small>Add interpretations, clarifications, high-yield points, and teaching notes here</small>
+                </div>
+                <div class="card-body">
+                    <textarea id="explanatory-notes-editor">{{ curated_explanatory_notes or '' }}</textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Save Actions -->
+    <div class="card mt-4 border-success">
+        <div class="card-body d-flex justify-content-between align-items-center">
+            <div>
+                <span id="saveStatus"></span>
+            </div>
+            <div>
+                <button class="btn btn-outline-secondary me-2" onclick="previewCurated()">
+                    <i class="fas fa-eye me-1"></i>Preview
+                </button>
+                <button class="btn btn-success btn-lg" id="saveBtn" onclick="saveCuratedData()">
+                    <i class="fas fa-save me-1"></i>Save Curated Data
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Preview Modal -->
+<div class="modal fade" id="previewModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="fas fa-eye me-2"></i>Preview: Student View</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+                <div id="previewContent"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- TinyMCE -->
+<script src="{{ url_for('static', filename='tinymce.min.js') }}"></script>
+<script>
+const diseaseSiteId = {{ disease.id }};
+const year = {{ year }};
+const fromCaseId = {{ from_case_id or 'null' }};
+
+let quickRefEditor = null;
+let notesEditor = null;
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize TinyMCE for Quick Reference
+    tinymce.init({
+        selector: '#quick-reference-editor',
+        height: 500,
+        menubar: true,
+        plugins: 'code table lists link image paste searchreplace visualblocks fullscreen',
+        toolbar: 'undo redo | formatselect | bold italic underline | alignleft aligncenter alignright | bullist numlist | table | link image | code fullscreen',
+        content_style: `
+            body { font-family: Arial, sans-serif; font-size: 14px; line-height: 1.6; }
+            table { border-collapse: collapse; width: 100%; margin: 10px 0; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            th { background-color: #f5f5f5; font-weight: bold; }
+        `,
+        setup: function(editor) {
+            editor.on('init', function() {
+                quickRefEditor = editor;
+            });
+        }
+    });
+
+    // Initialize TinyMCE for Explanatory Notes
+    tinymce.init({
+        selector: '#explanatory-notes-editor',
+        height: 500,
+        menubar: true,
+        plugins: 'code table lists link image paste searchreplace visualblocks fullscreen',
+        toolbar: 'undo redo | formatselect | bold italic underline | alignleft aligncenter alignright | bullist numlist | table | link image | code fullscreen',
+        content_style: `
+            body { font-family: Arial, sans-serif; font-size: 14px; line-height: 1.6; }
+            table { border-collapse: collapse; width: 100%; margin: 10px 0; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            th { background-color: #f5f5f5; font-weight: bold; }
+            .highlight { background-color: #fff3cd; padding: 2px 4px; }
+            .key-point { color: #0d6efd; font-weight: bold; }
+        `,
+        setup: function(editor) {
+            editor.on('init', function() {
+                notesEditor = editor;
+            });
+        }
+    });
+});
+
+async function saveCuratedData() {
+    const saveBtn = document.getElementById('saveBtn');
+    const saveStatus = document.getElementById('saveStatus');
+    
+    // Get content from editors
+    const quickRefContent = tinymce.get('quick-reference-editor')?.getContent() || '';
+    const notesContent = tinymce.get('explanatory-notes-editor')?.getContent() || '';
+    
+    if (!quickRefContent.trim() && !notesContent.trim()) {
+        alert('Please add content to at least one section before saving.');
+        return;
+    }
+    
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Saving...';
+    saveStatus.innerHTML = '<span class="text-muted">Saving curated data...</span>';
+    
+    try {
+        const response = await fetch('/api/admin/tnm/curate/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+                disease_site_id: diseaseSiteId,
+                year: year,
+                quick_reference_html: quickRefContent,
+                explanatory_notes_html: notesContent
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok && data.success) {
+            saveStatus.innerHTML = '<span class="text-success"><i class="fas fa-check me-1"></i>Curated data saved successfully!</span>';
+            
+            // If came from case editor, offer to return
+            if (fromCaseId) {
+                if (confirm('Curated data saved! Return to the case editor?')) {
+                    window.location.href = `/case/${fromCaseId}/edit`;
+                }
+            }
+        } else {
+            throw new Error(data.error || 'Failed to save');
+        }
+    } catch (error) {
+        console.error('Save error:', error);
+        saveStatus.innerHTML = `<span class="text-danger"><i class="fas fa-times me-1"></i>Error: ${error.message}</span>`;
+    } finally {
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = '<i class="fas fa-save me-1"></i>Save Curated Data';
+    }
+}
+
+function previewCurated() {
+    const quickRef = tinymce.get('quick-reference-editor')?.getContent() || '';
+    const notes = tinymce.get('explanatory-notes-editor')?.getContent() || '';
+    
+    const previewContent = document.getElementById('previewContent');
+    previewContent.innerHTML = `
+        <div class="card mb-3">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-table me-2"></i>Quick Reference</h5>
+            </div>
+            <div class="card-body">
+                ${quickRef || '<p class="text-muted">No quick reference content yet.</p>'}
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0"><i class="fas fa-book-open me-2"></i>Explanatory Notes</h5>
+            </div>
+            <div class="card-body">
+                ${notes || '<p class="text-muted">No explanatory notes content yet.</p>'}
+            </div>
+        </div>
+    `;
+    
+    const modal = new bootstrap.Modal(document.getElementById('previewModal'));
+    modal.show();
+}
+</script>
+
+<style>
+.ajcc-raw-content {
+    font-size: 14px;
+}
+.ajcc-raw-content h2.section-title {
+    color: #0d6efd;
+    border-bottom: 2px solid #0d6efd;
+    padding-bottom: 8px;
+    margin-top: 24px;
+}
+.ajcc-raw-content hr.section-divider {
+    border-top: 2px dashed #ccc;
+    margin: 24px 0;
+}
+.ajcc-raw-content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 10px 0;
+}
+.ajcc-raw-content th, .ajcc-raw-content td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+}
+.ajcc-raw-content th {
+    background-color: #f5f5f5;
+}
+</style>
+{% endblock %}
