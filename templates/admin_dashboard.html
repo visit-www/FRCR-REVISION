@@ -1196,6 +1196,27 @@
         return div.innerHTML;
     }
     
+    // Helper function to load docs tab and select a specific document
+    async function loadDocAndSelect(filename) {
+        // First load the docs list if not already loaded
+        await loadDocsList();
+        
+        // Wait a moment for the list to render
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
+        // Find and click the document link
+        const docLinks = document.querySelectorAll('.doc-link');
+        for (const link of docLinks) {
+            if (link.textContent.includes(filename.replace('.md', '').replace(/_/g, ' '))) {
+                link.click();
+                break;
+            }
+        }
+        
+        // If not found by name, try to load directly
+        loadDocument(filename);
+    }
+    
     function styleMarkdownContent() {
         const container = document.querySelector('.markdown-body');
         if (!container) return;

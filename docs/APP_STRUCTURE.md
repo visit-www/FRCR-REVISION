@@ -27,6 +27,7 @@ FRCR_REVISION/
 │
 ├── docs/                           # Documentation
 │   ├── APP_STRUCTURE.md            # This file
+│   ├── USER_ROLES_WORKFLOWS.md     # User roles & admin workflows
 │   ├── STYLE_GUIDE.md              # Quick style reference
 │   └── plans/                      # Feature planning docs
 │
@@ -109,9 +110,11 @@ Core database models:
 
 ### 4. Admin Routes (`admin_routes.py`, `admin_enrichment_routes.py`)
 - Dashboard
-- User management
+- User management (with approval workflow)
 - Case enrichment workflow
 - Content moderation
+
+> **See [USER_ROLES_WORKFLOWS.md](USER_ROLES_WORKFLOWS.md)** for detailed role permissions and approval workflows.
 
 ### 5. Backup System (`backup_routes.py`)
 - JSON export/import
