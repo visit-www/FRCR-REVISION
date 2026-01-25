@@ -388,7 +388,7 @@
         
         try {
             // Fetch the role guide document
-            const response = await fetch('/api/admin/docs/content?path=USER_ROLES_WORKFLOWS.md');
+            const response = await fetch('/api/admin/docs/content?path=USER_ROLES_WORKFLOWS.md', { credentials: 'include' });
             if (response.ok) {
                 const data = await response.json();
                 content.innerHTML = `<div class="doc-content">${data.html}</div>`;
@@ -454,7 +454,7 @@
 
     async function loadBackupStatus() {
         try {
-            const response = await fetch('/api/backup/status');
+            const response = await fetch('/api/backup/status', { credentials: 'include' });
             const data = await response.json();
             
             if (!response.ok) {
@@ -522,7 +522,7 @@
         statusDiv.innerHTML = '<div class="alert alert-info">Creating backup...</div>';
         
         try {
-            const response = await fetch('/api/backup/download');
+            const response = await fetch('/api/backup/download', { credentials: 'include' });
             
             if (!response.ok) {
                 const error = await response.json();
@@ -599,6 +599,7 @@
             
             const response = await fetch('/api/backup/restore', {
                 method: 'POST',
+                credentials: 'include',
                 body: formData
             });
             
@@ -697,6 +698,7 @@
         
         fetch('/api/admin/enrichment/check-duplicates', {
             method: 'POST',
+            credentials: 'include',
             body: formData
         })
         .then(async r => {
@@ -774,6 +776,7 @@
         
         fetch('/api/admin/enrichment/import', {
             method: 'POST',
+            credentials: 'include',
             body: formData
         })
         .then(r => r.json())
@@ -1123,7 +1126,7 @@
     // Load flagged count on page load
     document.addEventListener('DOMContentLoaded', async function() {
         try {
-            const response = await fetch('/api/admin/forum/flagged');
+            const response = await fetch('/api/admin/forum/flagged', { credentials: 'include' });
             const data = await response.json();
             if (data.success) {
                 const count = data.messages?.length || 0;
@@ -1159,7 +1162,7 @@
         `;
         
         try {
-            const response = await fetch('/api/admin/docs');
+            const response = await fetch('/api/admin/docs', { credentials: 'include' });
             const data = await response.json();
             
             if (data.success && data.docs) {

@@ -577,6 +577,7 @@ document.getElementById('profilePictureInput').addEventListener('change', functi
             fetch('/auth/profile/picture', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
+                credentials: 'include',
                 body: JSON.stringify({picture: base64})
             })
             .then(r => r.json())
@@ -603,7 +604,8 @@ function removeProfilePicture() {
     
     fetch('/auth/profile/picture', {
         method: 'DELETE',
-        headers: {'Content-Type': 'application/json'}
+        headers: {'Content-Type': 'application/json'},
+        credentials: 'include'
     })
     .then(r => r.json())
     .then(data => {
@@ -640,6 +642,7 @@ document.getElementById('profileForm').addEventListener('submit', function(e) {
     fetch('/auth/profile/update', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
+        credentials: 'include',
         body: JSON.stringify({
             full_name: fullName, 
             email: email,
@@ -681,6 +684,7 @@ document.getElementById('passwordForm').addEventListener('submit', function(e) {
     fetch('/auth/profile/password', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
+        credentials: 'include',
         body: JSON.stringify({
             current_password: currentPassword,
             new_password: newPassword
@@ -721,7 +725,8 @@ function confirmDeleteAccount() {
     // Call the soft delete API
     fetch('/auth/account/soft-delete', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'}
+        headers: {'Content-Type': 'application/json'},
+        credentials: 'include'
     })
     .then(r => r.json())
     .then(data => {

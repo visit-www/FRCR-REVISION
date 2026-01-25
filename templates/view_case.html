@@ -3897,6 +3897,7 @@
                 const response = await fetch('/auth/profile/display-name', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
                     body: JSON.stringify({ public_display_name: trimmed || null })
                 });
                 const data = await response.json();

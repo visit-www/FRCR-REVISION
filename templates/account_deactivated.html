@@ -328,6 +328,7 @@
                 const response = await fetch('/auth/account/request-recovery', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
                     body: JSON.stringify({ email: accountData.email })
                 });
 
@@ -358,6 +359,7 @@
                 const response = await fetch('/auth/account/verify-recovery', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
                     body: JSON.stringify({ email: accountData.email, code: code })
                 });
 
@@ -396,6 +398,7 @@
                 const response = await fetch('/auth/account/complete-recovery', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
                     body: JSON.stringify({
                         recovery_token: accountData.recoveryToken,
                         new_password: newPassword
