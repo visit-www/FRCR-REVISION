@@ -578,15 +578,12 @@ class UserManagement {
     async submitPendingApprovalCode() {
         const code = document.getElementById('pendingApprovalCodeInput').value.trim().toUpperCase();
         if (!code || code.length !== 8) {
-            alert('Please enter a valid 8-character approval code');
+            this.showPendingApprovalError('Please enter a valid 8-character approval code');
             return;
         }
         
         const { action, userId, newValue } = this.pendingApproval || {};
         if (!action) return;
-        
-        // Close the already pending modal
-        this.closeAlreadyPendingModal();
         
         // Submit the code directly
         try {
@@ -606,8 +603,19 @@ class UserManagement {
             const data = await response.json();
             
             if (!response.ok) {
-                throw new Error(data.error || 'Action failed');
+                // Handle specific error cases with user-friendly messages
+                if (response.status === 403 && data.requires_approval) {
+                    this.showPendingApprovalError('Invalid code or code has expired. Please check and try again.');
+                } else if (response.status === 503 && data.action_blocked) {
+                    this.showPendingApprovalError('Unable to complete action. Please try again later.');
+                } else {
+                    this.showPendingApprovalError(data.error || 'Action failed. Please try again.');
+                }
+                return;
             }
+            
+            // Close the already pending modal
+            this.closeAlreadyPendingModal();
             
             this.showSuccess(`✅ Action completed: ${data.message || 'Success'}`);
             this.pendingApproval = null;
@@ -622,7 +630,33 @@ class UserManagement {
             
         } catch (error) {
             console.error('Error submitting approval code:', error);
-            this.showError(`Failed: ${error.message}`);
+            this.showPendingApprovalError('An error occurred. Please try again.');
+        }
+    }
+    
+    showPendingApprovalError(message) {
+        // Show error in the pending approval modal
+        const modal = document.getElementById('alreadyPendingModal');
+        if (modal) {
+            let errorDiv = modal.querySelector('.pending-approval-error');
+            if (!errorDiv) {
+                errorDiv = document.createElement('div');
+                errorDiv.className = 'pending-approval-error';
+                errorDiv.style.cssText = 'background: #fff5f5; border: 1px solid #f5c6cb; color: #721c24; padding: 10px 15px; border-radius: 5px; margin-top: 10px; font-size: 14px;';
+                const input = modal.querySelector('#pendingApprovalCodeInput');
+                if (input) {
+                    input.parentNode.insertBefore(errorDiv, input.nextSibling);
+                }
+            }
+            errorDiv.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${message}`;
+            
+            // Highlight the input
+            const input = document.getElementById('pendingApprovalCodeInput');
+            if (input) {
+                input.style.borderColor = '#dc3545';
+            }
+        } else {
+            this.showError(message);
         }
     }
     
@@ -677,7 +711,7 @@ class UserManagement {
     async submitApprovalCode() {
         const code = document.getElementById('approvalCodeInput').value.trim().toUpperCase();
         if (!code || code.length !== 8) {
-            alert('Please enter a valid 8-character approval code');
+            this.showApprovalError('Please enter a valid 8-character approval code');
             return;
         }
         
@@ -700,7 +734,15 @@ class UserManagement {
             const data = await response.json();
             
             if (!response.ok) {
-                throw new Error(data.error || 'Action failed');
+                // Handle specific error cases with user-friendly messages
+                if (response.status === 403 && data.requires_approval) {
+                    this.showApprovalError('Invalid code or code has expired. Please check and try again.');
+                } else if (response.status === 503 && data.action_blocked) {
+                    this.showApprovalError('Unable to complete action. Please try again later.');
+                } else {
+                    this.showApprovalError(data.error || 'Action failed. Please try again.');
+                }
+                return;
             }
             
             this.closeApprovalModal();
@@ -709,7 +751,39 @@ class UserManagement {
             this.loadUsers();
             
         } catch (error) {
-            alert(`Error: ${error.message}`);
+            console.error('Approval code error:', error);
+            this.showApprovalError('An error occurred. Please try again.');
+        }
+    }
+    
+    showApprovalError(message) {
+        // Show error in the approval modal instead of ugly alert
+        const modal = document.getElementById('approvalCodeModal');
+        if (modal) {
+            let errorDiv = modal.querySelector('.approval-error');
+            if (!errorDiv) {
+                errorDiv = document.createElement('div');
+                errorDiv.className = 'approval-error';
+                errorDiv.style.cssText = 'background: #fff5f5; border: 1px solid #f5c6cb; color: #721c24; padding: 10px 15px; border-radius: 5px; margin-top: 10px; font-size: 14px;';
+                const input = modal.querySelector('#approvalCodeInput');
+                if (input) {
+                    input.parentNode.insertBefore(errorDiv, input.nextSibling);
+                }
+            }
+            errorDiv.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${message}`;
+            
+            // Shake the input
+            const input = document.getElementById('approvalCodeInput');
+            if (input) {
+                input.style.borderColor = '#dc3545';
+                input.classList.add('shake');
+                setTimeout(() => {
+                    input.classList.remove('shake');
+                }, 500);
+            }
+        } else {
+            // Fallback to alert if modal not found
+            alert(message);
         }
     }
     
