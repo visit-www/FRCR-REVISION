@@ -93,7 +93,7 @@
                     </li>
                     
                     <!-- Admin Dashboard (ADMIN ONLY) -->
-                    {% if current_user.is_admin %}
+                    {% if current_user.role and current_user.role.value == 'admin' %}
                     <li class="nav-item">
                         <a class="nav-link" href="/admin" title="Admin Dashboard - User Management & Backups">
                             <i class="fas fa-cog me-1"></i>Admin
