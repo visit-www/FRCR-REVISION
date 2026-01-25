@@ -482,10 +482,10 @@ def _build_ajcc_result(disease_site) -> Dict:
     disease_slug = disease_site.slug or ""
     
     # Build TNM link with leading / for absolute path
-    # Single link for both student and admin views, with year parameter
+    # Use /student suffix for direct content access
     tnm_link = None
     if section_slug and disease_slug:
-        tnm_link = f"/tnm/{section_slug}/{disease_slug}"
+        tnm_link = f"/tnm/{section_slug}/{disease_slug}/student"
         if year:
             tnm_link += f"?year={year}"
     
@@ -1051,6 +1051,123 @@ def _call_claude_tnm(system_prompt: str, user_prompt: str) -> str:
 
 
 # ============================================================================
+# MARKDOWN PARSING - Extract structured data from AI output
+# ============================================================================
+
+def _parse_tnm_markdown(markdown_content: str) -> Dict:
+    """
+    Parse TNM Intelligence Markdown to extract structured fields for database storage.
+    
+    Args:
+        markdown_content: Markdown text from Claude AI
+        
+    Returns:
+        Dict with structured fields:
+        - tnm_memory_aid: {T, N, M} stage summaries
+        - radiologist_key_points: List of key findings
+        - upstaging_triggers: T-stage/N-stage/M-stage triggers
+        - mdt_critical_findings: MDT discussion points
+        - copy_blocks: Report templates
+        - imaging_checklist: Imaging review items
+        - warnings: Reporting reminders
+    """
+    import re
+    
+    result = {
+        'tnm_memory_aid': {'T': None, 'N': None, 'M': None},
+        'radiologist_key_points': [],
+        'upstaging_triggers': [],
+        'mdt_critical_findings': [],
+        'copy_blocks': {},
+        'imaging_checklist': [],
+        'reference_images': [],
+        'warnings': []
+    }
+    
+    if not markdown_content:
+        return result
+    
+    # Extract sections using regex
+    sections = {}
+    current_section = None
+    current_content = []
+    
+    for line in markdown_content.split('\n'):
+        # Check for section headers (#### N. Title)
+        section_match = re.match(r'^####\s*(\d+)\.\s*(.+)', line)
+        if section_match:
+            # Save previous section
+            if current_section:
+                sections[current_section] = '\n'.join(current_content).strip()
+            current_section = section_match.group(2).strip().lower()
+            current_content = []
+        else:
+            current_content.append(line)
+    
+    # Save last section
+    if current_section:
+        sections[current_section] = '\n'.join(current_content).strip()
+    
+    # Parse Critical Stage-Changing Findings for tnm_memory_aid and upstaging_triggers
+    stage_findings = sections.get('critical stage-changing findings', '')
+    if stage_findings:
+        # Extract T-stage info
+        t_match = re.search(r'\*\*T-stage\*\*(.+?)(?=\*\*[NM]-stage\*\*|$)', stage_findings, re.DOTALL)
+        if t_match:
+            t_lines = [l.strip('- ').strip() for l in t_match.group(1).strip().split('\n') if l.strip().startswith('-')]
+            result['tnm_memory_aid']['T'] = '; '.join(t_lines[:3]) if t_lines else None
+            result['upstaging_triggers'].extend([f"T: {l}" for l in t_lines])
+        
+        # Extract N-stage info
+        n_match = re.search(r'\*\*N-stage\*\*(.+?)(?=\*\*M-stage\*\*|$)', stage_findings, re.DOTALL)
+        if n_match:
+            n_lines = [l.strip('- ').strip() for l in n_match.group(1).strip().split('\n') if l.strip().startswith('-')]
+            result['tnm_memory_aid']['N'] = '; '.join(n_lines[:3]) if n_lines else None
+            result['upstaging_triggers'].extend([f"N: {l}" for l in n_lines])
+        
+        # Extract M-stage info
+        m_match = re.search(r'\*\*M-stage\*\*(.+?)$', stage_findings, re.DOTALL)
+        if m_match:
+            m_lines = [l.strip('- ').strip() for l in m_match.group(1).strip().split('\n') if l.strip().startswith('-')]
+            result['tnm_memory_aid']['M'] = '; '.join(m_lines[:3]) if m_lines else None
+            result['upstaging_triggers'].extend([f"M: {l}" for l in m_lines])
+    
+    # Parse Practical Application on Imaging -> radiologist_key_points
+    practical = sections.get('practical application on imaging', '')
+    if practical:
+        result['radiologist_key_points'] = [
+            l.strip('- ').strip() 
+            for l in practical.split('\n') 
+            if l.strip().startswith('-') and len(l.strip()) > 5
+        ][:10]  # Limit to 10 points
+    
+    # Parse High-Yield Explanatory Note Pearls -> imaging_checklist
+    pearls = sections.get('high-yield explanatory note pearls', '')
+    if pearls:
+        result['imaging_checklist'] = [
+            l.strip('- ').strip() 
+            for l in pearls.split('\n') 
+            if l.strip().startswith('-') and len(l.strip()) > 5
+        ][:10]
+    
+    # Parse MDT Discussion Points -> mdt_critical_findings
+    mdt = sections.get('tumour board / mdt discussion points', '')
+    if mdt:
+        result['mdt_critical_findings'] = [
+            l.strip('- ').strip() 
+            for l in mdt.split('\n') 
+            if l.strip().startswith('-') and len(l.strip()) > 5
+        ][:10]
+    
+    # Parse Reporting Reminder -> warnings
+    reminder_match = re.search(r'🔴\s*REPORTING REMINDER\s*\n(.+?)(?=\n\n|💡|$)', markdown_content, re.DOTALL)
+    if reminder_match:
+        result['warnings'] = [reminder_match.group(1).strip()]
+    
+    return result
+
+
+# ============================================================================
 # FIGURE INJECTION
 # ============================================================================
 
@@ -1173,6 +1290,9 @@ def generate_tnm_intelligence(
     # Call Claude - returns Markdown directly
     markdown_content = _call_claude_tnm(TNM_SYSTEM_PROMPT, user_prompt)
     
+    # Parse Markdown to extract structured fields for database storage
+    parsed_data = _parse_tnm_markdown(markdown_content)
+    
     # Get images from staging data and inject them into markdown
     images = staging_data.get("images", [])
     markdown_content = _inject_figures_into_markdown(markdown_content, images)
@@ -1192,7 +1312,7 @@ def generate_tnm_intelligence(
     if from_case_id is not None:
         tnm_link += f"&from_case={from_case_id}"
     
-    # Return Markdown content with metadata
+    # Return Markdown content with metadata AND structured fields for auto-save
     result = {
         "ajcc_match": ajcc_match,
         "tnm_link": tnm_link,
@@ -1200,6 +1320,15 @@ def generate_tnm_intelligence(
         "images": images,  # Include images for frontend if needed
         "generated_at": datetime.utcnow().isoformat(),
         "provider": provider,
+        # Structured fields parsed from Markdown (for intelligent_tnm_data table)
+        "tnm_memory_aid": parsed_data.get("tnm_memory_aid"),
+        "radiologist_key_points": parsed_data.get("radiologist_key_points", []),
+        "upstaging_triggers": parsed_data.get("upstaging_triggers", []),
+        "mdt_critical_findings": parsed_data.get("mdt_critical_findings", []),
+        "copy_blocks": parsed_data.get("copy_blocks", {}),
+        "imaging_checklist": parsed_data.get("imaging_checklist", []),
+        "reference_images": parsed_data.get("reference_images", []),
+        "warnings": parsed_data.get("warnings", []),
         "source_case_id": from_case_id,
         "disease_name": ajcc_match.get("disease_name", "Unknown"),
         "tnm_version": tnm_version,

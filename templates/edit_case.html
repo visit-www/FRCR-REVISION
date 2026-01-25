@@ -2397,6 +2397,11 @@ function insertTnmLinksDirectly(data) {
         tnmLink = `/tnm/${ajccMatch.section_slug}/${ajccMatch.disease_slug}/student?year=${year}`;
     }
     
+    // Ensure link has leading / for absolute path (prevents /view-case/tnm/... issue)
+    if (tnmLink && !tnmLink.startsWith('/') && !tnmLink.startsWith('http')) {
+        tnmLink = '/' + tnmLink;
+    }
+    
     // Get the Markdown content from Claude
     const markdownContent = data.tnm_intelligence_markdown || '';
     
