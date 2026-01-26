@@ -2387,11 +2387,15 @@ function markdownToHtml(markdown) {
 
 // Insert TNM Intelligence directly into discussion
 function insertTnmLinksDirectly(data) {
+    console.log('[TNM Insert] Called with data:', data);
+    
     const ajccMatch = data.ajcc_match || selectedPrimarySite || {};
     const diseaseName = data.disease_name || ajccMatch.disease_name || 'Cancer';
     const tnmVersion = data.tnm_version || ajccMatch.tnm_version || 'AJCC 8th Edition';
     const isCached = data.is_cached;
     const isRegenerated = data.is_regenerated;
+    
+    console.log('[TNM Insert] Disease:', diseaseName, 'Version:', tnmVersion);
     
     // Build TNM link - use /student suffix for direct content access
     let tnmLink = data.tnm_link;
@@ -2407,37 +2411,78 @@ function insertTnmLinksDirectly(data) {
         tnmLink = '/' + tnmLink;
     }
     
+    console.log('[TNM Insert] TNM Link:', tnmLink);
+    
     // Get the Markdown content from Claude
     const markdownContent = data.tnm_intelligence_markdown || '';
     
+    console.log('[TNM Insert] Markdown content length:', markdownContent.length);
+    
     if (!tnmLink && !markdownContent) {
+        console.warn('[TNM Insert] No data available - returning early');
         alert('No TNM data available for this cancer type.');
         return;
     }
     
-    // Build styled button matching app design (Bootstrap with app palette)
+    // Convert Markdown to HTML for the AI-generated content
+    const intelligenceHtml = markdownContent ? markdownToHtml(markdownContent) : '';
+    
+    // Build the full HTML block with:
+    // 1. Header with button link to AJCC staging document
+    // 2. AI-generated intelligence content
+    // 3. Footer with metadata
     const fullHtml = `
-<p style="margin: 1rem 0;">
-    <a href="${tnmLink}" target="_blank" class="btn" style="background: linear-gradient(135deg, #f4a896 0%, #e89580 100%); color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none; font-weight: 600; box-shadow: 0 2px 8px rgba(244, 168, 150, 0.3);">
-        <i class="fas fa-book-medical me-2"></i>Click to view detailed AJCC staging document – ${diseaseName}
-    </a>
-</p>
+<div class="tnm-intelligence-block" style="border: 1px solid #e5e7eb; border-radius: 8px; margin: 1.5rem 0; overflow: hidden;">
+    
+    <!-- Header with AJCC Staging Link Button -->
+    <div style="background: linear-gradient(135deg, #f4a896 0%, #e89580 100%); padding: 12px 16px;">
+        <a href="${tnmLink}" target="_blank" style="color: white; font-weight: 600; text-decoration: none; font-size: 1.1em;">
+            <i class="fas fa-book-medical me-2"></i>View AJCC TNM Staging – ${diseaseName} (${tnmVersion})
+            <i class="fas fa-external-link-alt ms-2" style="font-size: 0.8em;"></i>
+        </a>
+    </div>
+    
+    <!-- AI-Generated Intelligence Content -->
+    ${intelligenceHtml ? `
+    <div class="tnm-intelligence-content" style="padding: 16px 20px; background: #fafafa; font-size: 0.95em; line-height: 1.6;">
+        ${intelligenceHtml}
+    </div>
+    ` : ''}
+    
+    <!-- Footer -->
+    <div style="background: #f3f4f6; padding: 8px 16px; border-top: 1px solid #e5e7eb; font-size: 0.8em; color: #6b7280;">
+        <i class="fas fa-robot me-1"></i>AI-Generated Summary
+        ${isCached ? ' | <span style="color: #d97706;">From Cache</span>' : ''}
+        ${isRegenerated ? ' | <span style="color: #059669;">Regenerated</span>' : ''}
+    </div>
+</div>
 `;
+    
+    console.log('[TNM Insert] Generated HTML length:', fullHtml.length);
     
     // Insert into TinyMCE or textarea
     if (typeof tinymce !== 'undefined' && tinymce.get('editCaseDiscussion')) {
         const editor = tinymce.get('editCaseDiscussion');
         const currentContent = editor.getContent();
+        console.log('[TNM Insert] TinyMCE found, current content length:', currentContent.length);
         editor.setContent(currentContent + fullHtml);
+        console.log('[TNM Insert] Content inserted into TinyMCE');
     } else {
+        console.log('[TNM Insert] TinyMCE not found, trying textarea');
         const textarea = document.getElementById('editCaseDiscussion');
         if (textarea) {
             textarea.value += '\n\n' + fullHtml;
+            console.log('[TNM Insert] Content inserted into textarea');
+        } else {
+            console.error('[TNM Insert] Neither TinyMCE nor textarea found!');
+            alert('Error: Could not find discussion editor to insert content.');
+            return;
         }
     }
     
     // Show confirmation
-    alert(`AJCC staging link added to discussion!\n\nClick the orange button to view detailed TNM staging for ${diseaseName}.`);
+    console.log('[TNM Insert] Showing confirmation alert');
+    alert(`TNM Intelligence added to discussion!\n\n✓ AI-generated staging summary\n✓ Link to AJCC staging document\n\nPlease review before saving.`);
 }
 
 // Legacy: Insert TNM link into discussion from modal (kept for backward compatibility)
