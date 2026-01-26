@@ -259,6 +259,13 @@
                                     <i class="fas fa-sticky-note me-1" style="color: #e96304;"></i>My Notes
                                 </button>
                             </li>
+                            {% if show_tnm_tab and tnm_staging_url %}
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="tnmStagingTab" data-bs-toggle="tab" data-bs-target="#tnmStagingPane" type="button" role="tab" aria-controls="tnmStagingPane" aria-selected="false">
+                                    <i class="fas fa-book-medical me-1" style="color: #1a4178;"></i>TNM Calculator
+                                </button>
+                            </li>
+                            {% endif %}
                             <li class="nav-item" role="presentation">
                                 <button class="nav-link" id="notionTab" data-bs-toggle="tab" data-bs-target="#notionPane" type="button" role="tab" aria-controls="notionPane" aria-selected="false">
                                     <i class="fas fa-book me-1" style="color: #000;"></i>Notion
@@ -353,6 +360,18 @@
                                     </button>
                                 </div>
                             </div>
+                            
+                            {% if show_tnm_tab and tnm_staging_url %}
+                            <!-- TNM Staging tab (cancer cases only) -->
+                            <div class="tab-pane fade" id="tnmStagingPane" role="tabpanel" aria-labelledby="tnmStagingTab">
+                                <div class="py-3">
+                                    <p class="text-muted small mb-3">Open the TNM staging reference and stage calculator for this cancer.</p>
+                                    <a href="{{ tnm_staging_url }}" target="_blank" rel="noopener" class="btn btn-primary" style="background: linear-gradient(135deg, #235390 0%, #1a4178 100%); border: none;">
+                                        <i class="fas fa-book-medical me-2"></i>Open TNM Staging
+                                    </a>
+                                </div>
+                            </div>
+                            {% endif %}
                             
                             <!-- Notion Tab -->
                             <div class="tab-pane fade" id="notionPane" role="tabpanel" aria-labelledby="notionTab">

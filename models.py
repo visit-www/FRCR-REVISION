@@ -78,11 +78,14 @@ class BodyPart(enum.Enum):
     CHEST_WALL = "Chest Wall"
     
     # Gastrointestinal
+    UPPER_GASTROINTESTINAL = "Upper gastrointestinal"
+    LOWER_GASTROINTESTINAL = "Lower gastrointestinal"
     GASTROINTESTINAL = "Gastrointestinal"
     HEPATOPANCREATICOBILIARY = "Hepatopancreaticobiliary"
     
     # Genitourinary and Endocrine
     ADRENAL = "Adrenal"
+    MALE_GENITAL = "Male genital"
     THYROID_PARATHYROID = "Thyroid and Parathyroid"
     SPLEEN = "Spleen"
     KUB = "KUB"
@@ -95,9 +98,11 @@ class BodyPart(enum.Enum):
     UPPER_LIMB = "Upper Limb"
     LOWER_LIMB = "Lower Limb"
     BONES = "Bones"
+    SOFT_TISSUE = "Soft tissue"
     
     # CNS and Head & Neck
     BRAIN_PITUITARY = "Brain and Pituitary"
+    BRAIN_SPINE = "Brain and Spinal Cord"
     SPINE = "Spine"
     HEAD_NECK = "Head and Neck"
     

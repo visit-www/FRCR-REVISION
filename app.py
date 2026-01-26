@@ -9,7 +9,7 @@ from models import UserRole
 from flask_cors import CORS
 from flask_login import LoginManager, login_required, current_user
 from flask_migrate import Migrate
-from models import db, User, Case, CaseImage, Question, Answer
+from models import db, User, Case, CaseImage, Question, Answer, BodyPart
 from models import RevisionSession, RevisionHistory  # STUDENT REVISION: New models for balanced revision
 from models import ForumMessage, ForumMessageVote, ForumMessageFlag  # Forum models
 from auth import auth_bp
@@ -1626,6 +1626,20 @@ def view_case(case_id):
     # Build query string for nav links
     nav_query_string = '&'.join(f"{k}={v}" for k, v in nav_params.items() if v)
     
+    # TNM Staging: show calculator link in Notes tab when diagnosis is cancer and we can map to AJCC
+    show_tnm_tab = False
+    tnm_staging_url = None
+    try:
+        from ai_tnm import is_oncologic_diagnosis, _map_to_ajcc_site
+        if (case.diagnosis and is_oncologic_diagnosis(case.diagnosis)):
+            module_hint = case.module.value if case.module else None
+            body_part_hint = case.body_part.value if case.body_part else None
+            ajcc = _map_to_ajcc_site(case.diagnosis, module=module_hint, body_part=body_part_hint)
+            if ajcc and ajcc.get('section_slug') and ajcc.get('disease_slug'):
+                show_tnm_tab = True
+                tnm_staging_url = f"/tnm/{ajcc['section_slug']}/{ajcc['disease_slug']}/student?year=2026&from_case={case_id}"
+    except Exception:
+        pass
     
     return render_template('view_case.html', 
                          case=case, 
@@ -1634,7 +1648,22 @@ def view_case(case_id):
                          next_case_id=next_case_id,
                          from_staging=from_staging,
                          nav_params=nav_params,
-                         nav_query_string=nav_query_string)
+                         nav_query_string=nav_query_string,
+                         show_tnm_tab=show_tnm_tab,
+                         tnm_staging_url=tnm_staging_url)
+
+
+# Body part groups for edit-case dropdown (group label -> enum names; must match models.BodyPart)
+BODY_PART_GROUPS = [
+    ("Cardiovascular", ["CARDIOVASCULAR"]),
+    ("Lung and Thorax", ["LUNG_MEDIASTINUM", "CHEST_WALL"]),
+    ("Gastrointestinal", ["UPPER_GASTROINTESTINAL", "LOWER_GASTROINTESTINAL", "GASTROINTESTINAL", "HEPATOPANCREATICOBILIARY"]),
+    ("Genitourinary and Endocrine", ["ADRENAL", "MALE_GENITAL", "THYROID_PARATHYROID", "SPLEEN", "KUB"]),
+    ("Gynaecology and Breast", ["GYNAECOLOGY", "BREAST"]),
+    ("Musculoskeletal", ["UPPER_LIMB", "LOWER_LIMB", "BONES", "SOFT_TISSUE"]),
+    ("CNS and Head & Neck", ["BRAIN_PITUITARY", "BRAIN_SPINE", "SPINE", "HEAD_NECK"]),
+    ("Multi-system", ["MULTISYSTEM"]),
+]
 
 
 @app.route('/edit-case')
@@ -1680,6 +1709,19 @@ def edit_case():
         # Neither staging_id, case_id, nor new - invalid request
         return redirect(url_for('dashboard'))
     
+    # Build body part dropdown from enum so it stays in sync with models.BodyPart
+    body_part_groups = []
+    for label, names in BODY_PART_GROUPS:
+        opts = []
+        for n in names:
+            try:
+                b = BodyPart[n]
+                opts.append((b.name, b.value))
+            except KeyError:
+                pass
+        if opts:
+            body_part_groups.append((label, opts))
+    
     return render_template('edit_case.html', 
                          is_new=is_new,
                          return_to=return_to,
@@ -1687,7 +1729,8 @@ def edit_case():
                          staging_case=staging_case,
                          prev_staging_id=prev_staging_id,
                          next_staging_id=next_staging_id,
-                         status_filter=status_filter)
+                         status_filter=status_filter,
+                         body_part_groups=body_part_groups)
 
 
 

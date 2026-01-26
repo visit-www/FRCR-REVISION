@@ -78,6 +78,27 @@ export DATABASE_URL="postgresql://...@neon.tech/..."
 flask db upgrade
 ```
 
+### Keeping the Vercel/Neon DB in sync with model enums
+
+When you add or change enum values in `models.py` (e.g. `BodyPart`, `FRCRModule`), the database type must be updated too:
+
+1. **Create a migration** for the enum change, e.g.:
+   ```bash
+   flask db revision -m "add_bodypart_enum_values"
+   ```
+   Then edit the new file in `migrations/versions/` to run the appropriate `ALTER TYPE ... ADD VALUE` (or use the existing `add_bodypart_5new` migration if you added the five new body parts).
+
+2. **Run it against your Neon DB** before or right after deploying:
+   ```bash
+   export DATABASE_URL="postgresql://...@neon.tech/..."   # or use POSTGRES_URL_NON_POOLING
+   flask db upgrade
+   ```
+
+3. **Optional: run migrations on deploy**  
+   If you run the app on Vercel serverless (e.g. via `api/index.py`), run `flask db upgrade` from a build step or a one-off job after deploy so the production DB schema (including new enum values) stays in sync. Otherwise run it manually whenever you add migrations.
+
+Until the migration is applied, new enum values exist in Python but not in PostgreSQL, so inserts/updates using those values can fail and dropdowns driven from the DB may omit them.
+
 ## Verification
 
 After deployment:

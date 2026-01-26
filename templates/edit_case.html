@@ -198,40 +198,13 @@ console.log('[TinyMCE Loader] Script URL was:', "{{ url_for('static', filename='
                                 </label>
                                 <select class="form-select form-select-lg" id="editCaseBodyPart" required>
                                     <option value="">Select Body Part...</option>
-                                    <optgroup label="Cardiovascular">
-                                        <option value="CARDIOVASCULAR">Cardiovascular</option>
+                                    {% for group_label, options in body_part_groups %}
+                                    <optgroup label="{{ group_label }}">
+                                        {% for name, value in options %}
+                                        <option value="{{ name }}">{{ value }}</option>
+                                        {% endfor %}
                                     </optgroup>
-                                    <optgroup label="Lung and Thorax">
-                                        <option value="LUNG_MEDIASTINUM">Lung and Mediastinum</option>
-                                        <option value="CHEST_WALL">Chest Wall</option>
-                                    </optgroup>
-                                    <optgroup label="Gastrointestinal">
-                                        <option value="GASTROINTESTINAL">Gastrointestinal</option>
-                                        <option value="HEPATOPANCREATICOBILIARY">Hepatopancreaticobiliary</option>
-                                    </optgroup>
-                                    <optgroup label="Genitourinary and Endocrine">
-                                        <option value="ADRENAL">Adrenal</option>
-                                        <option value="THYROID_PARATHYROID">Thyroid and Parathyroid</option>
-                                        <option value="SPLEEN">Spleen</option>
-                                        <option value="KUB">KUB</option>
-                                    </optgroup>
-                                    <optgroup label="Gynaecology and Breast">
-                                        <option value="GYNAECOLOGY">Gynaecology</option>
-                                        <option value="BREAST">Breast</option>
-                                    </optgroup>
-                                    <optgroup label="Musculoskeletal">
-                                        <option value="UPPER_LIMB">Upper Limb</option>
-                                        <option value="LOWER_LIMB">Lower Limb</option>
-                                        <option value="BONES">Bones</option>
-                                    </optgroup>
-                                    <optgroup label="CNS and Head & Neck">
-                                        <option value="BRAIN_PITUITARY">Brain and Pituitary</option>
-                                        <option value="SPINE">Spine</option>
-                                        <option value="HEAD_NECK">Head and Neck</option>
-                                    </optgroup>
-                                    <optgroup label="Multi-system">
-                                        <option value="MULTISYSTEM">Multisystem</option>
-                                    </optgroup>
+                                    {% endfor %}
                                 </select>
                                 <small class="text-muted d-block mt-2">Anatomical region</small>
                             </div>
@@ -2412,8 +2385,16 @@ function insertTnmLinksDirectly(data) {
     if (tnmLink && !tnmLink.startsWith('/') && !tnmLink.startsWith('http')) {
         tnmLink = '/' + tnmLink;
     }
+    // Use absolute URL so the link works when content is viewed on view-case or any origin
+    const origin = (typeof window !== 'undefined' && window.location && window.location.origin) ? window.location.origin : '';
+    let hrefTnmLink = tnmLink ? (tnmLink.startsWith('http') ? tnmLink : (origin + (tnmLink.startsWith('/') ? tnmLink : '/' + tnmLink))) : '';
+    // Append from_case when editing an existing case so "Return to Case" works on the TNM page
+    const fromCaseId = (typeof window !== 'undefined' && window.location && window.location.search) ? (new URLSearchParams(window.location.search).get('id') || '') : '';
+    if (hrefTnmLink && fromCaseId) {
+        hrefTnmLink += (hrefTnmLink.indexOf('?') >= 0 ? '&' : '?') + 'from_case=' + fromCaseId;
+    }
     
-    console.log('[TNM Insert] TNM Link:', tnmLink);
+    console.log('[TNM Insert] TNM Link:', hrefTnmLink || tnmLink);
     
     // Get the Markdown content from Claude
     const markdownContent = data.tnm_intelligence_markdown || '';
@@ -2461,7 +2442,7 @@ function insertTnmLinksDirectly(data) {
     
     <!-- Header with AJCC Staging Link Buttons -->
     <div style="background: linear-gradient(135deg, #235390 0%, #1a4178 100%); padding: 12px 16px; display: flex; align-items: center; flex-wrap: wrap; gap: 12px;">
-        <a href="${tnmLink}" target="_blank" style="display: inline-flex; align-items: center; background: rgba(255,255,255,0.15); color: white; padding: 8px 16px; border-radius: 6px; font-size: 0.95em; font-weight: 600; text-decoration: none; border: 1px solid rgba(255,255,255,0.3); box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: background 0.2s;">
+        <a href="${hrefTnmLink || tnmLink}" target="_blank" style="display: inline-flex; align-items: center; background: rgba(255,255,255,0.15); color: white; padding: 8px 16px; border-radius: 6px; font-size: 0.95em; font-weight: 600; text-decoration: none; border: 1px solid rgba(255,255,255,0.3); box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: background 0.2s;">
             <i class="fas fa-book-medical me-2"></i>View AJCC TNM Staging – ${diseaseName} (${tnmVersion})
             <i class="fas fa-external-link-alt ms-2" style="font-size: 0.8em; opacity: 0.8;"></i>
         </a>
