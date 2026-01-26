@@ -79,3 +79,7 @@ cache/tcia/*.json
 .env.vercel
 .ajcc_cookies.json
 .cursor/
+
+# Extracted figures (stored in Cloudinary, not git)
+scripts/iarc_figures/
+scripts/openstax_figures/
