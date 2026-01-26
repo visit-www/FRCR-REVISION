@@ -1616,3 +1616,146 @@ class IntelligentTNMData(db.Model):
         instance.set_warnings(ai_output.get('warnings', []))
         
         return instance
+
+
+# ==================== ANATOMY FIGURE MODEL ====================
+
+class AnatomyFigure(db.Model):
+    """
+    CC-licensed anatomy and staging figures for AI injection.
+    
+    Sources:
+    - OpenStax Anatomy & Physiology 2e (CC BY 4.0)
+    - IARC Essential TNM Guide (CC BY-NC-ND 3.0 IGO)
+    - Radiopaedia diagrams (CC-NC-BY-SA 3.0)
+    - Open Anatomy Project (Open Source)
+    """
+    __tablename__ = 'anatomy_figure'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    figure_id = db.Column(db.String(100), unique=True, nullable=False, index=True)
+    title = db.Column(db.String(300), nullable=False)
+    description = db.Column(db.Text)
+    
+    # Classification
+    source = db.Column(db.String(50), nullable=False, index=True)  # 'openstax', 'iarc', 'radiopaedia', 'open_anatomy'
+    body_region = db.Column(db.String(100), index=True)  # 'thorax', 'head-neck', 'abdomen', 'msk'
+    figure_type = db.Column(db.String(50))  # 'anatomy', 'staging', 'flowchart', 'cross-section'
+    keywords = db.Column(db.JSON)  # ['lung', 'bronchi', 'respiratory']
+    modality = db.Column(db.String(50))  # 'diagram', 'ct', 'mri', 'xray'
+    
+    # For TNM-specific figures (IARC)
+    cancer_type = db.Column(db.String(100), index=True)  # 'lung', 'breast', etc.
+    staging_category = db.Column(db.String(20))  # 'T', 'N', 'M', 'general', 'flowchart'
+    
+    # Image URLs
+    original_url = db.Column(db.String(500))
+    cloudinary_url = db.Column(db.String(500))
+    cloudinary_public_id = db.Column(db.String(300))
+    thumbnail_url = db.Column(db.String(500))
+    
+    # Attribution (IMPORTANT for CC compliance)
+    license = db.Column(db.String(100), default='CC BY 4.0')
+    attribution = db.Column(db.String(300), nullable=False)
+    
+    # Metadata
+    chapter = db.Column(db.Integer)  # For OpenStax chapter reference
+    page_number = db.Column(db.Integer)  # For IARC PDF page reference
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    def __repr__(self):
+        return f'<AnatomyFigure {self.figure_id}: {self.title[:50]}>'
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'figure_id': self.figure_id,
+            'title': self.title,
+            'description': self.description,
+            'source': self.source,
+            'body_region': self.body_region,
+            'figure_type': self.figure_type,
+            'keywords': self.keywords,
+            'cancer_type': self.cancer_type,
+            'staging_category': self.staging_category,
+            'cloudinary_url': self.cloudinary_url,
+            'thumbnail_url': self.thumbnail_url,
+            'attribution': self.attribution,
+            'license': self.license
+        }
+    
+    def get_html(self, size='medium'):
+        """Generate HTML for embedding in discussions."""
+        sizes = {
+            'small': 'max-width: 200px;',
+            'medium': 'max-width: 400px;',
+            'large': 'max-width: 600px;',
+            'full': 'max-width: 100%;'
+        }
+        style = sizes.get(size, sizes['medium'])
+        
+        return f'''
+<figure class="anatomy-figure" style="margin: 1rem 0; text-align: center;">
+    <img src="{self.cloudinary_url}" alt="{self.title}" 
+         style="{style} border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+    <figcaption style="font-size: 0.85em; color: #666; margin-top: 0.5rem; font-style: italic;">
+        {self.title} – {self.attribution}
+    </figcaption>
+</figure>
+'''
+    
+    @classmethod
+    def find_by_keywords(cls, keywords: list, source: str = None, body_region: str = None, limit: int = 5):
+        """Find figures matching keywords."""
+        query = cls.query.filter(cls.is_active == True)
+        
+        if source:
+            query = query.filter(cls.source == source)
+        if body_region:
+            query = query.filter(cls.body_region == body_region)
+        
+        # Score by keyword match (simple approach)
+        all_figures = query.all()
+        scored = []
+        
+        for fig in all_figures:
+            fig_keywords = set(fig.keywords or [])
+            search_keywords = set(k.lower() for k in keywords)
+            overlap = len(fig_keywords & search_keywords)
+            if overlap > 0:
+                scored.append((overlap, fig))
+        
+        # Sort by score descending
+        scored.sort(key=lambda x: x[0], reverse=True)
+        
+        return [fig for score, fig in scored[:limit]]
+    
+    @classmethod
+    def find_for_tnm(cls, cancer_type: str, staging_category: str = None):
+        """Find IARC TNM figures for a specific cancer type."""
+        query = cls.query.filter(
+            cls.is_active == True,
+            cls.source == 'iarc',
+            cls.cancer_type == cancer_type.lower()
+        )
+        
+        if staging_category:
+            query = query.filter(cls.staging_category == staging_category.upper())
+        
+        return query.all()
+    
+    @classmethod
+    def find_for_anatomy(cls, body_region: str, modality: str = None):
+        """Find anatomy figures for a body region."""
+        query = cls.query.filter(
+            cls.is_active == True,
+            cls.source.in_(['openstax', 'open_anatomy', 'radiopaedia']),
+            cls.body_region == body_region.lower()
+        )
+        
+        if modality:
+            query = query.filter(cls.modality == modality.lower())
+        
+        return query.all()
