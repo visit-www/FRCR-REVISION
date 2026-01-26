@@ -15,7 +15,10 @@
     "figure_description": "International Agency for Research on Cancer (IARC) Logo",
     "attribution": "IARC Essential TNM Guide (CC BY-NC-ND 3.0 IGO)",
     "license": "CC BY-NC-ND 3.0 IGO",
-    "key_points": null
+    "key_points": null,
+    "cloudinary_url": "https://res.cloudinary.com/dx7b7chvn/image/upload/v1769446405/frcr_revision/essential_tnm/essential_tnm_IACR_logo.jpg",
+    "cloudinary_public_id": "frcr_revision/essential_tnm/essential_tnm_IACR_logo",
+    "thumbnail_url": "http://res.cloudinary.com/dx7b7chvn/image/upload/c_fit,h_200,w_200/v1/frcr_revision/essential_tnm/essential_tnm_IACR_logo"
   },
   {
     "figure_id": "essential_tnm_breast",
@@ -41,7 +44,10 @@
       "Regional lymph nodes are (all on the same side of the tumour): Intramammary, Ipsilateral axillary, Infraclavicular, Internal mammary, Supraclavicular nodes.",
       "Size of the tumour is a critical aspect, and a tumour that measures 2 cm or less is very limited (Stage I).",
       "If two malignant tumours are present in the same breast, use the largest one to stage."
-    ]
+    ],
+    "cloudinary_url": "https://res.cloudinary.com/dx7b7chvn/image/upload/v1769446408/frcr_revision/essential_tnm/essential_tnm_breast.jpg",
+    "cloudinary_public_id": "frcr_revision/essential_tnm/essential_tnm_breast",
+    "thumbnail_url": "http://res.cloudinary.com/dx7b7chvn/image/upload/c_fit,h_200,w_200/v1/frcr_revision/essential_tnm/essential_tnm_breast"
   },
   {
     "figure_id": "essential_tnm_cervical",
@@ -65,8 +71,11 @@
       "Regional lymph nodes are (pelvic nodes): Paracervical, Parametrial, Hypogastric (internal iliac, obturator), Common iliac, External iliac, Presacral, Lateral sacral nodes.",
       "When looking for information on regional nodes, also look for mention of para-aortic nodes.",
       "Look for tumour extension to the lower third of the vagina, or to the wall of the pelvis, or hydronephrosis due to obstruction of the ureter.",
-      "Most cervical cancers are staged using the International Federation of Gynecology and Obstetrics (FIGO) system, for which the codes for stage (I–IV) are the same as those of the TNM system."
-    ]
+      "Most cervical cancers are staged using the International Federation of Gynecology and Obstetrics (FIGO) system, for which the codes for stage (I\u2013IV) are the same as those of the TNM system."
+    ],
+    "cloudinary_url": "https://res.cloudinary.com/dx7b7chvn/image/upload/v1769446410/frcr_revision/essential_tnm/essential_tnm_cervical.jpg",
+    "cloudinary_public_id": "frcr_revision/essential_tnm/essential_tnm_cervical",
+    "thumbnail_url": "http://res.cloudinary.com/dx7b7chvn/image/upload/c_fit,h_200,w_200/v1/frcr_revision/essential_tnm/essential_tnm_cervical"
   },
   {
     "figure_id": "essential_tnm_oesophageal",
@@ -88,8 +97,11 @@
       "The classification is for squamous cell carcinomas and aims to divide cancers into those that are operable (localized) and those that are not.",
       "Metastasis is most common to the liver, lung, distant lymph nodes, and bone.",
       "Regional lymph nodes are those nodes in the oesophageal drainage area: Coeliac axis nodes, Paraoesophageal nodes in the neck (but not the supraclavicular nodes).",
-      "Look for tumour extension to adjacent organs (pleura, pericardium, azygos vein, diaphragm, peritoneum, aorta, vertebral body, trachea) → the tumour is advanced (T4)."
-    ]
+      "Look for tumour extension to adjacent organs (pleura, pericardium, azygos vein, diaphragm, peritoneum, aorta, vertebral body, trachea) \u2192 the tumour is advanced (T4)."
+    ],
+    "cloudinary_url": "https://res.cloudinary.com/dx7b7chvn/image/upload/v1769446411/frcr_revision/essential_tnm/essential_tnm_oesophageal.png",
+    "cloudinary_public_id": "frcr_revision/essential_tnm/essential_tnm_oesophageal",
+    "thumbnail_url": "http://res.cloudinary.com/dx7b7chvn/image/upload/c_fit,h_200,w_200/v1/frcr_revision/essential_tnm/essential_tnm_oesophageal"
   },
   {
     "figure_id": "essential_tnm_colorectal",
@@ -113,7 +125,10 @@
       "Tumour deposits (satellites) are cancer nodules that are separate from the primary tumour, located in the same area as the regional lymph nodes (pericolic or perirectal tissues). It is assumed that they represent lymph node involvement and are coded as R+.",
       "Look for tumour extension through the wall of the colon or rectum into the subserosa or beyond, rather than tumour size."
     ],
-    "supplementary_table_id": "essential_tnm_table_colorectal"
+    "supplementary_table_id": "essential_tnm_table_colorectal",
+    "cloudinary_url": "https://res.cloudinary.com/dx7b7chvn/image/upload/v1769446412/frcr_revision/essential_tnm/essential_tnm_colorectal.jpg",
+    "cloudinary_public_id": "frcr_revision/essential_tnm/essential_tnm_colorectal",
+    "thumbnail_url": "http://res.cloudinary.com/dx7b7chvn/image/upload/c_fit,h_200,w_200/v1/frcr_revision/essential_tnm/essential_tnm_colorectal"
   },
   {
     "figure_id": "essential_tnm_table_colorectal",
@@ -131,7 +146,10 @@
     "figure_description": "Table showing site-specific regional lymph nodes for each segment of the colon and rectum.",
     "attribution": "IARC Essential TNM Guide (CC BY-NC-ND 3.0 IGO)",
     "license": "CC BY-NC-ND 3.0 IGO",
-    "key_points": null
+    "key_points": null,
+    "cloudinary_url": "https://res.cloudinary.com/dx7b7chvn/image/upload/v1769446413/frcr_revision/essential_tnm/essential_tnm_table_colorectal.jpg",
+    "cloudinary_public_id": "frcr_revision/essential_tnm/essential_tnm_table_colorectal",
+    "thumbnail_url": "http://res.cloudinary.com/dx7b7chvn/image/upload/c_fit,h_200,w_200/v1/frcr_revision/essential_tnm/essential_tnm_table_colorectal"
   },
   {
     "figure_id": "essential_tnm_liver",
@@ -155,7 +173,10 @@
       "Regional lymph nodes are: Hilar, Hepatic (along the proper hepatic artery), Periportal (along the portal vein), Inferior phrenic, Caval nodes.",
       "Look for tumour extension into a major branch of the portal or hepatic vein, direct invasion of adjacent organs other than the gallbladder (including the diaphragm), or perforation of the visceral peritoneum; the tumour is advanced (T4).",
       "If it involves only the liver (or the liver and the gallbladder), look for the number of tumours in the liver; if none measures more than 5 cm, it is limited; otherwise it is advanced (T3)."
-    ]
+    ],
+    "cloudinary_url": "https://res.cloudinary.com/dx7b7chvn/image/upload/v1769446414/frcr_revision/essential_tnm/essential_tnm_liver.jpg",
+    "cloudinary_public_id": "frcr_revision/essential_tnm/essential_tnm_liver",
+    "thumbnail_url": "http://res.cloudinary.com/dx7b7chvn/image/upload/c_fit,h_200,w_200/v1/frcr_revision/essential_tnm/essential_tnm_liver"
   },
   {
     "figure_id": "essential_tnm_ovarian",
@@ -178,8 +199,11 @@
       "Metastases in the abdomen must involve the parenchyma (internal part) of organs (especially the liver) and not just the outer capsule. Spread to extra-abdominal organs and lymph nodes outside the abdominal cavity (including inguinal lymph nodes) is distant metastasis. Spread of the tumour to the peritoneum is local spread.",
       "Regional lymph nodes are: Paracervical, Parametrial, Hypogastric (internal iliac, obturator), Common iliac, External iliac, Presacral, Lateral sacral, Para-aortic nodes.",
       "Look for tumour extension beyond the pelvis (including to the peritoneum) or to the retroperitoneal lymph nodes; the tumour is advanced. If it is still within the pelvis, even with spread to the bowel and/or peritoneum, the tumour is localized.",
-      "Most ovarian cancers are staged using the FIGO system, which does not consider regional lymph node involvement, but the codes for stage (I–IV) are otherwise identical to those of the TNM system."
-    ]
+      "Most ovarian cancers are staged using the FIGO system, which does not consider regional lymph node involvement, but the codes for stage (I\u2013IV) are otherwise identical to those of the TNM system."
+    ],
+    "cloudinary_url": "https://res.cloudinary.com/dx7b7chvn/image/upload/v1769446415/frcr_revision/essential_tnm/essential_tnm_ovarian.jpg",
+    "cloudinary_public_id": "frcr_revision/essential_tnm/essential_tnm_ovarian",
+    "thumbnail_url": "http://res.cloudinary.com/dx7b7chvn/image/upload/c_fit,h_200,w_200/v1/frcr_revision/essential_tnm/essential_tnm_ovarian"
   },
   {
     "figure_id": "essential_tnm_prostate",
@@ -202,7 +226,10 @@
       "Remember that distant nodes beyond the pelvis are M+. These include: Aortic (para-aortic, lumbar), Common iliac, Inguinal (femoral and deep), Supraclavicular, Cervical, Scalene, Retroperitoneal.",
       "Regional nodes are those of the true pelvis, i.e. pelvic nodes below the bifurcation of the common iliac arteries: Obturator, Periprostatic, Perivesical, Pelvic, Iliac, Sacral, Hypogastric.",
       "Look for tumour extension beyond the prostate capsule; if it is confined to the prostate, the tumour is localized (L)."
-    ]
+    ],
+    "cloudinary_url": "https://res.cloudinary.com/dx7b7chvn/image/upload/v1769446416/frcr_revision/essential_tnm/essential_tnm_prostate.jpg",
+    "cloudinary_public_id": "frcr_revision/essential_tnm/essential_tnm_prostate",
+    "thumbnail_url": "http://res.cloudinary.com/dx7b7chvn/image/upload/c_fit,h_200,w_200/v1/frcr_revision/essential_tnm/essential_tnm_prostate"
   },
   {
     "figure_id": "essential_tnm_lymphoma",
@@ -227,6 +254,9 @@
       "Staging of lymphomas may include an initial report of a bone marrow biopsy.",
       "Look for documentation of disseminated (multifocal) involvement of one or more extralymphatic organs (such as bone marrow, brain, liver, lung, and gastrointestinal tract). This is advanced disease (Stage IV).",
       "Look for involvement of lymphatic nodes on both sides of the diaphragm, which may be accompanied by involvement of the spleen. This is advanced disease (Stage III)."
-    ]
+    ],
+    "cloudinary_url": "https://res.cloudinary.com/dx7b7chvn/image/upload/v1769446417/frcr_revision/essential_tnm/essential_tnm_lymphoma.jpg",
+    "cloudinary_public_id": "frcr_revision/essential_tnm/essential_tnm_lymphoma",
+    "thumbnail_url": "http://res.cloudinary.com/dx7b7chvn/image/upload/c_fit,h_200,w_200/v1/frcr_revision/essential_tnm/essential_tnm_lymphoma"
   }
 ]

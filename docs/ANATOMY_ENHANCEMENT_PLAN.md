@@ -1,9 +1,37 @@
 # Anatomy Enhancement Feature - Implementation Plan
 
 > **Feature Branch:** `feature/anatomy-enhancement`  
-> **Status:** Planning Complete  
+> **Status:** Implementation In Progress  
 > **Created:** January 26, 2026  
+> **Last Updated:** January 26, 2026  
 > **Tagged Baseline:** `v1.0-pre-anatomy-enhancement`
+
+---
+
+## 🚀 Current Implementation Status
+
+### Completed
+- [x] Created `AnatomyFigure` model in `models.py`
+- [x] Created `static/essential_tnm_data.json` with key concepts for 8 cancers
+- [x] Created `static/anatomy_resources.json` for student resources
+- [x] Created `scripts/extract_iarc_figures.py` for IARC PDF extraction
+- [x] Created `/essential-tnm-concepts` route and template
+- [x] Added Essential TNM button injection in `edit_case.html` (for 7 cancers)
+- [x] Extracted IARC figures locally to `scripts/iarc_figures/`
+
+### In Progress
+- [ ] Inject Essential TNM Key Concepts section in `ai_tnm.py`
+- [ ] Add Student Anatomy Resources button to `view_case.html`
+- [ ] Run database migration for `AnatomyFigure` model
+- [ ] Upload IARC figures to Cloudinary (requires env vars)
+- [ ] Modify AI prompts for figure placeholder injection
+
+### Data Files Created
+| File | Purpose |
+|------|---------|
+| `static/essential_tnm_data.json` | Key concepts + figure metadata for 8 cancers |
+| `static/anatomy_resources.json` | External anatomy resource links for students |
+| `scripts/iarc_figures/` | Local IARC images (gitignored) |
 
 ---
 
@@ -13,6 +41,7 @@ This feature enhances the FRCR Revision app with two complementary anatomy visua
 
 1. **Student Anatomy Resources Button** - External links to curated anatomy resources
 2. **AI Figure Injection** - Embedded CC-licensed figures in AI-generated discussions
+3. **Essential TNM Key Concepts** - IARC-sourced staging key points for 8 common cancers
 
 ---
 
@@ -213,7 +242,7 @@ Examples:
 ### Phase 1: Student Anatomy Resources Button
 **Priority:** High | **Effort:** Medium
 
-- [ ] Create `static/anatomy_resources.json` from existing doc
+- [x] Create `static/anatomy_resources.json` from existing doc
 - [ ] Add API route `GET /api/case/<id>/anatomy-resources`
 - [ ] Add button to `view_case.html` (student view only)
 - [ ] Create modal component with categorized links
@@ -222,14 +251,23 @@ Examples:
 ### Phase 2: Database & Figure Extraction
 **Priority:** High | **Effort:** High
 
-- [ ] Create `AnatomyFigure` model in `models.py`
+- [x] Create `AnatomyFigure` model in `models.py`
 - [ ] Run database migration
-- [ ] Create IARC PDF extraction script
+- [x] Create IARC PDF extraction script
 - [ ] Extract and catalog OpenStax figures
 - [ ] Upload all figures to Cloudinary
 - [ ] Populate database with metadata
 
-### Phase 3: AI Prompt Modifications
+### Phase 3: AI Integration - Essential TNM Key Concepts
+**Priority:** High | **Effort:** Medium
+
+- [x] Create `static/essential_tnm_data.json` with key concepts
+- [ ] Add function in `ai_tnm.py` to load and inject key concepts
+- [ ] Inject Key Concepts section into TNM intelligence output
+- [ ] Add IARC logo with attribution below Key Concepts
+- [ ] Add figure injection post-processing
+
+### Phase 4: AI Prompt Modifications
 **Priority:** Medium | **Effort:** Low
 
 - [ ] Update `ai_tnm.py` system prompt for figure placeholders

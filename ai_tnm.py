@@ -159,6 +159,182 @@ def is_oncologic_diagnosis(diagnosis: str) -> bool:
 
 
 # ============================================================================
+# ESSENTIAL TNM KEY CONCEPTS (IARC-sourced, No AI)
+# ============================================================================
+
+# Cache for essential TNM data (loaded once)
+_ESSENTIAL_TNM_DATA = None
+
+# Cancer type keywords for matching diagnoses to Essential TNM entries
+ESSENTIAL_TNM_CANCER_KEYWORDS = {
+    "breast": ["breast", "mammary"],
+    "cervical": ["cervical", "cervix", "uterine cervix"],
+    "oesophageal": ["oesophageal", "esophageal", "oesophagus", "esophagus"],
+    "colorectal": ["colorectal", "colon", "rectal", "rectum", "colonic"],
+    "liver": ["liver", "hepatocellular", "hcc", "hepatobiliary", "hepatic"],
+    "ovarian": ["ovarian", "ovary", "fallopian"],
+    "prostate": ["prostate", "prostatic"],
+    "lymphoma": ["lymphoma", "hodgkin", "non-hodgkin"],
+}
+
+
+def _load_essential_tnm_data() -> list:
+    """
+    Load Essential TNM data from static JSON file.
+    
+    Returns cached data if already loaded.
+    """
+    global _ESSENTIAL_TNM_DATA
+    
+    if _ESSENTIAL_TNM_DATA is not None:
+        return _ESSENTIAL_TNM_DATA
+    
+    try:
+        import os
+        json_path = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            'static',
+            'essential_tnm_data.json'
+        )
+        
+        with open(json_path, 'r') as f:
+            _ESSENTIAL_TNM_DATA = json.load(f)
+        
+        return _ESSENTIAL_TNM_DATA
+    except Exception as e:
+        print(f"[AI_TNM] Error loading essential TNM data: {e}")
+        return []
+
+
+def get_essential_tnm_for_cancer(diagnosis: str) -> Optional[Dict]:
+    """
+    Get Essential TNM key concepts for a cancer diagnosis.
+    
+    Matches diagnosis text against known cancer types from IARC Essential TNM Guide.
+    
+    Args:
+        diagnosis: Cancer diagnosis text
+        
+    Returns:
+        Dict with:
+            - cancer_type: Matched cancer type
+            - title: Display title
+            - key_points: List of key staging points
+            - figure_id: ID for the flowchart figure
+            - figure_description: Caption for the figure
+            - cloudinary_url: Direct URL to the figure on Cloudinary
+            - attribution: IARC attribution string
+            - logo_figure_id: ID for IARC logo
+            - logo_cloudinary_url: Direct URL to IARC logo on Cloudinary
+        Or None if no match
+    """
+    if not diagnosis:
+        return None
+    
+    diagnosis_lower = diagnosis.lower()
+    data = _load_essential_tnm_data()
+    
+    if not data:
+        return None
+    
+    # Find IARC logo (index 0)
+    logo_entry = None
+    for entry in data:
+        if entry.get('figure_id') == 'essential_tnm_IACR_logo':
+            logo_entry = entry
+            break
+    
+    # Match diagnosis to cancer type
+    for cancer_type, keywords in ESSENTIAL_TNM_CANCER_KEYWORDS.items():
+        if any(keyword in diagnosis_lower for keyword in keywords):
+            # Find matching entry in data
+            for entry in data:
+                if entry.get('cancer_type') == cancer_type and entry.get('key_points'):
+                    return {
+                        'cancer_type': cancer_type,
+                        'title': entry.get('title', f'{cancer_type.title()} Cancer Essential TNM'),
+                        'key_points': entry.get('key_points', []),
+                        'figure_id': entry.get('figure_id'),
+                        'figure_description': entry.get('figure_description', ''),
+                        'cloudinary_url': entry.get('cloudinary_url'),
+                        'attribution': entry.get('attribution', 'IARC Essential TNM Guide (CC BY-NC-ND 3.0 IGO)'),
+                        'logo_figure_id': logo_entry.get('figure_id') if logo_entry else None,
+                        'logo_cloudinary_url': logo_entry.get('cloudinary_url') if logo_entry else None,
+                        'supplementary_table_id': entry.get('supplementary_table_id'),
+                    }
+    
+    return None
+
+
+def format_essential_tnm_markdown(essential_data: Dict) -> str:
+    """
+    Format Essential TNM key concepts as Markdown for injection into AI output.
+    
+    Uses Cloudinary URLs directly from essential_data.
+    
+    Args:
+        essential_data: Dict from get_essential_tnm_for_cancer()
+        
+    Returns:
+        Formatted Markdown string with key concepts, figure, and attribution
+    """
+    if not essential_data:
+        return ""
+    
+    title = essential_data.get('title', 'Essential TNM Key Concepts')
+    key_points = essential_data.get('key_points', [])
+    figure_description = essential_data.get('figure_description', '')
+    attribution = essential_data.get('attribution', 'IARC Essential TNM Guide')
+    cloudinary_url = essential_data.get('cloudinary_url')
+    logo_cloudinary_url = essential_data.get('logo_cloudinary_url')
+    
+    # Build Markdown
+    lines = [
+        "",
+        "---",
+        "",
+        f"## 📋 {title}",
+        "",
+        "### Key Points for Staging",
+        "",
+    ]
+    
+    # Add numbered key points
+    for i, point in enumerate(key_points, 1):
+        lines.append(f"{i}. {point}")
+    
+    lines.append("")
+    
+    # Add figure with Cloudinary URL
+    if cloudinary_url:
+        lines.extend([
+            f'<div style="margin: 1.5rem 0; text-align: center;">',
+            f'    <img src="{cloudinary_url}" alt="{title}" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">',
+            f'    <p style="font-size: 0.85em; color: #666; margin-top: 0.5rem; font-style: italic;">{figure_description}</p>',
+            f'</div>',
+            "",
+        ])
+    
+    # Add IARC attribution with logo
+    lines.extend([
+        "---",
+        "",
+        f'<div style="display: flex; align-items: center; gap: 12px; margin-top: 1rem;">',
+    ])
+    
+    if logo_cloudinary_url:
+        lines.append(f'    <img src="{logo_cloudinary_url}" alt="IARC Logo" style="height: 40px; width: auto;">')
+    
+    lines.extend([
+        f'    <span style="font-size: 0.85em; color: #666; font-style: italic;">Source: {attribution}</span>',
+        f'</div>',
+        "",
+    ])
+    
+    return "\n".join(lines)
+
+
+# ============================================================================
 # AJCC DATABASE MAPPING (Deterministic, No AI)
 # ============================================================================
 
@@ -1318,6 +1494,13 @@ def generate_tnm_intelligence(
     images = staging_data.get("images", [])
     markdown_content = _inject_figures_into_markdown(markdown_content, images)
     
+    # Get Essential TNM Key Concepts (IARC-sourced) for applicable cancers
+    essential_tnm_data = get_essential_tnm_for_cancer(diagnosis)
+    if essential_tnm_data:
+        # Append Essential TNM key concepts to the AI-generated content
+        essential_markdown = format_essential_tnm_markdown(essential_tnm_data)
+        markdown_content = markdown_content + essential_markdown
+    
     # Build internal link (single link for both views)
     section_slug = ajcc_match.get("section_slug", "")
     disease_slug = ajcc_match.get("disease_slug", "")
@@ -1353,6 +1536,8 @@ def generate_tnm_intelligence(
         "source_case_id": from_case_id,
         "disease_name": ajcc_match.get("disease_name", "Unknown"),
         "tnm_version": tnm_version,
+        # Essential TNM key concepts (IARC-sourced, for applicable cancers)
+        "essential_tnm": essential_tnm_data,
     }
     
     return result

@@ -276,6 +276,11 @@
                                 </button>
                             </li>
                             <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="anatomyTab" data-bs-toggle="tab" data-bs-target="#anatomyPane" type="button" role="tab" aria-controls="anatomyPane" aria-selected="false">
+                                    <i class="fas fa-bone me-1" style="color: #5E899E;"></i>Anatomy
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
                                 <button class="nav-link" id="pubmedTab" data-bs-toggle="tab" data-bs-target="#pubmedPane" type="button" role="tab" aria-controls="pubmedPane" aria-selected="false">
                                     <i class="fas fa-book-medical me-1" style="color: #28a745;"></i>PubMed
                                 </button>
@@ -538,6 +543,28 @@
                                         <button class="btn btn-sm btn-link text-muted" onclick="disconnectAnki()">
                                             <i class="fas fa-unlink me-1"></i>Disconnect Anki
                                         </button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Anatomy Resources Tab -->
+                            <div class="tab-pane fade" id="anatomyPane" role="tabpanel" aria-labelledby="anatomyTab">
+                                <div class="p-3">
+                                    <h6 class="mb-3"><i class="fas fa-bone me-2" style="color: #5E899E;"></i>Anatomy Resources</h6>
+                                    <p class="text-muted small mb-3">Curated external anatomy resources relevant to this case's body region.</p>
+                                    
+                                    <!-- Resources will be loaded based on case body part/module -->
+                                    <div id="anatomyResourcesContainer">
+                                        <div class="text-center py-3">
+                                            <i class="fas fa-spinner fa-spin me-2"></i>Loading anatomy resources...
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mt-3 p-2 rounded" style="background: rgba(94, 137, 158, 0.1);">
+                                        <small class="text-muted">
+                                            <i class="fas fa-info-circle me-1" style="color: #5E899E;"></i>
+                                            Resources are matched to the case's body part and module. Links open in new tabs.
+                                        </small>
                                     </div>
                                 </div>
                             </div>
@@ -7512,6 +7539,119 @@
             if (modal) modal.hide();
         }
     }
+    
+    // ==================== ANATOMY RESOURCES ====================
+    
+    let anatomyResourcesLoaded = false;
+    
+    async function loadAnatomyResources() {
+        if (anatomyResourcesLoaded) return;
+        
+        const container = document.getElementById('anatomyResourcesContainer');
+        if (!container) return;
+        
+        try {
+            // Load anatomy_resources.json
+            const response = await fetch('/static/anatomy_resources.json');
+            if (!response.ok) throw new Error('Failed to load anatomy resources');
+            
+            const data = await response.json();
+            
+            // Get case body part and module for filtering
+            const caseBodyPart = '{{ case.body_part.value if case.body_part else "" }}';
+            const caseModule = '{{ case.module.value if case.module else "" }}';
+            const caseDiagnosisLower = (caseDiagnosis || '').toLowerCase();
+            
+            // Build resources HTML
+            let html = '';
+            
+            // Filter and display resources by body_region
+            if (data.resources && Array.isArray(data.resources)) {
+                const matchedCategories = [];
+                
+                for (const category of data.resources) {
+                    const categoryName = category.category || category.body_region || 'General';
+                    const links = category.links || [];
+                    
+                    if (links.length === 0) continue;
+                    
+                    // Check if category matches case
+                    const categoryLower = categoryName.toLowerCase();
+                    const isMatch = 
+                        caseBodyPart.toLowerCase().includes(categoryLower) ||
+                        categoryLower.includes(caseBodyPart.toLowerCase()) ||
+                        caseDiagnosisLower.includes(categoryLower) ||
+                        caseModule.toLowerCase().includes(categoryLower);
+                    
+                    if (isMatch) {
+                        matchedCategories.unshift({ categoryName, links, isMatch: true });
+                    } else {
+                        matchedCategories.push({ categoryName, links, isMatch: false });
+                    }
+                }
+                
+                // Display matched categories first
+                for (const { categoryName, links, isMatch } of matchedCategories) {
+                    const badgeHtml = isMatch 
+                        ? '<span class="badge bg-success ms-2" style="font-size: 0.7em;">Relevant</span>' 
+                        : '';
+                    
+                    html += `
+                        <div class="anatomy-category mb-3 ${isMatch ? 'matched' : ''}">
+                            <h6 class="mb-2" style="color: #5E899E;">
+                                <i class="fas fa-folder-open me-1"></i>${categoryName}${badgeHtml}
+                            </h6>
+                            <div class="ps-3">
+                    `;
+                    
+                    for (const link of links) {
+                        const title = link.title || link.name || 'Resource';
+                        const url = link.url || link.link || '#';
+                        const description = link.description || '';
+                        
+                        html += `
+                            <div class="anatomy-link mb-2 p-2 rounded" style="background: #f8f9fa; border-left: 2px solid #5E899E;">
+                                <a href="${url}" target="_blank" rel="noopener" style="color: #5E899E; font-weight: 500; text-decoration: none;">
+                                    <i class="fas fa-external-link-alt me-1" style="font-size: 0.8em;"></i>${title}
+                                </a>
+                                ${description ? `<br><small class="text-muted">${description}</small>` : ''}
+                            </div>
+                        `;
+                    }
+                    
+                    html += '</div></div>';
+                }
+            }
+            
+            if (!html) {
+                html = `
+                    <div class="text-center py-3 text-muted">
+                        <i class="fas fa-info-circle me-2"></i>No specific anatomy resources found for this case's body region.
+                        <br><small>Try the general anatomy resources below.</small>
+                    </div>
+                `;
+            }
+            
+            container.innerHTML = html;
+            anatomyResourcesLoaded = true;
+            
+        } catch (error) {
+            console.error('[ANATOMY] Error loading resources:', error);
+            container.innerHTML = `
+                <div class="text-center py-3 text-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>Failed to load anatomy resources.
+                </div>
+            `;
+        }
+    }
+    
+    // Load anatomy resources when tab is shown
+    document.addEventListener('DOMContentLoaded', function() {
+        const anatomyTab = document.getElementById('anatomyTab');
+        if (anatomyTab) {
+            anatomyTab.addEventListener('shown.bs.tab', loadAnatomyResources);
+        }
+    });
     
     // ==================== PUBMED ====================
     
