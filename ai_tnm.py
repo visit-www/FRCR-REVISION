@@ -931,10 +931,12 @@ FORMAT RULES - MUST FOLLOW:
 
 Preferred sources to suggest:
 • Radiographics, AJR, Radiology (RSNA journals)
+• NICE guidelines
 • Radiopaedia, Radiology Assistant
 • European Radiology, British Journal of Radiology
 • Indian Journal of Radiology and Imaging
 • Society guidelines (ACR, ESUR, NCCN)
+
 
 ═══════════════════════════════════════════════════════════════════
 FORMAT RULES
