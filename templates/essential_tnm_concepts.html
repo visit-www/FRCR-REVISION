@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Essential TNM Concepts for Registrars | FRCR Revision</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --brand-orange: #e96304;
+            --brand-green: #7FB685;
+            --brand-teal: #5E899E;
+            --brand-gold: #F2CC8F;
+            --brand-cream: #FFF8E7;
+        }
+        
+        * {
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #FFF8E7 0%, #FFFCF3 100%);
+            color: #2c3e50;
+            line-height: 1.7;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .header-banner {
+            background: linear-gradient(135deg, var(--brand-teal) 0%, #4A6F7F 100%);
+            color: white;
+            padding: 1.5rem 2rem;
+            margin-bottom: 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        
+        .header-banner h1 {
+            font-size: 1.5rem;
+            margin: 0;
+            font-weight: 600;
+        }
+        
+        .header-banner .subtitle {
+            font-size: 0.9rem;
+            opacity: 0.9;
+            margin-top: 0.25rem;
+        }
+        
+        .content-wrapper {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 0 1.5rem 3rem;
+        }
+        
+        .section-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem 2rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            border-left: 5px solid var(--brand-teal);
+        }
+        
+        .section-card.highlight {
+            border-left-color: var(--brand-orange);
+            background: linear-gradient(135deg, #fff8f0 0%, #fffbf5 100%);
+        }
+        
+        .section-card.important {
+            border-left-color: var(--brand-green);
+        }
+        
+        .section-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--brand-teal);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .section-title i {
+            color: var(--brand-orange);
+        }
+        
+        .code-box {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border: 2px solid var(--brand-teal);
+            border-radius: 8px;
+            padding: 1rem 1.25rem;
+            margin: 1rem 0;
+            font-family: 'SFMono-Regular', Consolas, monospace;
+        }
+        
+        .code-box .code {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--brand-orange);
+        }
+        
+        .code-box .meaning {
+            color: #495057;
+            margin-left: 0.5rem;
+        }
+        
+        .note-callout {
+            background: linear-gradient(135deg, rgba(242, 204, 143, 0.3) 0%, rgba(242, 204, 143, 0.15) 100%);
+            border-radius: 8px;
+            padding: 1rem 1.25rem;
+            margin: 1rem 0;
+            border-left: 4px solid var(--brand-gold);
+        }
+        
+        .note-callout-title {
+            font-weight: 600;
+            color: #856404;
+            margin-bottom: 0.5rem;
+        }
+        
+        .rule-box {
+            background: linear-gradient(135deg, #e8f5e9 0%, #f1f8e9 100%);
+            border: 2px dashed var(--brand-green);
+            border-radius: 8px;
+            padding: 1rem 1.25rem;
+            margin: 1rem 0;
+        }
+        
+        .rule-title {
+            font-weight: 600;
+            color: #2e7d32;
+            margin-bottom: 0.5rem;
+        }
+        
+        ul.styled-list {
+            padding-left: 1.5rem;
+            margin: 0.75rem 0;
+        }
+        
+        ul.styled-list li {
+            margin-bottom: 0.5rem;
+            position: relative;
+        }
+        
+        ul.styled-list li::marker {
+            color: var(--brand-orange);
+        }
+        
+        .stage-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+        
+        .stage-item {
+            background: white;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            padding: 1rem;
+            text-align: center;
+            transition: all 0.2s ease;
+        }
+        
+        .stage-item:hover {
+            border-color: var(--brand-teal);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        
+        .stage-item .stage-number {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--brand-teal);
+        }
+        
+        .stage-item .stage-desc {
+            font-size: 0.9rem;
+            color: #666;
+            margin-top: 0.25rem;
+        }
+        
+        .toc {
+            background: white;
+            border-radius: 12px;
+            padding: 1.25rem 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        
+        .toc-title {
+            font-weight: 600;
+            color: var(--brand-teal);
+            margin-bottom: 0.75rem;
+            font-size: 1rem;
+        }
+        
+        .toc-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem 1rem;
+            padding: 0;
+            margin: 0;
+            list-style: none;
+        }
+        
+        .toc-list a {
+            color: var(--brand-orange);
+            text-decoration: none;
+            font-size: 0.9rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            transition: all 0.2s;
+        }
+        
+        .toc-list a:hover {
+            background: rgba(233, 99, 4, 0.1);
+        }
+        
+        .footer-credit {
+            text-align: center;
+            padding: 1.5rem;
+            color: #6c757d;
+            font-size: 0.85rem;
+            border-top: 1px solid #dee2e6;
+            margin-top: 2rem;
+        }
+        
+        .footer-credit a {
+            color: var(--brand-teal);
+        }
+        
+        @media (max-width: 768px) {
+            .header-banner {
+                padding: 1rem 1.25rem;
+            }
+            
+            .header-banner h1 {
+                font-size: 1.25rem;
+            }
+            
+            .content-wrapper {
+                padding: 0 1rem 2rem;
+            }
+            
+            .section-card {
+                padding: 1.25rem 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header-banner">
+        <h1><i class="fas fa-book-medical me-2"></i>Essential TNM Concepts for Registrars</h1>
+        <div class="subtitle">IARC Essential TNM Classification Guide</div>
+    </div>
+    
+    <div class="content-wrapper">
+        <!-- Table of Contents -->
+        <div class="toc">
+            <div class="toc-title"><i class="fas fa-list me-2"></i>Quick Navigation</div>
+            <ul class="toc-list">
+                <li><a href="#overview"><i class="fas fa-info-circle me-1"></i>Overview</a></li>
+                <li><a href="#metastasis"><i class="fas fa-virus me-1"></i>M – Metastasis</a></li>
+                <li><a href="#nodes"><i class="fas fa-circle-nodes me-1"></i>N – Regional Nodes</a></li>
+                <li><a href="#tumour"><i class="fas fa-disease me-1"></i>T – Tumour</a></li>
+                <li><a href="#lower-code"><i class="fas fa-arrow-down me-1"></i>Lower Code Rule</a></li>
+                <li><a href="#staging"><i class="fas fa-layer-group me-1"></i>Stage Groups</a></li>
+            </ul>
+        </div>
+        
+        <!-- Overview Section -->
+        <div class="section-card highlight" id="overview">
+            <h2 class="section-title"><i class="fas fa-info-circle"></i>How and When to Use Essential TNM</h2>
+            <p>If T, N, and/or M have been explicitly recorded by the treating clinician, these should be abstracted by the registrar. However, if one or more of these components are based on clinical evaluation (cTNM) and if surgical/pathological information has become available at a later date, the registrar may record the appropriate Essential TNM code if it differs from that in the patient's record.</p>
+            
+            <div class="note-callout">
+                <div class="note-callout-title"><i class="fas fa-lightbulb me-2"></i>Key Concept</div>
+                <p class="mb-0">Essential TNM is composed of <strong>three key components</strong> that together summarize the extent of cancer in the patient at the time of diagnosis:</p>
+            </div>
+            
+            <ul class="styled-list">
+                <li><strong>M</strong> – Presence or absence of distant metastasis</li>
+                <li><strong>N</strong> – Presence or absence of regional lymph node metastasis or involvement</li>
+                <li><strong>T</strong> – Extent of invasion and/or size of the tumour</li>
+            </ul>
+            
+            <p>The essential TNM derivation is facilitated through the use of <strong>flow charts</strong> that include relevant questions and diagrams to help identify the extent of disease in different cancer sites. These flow charts correspond to the <em>eighth edition</em> of the Union for International Cancer Control (UICC) TNM classification (Brierley et al., 2017).</p>
+        </div>
+        
+        <!-- M Component -->
+        <div class="section-card" id="metastasis">
+            <h2 class="section-title"><i class="fas fa-virus"></i>Metastasis (M)</h2>
+            
+            <div class="code-box">
+                <span class="code">M+</span>
+                <span class="meaning">Presence of distant metastasis, clinically or pathologically</span>
+            </div>
+            
+            <div class="code-box">
+                <span class="code">M−</span>
+                <span class="meaning">No distant metastasis present</span>
+            </div>
+            
+            <div class="note-callout">
+                <div class="note-callout-title"><i class="fas fa-exclamation-triangle me-2"></i>Notes on M Code</div>
+                <ul class="styled-list mb-0">
+                    <li>For coding M, <strong>clinical signs and findings are enough</strong> to justify metastasis (M+) in the absence of pathological confirmation of metastatic deposits.</li>
+                    <li><strong>Do not code</strong> metastasis that is known to have developed after the diagnosis was established.</li>
+                    <li>If there is <strong>no mention</strong> of distant metastasis, code as <strong>M−</strong>.</li>
+                    <li>If distant metastasis can be established, <strong>there is no need</strong> to look further in the record for regional node involvement or tumour size or extension.</li>
+                </ul>
+            </div>
+        </div>
+        
+        <!-- N Component -->
+        <div class="section-card" id="nodes">
+            <h2 class="section-title"><i class="fas fa-circle-nodes"></i>Regional Lymph Node Metastasis (N)</h2>
+            
+            <div class="code-box">
+                <span class="code">R+</span>
+                <span class="meaning">Presence of regional node metastasis or involvement, clinically or pathologically</span>
+            </div>
+            
+            <div class="code-box" style="margin-left: 2rem;">
+                <span class="code">R2</span>
+                <span class="meaning">Regional node metastasis is advanced</span>
+            </div>
+            
+            <div class="code-box" style="margin-left: 2rem;">
+                <span class="code">R1</span>
+                <span class="meaning">Regional node metastasis is limited</span>
+            </div>
+            
+            <div class="code-box">
+                <span class="code">R−</span>
+                <span class="meaning">No mention of regional node metastasis</span>
+            </div>
+            
+            <div class="note-callout">
+                <div class="note-callout-title"><i class="fas fa-stethoscope me-2"></i>Notes on Regional Nodes</div>
+                <ul class="styled-list mb-0">
+                    <li>Involvement of lymph nodes implies that the tumour has spread via the lymphatic system and cancer cells are found in the lymph nodes that drain the specific organ.</li>
+                    <li>An <strong>"enlarged" or "palpable" node does not constitute involvement</strong> on the basis of those words alone – pathological confirmation is usually required.</li>
+                    <li>However, N can be coded from the clinical record, typically from <strong>imaging or during surgical observation</strong>, in the absence of pathological confirmation.</li>
+                    <li>Code as <strong>R+</strong> in the presence of documented regional lymph node involvement and as <strong>R−</strong> otherwise.</li>
+                    <li>If more detailed information is available and it is relevant for a given cancer site, R+ can be further classified as <strong>R2</strong> (advanced) or <strong>R1</strong> (limited).</li>
+                    <li>If lymph node involvement (R+) has been established but no further information is available about the number and location of nodes, <strong>R+ is assumed</strong>. The case will be allotted to the lower stage category (Rule 4).</li>
+                </ul>
+            </div>
+        </div>
+        
+        <!-- T Component -->
+        <div class="section-card" id="tumour">
+            <h2 class="section-title"><i class="fas fa-disease"></i>Extent of Invasion / Tumour Size (T)</h2>
+            
+            <div class="code-box">
+                <span class="code">A</span>
+                <span class="meaning">Extent of invasion and/or tumour size is <strong>advanced</strong></span>
+            </div>
+            
+            <div class="code-box" style="margin-left: 2rem;">
+                <span class="code">A2</span>
+                <span class="meaning">Extent of invasion and/or tumour size is very advanced</span>
+            </div>
+            
+            <div class="code-box" style="margin-left: 2rem;">
+                <span class="code">A1</span>
+                <span class="meaning">Extent of invasion and/or tumour size is advanced</span>
+            </div>
+            
+            <div class="code-box">
+                <span class="code">L</span>
+                <span class="meaning">Extent of invasion and/or tumour size is <strong>limited</strong></span>
+            </div>
+            
+            <div class="code-box" style="margin-left: 2rem;">
+                <span class="code">L2</span>
+                <span class="meaning">Extent of invasion and/or tumour size is limited</span>
+            </div>
+            
+            <div class="code-box" style="margin-left: 2rem;">
+                <span class="code">L1</span>
+                <span class="meaning">Extent of invasion and/or tumour size is very limited</span>
+            </div>
+            
+            <div class="code-box">
+                <span class="code">X</span>
+                <span class="meaning">Extent of invasion and/or tumour size <strong>cannot be assessed</strong></span>
+            </div>
+            
+            <div class="note-callout">
+                <div class="note-callout-title"><i class="fas fa-microscope me-2"></i>Notes on T Codes</div>
+                <ul class="styled-list mb-0">
+                    <li>T is based on the most specific data available to confirm the extent of invasion within or through the involved organ and/or the size of the primary tumour (depending on the cancer site).</li>
+                    <li>T is generally coded from the <strong>pathology report</strong> or, in the absence of pathological confirmation, from the clinical record (endoscopy, imaging, palpation, etc.).</li>
+                    <li><strong>Hierarchy of evidence:</strong> Pathological examination of surgical specimens takes precedence over imaging, and imaging takes precedence over cytology or biopsy.</li>
+                </ul>
+            </div>
+        </div>
+        
+        <!-- Lower Code Rule -->
+        <div class="section-card important" id="lower-code">
+            <h2 class="section-title"><i class="fas fa-arrow-down"></i>The Lower Code Rule (Rule 4 of the TNM System)</h2>
+            
+            <div class="rule-box">
+                <div class="rule-title"><i class="fas fa-gavel me-2"></i>When Information is Missing</div>
+                <p class="mb-0">If appropriate information about a specific code (T, N or M) is not available, follow the rule of lower code:</p>
+            </div>
+            
+            <ul class="styled-list">
+                <li>For <strong>M and N</strong>: if there is no information on their presence, assume that they are absent (<strong>M−, R−</strong>).</li>
+                <li>If regional nodes are mentioned but it is not possible to distinguish between advanced and limited metastasis, code as <strong>R+</strong>.</li>
+                <li>For <strong>T</strong>: if it is not possible to distinguish degrees of tumour extension (2 vs 1), code T as simply <strong>A</strong> or <strong>L</strong> (depending on the cancer site).</li>
+                <li>For T, <strong>X</strong> should be recorded if there is known to be a primary tumour but there is no description of its size or extent of invasion.</li>
+                <li>Refer to the specific cancer sites for assessing advanced or limited status.</li>
+            </ul>
+        </div>
+        
+        <!-- Stage Groups -->
+        <div class="section-card" id="staging">
+            <h2 class="section-title"><i class="fas fa-layer-group"></i>Assigning Stage Groups – General Rules</h2>
+            
+            <p>Once the Essential TNM components have been coded, the components can be combined into <strong>stage groups ranging from I to IV</strong> with increasing severity of disease.</p>
+            
+            <div class="stage-grid">
+                <div class="stage-item">
+                    <div class="stage-number">Stage IV</div>
+                    <div class="stage-desc">Distant metastasis (M+)</div>
+                </div>
+                <div class="stage-item">
+                    <div class="stage-number">Stage III</div>
+                    <div class="stage-desc">Increasing local & regional node involvement</div>
+                </div>
+                <div class="stage-item">
+                    <div class="stage-number">Stage II</div>
+                    <div class="stage-desc">Intermediate local/regional spread</div>
+                </div>
+                <div class="stage-item">
+                    <div class="stage-number">Stage I</div>
+                    <div class="stage-desc">Localized within organ of origin</div>
+                </div>
+            </div>
+            
+            <div class="note-callout">
+                <div class="note-callout-title"><i class="fas fa-info-circle me-2"></i>Key Points</div>
+                <ul class="styled-list mb-0">
+                    <li>The rules for combining the Essential TNM components into stage groups (I–IV) are provided on a <strong>site-specific basis</strong>.</li>
+                    <li>The stage groups were designed to group patients with cancer with <strong>similar prognosis</strong>.</li>
+                </ul>
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <div class="footer-credit">
+            <p class="mb-1">Content derived from <strong>IARC Essential TNM Guide</strong></p>
+            <p class="mb-0">
+                <a href="https://publications.iarc.who.int/" target="_blank" rel="noopener">
+                    <i class="fas fa-external-link-alt me-1"></i>IARC Publications
+                </a>
+                <span class="mx-2">|</span>
+                <a href="https://www.uicc.org/what-we-do/sharing-knowledge/tnm" target="_blank" rel="noopener">
+                    <i class="fas fa-external-link-alt me-1"></i>UICC TNM Classification
+                </a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>

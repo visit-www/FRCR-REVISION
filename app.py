@@ -585,6 +585,12 @@ def about():
     return render_template('about.html')
 
 
+@app.route('/essential-tnm-concepts')
+def essential_tnm_concepts():
+    """Essential TNM Concepts for Registrars - IARC guide embedded in iframe"""
+    return render_template('essential_tnm_concepts.html')
+
+
 @app.route('/manifest.json')
 def manifest():
     """Serve manifest.json with correct MIME type for PWA installation."""
