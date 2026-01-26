@@ -2,6 +2,104 @@
 
 {% block title %}TNM Staging - {{ disease.disease_name }} | FRCR Revision{% endblock %}
 
+{% block extra_css %}
+<style>
+/* Print Styles */
+@media print {
+    /* Hide navigation, buttons, and non-essential elements */
+    nav, .navbar, .breadcrumb, .btn, button, 
+    .toast-container, .sticky-top, 
+    .edit-mode, .stage-groups-edit-mode, .expl-notes-edit-mode,
+    #editIntelligenceBtn, #saveIntelligenceBtn, #cancelEditBtn,
+    #editStageGroupsBtn, #saveStageGroupsBtn, #cancelStageGroupsBtn,
+    #editExplNotesBtn, #saveExplNotesBtn, #cancelExplNotesBtn,
+    .form-check-input, .form-select {
+        display: none !important;
+    }
+    
+    /* Full width for content */
+    .container-fluid, .container {
+        max-width: 100% !important;
+        padding: 0 !important;
+    }
+    
+    .col-lg-8, .col-lg-4 {
+        width: 100% !important;
+        max-width: 100% !important;
+        flex: 0 0 100% !important;
+    }
+    
+    /* Remove shadows and borders for cleaner print */
+    .card {
+        box-shadow: none !important;
+        border: 1px solid #ddd !important;
+        page-break-inside: avoid;
+        margin-bottom: 1rem !important;
+    }
+    
+    .card-header {
+        background: #f8f9fa !important;
+        color: #333 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+    
+    /* Tables */
+    table {
+        font-size: 10pt !important;
+        border-collapse: collapse !important;
+    }
+    
+    th, td {
+        padding: 4px 8px !important;
+        border: 1px solid #ccc !important;
+    }
+    
+    /* Ensure content is visible */
+    .view-mode, .stage-groups-view-mode, .expl-notes-view-mode {
+        display: block !important;
+    }
+    
+    /* Hide sidebar calculator in print (show imaging checklist as text) */
+    #calc-t-stage, #calc-n-stage, #calc-m-stage, #stage-result {
+        display: none !important;
+    }
+    
+    /* Show print attribution footer */
+    .print-attribution {
+        display: block !important;
+        margin-top: 2rem;
+        padding-top: 1rem;
+        border-top: 1px solid #ccc;
+        font-size: 9pt;
+        color: #666;
+    }
+    
+    /* Header for print */
+    .print-header {
+        display: block !important;
+        margin-bottom: 1rem;
+    }
+    
+    /* Page breaks */
+    h5, h6 {
+        page-break-after: avoid;
+    }
+    
+    .card-body {
+        page-break-inside: avoid;
+    }
+}
+
+/* Hide print-only elements on screen */
+@media screen {
+    .print-attribution, .print-header {
+        display: none !important;
+    }
+}
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid py-4">
     <!-- Header with Back to Case button -->
@@ -60,7 +158,7 @@
             {% elif is_curated %}
             <!-- Small curated badge -->
             <div style="background: #d1e7dd; color: #0f5132; padding: 8px 12px; border-radius: 4px; margin-bottom: 1rem; font-size: 0.85em;">
-                <i class="fas fa-check-circle me-1"></i> Verified staging data (AJCC 8th Edition)
+                <i class="fas fa-check-circle me-1"></i> Verified staging data ({{ tnm_version }})
             </div>
             {% endif %}
             
@@ -101,19 +199,24 @@
                             </div>
                             <div id="t-stage-section">
                                 {% if t_definitions %}
-                                <table class="table table-sm table-bordered">
-                                    <thead class="table-light">
-                                        <tr><th width="80">Stage</th><th>Definition</th></tr>
-                                    </thead>
-                                    <tbody>
-                                        {% for t in t_definitions %}
-                                        <tr>
-                                            <td><strong>{{ t.category }}</strong></td>
-                                            <td>{{ t.definition }}</td>
-                                        </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
+                                    {% for subsite in t_definitions %}
+                                        {% if subsite.subsite and subsite.subsite != 'Default' %}
+                                        <p class="text-muted small mb-1"><em>{{ subsite.subsite }}</em></p>
+                                        {% endif %}
+                                        <table class="table table-sm table-bordered mb-3">
+                                            <thead class="table-light">
+                                                <tr><th width="80">Stage</th><th>Criteria</th></tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for cat in subsite.categories %}
+                                                <tr>
+                                                    <td><strong>{{ cat.category }}</strong></td>
+                                                    <td>{{ cat.criteria }}</td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    {% endfor %}
                                 {% else %}
                                 <p class="text-muted">T-stage definitions not available</p>
                                 {% endif %}
@@ -133,11 +236,14 @@
                                     {% if n_definitions.clinical %}
                                     <p class="small text-muted mb-1">Clinical (cN):</p>
                                     <table class="table table-sm table-bordered mb-3">
+                                        <thead class="table-light">
+                                            <tr><th width="80">Stage</th><th>Criteria</th></tr>
+                                        </thead>
                                         <tbody>
                                             {% for n in n_definitions.clinical %}
                                             <tr>
-                                                <td width="80"><strong>{{ n.category }}</strong></td>
-                                                <td>{{ n.definition }}</td>
+                                                <td><strong>{{ n.category }}</strong></td>
+                                                <td>{{ n.criteria }}</td>
                                             </tr>
                                             {% endfor %}
                                         </tbody>
@@ -146,11 +252,14 @@
                                     {% if n_definitions.pathological %}
                                     <p class="small text-muted mb-1">Pathological (pN):</p>
                                     <table class="table table-sm table-bordered">
+                                        <thead class="table-light">
+                                            <tr><th width="80">Stage</th><th>Criteria</th></tr>
+                                        </thead>
                                         <tbody>
                                             {% for n in n_definitions.pathological %}
                                             <tr>
-                                                <td width="80"><strong>{{ n.category }}</strong></td>
-                                                <td>{{ n.definition }}</td>
+                                                <td><strong>{{ n.category }}</strong></td>
+                                                <td>{{ n.criteria }}</td>
                                             </tr>
                                             {% endfor %}
                                         </tbody>
@@ -173,11 +282,14 @@
                             <div id="m-stage-section">
                                 {% if m_definitions %}
                                 <table class="table table-sm table-bordered">
+                                    <thead class="table-light">
+                                        <tr><th width="80">Stage</th><th>Criteria</th></tr>
+                                    </thead>
                                     <tbody>
                                         {% for m in m_definitions %}
                                         <tr>
-                                            <td width="80"><strong>{{ m.category }}</strong></td>
-                                            <td>{{ m.definition }}</td>
+                                            <td><strong>{{ m.category }}</strong></td>
+                                            <td>{{ m.criteria }}</td>
                                         </tr>
                                         {% endfor %}
                                     </tbody>
@@ -203,41 +315,85 @@
 
             <!-- Stage Groupings -->
             {% if stage_groups %}
-            <div class="card mb-4 shadow-sm">
+            <div class="card mb-4 shadow-sm" id="stage-groups-card">
                 <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
                     <h5 class="mb-0"><i class="fas fa-layer-group me-2"></i>Prognostic Stage Groups</h5>
-                    <button class="btn btn-sm btn-light" onclick="copySection('stage-groups')">
-                        <i class="fas fa-copy me-1"></i>Copy
-                    </button>
+                    <div>
+                        {% if is_admin %}
+                        <button class="btn btn-sm btn-outline-light me-2 stage-groups-view-mode" id="editStageGroupsBtn" onclick="toggleStageGroupsEdit()">
+                            <i class="fas fa-edit me-1"></i>Edit
+                        </button>
+                        <button class="btn btn-sm btn-success me-1 d-none stage-groups-edit-mode" id="saveStageGroupsBtn" onclick="saveStageGroups()">
+                            <i class="fas fa-save me-1"></i>Save
+                        </button>
+                        <button class="btn btn-sm btn-outline-light d-none stage-groups-edit-mode" id="cancelStageGroupsBtn" onclick="cancelStageGroupsEdit()">
+                            <i class="fas fa-times me-1"></i>Cancel
+                        </button>
+                        {% endif %}
+                        <button class="btn btn-sm btn-light stage-groups-view-mode" onclick="copySection('stage-groups')">
+                            <i class="fas fa-copy me-1"></i>Copy
+                        </button>
+                    </div>
                 </div>
                 <div class="card-body" id="stage-groups">
-                    <table class="table table-sm table-bordered">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Stage</th>
-                                <th>T</th>
-                                <th>N</th>
-                                <th>M</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for sg in stage_groups %}
-                            <tr>
-                                <td><strong>{{ sg.stage }}</strong></td>
-                                <td>{{ sg.T }}</td>
-                                <td>{{ sg.N }}</td>
-                                <td>{{ sg.M }}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+                    <!-- View Mode -->
+                    <div class="stage-groups-view-mode">
+                        <table class="table table-sm table-bordered">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Stage</th>
+                                    <th>T</th>
+                                    <th>N</th>
+                                    <th>M</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for sg in stage_groups %}
+                                <tr>
+                                    <td><strong>{{ sg.stage }}</strong></td>
+                                    <td>{{ sg.T }}</td>
+                                    <td>{{ sg.N }}</td>
+                                    <td>{{ sg.M }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <!-- Edit Mode -->
+                    <div class="stage-groups-edit-mode d-none">
+                        <table class="table table-sm table-bordered" id="stage-groups-edit-table">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 120px;">Stage</th>
+                                    <th>T</th>
+                                    <th>N</th>
+                                    <th>M</th>
+                                    <th style="width: 50px;"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for sg in stage_groups %}
+                                <tr>
+                                    <td><input type="text" class="form-control form-control-sm" value="{{ sg.stage }}" data-field="stage"></td>
+                                    <td><input type="text" class="form-control form-control-sm" value="{{ sg.T }}" data-field="T"></td>
+                                    <td><input type="text" class="form-control form-control-sm" value="{{ sg.N }}" data-field="N"></td>
+                                    <td><input type="text" class="form-control form-control-sm" value="{{ sg.M }}" data-field="M"></td>
+                                    <td><button class="btn btn-sm btn-outline-danger" onclick="removeStageGroupRow(this)"><i class="fas fa-trash"></i></button></td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="addStageGroupRow()">
+                            <i class="fas fa-plus me-1"></i>Add Row
+                        </button>
+                    </div>
                 </div>
             </div>
             {% endif %}
 
             <!-- Explanatory Notes (Curated) -->
             {% if explanatory_notes_html %}
-            <div class="card mb-4 shadow-sm">
+            <div class="card mb-4 shadow-sm" id="explanatory-notes-card">
                 <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">
                         <i class="fas fa-book-open me-2"></i>Explanatory Notes
@@ -249,18 +405,41 @@
                     </h5>
                     <div>
                         {% if is_admin %}
-                        <a href="/api/admin/tnm/curate/{{ disease.id }}/{{ year_used or 2024 }}{% if from_case_id %}?from_case_id={{ from_case_id }}{% endif %}" class="btn btn-sm btn-outline-light me-2">
+                        <button class="btn btn-sm btn-outline-light me-2 expl-notes-view-mode" id="editExplNotesBtn" onclick="toggleExplNotesEdit()">
                             <i class="fas fa-edit me-1"></i>Edit
-                        </a>
+                        </button>
+                        <button class="btn btn-sm btn-success me-1 d-none expl-notes-edit-mode" id="saveExplNotesBtn" onclick="saveExplNotes()">
+                            <i class="fas fa-save me-1"></i>Save
+                        </button>
+                        <button class="btn btn-sm btn-outline-light d-none expl-notes-edit-mode" id="cancelExplNotesBtn" onclick="cancelExplNotesEdit()">
+                            <i class="fas fa-times me-1"></i>Cancel
+                        </button>
                         {% endif %}
-                        <button class="btn btn-sm btn-light" onclick="copySection('explanatory-notes')">
+                        <button class="btn btn-sm btn-light expl-notes-view-mode" onclick="copySection('explanatory-notes')">
                             <i class="fas fa-copy me-1"></i>Copy
                         </button>
                     </div>
                 </div>
                 <div class="card-body" id="explanatory-notes">
-                    <div class="curated-content">
+                    <!-- View Mode -->
+                    <div class="curated-content expl-notes-view-mode">
                         {{ explanatory_notes_html | safe }}
+                    </div>
+                    <!-- Edit Mode -->
+                    <div class="expl-notes-edit-mode d-none">
+                        <p class="text-muted small mb-2">
+                            <i class="fas fa-info-circle me-1"></i>Edit the HTML content below. Use standard HTML tags for formatting.
+                        </p>
+                        <textarea id="expl-notes-textarea" class="form-control font-monospace" rows="15" style="font-size: 0.85em;">{{ explanatory_notes_html }}</textarea>
+                        <div class="mt-2">
+                            <button class="btn btn-sm btn-outline-secondary" onclick="previewExplNotes()">
+                                <i class="fas fa-eye me-1"></i>Preview
+                            </button>
+                        </div>
+                        <div id="expl-notes-preview" class="mt-3 p-3 border rounded d-none">
+                            <small class="text-muted mb-2 d-block">Preview:</small>
+                            <div id="expl-notes-preview-content"></div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -431,8 +610,10 @@
                         <label class="form-label">T Stage</label>
                         <select id="calc-t-stage" class="form-select form-select-sm" onchange="calculateStage()">
                             <option value="">Select T...</option>
-                            {% for t in t_definitions %}
-                            <option value="{{ t.category }}">{{ t.category }}</option>
+                            {% for subsite in t_definitions %}
+                                {% for cat in subsite.categories %}
+                                <option value="{{ cat.category }}">{{ cat.category }}</option>
+                                {% endfor %}
                             {% endfor %}
                         </select>
                     </div>
@@ -527,6 +708,26 @@
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
+    
+    <!-- Print Attribution Footer (visible only when printing) -->
+    <div class="print-attribution">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <strong>{{ disease.disease_name }} - TNM Staging</strong><br>
+                <span>{{ tnm_version }}</span>
+            </div>
+            <div style="text-align: right;">
+                <small>
+                    Staging data source: American Joint Committee on Cancer (AJCC)<br>
+                    Cancer Staging Manual, {{ tnm_version }}<br>
+                    © AJCC. For educational use only.
+                </small>
+            </div>
+        </div>
+        <div style="margin-top: 0.5rem; text-align: center; font-size: 8pt; color: #999;">
+            Generated from FRCR Revision App | {{ "now" | date: "%Y-%m-%d" }}
         </div>
     </div>
 </div>
@@ -772,6 +973,220 @@ function updateViewModeElements(data) {
                 <i class="fas fa-check me-2 text-success"></i>${p}
             </li>`
         ).join('');
+    }
+}
+
+// ============================================================================
+// STAGE GROUPS INLINE EDITING
+// ============================================================================
+
+let isStageGroupsEditMode = false;
+let originalStageGroups = [];
+
+function toggleStageGroupsEdit() {
+    isStageGroupsEditMode = !isStageGroupsEditMode;
+    
+    const viewElements = document.querySelectorAll('.stage-groups-view-mode');
+    const editElements = document.querySelectorAll('.stage-groups-edit-mode');
+    const card = document.getElementById('stage-groups-card');
+    
+    if (isStageGroupsEditMode) {
+        // Store original data
+        originalStageGroups = getStageGroupsData();
+        
+        // Show edit mode
+        viewElements.forEach(el => el.classList.add('d-none'));
+        editElements.forEach(el => el.classList.remove('d-none'));
+        card.classList.add('border-primary');
+    } else {
+        // Show view mode
+        viewElements.forEach(el => el.classList.remove('d-none'));
+        editElements.forEach(el => el.classList.add('d-none'));
+        card.classList.remove('border-primary');
+    }
+}
+
+function cancelStageGroupsEdit() {
+    // Restore original data
+    const tbody = document.querySelector('#stage-groups-edit-table tbody');
+    tbody.innerHTML = originalStageGroups.map(sg => `
+        <tr>
+            <td><input type="text" class="form-control form-control-sm" value="${sg.stage}" data-field="stage"></td>
+            <td><input type="text" class="form-control form-control-sm" value="${sg.T}" data-field="T"></td>
+            <td><input type="text" class="form-control form-control-sm" value="${sg.N}" data-field="N"></td>
+            <td><input type="text" class="form-control form-control-sm" value="${sg.M}" data-field="M"></td>
+            <td><button class="btn btn-sm btn-outline-danger" onclick="removeStageGroupRow(this)"><i class="fas fa-trash"></i></button></td>
+        </tr>
+    `).join('');
+    
+    toggleStageGroupsEdit();
+}
+
+function getStageGroupsData() {
+    const rows = document.querySelectorAll('#stage-groups-edit-table tbody tr');
+    const data = [];
+    rows.forEach(row => {
+        const stage = row.querySelector('[data-field="stage"]')?.value || '';
+        const T = row.querySelector('[data-field="T"]')?.value || '';
+        const N = row.querySelector('[data-field="N"]')?.value || '';
+        const M = row.querySelector('[data-field="M"]')?.value || '';
+        if (stage || T || N || M) {
+            data.push({ stage, T, N, M });
+        }
+    });
+    return data;
+}
+
+function addStageGroupRow() {
+    const tbody = document.querySelector('#stage-groups-edit-table tbody');
+    const newRow = document.createElement('tr');
+    newRow.innerHTML = `
+        <td><input type="text" class="form-control form-control-sm" value="" data-field="stage"></td>
+        <td><input type="text" class="form-control form-control-sm" value="" data-field="T"></td>
+        <td><input type="text" class="form-control form-control-sm" value="" data-field="N"></td>
+        <td><input type="text" class="form-control form-control-sm" value="" data-field="M"></td>
+        <td><button class="btn btn-sm btn-outline-danger" onclick="removeStageGroupRow(this)"><i class="fas fa-trash"></i></button></td>
+    `;
+    tbody.appendChild(newRow);
+}
+
+function removeStageGroupRow(btn) {
+    btn.closest('tr').remove();
+}
+
+async function saveStageGroups() {
+    const data = getStageGroupsData();
+    
+    const saveBtn = document.getElementById('saveStageGroupsBtn');
+    const originalHtml = saveBtn.innerHTML;
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Saving...';
+    
+    try {
+        const response = await fetch('/tnm/api/save-staging-data', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+                disease_site_id: {{ disease.id }},
+                year: {{ year_used or 2026 }},
+                section: 'stage_groups',
+                data: data
+            })
+        });
+        
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || 'Failed to save');
+        
+        // Update view mode table
+        const viewTbody = document.querySelector('#stage-groups .stage-groups-view-mode tbody');
+        if (viewTbody) {
+            viewTbody.innerHTML = data.map(sg => `
+                <tr>
+                    <td><strong>${sg.stage}</strong></td>
+                    <td>${sg.T}</td>
+                    <td>${sg.N}</td>
+                    <td>${sg.M}</td>
+                </tr>
+            `).join('');
+        }
+        
+        toggleStageGroupsEdit();
+        showCopyToast();
+        
+    } catch (error) {
+        console.error('Save error:', error);
+        alert('Failed to save: ' + error.message);
+    } finally {
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = originalHtml;
+    }
+}
+
+// ============================================================================
+// EXPLANATORY NOTES INLINE EDITING
+// ============================================================================
+
+let isExplNotesEditMode = false;
+let originalExplNotes = '';
+
+function toggleExplNotesEdit() {
+    isExplNotesEditMode = !isExplNotesEditMode;
+    
+    const viewElements = document.querySelectorAll('.expl-notes-view-mode');
+    const editElements = document.querySelectorAll('.expl-notes-edit-mode');
+    const card = document.getElementById('explanatory-notes-card');
+    
+    if (isExplNotesEditMode) {
+        // Store original
+        originalExplNotes = document.getElementById('expl-notes-textarea').value;
+        
+        // Show edit mode
+        viewElements.forEach(el => el.classList.add('d-none'));
+        editElements.forEach(el => el.classList.remove('d-none'));
+        card.classList.add('border-primary');
+    } else {
+        // Show view mode
+        viewElements.forEach(el => el.classList.remove('d-none'));
+        editElements.forEach(el => el.classList.add('d-none'));
+        card.classList.remove('border-primary');
+        document.getElementById('expl-notes-preview').classList.add('d-none');
+    }
+}
+
+function cancelExplNotesEdit() {
+    document.getElementById('expl-notes-textarea').value = originalExplNotes;
+    toggleExplNotesEdit();
+}
+
+function previewExplNotes() {
+    const html = document.getElementById('expl-notes-textarea').value;
+    const preview = document.getElementById('expl-notes-preview');
+    const previewContent = document.getElementById('expl-notes-preview-content');
+    
+    previewContent.innerHTML = html;
+    preview.classList.remove('d-none');
+}
+
+async function saveExplNotes() {
+    const html = document.getElementById('expl-notes-textarea').value;
+    
+    const saveBtn = document.getElementById('saveExplNotesBtn');
+    const originalHtml = saveBtn.innerHTML;
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Saving...';
+    
+    try {
+        const response = await fetch('/tnm/api/save-staging-data', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+                disease_site_id: {{ disease.id }},
+                year: {{ year_used or 2026 }},
+                section: 'explanatory_notes',
+                data: html
+            })
+        });
+        
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || 'Failed to save');
+        
+        // Update view mode content
+        const viewContent = document.querySelector('#explanatory-notes .curated-content.expl-notes-view-mode');
+        if (viewContent) {
+            viewContent.innerHTML = html;
+        }
+        
+        toggleExplNotesEdit();
+        showCopyToast();
+        
+    } catch (error) {
+        console.error('Save error:', error);
+        alert('Failed to save: ' + error.message);
+    } finally {
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = originalHtml;
     }
 }
 </script>

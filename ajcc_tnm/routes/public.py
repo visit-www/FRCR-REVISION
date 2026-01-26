@@ -10,6 +10,7 @@ from sqlalchemy import or_
 
 # Import from main app's models (kept in main app for shared use)
 from models import db, AJCCBodySection, AJCCDiseaseSite, AJCCDiagnosisYear, AJCCStagingData
+from ai_tnm import format_tnm_version
 
 tnm_bp = Blueprint('tnm', __name__, url_prefix='/tnm')
 
@@ -279,8 +280,9 @@ def student_tnm_view(section_slug, disease_slug):
     except Exception as e:
         print(f"[TNM] Error loading intelligent data: {e}")
     
-    # Build TNM version string
-    tnm_version = f"AJCC 8th Edition ({year_used})" if year_used else "AJCC 8th Edition"
+    # Build TNM version string using the AJCC_VERSION_9_DISEASES dictionary
+    # Returns "AJCC 9th Edition (year)" for 9th Edition cancers, "AJCC 8th Edition" for others
+    tnm_version = format_tnm_version(disease_slug)
     
     return render_template(
         'student_tnm_view.html',
@@ -789,6 +791,95 @@ def save_tnm_intelligence_api():
                 'version': 1
             })
             
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@tnm_bp.route('/api/save-staging-data', methods=['POST'])
+def save_staging_data_api():
+    """
+    Save editable staging data (stage groups, explanatory notes) from student view.
+    
+    Admin-only endpoint for inline editing.
+    
+    Request body:
+    {
+        "disease_site_id": 123,
+        "year": 2026,
+        "section": "stage_groups" | "explanatory_notes" | "cancers_staged" | "cancers_not_staged",
+        "data": [...] or "html content"
+    }
+    """
+    from flask_login import current_user
+    from models import UserRole
+    from datetime import datetime
+    import json
+    
+    # Check authentication
+    if not current_user.is_authenticated:
+        return jsonify({'error': 'Authentication required'}), 401
+    
+    # Check admin/content manager role
+    if current_user.role not in [UserRole.ADMIN, UserRole.CONTENT_MANAGER]:
+        return jsonify({'error': 'Admin or Content Manager role required'}), 403
+    
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'Request body required'}), 400
+    
+    disease_site_id = data.get('disease_site_id')
+    year = data.get('year', 2026)
+    section = data.get('section')
+    section_data = data.get('data')
+    
+    if not disease_site_id or not section:
+        return jsonify({'error': 'disease_site_id and section are required'}), 400
+    
+    try:
+        # Find the staging data record
+        staging = AJCCStagingData.query.filter_by(
+            disease_site_id=disease_site_id
+        ).first()
+        
+        if not staging:
+            return jsonify({'error': 'Staging data not found'}), 404
+        
+        if section == 'stage_groups':
+            # Update stage_groups within tnm_data_json
+            tnm_data = staging.get_tnm_data() or {}
+            tnm_data['stage_groups'] = section_data
+            staging.tnm_data_json = json.dumps(tnm_data)
+            
+        elif section == 'explanatory_notes':
+            # Update curated explanatory notes
+            staging.curated_explanatory_notes_html = section_data
+            staging.is_curated = True
+            staging.curated_at = datetime.utcnow()
+            staging.curated_by_user_id = current_user.id
+            
+        elif section == 'cancers_staged':
+            # Update cancers staged JSON
+            staging.cancers_staged_json = json.dumps(section_data) if isinstance(section_data, list) else section_data
+            
+        elif section == 'cancers_not_staged':
+            # Update cancers not staged JSON
+            staging.cancers_not_staged_json = json.dumps(section_data) if isinstance(section_data, list) else section_data
+            
+        else:
+            return jsonify({'error': f'Unknown section: {section}'}), 400
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'{section} updated successfully',
+            'section': section
+        })
+        
     except Exception as e:
         db.session.rollback()
         return jsonify({
