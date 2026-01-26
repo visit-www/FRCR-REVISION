@@ -229,10 +229,6 @@
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <label class="detail-label fw-bold text-secondary mb-0"><i class="fas fa-comments-dollar me-2" style="color: #17a2b8;"></i>Discussion & Comments</label>
                             <div class="d-flex gap-2 align-items-center">
-                                <!-- Essential TNM Concepts Button (shown for oncologic cases) -->
-                                <button type="button" id="essentialTnmBtn" class="essential-tnm-btn" title="Essential TNM Concepts for Registrars" style="display: none;">
-                                    <i class="fas fa-book-medical me-1"></i><span class="d-none d-md-inline">Essential TNM</span>
-                                </button>
                                 <!-- Zen Mode: Show Forum toggle button -->
                                 <button type="button" id="zenShowForumBtn" class="zen-show-forum-btn" title="Show/Hide forum">
                                     <i class="fas fa-comments"></i>Show Forum
@@ -830,29 +826,6 @@
     </div>
 </div>
 
-<!-- Essential TNM Concepts Modal -->
-<div id="essentialTnmModal" class="modal fade essential-tnm-modal" tabindex="-1" aria-labelledby="essentialTnmModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="essentialTnmModalLabel">
-                    <i class="fas fa-book-medical me-2"></i>Essential TNM Concepts for Registrars
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <iframe src="{{ url_for('essential_tnm_concepts') }}" title="Essential TNM Concepts"></iframe>
-            </div>
-            <div class="modal-footer">
-                <a href="{{ url_for('essential_tnm_concepts') }}" target="_blank" class="btn btn-sm btn-outline-secondary">
-                    <i class="fas fa-external-link-alt me-1"></i>Open in New Tab
-                </a>
-                <button type="button" class="btn btn-sm btn-dark" data-bs-dismiss="modal">Close</button>
-            </div>
-        </div>
-    </div>
-</div>
-
 <!-- 
     NOTION PAGE MODAL - COMMENTED OUT
     
@@ -908,101 +881,6 @@
         color: #fff;
         background: #e96304;
         text-decoration: none !important;
-    }
-    
-    /* Essential TNM Concepts Button */
-    .essential-tnm-btn {
-        background: linear-gradient(135deg, #5E899E 0%, #4A6F7F 100%);
-        color: #ffffff;
-        border: none;
-        border-radius: 20px;
-        padding: 0.35rem 0.85rem;
-        font-size: 0.85rem;
-        font-weight: 500;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.3rem;
-        box-shadow: 0 2px 6px rgba(94, 137, 158, 0.3);
-    }
-    
-    .essential-tnm-btn:hover {
-        background: linear-gradient(135deg, #4A6F7F 0%, #3d5c69 100%);
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(94, 137, 158, 0.4);
-    }
-    
-    .essential-tnm-btn:active {
-        transform: translateY(0);
-    }
-    
-    /* Essential TNM Modal */
-    .essential-tnm-modal .modal-dialog {
-        max-width: 90%;
-        width: 900px;
-        margin: 1.75rem auto;
-    }
-    
-    .essential-tnm-modal .modal-content {
-        border: none;
-        border-radius: 16px;
-        overflow: hidden;
-        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-    }
-    
-    .essential-tnm-modal .modal-header {
-        background: linear-gradient(135deg, #5E899E 0%, #4A6F7F 100%);
-        color: white;
-        border-bottom: none;
-        padding: 1rem 1.5rem;
-    }
-    
-    .essential-tnm-modal .modal-title {
-        font-weight: 600;
-        font-size: 1.1rem;
-    }
-    
-    .essential-tnm-modal .btn-close {
-        filter: brightness(0) invert(1);
-        opacity: 0.8;
-    }
-    
-    .essential-tnm-modal .btn-close:hover {
-        opacity: 1;
-    }
-    
-    .essential-tnm-modal .modal-body {
-        padding: 0;
-        height: 70vh;
-        min-height: 400px;
-    }
-    
-    .essential-tnm-modal iframe {
-        width: 100%;
-        height: 100%;
-        border: none;
-    }
-    
-    .essential-tnm-modal .modal-footer {
-        background: linear-gradient(135deg, #FFF8E7 0%, #FFFCF3 100%);
-        border-top: 1px solid rgba(242, 204, 143, 0.3);
-        padding: 0.75rem 1.5rem;
-    }
-    
-    @media (max-width: 768px) {
-        .essential-tnm-modal .modal-dialog {
-            max-width: 95%;
-            margin: 1rem auto;
-        }
-        
-        .essential-tnm-modal .modal-body {
-            height: 60vh;
-        }
-        
-        .essential-tnm-btn span {
-            display: none;
-        }
     }
     
     @media (max-width: 768px) {
@@ -3498,61 +3376,6 @@
         if (isStudent) {
             initMarkerClickHandler();
         }
-        
-        // ==================== ESSENTIAL TNM BUTTON (Oncologic Cases) ====================
-        (function initEssentialTnmButton() {
-            const essentialTnmBtn = document.getElementById('essentialTnmBtn');
-            const essentialTnmModal = document.getElementById('essentialTnmModal');
-            
-            if (!essentialTnmBtn || !essentialTnmModal) return;
-            
-            // Oncologic keywords to detect cancer cases
-            const oncologicKeywords = [
-                'cancer', 'carcinoma', 'adenocarcinoma', 'squamous cell', 'scc',
-                'lymphoma', 'leukaemia', 'leukemia', 'myeloma', 'melanoma',
-                'sarcoma', 'glioma', 'glioblastoma', 'meningioma', 'astrocytoma',
-                'tumor', 'tumour', 'neoplasm', 'malignant', 'malignancy',
-                'metastasis', 'metastases', 'metastatic', 'mets',
-                'staging', 'tnm', 't1', 't2', 't3', 't4', 'n0', 'n1', 'n2', 'n3', 'm0', 'm1',
-                'hcc', 'hepatocellular', 'cholangiocarcinoma', 'rcc', 'renal cell',
-                'nsclc', 'sclc', 'lung cancer', 'breast cancer', 'colorectal',
-                'pancreatic cancer', 'gastric cancer', 'oesophageal', 'esophageal',
-                'ovarian', 'endometrial', 'cervical cancer', 'prostate cancer',
-                'bladder cancer', 'thyroid cancer', 'head and neck', 'laryngeal',
-                'pharyngeal', 'oral cavity', 'nasopharyngeal', 'oropharyngeal'
-            ];
-            
-            // Get diagnosis text
-            const diagnosisEl = document.getElementById('diagnosisText');
-            const discussionEl = document.getElementById('discussionText');
-            
-            let textToCheck = '';
-            if (diagnosisEl) textToCheck += ' ' + diagnosisEl.textContent.toLowerCase();
-            if (discussionEl) {
-                const rawDiscussion = discussionEl.getAttribute('data-raw-discussion') || '';
-                textToCheck += ' ' + rawDiscussion.toLowerCase();
-            }
-            
-            // Check if any oncologic keyword is present
-            const isOncologic = oncologicKeywords.some(keyword => textToCheck.includes(keyword));
-            
-            if (isOncologic) {
-                // Show the button
-                essentialTnmBtn.style.display = 'inline-flex';
-                
-                // Initialize modal
-                const bsModal = new bootstrap.Modal(essentialTnmModal);
-                
-                // Open modal on button click
-                essentialTnmBtn.addEventListener('click', () => {
-                    bsModal.show();
-                });
-                
-                console.log('[Essential TNM] Oncologic case detected, button shown');
-            } else {
-                console.log('[Essential TNM] Non-oncologic case, button hidden');
-            }
-        })();
         
         // Student layout class (visual reflow only; DOM order preserved)
         if (isStudent) {

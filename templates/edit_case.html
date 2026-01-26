@@ -2427,19 +2427,43 @@ function insertTnmLinksDirectly(data) {
     // Convert Markdown to HTML for the AI-generated content
     const intelligenceHtml = markdownContent ? markdownToHtml(markdownContent) : '';
     
+    // Check if this is one of the 7 IARC Essential TNM cancers
+    const essentialTnmCancers = [
+        'breast', 
+        'colorectal', 'colon', 'rectal', 'rectum',
+        'ovarian', 'ovary',
+        'cervical', 'cervix', 'uterine cervix',
+        'prostate',
+        'lymphoma', 'hodgkin', 'non-hodgkin',
+        'liver', 'hepatocellular', 'hcc', 'hepatobiliary'
+    ];
+    
+    const diseaseNameLower = diseaseName.toLowerCase();
+    const hasEssentialTnm = essentialTnmCancers.some(cancer => diseaseNameLower.includes(cancer));
+    
+    console.log('[TNM Insert] Essential TNM applicable:', hasEssentialTnm, 'for disease:', diseaseName);
+    
+    // Build Essential TNM button HTML (only for the 7 cancers)
+    const essentialTnmButton = hasEssentialTnm ? `
+        <a href="/essential-tnm-concepts" target="_blank" style="display: inline-block; margin-left: 12px; background: linear-gradient(135deg, #5E899E 0%, #4A6F7F 100%); color: white; padding: 6px 14px; border-radius: 20px; font-size: 0.85em; font-weight: 500; text-decoration: none; box-shadow: 0 2px 6px rgba(94, 137, 158, 0.3);">
+            <i class="fas fa-graduation-cap me-1"></i>Essential TNM Concepts
+        </a>
+    ` : '';
+    
     // Build the full HTML block with:
-    // 1. Header with button link to AJCC staging document
+    // 1. Header with button link to AJCC staging document + Essential TNM button (if applicable)
     // 2. AI-generated intelligence content
     // 3. Footer with metadata
     const fullHtml = `
 <div class="tnm-intelligence-block" style="border: 1px solid #e5e7eb; border-radius: 8px; margin: 1.5rem 0; overflow: hidden;">
     
     <!-- Header with AJCC Staging Link Button -->
-    <div style="background: linear-gradient(135deg, #f4a896 0%, #e89580 100%); padding: 12px 16px;">
+    <div style="background: linear-gradient(135deg, #f4a896 0%, #e89580 100%); padding: 12px 16px; display: flex; align-items: center; flex-wrap: wrap; gap: 8px;">
         <a href="${tnmLink}" target="_blank" style="color: white; font-weight: 600; text-decoration: none; font-size: 1.1em;">
             <i class="fas fa-book-medical me-2"></i>View AJCC TNM Staging – ${diseaseName} (${tnmVersion})
             <i class="fas fa-external-link-alt ms-2" style="font-size: 0.8em;"></i>
         </a>
+        ${essentialTnmButton}
     </div>
     
     <!-- AI-Generated Intelligence Content -->
