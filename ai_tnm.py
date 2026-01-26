@@ -569,68 +569,6 @@ def _get_staging_data(disease_site_id: int) -> Optional[Dict]:
 
 
 # ============================================================================
-# TNM REFERENCE ONLY (No AI - Fast Path)
-# ============================================================================
-
-def get_tnm_reference_only(
-    *,
-    diagnosis: str,
-    module: str = None,
-    body_part: str = None,
-    from_case_id: int = None
-) -> Optional[Dict]:
-    """
-    Deterministic TNM lookup - no AI involved.
-    
-    Returns AJCC mapping + internal link if found.
-    Useful for offline mode, fast rendering, or when AI is disabled.
-    
-    Args:
-        diagnosis: Cancer diagnosis text
-        module: FRCR module (optional)
-        body_part: Body part hint (optional)
-        from_case_id: Source case ID for back navigation (optional)
-        
-    Returns:
-        Dict with keys:
-            - ajcc_match
-            - tnm_link
-            - has_staging_data
-        Or None if no match
-    """
-    if not is_oncologic_diagnosis(diagnosis):
-        return None
-    
-    ajcc_match = _map_to_ajcc_site(diagnosis, module, body_part)
-    if not ajcc_match:
-        return None
-    
-    # Build internal link (consistent format with generate_tnm_intelligence)
-    section_slug = ajcc_match.get("section_slug", "")
-    disease_slug = ajcc_match.get("disease_slug", "")
-    tnm_version = ajcc_match.get("tnm_version", "AJCC 8th Edition")
-    
-    # Extract year from tnm_version if present
-    import re
-    year_match = re.search(r'\((\d{4})\)', tnm_version)
-    year = year_match.group(1) if year_match else "2026"
-    
-    if section_slug and disease_slug:
-        # Use /student suffix for direct access to content view
-        tnm_link = f"/tnm/{section_slug}/{disease_slug}/student?year={year}"
-        if from_case_id is not None:
-            tnm_link += f"&from_case={from_case_id}"
-    else:
-        tnm_link = None
-    
-    return {
-        "ajcc_match": ajcc_match,
-        "tnm_link": tnm_link,
-        "has_staging_data": ajcc_match.get("has_staging_data", False),
-    }
-
-
-# ============================================================================
 # CLAUDE PROMPTS (TNM Intelligence Engine - Locked System Prompt)
 # ============================================================================
 
@@ -662,7 +600,7 @@ FORBIDDEN ACTIONS:
 REFERENCE STYLE (DESCRIPTIVE ONLY):
 • Suggest relevant educational resources using DESCRIPTIVE format only
 • NEVER include DOIs, PMIDs, URLs, or page numbers
-• Use this exact format:
+• You can search for all repudated and peer reviewed journals which provide open access to FULL text BUT use  this exact format :
   - "Radiographics: [Article Topic]"
   - "Radiopaedia: [Topic]"
   - "AJR: [Topic]"
@@ -1348,43 +1286,3 @@ def should_show_tnm_button(diagnosis: str) -> bool:
     Simple wrapper around is_oncologic_diagnosis for view integration.
     """
     return is_oncologic_diagnosis(diagnosis)
-
-
-def get_tnm_button_data(
-    diagnosis: str,
-    module: str = None,
-    body_part: str = None,
-    case_id: int = None
-) -> Optional[Dict]:
-    """
-    Get data needed to render TNM intelligence button.
-    
-    Returns None if not oncologic, or dict with button info.
-    """
-    if not is_oncologic_diagnosis(diagnosis):
-        return None
-    
-    ref = get_tnm_reference_only(
-        diagnosis=diagnosis,
-        module=module,
-        body_part=body_part,
-        from_case_id=case_id
-    )
-    
-    if ref:
-        return {
-            "show_button": True,
-            "disease_name": ref["ajcc_match"].get("disease_name"),
-            "has_staging_data": ref.get("has_staging_data", False),
-            "tnm_link": ref.get("tnm_link"),
-            "api_endpoint": f"/api/tnm/generate?case_id={case_id}" if case_id else "/api/tnm/generate",
-        }
-    else:
-        return {
-            "show_button": True,
-            "disease_name": None,
-            "has_staging_data": False,
-            "tnm_link": None,
-            "api_endpoint": None,
-            "message": "TNM staging data not yet available for this cancer type.",
-        }

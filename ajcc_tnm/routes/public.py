@@ -487,13 +487,11 @@ def check_tnm_available_api():
     - diagnosis: Cancer diagnosis text
     - module: FRCR module (optional)
     - body_part: Body part (optional)
-    - case_id: Case ID for link generation (optional)
     
     Returns:
     {
         "is_oncologic": true/false,
         "has_staging_data": true/false,
-        "tnm_link": "/tnm/...",
         "disease_name": "Lung",
         "can_generate": true/false
     }
@@ -504,10 +502,9 @@ def check_tnm_available_api():
     
     module = request.args.get('module', '').strip() or None
     body_part = request.args.get('body_part', '').strip() or None
-    case_id = request.args.get('case_id', type=int)
     
     try:
-        from ai_tnm import is_oncologic_diagnosis, get_tnm_reference_only
+        from ai_tnm import is_oncologic_diagnosis, _map_to_ajcc_site
         
         is_oncologic = is_oncologic_diagnosis(diagnosis)
         
@@ -515,30 +512,22 @@ def check_tnm_available_api():
             return jsonify({
                 'is_oncologic': False,
                 'has_staging_data': False,
-                'tnm_link': None,
                 'can_generate': False
             })
         
-        ref = get_tnm_reference_only(
-            diagnosis=diagnosis,
-            module=module,
-            body_part=body_part,
-            from_case_id=case_id
-        )
+        ajcc_match = _map_to_ajcc_site(diagnosis, module, body_part)
         
-        if ref:
+        if ajcc_match:
             return jsonify({
                 'is_oncologic': True,
-                'has_staging_data': ref.get('has_staging_data', False),
-                'tnm_link': ref.get('tnm_link'),
-                'disease_name': ref['ajcc_match'].get('disease_name'),
-                'can_generate': ref.get('has_staging_data', False)
+                'has_staging_data': ajcc_match.get('has_staging_data', False),
+                'disease_name': ajcc_match.get('disease_name'),
+                'can_generate': ajcc_match.get('has_staging_data', False)
             })
         else:
             return jsonify({
                 'is_oncologic': True,
                 'has_staging_data': False,
-                'tnm_link': None,
                 'disease_name': None,
                 'can_generate': False,
                 'message': 'TNM data not yet available for this cancer type'
