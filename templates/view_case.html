@@ -189,11 +189,6 @@
                         <div class="d-flex justify-content-between align-items-start mb-3">
                             <label class="detail-label fw-bold text-secondary mb-0 d-block"><i class="fas fa-stethoscope me-2" style="color: #FFC107;"></i>Diagnosis</label>
                             <div class="d-flex gap-2">
-                                {% if case.diagnosis and 'cancer' in case.diagnosis.lower() %}
-                                <div id="tnmLinkContainer" class="ms-2">
-                                    <!-- TNM link will be populated by JavaScript -->
-                                </div>
-                                {% endif %}
                                 {% if current_user.is_authenticated and current_user.role and current_user.role.value == 'student' %}
                                 <button type="button" id="zenModeToggle" class="btn btn-sm zen-mode-btn" title="Zen mode – hide notes and forum">
                                     <i class="fas fa-spa me-1"></i><span class="zen-mode-text">Zen Mode</span>
@@ -8087,43 +8082,7 @@
         }
     }
     
-    // Check for TNM link
-    async function checkTNMData() {
-        const diagnosis = caseDiagnosis || '';
-        if (!diagnosis || !diagnosis.toLowerCase().includes('cancer')) {
-            return;
-        }
-        
-        const tnmContainer = document.getElementById('tnmLinkContainer');
-        if (!tnmContainer) {
-            return;
-        }
-        
-        try {
-            // Check if TNM data exists via backend
-            const response = await fetch(`/tnm/check?diagnosis=${encodeURIComponent(diagnosis)}`);
-            
-            if (!response.ok) {
-                console.log('[TNM] Check endpoint returned:', response.status);
-                return;
-            }
-            
-            const data = await response.json();
-            
-            if (data.exists && data.url) {
-                tnmContainer.innerHTML = `
-                    <a href="${data.url}" class="btn btn-sm" style="background: linear-gradient(135deg, #f4a896 0%, #e89580 100%); color: white;" target="_blank" title="View AJCC TNM Staging">
-                        <i class="fas fa-book-medical me-1"></i>View TNM Staging
-                    </a>
-                `;
-            }
-        } catch (error) {
-            console.log('[TNM] TNM check not available:', error.message);
-        }
-    }
-    
     // Initialize integrations on page load
-    checkTNMData();  // Check for TNM link
     if (isStudent) {
         checkNotionStatus();
         checkAnkiStatus();
