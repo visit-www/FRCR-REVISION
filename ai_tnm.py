@@ -57,6 +57,83 @@ ONCOLOGIC_KEYWORDS = [
 ]
 
 
+# ============================================================================
+# AJCC TNM VERSION MAPPING
+# ============================================================================
+# Maps disease slugs to their AJCC edition and the year that edition was released.
+# Diseases not in this map default to AJCC 8th Edition.
+# Source: AJCC Cancer Staging Manual version release documentation
+
+AJCC_VERSION_9_DISEASES = {
+    # Head and Neck
+    "salivary-glands": 2026,                    # Major Salivary Glands
+    "nasopharynx": 2025,                        # Nasopharynx
+    "oropharynx-hpv-associated": 2026,          # HPV-mediated p16+ Oropharynx
+    
+    # Digestive System
+    "appendix": 2023,                           # Appendix Carcinoma
+    "anus": 2023,                               # Anus
+    
+    # Neuroendocrine Tumors
+    "neuroendocrine-tumors-of-the-stomach": 2024,
+    "neuroendocrine-tumors-of-the-duodenum-and-ampulla-of-vater": 2024,
+    "neuroendocrine-tumors-of-the-jejunum-and-ileum": 2024,
+    "neuroendocrine-tumors-of-the-appendix": 2024,
+    "neuroendocrine-tumors-of-the-colon-and-rectum": 2024,
+    "neuroendocrine-tumors-of-the-pancreas": 2024,
+    
+    # Thorax
+    "thymus": 2025,                             # Thymus
+    "lung": 2025,                               # Lung
+    "diffuse-pleural-mesothelioma": 2025,       # Pleural Mesothelioma
+    
+    # Gynecological
+    "vulva": 2024,                              # Vulva
+    "cervix-uteri": 2021,                       # Cervix Uteri
+    
+    # CNS
+    "brain-and-spinal-cord": 2023,              # Brain and Spinal Cord
+}
+
+
+def get_ajcc_version(disease_slug: str, diagnosis_year: int = None) -> tuple:
+    """
+    Get the correct AJCC edition for a disease.
+    
+    Args:
+        disease_slug: The slug of the disease site
+        diagnosis_year: The year of diagnosis (for future-proofing)
+        
+    Returns:
+        Tuple of (edition_string, release_year) e.g., ("9th", 2025)
+    """
+    if disease_slug in AJCC_VERSION_9_DISEASES:
+        release_year = AJCC_VERSION_9_DISEASES[disease_slug]
+        return ("9th", release_year)
+    
+    # Default to 8th Edition (released 2017)
+    return ("8th", 2017)
+
+
+def format_tnm_version(disease_slug: str, year: int = None) -> str:
+    """
+    Format the full TNM version string for display.
+    
+    Args:
+        disease_slug: The slug of the disease site
+        year: Optional year to include in the string
+        
+    Returns:
+        Formatted string like "AJCC 9th Edition (2025)" or "AJCC 8th Edition (2026)"
+    """
+    edition, release_year = get_ajcc_version(disease_slug)
+    
+    # Use the provided year or the release year
+    display_year = year if year else release_year
+    
+    return f"AJCC {edition} Edition ({display_year})"
+
+
 def is_oncologic_diagnosis(diagnosis: str) -> bool:
     """
     Determine if a diagnosis requires TNM staging consideration.
@@ -499,7 +576,7 @@ def _build_ajcc_result(disease_site) -> Dict:
         "section_slug": section_slug,
         "disease_slug": disease_slug,
         "tnm_link": tnm_link,
-        "tnm_version": f"AJCC 8th Edition ({year})" if year else "AJCC 8th Edition",
+        "tnm_version": format_tnm_version(disease_slug, year),
         "has_staging_data": staging_data is not None,
         "is_curated": is_curated,
         "staging_data_id": staging_data.id if staging_data else None,
