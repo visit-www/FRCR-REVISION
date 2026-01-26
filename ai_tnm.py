@@ -121,17 +121,21 @@ def format_tnm_version(disease_slug: str, year: int = None) -> str:
     
     Args:
         disease_slug: The slug of the disease site
-        year: Optional year to include in the string
+        year: Not used (kept for backward compatibility)
         
     Returns:
-        Formatted string like "AJCC 9th Edition (2025)" or "AJCC 8th Edition (2026)"
+        Formatted string:
+        - "AJCC 9th Edition (release_year)" for 9th Edition diseases
+        - "AJCC 8th Edition" for 8th Edition diseases (no year shown)
     """
     edition, release_year = get_ajcc_version(disease_slug)
     
-    # Use the provided year or the release year
-    display_year = year if year else release_year
-    
-    return f"AJCC {edition} Edition ({display_year})"
+    if edition == "9th":
+        # Show release year for 9th Edition
+        return f"AJCC 9th Edition ({release_year})"
+    else:
+        # No year for 8th Edition
+        return "AJCC 8th Edition"
 
 
 def is_oncologic_diagnosis(diagnosis: str) -> bool:
