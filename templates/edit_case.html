@@ -794,11 +794,15 @@ function cleanupTinyMCEHTML(editor) {
     
     // Add text-decoration: none to links without style attributes (to override browser defaults)
     // Match all anchor tags and add style if missing
+    // Use regex to properly detect style attribute (not just "style=" in URLs)
     content = content.replace(
         /<a([^>]*)>/gi,
         function(match, attrs) {
-            // Check if link already has style attribute
-            if (attrs.includes('style=')) {
+            // Check if link already has style attribute using regex (not just string contains)
+            // This prevents false positives when href URLs contain "style="
+            // Matches: style="...", style='...', or style=value (attribute name, not substring)
+            // Pattern: (start or whitespace) + "style" + "=" + (quote or value start)
+            if (/(^|\s)style\s*=\s*["']/i.test(attrs)) {
                 return match;
             }
             // Add style="text-decoration: none;" to override browser defaults
