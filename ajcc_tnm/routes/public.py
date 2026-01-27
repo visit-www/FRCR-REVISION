@@ -40,6 +40,37 @@ def get_available_years_for_disease(disease_site_id):
     return sorted(years, reverse=True)  # Latest first
 
 
+def strip_expired_ajcc_images(html_content):
+    """
+    Remove AJCC images with expired JWT tokens from HTML content.
+    
+    These images are hosted at ajcc.deploy.heretto.com and require JWT tokens
+    that expire, causing 403 errors in the browser.
+    
+    Args:
+        html_content: HTML string containing img tags
+        
+    Returns:
+        HTML string with AJCC image tags removed
+    """
+    import re
+    if not html_content:
+        return html_content
+    
+    # Remove img tags with ajcc.deploy.heretto.com URLs
+    # Matches: <img ... src="https://ajcc.deploy.heretto.com/..." ... />
+    pattern = r'<img[^>]*src=["\'][^"\']*ajcc\.deploy\.heretto\.com[^"\']*["\'][^>]*/?\s*>'
+    
+    # Also remove figure elements that contain only the broken image
+    # This cleans up empty figure containers
+    cleaned = re.sub(pattern, '', html_content, flags=re.IGNORECASE)
+    
+    # Remove empty figure elements (figure with only whitespace/caption but no img)
+    cleaned = re.sub(r'<figure[^>]*>\s*(<figcaption[^>]*>.*?</figcaption>)?\s*</figure>', '', cleaned, flags=re.DOTALL | re.IGNORECASE)
+    
+    return cleaned
+
+
 def get_staging_data_with_fallback(disease_site_id, requested_year=None):
     """
     Get staging data with year fallback logic.
@@ -251,6 +282,9 @@ def student_tnm_view(section_slug, disease_slug):
             # This allows students to access content immediately while curation is in progress
             quick_reference_html = staging_data.section_1_quick_reference_html
             explanatory_notes_html = staging_data.section_10_explanatory_notes_html
+        
+        # Strip expired AJCC images to prevent 403 console errors
+        explanatory_notes_html = strip_expired_ajcc_images(explanatory_notes_html)
         
         # Always try to get structured TNM definitions (from JSON)
         t_definitions = staging_data.get_t_definitions()
