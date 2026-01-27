@@ -55,16 +55,21 @@
                             <i class="fas fa-book-medical me-2"></i>{{ tnm_version }}
                         </p>
                     </div>
-                    <div class="text-end d-flex gap-2">
+                    <div class="text-end d-flex flex-wrap gap-2">
                         {% if from_case_id %}
                         <a href="{{ url_for('view_case', case_id=from_case_id) }}" class="btn btn-light btn-sm">
                             <i class="fas fa-arrow-left me-1"></i>Back to Case
                         </a>
                         {% endif %}
                         {% if is_admin %}
-                        <span class="badge bg-warning text-dark px-3 py-2">
-                            <i class="fas fa-user-shield me-1"></i>Admin View
-                        </span>
+                        <a href="{{ url_for('tnm.disease_main_page', section_slug=section.slug, disease_slug=disease.slug, view='raw') }}{% if from_case_id %}?from_case={{ from_case_id }}{% endif %}" 
+                           class="btn btn-outline-light btn-sm" title="View raw AJCC extracted data">
+                            <i class="fas fa-database me-1"></i>Raw Data
+                        </a>
+                        <a href="{{ url_for('admin_tnm.curate_tnm_page', disease_site_id=disease.id, year=year_used or 2026) }}{% if from_case_id %}?from_case_id={{ from_case_id }}{% endif %}" 
+                           class="btn btn-warning btn-sm" title="Edit curated content">
+                            <i class="fas fa-edit me-1"></i>Edit
+                        </a>
                         {% endif %}
                     </div>
                 </div>

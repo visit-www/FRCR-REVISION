@@ -2,12 +2,17 @@
 
 {% block mobile_breadcrumb %}
 <li class="breadcrumb-item">
-    <a href="{{ url_for('admin_tnm.tnm_management_page') }}" class="text-white text-decoration-none">
-        <i class="fas fa-cog me-1"></i>TNM Management
+    <a href="{{ url_for('tnm.browse') }}" class="text-white text-decoration-none">
+        <i class="fas fa-sitemap me-1"></i>TNM Browser
+    </a>
+</li>
+<li class="breadcrumb-item">
+    <a href="{{ url_for('tnm.section_page', section_slug=section.slug) }}" class="text-white text-decoration-none">
+        <i class="fas fa-folder me-1"></i>{{ section.section_name }}
     </a>
 </li>
 <li class="breadcrumb-item active text-white" aria-current="page">
-    <i class="fas fa-edit me-1"></i>Edit TNM Data
+    <i class="fas fa-edit me-1"></i>Edit: {{ disease.disease_name }}
 </li>
 {% endblock %}
 
@@ -44,14 +49,31 @@ console.log('[TinyMCE Loader] TNM Edit - checking if TinyMCE loaded...');
 
 <div class="row">
     <div class="col-12 px-2 px-md-5">
-        <!-- Back Button and Navigation -->
-        <div class="mb-4 mt-4 d-flex align-items-center gap-3">
-            <button class="btn btn-outline-secondary btn-sm" onclick="window.history.back()" title="Go back" aria-label="Go back">
-                <i class="fas fa-arrow-left me-2"></i>Back
-            </button>
-            <a href="{{ url_for('tnm.disease_page', section_slug=section.slug, disease_slug=disease.slug) }}" class="btn btn-outline-primary btn-sm" title="View raw AJCC data">
-                <i class="fas fa-database me-1"></i>View Raw Data
-            </a>
+        <!-- Breadcrumb Navigation (Desktop) -->
+        <nav aria-label="breadcrumb" class="mb-4 mt-4 d-none d-md-block">
+            <ol class="breadcrumb breadcrumb-custom">
+                <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}"><i class="fas fa-home me-1"></i>Home</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('tnm.browse') }}"><i class="fas fa-sitemap me-1"></i>TNM Browser</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('tnm.section_page', section_slug=section.slug) }}"><i class="fas fa-folder me-1"></i>{{ section.section_name }}</a></li>
+                <li class="breadcrumb-item active"><i class="fas fa-edit me-1"></i>Edit: {{ disease.disease_name }}</li>
+            </ol>
+        </nav>
+
+        <!-- Mobile Navigation -->
+        <div class="d-md-none mb-3">
+            <div class="d-flex flex-wrap gap-2">
+                {% if from_case_id %}
+                <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('view_case', case_id=from_case_id) }}">
+                    <i class="fas fa-arrow-left me-1"></i>Back to Case
+                </a>
+                {% endif %}
+                <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('tnm.browse') }}">
+                    <i class="fas fa-sitemap me-1"></i>TNM Browser
+                </a>
+                <a href="{{ url_for('tnm.disease_main_page', section_slug=section.slug, disease_slug=disease.slug, view='raw') }}" class="btn btn-outline-primary btn-sm" title="View raw AJCC data">
+                    <i class="fas fa-database me-1"></i>View Raw Data
+                </a>
+            </div>
         </div>
 
         <!-- Page Header -->

@@ -31,14 +31,30 @@
             </ol>
         </nav>
         
-        {% if from_case_id %}
-        <!-- Return to Case Button -->
-        <div class="mb-3">
-            <a href="/case/{{ from_case_id }}" class="btn btn-primary">
+        <!-- Admin View Toggle and Navigation -->
+        <div class="mb-3 d-flex flex-wrap gap-2">
+            {% if from_case_id %}
+            <a href="{{ url_for('view_case', case_id=from_case_id) }}" class="btn btn-primary">
                 <i class="fas fa-arrow-left me-2"></i>Return to Case
             </a>
+            {% endif %}
+            
+            <!-- Admin view toggle -->
+            {% if is_admin %}
+            <a href="{{ url_for('tnm.tnm_view', section_slug=section.slug, disease_slug=disease_site.slug) }}{% if from_case_id %}?from_case={{ from_case_id }}{% endif %}" 
+               class="btn btn-success" title="View curated content for students">
+                <i class="fas fa-eye me-2"></i>View Curated
+            </a>
+            <a href="{{ url_for('admin_tnm.curate_tnm_page', disease_site_id=disease_site.id, year=year_used or 2026) }}{% if from_case_id %}?from_case_id={{ from_case_id }}{% endif %}" 
+               class="btn btn-warning" title="Edit curated content">
+                <i class="fas fa-edit me-2"></i>Edit Curated
+            </a>
+            {% endif %}
+            
+            <div class="ms-auto">
+                <span class="badge bg-secondary"><i class="fas fa-database me-1"></i>Raw AJCC Data</span>
+            </div>
         </div>
-        {% endif %}
         
         <!-- Main Content Row -->
         <div class="row">

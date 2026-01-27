@@ -128,7 +128,13 @@ def section_page(section_slug):
 
 @tnm_bp.route('/<section_slug>/<disease_slug>', methods=['GET'])
 def disease_main_page(section_slug, disease_slug):
-    """Main disease landing page with navigation sidebar."""
+    """
+    Main disease landing page.
+    - Admins: Can choose between raw AJCC data (ajcc_tnm_viewer.html) or curated view (view_tnm.html)
+    - Students/Others: Redirected to curated view (view_tnm.html)
+    """
+    from flask import redirect, url_for
+    
     section = AJCCBodySection.query.filter_by(slug=section_slug).first_or_404()
     disease_site = AJCCDiseaseSite.query.filter_by(
         body_section_id=section.id,
@@ -136,18 +142,36 @@ def disease_main_page(section_slug, disease_slug):
     ).first_or_404()
     
     year = request.args.get('year', type=int)
-    view_mode = request.args.get('view', 'full')  # 'full' (enhanced) is now default, 'simple' for old
-    from_case_id = request.args.get('from_case', type=int)  # For "Return to Case" button
+    view_mode = request.args.get('view', default='curated')  # 'raw' for AJCC viewer, 'curated' for view_tnm
+    from_case_id = request.args.get('from_case', type=int)
     
+    # Check if user is admin
+    is_admin = False
+    try:
+        if current_user.is_authenticated and hasattr(current_user, 'role') and current_user.role:
+            role_value = current_user.role.value if hasattr(current_user.role, 'value') else str(current_user.role)
+            is_admin = role_value in ['admin', 'superadmin', 'content_manager']
+    except Exception:
+        is_admin = False
+    
+    # Non-admins always go to curated view
+    if not is_admin:
+        return redirect(url_for('tnm.tnm_view', section_slug=section_slug, disease_slug=disease_slug, 
+                                year=year, from_case=from_case_id))
+    
+    # Admins: Check view_mode parameter
+    if view_mode == 'curated':
+        return redirect(url_for('tnm.tnm_view', section_slug=section_slug, disease_slug=disease_slug,
+                                year=year, from_case=from_case_id))
+    
+    # Admin viewing raw AJCC data
     staging_data, year_used, available_years = get_staging_data_with_fallback(
         disease_site.id, year
     )
     
-    # Use enhanced viewer by default, simple for legacy
-    template = 'tnm_disease.html' if view_mode == 'simple' else 'ajcc_tnm_viewer.html'
+    template = 'ajcc_tnm_viewer.html'
     
     if not staging_data:
-        # No data available
         return render_template(
             template,
             section=section,
@@ -157,7 +181,8 @@ def disease_main_page(section_slug, disease_slug):
             available_years=available_years or [],
             section_info=SECTION_INFO,
             active_section=1,
-            from_case_id=from_case_id
+            from_case_id=from_case_id,
+            is_admin=is_admin
         )
     
     return render_template(
@@ -169,7 +194,8 @@ def disease_main_page(section_slug, disease_slug):
         available_years=available_years,
         section_info=SECTION_INFO,
         active_section=1,
-        from_case_id=from_case_id
+        from_case_id=from_case_id,
+        is_admin=is_admin
     )
 
 
