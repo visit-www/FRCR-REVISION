@@ -275,8 +275,10 @@ def student_tnm_view(section_slug, disease_slug):
     
     # Get diagnosis year for intelligent data lookup
     diagnosis_year_id = None
+    diagnosis_year = None
     if staging_data:
         diagnosis_year_id = staging_data.diagnosis_year_id
+        diagnosis_year = staging_data.diagnosis_year
     
     # Get intelligent TNM data if available
     intelligent_data = None
@@ -325,7 +327,8 @@ def student_tnm_view(section_slug, disease_slug):
             from_case_id=from_case_id,
             is_curated=is_curated,
             is_admin=is_admin,
-            current_date=current_date
+            current_date=current_date,
+            diagnosis_year=diagnosis_year
         )
     except Exception as e:
         import traceback

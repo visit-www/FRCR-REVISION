@@ -288,6 +288,11 @@
             </button>
         </div>
         <div class="nav-links">
+            {% if is_admin %}
+            <button class="btn btn-warning" onclick="openAdminEditModal()">
+                <i class="fas fa-edit me-1"></i>Edit TNM Data
+            </button>
+            {% endif %}
             <button class="btn btn-light" onclick="window.print()">
                 <i class="fas fa-print me-1"></i>Print
             </button>
@@ -659,6 +664,88 @@
     </div>
 </div>
 
+<!-- Admin Edit Modal -->
+{% if is_admin %}
+<div class="modal fade" id="adminEditModal" tabindex="-1" aria-labelledby="adminEditModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title" id="adminEditModalLabel">
+                    <i class="fas fa-edit me-2"></i>Edit TNM Intelligence Data
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>Note:</strong> TNM Classification definitions (T, N, M stages) are extracted from AJCC and are view-only.
+                    You can edit the AI-generated intelligence data below.
+                </div>
+                
+                <form id="tnmEditForm">
+                    <!-- Memory Aid -->
+                    <div class="mb-4">
+                        <h6 class="border-bottom pb-2"><i class="fas fa-lightbulb me-2 text-warning"></i>TNM Memory Aid</h6>
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label"><strong class="text-primary">T Memory Aid:</strong></label>
+                                <textarea class="form-control" id="edit-memory-t" rows="3">{{ intelligent_data.tnm_memory_aid.T if intelligent_data and intelligent_data.tnm_memory_aid else '' }}</textarea>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label"><strong class="text-success">N Memory Aid:</strong></label>
+                                <textarea class="form-control" id="edit-memory-n" rows="3">{{ intelligent_data.tnm_memory_aid.N if intelligent_data and intelligent_data.tnm_memory_aid else '' }}</textarea>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label"><strong class="text-danger">M Memory Aid:</strong></label>
+                                <textarea class="form-control" id="edit-memory-m" rows="3">{{ intelligent_data.tnm_memory_aid.M if intelligent_data and intelligent_data.tnm_memory_aid else '' }}</textarea>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Upstaging Triggers -->
+                    <div class="mb-4">
+                        <label class="form-label"><i class="fas fa-arrow-up me-2 text-danger"></i><strong>Upstaging Triggers</strong></label>
+                        <textarea class="form-control" id="edit-upstaging" rows="5" placeholder="Enter each trigger on a new line">{% if intelligent_data and intelligent_data.upstaging_triggers %}{% for t in intelligent_data.upstaging_triggers %}{{ t }}{% if not loop.last %}
+{% endif %}{% endfor %}{% endif %}</textarea>
+                        <small class="text-muted">One trigger per line</small>
+                    </div>
+                    
+                    <!-- Key Reporting Points -->
+                    <div class="mb-4">
+                        <label class="form-label"><i class="fas fa-check-circle me-2 text-success"></i><strong>Key Reporting Points</strong></label>
+                        <textarea class="form-control" id="edit-keypoints" rows="5" placeholder="Enter each point on a new line">{% if intelligent_data and intelligent_data.radiologist_key_points %}{% for p in intelligent_data.radiologist_key_points %}{{ p }}{% if not loop.last %}
+{% endif %}{% endfor %}{% endif %}</textarea>
+                        <small class="text-muted">One point per line</small>
+                    </div>
+                    
+                    <!-- Imaging Checklist -->
+                    <div class="mb-4">
+                        <label class="form-label"><i class="fas fa-clipboard-check me-2 text-info"></i><strong>Imaging Checklist</strong></label>
+                        <textarea class="form-control" id="edit-checklist" rows="5" placeholder="Enter each checklist item on a new line">{% if intelligent_data and intelligent_data.imaging_checklist %}{% for c in intelligent_data.imaging_checklist %}{{ c }}{% if not loop.last %}
+{% endif %}{% endfor %}{% endif %}</textarea>
+                        <small class="text-muted">One item per line</small>
+                    </div>
+                    
+                    <!-- MDT Critical Findings -->
+                    <div class="mb-4">
+                        <label class="form-label"><i class="fas fa-users me-2 text-primary"></i><strong>MDT Decision Points</strong></label>
+                        <textarea class="form-control" id="edit-mdt" rows="5" placeholder="Enter each finding on a new line">{% if intelligent_data and intelligent_data.mdt_critical_findings %}{% for f in intelligent_data.mdt_critical_findings %}{{ f }}{% if not loop.last %}
+{% endif %}{% endfor %}{% endif %}</textarea>
+                        <small class="text-muted">One finding per line</small>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" onclick="saveAdminEdits()">
+                    <i class="fas fa-save me-1"></i>Save Changes
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 {% endblock %}
 
 {% block extra_js %}
@@ -700,5 +787,67 @@ document.querySelectorAll('.section-header').forEach(header => {
         });
     }
 });
+
+{% if is_admin %}
+// Admin Edit Functions
+function openAdminEditModal() {
+    const modal = new bootstrap.Modal(document.getElementById('adminEditModal'));
+    modal.show();
+}
+
+async function saveAdminEdits() {
+    const data = {
+        disease_site_id: {{ disease.id }},
+        diagnosis_year_id: {{ diagnosis_year.id if diagnosis_year else 'null' }},
+        tnm_memory_aid: {
+            T: document.getElementById('edit-memory-t').value.trim(),
+            N: document.getElementById('edit-memory-n').value.trim(),
+            M: document.getElementById('edit-memory-m').value.trim()
+        },
+        upstaging_triggers: document.getElementById('edit-upstaging').value.split('\n').filter(l => l.trim()),
+        radiologist_key_points: document.getElementById('edit-keypoints').value.split('\n').filter(l => l.trim()),
+        imaging_checklist: document.getElementById('edit-checklist').value.split('\n').filter(l => l.trim()),
+        mdt_critical_findings: document.getElementById('edit-mdt').value.split('\n').filter(l => l.trim())
+    };
+    
+    try {
+        const response = await fetch('/tnm/api/save-intelligence', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+        
+        if (response.ok) {
+            showToast('Changes saved successfully!', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('adminEditModal')).hide();
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            const err = await response.json();
+            showToast('Error saving: ' + (err.error || 'Unknown error'), 'danger');
+        }
+    } catch (error) {
+        console.error('Save error:', error);
+        showToast('Network error saving changes', 'danger');
+    }
+}
+
+function showToast(message, type) {
+    const toastContainer = document.querySelector('.toast-container');
+    const toastHtml = `
+        <div class="toast show" role="alert">
+            <div class="toast-body rounded bg-${type === 'success' ? 'success' : 'danger'} text-white">
+                <i class="fas fa-${type === 'success' ? 'check' : 'exclamation-triangle'} me-2"></i>${message}
+            </div>
+        </div>
+    `;
+    toastContainer.insertAdjacentHTML('beforeend', toastHtml);
+    setTimeout(() => {
+        const toast = toastContainer.lastElementChild;
+        toast.remove();
+    }, 3000);
+}
+{% endif %}
 </script>
 {% endblock %}
