@@ -258,6 +258,10 @@ def student_tnm_view(section_slug, disease_slug):
         m_definitions = staging_data.get_m_definitions()
         stage_groups = staging_data.get_stage_groups()
         
+        # Get cancers staged and not staged
+        cancers_staged = staging_data.get_json_section('cancers_staged') or []
+        cancers_not_staged = staging_data.get_json_section('cancers_not_staged') or []
+        
         # Extract images from curated content if available, else from raw
         source_html = quick_reference_html or explanatory_notes_html
         if is_admin and not is_curated:
@@ -309,6 +313,8 @@ def student_tnm_view(section_slug, disease_slug):
             n_definitions=n_definitions,
             m_definitions=m_definitions,
             stage_groups=stage_groups,
+            cancers_staged=cancers_staged,
+            cancers_not_staged=cancers_not_staged,
             quick_reference_html=quick_reference_html,
             explanatory_notes_html=explanatory_notes_html,
             images=images,
