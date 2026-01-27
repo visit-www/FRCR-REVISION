@@ -872,9 +872,15 @@ TONE & STYLE:
 • No filler, no repetition
 
 OUTPUT FORMAT:
-• Structured Markdown with clear section headers
-• Use #### for section headings
-• Use bullet points (- ) for all content
+• Structured Markdown with numbered section headers
+• Use #### for section headings WITH numbers: #### 1. Title, #### 2. Title, etc.
+• Required sections (in this order):
+  1. Critical Stage-Changing Findings (with **T-stage**, **N-stage**, **M-stage** subsections)
+  2. Practical Application on Imaging
+  3. High-Yield Explanatory Note Pearls
+  4. Tumour Board / MDT Discussion Points
+  5. Reporting Reminders
+• Use bullet points (- ) for all content under each section
 • Use **bold** for emphasis on critical findings
 • Group stage-changing findings by T, N, M separately"""
 
@@ -1290,13 +1296,15 @@ def _parse_tnm_markdown(markdown_content: str) -> Dict:
     current_content = []
     
     for line in markdown_content.split('\n'):
-        # Check for section headers (#### N. Title)
-        section_match = re.match(r'^####\s*(\d+)\.\s*(.+)', line)
+        # Check for section headers - support both:
+        #   #### 1. Title (numbered)
+        #   #### Title (non-numbered)
+        section_match = re.match(r'^####\s*(?:\d+\.)?\s*(.+)', line)
         if section_match:
             # Save previous section
             if current_section:
                 sections[current_section] = '\n'.join(current_content).strip()
-            current_section = section_match.group(2).strip().lower()
+            current_section = section_match.group(1).strip().lower()
             current_content = []
         else:
             current_content.append(line)
