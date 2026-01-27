@@ -471,7 +471,7 @@
                         <a href="{{ url_for('admin_tnm.tnm_management_page') }}" class="btn btn-outline-secondary">
                             <i class="fas fa-cog me-2"></i>TNM Management
                         </a>
-                        <a href="{{ url_for('tnm.disease_page', section_slug=section.slug, disease_slug=disease.slug) }}" class="btn btn-outline-primary">
+                        <a href="{{ url_for('tnm.disease_main_page', section_slug=section.slug, disease_slug=disease.slug, view='raw') }}" class="btn btn-outline-primary">
                             <i class="fas fa-database me-2"></i>View Raw AJCC Data
                         </a>
                     </div>
