@@ -1,0 +1,906 @@
+{% extends "base.html" %}
+
+{% block mobile_breadcrumb %}
+<li class="breadcrumb-item">
+    <a href="{{ url_for('tnm.browse') }}" class="text-white text-decoration-none">
+        <i class="fas fa-sitemap me-1"></i>TNM Browser
+    </a>
+</li>
+<li class="breadcrumb-item">
+    <a href="{{ url_for('tnm.section_page', section_slug=section.slug) }}" class="text-white text-decoration-none">
+        <i class="fas fa-folder me-1"></i>{{ section.section_name }}
+    </a>
+</li>
+<li class="breadcrumb-item active text-white" aria-current="page">
+    <i class="fas fa-file-medical me-1"></i>{{ disease.disease_name }}
+</li>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12 px-2 px-md-4">
+        
+        <!-- Breadcrumb Navigation (Desktop) -->
+        <nav aria-label="breadcrumb" class="mb-4 d-none d-md-block">
+            <ol class="breadcrumb breadcrumb-custom">
+                <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}"><i class="fas fa-home me-1"></i>Home</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('tnm.browse') }}"><i class="fas fa-sitemap me-1"></i>TNM Browser</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('tnm.section_page', section_slug=section.slug) }}"><i class="fas fa-folder me-1"></i>{{ section.section_name }}</a></li>
+                <li class="breadcrumb-item active"><i class="fas fa-file-medical me-1"></i>{{ disease.disease_name }}</li>
+            </ol>
+        </nav>
+
+        <!-- Mobile Navigation -->
+        <div class="case-mobile-nav d-md-none mb-3">
+            <div class="case-mobile-nav-row">
+                {% if from_case_id %}
+                <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('view_case', case_id=from_case_id) }}">
+                    <i class="fas fa-arrow-left me-1"></i>Back to Case
+                </a>
+                {% endif %}
+                <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('tnm.browse') }}">
+                    <i class="fas fa-sitemap me-1"></i>TNM Browser
+                </a>
+            </div>
+        </div>
+
+        <!-- Main TNM Card -->
+        <div class="case-card mb-4 card border-0 shadow-lg">
+            <!-- Header -->
+            <div class="case-card-header py-4 px-4 px-md-5">
+                <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+                    <div>
+                        <h3 class="mb-2 fw-bold text-white">{{ disease.disease_name }}</h3>
+                        <p class="mb-0 text-white">
+                            <i class="fas fa-book-medical me-2"></i>{{ tnm_version }}
+                            {% if year_used %} • {{ year_used }}{% endif %}
+                        </p>
+                    </div>
+                    <div class="text-end d-flex gap-2">
+                        {% if from_case_id %}
+                        <a href="{{ url_for('view_case', case_id=from_case_id) }}" class="btn btn-light btn-sm">
+                            <i class="fas fa-arrow-left me-1"></i>Back to Case
+                        </a>
+                        {% endif %}
+                        {% if is_admin %}
+                        <span class="badge bg-warning text-dark px-3 py-2">
+                            <i class="fas fa-user-shield me-1"></i>Admin View
+                        </span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card Body -->
+            <div class="card-body p-4 p-md-5" style="background: #ffffff;">
+                
+                <!-- Year Selector (if multiple years available) -->
+                {% if available_years and available_years|length > 1 %}
+                <div class="mb-4 p-3 rounded" style="background: #f8f9fa;">
+                    <label class="form-label small mb-1"><i class="fas fa-calendar-alt me-1"></i>Diagnosis Year:</label>
+                    <select class="form-select form-select-sm" id="yearSelector" onchange="changeYear(this.value)" style="max-width: 150px;" title="Select diagnosis year" aria-label="Select diagnosis year">
+                        {% for year in available_years %}
+                        <option value="{{ year }}" {% if year == year_used %}selected{% endif %}>{{ year }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endif %}
+
+                <!-- Curation Status Warning (for students viewing uncurated content) -->
+                {% if not is_curated and not is_admin %}
+                <div class="alert alert-warning mb-4">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>Note:</strong> This content is pending expert review. Some formatting may be incomplete.
+                </div>
+                {% endif %}
+
+                <!-- ==================== SECTION 1: Quick Reference (T/N/M Tables) ==================== -->
+                <div class="detail-section mb-5 p-4 rounded-3" style="background: linear-gradient(135deg, #f0f8fc 0%, #f5fbff 100%); border-left: 5px solid #5E899E;">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <label class="detail-label fw-bold text-secondary mb-0">
+                            <i class="fas fa-table me-2" style="color: #5E899E;"></i>Quick Reference - TNM Classification
+                        </label>
+                    </div>
+                    
+                    <div class="tnm-content highlightable-text" data-field="quick-reference">
+                        {% if t_definitions or n_definitions or m_definitions %}
+                        
+                        <!-- T Stage -->
+                        <div class="mb-4">
+                            <h6 class="border-bottom pb-2" style="color: #5E899E;">
+                                <i class="fas fa-tumor me-2"></i><strong>T - Primary Tumor</strong>
+                            </h6>
+                            {% if t_definitions %}
+                                {% for subsite in t_definitions %}
+                                    {% if subsite.subsite and subsite.subsite != 'Default' %}
+                                    <p class="text-muted small mb-1"><em>{{ subsite.subsite }}</em></p>
+                                    {% endif %}
+                                    <div class="table-responsive mb-3">
+                                        <table class="table table-sm table-bordered tnm-table">
+                                            <thead class="table-light">
+                                                <tr><th style="width: 100px;">Stage</th><th>Criteria</th></tr>
+                                            </thead>
+                                            <tbody id="t-definitions-table">
+                                                {% for cat in subsite.categories %}
+                                                <tr class="tnm-row" data-category="{{ cat.category }}">
+                                                    <td><span class="badge bg-primary tnm-badge">{{ cat.category }}</span></td>
+                                                    <td class="tnm-criteria">{{ cat.criteria }}</td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                {% endfor %}
+                            {% else %}
+                            <p class="text-muted">T-stage definitions not available</p>
+                            {% endif %}
+                        </div>
+
+                        <!-- N Stage -->
+                        <div class="mb-4">
+                            <h6 class="border-bottom pb-2" style="color: #28a745;">
+                                <i class="fas fa-project-diagram me-2"></i><strong>N - Regional Lymph Nodes</strong>
+                            </h6>
+                            {% if n_definitions %}
+                                {% if n_definitions.clinical %}
+                                <p class="small text-muted mb-1">Clinical (cN):</p>
+                                <div class="table-responsive mb-2">
+                                    <table class="table table-sm table-bordered tnm-table">
+                                        <thead class="table-light">
+                                            <tr><th style="width: 100px;">Stage</th><th>Criteria</th></tr>
+                                        </thead>
+                                        <tbody id="n-clinical-table">
+                                            {% for n in n_definitions.clinical %}
+                                            <tr class="tnm-row" data-category="{{ n.category }}">
+                                                <td><span class="badge bg-success tnm-badge">{{ n.category }}</span></td>
+                                                <td class="tnm-criteria">{{ n.criteria }}</td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                {% endif %}
+                                {% if n_definitions.pathological %}
+                                <p class="small text-muted mb-1">Pathological (pN):</p>
+                                <div class="table-responsive mb-2">
+                                    <table class="table table-sm table-bordered tnm-table">
+                                        <thead class="table-light">
+                                            <tr><th style="width: 100px;">Stage</th><th>Criteria</th></tr>
+                                        </thead>
+                                        <tbody id="n-path-table">
+                                            {% for n in n_definitions.pathological %}
+                                            <tr class="tnm-row" data-category="{{ n.category }}">
+                                                <td><span class="badge bg-success tnm-badge">{{ n.category }}</span></td>
+                                                <td class="tnm-criteria">{{ n.criteria }}</td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                {% endif %}
+                            {% else %}
+                            <p class="text-muted">N-stage definitions not available</p>
+                            {% endif %}
+                        </div>
+
+                        <!-- M Stage -->
+                        <div class="mb-4">
+                            <h6 class="border-bottom pb-2" style="color: #dc3545;">
+                                <i class="fas fa-globe me-2"></i><strong>M - Distant Metastasis</strong>
+                            </h6>
+                            {% if m_definitions %}
+                            <div class="table-responsive">
+                                <table class="table table-sm table-bordered tnm-table">
+                                    <thead class="table-light">
+                                        <tr><th style="width: 100px;">Stage</th><th>Criteria</th></tr>
+                                    </thead>
+                                    <tbody id="m-definitions-table">
+                                        {% for m in m_definitions %}
+                                        <tr class="tnm-row" data-category="{{ m.category }}">
+                                            <td><span class="badge bg-danger tnm-badge">{{ m.category }}</span></td>
+                                            <td class="tnm-criteria">{{ m.criteria }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% else %}
+                            <p class="text-muted">M-stage definitions not available</p>
+                            {% endif %}
+                        </div>
+
+                        {% else %}
+                        <p class="text-muted"><i class="fas fa-info-circle me-2"></i>Quick reference data not available.</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- ==================== SECTION 2: Stage Groups ==================== -->
+                {% if stage_groups %}
+                <div class="detail-section mb-5 p-4 rounded-3" style="background: linear-gradient(135deg, #f8f5ff 0%, #faf8ff 100%); border-left: 5px solid #6c757d;">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <label class="detail-label fw-bold text-secondary mb-0">
+                            <i class="fas fa-layer-group me-2" style="color: #6c757d;"></i>Prognostic Stage Groups
+                        </label>
+                    </div>
+                    
+                    <div class="tnm-content highlightable-text" data-field="stage-groups">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>T</th>
+                                        <th>N</th>
+                                        <th>M</th>
+                                        <th>Stage</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for group in stage_groups %}
+                                    <tr>
+                                        <td><span class="badge bg-primary">{{ group.T }}</span></td>
+                                        <td><span class="badge bg-success">{{ group.N }}</span></td>
+                                        <td><span class="badge bg-danger">{{ group.M }}</span></td>
+                                        <td><strong>{{ group.stage }}</strong></td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- ==================== SECTION 3: Cancers Staged / Not Staged ==================== -->
+                {% if cancers_staged or cancers_not_staged %}
+                <div class="row mb-5">
+                    {% if cancers_staged %}
+                    <div class="col-md-6 mb-3 mb-md-0">
+                        <div class="detail-section h-100 p-4 rounded-3" style="background: linear-gradient(135deg, #e8f5e9 0%, #f1f8e9 100%); border-left: 5px solid #28a745;">
+                            <label class="detail-label fw-bold text-secondary mb-3">
+                                <i class="fas fa-check-circle me-2" style="color: #28a745;"></i>Cancers Staged
+                            </label>
+                            <ul class="mb-0">
+                                {% for cancer in cancers_staged %}
+                                <li>{{ cancer }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if cancers_not_staged %}
+                    <div class="col-md-6">
+                        <div class="detail-section h-100 p-4 rounded-3" style="background: linear-gradient(135deg, #fff3e0 0%, #fff8e1 100%); border-left: 5px solid #ff9800;">
+                            <label class="detail-label fw-bold text-secondary mb-3">
+                                <i class="fas fa-times-circle me-2" style="color: #ff9800;"></i>Cancers NOT Staged
+                            </label>
+                            <ul class="mb-0">
+                                {% for cancer in cancers_not_staged %}
+                                <li>{{ cancer }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                <!-- ==================== SECTION 4: TNM Intelligence ==================== -->
+                {% if intelligent_data %}
+                <div class="detail-section mb-5 p-4 rounded-3" style="background: linear-gradient(135deg, #fff8f0 0%, #fffbf5 100%); border-left: 5px solid #e96304;">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <label class="detail-label fw-bold text-secondary mb-0">
+                            <i class="fas fa-brain me-2" style="color: #e96304;"></i>TNM Intelligence
+                            <span class="badge bg-warning text-dark ms-2">AI-Assisted</span>
+                        </label>
+                        {% if is_admin %}
+                        <button class="btn btn-sm btn-outline-primary" onclick="openTnmEditor('intelligence')">
+                            <i class="fas fa-edit me-1"></i>Edit
+                        </button>
+                        {% endif %}
+                    </div>
+                    
+                    <div id="intelligenceContent" class="tnm-content highlightable-text" data-field="intelligence" 
+                         data-raw-content="{{ intelligent_data|tojson|e if intelligent_data else '{}' }}">
+                        
+                        <!-- Memory Aids -->
+                        {% if intelligent_data.tnm_memory_aid_t or intelligent_data.tnm_memory_aid_n or intelligent_data.tnm_memory_aid_m %}
+                        <div class="mb-4">
+                            <h6 class="border-bottom pb-2"><i class="fas fa-lightbulb me-2 text-warning"></i>Memory Aids</h6>
+                            {% if intelligent_data.tnm_memory_aid_t %}
+                            <div class="mb-2"><strong>T:</strong> {{ intelligent_data.tnm_memory_aid_t }}</div>
+                            {% endif %}
+                            {% if intelligent_data.tnm_memory_aid_n %}
+                            <div class="mb-2"><strong>N:</strong> {{ intelligent_data.tnm_memory_aid_n }}</div>
+                            {% endif %}
+                            {% if intelligent_data.tnm_memory_aid_m %}
+                            <div class="mb-2"><strong>M:</strong> {{ intelligent_data.tnm_memory_aid_m }}</div>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+
+                        <!-- Key Points -->
+                        {% if intelligent_data.radiologist_key_points %}
+                        <div class="mb-4">
+                            <h6 class="border-bottom pb-2"><i class="fas fa-key me-2 text-info"></i>Key Radiologist Points</h6>
+                            <ul class="mb-0">
+                                {% for point in intelligent_data.radiologist_key_points %}
+                                <li>{{ point }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        {% endif %}
+
+                        <!-- Upstaging Triggers -->
+                        {% if intelligent_data.upstaging_triggers %}
+                        <div class="mb-4">
+                            <h6 class="border-bottom pb-2"><i class="fas fa-arrow-up me-2 text-danger"></i>Upstaging Triggers</h6>
+                            <ul class="mb-0">
+                                {% for trigger in intelligent_data.upstaging_triggers %}
+                                <li>{{ trigger }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        {% endif %}
+
+                        <!-- MDT Critical Findings -->
+                        {% if intelligent_data.mdt_critical_findings %}
+                        <div class="mb-4">
+                            <h6 class="border-bottom pb-2"><i class="fas fa-users me-2 text-primary"></i>MDT Critical Findings</h6>
+                            <ul class="mb-0">
+                                {% for finding in intelligent_data.mdt_critical_findings %}
+                                <li>{{ finding }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- ==================== SECTION 5: Essential TNM Concepts ==================== -->
+                {% if intelligent_data and intelligent_data.essential_tnm %}
+                <div class="detail-section mb-5 p-4 rounded-3" style="background: linear-gradient(135deg, #e3f2fd 0%, #e8f5e9 100%); border-left: 5px solid #1976d2;">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <label class="detail-label fw-bold text-secondary mb-0">
+                            <i class="fas fa-graduation-cap me-2" style="color: #1976d2;"></i>Essential TNM Concepts
+                        </label>
+                    </div>
+                    
+                    <div class="tnm-content highlightable-text" data-field="essential-tnm">
+                        {% set essential_tnm = intelligent_data.essential_tnm %}
+                        
+                        {% if essential_tnm.figure_url %}
+                        <div class="text-center mb-4">
+                            <img src="{{ essential_tnm.figure_url }}" 
+                                 alt="{{ essential_tnm.title }}" 
+                                 class="img-fluid rounded shadow"
+                                 style="max-height: 400px; cursor: pointer;"
+                                 onclick="openImageModal(this.src, '{{ essential_tnm.title }}')">
+                            <p class="small text-muted mt-2">{{ essential_tnm.title }}</p>
+                        </div>
+                        {% endif %}
+                        
+                        {% if essential_tnm.key_concepts %}
+                        <div class="mb-3">
+                            <h6><i class="fas fa-key me-2 text-warning"></i>Key Concepts</h6>
+                            <ul>
+                                {% for concept in essential_tnm.key_concepts %}
+                                <li>{{ concept }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        {% endif %}
+                        
+                        <div class="small text-muted">
+                            <i class="fas fa-book me-1"></i>Source: {{ essential_tnm.attribution or 'IARC Essential TNM Guide (CC BY-NC-ND 3.0 IGO)' }}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- ==================== SECTION 6: Explanatory Notes ==================== -->
+                {% if explanatory_notes_html %}
+                <div class="detail-section mb-5 p-4 rounded-3" style="background: linear-gradient(135deg, #f5f5f5 0%, #fafafa 100%); border-left: 5px solid #9e9e9e;">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <label class="detail-label fw-bold text-secondary mb-0">
+                            <i class="fas fa-file-alt me-2" style="color: #9e9e9e;"></i>Explanatory Notes
+                            {% if is_curated %}<span class="badge bg-success ms-2">Curated</span>{% endif %}
+                        </label>
+                        {% if is_admin %}
+                        <button class="btn btn-sm btn-outline-primary" onclick="openTnmEditor('explanatory-notes')">
+                            <i class="fas fa-edit me-1"></i>Edit
+                        </button>
+                        {% endif %}
+                    </div>
+                    
+                    <div id="explanatoryNotesContent" class="tnm-content highlightable-text tnm-html-content" 
+                         data-field="explanatory-notes" data-raw-content="{{ explanatory_notes_html|e }}">
+                        {{ explanatory_notes_html|safe }}
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- ==================== STUDENT TOOLS: Notes Section ==================== -->
+                {% if current_user.is_authenticated and current_user.role and current_user.role.value == 'student' %}
+                <div class="detail-section notes-section mt-4 mb-5 p-4 rounded-3" style="background: linear-gradient(135deg, #FFF8E7 0%, #FFFCF3 100%); border-left: 5px solid #F2CC8F;">
+                    <ul class="nav nav-tabs notes-tabs mb-3" id="notesTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="myNotesTab" data-bs-toggle="tab" data-bs-target="#myNotesPane" type="button" role="tab">
+                                <i class="fas fa-sticky-note me-1" style="color: #e96304;"></i>My Notes
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="essentialTnmTab" data-bs-toggle="tab" data-bs-target="#essentialTnmPane" type="button" role="tab">
+                                <i class="fas fa-book-medical me-1" style="color: #1a4178;"></i>Essential TNM Guide
+                            </button>
+                        </li>
+                    </ul>
+                    
+                    <div class="tab-content" id="notesTabContent">
+                        <!-- My Notes Tab -->
+                        <div class="tab-pane fade show active" id="myNotesPane" role="tabpanel">
+                            <div class="mb-3">
+                                <label for="userNoteTextarea" class="form-label visually-hidden">Your notes</label>
+                                <textarea id="userNoteTextarea" class="form-control" rows="4" placeholder="Add your notes about this TNM staging..." title="Enter your notes here"></textarea>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <small class="text-muted"><i class="fas fa-lock me-1"></i>Your notes are private</small>
+                                <button class="btn btn-sm btn-primary" id="saveNoteBtn" title="Save your note" aria-label="Save note">
+                                    <i class="fas fa-save me-1"></i>Save Note
+                                </button>
+                            </div>
+                            <div id="savedNotesList" class="mt-3">
+                                <!-- Notes loaded via JavaScript -->
+                            </div>
+                        </div>
+                        
+                        <!-- Essential TNM Guide Tab -->
+                        <div class="tab-pane fade" id="essentialTnmPane" role="tabpanel">
+                            <a href="/essential-tnm-concepts" target="_blank" class="btn btn-outline-primary">
+                                <i class="fas fa-external-link-alt me-2"></i>Open Complete Essential TNM Guide
+                            </a>
+                            <p class="small text-muted mt-2">
+                                Covers staging fundamentals, clinical vs pathological staging, and more
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- ==================== ADMIN ACTIONS ==================== -->
+                {% if is_admin %}
+                <div class="action-buttons mt-5 pt-4 border-top">
+                    <div class="btn-group-actions">
+                        <a href="{{ url_for('admin_tnm.tnm_management_page') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-cog me-2"></i>TNM Management
+                        </a>
+                        <a href="{{ url_for('tnm.disease_page', section_slug=section.slug, disease_slug=disease.slug) }}" class="btn btn-outline-primary">
+                            <i class="fas fa-database me-2"></i>View Raw AJCC Data
+                        </a>
+                    </div>
+                </div>
+                {% endif %}
+
+            </div>
+        </div>
+
+        <!-- ==================== STUDENT FORUM PANEL ==================== -->
+        {% if current_user.is_authenticated and current_user.role and current_user.role.value == 'student' %}
+        <div class="mt-3 p-3 rounded highlight-tip" style="background: #f8f9fa; border-left: 3px solid #667eea;">
+            <small class="text-muted" style="font-size: 0.85rem;">
+                <i class="fas fa-highlighter me-1" style="color: #667eea;"></i>Select text to highlight. Your highlights are private and sync across all pages.
+            </small>
+        </div>
+        {% endif %}
+
+    </div>
+</div>
+
+<!-- Image Modal -->
+<div class="modal fade" id="imageModal" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="imageModalTitle">Image</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center">
+                <img id="imageModalImg" src="" alt="" class="img-fluid">
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Admin Editor Modal (for inline editing) -->
+{% if is_admin %}
+<div class="modal fade" id="tnmEditorModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-edit me-2"></i>Edit <span id="editorSectionTitle"></span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <textarea id="tnmEditorTextarea" class="form-control" rows="15"></textarea>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="saveEditorBtn">
+                    <i class="fas fa-save me-1"></i>Save Changes
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<style>
+/* TNM-specific styles (following case view patterns) */
+.tnm-table {
+    font-size: 0.9rem;
+}
+
+.tnm-table th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+}
+
+.tnm-badge {
+    font-family: 'Monaco', 'Menlo', monospace;
+    font-size: 0.85rem;
+    min-width: 50px;
+}
+
+.tnm-row {
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.tnm-row:hover {
+    background-color: #f0f8ff;
+}
+
+.tnm-html-content img {
+    max-width: 100%;
+    height: auto;
+    cursor: pointer;
+}
+
+.tnm-html-content table {
+    width: 100%;
+    margin-bottom: 1rem;
+    border-collapse: collapse;
+}
+
+.tnm-html-content table th,
+.tnm-html-content table td {
+    padding: 0.5rem;
+    border: 1px solid #dee2e6;
+}
+
+/* Highlight styles (same as case view) */
+.highlightable-text {
+    {% if current_user.is_authenticated and current_user.role and current_user.role.value == 'student' %}
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+    user-select: text;
+    cursor: text;
+    {% endif %}
+}
+
+/* Notes section (same as case view) */
+.notes-tabs .nav-link {
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: #6c757d;
+    padding: 0.5rem 1rem;
+}
+
+.notes-tabs .nav-link.active {
+    border-bottom-color: #e96304;
+    color: #e96304;
+    background: transparent;
+}
+
+@media (max-width: 767px) {
+    .tnm-table {
+        font-size: 0.8rem;
+    }
+    
+    .tnm-badge {
+        font-size: 0.75rem;
+        min-width: 40px;
+    }
+}
+
+/* Print styles */
+@media print {
+    .notes-section,
+    .action-buttons,
+    .btn,
+    .highlight-tip {
+        display: none !important;
+    }
+    
+    .detail-section {
+        break-inside: avoid;
+    }
+}
+</style>
+
+<script>
+// ==================== CONFIGURATION ====================
+const diseaseId = {{ disease.id }};
+const sectionSlug = '{{ section.slug }}';
+const diseaseSlug = '{{ disease.slug }}';
+const yearUsed = {{ year_used or 'null' }};
+const fromCaseId = {{ from_case_id or 'null' }};
+const isStudent = {% if current_user.is_authenticated and current_user.role and current_user.role.value == 'student' %}true{% else %}false{% endif %};
+const isAdmin = {% if is_admin %}true{% else %}false{% endif %};
+const currentUserId = {% if current_user.is_authenticated %}{{ current_user.id }}{% else %}null{% endif %};
+
+// ==================== TNM CATEGORY CLEANUP ====================
+/**
+ * Clean TNM category labels - removes DITA/XML junk from extracted data
+ * Patterns like: [/concept/Tdefinition/...], {""}) , (validvalue]
+ */
+function cleanTNMCategory(text) {
+    if (!text) return '';
+    // Remove DITA/XML path junk
+    text = text.replace(/\[\/concept\/[^\]]+/g, '');
+    text = text.replace(/\[\/[a-zA-Z]+definition[^\]]*\]?/g, '');
+    text = text.replace(/\{[""\s]*\}\s*\)?/g, '');
+    text = text.replace(/\(validvalue\]/gi, '');
+    text = text.replace(/\[validvalue\]/gi, '');
+    text = text.replace(/\(\s*\)/g, '');
+    text = text.replace(/\[\s*\]/g, '');
+    text = text.replace(/\s+/g, ' ').trim();
+    return text;
+}
+
+// Apply cleanup to all TNM badges and criteria on load
+function cleanupTNMLabels() {
+    document.querySelectorAll('.tnm-badge').forEach(badge => {
+        badge.textContent = cleanTNMCategory(badge.textContent);
+    });
+    document.querySelectorAll('.tnm-criteria').forEach(cell => {
+        cell.textContent = cleanTNMCategory(cell.textContent);
+    });
+}
+
+// ==================== CONTENT RENDERING (Same as view_case.html) ====================
+/**
+ * Render safe HTML content
+ */
+function renderSafeHTML(htmlContent) {
+    if (!htmlContent) return '';
+    
+    // Handle escaped <hr> tags
+    htmlContent = htmlContent.replace(/<p>\s*&lt;hr\s*\/?&gt;\s*<\/p>/gi, '<hr style="border-top: 2px solid #e96304; margin: 0.5rem 0;">');
+    htmlContent = htmlContent.replace(/<hr\s*\/?>/gi, '<hr style="border-top: 2px solid #e96304; margin: 0.5rem 0;">');
+    
+    return htmlContent;
+}
+
+/**
+ * Convert markdown-style **text** to <h4> tags
+ */
+function convertMarkdownBoldToH4(content) {
+    if (!content) return content;
+    
+    const parts = content.split(/(<[^>]+>)/);
+    
+    return parts.map((part) => {
+        if (part.startsWith('<') && part.endsWith('>')) {
+            return part;
+        }
+        return part.replace(/\*\*([^*]+?)\*\*/g, '<h4>$1</h4>');
+    }).join('');
+}
+
+/**
+ * Safely linkify URLs
+ */
+function linkifyUrlsSafely(content, useInlineStyles = true) {
+    if (!content) return content;
+    
+    const parts = content.split(/(<[^>]+>)/);
+    
+    return parts.map((part) => {
+        if (part.startsWith('<') && part.endsWith('>')) {
+            return part;
+        }
+        const urlPattern = /(https?:\/\/[^\s<]+)/g;
+        return part.replace(urlPattern, function(url) {
+            let cleanUrl = url.replace(/[.,;:!?)]+$/, '');
+            let punctuation = url.substring(cleanUrl.length);
+            const styleAttr = useInlineStyles 
+                ? ' style="color: #17a2b8; text-decoration: underline; font-weight: 500;"'
+                : '';
+            return `<a href="${cleanUrl}" target="_blank" rel="noopener noreferrer"${styleAttr}>${cleanUrl}</a>${punctuation}`;
+        });
+    }).join('');
+}
+
+// ==================== YEAR SELECTOR ====================
+function changeYear(year) {
+    const url = new URL(window.location.href);
+    url.searchParams.set('year', year);
+    window.location.href = url.toString();
+}
+
+// ==================== IMAGE MODAL ====================
+function openImageModal(src, title) {
+    document.getElementById('imageModalImg').src = src;
+    document.getElementById('imageModalTitle').textContent = title || 'Image';
+    const modal = new bootstrap.Modal(document.getElementById('imageModal'));
+    modal.show();
+}
+
+// ==================== ADMIN EDITOR ====================
+{% if is_admin %}
+let currentEditorSection = null;
+let editorModal = null;
+
+function openTnmEditor(section) {
+    currentEditorSection = section;
+    document.getElementById('editorSectionTitle').textContent = section.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase());
+    
+    // Get current content
+    let contentEl;
+    if (section === 'intelligence') {
+        contentEl = document.getElementById('intelligenceContent');
+    } else if (section === 'explanatory-notes') {
+        contentEl = document.getElementById('explanatoryNotesContent');
+    }
+    
+    if (contentEl) {
+        document.getElementById('tnmEditorTextarea').value = contentEl.innerHTML;
+    }
+    
+    editorModal = new bootstrap.Modal(document.getElementById('tnmEditorModal'));
+    editorModal.show();
+}
+
+document.getElementById('saveEditorBtn')?.addEventListener('click', function() {
+    const content = document.getElementById('tnmEditorTextarea').value;
+    
+    // Save to API
+    fetch('/api/admin/tnm/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+            disease_site_id: diseaseId,
+            year: yearUsed,
+            section: currentEditorSection,
+            content: content
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Update display
+            if (currentEditorSection === 'intelligence') {
+                document.getElementById('intelligenceContent').innerHTML = content;
+            } else if (currentEditorSection === 'explanatory-notes') {
+                document.getElementById('explanatoryNotesContent').innerHTML = content;
+            }
+            editorModal.hide();
+            alert('Saved successfully!');
+        } else {
+            alert('Error saving: ' + (data.error || 'Unknown error'));
+        }
+    })
+    .catch(err => {
+        console.error('Save error:', err);
+        alert('Error saving changes');
+    });
+});
+{% endif %}
+
+// ==================== STUDENT NOTES ====================
+{% if current_user.is_authenticated and current_user.role and current_user.role.value == 'student' %}
+function loadTnmNotes() {
+    fetch(`/api/notes/tnm/${diseaseId}`, { credentials: 'include' })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.notes) {
+                renderNotesList(data.notes);
+            }
+        })
+        .catch(err => console.error('Error loading notes:', err));
+}
+
+function renderNotesList(notes) {
+    const container = document.getElementById('savedNotesList');
+    if (!notes || notes.length === 0) {
+        container.innerHTML = '<p class="text-muted small">No notes yet.</p>';
+        return;
+    }
+    
+    container.innerHTML = notes.map(note => `
+        <div class="card mb-2">
+            <div class="card-body p-2">
+                <p class="mb-1 small">${note.note_content}</p>
+                <small class="text-muted">${new Date(note.created_at).toLocaleDateString()}</small>
+            </div>
+        </div>
+    `).join('');
+}
+
+document.getElementById('saveNoteBtn')?.addEventListener('click', function() {
+    const textarea = document.getElementById('userNoteTextarea');
+    const content = textarea.value.trim();
+    
+    if (!content) {
+        alert('Please enter a note');
+        return;
+    }
+    
+    fetch('/api/notes/tnm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+            tnm_disease_id: diseaseId,
+            note_content: content
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            textarea.value = '';
+            loadTnmNotes();
+        } else {
+            alert('Error saving note: ' + (data.error || 'Unknown error'));
+        }
+    })
+    .catch(err => {
+        console.error('Error saving note:', err);
+        alert('Error saving note');
+    });
+});
+{% endif %}
+
+// ==================== ROW CLICK TO COPY ====================
+document.querySelectorAll('.tnm-row').forEach(row => {
+    row.addEventListener('click', function() {
+        const category = this.querySelector('.tnm-badge')?.textContent || '';
+        const criteria = this.querySelector('.tnm-criteria')?.textContent || '';
+        const text = `${category}: ${criteria}`;
+        
+        navigator.clipboard.writeText(text).then(() => {
+            // Visual feedback
+            this.style.backgroundColor = '#d4edda';
+            setTimeout(() => {
+                this.style.backgroundColor = '';
+            }, 500);
+        }).catch(err => {
+            console.error('Copy failed:', err);
+        });
+    });
+});
+
+// ==================== INITIALIZATION ====================
+document.addEventListener('DOMContentLoaded', function() {
+    // Clean up TNM labels
+    cleanupTNMLabels();
+    
+    // Load student notes if applicable
+    {% if current_user.is_authenticated and current_user.role and current_user.role.value == 'student' %}
+    loadTnmNotes();
+    {% endif %}
+    
+    // Make images clickable
+    document.querySelectorAll('.tnm-html-content img').forEach(img => {
+        img.addEventListener('click', function() {
+            openImageModal(this.src, this.alt || 'Image');
+        });
+    });
+});
+</script>
+{% endblock %}

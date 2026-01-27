@@ -375,7 +375,7 @@ def student_tnm_view(section_slug, disease_slug):
     
     try:
         return render_template(
-            'student_tnm_view.html',
+            'view_tnm.html',
             section=section,
             disease=disease_site,
             staging_data=staging_data,
@@ -400,7 +400,7 @@ def student_tnm_view(section_slug, disease_slug):
         )
     except Exception as e:
         import traceback
-        print(f"[TNM] Error rendering student_tnm_view template: {e}")
+        print(f"[TNM] Error rendering view_tnm template: {e}")
         traceback.print_exc()
         # Return a simple error page instead of blank
         from flask import abort
