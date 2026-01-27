@@ -1215,7 +1215,7 @@ function openAdminEditModal() {
 async function saveAdminEdits() {
     const data = {
         disease_site_id: {{ disease.id }},
-        diagnosis_year_id: {{ diagnosis_year.id if diagnosis_year else 'null' }},
+        diagnosis_year_id: {% if diagnosis_year and diagnosis_year.id %}{{ diagnosis_year.id }}{% else %}null{% endif %},
         tnm_memory_aid: {
             T: document.getElementById('edit-memory-t').value.trim(),
             N: document.getElementById('edit-memory-n').value.trim(),
