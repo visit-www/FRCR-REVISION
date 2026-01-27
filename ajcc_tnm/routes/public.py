@@ -258,9 +258,35 @@ def student_tnm_view(section_slug, disease_slug):
         m_definitions = staging_data.get_m_definitions()
         stage_groups = staging_data.get_stage_groups()
         
-        # Get cancers staged and not staged
-        cancers_staged = staging_data.get_json_section('cancers_staged') or []
-        cancers_not_staged = staging_data.get_json_section('cancers_not_staged') or []
+        # Get cancers staged and not staged (handle nested JSON structure)
+        cancers_staged_data = staging_data.get_json_section('cancers_staged') or {}
+        cancers_not_staged_data = staging_data.get_json_section('cancers_not_staged') or {}
+        
+        # Extract cancer list from various JSON formats
+        cancers_staged = []
+        if isinstance(cancers_staged_data, dict):
+            # Handle {"cancers": [...], "text": "..."} format
+            if cancers_staged_data.get('cancers'):
+                cancers_staged = cancers_staged_data['cancers']
+            elif cancers_staged_data.get('text'):
+                # Parse text if cancers array is empty
+                cancers_staged = [cancers_staged_data['text']]
+        elif isinstance(cancers_staged_data, list):
+            cancers_staged = cancers_staged_data
+        
+        cancers_not_staged = []
+        if isinstance(cancers_not_staged_data, dict):
+            # Handle {"exclusions": [{cancer_type: ..., staged_according_to: ...}]} format
+            if cancers_not_staged_data.get('exclusions'):
+                cancers_not_staged = [
+                    f"{exc.get('cancer_type', '')} → {exc.get('staged_according_to', '')}"
+                    for exc in cancers_not_staged_data['exclusions']
+                    if isinstance(exc, dict)
+                ]
+            elif cancers_not_staged_data.get('text'):
+                cancers_not_staged = [cancers_not_staged_data['text']]
+        elif isinstance(cancers_not_staged_data, list):
+            cancers_not_staged = cancers_not_staged_data
         
         # Extract images from curated content if available, else from raw
         source_html = quick_reference_html or explanatory_notes_html

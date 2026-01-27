@@ -149,7 +149,65 @@
 .tnm-table .stage-cell {
     font-weight: 600;
     width: 80px;
+    min-width: 80px;
     color: var(--brand-teal, #5E899E);
+}
+
+/* Fix table overflow */
+.table-responsive-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.tnm-table {
+    table-layout: fixed;
+}
+
+.tnm-table td:last-child {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    white-space: normal;
+}
+
+/* Curated content table fixes */
+.curated-content table {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+    margin-bottom: 1rem;
+}
+
+.curated-content table td,
+.curated-content table th {
+    padding: 0.5rem;
+    border: 1px solid #dee2e6;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+
+/* Sub-section expandable headers */
+.tnm-subsection-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-radius: 8px;
+    margin-bottom: 0.75rem;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.tnm-subsection-header:hover {
+    background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
+}
+
+.tnm-subsection-header .expand-icon {
+    transition: transform 0.3s ease;
+}
+
+.tnm-subsection-header.collapsed .expand-icon {
+    transform: rotate(-90deg);
 }
 
 /* Row click feedback */
@@ -631,7 +689,7 @@
     <div class="tnm-nav-bar">
         <div class="nav-links">
             {% if from_case_id %}
-            <a href="/case/{{ from_case_id }}" class="btn btn-light">
+            <a href="/view-case/{{ from_case_id }}" class="btn btn-light">
                 <i class="fas fa-arrow-left me-1"></i>Back to Case
             </a>
             {% endif %}
@@ -667,94 +725,117 @@
                 <div class="collapse show" id="collapse-quick-ref">
                     <div class="section-content">
                         {% if staging_data and (t_definitions or n_definitions or m_definitions) %}
-                            <!-- T Stage -->
+                            <!-- T Stage (Expandable) -->
                             <div class="mb-4">
-                                <h6 class="text-primary mb-3"><strong>T - Primary Tumor</strong></h6>
-                                {% if t_definitions %}
-                                    {% for subsite in t_definitions %}
-                                        {% if subsite.subsite and subsite.subsite != 'Default' %}
-                                        <p class="text-muted small mb-1"><em>{{ subsite.subsite }}</em></p>
+                                <div class="tnm-subsection-header" data-bs-toggle="collapse" data-bs-target="#t-stage-content">
+                                    <h6 class="text-primary mb-0"><i class="fas fa-tumor me-2"></i><strong>T - Primary Tumor</strong></h6>
+                                    <i class="fas fa-chevron-down expand-icon"></i>
+                                </div>
+                                <div class="collapse show" id="t-stage-content">
+                                    {% if t_definitions %}
+                                        {% for subsite in t_definitions %}
+                                            {% if subsite.subsite and subsite.subsite != 'Default' %}
+                                            <p class="text-muted small mb-1"><em>{{ subsite.subsite }}</em></p>
+                                            {% endif %}
+                                            <div class="table-responsive-wrapper">
+                                                <table class="tnm-table mb-3">
+                                                    <thead>
+                                                        <tr><th class="stage-cell">Stage</th><th>Criteria</th></tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {% for cat in subsite.categories %}
+                                                        <tr onclick="copyRow(this)" title="Click to copy">
+                                                            <td class="stage-cell"><strong>{{ cat.category }}</strong></td>
+                                                            <td>{{ cat.criteria }}</td>
+                                                        </tr>
+                                                        {% endfor %}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        {% endfor %}
+                                    {% else %}
+                                    <p class="text-muted">T-stage definitions not available</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <!-- N Stage (Expandable) -->
+                            <div class="mb-4">
+                                <div class="tnm-subsection-header" data-bs-toggle="collapse" data-bs-target="#n-stage-content">
+                                    <h6 class="text-success mb-0"><i class="fas fa-sitemap me-2"></i><strong>N - Regional Lymph Nodes</strong></h6>
+                                    <i class="fas fa-chevron-down expand-icon"></i>
+                                </div>
+                                <div class="collapse show" id="n-stage-content">
+                                    {% if n_definitions %}
+                                        {% if n_definitions.clinical %}
+                                        <p class="small text-muted mb-1">Clinical (cN):</p>
+                                        <div class="table-responsive-wrapper">
+                                            <table class="tnm-table mb-3">
+                                                <thead>
+                                                    <tr><th class="stage-cell">Stage</th><th>Criteria</th></tr>
+                                                </thead>
+                                                <tbody>
+                                                    {% for n in n_definitions.clinical %}
+                                                    <tr onclick="copyRow(this)" title="Click to copy">
+                                                        <td class="stage-cell"><strong>{{ n.category }}</strong></td>
+                                                        <td>{{ n.criteria }}</td>
+                                                    </tr>
+                                                    {% endfor %}
+                                                </tbody>
+                                            </table>
+                                        </div>
                                         {% endif %}
-                                        <table class="tnm-table mb-3">
+                                        {% if n_definitions.pathological %}
+                                        <p class="small text-muted mb-1">Pathological (pN):</p>
+                                        <div class="table-responsive-wrapper">
+                                            <table class="tnm-table">
+                                                <thead>
+                                                    <tr><th class="stage-cell">Stage</th><th>Criteria</th></tr>
+                                                </thead>
+                                                <tbody>
+                                                    {% for n in n_definitions.pathological %}
+                                                    <tr onclick="copyRow(this)" title="Click to copy">
+                                                        <td class="stage-cell"><strong>{{ n.category }}</strong></td>
+                                                        <td>{{ n.criteria }}</td>
+                                                    </tr>
+                                                    {% endfor %}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        {% endif %}
+                                    {% else %}
+                                    <p class="text-muted">N-stage definitions not available</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <!-- M Stage (Expandable) -->
+                            <div class="mb-4">
+                                <div class="tnm-subsection-header" data-bs-toggle="collapse" data-bs-target="#m-stage-content">
+                                    <h6 class="text-danger mb-0"><i class="fas fa-globe me-2"></i><strong>M - Distant Metastasis</strong></h6>
+                                    <i class="fas fa-chevron-down expand-icon"></i>
+                                </div>
+                                <div class="collapse show" id="m-stage-content">
+                                    {% if m_definitions %}
+                                    <div class="table-responsive-wrapper">
+                                        <table class="tnm-table">
                                             <thead>
                                                 <tr><th class="stage-cell">Stage</th><th>Criteria</th></tr>
                                             </thead>
                                             <tbody>
-                                                {% for cat in subsite.categories %}
+                                                {% for m in m_definitions %}
                                                 <tr onclick="copyRow(this)" title="Click to copy">
-                                                    <td class="stage-cell"><strong>{{ cat.category }}</strong></td>
-                                                    <td>{{ cat.criteria }}</td>
+                                                    <td class="stage-cell"><strong>{{ m.category }}</strong></td>
+                                                    <td>{{ m.criteria }}</td>
                                                 </tr>
                                                 {% endfor %}
                                             </tbody>
                                         </table>
-                                    {% endfor %}
-                                {% else %}
-                                <p class="text-muted">T-stage definitions not available</p>
-                                {% endif %}
-                            </div>
-
-                            <!-- N Stage -->
-                            <div class="mb-4">
-                                <h6 class="text-success mb-3"><strong>N - Regional Lymph Nodes</strong></h6>
-                                {% if n_definitions %}
-                                    {% if n_definitions.clinical %}
-                                    <p class="small text-muted mb-1">Clinical (cN):</p>
-                                    <table class="tnm-table mb-3">
-                                        <thead>
-                                            <tr><th class="stage-cell">Stage</th><th>Criteria</th></tr>
-                                        </thead>
-                                        <tbody>
-                                            {% for n in n_definitions.clinical %}
-                                            <tr onclick="copyRow(this)" title="Click to copy">
-                                                <td class="stage-cell"><strong>{{ n.category }}</strong></td>
-                                                <td>{{ n.criteria }}</td>
-                                            </tr>
-                                            {% endfor %}
-                                        </tbody>
-                                    </table>
+                                    </div>
+                                    {% else %}
+                                    <p class="text-muted">M-stage definitions not available</p>
                                     {% endif %}
-                                    {% if n_definitions.pathological %}
-                                    <p class="small text-muted mb-1">Pathological (pN):</p>
-                                    <table class="tnm-table">
-                                        <thead>
-                                            <tr><th class="stage-cell">Stage</th><th>Criteria</th></tr>
-                                        </thead>
-                                        <tbody>
-                                            {% for n in n_definitions.pathological %}
-                                            <tr onclick="copyRow(this)" title="Click to copy">
-                                                <td class="stage-cell"><strong>{{ n.category }}</strong></td>
-                                                <td>{{ n.criteria }}</td>
-                                            </tr>
-                                            {% endfor %}
-                                        </tbody>
-                                    </table>
-                                    {% endif %}
-                                {% else %}
-                                <p class="text-muted">N-stage definitions not available</p>
-                                {% endif %}
-                            </div>
-
-                            <!-- M Stage -->
-                            <div class="mb-4">
-                                <h6 class="text-danger mb-3"><strong>M - Distant Metastasis</strong></h6>
-                                {% if m_definitions %}
-                                <table class="tnm-table">
-                                    <thead>
-                                        <tr><th class="stage-cell">Stage</th><th>Criteria</th></tr>
-                                    </thead>
-                                    <tbody>
-                                        {% for m in m_definitions %}
-                                        <tr onclick="copyRow(this)" title="Click to copy">
-                                            <td class="stage-cell"><strong>{{ m.category }}</strong></td>
-                                            <td>{{ m.criteria }}</td>
-                                        </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
-                                {% else %}
-                                <p class="text-muted">M-stage definitions not available</p>
-                                {% endif %}
+                                </div>
                             </div>
                         {% else %}
                         <div class="alert alert-warning">
@@ -952,30 +1033,31 @@
             </div>
             {% endif %}
 
-            <!-- Stage Groupings (Optional - collapsed by default) -->
+            <!-- Stage Groupings (Expandable) -->
             {% if stage_groups %}
             <div class="section-card" id="section-stage-groups">
-                <div class="section-header" data-bs-toggle="collapse" data-bs-target="#collapse-stage-groups" aria-expanded="false">
+                <div class="section-header" data-bs-toggle="collapse" data-bs-target="#collapse-stage-groups" aria-expanded="true">
                     <h5><i class="fas fa-layer-group text-secondary"></i> Prognostic Stage Groups</h5>
                     <i class="fas fa-chevron-down expand-icon"></i>
                 </div>
-                <div class="collapse" id="collapse-stage-groups">
+                <div class="collapse show" id="collapse-stage-groups">
                     <div class="section-content">
-                        <table class="tnm-table">
-                            <thead>
-                                <tr>
-                                    <th>Stage</th>
-                                    <th>T</th>
-                                    <th>N</th>
-                                    <th>M</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for sg in stage_groups %}
-                                <tr onclick="copyRow(this)" title="Click to copy">
-                                    <td class="stage-cell"><strong>{{ sg.stage }}</strong></td>
-                                    <td>{{ sg.T }}</td>
-                                    <td>{{ sg.N }}</td>
+                        <div class="table-responsive-wrapper">
+                            <table class="tnm-table">
+                                <thead>
+                                    <tr>
+                                        <th>Stage</th>
+                                        <th>T</th>
+                                        <th>N</th>
+                                        <th>M</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for sg in stage_groups %}
+                                    <tr onclick="copyRow(this)" title="Click to copy">
+                                        <td class="stage-cell"><strong>{{ sg.stage }}</strong></td>
+                                        <td>{{ sg.T }}</td>
+                                        <td>{{ sg.N }}</td>
                                     <td>{{ sg.M }}</td>
                                 </tr>
                                 {% endfor %}
@@ -1193,15 +1275,39 @@ function showCopyToast() {
 }
 
 // Handle expand/collapse icon rotation
-document.querySelectorAll('.section-header').forEach(header => {
+document.querySelectorAll('.section-header, .tnm-subsection-header').forEach(header => {
     const target = document.querySelector(header.dataset.bsTarget);
     if (target) {
         target.addEventListener('show.bs.collapse', () => {
             header.setAttribute('aria-expanded', 'true');
+            header.classList.remove('collapsed');
         });
         target.addEventListener('hide.bs.collapse', () => {
             header.setAttribute('aria-expanded', 'false');
+            header.classList.add('collapsed');
         });
+    }
+});
+
+// Hide placeholder images in explanatory notes (broken AJCC images)
+document.querySelectorAll('.curated-content img').forEach(img => {
+    // Hide images that are placeholders or broken
+    img.onerror = function() {
+        this.style.display = 'none';
+    };
+    // Hide images with expired JWT tokens or placeholder URLs
+    if (img.src.includes('placeholder') || img.src.includes('jwt=') || !img.complete) {
+        img.style.display = 'none';
+    }
+});
+
+// Wrap tables in curated content for responsiveness
+document.querySelectorAll('.curated-content table').forEach(table => {
+    if (!table.parentElement.classList.contains('table-responsive-wrapper')) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'table-responsive-wrapper';
+        table.parentNode.insertBefore(wrapper, table);
+        wrapper.appendChild(table);
     }
 });
 
