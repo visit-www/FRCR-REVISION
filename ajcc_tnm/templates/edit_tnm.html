@@ -145,30 +145,7 @@ console.log('[TinyMCE Loader] TNM Edit - checking if TinyMCE loaded...');
                 </div>
             </div>
 
-            <!-- Section 2: Quick Reference (Read-only display, shows raw data) -->
-            <div class="card shadow-sm mb-5 border-0">
-                <div class="card-header bg-gradient text-white" style="background: linear-gradient(135deg, #5E899E 0%, #4A6F7F 100%);">
-                    <h5 class="mb-0">
-                        <i class="fas fa-table me-2"></i>Quick Reference (Source Data - Read Only)
-                    </h5>
-                </div>
-                <div class="card-body p-4">
-                    <div class="alert alert-secondary mb-3">
-                        <i class="fas fa-lock me-2"></i>
-                        Quick Reference data is extracted from AJCC and cannot be directly edited here. 
-                        This section shows the source T/N/M definitions.
-                    </div>
-                    {% if staging_data and staging_data.section_1_quick_reference_html %}
-                    <div class="tnm-html-content border rounded p-3" style="max-height: 400px; overflow-y: auto; background: #fafafa;">
-                        {{ staging_data.section_1_quick_reference_html | safe }}
-                    </div>
-                    {% else %}
-                    <p class="text-muted">No quick reference data available.</p>
-                    {% endif %}
-                </div>
-            </div>
-
-            <!-- Section 3: Curated Quick Reference (Editable) -->
+            <!-- Section 2: Curated Quick Reference (Editable) -->
             <div class="card shadow-sm mb-5 border-0">
                 <div class="card-header bg-gradient text-white" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%);">
                     <h5 class="mb-0">
@@ -199,15 +176,14 @@ console.log('[TinyMCE Loader] TNM Edit - checking if TinyMCE loaded...');
                         Edit the curated explanatory notes shown to students
                     </label>
                     <textarea class="form-control rich-editor" id="curatedExplanatoryNotes" rows="10" 
-                              placeholder="Enter curated explanatory notes...">{{ staging_data.curated_explanatory_notes_html if staging_data and staging_data.curated_explanatory_notes_html else '' }}</textarea>
+                              placeholder="Enter curated explanatory notes...">{{ staging_data.curated_explanatory_notes_html if staging_data and staging_data.curated_explanatory_notes_html else (staging_data.section_10_explanatory_notes_html if staging_data and staging_data.section_10_explanatory_notes_html else '') }}</textarea>
                     <small class="text-muted d-block mt-2">
                         <i class="fas fa-info-circle me-1"></i>Add teaching points, clinical pearls, and radiologist-focused content.
                     </small>
                 </div>
             </div>
 
-            <!-- Section 5: TNM Intelligence (Editable) -->
-            {% if intelligent_data %}
+            <!-- Section 5: TNM Intelligence (Editable) - Always shown -->
             <div class="card shadow-sm mb-5 border-0">
                 <div class="card-header bg-gradient text-white" style="background: linear-gradient(135deg, #e96304 0%, #ff8c42 100%);">
                     <h5 class="mb-0">
@@ -216,28 +192,35 @@ console.log('[TinyMCE Loader] TNM Edit - checking if TinyMCE loaded...');
                     </h5>
                 </div>
                 <div class="card-body p-4">
+                    {% if not intelligent_data %}
+                    <div class="alert alert-info mb-4">
+                        <i class="fas fa-info-circle me-2"></i>
+                        No TNM Intelligence data exists yet. You can add it manually below, or generate it from a case using the TNM button.
+                    </div>
+                    {% endif %}
+                    
                     <!-- Memory Aids -->
                     <div class="mb-4">
                         <label class="form-label fw-bold text-secondary" for="memoryAidT">T-Stage Memory Aid</label>
                         <textarea class="form-control" id="memoryAidT" rows="2" 
-                                  placeholder="Memory aid for T staging...">{{ intelligent_data.tnm_memory_aid_t if intelligent_data.tnm_memory_aid_t else '' }}</textarea>
+                                  placeholder="Memory aid for T staging...">{{ intelligent_data.tnm_memory_aid_t if intelligent_data and intelligent_data.tnm_memory_aid_t else '' }}</textarea>
                     </div>
                     <div class="mb-4">
                         <label class="form-label fw-bold text-secondary" for="memoryAidN">N-Stage Memory Aid</label>
                         <textarea class="form-control" id="memoryAidN" rows="2" 
-                                  placeholder="Memory aid for N staging...">{{ intelligent_data.tnm_memory_aid_n if intelligent_data.tnm_memory_aid_n else '' }}</textarea>
+                                  placeholder="Memory aid for N staging...">{{ intelligent_data.tnm_memory_aid_n if intelligent_data and intelligent_data.tnm_memory_aid_n else '' }}</textarea>
                     </div>
                     <div class="mb-4">
                         <label class="form-label fw-bold text-secondary" for="memoryAidM">M-Stage Memory Aid</label>
                         <textarea class="form-control" id="memoryAidM" rows="2" 
-                                  placeholder="Memory aid for M staging...">{{ intelligent_data.tnm_memory_aid_m if intelligent_data.tnm_memory_aid_m else '' }}</textarea>
+                                  placeholder="Memory aid for M staging...">{{ intelligent_data.tnm_memory_aid_m if intelligent_data and intelligent_data.tnm_memory_aid_m else '' }}</textarea>
                     </div>
                     
                     <!-- Key Points (JSON array) -->
                     <div class="mb-4">
                         <label class="form-label fw-bold text-secondary" for="keyPoints">Radiologist Key Points (one per line)</label>
                         <textarea class="form-control" id="keyPoints" rows="5" 
-                                  placeholder="Enter key points, one per line...">{% if intelligent_data.radiologist_key_points %}{% for point in intelligent_data.radiologist_key_points %}{{ point }}{% if not loop.last %}
+                                  placeholder="Enter key points, one per line...">{% if intelligent_data and intelligent_data.radiologist_key_points %}{% for point in intelligent_data.radiologist_key_points %}{{ point }}{% if not loop.last %}
 {% endif %}{% endfor %}{% endif %}</textarea>
                         <small class="text-muted">Each line becomes a bullet point</small>
                     </div>
@@ -246,12 +229,11 @@ console.log('[TinyMCE Loader] TNM Edit - checking if TinyMCE loaded...');
                     <div class="mb-4">
                         <label class="form-label fw-bold text-secondary" for="upstagingTriggers">Upstaging Triggers (one per line)</label>
                         <textarea class="form-control" id="upstagingTriggers" rows="4" 
-                                  placeholder="Enter upstaging triggers, one per line...">{% if intelligent_data.upstaging_triggers %}{% for trigger in intelligent_data.upstaging_triggers %}{{ trigger }}{% if not loop.last %}
+                                  placeholder="Enter upstaging triggers, one per line...">{% if intelligent_data and intelligent_data.upstaging_triggers %}{% for trigger in intelligent_data.upstaging_triggers %}{{ trigger }}{% if not loop.last %}
 {% endif %}{% endfor %}{% endif %}</textarea>
                     </div>
                 </div>
             </div>
-            {% endif %}
 
             <!-- Section 6: Images -->
             <div class="card shadow-sm mb-5 border-0">
