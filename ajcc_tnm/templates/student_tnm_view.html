@@ -8,14 +8,27 @@
    STUDENT TNM VIEW - REDESIGNED LAYOUT
    ============================================ */
 
+/* CSS Variables for consistent branding */
+:root {
+    --brand-teal: #5E899E;
+    --brand-orange: #e96304;
+    --brand-green: #7FB685;
+    --brand-gold: #F2CC8F;
+}
+
 /* Section Card Styling (Essential TNM Concepts style) */
 .section-card {
     background: white;
     border-radius: 12px;
     margin-bottom: 1.5rem;
     box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    border-left: 5px solid var(--brand-teal, #5E899E);
+    border-left: 5px solid var(--brand-teal);
     overflow: hidden;
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.section-card:hover {
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
 }
 
 .section-card.highlight {
@@ -136,6 +149,91 @@
 .tnm-table .stage-cell {
     font-weight: 600;
     width: 80px;
+    color: var(--brand-teal, #5E899E);
+}
+
+/* Row click feedback */
+.tnm-table tr {
+    position: relative;
+}
+
+.tnm-table tr::after {
+    content: '📋';
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    font-size: 0.8rem;
+}
+
+.tnm-table tr:hover::after {
+    opacity: 0.5;
+}
+
+/* Stage type headers */
+.stage-type-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0;
+    margin-bottom: 0.5rem;
+    border-bottom: 2px solid;
+}
+
+.stage-type-header.t-stage {
+    color: var(--brand-teal, #5E899E);
+    border-color: var(--brand-teal, #5E899E);
+}
+
+.stage-type-header.n-stage {
+    color: #28a745;
+    border-color: #28a745;
+}
+
+.stage-type-header.m-stage {
+    color: #dc3545;
+    border-color: #dc3545;
+}
+
+/* Note callout (matching essential_tnm_concepts) */
+.note-callout {
+    background: linear-gradient(135deg, rgba(242, 204, 143, 0.3) 0%, rgba(242, 204, 143, 0.15) 100%);
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    margin: 1rem 0;
+    border-left: 4px solid var(--brand-gold, #F2CC8F);
+}
+
+.note-callout-title {
+    font-weight: 600;
+    color: #856404;
+    margin-bottom: 0.5rem;
+}
+
+/* Rule box (matching essential_tnm_concepts) */
+.rule-box {
+    background: linear-gradient(135deg, #e8f5e9 0%, #f1f8e9 100%);
+    border: 2px dashed var(--brand-green, #7FB685);
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    margin: 1rem 0;
+}
+
+.rule-title {
+    font-weight: 600;
+    color: #2e7d32;
+    margin-bottom: 0.5rem;
+}
+
+/* Important info box */
+.info-box {
+    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+    border-left: 4px solid #1976d2;
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    margin: 1rem 0;
 }
 
 /* Curated Badge */
@@ -174,9 +272,30 @@
     }
 }
 
+/* Enhanced Mobile Responsiveness */
+@media (max-width: 576px) {
+    .tnm-table th, .tnm-table td {
+        padding: 0.4rem 0.5rem;
+        font-size: 0.85rem;
+    }
+    
+    .tnm-table .stage-cell {
+        width: 60px;
+    }
+    
+    .section-content {
+        padding: 0.75rem;
+    }
+    
+    .section-header h5 {
+        font-size: 0.95rem;
+    }
+}
+
 /* Print Styles */
 @media print {
-    .tnm-nav-bar, .expand-icon, .btn, button, .no-print {
+    .tnm-nav-bar, .expand-icon, .btn, button, .no-print,
+    .tnm-notes-panel, .tnm-forum-panel, .tnm-tool-toggles {
         display: none !important;
     }
     
