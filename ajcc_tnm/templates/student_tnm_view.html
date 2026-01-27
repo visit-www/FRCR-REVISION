@@ -328,6 +328,43 @@
     .section-header h5 {
         font-size: 1rem;
     }
+    
+    /* New component responsiveness */
+    .tnm-sticky-nav {
+        padding: 0.5rem 1rem;
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .tnm-sticky-nav .nav-group {
+        justify-content: center;
+    }
+    
+    .disease-header-card {
+        padding: 1rem;
+    }
+    
+    .disease-header-card h1 {
+        font-size: 1.35rem;
+    }
+    
+    .tnm-overview-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .tnm-tabs {
+        flex-direction: column;
+    }
+    
+    .tnm-tab {
+        min-width: 100%;
+    }
+    
+    .editor-slide-panel {
+        width: 100%;
+        max-width: 100%;
+        right: -100%;
+    }
 }
 
 /* Enhanced Mobile Responsiveness */
@@ -348,13 +385,45 @@
     .section-header h5 {
         font-size: 0.95rem;
     }
+    
+    /* Enhanced table mobile */
+    .tnm-table-enhanced {
+        border-spacing: 0 4px;
+    }
+    
+    .tnm-table-enhanced tbody td {
+        padding: 0.6rem 0.5rem;
+        font-size: 0.85rem;
+    }
+    
+    .tnm-table-enhanced tbody tr::after {
+        display: none;
+    }
+    
+    .category-icon {
+        width: 40px;
+        height: 40px;
+        font-size: 1.2rem;
+    }
+    
+    .tnm-category-card {
+        padding: 1rem;
+    }
 }
 
 /* Print Styles */
 @media print {
-    .tnm-nav-bar, .expand-icon, .btn, button, .no-print,
-    .tnm-notes-panel, .tnm-forum-panel, .tnm-tool-toggles {
+    /* Hide interactive elements */
+    .tnm-nav-bar, .tnm-sticky-nav, .expand-icon, .btn, button, .no-print,
+    .tnm-notes-panel, .tnm-forum-panel, .tnm-tool-toggles,
+    .tnm-tabs-container, .tnm-overview-grid, .quick-jump-links,
+    .section-edit-inline, .editor-slide-panel, .editor-overlay {
         display: none !important;
+    }
+    
+    /* Show all tab content for printing */
+    .tnm-tab-content {
+        display: block !important;
     }
     
     .section-card {
@@ -364,9 +433,36 @@
         margin-bottom: 1rem !important;
     }
     
+    .disease-header-card {
+        box-shadow: none !important;
+        border: 1px solid #ddd !important;
+        page-break-after: avoid;
+    }
+    
     .collapse {
         display: block !important;
         height: auto !important;
+    }
+    
+    /* Enhanced table print styles */
+    .tnm-table-enhanced {
+        border-spacing: 0 !important;
+    }
+    
+    .tnm-table-enhanced tbody tr {
+        background: white !important;
+        border-bottom: 1px solid #ddd;
+    }
+    
+    .tnm-table-enhanced tbody tr::after {
+        display: none !important;
+    }
+    
+    .stage-badge {
+        background: #f0f0f0 !important;
+        color: #333 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
     }
     
     .print-attribution {
@@ -383,6 +479,508 @@
     .print-attribution {
         display: none !important;
     }
+}
+
+/* ============================================
+   PHASE 1: REDESIGNED COMPONENTS
+   ============================================ */
+
+/* Sticky Top Navigation */
+.tnm-sticky-nav {
+    position: sticky;
+    top: 0;
+    z-index: 1020;
+    background: linear-gradient(135deg, #5E899E 0%, #4A6F7F 100%);
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+}
+
+.tnm-sticky-nav .nav-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.tnm-sticky-nav .btn {
+    border-radius: 20px;
+    font-size: 0.85rem;
+    padding: 0.4rem 1rem;
+    white-space: nowrap;
+}
+
+/* Disease Header Card */
+.disease-header-card {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem 2rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    border-left: 5px solid var(--brand-teal, #5E899E);
+}
+
+.disease-header-card h1 {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #2c3e50;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.disease-header-card .disease-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: center;
+    color: #6c757d;
+    font-size: 0.9rem;
+}
+
+.disease-header-card .quick-jump-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #eee;
+}
+
+.disease-header-card .quick-jump-links a {
+    font-size: 0.8rem;
+    padding: 0.35rem 0.75rem;
+    background: #f0f4f8;
+    color: #5E899E;
+    border-radius: 15px;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.disease-header-card .quick-jump-links a:hover {
+    background: #5E899E;
+    color: white;
+}
+
+/* TNM Overview Cards (Progressive Disclosure Level 1) */
+.tnm-overview-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.tnm-category-card {
+    background: white;
+    border-radius: 12px;
+    padding: 1.25rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    transition: all 0.3s ease;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    border: 2px solid transparent;
+}
+
+.tnm-category-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+}
+
+.tnm-category-card.active {
+    border-color: var(--brand-teal, #5E899E);
+    background: linear-gradient(135deg, #f8fcfd 0%, #e8f4f8 100%);
+}
+
+.tnm-category-card.t-card { border-left: 4px solid var(--brand-teal, #5E899E); }
+.tnm-category-card.n-card { border-left: 4px solid #28a745; }
+.tnm-category-card.m-card { border-left: 4px solid #dc3545; }
+.tnm-category-card.stage-card { border-left: 4px solid #6c757d; }
+
+.category-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: white;
+    flex-shrink: 0;
+}
+
+.category-icon.t-icon { background: linear-gradient(135deg, #5E899E 0%, #4A6F7F 100%); }
+.category-icon.n-icon { background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%); }
+.category-icon.m-icon { background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); }
+.category-icon.stage-icon { background: linear-gradient(135deg, #6c757d 0%, #545b62 100%); }
+
+.category-info h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #2c3e50;
+    margin: 0 0 0.25rem 0;
+}
+
+.category-info .category-range {
+    font-size: 0.85rem;
+    color: #6c757d;
+    margin: 0;
+}
+
+.category-info .category-summary {
+    font-size: 0.75rem;
+    color: #adb5bd;
+    margin: 0;
+}
+
+.btn-expand {
+    background: none;
+    border: none;
+    color: #6c757d;
+    padding: 0.5rem;
+    cursor: pointer;
+    transition: transform 0.3s ease;
+    margin-left: auto;
+}
+
+.btn-expand:hover { color: var(--brand-teal, #5E899E); }
+.btn-expand:focus { outline: 2px solid var(--brand-teal, #5E899E); outline-offset: 2px; }
+.btn-expand.collapsed { transform: rotate(-90deg); }
+
+/* Accessibility - Focus States */
+.tnm-category-card:focus,
+.tnm-category-card:focus-within {
+    outline: 3px solid var(--brand-teal, #5E899E);
+    outline-offset: 2px;
+}
+
+.tnm-tab:focus {
+    outline: 2px solid var(--brand-teal, #5E899E);
+    outline-offset: -2px;
+}
+
+.tnm-table-enhanced tbody tr:focus {
+    outline: 2px solid var(--brand-teal, #5E899E);
+    outline-offset: -2px;
+}
+
+.quick-jump-links a:focus {
+    outline: 2px solid var(--brand-teal, #5E899E);
+    outline-offset: 2px;
+}
+
+.section-header:focus {
+    outline: 2px solid var(--brand-teal, #5E899E);
+    outline-offset: -2px;
+}
+
+/* Skip link for accessibility */
+.skip-link {
+    position: absolute;
+    top: -40px;
+    left: 0;
+    background: var(--brand-teal, #5E899E);
+    color: white;
+    padding: 8px 16px;
+    z-index: 9999;
+    text-decoration: none;
+    border-radius: 0 0 4px 0;
+}
+
+.skip-link:focus {
+    top: 0;
+}
+
+/* Tab Navigation */
+.tnm-tabs-container {
+    margin-bottom: 1.5rem;
+}
+
+.tnm-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    background: #f0f4f8;
+    padding: 0.35rem;
+    border-radius: 12px;
+    margin-bottom: 1rem;
+}
+
+.tnm-tab {
+    flex: 1;
+    min-width: 120px;
+    padding: 0.75rem 1rem;
+    border: none;
+    background: transparent;
+    color: #5a6270;
+    font-size: 0.9rem;
+    font-weight: 500;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: center;
+}
+
+.tnm-tab:hover {
+    background: rgba(255,255,255,0.5);
+    color: #2c3e50;
+}
+
+.tnm-tab.active {
+    background: white;
+    color: var(--brand-teal, #5E899E);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    font-weight: 600;
+}
+
+.tnm-tab-content {
+    display: none;
+    animation: fadeIn 0.3s ease;
+}
+
+.tnm-tab-content.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Enhanced TNM Tables */
+.tnm-table-enhanced {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0 8px;
+    margin-bottom: 1rem;
+}
+
+.tnm-table-enhanced thead th {
+    background: linear-gradient(135deg, #5E899E 0%, #4A6F7F 100%);
+    color: white;
+    padding: 0.75rem 1rem;
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.tnm-table-enhanced thead th:first-child {
+    border-radius: 8px 0 0 8px;
+}
+
+.tnm-table-enhanced thead th:last-child {
+    border-radius: 0 8px 8px 0;
+}
+
+.tnm-table-enhanced tbody tr {
+    background: #f8f9fa;
+    transition: all 0.2s ease;
+}
+
+.tnm-table-enhanced tbody tr:hover {
+    background: #e8f4f8;
+    transform: translateX(4px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.tnm-table-enhanced tbody tr:active {
+    background: #d0e8f0;
+}
+
+.tnm-table-enhanced tbody td {
+    padding: 0.85rem 1rem;
+    vertical-align: middle;
+}
+
+.tnm-table-enhanced tbody td:first-child {
+    border-radius: 8px 0 0 8px;
+}
+
+.tnm-table-enhanced tbody td:last-child {
+    border-radius: 0 8px 8px 0;
+}
+
+.tnm-table-enhanced .stage-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 52px;
+    height: 32px;
+    background: linear-gradient(135deg, #5E899E 0%, #4A6F7F 100%);
+    color: white;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.tnm-table-enhanced .stage-badge.t-badge { background: linear-gradient(135deg, #5E899E 0%, #4A6F7F 100%); }
+.tnm-table-enhanced .stage-badge.n-badge { background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%); }
+.tnm-table-enhanced .stage-badge.m-badge { background: linear-gradient(135deg, #dc3545 0%, #c82333 100%); }
+
+/* Row copy indicator */
+.tnm-table-enhanced tbody tr {
+    position: relative;
+    cursor: pointer;
+}
+
+.tnm-table-enhanced tbody tr::after {
+    content: 'Click to copy';
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.7rem;
+    color: #6c757d;
+    background: rgba(255,255,255,0.9);
+    padding: 2px 8px;
+    border-radius: 4px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.tnm-table-enhanced tbody tr:hover::after {
+    opacity: 1;
+}
+
+/* Section Color Coding */
+.section-card.quick-ref { border-left-color: #5E899E; }
+.section-card.stage-groups { border-left-color: #6c757d; background: #fafbfc; }
+.section-card.intelligence { border-left-color: #e96304; }
+.section-card.essential { border-left-color: #7FB685; }
+.section-card.explanatory { border-left-color: #17a2b8; }
+
+.section-card.intelligence .section-header {
+    background: linear-gradient(135deg, #fff8f0 0%, #fff 100%);
+}
+
+.section-card.essential .section-header {
+    background: linear-gradient(135deg, #f0fff4 0%, #fff 100%);
+}
+
+.section-card.explanatory .section-header {
+    background: linear-gradient(135deg, #f0f8fc 0%, #fff 100%);
+}
+
+/* Inline Admin Edit Button */
+.section-edit-inline {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.3rem 0.65rem;
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    color: #6c757d;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-left: auto;
+}
+
+.section-edit-inline:hover {
+    background: #e9ecef;
+    color: #495057;
+    border-color: #ced4da;
+}
+
+.section-edit-inline i {
+    font-size: 0.7rem;
+}
+
+/* Slide-out Editor Panel */
+.editor-slide-panel {
+    position: fixed;
+    top: 0;
+    right: -50%;
+    width: 50%;
+    max-width: 700px;
+    height: 100vh;
+    background: white;
+    box-shadow: -5px 0 30px rgba(0,0,0,0.2);
+    z-index: 1060;
+    transition: right 0.3s ease;
+    display: flex;
+    flex-direction: column;
+}
+
+.editor-slide-panel.open {
+    right: 0;
+}
+
+.editor-panel-header {
+    padding: 1rem 1.5rem;
+    background: linear-gradient(135deg, #5E899E 0%, #4A6F7F 100%);
+    color: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.editor-panel-header h5 {
+    margin: 0;
+    font-weight: 600;
+}
+
+.editor-panel-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1.5rem;
+}
+
+.editor-panel-footer {
+    padding: 1rem 1.5rem;
+    background: #f8f9fa;
+    border-top: 1px solid #eee;
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+}
+
+.editor-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.4);
+    z-index: 1055;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+.editor-overlay.visible {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* Live Preview in Editor */
+.editor-preview {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.editor-preview-label {
+    font-size: 0.75rem;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.5rem;
 }
 
 /* Cancers List */
@@ -742,31 +1340,10 @@
 
 {% block content %}
 <div class="container-fluid py-4">
-    <!-- Page Header -->
-    <div class="mb-4">
-        <nav aria-label="breadcrumb">
-            <ol class="breadcrumb mb-2">
-                <li class="breadcrumb-item"><a href="/tnm">TNM Browser</a></li>
-                <li class="breadcrumb-item"><a href="/tnm/{{ section.slug }}">{{ section.section_name }}</a></li>
-                <li class="breadcrumb-item active">{{ disease.disease_name }}</li>
-            </ol>
-        </nav>
-        <h2 class="mb-1">
-            <i class="fas fa-dna me-2 text-primary"></i>
-            {{ disease.disease_name }} - TNM Staging
-        </h2>
-        <p class="text-muted mb-0">{{ tnm_version }}</p>
-        
-        {% if is_curated %}
-        <div class="curated-badge mt-2">
-            <i class="fas fa-check-circle"></i> Verified staging data ({{ tnm_version }})
-        </div>
-        {% endif %}
-    </div>
-
-    <!-- Top Navigation Bar -->
-    <div class="tnm-nav-bar">
-        <div class="nav-links">
+    
+    <!-- Sticky Top Navigation Bar -->
+    <nav class="tnm-sticky-nav" aria-label="TNM page navigation">
+        <div class="nav-group">
             {% if from_case_id %}
             <a href="/view-case/{{ from_case_id }}" class="btn btn-light">
                 <i class="fas fa-arrow-left me-1"></i>Back to Case
@@ -776,17 +1353,113 @@
                 <i class="fas fa-list me-1"></i>TNM Browser
             </a>
             <button class="btn btn-outline-light" disabled title="Coming soon">
-                <i class="fas fa-calculator me-1"></i>TNM Calculator
+                <i class="fas fa-calculator me-1"></i>Calculator
             </button>
         </div>
-        <div class="nav-links">
+        <div class="nav-group">
             {% if is_admin %}
             <button class="btn btn-warning" onclick="openAdminEditModal()">
-                <i class="fas fa-edit me-1"></i>Edit TNM Data
+                <i class="fas fa-edit me-1"></i>Edit Data
             </button>
             {% endif %}
             <button class="btn btn-light" onclick="window.print()">
                 <i class="fas fa-print me-1"></i>Print
+            </button>
+        </div>
+    </nav>
+    
+    <!-- Disease Header Card -->
+    <div class="disease-header-card">
+        <nav aria-label="breadcrumb" class="mb-2">
+            <ol class="breadcrumb mb-0" style="font-size: 0.85rem;">
+                <li class="breadcrumb-item"><a href="/tnm">TNM Browser</a></li>
+                <li class="breadcrumb-item"><a href="/tnm/{{ section.slug }}">{{ section.section_name }}</a></li>
+                <li class="breadcrumb-item active">{{ disease.disease_name }}</li>
+            </ol>
+        </nav>
+        <h1>
+            <i class="fas fa-dna" style="color: var(--brand-teal, #5E899E);"></i>
+            {{ disease.disease_name }}
+        </h1>
+        <div class="disease-meta">
+            <span><i class="fas fa-book me-1"></i>{{ tnm_version }}</span>
+            {% if is_curated %}
+            <span class="curated-badge">
+                <i class="fas fa-check-circle"></i> Verified
+            </span>
+            {% endif %}
+        </div>
+        <div class="quick-jump-links">
+            <a href="#section-quick-ref"><i class="fas fa-table me-1"></i>Quick Reference</a>
+            <a href="#section-stage-groups"><i class="fas fa-layer-group me-1"></i>Stage Groups</a>
+            <a href="#section-tnm-intelligence"><i class="fas fa-brain me-1"></i>Intelligence</a>
+            <a href="#section-essential-tnm"><i class="fas fa-graduation-cap me-1"></i>Essential TNM</a>
+            <a href="#section-explanatory-notes"><i class="fas fa-file-alt me-1"></i>Explanatory Notes</a>
+        </div>
+    </div>
+    
+    <!-- TNM Overview Cards (Progressive Disclosure Level 1) -->
+    <div class="tnm-overview-grid">
+        <div class="tnm-category-card t-card" onclick="scrollToSection('t-stage-content'); toggleCollapse('t-stage-content');">
+            <div class="category-icon t-icon">T</div>
+            <div class="category-info">
+                <h4>Primary Tumor</h4>
+                <p class="category-range">{% if t_definitions %}{{ t_definitions|length }} definition(s){% else %}TX - T4{% endif %}</p>
+                <p class="category-summary">Size & local invasion</p>
+            </div>
+            <button class="btn-expand" aria-label="Expand T definitions">
+                <i class="fas fa-chevron-right"></i>
+            </button>
+        </div>
+        
+        <div class="tnm-category-card n-card" onclick="scrollToSection('n-stage-content'); toggleCollapse('n-stage-content');">
+            <div class="category-icon n-icon">N</div>
+            <div class="category-info">
+                <h4>Regional Nodes</h4>
+                <p class="category-range">{% if n_definitions %}{{ n_definitions|length if n_definitions is mapping else n_definitions|length }} definition(s){% else %}N0 - N3{% endif %}</p>
+                <p class="category-summary">Nodal involvement</p>
+            </div>
+            <button class="btn-expand" aria-label="Expand N definitions">
+                <i class="fas fa-chevron-right"></i>
+            </button>
+        </div>
+        
+        <div class="tnm-category-card m-card" onclick="scrollToSection('m-stage-content'); toggleCollapse('m-stage-content');">
+            <div class="category-icon m-icon">M</div>
+            <div class="category-info">
+                <h4>Distant Metastasis</h4>
+                <p class="category-range">{% if m_definitions %}{{ m_definitions|length }} definition(s){% else %}M0 - M1{% endif %}</p>
+                <p class="category-summary">Spread to distant sites</p>
+            </div>
+            <button class="btn-expand" aria-label="Expand M definitions">
+                <i class="fas fa-chevron-right"></i>
+            </button>
+        </div>
+        
+        <div class="tnm-category-card stage-card" onclick="scrollToSection('section-stage-groups');">
+            <div class="category-icon stage-icon"><i class="fas fa-layer-group"></i></div>
+            <div class="category-info">
+                <h4>Stage Groups</h4>
+                <p class="category-range">I - IV</p>
+                <p class="category-summary">Combined staging</p>
+            </div>
+            <button class="btn-expand" aria-label="View stage groups">
+                <i class="fas fa-chevron-right"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Tab Navigation -->
+    <div class="tnm-tabs-container">
+        <div class="tnm-tabs" role="tablist">
+            <button class="tnm-tab active" role="tab" data-tab="classification" aria-selected="true">
+                <i class="fas fa-table me-1 d-none d-md-inline"></i>Classification
+            </button>
+            <button class="tnm-tab" role="tab" data-tab="intelligence" aria-selected="false">
+                <i class="fas fa-brain me-1 d-none d-md-inline"></i>Intelligence
+            </button>
+            <button class="tnm-tab" role="tab" data-tab="learning" aria-selected="false">
+                <i class="fas fa-graduation-cap me-1 d-none d-md-inline"></i>Learning
             </button>
         </div>
     </div>
@@ -795,10 +1468,13 @@
     <div class="row">
         <div class="col-12">
             
+            <!-- TAB 1: CLASSIFICATION (Quick Reference + Stage Groups + Cancers) -->
+            <div class="tnm-tab-content active" id="tab-classification">
+            
             <!-- 1. Quick Reference (TNM Classification Tables) -->
-            <div class="section-card primary" id="section-quick-ref">
+            <div class="section-card quick-ref" id="section-quick-ref">
                 <div class="section-header" data-bs-toggle="collapse" data-bs-target="#collapse-quick-ref" aria-expanded="true">
-                    <h5><i class="fas fa-table text-primary"></i> Quick Reference</h5>
+                    <h5><i class="fas fa-table" style="color: #5E899E;"></i> Quick Reference</h5>
                     <i class="fas fa-chevron-down expand-icon"></i>
                 </div>
                 <div class="collapse show" id="collapse-quick-ref">
@@ -817,14 +1493,14 @@
                                             <p class="text-muted small mb-1"><em>{{ subsite.subsite }}</em></p>
                                             {% endif %}
                                             <div class="table-responsive-wrapper">
-                                                <table class="tnm-table mb-3">
+                                                <table class="tnm-table tnm-table-enhanced mb-3">
                                                     <thead>
                                                         <tr><th class="stage-cell">Stage</th><th>Criteria</th></tr>
                                                     </thead>
                                                     <tbody>
                                                         {% for cat in subsite.categories %}
                                                         <tr onclick="copyRow(this)" title="Click to copy">
-                                                            <td class="stage-cell"><strong>{{ cat.category }}</strong></td>
+                                                            <td><span class="stage-badge t-badge">{{ cat.category }}</span></td>
                                                             <td>{{ cat.criteria }}</td>
                                                         </tr>
                                                         {% endfor %}
@@ -849,14 +1525,14 @@
                                         {% if n_definitions.clinical %}
                                         <p class="small text-muted mb-1">Clinical (cN):</p>
                                         <div class="table-responsive-wrapper">
-                                            <table class="tnm-table mb-3">
+                                            <table class="tnm-table tnm-table-enhanced mb-3">
                                                 <thead>
                                                     <tr><th class="stage-cell">Stage</th><th>Criteria</th></tr>
                                                 </thead>
                                                 <tbody>
                                                     {% for n in n_definitions.clinical %}
                                                     <tr onclick="copyRow(this)" title="Click to copy">
-                                                        <td class="stage-cell"><strong>{{ n.category }}</strong></td>
+                                                        <td><span class="stage-badge n-badge">{{ n.category }}</span></td>
                                                         <td>{{ n.criteria }}</td>
                                                     </tr>
                                                     {% endfor %}
@@ -867,14 +1543,14 @@
                                         {% if n_definitions.pathological %}
                                         <p class="small text-muted mb-1">Pathological (pN):</p>
                                         <div class="table-responsive-wrapper">
-                                            <table class="tnm-table">
+                                            <table class="tnm-table tnm-table-enhanced">
                                                 <thead>
                                                     <tr><th class="stage-cell">Stage</th><th>Criteria</th></tr>
                                                 </thead>
                                                 <tbody>
                                                     {% for n in n_definitions.pathological %}
                                                     <tr onclick="copyRow(this)" title="Click to copy">
-                                                        <td class="stage-cell"><strong>{{ n.category }}</strong></td>
+                                                        <td><span class="stage-badge n-badge">{{ n.category }}</span></td>
                                                         <td>{{ n.criteria }}</td>
                                                     </tr>
                                                     {% endfor %}
@@ -897,14 +1573,14 @@
                                 <div class="collapse show" id="m-stage-content">
                                     {% if m_definitions %}
                                     <div class="table-responsive-wrapper">
-                                        <table class="tnm-table">
+                                        <table class="tnm-table tnm-table-enhanced">
                                             <thead>
                                                 <tr><th class="stage-cell">Stage</th><th>Criteria</th></tr>
                                             </thead>
                                             <tbody>
                                                 {% for m in m_definitions %}
                                                 <tr onclick="copyRow(this)" title="Click to copy">
-                                                    <td class="stage-cell"><strong>{{ m.category }}</strong></td>
+                                                    <td><span class="stage-badge m-badge">{{ m.category }}</span></td>
                                                     <td>{{ m.criteria }}</td>
                                                 </tr>
                                                 {% endfor %}
@@ -928,15 +1604,15 @@
 
             <!-- 2. Prognostic Stage Groups -->
             {% if stage_groups %}
-            <div class="section-card" id="section-stage-groups">
+            <div class="section-card stage-groups" id="section-stage-groups">
                 <div class="section-header" data-bs-toggle="collapse" data-bs-target="#collapse-stage-groups" aria-expanded="true">
-                    <h5><i class="fas fa-layer-group text-secondary"></i> Prognostic Stage Groups</h5>
+                    <h5><i class="fas fa-layer-group" style="color: #6c757d;"></i> Prognostic Stage Groups</h5>
                     <i class="fas fa-chevron-down expand-icon"></i>
                 </div>
                 <div class="collapse show" id="collapse-stage-groups">
                     <div class="section-content">
                         <div class="table-responsive-wrapper">
-                            <table class="tnm-table">
+                            <table class="tnm-table tnm-table-enhanced">
                                 <thead>
                                     <tr>
                                         <th>Stage</th>
@@ -948,10 +1624,10 @@
                                 <tbody>
                                     {% for sg in stage_groups %}
                                     <tr onclick="copyRow(this)" title="Click to copy">
-                                        <td class="stage-cell"><strong>{{ sg.stage }}</strong></td>
-                                        <td>{{ sg.T }}</td>
-                                        <td>{{ sg.N }}</td>
-                                        <td>{{ sg.M }}</td>
+                                        <td><span class="stage-badge">{{ sg.stage }}</span></td>
+                                        <td><span class="stage-badge t-badge" style="opacity:0.8;">{{ sg.T }}</span></td>
+                                        <td><span class="stage-badge n-badge" style="opacity:0.8;">{{ sg.N }}</span></td>
+                                        <td><span class="stage-badge m-badge" style="opacity:0.8;">{{ sg.M }}</span></td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>
@@ -999,17 +1675,26 @@
                 </div>
             </div>
             {% endif %}
+            
+            </div><!-- END TAB 1: CLASSIFICATION -->
+            
+            <!-- TAB 2: INTELLIGENCE -->
+            <div class="tnm-tab-content" id="tab-intelligence">
 
             <!-- 5. TNM Intelligence (AI-Assisted) -->
             {% if intelligent_data %}
-            <div class="section-card highlight" id="section-tnm-intelligence">
-                {% if is_admin %}
-                <button class="btn btn-sm btn-outline-warning section-edit-btn" onclick="openAdminEditModal()" title="Edit TNM Intelligence">
-                    <i class="fas fa-edit"></i>
-                </button>
-                {% endif %}
+            <div class="section-card intelligence" id="section-tnm-intelligence">
                 <div class="section-header" data-bs-toggle="collapse" data-bs-target="#collapse-tnm-intelligence" aria-expanded="true">
-                    <h5><i class="fas fa-brain text-warning"></i> Radiologist's TNM Intelligence <span class="badge bg-dark ms-2">AI-Assisted</span></h5>
+                    <h5>
+                        <i class="fas fa-brain" style="color: #e96304;"></i> 
+                        Radiologist's TNM Intelligence 
+                        <span class="badge bg-dark ms-2">AI-Assisted</span>
+                        {% if is_admin %}
+                        <button class="section-edit-inline ms-2" onclick="event.stopPropagation(); openInlineEditor('intelligence');" title="Edit">
+                            <i class="fas fa-pencil-alt"></i> Edit
+                        </button>
+                        {% endif %}
+                    </h5>
                     <i class="fas fa-chevron-down expand-icon"></i>
                 </div>
                 <div class="collapse show" id="collapse-tnm-intelligence">
@@ -1107,11 +1792,16 @@
                 </div>
             </div>
             {% endif %}
+            
+            </div><!-- END TAB 2: INTELLIGENCE -->
+            
+            <!-- TAB 3: LEARNING (Essential TNM + Explanatory Notes) -->
+            <div class="tnm-tab-content" id="tab-learning">
 
             <!-- 6. Essential TNM Concepts -->
-            <div class="section-card" id="section-essential-tnm">
+            <div class="section-card essential" id="section-essential-tnm">
                 <div class="section-header" data-bs-toggle="collapse" data-bs-target="#collapse-essential-tnm" aria-expanded="true">
-                    <h5><i class="fas fa-book-medical text-primary"></i> Essential TNM Concepts</h5>
+                    <h5><i class="fas fa-graduation-cap" style="color: #7FB685;"></i> Essential TNM Concepts</h5>
                     <i class="fas fa-chevron-down expand-icon"></i>
                 </div>
                 <div class="collapse show" id="collapse-essential-tnm">
@@ -1191,17 +1881,17 @@
 
             <!-- 7. Explanatory Notes -->
             {% if explanatory_notes_html %}
-            <div class="section-card info" id="section-explanatory-notes">
-                {% if is_admin %}
-                <button class="btn btn-sm btn-outline-warning section-edit-btn" onclick="openExplanatoryNotesEditor()" title="Edit Explanatory Notes">
-                    <i class="fas fa-edit"></i>
-                </button>
-                {% endif %}
+            <div class="section-card explanatory" id="section-explanatory-notes">
                 <div class="section-header" data-bs-toggle="collapse" data-bs-target="#collapse-explanatory-notes" aria-expanded="false">
                     <h5>
-                        <i class="fas fa-book-open text-info"></i> Explanatory Notes
+                        <i class="fas fa-file-alt" style="color: #17a2b8;"></i> Explanatory Notes
                         {% if is_curated %}
                         <span class="badge bg-success ms-2">Curated</span>
+                        {% endif %}
+                        {% if is_admin %}
+                        <button class="section-edit-inline ms-2" onclick="event.stopPropagation(); openInlineEditor('explanatory');" title="Edit">
+                            <i class="fas fa-pencil-alt"></i> Edit
+                        </button>
                         {% endif %}
                     </h5>
                     <i class="fas fa-chevron-down expand-icon"></i>
@@ -1215,6 +1905,8 @@
                 </div>
             </div>
             {% endif %}
+            
+            </div><!-- END TAB 3: LEARNING -->
 
         </div>
     </div>
@@ -1247,7 +1939,7 @@
 <div class="tnm-notes-panel" id="tnmNotesPanel">
     <div class="tnm-notes-header">
         <h6 class="mb-0"><i class="fas fa-sticky-note me-2"></i>My Notes</h6>
-        <button class="btn btn-sm btn-light" onclick="toggleNotesPanel()">
+        <button class="btn btn-sm btn-light" onclick="toggleNotesPanel()" title="Close notes panel" aria-label="Close notes panel">
             <i class="fas fa-times"></i>
         </button>
     </div>
@@ -1269,7 +1961,7 @@
 <div class="tnm-forum-panel" id="tnmForumPanel">
     <div class="tnm-forum-header">
         <h6 class="mb-0"><i class="fas fa-comments me-2"></i>Discussion</h6>
-        <button class="btn btn-sm btn-light" onclick="toggleForumPanel()">
+        <button class="btn btn-sm btn-light" onclick="toggleForumPanel()" title="Close forum panel" aria-label="Close forum panel">
             <i class="fas fa-times"></i>
         </button>
     </div>
@@ -1283,7 +1975,7 @@
         <div class="input-group">
             <textarea class="form-control" id="tnmForumInput" rows="2" 
                       placeholder="Share a helpful insight..."></textarea>
-            <button class="btn btn-primary" onclick="postTnmForumMessage()">
+            <button class="btn btn-primary" onclick="postTnmForumMessage()" title="Send message" aria-label="Send message">
                 <i class="fas fa-paper-plane"></i>
             </button>
         </div>
@@ -1310,6 +2002,37 @@
         </div>
     </div>
 </div>
+
+<!-- Slide-out Editor Panel (Admin Only) -->
+{% if is_admin %}
+<div class="editor-overlay" id="editorOverlay" onclick="closeInlineEditor()"></div>
+<div class="editor-slide-panel" id="editorSlidePanel">
+    <div class="editor-panel-header">
+        <h5><i class="fas fa-edit me-2"></i><span id="editorPanelTitle">Edit Section</span></h5>
+        <button class="btn btn-sm btn-light" onclick="closeInlineEditor()" title="Close editor" aria-label="Close editor">
+            <i class="fas fa-times"></i>
+        </button>
+    </div>
+    <div class="editor-panel-body">
+        <div class="editor-preview-label">Live Preview</div>
+        <div class="editor-preview" id="editorPreview">
+            <!-- Live preview content -->
+        </div>
+        <div class="mt-3">
+            <label class="form-label fw-bold">Edit Content</label>
+            <textarea id="inlineEditorContent" style="display:none;"></textarea>
+        </div>
+    </div>
+    <div class="editor-panel-footer">
+        <button class="btn btn-outline-secondary" onclick="closeInlineEditor()">
+            <i class="fas fa-times me-1"></i>Cancel
+        </button>
+        <button class="btn btn-primary" onclick="saveInlineEditorContent()">
+            <i class="fas fa-save me-1"></i>Save Changes
+        </button>
+    </div>
+</div>
+{% endif %}
 
 <!-- Admin Edit Modal - TNM Intelligence -->
 {% if is_admin %}
@@ -1437,6 +2160,158 @@ function showCopyToast() {
     }
 }
 
+// Scroll to a section and optionally expand it
+function scrollToSection(sectionId) {
+    const section = document.getElementById(sectionId);
+    if (section) {
+        section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+}
+
+// Toggle collapse state
+function toggleCollapse(targetId) {
+    const target = document.getElementById(targetId);
+    if (target) {
+        const bsCollapse = bootstrap.Collapse.getOrCreateInstance(target);
+        bsCollapse.show();
+    }
+}
+
+// Initialize overview cards interaction
+document.querySelectorAll('.tnm-category-card').forEach(card => {
+    card.addEventListener('mouseenter', function() {
+        this.classList.add('active');
+    });
+    card.addEventListener('mouseleave', function() {
+        this.classList.remove('active');
+    });
+});
+
+// Smooth scroll for quick jump links
+document.querySelectorAll('.quick-jump-links a').forEach(link => {
+    link.addEventListener('click', function(e) {
+        e.preventDefault();
+        const targetId = this.getAttribute('href').substring(1);
+        const target = document.getElementById(targetId);
+        if (target) {
+            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            // Expand the section if collapsed
+            const collapseContent = target.querySelector('.collapse');
+            if (collapseContent) {
+                const bsCollapse = bootstrap.Collapse.getOrCreateInstance(collapseContent);
+                bsCollapse.show();
+            }
+        }
+    });
+});
+
+// Tab Navigation
+document.querySelectorAll('.tnm-tab').forEach(tab => {
+    tab.addEventListener('click', function() {
+        const targetTab = this.dataset.tab;
+        
+        // Update tab buttons
+        document.querySelectorAll('.tnm-tab').forEach(t => {
+            t.classList.remove('active');
+            t.setAttribute('aria-selected', 'false');
+        });
+        this.classList.add('active');
+        this.setAttribute('aria-selected', 'true');
+        
+        // Update tab content
+        document.querySelectorAll('.tnm-tab-content').forEach(content => {
+            content.classList.remove('active');
+        });
+        const targetContent = document.getElementById('tab-' + targetTab);
+        if (targetContent) {
+            targetContent.classList.add('active');
+        }
+        
+        // Update URL hash for bookmarkability
+        history.replaceState(null, null, '#' + targetTab);
+    });
+});
+
+// Handle initial hash on page load
+function handleInitialHash() {
+    const hash = window.location.hash.substring(1);
+    if (hash && ['classification', 'intelligence', 'learning'].includes(hash)) {
+        const tab = document.querySelector(`.tnm-tab[data-tab="${hash}"]`);
+        if (tab) tab.click();
+    }
+}
+handleInitialHash();
+
+// Keyboard navigation for tabs (arrow keys)
+document.querySelectorAll('.tnm-tabs').forEach(tabList => {
+    tabList.addEventListener('keydown', function(e) {
+        const tabs = Array.from(this.querySelectorAll('.tnm-tab'));
+        const currentIndex = tabs.findIndex(tab => tab.classList.contains('active'));
+        
+        if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+            e.preventDefault();
+            const nextIndex = (currentIndex + 1) % tabs.length;
+            tabs[nextIndex].click();
+            tabs[nextIndex].focus();
+        } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+            e.preventDefault();
+            const prevIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+            tabs[prevIndex].click();
+            tabs[prevIndex].focus();
+        } else if (e.key === 'Home') {
+            e.preventDefault();
+            tabs[0].click();
+            tabs[0].focus();
+        } else if (e.key === 'End') {
+            e.preventDefault();
+            tabs[tabs.length - 1].click();
+            tabs[tabs.length - 1].focus();
+        }
+    });
+});
+
+// Make table rows keyboard accessible
+document.querySelectorAll('.tnm-table-enhanced tbody tr').forEach(row => {
+    row.setAttribute('tabindex', '0');
+    row.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            copyRow(this);
+        }
+    });
+});
+
+// Handle quick-jump links to switch tabs if needed
+document.querySelectorAll('.quick-jump-links a').forEach(link => {
+    link.addEventListener('click', function(e) {
+        e.preventDefault();
+        const targetId = this.getAttribute('href').substring(1);
+        
+        // Determine which tab contains this section
+        let targetTab = 'classification';
+        if (targetId === 'section-tnm-intelligence') targetTab = 'intelligence';
+        if (targetId === 'section-essential-tnm' || targetId === 'section-explanatory-notes') targetTab = 'learning';
+        
+        // Switch to the correct tab
+        const tab = document.querySelector(`.tnm-tab[data-tab="${targetTab}"]`);
+        if (tab) tab.click();
+        
+        // Scroll to section after a brief delay for tab animation
+        setTimeout(() => {
+            const target = document.getElementById(targetId);
+            if (target) {
+                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                // Expand if collapsed
+                const collapseEl = target.querySelector('.collapse');
+                if (collapseEl) {
+                    const bsCollapse = bootstrap.Collapse.getOrCreateInstance(collapseEl);
+                    bsCollapse.show();
+                }
+            }
+        }, 100);
+    });
+});
+
 // Handle expand/collapse icon rotation
 document.querySelectorAll('.section-header, .tnm-subsection-header').forEach(header => {
     const target = document.querySelector(header.dataset.bsTarget);
@@ -1508,6 +2383,154 @@ const tinyMCEFullConfig = {
 
 let intelligenceEditors = {};
 let explanatoryNotesEditor = null;
+let inlineEditor = null;
+let currentEditSection = null;
+
+// ============================================
+// SLIDE-OUT INLINE EDITOR FUNCTIONS
+// ============================================
+
+// Open the slide-out editor for a specific section
+function openInlineEditor(sectionType) {
+    currentEditSection = sectionType;
+    const overlay = document.getElementById('editorOverlay');
+    const panel = document.getElementById('editorSlidePanel');
+    const title = document.getElementById('editorPanelTitle');
+    const preview = document.getElementById('editorPreview');
+    
+    // Set title based on section type
+    let content = '';
+    if (sectionType === 'intelligence') {
+        title.textContent = 'Edit TNM Intelligence';
+        // Get combined intelligence content
+        const intelligenceSection = document.querySelector('#section-tnm-intelligence .section-content');
+        content = intelligenceSection ? intelligenceSection.innerHTML : '';
+    } else if (sectionType === 'explanatory') {
+        title.textContent = 'Edit Explanatory Notes';
+        const explanatorySection = document.getElementById('explanatory-notes-content');
+        content = explanatorySection ? explanatorySection.innerHTML : '';
+    }
+    
+    // Show panel
+    overlay.classList.add('visible');
+    panel.classList.add('open');
+    
+    // Set preview
+    preview.innerHTML = content;
+    
+    // Initialize TinyMCE after panel is visible
+    setTimeout(() => {
+        if (inlineEditor) {
+            tinymce.remove('#inlineEditorContent');
+        }
+        
+        tinymce.init({
+            selector: '#inlineEditorContent',
+            min_height: 400,
+            max_height: 600,
+            menubar: 'edit view insert format tools',
+            toolbar: 'undo redo | blocks | bold italic underline | bullist numlist | table link | removeformat code',
+            plugins: 'table link code lists',
+            base_url: 'https://cdn.jsdelivr.net/npm/tinymce@6',
+            content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 14px; line-height: 1.6; }',
+            relative_urls: false,
+            convert_urls: false,
+            setup: function(editor) {
+                inlineEditor = editor;
+                editor.on('init', function() {
+                    editor.setContent(content);
+                });
+                // Live preview update
+                editor.on('input change', function() {
+                    preview.innerHTML = editor.getContent();
+                });
+            }
+        });
+    }, 100);
+}
+
+// Close the slide-out editor
+function closeInlineEditor() {
+    const overlay = document.getElementById('editorOverlay');
+    const panel = document.getElementById('editorSlidePanel');
+    
+    overlay.classList.remove('visible');
+    panel.classList.remove('open');
+    
+    // Clean up TinyMCE
+    if (inlineEditor) {
+        tinymce.remove('#inlineEditorContent');
+        inlineEditor = null;
+    }
+    currentEditSection = null;
+}
+
+// Save content from inline editor
+async function saveInlineEditorContent() {
+    if (!inlineEditor || !currentEditSection) {
+        alert('No editor content to save.');
+        return;
+    }
+    
+    const content = inlineEditor.getContent();
+    const diseaseId = {{ disease.id }};
+    const diagnosisYearId = {% if diagnosis_year and diagnosis_year.id %}{{ diagnosis_year.id }}{% else %}null{% endif %};
+    
+    try {
+        let endpoint = '';
+        let payload = {};
+        
+        if (currentEditSection === 'intelligence') {
+            endpoint = '/api/save-intelligence';
+            payload = {
+                disease_id: diseaseId,
+                diagnosis_year_id: diagnosisYearId,
+                combined_html: content
+            };
+        } else if (currentEditSection === 'explanatory') {
+            endpoint = '/api/save-staging-data';
+            payload = {
+                disease_id: diseaseId,
+                diagnosis_year_id: diagnosisYearId,
+                curated_explanatory_notes: content
+            };
+        }
+        
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload)
+        });
+        
+        if (response.ok) {
+            // Update the section content on the page
+            if (currentEditSection === 'intelligence') {
+                const section = document.querySelector('#section-tnm-intelligence .section-content');
+                if (section) section.innerHTML = content;
+            } else if (currentEditSection === 'explanatory') {
+                const section = document.getElementById('explanatory-notes-content');
+                if (section) section.innerHTML = content;
+            }
+            
+            closeInlineEditor();
+            
+            // Show success toast
+            const toastEl = document.getElementById('copyToast');
+            if (toastEl) {
+                toastEl.querySelector('.toast-body').innerHTML = '<i class="fas fa-check me-2"></i>Changes saved successfully!';
+                const toast = new bootstrap.Toast(toastEl, { delay: 2000 });
+                toast.show();
+            }
+        } else {
+            throw new Error('Save failed');
+        }
+    } catch (error) {
+        console.error('Save error:', error);
+        alert('Failed to save changes. Please try again.');
+    }
+}
 
 // Initialize TinyMCE for intelligence fields when modal opens
 function initIntelligenceEditors() {
