@@ -1048,6 +1048,17 @@ def curate_tnm_page(disease_site_id, year):
         except Exception as e:
             logger.warning(f"Could not load intelligent data: {e}")
         
+        # Get TNM version info for display
+        try:
+            from ai_tnm import format_tnm_version, get_ajcc_version
+            tnm_version = format_tnm_version(disease.slug)
+            edition_info = get_ajcc_version(disease.slug)
+            is_tnm9 = edition_info[0] == "9th"
+        except Exception as e:
+            logger.warning(f"Could not get TNM version: {e}")
+            tnm_version = "AJCC Staging"
+            is_tnm9 = False
+        
         return render_template(
             'edit_tnm.html',
             disease=disease,
@@ -1056,7 +1067,9 @@ def curate_tnm_page(disease_site_id, year):
             staging_data=staging_data,
             available_years=available_years,
             intelligent_data=intelligent_data,
-            from_case_id=from_case_id
+            from_case_id=from_case_id,
+            tnm_version=tnm_version,
+            is_tnm9=is_tnm9
         )
         
     except Exception as e:
