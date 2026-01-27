@@ -919,3 +919,223 @@ def save_staging_data_api():
             'success': False,
             'error': str(e)
         }), 500
+
+
+# ==================== TNM STUDENT TOOLS API ====================
+
+@tnm_bp.route('/api/<int:disease_id>/note', methods=['GET', 'POST', 'DELETE'])
+def tnm_note_api(disease_id):
+    """
+    Handle TNM disease-specific notes for students.
+    GET: Retrieve user's notes for this TNM disease
+    POST: Save/update notes
+    DELETE: Delete notes
+    """
+    from flask_login import current_user
+    from models import CandidateNote, UserRole
+    
+    if not current_user.is_authenticated:
+        return jsonify({'error': 'Authentication required'}), 401
+    
+    # Only students can use notes
+    if current_user.role not in [UserRole.STUDENT, UserRole.ADMIN]:
+        return jsonify({'error': 'Notes are for students only'}), 403
+    
+    if request.method == 'GET':
+        note = CandidateNote.query.filter_by(
+            tnm_disease_id=disease_id,
+            user_id=current_user.id
+        ).first()
+        
+        return jsonify({
+            'success': True,
+            'note_text': note.note_text if note else '',
+            'updated_at': note.updated_at.isoformat() if note else None
+        })
+    
+    elif request.method == 'POST':
+        data = request.get_json()
+        note_text = data.get('note_text', '').strip()
+        
+        existing = CandidateNote.query.filter_by(
+            tnm_disease_id=disease_id,
+            user_id=current_user.id
+        ).first()
+        
+        if existing:
+            existing.note_text = note_text
+        else:
+            new_note = CandidateNote(
+                tnm_disease_id=disease_id,
+                user_id=current_user.id,
+                note_text=note_text
+            )
+            db.session.add(new_note)
+        
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'Note saved'})
+    
+    elif request.method == 'DELETE':
+        CandidateNote.query.filter_by(
+            tnm_disease_id=disease_id,
+            user_id=current_user.id
+        ).delete()
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'Note deleted'})
+
+
+@tnm_bp.route('/api/<int:disease_id>/highlights', methods=['GET'])
+def tnm_highlights_get(disease_id):
+    """Get all highlights for a TNM disease for the current user."""
+    from flask_login import current_user
+    from models import TextHighlight, UserRole
+    
+    if not current_user.is_authenticated:
+        return jsonify({'error': 'Authentication required'}), 401
+    
+    highlights = TextHighlight.query.filter_by(
+        tnm_disease_id=disease_id,
+        user_id=current_user.id
+    ).all()
+    
+    return jsonify({
+        'success': True,
+        'highlights': [{
+            'id': h.id,
+            'text_content': h.text_content,
+            'highlight_color': h.highlight_color,
+            'field_name': h.field_name,
+            'context_before': h.context_before,
+            'context_after': h.context_after
+        } for h in highlights]
+    })
+
+
+@tnm_bp.route('/api/<int:disease_id>/highlight', methods=['POST'])
+def tnm_highlight_create(disease_id):
+    """Create a new highlight for a TNM disease."""
+    from flask_login import current_user
+    from models import TextHighlight, UserRole
+    
+    if not current_user.is_authenticated:
+        return jsonify({'error': 'Authentication required'}), 401
+    
+    data = request.get_json()
+    
+    highlight = TextHighlight(
+        tnm_disease_id=disease_id,
+        user_id=current_user.id,
+        text_content=data.get('text_content', ''),
+        highlight_color=data.get('highlight_color', 'yellow'),
+        field_name=data.get('field_name', 'tnm_content'),
+        context_before=data.get('context_before', ''),
+        context_after=data.get('context_after', '')
+    )
+    
+    db.session.add(highlight)
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'highlight_id': highlight.id,
+        'message': 'Highlight created'
+    })
+
+
+@tnm_bp.route('/api/highlight/<int:highlight_id>', methods=['DELETE'])
+def tnm_highlight_delete(highlight_id):
+    """Delete a highlight."""
+    from flask_login import current_user
+    from models import TextHighlight
+    
+    if not current_user.is_authenticated:
+        return jsonify({'error': 'Authentication required'}), 401
+    
+    highlight = TextHighlight.query.get(highlight_id)
+    if not highlight:
+        return jsonify({'error': 'Highlight not found'}), 404
+    
+    if highlight.user_id != current_user.id:
+        return jsonify({'error': 'Not authorized'}), 403
+    
+    db.session.delete(highlight)
+    db.session.commit()
+    
+    return jsonify({'success': True, 'message': 'Highlight deleted'})
+
+
+@tnm_bp.route('/api/<int:disease_id>/forum/messages', methods=['GET'])
+def tnm_forum_messages(disease_id):
+    """Get all forum messages for a TNM disease."""
+    from flask_login import current_user
+    from models import ForumMessage, ForumMessageVote, UserRole
+    
+    if not current_user.is_authenticated:
+        return jsonify({'error': 'Authentication required'}), 401
+    
+    messages = ForumMessage.query.filter_by(
+        tnm_disease_id=disease_id,
+        is_deleted=False
+    ).order_by(
+        ForumMessage.is_pinned.desc(),
+        ForumMessage.vote_score.desc(),
+        ForumMessage.created_at.desc()
+    ).all()
+    
+    # Get user's votes for these messages
+    msg_ids = [m.id for m in messages]
+    user_votes = {v.message_id: v.vote_value for v in ForumMessageVote.query.filter(
+        ForumMessageVote.message_id.in_(msg_ids),
+        ForumMessageVote.user_id == current_user.id
+    ).all()} if msg_ids else {}
+    
+    return jsonify({
+        'success': True,
+        'messages': [{
+            'id': m.id,
+            'content': m.content,
+            'author_display_name': m.author.display_name or 'Anonymous',
+            'vote_score': m.vote_score,
+            'is_pinned': m.is_pinned,
+            'user_vote': user_votes.get(m.id, 0),
+            'is_own': m.user_id == current_user.id,
+            'image_url': m.image_url,
+            'image_thumbnail_url': m.image_thumbnail_url,
+            'created_at': m.created_at.isoformat(),
+            'flag_count': m.flag_count
+        } for m in messages]
+    })
+
+
+@tnm_bp.route('/api/<int:disease_id>/forum/message', methods=['POST'])
+def tnm_forum_message_create(disease_id):
+    """Create a new forum message for a TNM disease."""
+    from flask_login import current_user
+    from models import ForumMessage, UserRole
+    
+    if not current_user.is_authenticated:
+        return jsonify({'error': 'Authentication required'}), 401
+    
+    data = request.get_json()
+    content = data.get('content', '').strip()
+    
+    if not content:
+        return jsonify({'error': 'Message content required'}), 400
+    
+    message = ForumMessage(
+        tnm_disease_id=disease_id,
+        user_id=current_user.id,
+        content=content,
+        image_url=data.get('image_url'),
+        image_public_id=data.get('image_public_id'),
+        image_thumbnail_url=data.get('image_thumbnail_url')
+    )
+    
+    db.session.add(message)
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'message_id': message.id,
+        'message': 'Posted successfully'
+    })

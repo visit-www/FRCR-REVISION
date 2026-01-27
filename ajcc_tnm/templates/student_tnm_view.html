@@ -245,6 +245,242 @@
     box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
     color: white;
 }
+
+/* ============================================
+   STUDENT TOOLS STYLES
+   ============================================ */
+
+/* Notes Panel */
+.tnm-notes-panel {
+    position: fixed;
+    right: -400px;
+    top: 80px;
+    width: 380px;
+    max-height: calc(100vh - 100px);
+    background: white;
+    border-radius: 12px 0 0 12px;
+    box-shadow: -4px 0 20px rgba(0,0,0,0.15);
+    transition: right 0.3s ease;
+    z-index: 1040;
+    display: flex;
+    flex-direction: column;
+}
+
+.tnm-notes-panel.open {
+    right: 0;
+}
+
+.tnm-notes-header {
+    padding: 1rem;
+    background: linear-gradient(135deg, #5E899E 0%, #4A6F7F 100%);
+    color: white;
+    border-radius: 12px 0 0 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.tnm-notes-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem;
+}
+
+.tnm-notes-textarea {
+    width: 100%;
+    min-height: 200px;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 0.75rem;
+    resize: vertical;
+    font-size: 0.9rem;
+}
+
+/* Forum Panel */
+.tnm-forum-panel {
+    position: fixed;
+    left: -400px;
+    top: 80px;
+    width: 380px;
+    max-height: calc(100vh - 100px);
+    background: white;
+    border-radius: 0 12px 12px 0;
+    box-shadow: 4px 0 20px rgba(0,0,0,0.15);
+    transition: left 0.3s ease;
+    z-index: 1040;
+    display: flex;
+    flex-direction: column;
+}
+
+.tnm-forum-panel.open {
+    left: 0;
+}
+
+.tnm-forum-header {
+    padding: 1rem;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 0 12px 0 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.tnm-forum-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0.5rem;
+}
+
+.tnm-forum-input {
+    padding: 0.75rem;
+    border-top: 1px solid #eee;
+}
+
+.forum-message {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 0.75rem;
+    margin-bottom: 0.5rem;
+}
+
+.forum-message.pinned {
+    background: #fff3cd;
+    border-left: 3px solid #ffc107;
+}
+
+.forum-message-author {
+    font-size: 0.8rem;
+    color: #6c757d;
+    margin-bottom: 0.25rem;
+}
+
+.forum-message-content {
+    font-size: 0.9rem;
+}
+
+.forum-message-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+    font-size: 0.8rem;
+}
+
+/* Floating Toggle Buttons */
+.tnm-tool-toggles {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    z-index: 1030;
+}
+
+.tnm-tool-btn {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    cursor: pointer;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    transition: transform 0.2s ease;
+}
+
+.tnm-tool-btn:hover {
+    transform: scale(1.1);
+}
+
+.tnm-tool-btn.notes-btn {
+    background: linear-gradient(135deg, #5E899E 0%, #4A6F7F 100%);
+    color: white;
+}
+
+.tnm-tool-btn.forum-btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+/* Highlightable Text */
+.highlightable-text {
+    -webkit-user-select: text;
+    user-select: text;
+    cursor: text;
+}
+
+.user-highlight {
+    background-color: #FFEB3B;
+    padding: 0 2px;
+    border-radius: 2px;
+    cursor: pointer;
+}
+
+.user-highlight.green { background-color: #A5D6A7; }
+.user-highlight.pink { background-color: #F8BBD9; }
+.user-highlight.blue { background-color: #90CAF9; }
+
+/* Selection Menu */
+#tnmSelectionMenu {
+    position: fixed;
+    background: white;
+    border: 2px solid #5E899E;
+    border-radius: 8px;
+    padding: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 10000;
+    display: flex;
+    gap: 8px;
+}
+
+#tnmSelectionMenu button {
+    padding: 6px 12px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transition: background 0.2s;
+}
+
+#tnmSelectionMenu .highlight-btn {
+    background: #FFEB3B;
+    color: #333;
+}
+
+#tnmSelectionMenu .note-btn {
+    background: #5E899E;
+    color: white;
+}
+
+/* Mobile adjustments for panels */
+@media (max-width: 768px) {
+    .tnm-notes-panel, .tnm-forum-panel {
+        width: 100%;
+        max-width: 100%;
+        border-radius: 12px 12px 0 0;
+        top: auto;
+        bottom: -100%;
+        left: 0;
+        right: 0;
+        max-height: 70vh;
+    }
+    
+    .tnm-notes-panel.open, .tnm-forum-panel.open {
+        bottom: 0;
+        left: 0;
+        right: 0;
+    }
+    
+    .tnm-notes-header, .tnm-forum-header {
+        border-radius: 12px 12px 0 0;
+    }
+}
 </style>
 {% endblock %}
 
@@ -655,6 +891,68 @@
     </div>
 </div>
 
+<!-- Student Tools (Notes, Forum, Highlights) -->
+{% if current_user.is_authenticated and current_user.role.value == 'student' %}
+
+<!-- Notes Panel -->
+<div class="tnm-notes-panel" id="tnmNotesPanel">
+    <div class="tnm-notes-header">
+        <h6 class="mb-0"><i class="fas fa-sticky-note me-2"></i>My Notes</h6>
+        <button class="btn btn-sm btn-light" onclick="toggleNotesPanel()">
+            <i class="fas fa-times"></i>
+        </button>
+    </div>
+    <div class="tnm-notes-body">
+        <textarea class="tnm-notes-textarea" id="tnmNotesTextarea" 
+                  placeholder="Type your notes here... They are private and will be auto-saved."></textarea>
+        <div class="mt-2 d-flex justify-content-between align-items-center">
+            <small id="tnmNoteSaveStatus" class="text-muted">Ready</small>
+            <div>
+                <button class="btn btn-sm btn-outline-secondary" onclick="clearTnmNotes()">
+                    <i class="fas fa-trash me-1"></i>Clear
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Forum Panel -->
+<div class="tnm-forum-panel" id="tnmForumPanel">
+    <div class="tnm-forum-header">
+        <h6 class="mb-0"><i class="fas fa-comments me-2"></i>Discussion</h6>
+        <button class="btn btn-sm btn-light" onclick="toggleForumPanel()">
+            <i class="fas fa-times"></i>
+        </button>
+    </div>
+    <div class="tnm-forum-messages" id="tnmForumMessages">
+        <!-- Messages loaded dynamically -->
+        <div class="text-center text-muted py-4" id="tnmForumLoading">
+            <i class="fas fa-spinner fa-spin"></i> Loading discussions...
+        </div>
+    </div>
+    <div class="tnm-forum-input">
+        <div class="input-group">
+            <textarea class="form-control" id="tnmForumInput" rows="2" 
+                      placeholder="Share a helpful insight..."></textarea>
+            <button class="btn btn-primary" onclick="postTnmForumMessage()">
+                <i class="fas fa-paper-plane"></i>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Floating Toggle Buttons -->
+<div class="tnm-tool-toggles">
+    <button class="tnm-tool-btn notes-btn" onclick="toggleNotesPanel()" title="My Notes">
+        <i class="fas fa-sticky-note"></i>
+    </button>
+    <button class="tnm-tool-btn forum-btn" onclick="toggleForumPanel()" title="Discussion Forum">
+        <i class="fas fa-comments"></i>
+    </button>
+</div>
+
+{% endif %}
+
 <!-- Toast for copy confirmation -->
 <div class="toast-container position-fixed bottom-0 end-0 p-3">
     <div id="copyToast" class="toast" role="alert">
@@ -848,6 +1146,388 @@ function showToast(message, type) {
         toast.remove();
     }, 3000);
 }
+{% endif %}
+
+// ==================== STUDENT TOOLS ====================
+{% if current_user.is_authenticated and current_user.role.value == 'student' %}
+
+const tnmDiseaseId = {{ disease.id }};
+let tnmNotesSaveTimeout = null;
+
+// ========== Notes Panel ==========
+function toggleNotesPanel() {
+    const panel = document.getElementById('tnmNotesPanel');
+    panel.classList.toggle('open');
+    if (panel.classList.contains('open')) {
+        loadTnmNotes();
+    }
+}
+
+async function loadTnmNotes() {
+    try {
+        const response = await fetch(`/tnm/api/${tnmDiseaseId}/note`);
+        const data = await response.json();
+        if (data.success) {
+            document.getElementById('tnmNotesTextarea').value = data.note_text || '';
+            if (data.updated_at) {
+                const date = new Date(data.updated_at);
+                document.getElementById('tnmNoteSaveStatus').textContent = 
+                    `Last saved: ${date.toLocaleTimeString()}`;
+            }
+        }
+    } catch (error) {
+        console.error('Error loading notes:', error);
+    }
+}
+
+async function saveTnmNotes() {
+    const noteText = document.getElementById('tnmNotesTextarea').value;
+    const statusEl = document.getElementById('tnmNoteSaveStatus');
+    statusEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+    
+    try {
+        const response = await fetch(`/tnm/api/${tnmDiseaseId}/note`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ note_text: noteText })
+        });
+        const data = await response.json();
+        if (data.success) {
+            statusEl.innerHTML = `<i class="fas fa-check text-success"></i> Saved at ${new Date().toLocaleTimeString()}`;
+        }
+    } catch (error) {
+        statusEl.innerHTML = '<i class="fas fa-exclamation-triangle text-danger"></i> Save failed';
+        console.error('Error saving notes:', error);
+    }
+}
+
+async function clearTnmNotes() {
+    if (!confirm('Clear all notes for this TNM topic?')) return;
+    
+    try {
+        await fetch(`/tnm/api/${tnmDiseaseId}/note`, { method: 'DELETE' });
+        document.getElementById('tnmNotesTextarea').value = '';
+        document.getElementById('tnmNoteSaveStatus').textContent = 'Notes cleared';
+    } catch (error) {
+        console.error('Error clearing notes:', error);
+    }
+}
+
+// Auto-save notes
+document.getElementById('tnmNotesTextarea')?.addEventListener('input', function() {
+    clearTimeout(tnmNotesSaveTimeout);
+    tnmNotesSaveTimeout = setTimeout(saveTnmNotes, 2000);
+});
+
+// ========== Forum Panel ==========
+let tnmForumMessages = [];
+
+function toggleForumPanel() {
+    const panel = document.getElementById('tnmForumPanel');
+    panel.classList.toggle('open');
+    if (panel.classList.contains('open')) {
+        loadTnmForumMessages();
+    }
+}
+
+async function loadTnmForumMessages() {
+    const container = document.getElementById('tnmForumMessages');
+    const loading = document.getElementById('tnmForumLoading');
+    
+    try {
+        const response = await fetch(`/tnm/api/${tnmDiseaseId}/forum/messages`);
+        const data = await response.json();
+        
+        if (data.success) {
+            tnmForumMessages = data.messages;
+            renderTnmForum();
+        }
+    } catch (error) {
+        container.innerHTML = '<div class="text-danger text-center py-3">Failed to load discussions</div>';
+        console.error('Error loading forum:', error);
+    }
+}
+
+function renderTnmForum() {
+    const container = document.getElementById('tnmForumMessages');
+    
+    if (tnmForumMessages.length === 0) {
+        container.innerHTML = `
+            <div class="text-center text-muted py-4">
+                <i class="fas fa-comments fa-2x mb-2"></i>
+                <p>No discussions yet. Be the first to share!</p>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = tnmForumMessages.map(msg => `
+        <div class="forum-message ${msg.is_pinned ? 'pinned' : ''}">
+            <div class="forum-message-author">
+                ${msg.is_pinned ? '<i class="fas fa-thumbtack text-warning me-1"></i>' : ''}
+                <strong>${msg.author_display_name}</strong>
+                <span class="ms-2">${new Date(msg.created_at).toLocaleDateString()}</span>
+            </div>
+            <div class="forum-message-content">${msg.content}</div>
+            ${msg.image_thumbnail_url ? `<img src="${msg.image_thumbnail_url}" class="img-fluid rounded mt-2" style="max-height: 150px;">` : ''}
+            <div class="forum-message-actions">
+                <button class="btn btn-sm ${msg.user_vote === 1 ? 'btn-success' : 'btn-outline-success'}" 
+                        onclick="voteTnmMessage(${msg.id}, 'up')">
+                    <i class="fas fa-arrow-up"></i> ${msg.vote_score}
+                </button>
+                <button class="btn btn-sm ${msg.user_vote === -1 ? 'btn-danger' : 'btn-outline-danger'}" 
+                        onclick="voteTnmMessage(${msg.id}, 'down')">
+                    <i class="fas fa-arrow-down"></i>
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
+async function postTnmForumMessage() {
+    const input = document.getElementById('tnmForumInput');
+    const content = input.value.trim();
+    
+    if (!content) return;
+    
+    try {
+        const response = await fetch(`/tnm/api/${tnmDiseaseId}/forum/message`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ content })
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+            input.value = '';
+            loadTnmForumMessages();
+        }
+    } catch (error) {
+        console.error('Error posting message:', error);
+    }
+}
+
+async function voteTnmMessage(messageId, voteType) {
+    const msg = tnmForumMessages.find(m => m.id === messageId);
+    if (!msg) return;
+    
+    const newVote = voteType === 'up' 
+        ? (msg.user_vote === 1 ? 0 : 1)
+        : (msg.user_vote === -1 ? 0 : -1);
+    
+    try {
+        await fetch(`/api/forum/message/${messageId}/vote`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ vote: newVote })
+        });
+        loadTnmForumMessages();
+    } catch (error) {
+        console.error('Error voting:', error);
+    }
+}
+
+// ========== Highlights ==========
+let tnmHighlights = [];
+
+async function loadTnmHighlights() {
+    try {
+        const response = await fetch(`/tnm/api/${tnmDiseaseId}/highlights`);
+        const data = await response.json();
+        if (data.success) {
+            tnmHighlights = data.highlights;
+            applyTnmHighlights();
+        }
+    } catch (error) {
+        console.error('Error loading highlights:', error);
+    }
+}
+
+function applyTnmHighlights() {
+    tnmHighlights.forEach(h => {
+        const containers = document.querySelectorAll('.section-content');
+        containers.forEach(container => {
+            highlightTextInContainer(container, h);
+        });
+    });
+}
+
+function highlightTextInContainer(container, highlight) {
+    const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null, false);
+    let node;
+    
+    while ((node = walker.nextNode())) {
+        const index = node.textContent.indexOf(highlight.text_content);
+        if (index !== -1) {
+            const range = document.createRange();
+            range.setStart(node, index);
+            range.setEnd(node, index + highlight.text_content.length);
+            
+            const mark = document.createElement('mark');
+            mark.className = `user-highlight ${highlight.highlight_color}`;
+            mark.dataset.highlightId = highlight.id;
+            mark.onclick = () => deleteHighlight(highlight.id);
+            
+            try {
+                range.surroundContents(mark);
+            } catch (e) {
+                // Skip if can't wrap (crossing element boundaries)
+            }
+            return;
+        }
+    }
+}
+
+async function createTnmHighlight(text, fieldName, contextBefore, contextAfter) {
+    try {
+        const response = await fetch(`/tnm/api/${tnmDiseaseId}/highlight`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                text_content: text,
+                highlight_color: 'yellow',
+                field_name: fieldName,
+                context_before: contextBefore,
+                context_after: contextAfter
+            })
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+            loadTnmHighlights();
+        }
+    } catch (error) {
+        console.error('Error creating highlight:', error);
+    }
+}
+
+async function deleteHighlight(highlightId) {
+    if (!confirm('Remove this highlight?')) return;
+    
+    try {
+        await fetch(`/tnm/api/highlight/${highlightId}`, { method: 'DELETE' });
+        document.querySelector(`[data-highlight-id="${highlightId}"]`)?.remove();
+        loadTnmHighlights();
+    } catch (error) {
+        console.error('Error deleting highlight:', error);
+    }
+}
+
+// ========== Text Selection Menu ==========
+document.addEventListener('mouseup', function(e) {
+    const selection = window.getSelection();
+    const text = selection.toString().trim();
+    
+    // Remove existing menu
+    document.getElementById('tnmSelectionMenu')?.remove();
+    
+    if (!text || text.length < 3) return;
+    
+    // Check if selection is in a section-content area
+    const range = selection.getRangeAt(0);
+    const container = range.commonAncestorContainer;
+    const sectionContent = container.closest ? 
+        container.closest('.section-content') : 
+        container.parentElement?.closest('.section-content');
+    
+    if (!sectionContent) return;
+    
+    // Create selection menu
+    const menu = document.createElement('div');
+    menu.id = 'tnmSelectionMenu';
+    menu.style.left = `${e.clientX}px`;
+    menu.style.top = `${Math.max(10, e.clientY - 60)}px`;
+    
+    menu.innerHTML = `
+        <button class="highlight-btn" onclick="handleTnmHighlight()">
+            <i class="fas fa-highlighter"></i> Highlight
+        </button>
+        <button class="note-btn" onclick="handleTnmAddNote()">
+            <i class="fas fa-sticky-note"></i> Add Note
+        </button>
+    `;
+    
+    document.body.appendChild(menu);
+    
+    // Store selection data
+    menu.dataset.selectedText = text;
+    menu.dataset.fieldName = sectionContent.id || 'tnm-content';
+    
+    // Get context
+    const fullText = sectionContent.textContent;
+    const startIdx = fullText.indexOf(text);
+    menu.dataset.contextBefore = fullText.substring(Math.max(0, startIdx - 50), startIdx);
+    menu.dataset.contextAfter = fullText.substring(startIdx + text.length, startIdx + text.length + 50);
+    
+    // Close on click outside
+    setTimeout(() => {
+        document.addEventListener('click', function closeMenu(e) {
+            if (!menu.contains(e.target)) {
+                menu.remove();
+                document.removeEventListener('click', closeMenu);
+            }
+        });
+    }, 100);
+});
+
+function handleTnmHighlight() {
+    const menu = document.getElementById('tnmSelectionMenu');
+    if (!menu) return;
+    
+    const selection = window.getSelection();
+    const text = menu.dataset.selectedText;
+    
+    // Create visual highlight
+    try {
+        const range = selection.getRangeAt(0);
+        const mark = document.createElement('mark');
+        mark.className = 'user-highlight';
+        range.surroundContents(mark);
+    } catch (e) {
+        console.log('Could not wrap selection');
+    }
+    
+    // Save to backend
+    createTnmHighlight(
+        text,
+        menu.dataset.fieldName,
+        menu.dataset.contextBefore,
+        menu.dataset.contextAfter
+    );
+    
+    menu.remove();
+    window.getSelection().removeAllRanges();
+}
+
+function handleTnmAddNote() {
+    const menu = document.getElementById('tnmSelectionMenu');
+    if (!menu) return;
+    
+    const text = menu.dataset.selectedText;
+    
+    // Open notes panel and add the selected text
+    const panel = document.getElementById('tnmNotesPanel');
+    if (!panel.classList.contains('open')) {
+        toggleNotesPanel();
+    }
+    
+    setTimeout(() => {
+        const textarea = document.getElementById('tnmNotesTextarea');
+        const currentNotes = textarea.value;
+        textarea.value = currentNotes + (currentNotes ? '\n\n' : '') + `"${text}"`;
+        textarea.focus();
+        textarea.scrollTop = textarea.scrollHeight;
+    }, 300);
+    
+    menu.remove();
+    window.getSelection().removeAllRanges();
+}
+
+// Load highlights on page load
+document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(loadTnmHighlights, 500);
+});
+
 {% endif %}
 </script>
 {% endblock %}

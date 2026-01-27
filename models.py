@@ -386,17 +386,24 @@ class CaseImage(db.Model):
 
 
 class CandidateNote(db.Model):
-    """Store student/candidate notes for cases"""
+    """Store student/candidate notes for cases and TNM disease sites"""
     id = db.Column(db.Integer, primary_key=True)
-    case_id = db.Column(db.Integer, db.ForeignKey('case.id'), nullable=False, index=True)
+    case_id = db.Column(db.Integer, db.ForeignKey('case.id'), nullable=True, index=True)  # nullable for TNM notes
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
     note_text = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
+    # Optional: TNM disease site association (for TNM view notes)
+    tnm_disease_id = db.Column(db.Integer, db.ForeignKey('ajcc_disease_site.id'), nullable=True, index=True)
+    
+    # Relationships
+    tnm_disease = db.relationship('AJCCDiseaseSite', backref=db.backref('student_notes', lazy=True))
+    
     # Composite index for efficient lookups
     __table_args__ = (
         db.Index('idx_case_user', 'case_id', 'user_id'),
+        db.Index('idx_tnm_user', 'tnm_disease_id', 'user_id'),
     )
     
     def __repr__(self):
@@ -406,20 +413,27 @@ class CandidateNote(db.Model):
 class TextHighlight(db.Model):
     """Store text highlights for search and personalization"""
     id = db.Column(db.Integer, primary_key=True)
-    case_id = db.Column(db.Integer, db.ForeignKey('case.id'), nullable=False, index=True)
+    case_id = db.Column(db.Integer, db.ForeignKey('case.id'), nullable=True, index=True)  # nullable for TNM highlights
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
     text_content = db.Column(db.Text, nullable=False)  # The highlighted text
     highlight_color = db.Column(db.String(20), nullable=False, default='yellow')  # yellow, green, pink, blue
-    field_name = db.Column(db.String(50), nullable=False)  # question, answer, discussion, notes
+    field_name = db.Column(db.String(50), nullable=False)  # question, answer, discussion, notes, tnm_quick_ref, etc.
     # Context for reliable repositioning on page reload
     context_before = db.Column(db.String(100), nullable=True)  # 50 chars before the highlight
     context_after = db.Column(db.String(100), nullable=True)  # 50 chars after the highlight
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
+    # Optional: TNM disease site association (for TNM view highlights)
+    tnm_disease_id = db.Column(db.Integer, db.ForeignKey('ajcc_disease_site.id'), nullable=True, index=True)
+    
+    # Relationships
+    tnm_disease = db.relationship('AJCCDiseaseSite', backref=db.backref('student_highlights', lazy=True))
+    
     # Composite index for efficient lookups
     __table_args__ = (
         db.Index('idx_case_user_highlight', 'case_id', 'user_id'),
         db.Index('idx_text_search', 'text_content'),  # For keyword search
+        db.Index('idx_tnm_user_highlight', 'tnm_disease_id', 'user_id'),
     )
     
     def __repr__(self):
@@ -698,14 +712,17 @@ class AiDiagnosisCache(db.Model):
 
 class ForumMessage(db.Model):
     """
-    Stores forum messages for case discussions.
-    Messages are shared across all users for a given case.
+    Stores forum messages for case discussions and TNM disease site discussions.
+    Messages are shared across all users for a given case or TNM disease.
     """
     __tablename__ = 'forum_message'
     
     id = db.Column(db.Integer, primary_key=True)
-    case_id = db.Column(db.Integer, db.ForeignKey('case.id'), nullable=False, index=True)
+    case_id = db.Column(db.Integer, db.ForeignKey('case.id'), nullable=True, index=True)  # nullable for TNM forums
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+    
+    # Optional: TNM disease site association (for TNM view forum)
+    tnm_disease_id = db.Column(db.Integer, db.ForeignKey('ajcc_disease_site.id'), nullable=True, index=True)
     
     # Message content (HTML supported)
     content = db.Column(db.Text, nullable=False)
@@ -736,10 +753,12 @@ class ForumMessage(db.Model):
     # case relationship defined on Case model with cascade delete
     votes = db.relationship('ForumMessageVote', backref='message', lazy=True, cascade='all, delete-orphan')
     flags = db.relationship('ForumMessageFlag', backref='message', lazy=True, cascade='all, delete-orphan')
+    tnm_disease = db.relationship('AJCCDiseaseSite', backref=db.backref('forum_messages', lazy=True))
     
     __table_args__ = (
         db.Index('idx_forum_case_votes', 'case_id', 'vote_score'),
         db.Index('idx_forum_case_pinned', 'case_id', 'is_pinned'),
+        db.Index('idx_forum_tnm_disease', 'tnm_disease_id'),
         db.Index('idx_forum_flagged', 'flag_count'),
     )
     
