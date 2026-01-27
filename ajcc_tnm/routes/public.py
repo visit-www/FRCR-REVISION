@@ -296,6 +296,8 @@ def tnm_view(section_slug, disease_slug):
     quick_reference_html = None
     images = []
     is_curated = False
+    cancers_staged = []
+    cancers_not_staged = []
     
     if staging_data:
         # Check if curated data exists
