@@ -203,17 +203,17 @@ console.log('[TinyMCE Loader] TNM Edit - checking if TinyMCE loaded...');
                     <div class="mb-4">
                         <label class="form-label fw-bold text-secondary" for="memoryAidT">T-Stage Memory Aid</label>
                         <textarea class="form-control" id="memoryAidT" rows="2" 
-                                  placeholder="Memory aid for T staging...">{{ intelligent_data.tnm_memory_aid_t if intelligent_data and intelligent_data.tnm_memory_aid_t else '' }}</textarea>
+                                  placeholder="Memory aid for T staging...">{{ intelligent_data.tnm_memory_aid.T if intelligent_data and intelligent_data.tnm_memory_aid and intelligent_data.tnm_memory_aid.T else '' }}</textarea>
                     </div>
                     <div class="mb-4">
                         <label class="form-label fw-bold text-secondary" for="memoryAidN">N-Stage Memory Aid</label>
                         <textarea class="form-control" id="memoryAidN" rows="2" 
-                                  placeholder="Memory aid for N staging...">{{ intelligent_data.tnm_memory_aid_n if intelligent_data and intelligent_data.tnm_memory_aid_n else '' }}</textarea>
+                                  placeholder="Memory aid for N staging...">{{ intelligent_data.tnm_memory_aid.N if intelligent_data and intelligent_data.tnm_memory_aid and intelligent_data.tnm_memory_aid.N else '' }}</textarea>
                     </div>
                     <div class="mb-4">
                         <label class="form-label fw-bold text-secondary" for="memoryAidM">M-Stage Memory Aid</label>
                         <textarea class="form-control" id="memoryAidM" rows="2" 
-                                  placeholder="Memory aid for M staging...">{{ intelligent_data.tnm_memory_aid_m if intelligent_data and intelligent_data.tnm_memory_aid_m else '' }}</textarea>
+                                  placeholder="Memory aid for M staging...">{{ intelligent_data.tnm_memory_aid.M if intelligent_data and intelligent_data.tnm_memory_aid and intelligent_data.tnm_memory_aid.M else '' }}</textarea>
                     </div>
                     
                     <!-- Key Points (JSON array) -->
@@ -235,7 +235,64 @@ console.log('[TinyMCE Loader] TNM Edit - checking if TinyMCE loaded...');
                 </div>
             </div>
 
-            <!-- Section 6: Images -->
+            <!-- Section 6: Essential TNM Concepts (Display Only) -->
+            <div class="card shadow-sm mb-5 border-0">
+                <div class="card-header bg-gradient text-white" style="background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);">
+                    <h5 class="mb-0">
+                        <i class="fas fa-graduation-cap me-2"></i>Essential TNM Concepts
+                        <span class="badge bg-light text-dark ms-2">From IARC</span>
+                    </h5>
+                </div>
+                <div class="card-body p-4">
+                    {% if intelligent_data and intelligent_data.essential_tnm %}
+                    <div class="row">
+                        {% if intelligent_data.essential_tnm.figure_url %}
+                        <div class="col-md-5 mb-3">
+                            <img src="{{ intelligent_data.essential_tnm.figure_url }}" 
+                                 alt="{{ intelligent_data.essential_tnm.figure_description or 'Essential TNM Figure' }}"
+                                 class="img-fluid rounded shadow-sm" style="max-height: 400px;">
+                            {% if intelligent_data.essential_tnm.figure_description %}
+                            <p class="text-muted small mt-2">{{ intelligent_data.essential_tnm.figure_description }}</p>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                        <div class="col-md-{% if intelligent_data.essential_tnm.figure_url %}7{% else %}12{% endif %}">
+                            {% if intelligent_data.essential_tnm.title %}
+                            <h6 class="fw-bold mb-3">{{ intelligent_data.essential_tnm.title }}</h6>
+                            {% endif %}
+                            
+                            {% if intelligent_data.essential_tnm.key_concepts %}
+                            <div class="mb-3">
+                                <label class="fw-bold text-secondary small">Key Concepts:</label>
+                                <ul class="mb-0">
+                                    {% for concept in intelligent_data.essential_tnm.key_concepts %}
+                                    <li class="small">{{ concept }}</li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                            {% endif %}
+                            
+                            {% if intelligent_data.essential_tnm.supplementary_table %}
+                            <div class="mb-3">
+                                <label class="fw-bold text-secondary small">Supplementary Table:</label>
+                                <div class="small tnm-html-content">{{ intelligent_data.essential_tnm.supplementary_table | safe }}</div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="small text-muted border-top pt-2 mt-3">
+                        <i class="fas fa-book me-1"></i>{{ intelligent_data.essential_tnm.attribution or 'IARC Essential TNM Guide (CC BY-NC-ND 3.0 IGO)' }}
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info mb-0">
+                        <i class="fas fa-info-circle me-2"></i>
+                        No Essential TNM data available. This data is sourced from IARC and populated when TNM Intelligence is generated.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Section 7: Images -->
             <div class="card shadow-sm mb-5 border-0">
                 <div class="card-header bg-gradient text-white" style="background: linear-gradient(135deg, #6c757d 0%, #495057 100%);">
                     <h5 class="mb-0">
