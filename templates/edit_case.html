@@ -620,6 +620,12 @@ function initializeDiscussionEditor() {
         remove_trailing_brs: true,
         remove_linebreaks: false,
         apply_source_formatting: false,
+        // Use TinyMCE's built-in paste handling
+        paste_as_text: false,
+        paste_word_valid_elements: 'p,br,strong,em,u,ol,ul,li,a[href],table,tr,td,th',
+        paste_auto_cleanup_on_paste: true,
+        paste_remove_styles: false, // Keep styles, CSS will handle link styling
+        paste_remove_styles_if_webkit: false,
         table_advtab: false,
         table_cell_advtab: false,
         table_default_attributes: {
@@ -640,10 +646,10 @@ function initializeDiscussionEditor() {
                 line-height: 1.6;
             }
             a {
-                text-decoration: none;
+                text-decoration: none !important;
             }
             a:hover {
-                text-decoration: underline;
+                text-decoration: underline !important;
             }
             table {
                 border-collapse: collapse;
@@ -667,68 +673,15 @@ function initializeDiscussionEditor() {
                 }
             }
         `,
-        paste_preprocess: function(plugin, args) {
-            // Remove text-decoration: underline from all links in pasted content and ensure text-decoration: none
-            if (args.content) {
-                args.content = args.content.replace(
-                    /<a([^>]*)>/gi,
-                    function(match, attrs) {
-                        // Check if link has style attribute
-                        const styleMatch = attrs.match(/(^|\s)style\s*=\s*["']([^"']*)["']/i);
-                        if (styleMatch) {
-                            // Has style attribute - remove underline and ensure none
-                            let styleContent = styleMatch[2];
-                            // Remove any text-decoration
-                            styleContent = styleContent.replace(/text-decoration:\s*[^;]+;?\s*/gi, '');
-                            // Add text-decoration: none
-                            styleContent = 'text-decoration: none; ' + styleContent;
-                            styleContent = styleContent.replace(/;\s*;/g, ';').trim();
-                            // Replace the style attribute in attrs
-                            const newAttrs = attrs.replace(/(^|\s)style\s*=\s*["'][^"']*["']/i, `$1style="${styleContent}"`);
-                            return `<a${newAttrs}>`;
-                        } else {
-                            // No style attribute - add one with text-decoration: none
-                            return `<a${attrs} style="text-decoration: none;">`;
-                        }
-                    }
-                );
-            }
-        },
+        // Simplified paste handling - CSS handles link styling with !important rules
+        // No need for complex regex processing on every paste
         setup: function(editor) {
             editor.on('change', function() {
                 tinymce.triggerSave();
             });
             
-            // Also clean links on paste event (post-process)
-            editor.on('PastePostProcess', function(e) {
-                let content = e.node.innerHTML || '';
-                if (content) {
-                    // Process all anchor tags to remove underline and ensure none
-                    content = content.replace(
-                        /<a([^>]*)>/gi,
-                        function(match, attrs) {
-                            // Check if link has style attribute
-                            const styleMatch = attrs.match(/(^|\s)style\s*=\s*["']([^"']*)["']/i);
-                            if (styleMatch) {
-                                // Has style attribute - remove underline and ensure none
-                                let styleContent = styleMatch[2];
-                                // Remove any text-decoration
-                                styleContent = styleContent.replace(/text-decoration:\s*[^;]+;?\s*/gi, '');
-                                // Add text-decoration: none
-                                styleContent = 'text-decoration: none; ' + styleContent;
-                                styleContent = styleContent.replace(/;\s*;/g, ';').trim();
-                                // Replace the style attribute in attrs
-                                const newAttrs = attrs.replace(/(^|\s)style\s*=\s*["'][^"']*["']/i, `$1style="${styleContent}"`);
-                                return `<a${newAttrs}>`;
-                            } else {
-                                // No style attribute - add one with text-decoration: none
-                                return `<a${attrs} style="text-decoration: none;">`;
-                            }
-                        }
-                    );
-                    e.node.innerHTML = content;
-                }
-            });
+            // Paste handling simplified - CSS handles link styling with !important rules
+            // No need for post-process link manipulation
             
             // Register custom "Find Reference" menu item
             editor.ui.registry.addMenuItem('findreference', {
@@ -833,38 +786,14 @@ function cleanupTinyMCEHTML(editor) {
         '<a class="tnm-btn tnm-btn-secondary" href="$1" target="_blank" rel="noopener">'
     );
     
-    // 6. Remove text-decoration: underline from links and ensure text-decoration: none
-    // Process all anchor tags to remove underline and add none
-    content = content.replace(
-        /<a([^>]*)>/gi,
-        function(match, attrs) {
-            // Check if link has style attribute
-            const styleMatch = attrs.match(/(^|\s)style\s*=\s*["']([^"']*)["']/i);
-            if (styleMatch) {
-                // Has style attribute - remove underline and ensure none
-                let styleContent = styleMatch[2];
-                // Remove any text-decoration
-                styleContent = styleContent.replace(/text-decoration:\s*[^;]+;?\s*/gi, '');
-                // Add text-decoration: none
-                styleContent = 'text-decoration: none; ' + styleContent;
-                styleContent = styleContent.replace(/;\s*;/g, ';').trim();
-                // Replace the style attribute in attrs
-                const newAttrs = attrs.replace(/(^|\s)style\s*=\s*["'][^"']*["']/i, `$1style="${styleContent}"`);
-                return `<a${newAttrs}>`;
-            } else {
-                // No style attribute - add one with text-decoration: none
-                return `<a${attrs} style="text-decoration: none;">`;
-            }
-        }
-    );
-    
-    // 7. Clean up excessive empty paragraphs (but keep some spacing for readability)
+    // 6. Clean up excessive empty paragraphs (but keep some spacing for readability)
+    // Note: Link styling is handled by CSS with !important rules, no need to process here
     // Replace 3+ consecutive <p>&nbsp;</p> with just 2
     content = content.replace(/(<p>&nbsp;<\/p>\s*){3,}/g, '<p>&nbsp;</p>\n<p>&nbsp;</p>');
     
     // Update editor content
     editor.setContent(content);
-    alert('HTML cleaned up! ✓ Old reference styles converted to CSS classes\n✓ TNM buttons updated to use CSS classes\n✓ Link underlines removed (now handled by CSS)\n✓ Empty/broken blocks removed\n✓ Content and styling preserved');
+    alert('HTML cleaned up! ✓ Old reference styles converted to CSS classes\n✓ TNM buttons updated to use CSS classes\n✓ Empty/broken blocks removed\n✓ Content and styling preserved\n\nNote: Link styling is handled automatically by CSS');
 }
 
 // Auto-generate case number based on body part

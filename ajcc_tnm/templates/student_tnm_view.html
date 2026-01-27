@@ -727,7 +727,7 @@
             </div>
         </div>
         <div style="margin-top: 0.5rem; text-align: center; font-size: 8pt; color: #999;">
-            Generated from FRCR Revision App | {{ "now" | date: "%Y-%m-%d" }}
+            Generated from FRCR Revision App | {{ current_date.strftime('%Y-%m-%d') if current_date else '' }}
         </div>
     </div>
 </div>

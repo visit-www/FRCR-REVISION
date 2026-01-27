@@ -4622,52 +4622,83 @@ body {
 
 /* Remove underlines from all links in discussion/content areas */
 .discussion-text a,
+.discussion-text ul a,
+.discussion-text li a,
+.discussion-text ol a,
 .tnm-intelligence-content a,
+.tnm-intelligence-content ul a,
+.tnm-intelligence-content li a,
+.tnm-intelligence-content ol a,
 .case-content a,
+.case-content ul a,
+.case-content li a,
+.case-content ol a,
 .qa-answer-text a,
-.qa-question-text a {
-    text-decoration: none;
+.qa-answer-text ul a,
+.qa-answer-text li a,
+.qa-answer-text ol a,
+.qa-question-text a,
+.qa-question-text ul a,
+.qa-question-text li a,
+.qa-question-text ol a {
+    text-decoration: none !important;
 }
 
 .discussion-text a:hover,
+.discussion-text ul a:hover,
+.discussion-text li a:hover,
 .tnm-intelligence-content a:hover,
+.tnm-intelligence-content ul a:hover,
+.tnm-intelligence-content li a:hover,
 .case-content a:hover,
+.case-content ul a:hover,
+.case-content li a:hover,
 .qa-answer-text a:hover,
-.qa-question-text a:hover {
-    text-decoration: underline;
+.qa-answer-text ul a:hover,
+.qa-answer-text li a:hover,
+.qa-question-text a:hover,
+.qa-question-text ul a:hover,
+.qa-question-text li a:hover {
+    text-decoration: underline !important;
 }
 
 .reference-block small {
     color: #5a6270;
 }
 
-/* TNM Intelligence Block Button Styles - Symmetrical */
+/* TNM Intelligence Block Button Styles - Symmetrical and Consistent */
 .tnm-btn {
     display: inline-flex;
     align-items: center;
-    color: white;
+    color: white !important;
     padding: 8px 16px;
     border-radius: 6px;
     font-size: 0.95em;
     font-weight: 600;
-    text-decoration: none;
+    text-decoration: none !important;
     border: 1px solid rgba(255,255,255,0.3);
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    transition: background 0.2s;
+    transition: all 0.2s ease;
+    white-space: nowrap;
 }
 
-.tnm-btn-primary {
-    background: rgba(255,255,255,0.15);
-}
-
-.tnm-btn-primary:hover {
-    background: rgba(255,255,255,0.25);
-}
-
+/* Both buttons have identical styling */
+.tnm-btn-primary,
 .tnm-btn-secondary {
-    background: rgba(255,255,255,0.15);
+    background: rgba(255,255,255,0.15) !important;
 }
 
+/* Hover effect: slight background brightening without hiding text */
+.tnm-btn-primary:hover,
 .tnm-btn-secondary:hover {
-    background: rgba(255,255,255,0.25);
+    background: rgba(255,255,255,0.3) !important;
+    color: white !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+/* Ensure text stays white on hover */
+.tnm-btn-primary:hover *,
+.tnm-btn-secondary:hover * {
+    color: white !important;
 }

@@ -217,7 +217,14 @@ def student_tnm_view(section_slug, disease_slug):
     )
     
     # Check if user is admin (admins can see raw data, students only see curated)
-    is_admin = current_user.is_authenticated and hasattr(current_user, 'role') and current_user.role.value in ['admin', 'superadmin', 'content_manager']
+    is_admin = False
+    try:
+        if current_user.is_authenticated and hasattr(current_user, 'role') and current_user.role:
+            role_value = current_user.role.value if hasattr(current_user.role, 'value') else str(current_user.role)
+            is_admin = role_value in ['admin', 'superadmin', 'content_manager']
+    except Exception as e:
+        print(f"[TNM] Error checking admin status: {e}")
+        is_admin = False
     
     # Get TNM definitions
     t_definitions = []
@@ -282,28 +289,45 @@ def student_tnm_view(section_slug, disease_slug):
     
     # Build TNM version string using the AJCC_VERSION_9_DISEASES dictionary
     # Returns "AJCC 9th Edition (year)" for 9th Edition cancers, "AJCC 8th Edition" for others
-    tnm_version = format_tnm_version(disease_slug)
+    try:
+        tnm_version = format_tnm_version(disease_slug)
+    except Exception as e:
+        print(f"[TNM] Error formatting TNM version: {e}")
+        tnm_version = "AJCC Staging"
     
-    return render_template(
-        'student_tnm_view.html',
-        section=section,
-        disease=disease_site,
-        staging_data=staging_data,
-        t_definitions=t_definitions,
-        n_definitions=n_definitions,
-        m_definitions=m_definitions,
-        stage_groups=stage_groups,
-        quick_reference_html=quick_reference_html,
-        explanatory_notes_html=explanatory_notes_html,
-        images=images,
-        intelligent_data=intelligent_data,
-        tnm_version=tnm_version,
-        year_used=year_used,
-        available_years=available_years or [],
-        from_case_id=from_case_id,
-        is_curated=is_curated,
-        is_admin=is_admin
-    )
+    # Get current date for footer
+    from datetime import datetime
+    current_date = datetime.utcnow()
+    
+    try:
+        return render_template(
+            'student_tnm_view.html',
+            section=section,
+            disease=disease_site,
+            staging_data=staging_data,
+            t_definitions=t_definitions,
+            n_definitions=n_definitions,
+            m_definitions=m_definitions,
+            stage_groups=stage_groups,
+            quick_reference_html=quick_reference_html,
+            explanatory_notes_html=explanatory_notes_html,
+            images=images,
+            intelligent_data=intelligent_data,
+            tnm_version=tnm_version,
+            year_used=year_used,
+            available_years=available_years or [],
+            from_case_id=from_case_id,
+            is_curated=is_curated,
+            is_admin=is_admin,
+            current_date=current_date
+        )
+    except Exception as e:
+        import traceback
+        print(f"[TNM] Error rendering student_tnm_view template: {e}")
+        traceback.print_exc()
+        # Return a simple error page instead of blank
+        from flask import abort
+        abort(500, description=f"Template rendering error: {str(e)}")
 
 
 @tnm_bp.route('/<section_slug>/<disease_slug>/<section_slug_path>', methods=['GET'])
