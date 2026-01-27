@@ -388,8 +388,22 @@
                         </div>
                         {% endif %}
                         
-                        <div class="small text-muted">
-                            <i class="fas fa-book me-1"></i>Source: {{ essential_tnm.attribution or 'IARC Essential TNM Guide (CC BY-NC-ND 3.0 IGO)' }}
+                        <!-- Attribution Footer -->
+                        <div class="mt-4 pt-3" style="border-top: 1px solid #e0e0e0;">
+                            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                                <div class="d-flex align-items-center">
+                                    <img src="https://res.cloudinary.com/dx7b7chvn/image/upload/c_fit,h_30,w_80/v1769446405/frcr_revision/essential_tnm/essential_tnm_IACR_logo.jpg" 
+                                         alt="IARC Logo" style="height: 24px; margin-right: 8px;">
+                                    <span class="small text-muted">
+                                        <i class="fas fa-book me-1"></i>Source: {{ essential_tnm.attribution or 'IARC Essential TNM Guide (CC BY-NC-ND 3.0 IGO)' }}
+                                    </span>
+                                </div>
+                                <div class="d-flex align-items-center">
+                                    <img src="https://res.cloudinary.com/dx7b7chvn/image/upload/v1769503548/frcr-rev-logo-transp_o2hmrq.png" 
+                                         alt="RadiologyInsights Logo" style="width: 30px; height: 30px; object-fit: contain; margin-right: 6px;">
+                                    <span class="small text-muted">&copy; All rights reserved RadiologyInsights</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -413,6 +427,23 @@
                     <div id="explanatoryNotesContent" class="tnm-content highlightable-text tnm-html-content" 
                          data-field="explanatory-notes" data-raw-content="{{ explanatory_notes_html|e }}">
                         {{ explanatory_notes_html|safe }}
+                    </div>
+                    
+                    <!-- AJCC Attribution Footer -->
+                    <div class="mt-4 pt-3" style="border-top: 1px solid #e0e0e0;">
+                        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-book-medical me-2 text-secondary"></i>
+                                <span class="small text-muted">
+                                    Source: AJCC TNM Staging Manual — content curated for educational purposes
+                                </span>
+                            </div>
+                            <div class="d-flex align-items-center">
+                                <img src="https://res.cloudinary.com/dx7b7chvn/image/upload/v1769503548/frcr-rev-logo-transp_o2hmrq.png" 
+                                     alt="RadiologyInsights Logo" style="width: 30px; height: 30px; object-fit: contain; margin-right: 6px;">
+                                <span class="small text-muted">&copy; All rights reserved RadiologyInsights</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 {% endif %}
