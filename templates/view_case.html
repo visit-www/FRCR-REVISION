@@ -4307,7 +4307,15 @@
                 plugins: 'link lists',
                 base_url: 'https://cdn.jsdelivr.net/npm/tinymce@6',
                 skin: 'oxide',
-                content_css: 'default'
+                content_css: 'default',
+                content_style: `
+                    a {
+                        text-decoration: none;
+                    }
+                    a:hover {
+                        text-decoration: underline;
+                    }
+                `
             });
         }
 

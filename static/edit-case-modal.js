@@ -176,6 +176,12 @@ function initializeTinyMCE(elementId, retryCount = 0) {
                 line-height: 1.6;
                 text-align: left !important;
             }
+            a {
+                text-decoration: none;
+            }
+            a:hover {
+                text-decoration: underline;
+            }
             p, h1, h2, h3, h4, h5, h6, li, td, th {
                 text-align: left !important;
             }
@@ -398,6 +404,12 @@ function editImageDescription(imageId) {
                                         font-size: 14px;
                                         line-height: 1.6;
                                     }
+                                    a {
+                                        text-decoration: none;
+                                    }
+                                    a:hover {
+                                        text-decoration: underline;
+                                    }
                                     table {
                                         border-collapse: collapse;
                                         width: 100%;
@@ -514,6 +526,14 @@ function editImageDescription(imageId) {
                         // Use CDN for assets (themes, skins, etc.) since we only have the minified JS locally
                         base_url: 'https://cdn.jsdelivr.net/npm/tinymce@6',
                 content_css: 'default',
+                content_style: `
+                    a {
+                        text-decoration: none;
+                    }
+                    a:hover {
+                        text-decoration: underline;
+                    }
+                `,
                 skin: 'oxide',
                 setup: function(editor) {
                     editor.on('init', function() {

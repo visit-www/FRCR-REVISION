@@ -639,6 +639,12 @@ function initializeDiscussionEditor() {
                 font-size: 14px;
                 line-height: 1.6;
             }
+            a {
+                text-decoration: none;
+            }
+            a:hover {
+                text-decoration: underline;
+            }
             table {
                 border-collapse: collapse;
                 width: 100%;
@@ -769,13 +775,30 @@ function cleanupTinyMCEHTML(editor) {
         '<a class="tnm-btn tnm-btn-secondary" href="$1" target="_blank" rel="noopener">'
     );
     
-    // 6. Clean up excessive empty paragraphs (but keep some spacing for readability)
+    // 6. Remove text-decoration: underline from links (now handled by CSS)
+    // Remove inline text-decoration styles from anchor tags
+    content = content.replace(
+        /<a([^>]*)\s+style="([^"]*text-decoration:\s*underline[^"]*)"([^>]*)>/g,
+        function(match, before, style, after) {
+            // Remove text-decoration: underline from style attribute
+            let newStyle = style.replace(/text-decoration:\s*underline;?\s*/gi, '').replace(/;\s*;/g, ';').trim();
+            // Clean up empty style attributes or trailing semicolons
+            if (newStyle === '' || newStyle === ';') {
+                return `<a${before}${after}>`;
+            }
+            return `<a${before} style="${newStyle}"${after}>`;
+        }
+    );
+    // Also handle style attributes that only contain text-decoration
+    content = content.replace(/<a([^>]*)\s+style="text-decoration:\s*underline;?"([^>]*)>/gi, '<a$1$2>');
+    
+    // 7. Clean up excessive empty paragraphs (but keep some spacing for readability)
     // Replace 3+ consecutive <p>&nbsp;</p> with just 2
     content = content.replace(/(<p>&nbsp;<\/p>\s*){3,}/g, '<p>&nbsp;</p>\n<p>&nbsp;</p>');
     
     // Update editor content
     editor.setContent(content);
-    alert('HTML cleaned up! ✓ Old reference styles converted to CSS classes\n✓ TNM buttons updated to use CSS classes\n✓ Empty/broken blocks removed\n✓ Content and styling preserved');
+    alert('HTML cleaned up! ✓ Old reference styles converted to CSS classes\n✓ TNM buttons updated to use CSS classes\n✓ Link underlines removed (now handled by CSS)\n✓ Empty/broken blocks removed\n✓ Content and styling preserved');
 }
 
 // Auto-generate case number based on body part

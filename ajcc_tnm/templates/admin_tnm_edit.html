@@ -151,7 +151,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             menubar: false,
                             plugins: 'code table lists link image',
                             toolbar: 'undo redo | formatselect | bold italic | alignleft aligncenter alignright | bullist numlist | table | link image | code',
-                            content_style: 'body { font-family: Arial, sans-serif; font-size: 14px; }',
+                            content_style: 'body { font-family: Arial, sans-serif; font-size: 14px; } a { text-decoration: none; } a:hover { text-decoration: underline; }',
                             setup: function(editor) {
                                 editor.on('init', function() {
                                     console.log(`TinyMCE initialized for ${editorId}`);
