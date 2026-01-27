@@ -1985,12 +1985,18 @@ async function deleteHighlight(highlightId) {
 }
 
 // ========== Text Selection Menu ==========
+// Store the range globally so it persists after selection is cleared
+let storedRange = null;
+let storedSectionContent = null;
+
 document.addEventListener('mouseup', function(e) {
     const selection = window.getSelection();
     const text = selection.toString().trim();
     
     // Remove existing menu
     document.getElementById('tnmSelectionMenu')?.remove();
+    storedRange = null;
+    storedSectionContent = null;
     
     if (!text || text.length < 3) return;
     
@@ -2003,6 +2009,10 @@ document.addEventListener('mouseup', function(e) {
     
     if (!sectionContent) return;
     
+    // Store the range before it gets cleared
+    storedRange = range.cloneRange();
+    storedSectionContent = sectionContent;
+    
     // Create selection menu
     const menu = document.createElement('div');
     menu.id = 'tnmSelectionMenu';
@@ -2010,10 +2020,10 @@ document.addEventListener('mouseup', function(e) {
     menu.style.top = `${Math.max(10, e.clientY - 60)}px`;
     
     menu.innerHTML = `
-        <button class="highlight-btn" onclick="handleTnmHighlight()">
+        <button class="highlight-btn" onmousedown="event.preventDefault(); handleTnmHighlight();">
             <i class="fas fa-highlighter"></i> Highlight
         </button>
-        <button class="note-btn" onclick="handleTnmAddNote()">
+        <button class="note-btn" onmousedown="event.preventDefault(); handleTnmAddNote();">
             <i class="fas fa-sticky-note"></i> Add Note
         </button>
     `;
@@ -2030,12 +2040,14 @@ document.addEventListener('mouseup', function(e) {
     menu.dataset.contextBefore = fullText.substring(Math.max(0, startIdx - 50), startIdx);
     menu.dataset.contextAfter = fullText.substring(startIdx + text.length, startIdx + text.length + 50);
     
-    // Close on click outside
+    // Close on click outside (but not when clicking menu buttons)
     setTimeout(() => {
-        document.addEventListener('click', function closeMenu(e) {
+        document.addEventListener('mousedown', function closeMenu(e) {
             if (!menu.contains(e.target)) {
                 menu.remove();
-                document.removeEventListener('click', closeMenu);
+                storedRange = null;
+                storedSectionContent = null;
+                document.removeEventListener('mousedown', closeMenu);
             }
         });
     }, 100);
@@ -2045,17 +2057,27 @@ function handleTnmHighlight() {
     const menu = document.getElementById('tnmSelectionMenu');
     if (!menu) return;
     
-    const selection = window.getSelection();
     const text = menu.dataset.selectedText;
     
-    // Create visual highlight
-    try {
-        const range = selection.getRangeAt(0);
-        const mark = document.createElement('mark');
-        mark.className = 'user-highlight';
-        range.surroundContents(mark);
-    } catch (e) {
-        console.log('Could not wrap selection');
+    // Create visual highlight using stored range
+    let highlightApplied = false;
+    if (storedRange) {
+        try {
+            const mark = document.createElement('mark');
+            mark.className = 'user-highlight';
+            mark.style.backgroundColor = '#fff3cd';
+            mark.style.padding = '0 2px';
+            mark.style.borderRadius = '2px';
+            storedRange.surroundContents(mark);
+            highlightApplied = true;
+        } catch (e) {
+            console.log('Could not wrap selection with stored range:', e);
+        }
+    }
+    
+    // Fallback: use context-based highlighting if range failed
+    if (!highlightApplied && storedSectionContent && text) {
+        applyContextHighlight(storedSectionContent, text, menu.dataset.contextBefore, menu.dataset.contextAfter);
     }
     
     // Save to backend
@@ -2066,8 +2088,51 @@ function handleTnmHighlight() {
         menu.dataset.contextAfter
     );
     
+    // Cleanup
     menu.remove();
+    storedRange = null;
+    storedSectionContent = null;
     window.getSelection().removeAllRanges();
+}
+
+// Helper function to apply highlight using context matching (fallback)
+function applyContextHighlight(container, text, contextBefore, contextAfter) {
+    const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null, false);
+    let node;
+    
+    while (node = walker.nextNode()) {
+        const nodeText = node.textContent;
+        const idx = nodeText.indexOf(text);
+        
+        if (idx !== -1) {
+            // Verify context if available
+            const fullText = container.textContent;
+            const fullIdx = fullText.indexOf(text);
+            if (contextBefore && fullIdx > 0) {
+                const before = fullText.substring(Math.max(0, fullIdx - contextBefore.length), fullIdx);
+                if (!before.includes(contextBefore.slice(-20))) continue;
+            }
+            
+            // Create the highlight
+            const range = document.createRange();
+            range.setStart(node, idx);
+            range.setEnd(node, idx + text.length);
+            
+            const mark = document.createElement('mark');
+            mark.className = 'user-highlight';
+            mark.style.backgroundColor = '#fff3cd';
+            mark.style.padding = '0 2px';
+            mark.style.borderRadius = '2px';
+            
+            try {
+                range.surroundContents(mark);
+                return true;
+            } catch (e) {
+                console.log('Context highlight failed:', e);
+            }
+        }
+    }
+    return false;
 }
 
 function handleTnmAddNote() {
