@@ -4613,6 +4613,28 @@ body {
 .reference-block a {
     color: #2c3e50;
     font-weight: 500;
+    text-decoration: none;
+}
+
+.reference-block a:hover {
+    text-decoration: underline;
+}
+
+/* Remove underlines from all links in discussion/content areas */
+.discussion-text a,
+.tnm-intelligence-content a,
+.case-content a,
+.qa-answer-text a,
+.qa-question-text a {
+    text-decoration: none;
+}
+
+.discussion-text a:hover,
+.tnm-intelligence-content a:hover,
+.case-content a:hover,
+.qa-answer-text a:hover,
+.qa-question-text a:hover {
+    text-decoration: underline;
 }
 
 .reference-block small {

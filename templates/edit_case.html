@@ -776,7 +776,7 @@ function cleanupTinyMCEHTML(editor) {
     );
     
     // 6. Remove text-decoration: underline from links (now handled by CSS)
-    // Remove inline text-decoration styles from anchor tags
+    // Remove inline text-decoration styles from anchor tags that have style attributes
     content = content.replace(
         /<a([^>]*)\s+style="([^"]*text-decoration:\s*underline[^"]*)"([^>]*)>/g,
         function(match, before, style, after) {
@@ -791,6 +791,20 @@ function cleanupTinyMCEHTML(editor) {
     );
     // Also handle style attributes that only contain text-decoration
     content = content.replace(/<a([^>]*)\s+style="text-decoration:\s*underline;?"([^>]*)>/gi, '<a$1$2>');
+    
+    // Add text-decoration: none to links without style attributes (to override browser defaults)
+    // Match all anchor tags and add style if missing
+    content = content.replace(
+        /<a([^>]*)>/gi,
+        function(match, attrs) {
+            // Check if link already has style attribute
+            if (attrs.includes('style=')) {
+                return match;
+            }
+            // Add style="text-decoration: none;" to override browser defaults
+            return `<a${attrs} style="text-decoration: none;">`;
+        }
+    );
     
     // 7. Clean up excessive empty paragraphs (but keep some spacing for readability)
     // Replace 3+ consecutive <p>&nbsp;</p> with just 2
