@@ -819,6 +819,7 @@ def save_tnm_intelligence_api():
             existing.set_imaging_checklist(tnm_intelligence.get('imaging_checklist', []))
             existing.set_reference_images(tnm_intelligence.get('reference_images', []))
             existing.set_warnings(tnm_intelligence.get('warnings', []))
+            existing.set_essential_tnm(tnm_intelligence.get('essential_tnm'))
             existing.verified_by_user_id = current_user.id
             existing.version += 1
             

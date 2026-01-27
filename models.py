@@ -1439,6 +1439,11 @@ class IntelligentTNMData(db.Model):
     # Warnings/Caveats - JSON array of strings
     warnings_json = db.Column(db.Text, nullable=True)
     
+    # Essential TNM Concepts - JSON object with cancer-specific IARC content
+    # Contains: cancer_type, figure_url, key_concepts, attribution
+    # Only available for 7 cancers: breast, colorectal, ovarian, cervical, prostate, lymphoma, liver
+    essential_tnm_json = db.Column(db.Text, nullable=True)
+    
     # Verification metadata
     verified_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     source_case_id = db.Column(db.Integer, db.ForeignKey('case.id'), nullable=True)  # Which case triggered generation
@@ -1574,6 +1579,21 @@ class IntelligentTNMData(db.Model):
         import json
         self.warnings_json = json.dumps(warnings, ensure_ascii=False) if warnings else None
     
+    def get_essential_tnm(self):
+        """Get essential TNM data as dict."""
+        import json
+        if self.essential_tnm_json:
+            try:
+                return json.loads(self.essential_tnm_json)
+            except:
+                return None
+        return None
+    
+    def set_essential_tnm(self, essential_data: dict):
+        """Set essential TNM data from dict."""
+        import json
+        self.essential_tnm_json = json.dumps(essential_data, ensure_ascii=False) if essential_data else None
+    
     def to_dict(self):
         """Convert to dictionary for API responses."""
         return {
@@ -1592,6 +1612,7 @@ class IntelligentTNMData(db.Model):
             'imaging_checklist': self.get_imaging_checklist(),
             'reference_images': self.get_reference_images(),
             'warnings': self.get_warnings(),
+            'essential_tnm': self.get_essential_tnm(),
             'verified_by_user_id': self.verified_by_user_id,
             'source_case_id': self.source_case_id,
             'version': self.version,
@@ -1638,6 +1659,7 @@ class IntelligentTNMData(db.Model):
         instance.set_imaging_checklist(ai_output.get('imaging_checklist', []))
         instance.set_reference_images(ai_output.get('reference_images', []))
         instance.set_warnings(ai_output.get('warnings', []))
+        instance.set_essential_tnm(ai_output.get('essential_tnm'))
         
         return instance
 
