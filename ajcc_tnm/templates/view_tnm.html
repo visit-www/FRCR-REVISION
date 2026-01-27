@@ -53,7 +53,6 @@
                         <h3 class="mb-2 fw-bold text-white">{{ disease.disease_name }}</h3>
                         <p class="mb-0 text-white">
                             <i class="fas fa-book-medical me-2"></i>{{ tnm_version }}
-                            {% if year_used %} • {{ year_used }}{% endif %}
                         </p>
                     </div>
                     <div class="text-end d-flex gap-2">
@@ -74,17 +73,8 @@
             <!-- Card Body -->
             <div class="card-body p-4 p-md-5" style="background: #ffffff;">
                 
-                <!-- Year Selector (if multiple years available) -->
-                {% if available_years and available_years|length > 1 %}
-                <div class="mb-4 p-3 rounded" style="background: #f8f9fa;">
-                    <label class="form-label small mb-1"><i class="fas fa-calendar-alt me-1"></i>Diagnosis Year:</label>
-                    <select class="form-select form-select-sm" id="yearSelector" onchange="changeYear(this.value)" style="max-width: 150px;" title="Select diagnosis year" aria-label="Select diagnosis year">
-                        {% for year in available_years %}
-                        <option value="{{ year }}" {% if year == year_used %}selected{% endif %}>{{ year }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                {% endif %}
+                <!-- TNM Edition is shown in the header - no year selector needed -->
+                <!-- TNM 9 diseases have a fixed release year; TNM 8 diseases have no year -->
 
                 <!-- Curation Status Warning (for students viewing uncurated content) -->
                 {% if not is_curated and not is_admin %}

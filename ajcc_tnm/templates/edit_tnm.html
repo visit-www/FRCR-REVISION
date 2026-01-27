@@ -110,20 +110,12 @@ console.log('[TinyMCE Loader] TNM Edit - checking if TinyMCE loaded...');
                         </div>
                         <div class="col-md-4">
                             <div class="mb-3">
-                                <label class="form-label fw-bold text-secondary" for="yearSelector">TNM Edition</label>
-                                {% if is_tnm9 and available_years|length > 1 %}
-                                <select class="form-select" id="yearSelector" onchange="changeYear(this.value)" title="Select diagnosis year" aria-label="Select diagnosis year">
-                                    {% for y in available_years %}
-                                    <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>
-                                    {% endfor %}
-                                </select>
-                                <small class="text-muted">AJCC 9th Edition - year-specific staging</small>
-                                {% elif is_tnm9 %}
-                                <input type="text" class="form-control bg-light" id="yearSelector" value="{{ tnm_version|default('AJCC 9th Edition') }}" readonly title="TNM Edition">
-                                <small class="text-muted">AJCC 9th Edition</small>
+                                <label class="form-label fw-bold text-secondary" for="tnmEdition">TNM Edition</label>
+                                <input type="text" class="form-control bg-light" id="tnmEdition" value="{{ tnm_version }}" readonly title="TNM Edition">
+                                {% if is_tnm9 %}
+                                <small class="text-muted">AJCC 9th Edition with fixed release year</small>
                                 {% else %}
-                                <input type="text" class="form-control bg-light" id="yearSelector" value="{{ tnm_version|default('AJCC 8th Edition') }}" readonly title="TNM Edition">
-                                <small class="text-muted">AJCC 8th Edition - no year-specific variants</small>
+                                <small class="text-muted">AJCC 8th Edition</small>
                                 {% endif %}
                             </div>
                         </div>
