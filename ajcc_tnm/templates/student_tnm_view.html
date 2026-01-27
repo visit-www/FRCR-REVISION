@@ -1116,30 +1116,46 @@
                 </div>
                 <div class="collapse show" id="collapse-essential-tnm">
                     <div class="section-content">
-                        {% set essential_tnm = intelligent_data.get_essential_tnm() if intelligent_data else None %}
+                        {% set essential_tnm = intelligent_data.essential_tnm if intelligent_data else None %}
                         
                         {% if essential_tnm %}
                         <!-- Cancer-specific Essential TNM Content -->
                         <div class="alert alert-success mb-3">
                             <i class="fas fa-star me-2"></i>
-                            <strong>{{ essential_tnm.cancer_type }}</strong> - Key staging concepts from IARC Essential TNM Guide
+                            <strong>{{ essential_tnm.title or essential_tnm.cancer_type }}</strong> - Key staging concepts from IARC Essential TNM Guide
                         </div>
                         
-                        {% if essential_tnm.figures %}
+                        <!-- Main Figure -->
+                        {% if essential_tnm.figure_url %}
                         <div class="row mb-4">
-                            {% for figure in essential_tnm.figures[:2] %}
-                            <div class="col-md-6 mb-3">
-                                <div class="card h-100">
-                                    <img src="{{ figure.cloudinary_url or figure.original_url }}" 
-                                         alt="{{ figure.title }}" 
+                            <div class="col-md-8 mx-auto">
+                                <div class="card">
+                                    <img src="{{ essential_tnm.figure_url }}" 
+                                         alt="{{ essential_tnm.title }}" 
                                          class="card-img-top"
-                                         style="max-height: 300px; object-fit: contain; background: #f8f9fa;">
+                                         style="max-height: 400px; object-fit: contain; background: #f8f9fa;">
                                     <div class="card-body py-2">
-                                        <p class="card-text small text-muted mb-0">{{ figure.title }}</p>
+                                        <p class="card-text small text-muted mb-0">{{ essential_tnm.figure_description or essential_tnm.title }}</p>
                                     </div>
                                 </div>
                             </div>
-                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        
+                        <!-- Supplementary Table if available -->
+                        {% if essential_tnm.supplementary_table and essential_tnm.supplementary_table.url %}
+                        <div class="row mb-4">
+                            <div class="col-md-8 mx-auto">
+                                <div class="card">
+                                    <img src="{{ essential_tnm.supplementary_table.url }}" 
+                                         alt="{{ essential_tnm.supplementary_table.title }}" 
+                                         class="card-img-top"
+                                         style="max-height: 300px; object-fit: contain; background: #f8f9fa;">
+                                    <div class="card-body py-2">
+                                        <p class="card-text small text-muted mb-0">{{ essential_tnm.supplementary_table.title }}</p>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                         {% endif %}
                         
@@ -1157,7 +1173,7 @@
                         {% endif %}
                         
                         <div class="small text-muted mb-3">
-                            <i class="fas fa-book me-1"></i>Source: IARC Essential TNM Guide (CC BY-NC-ND 3.0 IGO)
+                            <i class="fas fa-book me-1"></i>Source: {{ essential_tnm.attribution or 'IARC Essential TNM Guide (CC BY-NC-ND 3.0 IGO)' }}
                         </div>
                         {% endif %}
                         
