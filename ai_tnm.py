@@ -739,10 +739,10 @@ def _build_ajcc_result(disease_site) -> Dict:
     disease_slug = disease_site.slug or ""
     
     # Build TNM link with leading / for absolute path
-    # Use /student suffix for direct content access
+    # Use /view suffix for unified TNM view (role-aware)
     tnm_link = None
     if section_slug and disease_slug:
-        tnm_link = f"/tnm/{section_slug}/{disease_slug}/student"
+        tnm_link = f"/tnm/{section_slug}/{disease_slug}/view"
         if year:
             tnm_link += f"?year={year}"
     
@@ -1519,8 +1519,8 @@ def generate_tnm_intelligence(
     year_match = re.search(r'\((\d{4})\)', tnm_version)
     year = year_match.group(1) if year_match else "2026"
     
-    # Build TNM link with year parameter - use /student suffix for direct content access
-    tnm_link = f"/tnm/{section_slug}/{disease_slug}/student?year={year}"
+    # Build TNM link with year parameter - use /view suffix for unified TNM view
+    tnm_link = f"/tnm/{section_slug}/{disease_slug}/view?year={year}"
     if from_case_id is not None:
         tnm_link += f"&from_case={from_case_id}"
     

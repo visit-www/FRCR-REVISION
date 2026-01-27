@@ -220,16 +220,20 @@ def check_tnm_data():
     })
 
 
-@tnm_bp.route('/<section_slug>/<disease_slug>/student', methods=['GET'])
-def student_tnm_view(section_slug, disease_slug):
+@tnm_bp.route('/<section_slug>/<disease_slug>/view', methods=['GET'])
+@tnm_bp.route('/<section_slug>/<disease_slug>/student', methods=['GET'])  # Backward compatibility
+def tnm_view(section_slug, disease_slug):
     """
-    Student TNM view with case-specific features.
+    Unified TNM view for both students and admins.
     
-    Includes:
+    Shows role-appropriate UI:
+    - Students: Notes, highlights, study tools
+    - Admins: Edit buttons, management links
+    
+    Features:
     - Return to Case button (if from_case_id provided)
-    - Copy buttons for each section
     - Intelligent TNM data (if available)
-    - Stage calculator
+    - Role-based UI rendering
     """
     from models import IntelligentTNMData
     import re

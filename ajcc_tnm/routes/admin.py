@@ -4,7 +4,7 @@ Admin Routes for AJCC TNM Staging System
 Provides endpoints for TNM data extraction, management, and editing.
 """
 
-from flask import Blueprint, request, jsonify, render_template
+from flask import Blueprint, request, jsonify, render_template, redirect, url_for
 from flask_login import login_required, current_user
 from datetime import datetime
 import logging
@@ -580,8 +580,9 @@ def get_auth_instructions():
 @admin_tnm_bp.route('/edit-page/<int:disease_site_id>/<int:year>', methods=['GET'])
 @require_admin
 def tnm_edit_page(disease_site_id, year):
-    """Render admin TNM edit page."""
-    return render_template('admin_tnm_edit.html', disease_site_id=disease_site_id, year=year)
+    """Render admin TNM edit page - redirects to unified edit_tnm.html."""
+    # Redirect to the curate page which now uses edit_tnm.html
+    return redirect(url_for('admin_tnm.curate_tnm_page', disease_site_id=disease_site_id, year=year))
 
 
 @admin_tnm_bp.route('/calculate-stage', methods=['GET'])
@@ -1026,15 +1027,35 @@ def curate_tnm_page(disease_site_id, year):
         # Check if came from a case
         from_case_id = request.args.get('from_case_id', type=int)
         
+        # Get available years for this disease
+        available_years = []
+        all_staging = AJCCStagingData.query.filter_by(disease_site_id=disease_site_id).all()
+        for sd in all_staging:
+            if sd.diagnosis_year and sd.diagnosis_year.year not in available_years:
+                available_years.append(sd.diagnosis_year.year)
+        available_years = sorted(available_years, reverse=True) if available_years else [year]
+        
+        # Get intelligent TNM data if available
+        intelligent_data = None
+        try:
+            from models import IntelligentTNMData
+            intel_record = IntelligentTNMData.query.filter_by(
+                disease_site_id=disease_site_id,
+                diagnosis_year_id=diagnosis_year.id
+            ).first()
+            if intel_record:
+                intelligent_data = intel_record.to_dict()
+        except Exception as e:
+            logger.warning(f"Could not load intelligent data: {e}")
+        
         return render_template(
-            'admin_tnm_curate.html',
+            'edit_tnm.html',
             disease=disease,
             section=section,
             year=year,
             staging_data=staging_data,
-            raw_html_combined=raw_html_combined,
-            curated_quick_reference=curated_quick_reference,
-            curated_explanatory_notes=curated_explanatory_notes,
+            available_years=available_years,
+            intelligent_data=intelligent_data,
             from_case_id=from_case_id
         )
         

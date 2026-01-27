@@ -1,0 +1,492 @@
+{% extends "base.html" %}
+
+{% block mobile_breadcrumb %}
+<li class="breadcrumb-item">
+    <a href="{{ url_for('admin_tnm.tnm_management_page') }}" class="text-white text-decoration-none">
+        <i class="fas fa-cog me-1"></i>TNM Management
+    </a>
+</li>
+<li class="breadcrumb-item active text-white" aria-current="page">
+    <i class="fas fa-edit me-1"></i>Edit TNM Data
+</li>
+{% endblock %}
+
+{% block content %}
+<!-- TinyMCE Rich Text Editor -->
+<script src="{{ url_for('static', filename='tinymce.min.js') }}"></script>
+<script>
+console.log('[TinyMCE Loader] TNM Edit - checking if TinyMCE loaded...');
+
+// Wait for TinyMCE to be available
+(function() {
+    function checkAndInit(retryCount = 0) {
+        const MAX_RETRIES = 50;
+        
+        if (typeof window.tinymce !== 'undefined' && typeof window.tinymce.init === 'function') {
+            console.log('[TinyMCE Loader] ✅ TinyMCE API is available!');
+            window.tinyMCELoaded = true;
+            
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', initializeEditors);
+            } else {
+                initializeEditors();
+            }
+        } else if (retryCount < MAX_RETRIES) {
+            setTimeout(() => checkAndInit(retryCount + 1), 100);
+        } else {
+            console.error('[TinyMCE Loader] ❌ TinyMCE failed to load');
+        }
+    }
+    
+    setTimeout(() => checkAndInit(), 100);
+})();
+</script>
+
+<div class="row">
+    <div class="col-12 px-2 px-md-5">
+        <!-- Back Button and Navigation -->
+        <div class="mb-4 mt-4 d-flex align-items-center gap-3">
+            <button class="btn btn-outline-secondary btn-sm" onclick="window.history.back()" title="Go back" aria-label="Go back">
+                <i class="fas fa-arrow-left me-2"></i>Back
+            </button>
+            <a href="{{ url_for('tnm.disease_page', section_slug=section.slug, disease_slug=disease.slug) }}" class="btn btn-outline-primary btn-sm" title="View raw AJCC data">
+                <i class="fas fa-database me-1"></i>View Raw Data
+            </a>
+        </div>
+
+        <!-- Page Header -->
+        <div class="mb-4 pb-4 border-bottom">
+            <h1 class="display-6 mb-2">
+                <i class="fas fa-edit me-3" style="color: #667eea;"></i>
+                Edit TNM Staging Data
+            </h1>
+            <p class="text-muted mb-0" id="pageSubtitle">
+                <strong>{{ disease.disease_name }}</strong> • {{ section.section_name }}
+                {% if year %} • Year {{ year }}{% endif %}
+            </p>
+            {% if staging_data and staging_data.is_curated %}
+            <span class="badge bg-success mt-2"><i class="fas fa-check me-1"></i>Curated</span>
+            {% else %}
+            <span class="badge bg-warning text-dark mt-2"><i class="fas fa-exclamation-triangle me-1"></i>Not Yet Curated</span>
+            {% endif %}
+        </div>
+
+        <!-- Editing Tip -->
+        <div class="alert alert-info mb-4 border-0" style="background: linear-gradient(135deg, #e3f2fd 0%, #f5f5f5 100%); border-left: 4px solid #2196F3 !important;">
+            <div class="d-flex align-items-start">
+                <i class="fas fa-lightbulb text-warning me-2 mt-1" style="font-size: 1.2rem;"></i>
+                <div class="small mb-0">
+                    <strong>Tip:</strong> Use the rich text editor for formatting. Changes are saved to the curated content, 
+                    preserving the original raw AJCC data as source of truth.
+                </div>
+            </div>
+        </div>
+
+        <!-- Form Container -->
+        <form id="tnmEditForm">
+            <input type="hidden" id="diseaseSiteId" value="{{ disease.id }}">
+            <input type="hidden" id="diagnosisYear" value="{{ year }}">
+
+            <!-- Section 1: TNM Info (Read-only) -->
+            <div class="card shadow-sm mb-5 border-0">
+                <div class="card-header bg-gradient text-white" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                    <h5 class="mb-0">
+                        <i class="fas fa-info-circle me-2"></i>TNM Information
+                    </h5>
+                </div>
+                <div class="card-body p-4">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold text-secondary" for="diseaseSiteName">Disease Site</label>
+                                <input type="text" class="form-control bg-light" id="diseaseSiteName" value="{{ disease.disease_name }}" readonly title="Disease site name">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold text-secondary" for="bodySectionName">Body Section</label>
+                                <input type="text" class="form-control bg-light" id="bodySectionName" value="{{ section.section_name }}" readonly title="Body section name">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold text-secondary">Diagnosis Year</label>
+                                <select class="form-select" id="yearSelector" onchange="changeYear(this.value)" title="Select diagnosis year" aria-label="Select diagnosis year">
+                                    {% for y in available_years %}
+                                    <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 2: Quick Reference (Read-only display, shows raw data) -->
+            <div class="card shadow-sm mb-5 border-0">
+                <div class="card-header bg-gradient text-white" style="background: linear-gradient(135deg, #5E899E 0%, #4A6F7F 100%);">
+                    <h5 class="mb-0">
+                        <i class="fas fa-table me-2"></i>Quick Reference (Source Data - Read Only)
+                    </h5>
+                </div>
+                <div class="card-body p-4">
+                    <div class="alert alert-secondary mb-3">
+                        <i class="fas fa-lock me-2"></i>
+                        Quick Reference data is extracted from AJCC and cannot be directly edited here. 
+                        This section shows the source T/N/M definitions.
+                    </div>
+                    {% if staging_data and staging_data.section_1_quick_reference_html %}
+                    <div class="tnm-html-content border rounded p-3" style="max-height: 400px; overflow-y: auto; background: #fafafa;">
+                        {{ staging_data.section_1_quick_reference_html | safe }}
+                    </div>
+                    {% else %}
+                    <p class="text-muted">No quick reference data available.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Section 3: Curated Quick Reference (Editable) -->
+            <div class="card shadow-sm mb-5 border-0">
+                <div class="card-header bg-gradient text-white" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%);">
+                    <h5 class="mb-0">
+                        <i class="fas fa-edit me-2"></i>Curated Quick Reference
+                    </h5>
+                </div>
+                <div class="card-body p-4">
+                    <label class="form-label fw-bold text-secondary mb-3" for="curatedQuickReference">
+                        Edit the curated quick reference content shown to students
+                    </label>
+                    <textarea class="form-control rich-editor" id="curatedQuickReference" rows="10" 
+                              placeholder="Enter curated quick reference content...">{{ staging_data.curated_quick_reference_html if staging_data and staging_data.curated_quick_reference_html else '' }}</textarea>
+                    <small class="text-muted d-block mt-2">
+                        <i class="fas fa-info-circle me-1"></i>This is what students will see. Copy from raw data above and clean up as needed.
+                    </small>
+                </div>
+            </div>
+
+            <!-- Section 4: Curated Explanatory Notes (Editable) -->
+            <div class="card shadow-sm mb-5 border-0">
+                <div class="card-header bg-gradient text-white" style="background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);">
+                    <h5 class="mb-0">
+                        <i class="fas fa-file-alt me-2"></i>Curated Explanatory Notes
+                    </h5>
+                </div>
+                <div class="card-body p-4">
+                    <label class="form-label fw-bold text-secondary mb-3" for="curatedExplanatoryNotes">
+                        Edit the curated explanatory notes shown to students
+                    </label>
+                    <textarea class="form-control rich-editor" id="curatedExplanatoryNotes" rows="10" 
+                              placeholder="Enter curated explanatory notes...">{{ staging_data.curated_explanatory_notes_html if staging_data and staging_data.curated_explanatory_notes_html else '' }}</textarea>
+                    <small class="text-muted d-block mt-2">
+                        <i class="fas fa-info-circle me-1"></i>Add teaching points, clinical pearls, and radiologist-focused content.
+                    </small>
+                </div>
+            </div>
+
+            <!-- Section 5: TNM Intelligence (Editable) -->
+            {% if intelligent_data %}
+            <div class="card shadow-sm mb-5 border-0">
+                <div class="card-header bg-gradient text-white" style="background: linear-gradient(135deg, #e96304 0%, #ff8c42 100%);">
+                    <h5 class="mb-0">
+                        <i class="fas fa-brain me-2"></i>TNM Intelligence
+                        <span class="badge bg-light text-dark ms-2">AI-Assisted</span>
+                    </h5>
+                </div>
+                <div class="card-body p-4">
+                    <!-- Memory Aids -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold text-secondary" for="memoryAidT">T-Stage Memory Aid</label>
+                        <textarea class="form-control" id="memoryAidT" rows="2" 
+                                  placeholder="Memory aid for T staging...">{{ intelligent_data.tnm_memory_aid_t if intelligent_data.tnm_memory_aid_t else '' }}</textarea>
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label fw-bold text-secondary" for="memoryAidN">N-Stage Memory Aid</label>
+                        <textarea class="form-control" id="memoryAidN" rows="2" 
+                                  placeholder="Memory aid for N staging...">{{ intelligent_data.tnm_memory_aid_n if intelligent_data.tnm_memory_aid_n else '' }}</textarea>
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label fw-bold text-secondary" for="memoryAidM">M-Stage Memory Aid</label>
+                        <textarea class="form-control" id="memoryAidM" rows="2" 
+                                  placeholder="Memory aid for M staging...">{{ intelligent_data.tnm_memory_aid_m if intelligent_data.tnm_memory_aid_m else '' }}</textarea>
+                    </div>
+                    
+                    <!-- Key Points (JSON array) -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold text-secondary" for="keyPoints">Radiologist Key Points (one per line)</label>
+                        <textarea class="form-control" id="keyPoints" rows="5" 
+                                  placeholder="Enter key points, one per line...">{% if intelligent_data.radiologist_key_points %}{% for point in intelligent_data.radiologist_key_points %}{{ point }}{% if not loop.last %}
+{% endif %}{% endfor %}{% endif %}</textarea>
+                        <small class="text-muted">Each line becomes a bullet point</small>
+                    </div>
+                    
+                    <!-- Upstaging Triggers -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold text-secondary" for="upstagingTriggers">Upstaging Triggers (one per line)</label>
+                        <textarea class="form-control" id="upstagingTriggers" rows="4" 
+                                  placeholder="Enter upstaging triggers, one per line...">{% if intelligent_data.upstaging_triggers %}{% for trigger in intelligent_data.upstaging_triggers %}{{ trigger }}{% if not loop.last %}
+{% endif %}{% endfor %}{% endif %}</textarea>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Section 6: Images -->
+            <div class="card shadow-sm mb-5 border-0">
+                <div class="card-header bg-gradient text-white" style="background: linear-gradient(135deg, #6c757d 0%, #495057 100%);">
+                    <h5 class="mb-0">
+                        <i class="fas fa-images me-2"></i>Reference Images
+                    </h5>
+                </div>
+                <div class="card-body p-4">
+                    <div id="imagesContainer" class="mb-4">
+                        <p class="text-muted text-center py-3">No images uploaded yet.</p>
+                    </div>
+                    
+                    <div class="border-top pt-4">
+                        <label class="form-label fw-bold text-secondary mb-3" for="imageInput">Upload New Image</label>
+                        <div class="input-group">
+                            <input type="file" id="imageInput" class="form-control" accept="image/*" title="Select image to upload" aria-label="Select image to upload">
+                            <button type="button" class="btn btn-secondary" onclick="uploadImage()" aria-label="Upload image">
+                                <i class="fas fa-upload me-1"></i>Upload
+                            </button>
+                        </div>
+                        <small class="text-muted d-block mt-2">
+                            <i class="fas fa-info-circle me-1"></i>Supported formats: JPEG, PNG, GIF, WebP (Max 10MB)
+                        </small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="sticky-bottom bg-white border-top p-3 mb-5 shadow-sm">
+                <div class="d-flex gap-2 justify-content-end align-items-center flex-wrap p-3">
+                    <a href="{{ url_for('tnm.tnm_view', section_slug=section.slug, disease_slug=disease.slug) }}?year={{ year }}" 
+                       class="btn btn-lg btn-outline-secondary" target="_blank">
+                        <i class="fas fa-eye me-2"></i>Preview
+                    </a>
+                    <button type="button" class="btn btn-lg btn-primary" id="saveButton" onclick="saveTnmData()">
+                        <i class="fas fa-save me-2"></i>Save All Changes
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+body {
+    background-color: #f8f9fa;
+}
+
+.card {
+    border-radius: 8px;
+}
+
+.card-header {
+    border-radius: 8px 8px 0 0 !important;
+}
+
+.form-control:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+}
+
+.sticky-bottom {
+    position: sticky;
+    bottom: 0;
+    z-index: 100;
+    border-radius: 8px 8px 0 0;
+}
+
+.tnm-html-content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 1rem;
+}
+
+.tnm-html-content table th,
+.tnm-html-content table td {
+    padding: 0.5rem;
+    border: 1px solid #dee2e6;
+}
+
+.tnm-html-content img {
+    max-width: 100%;
+    height: auto;
+}
+
+/* TinyMCE container styling */
+.tox .tox-tinymce {
+    border: 1px solid #dee2e6 !important;
+    border-radius: 0.25rem !important;
+}
+
+@media (max-width: 767px) {
+    .sticky-bottom {
+        padding: 1rem 0.5rem !important;
+    }
+    
+    .btn-lg {
+        padding: 0.5rem 1rem;
+        font-size: 0.95rem;
+    }
+}
+</style>
+
+<script>
+// Configuration
+const diseaseSiteId = {{ disease.id }};
+const currentYear = {{ year }};
+const sectionSlug = '{{ section.slug }}';
+const diseaseSlug = '{{ disease.slug }}';
+
+// Initialize TinyMCE editors
+function initializeEditors() {
+    console.log('[TNM Edit] Initializing TinyMCE editors...');
+    
+    if (typeof tinymce === 'undefined') {
+        console.error('[TNM Edit] TinyMCE not available');
+        return;
+    }
+    
+    // Initialize for all rich editors
+    tinymce.init({
+        selector: '.rich-editor',
+        min_height: 300,
+        max_height: 600,
+        menubar: 'edit view insert format tools',
+        toolbar: 'undo redo | blocks | bold italic underline | numlist bullist | table link | code removeformat',
+        plugins: 'table link code autoresize',
+        base_url: 'https://cdn.jsdelivr.net/npm/tinymce@6',
+        relative_urls: false,
+        convert_urls: false,
+        remove_trailing_brs: true,
+        setup: function(editor) {
+            editor.on('change', function() {
+                tinymce.triggerSave();
+            });
+        }
+    });
+}
+
+// Change year - navigate to different year
+function changeYear(year) {
+    const url = new URL(window.location.href);
+    url.searchParams.set('year', year);
+    window.location.href = url.toString();
+}
+
+// Save all TNM data
+function saveTnmData() {
+    const saveBtn = document.getElementById('saveButton');
+    const originalText = saveBtn.innerHTML;
+    saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Saving...';
+    saveBtn.disabled = true;
+    
+    // Trigger TinyMCE save to update textareas
+    if (typeof tinymce !== 'undefined') {
+        tinymce.triggerSave();
+    }
+    
+    // Gather data - field names must match what the API expects
+    const data = {
+        disease_site_id: diseaseSiteId,
+        year: currentYear,
+        quick_reference_html: document.getElementById('curatedQuickReference').value,
+        explanatory_notes_html: document.getElementById('curatedExplanatoryNotes').value
+    };
+    
+    // Add intelligent data if present
+    const memoryAidT = document.getElementById('memoryAidT');
+    const memoryAidN = document.getElementById('memoryAidN');
+    const memoryAidM = document.getElementById('memoryAidM');
+    const keyPoints = document.getElementById('keyPoints');
+    const upstagingTriggers = document.getElementById('upstagingTriggers');
+    
+    if (memoryAidT) data.tnm_memory_aid_t = memoryAidT.value;
+    if (memoryAidN) data.tnm_memory_aid_n = memoryAidN.value;
+    if (memoryAidM) data.tnm_memory_aid_m = memoryAidM.value;
+    
+    if (keyPoints) {
+        data.radiologist_key_points = keyPoints.value.split('\n').filter(line => line.trim());
+    }
+    if (upstagingTriggers) {
+        data.upstaging_triggers = upstagingTriggers.value.split('\n').filter(line => line.trim());
+    }
+    
+    // Save curated data
+    fetch('/api/admin/tnm/curate/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            // Show success message
+            showAlert('success', 'Changes saved successfully!');
+        } else {
+            showAlert('danger', 'Error saving: ' + (result.error || 'Unknown error'));
+        }
+    })
+    .catch(err => {
+        console.error('Save error:', err);
+        showAlert('danger', 'Error saving changes: ' + err.message);
+    })
+    .finally(() => {
+        saveBtn.innerHTML = originalText;
+        saveBtn.disabled = false;
+    });
+}
+
+// Show alert message
+function showAlert(type, message) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+    alertDiv.style.cssText = 'top: 80px; right: 20px; z-index: 9999; max-width: 400px;';
+    alertDiv.innerHTML = `
+        <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'} me-2"></i>
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    `;
+    document.body.appendChild(alertDiv);
+    
+    // Auto-dismiss after 5 seconds
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.classList.remove('show');
+            setTimeout(() => alertDiv.remove(), 150);
+        }
+    }, 5000);
+}
+
+// Image upload (placeholder - implement based on your Cloudinary setup)
+function uploadImage() {
+    const input = document.getElementById('imageInput');
+    if (!input.files || !input.files[0]) {
+        alert('Please select an image first');
+        return;
+    }
+    
+    const file = input.files[0];
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('disease_site_id', diseaseSiteId);
+    formData.append('year', currentYear);
+    
+    // TODO: Implement image upload to your backend/Cloudinary
+    alert('Image upload not yet implemented for TNM. Please add images via the admin panel.');
+}
+
+// Initialize on DOM ready
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('[TNM Edit] Page loaded for disease:', diseaseSiteId, 'year:', currentYear);
+    
+    // TinyMCE loader script handles initialization
+    if (window.tinyMCELoaded && typeof tinymce !== 'undefined') {
+        initializeEditors();
+    }
+});
+</script>
+{% endblock %}

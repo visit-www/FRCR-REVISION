@@ -1643,7 +1643,7 @@ def view_case(case_id):
             ajcc = _map_to_ajcc_site(case.diagnosis, module=module_hint, body_part=body_part_hint)
             if ajcc and ajcc.get('section_slug') and ajcc.get('disease_slug'):
                 show_tnm_tab = True
-                tnm_staging_url = f"/tnm/{ajcc['section_slug']}/{ajcc['disease_slug']}/student?year=2026&from_case={case_id}"
+                tnm_staging_url = f"/tnm/{ajcc['section_slug']}/{ajcc['disease_slug']}/view?year=2026&from_case={case_id}"
     except Exception:
         pass
     
