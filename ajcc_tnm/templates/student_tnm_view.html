@@ -926,7 +926,43 @@
                 </div>
             </div>
 
-            <!-- 2. Cancers Staged Using This System -->
+            <!-- 2. Prognostic Stage Groups -->
+            {% if stage_groups %}
+            <div class="section-card" id="section-stage-groups">
+                <div class="section-header" data-bs-toggle="collapse" data-bs-target="#collapse-stage-groups" aria-expanded="true">
+                    <h5><i class="fas fa-layer-group text-secondary"></i> Prognostic Stage Groups</h5>
+                    <i class="fas fa-chevron-down expand-icon"></i>
+                </div>
+                <div class="collapse show" id="collapse-stage-groups">
+                    <div class="section-content">
+                        <div class="table-responsive-wrapper">
+                            <table class="tnm-table">
+                                <thead>
+                                    <tr>
+                                        <th>Stage</th>
+                                        <th>T</th>
+                                        <th>N</th>
+                                        <th>M</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for sg in stage_groups %}
+                                    <tr onclick="copyRow(this)" title="Click to copy">
+                                        <td class="stage-cell"><strong>{{ sg.stage }}</strong></td>
+                                        <td>{{ sg.T }}</td>
+                                        <td>{{ sg.N }}</td>
+                                        <td>{{ sg.M }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- 3. Cancers Staged Using This System (if applicable) -->
             {% if cancers_staged %}
             <div class="section-card success" id="section-cancers-staged">
                 <div class="section-header" data-bs-toggle="collapse" data-bs-target="#collapse-cancers-staged" aria-expanded="true">
@@ -945,7 +981,7 @@
             </div>
             {% endif %}
 
-            <!-- 3. Cancers NOT Staged by This System -->
+            <!-- 4. Cancers NOT Staged by This System (if applicable) -->
             {% if cancers_not_staged %}
             <div class="section-card warning" id="section-cancers-not-staged">
                 <div class="section-header" data-bs-toggle="collapse" data-bs-target="#collapse-cancers-not-staged" aria-expanded="true">
@@ -964,7 +1000,7 @@
             </div>
             {% endif %}
 
-            <!-- 4. TNM Intelligence (AI-Assisted) -->
+            <!-- 5. TNM Intelligence (AI-Assisted) -->
             {% if intelligent_data %}
             <div class="section-card highlight" id="section-tnm-intelligence">
                 {% if is_admin %}
@@ -1072,7 +1108,7 @@
             </div>
             {% endif %}
 
-            <!-- 5. Essential TNM Concepts -->
+            <!-- 6. Essential TNM Concepts -->
             <div class="section-card" id="section-essential-tnm">
                 <div class="section-header" data-bs-toggle="collapse" data-bs-target="#collapse-essential-tnm" aria-expanded="true">
                     <h5><i class="fas fa-book-medical text-primary"></i> Essential TNM Concepts</h5>
@@ -1137,7 +1173,7 @@
                 </div>
             </div>
 
-            <!-- 6. Explanatory Notes -->
+            <!-- 7. Explanatory Notes -->
             {% if explanatory_notes_html %}
             <div class="section-card info" id="section-explanatory-notes">
                 {% if is_admin %}
@@ -1159,41 +1195,6 @@
                         <div class="curated-content" id="explanatory-notes-content">
                             {{ explanatory_notes_html | safe }}
                         </div>
-                    </div>
-                </div>
-            </div>
-            {% endif %}
-
-            <!-- Stage Groupings (Expandable) -->
-            {% if stage_groups %}
-            <div class="section-card" id="section-stage-groups">
-                <div class="section-header" data-bs-toggle="collapse" data-bs-target="#collapse-stage-groups" aria-expanded="true">
-                    <h5><i class="fas fa-layer-group text-secondary"></i> Prognostic Stage Groups</h5>
-                    <i class="fas fa-chevron-down expand-icon"></i>
-                </div>
-                <div class="collapse show" id="collapse-stage-groups">
-                    <div class="section-content">
-                        <div class="table-responsive-wrapper">
-                            <table class="tnm-table">
-                                <thead>
-                                    <tr>
-                                        <th>Stage</th>
-                                        <th>T</th>
-                                        <th>N</th>
-                                        <th>M</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for sg in stage_groups %}
-                                    <tr onclick="copyRow(this)" title="Click to copy">
-                                        <td class="stage-cell"><strong>{{ sg.stage }}</strong></td>
-                                        <td>{{ sg.T }}</td>
-                                        <td>{{ sg.N }}</td>
-                                    <td>{{ sg.M }}</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
                     </div>
                 </div>
             </div>

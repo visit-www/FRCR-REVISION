@@ -343,13 +343,21 @@ def student_tnm_view(section_slug, disease_slug):
     # Get intelligent TNM data if available
     intelligent_data = None
     try:
+        # First try exact match with diagnosis_year_id
         intel_record = IntelligentTNMData.query.filter_by(
             disease_site_id=disease_site.id,
             diagnosis_year_id=diagnosis_year_id
         ).first()
         
+        # If not found, try without year filter (for legacy data or NULL year)
+        if not intel_record:
+            intel_record = IntelligentTNMData.query.filter_by(
+                disease_site_id=disease_site.id
+            ).first()
+        
         if intel_record:
             intelligent_data = intel_record.to_dict()
+            print(f"[TNM] Loaded intelligent data for disease {disease_site.id}, year {diagnosis_year_id}")
     except Exception as e:
         print(f"[TNM] Error loading intelligent data: {e}")
     
