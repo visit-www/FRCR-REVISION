@@ -880,43 +880,39 @@ document.querySelectorAll('.tnm-row').forEach(row => {
     });
 });
 
-// ==================== MARKDOWN PARSING ====================
+// ==================== MARKDOWN PARSING (matches view_case.html) ====================
 /**
- * Parse markdown in text content (handles **bold**, *italic*, etc.)
+ * Parse markdown in text content
+ * Uses same functions as view_case.html for consistency
  */
 function parseMarkdownInElement(element) {
     if (!element) return;
+    if (element.dataset.markdownProcessed) return;
     
-    // Get HTML content
     let html = element.innerHTML;
     
-    // Convert **text** to <strong>text</strong>
-    html = html.replace(/\*\*([^*]+?)\*\*/g, '<strong>$1</strong>');
+    // Convert **text** to <h4>text</h4> (same as view_case.html)
+    html = convertMarkdownBoldToH4(html);
     
-    // Convert *text* to <em>text</em> (but not inside URLs or already processed)
-    html = html.replace(/(?<!\*)\*([^*]+?)\*(?!\*)/g, '<em>$1</em>');
-    
-    // Convert `code` to <code>code</code>
-    html = html.replace(/`([^`]+?)`/g, '<code style="background: #f5f5f5; padding: 0.1em 0.3em; border-radius: 3px;">$1</code>');
+    // Linkify URLs (same as view_case.html)
+    html = linkifyUrlsSafely(html, true);
     
     element.innerHTML = html;
+    element.dataset.markdownProcessed = 'true';
 }
 
 /**
  * Parse markdown in all TNM Intelligence content
  */
 function parseIntelligenceMarkdown() {
-    // Target the intelligence content container
     const intelligenceContent = document.getElementById('intelligenceContent');
-    if (intelligenceContent) {
-        // Process all text nodes within the container
-        const textElements = intelligenceContent.querySelectorAll('div, li, p, span');
-        textElements.forEach(el => {
-            // Skip if element has child elements that shouldn't be processed
-            if (el.querySelector('a, img, code, strong, em')) return;
-            parseMarkdownInElement(el);
-        });
-    }
+    if (!intelligenceContent) return;
+    
+    // Process memory aid divs
+    intelligenceContent.querySelectorAll('div.mb-2').forEach(parseMarkdownInElement);
+    
+    // Process list items in key points, triggers, findings
+    intelligenceContent.querySelectorAll('li').forEach(parseMarkdownInElement);
 }
 
 // ==================== INITIALIZATION ====================
