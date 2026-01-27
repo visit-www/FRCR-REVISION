@@ -4595,3 +4595,57 @@ body {
 .shake {
     animation: shake 0.5s ease-in-out;
 }
+
+
+/* Simplified Reference Block Styles */
+.reference-block {
+    margin: 0.5rem 0;
+    padding: 8px 12px;
+    background: #fdfdfb;
+    border-left: 3px solid #5E899E;
+    border-radius: 4px;
+}
+
+.reference-block strong {
+    color: #e96304;
+}
+
+.reference-block a {
+    color: #2c3e50;
+    font-weight: 500;
+}
+
+.reference-block small {
+    color: #5a6270;
+}
+
+/* TNM Intelligence Block Button Styles - Symmetrical */
+.tnm-btn {
+    display: inline-flex;
+    align-items: center;
+    color: white;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 0.95em;
+    font-weight: 600;
+    text-decoration: none;
+    border: 1px solid rgba(255,255,255,0.3);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: background 0.2s;
+}
+
+.tnm-btn-primary {
+    background: rgba(255,255,255,0.15);
+}
+
+.tnm-btn-primary:hover {
+    background: rgba(255,255,255,0.25);
+}
+
+.tnm-btn-secondary {
+    background: rgba(255,255,255,0.15);
+}
+
+.tnm-btn-secondary:hover {
+    background: rgba(255,255,255,0.25);
+}

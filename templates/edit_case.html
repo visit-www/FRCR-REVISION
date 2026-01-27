@@ -607,7 +607,7 @@ function initializeDiscussionEditor() {
         max_height: 800,
         autoresize_bottom_margin: 50,
         menubar: 'edit view insert format tools',
-        toolbar: 'undo redo | blocks | bold italic underline strikethrough | numlist bullist indent outdent | table link image code removeformat',
+        toolbar: 'undo redo | blocks | bold italic underline strikethrough | numlist bullist indent outdent | table link image code removeformat cleanuphtml',
         plugins: 'table link image code autoresize',
         // Use CDN for assets (themes, skins, etc.) since we only have the minified JS locally
         base_url: 'https://cdn.jsdelivr.net/npm/tinymce@6',
@@ -616,6 +616,10 @@ function initializeDiscussionEditor() {
         relative_urls: false,
         convert_urls: false,
         remove_script_host: false,
+        // Clean up HTML output
+        remove_trailing_brs: true,
+        remove_linebreaks: false,
+        apply_source_formatting: false,
         table_advtab: false,
         table_cell_advtab: false,
         table_default_attributes: {
@@ -628,7 +632,7 @@ function initializeDiscussionEditor() {
         content_css: 'default',
         skin: 'oxide',
         // Custom context menu with Find Reference
-        contextmenu: 'findreference | link image table',
+        contextmenu: 'findreference cleanuphtml | link image table',
         content_style: `
             body {
                 font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
@@ -687,8 +691,91 @@ function initializeDiscussionEditor() {
                     return selectedText && selectedText.length > 2 ? 'findreference' : '';
                 }
             });
+            
+            // Add cleanup function for HTML content
+            editor.ui.registry.addMenuItem('cleanuphtml', {
+                text: 'Clean Up HTML',
+                icon: 'code',
+                onAction: function() {
+                    if (confirm('This will clean up HTML formatting (remove empty blocks, update reference styles, fix TNM buttons). Continue?')) {
+                        cleanupTinyMCEHTML(editor);
+                    }
+                }
+            });
+            
+            // Register as toolbar button
+            editor.ui.registry.addButton('cleanuphtml', {
+                text: 'Clean HTML',
+                tooltip: 'Clean up HTML: remove empty blocks, update reference styles, fix TNM buttons',
+                onAction: function() {
+                    if (confirm('This will clean up HTML formatting (remove empty blocks, update reference styles, fix TNM buttons). Continue?')) {
+                        cleanupTinyMCEHTML(editor);
+                    }
+                }
+            });
         }
     });
+}
+
+// Function to clean up HTML content in TinyMCE
+function cleanupTinyMCEHTML(editor) {
+    let content = editor.getContent();
+    
+    // 1. Remove empty/broken TNM blocks (only comments, no content)
+    // Match: <div class="tnm-intelligence-block" style="..."><!-- ... --></div>
+    content = content.replace(/<div class="tnm-intelligence-block"[^>]*><!--[^>]*--><\/div>\s*/g, '');
+    
+    // 2. Convert old-style reference blocks with inline styles to CSS class
+    // Pattern: <p style="margin: 0.5rem 0; padding: 8px 12px; background: #fdfdfb; border-left: 3px solid #5E899E; border-radius: 4px;">
+    content = content.replace(
+        /<p style="margin: 0\.5rem 0; padding: 8px 12px; background: #fdfdfb; border-left: 3px solid #5E899E; border-radius: 4px;">/g,
+        '<p class="reference-block">'
+    );
+    
+    // 3. Remove inline styles from reference block elements (strong, a, small)
+    // Remove icon and style from strong tag
+    content = content.replace(
+        /<strong style="color: #e96304;">(<i class="fas fa-book-medical"><\/i> )?Reference:<\/strong>/g,
+        '<strong>Reference:</strong>'
+    );
+    // Fix anchor tags with inline styles
+    content = content.replace(
+        /<a style="color: #2c3e50; font-weight: 500;" href="([^"]+)" target="_blank" rel="noopener">/g,
+        '<a href="$1" target="_blank" rel="noopener">'
+    );
+    // Fix small tags with inline styles
+    content = content.replace(
+        /<small style="color: #5a6270;">/g,
+        '<small>'
+    );
+    
+    // 4. Convert <pre> reference blocks to <p class="reference-block">
+    // Match: <pre style="..."><strong style="...">Reference: <a>...</a></strong></pre>
+    content = content.replace(
+        /<pre style="margin: 0\.5rem 0; padding: 8px 12px; border-left: 3px solid #5E899E; border-radius: 4px;">(<strong style="color: #e96304;">Reference: <a href="([^"]+)" target="_blank" rel="noopener">([^<]+)<\/a><\/strong>)<\/pre>/g,
+        '<p class="reference-block"><strong>Reference:</strong> <a href="$2" target="_blank" rel="noopener">$3</a></p>'
+    );
+    
+    // 5. Fix TNM buttons to use CSS classes instead of inline styles
+    // Primary button (View AJCC TNM Staging) - handle with or without &amp; entities
+    content = content.replace(
+        /<a style="display: inline-flex; align-items: center; background: rgba\(255,255,255,0\.15\); color: white; padding: 8px 16px; border-radius: 6px; font-size: 0\.95em; font-weight: 600; text-decoration: none; border: 1px solid rgba\(255,255,255,0\.3\); box-shadow: 0 2px 4px rgba\(0,0,0,0\.1\); transition: background 0\.2s;" href="([^"]+)" target="_blank" rel="noopener">/g,
+        '<a class="tnm-btn tnm-btn-primary" href="$1" target="_blank" rel="noopener">'
+    );
+    
+    // Secondary button (Essential TNM Concepts)
+    content = content.replace(
+        /<a style="display: inline-flex; align-items: center; background: #1a4178; color: white; padding: 8px 16px; border-radius: 6px; font-size: 0\.9em; font-weight: 500; text-decoration: none; border: none; box-shadow: 0 2px 4px rgba\(26, 65, 120, 0\.3\); transition: background 0\.2s;" href="([^"]+)" target="_blank" rel="noopener">/g,
+        '<a class="tnm-btn tnm-btn-secondary" href="$1" target="_blank" rel="noopener">'
+    );
+    
+    // 6. Clean up excessive empty paragraphs (but keep some spacing for readability)
+    // Replace 3+ consecutive <p>&nbsp;</p> with just 2
+    content = content.replace(/(<p>&nbsp;<\/p>\s*){3,}/g, '<p>&nbsp;</p>\n<p>&nbsp;</p>');
+    
+    // Update editor content
+    editor.setContent(content);
+    alert('HTML cleaned up! ✓ Old reference styles converted to CSS classes\n✓ TNM buttons updated to use CSS classes\n✓ Empty/broken blocks removed\n✓ Content and styling preserved');
 }
 
 // Auto-generate case number based on body part
@@ -2428,7 +2515,7 @@ function insertTnmLinksDirectly(data) {
     
     // Build Essential TNM button HTML (only for the 7 cancers)
     const essentialTnmButton = hasEssentialTnm ? `
-        <a href="/essential-tnm-concepts" target="_blank" style="display: inline-flex; align-items: center; background: #1a4178; color: white; padding: 8px 16px; border-radius: 6px; font-size: 0.9em; font-weight: 500; text-decoration: none; border: none; box-shadow: 0 2px 4px rgba(26, 65, 120, 0.3); transition: background 0.2s;">
+        <a href="/essential-tnm-concepts" target="_blank" rel="noopener" class="tnm-btn tnm-btn-secondary">
             <i class="fas fa-graduation-cap me-2"></i>Essential TNM Concepts
         </a>
     ` : '';
@@ -2442,7 +2529,7 @@ function insertTnmLinksDirectly(data) {
     
     <!-- Header with AJCC Staging Link Buttons -->
     <div style="background: linear-gradient(135deg, #235390 0%, #1a4178 100%); padding: 12px 16px; display: flex; align-items: center; flex-wrap: wrap; gap: 12px;">
-        <a href="${hrefTnmLink || tnmLink}" target="_blank" style="display: inline-flex; align-items: center; background: rgba(255,255,255,0.15); color: white; padding: 8px 16px; border-radius: 6px; font-size: 0.95em; font-weight: 600; text-decoration: none; border: 1px solid rgba(255,255,255,0.3); box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: background 0.2s;">
+        <a href="${hrefTnmLink || tnmLink}" target="_blank" rel="noopener" class="tnm-btn tnm-btn-primary">
             <i class="fas fa-book-medical me-2"></i>View AJCC TNM Staging – ${diseaseName} (${tnmVersion})
             <i class="fas fa-external-link-alt ms-2" style="font-size: 0.8em; opacity: 0.8;"></i>
         </a>
@@ -2956,10 +3043,9 @@ function renderArticle(article) {
 
 function insertReferenceToDiscussion(title, journal, year, link) {
     const refHtml = `
-<p style="margin: 0.5rem 0; padding: 8px 12px; background: #fdfdfb; border-left: 3px solid #5E899E; border-radius: 4px;">
-    <strong style="color: #e96304;"><i class="fas fa-book-medical"></i> Reference:</strong>
-    <a href="${link}" target="_blank" style="color: #2c3e50; font-weight: 500;">${title}</a>
-    ${journal || year ? `<br><small style="color: #5a6270;">${journal}${year ? ` (${year})` : ''}</small>` : ''}
+<p class="reference-block">
+    <strong>Reference:</strong> <a href="${link}" target="_blank" rel="noopener">${title}</a>
+    ${journal || year ? `<br><small>${journal}${year ? ` (${year})` : ''}</small>` : ''}
 </p>
 `;
     
@@ -3000,5 +3086,6 @@ window.findReferenceForSelection = findReferenceForSelection;
 window.closeReferenceSearchModal = closeReferenceSearchModal;
 window.insertReferenceToDiscussion = insertReferenceToDiscussion;
 window.searchWithNewQuery = searchWithNewQuery;
+window.cleanupTinyMCEHTML = cleanupTinyMCEHTML;
 </script>
 {% endblock %}
