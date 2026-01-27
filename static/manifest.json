@@ -12,37 +12,37 @@
   "lang": "en",
   "icons": [
     {
-      "src": "https://res.cloudinary.com/dx7b7chvn/image/upload/v1769028760/frcr-revision-logo-1_wyl1rg.png",
+      "src": "https://res.cloudinary.com/dx7b7chvn/image/upload/v1769503548/frcr-rev-logo-transp_o2hmrq.png",
       "sizes": "72x72",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "https://res.cloudinary.com/dx7b7chvn/image/upload/v1769028760/frcr-revision-logo-1_wyl1rg.png",
+      "src": "https://res.cloudinary.com/dx7b7chvn/image/upload/v1769503548/frcr-rev-logo-transp_o2hmrq.png",
       "sizes": "96x96",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "https://res.cloudinary.com/dx7b7chvn/image/upload/v1769028760/frcr-revision-logo-1_wyl1rg.png",
+      "src": "https://res.cloudinary.com/dx7b7chvn/image/upload/v1769503548/frcr-rev-logo-transp_o2hmrq.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "https://res.cloudinary.com/dx7b7chvn/image/upload/v1769028760/frcr-revision-logo-1_wyl1rg.png",
+      "src": "https://res.cloudinary.com/dx7b7chvn/image/upload/v1769503548/frcr-rev-logo-transp_o2hmrq.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "https://res.cloudinary.com/dx7b7chvn/image/upload/v1769022134/icon-512x512_cj0yyh.png",
+      "src": "https://res.cloudinary.com/dx7b7chvn/image/upload/v1769503548/frcr-rev-logo-transp_o2hmrq.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "https://res.cloudinary.com/dx7b7chvn/image/upload/v1769022136/app-icon_ekyaqs.png",
+      "src": "https://res.cloudinary.com/dx7b7chvn/image/upload/v1769503548/frcr-rev-logo-transp_o2hmrq.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
@@ -58,7 +58,7 @@
       "url": "/modules",
       "icons": [
         {
-          "src": "https://res.cloudinary.com/dx7b7chvn/image/upload/v1769028760/frcr-revision-logo-1_wyl1rg.png",
+          "src": "https://res.cloudinary.com/dx7b7chvn/image/upload/v1769503548/frcr-rev-logo-transp_o2hmrq.png",
           "sizes": "192x192"
         }
       ]
@@ -70,7 +70,7 @@
       "url": "/cases",
       "icons": [
         {
-          "src": "https://res.cloudinary.com/dx7b7chvn/image/upload/v1769028760/frcr-revision-logo-1_wyl1rg.png",
+          "src": "https://res.cloudinary.com/dx7b7chvn/image/upload/v1769503548/frcr-rev-logo-transp_o2hmrq.png",
           "sizes": "192x192"
         }
       ]

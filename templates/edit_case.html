@@ -608,7 +608,7 @@ function initializeDiscussionEditor() {
         autoresize_bottom_margin: 50,
         menubar: 'edit view insert format tools',
         toolbar: 'undo redo | blocks | bold italic underline strikethrough | numlist bullist indent outdent | table link image code removeformat cleanuphtml',
-        plugins: 'table link image code autoresize',
+        plugins: 'table link image code autoresize paste',
         // Use CDN for assets (themes, skins, etc.) since we only have the minified JS locally
         base_url: 'https://cdn.jsdelivr.net/npm/tinymce@6',
         // CRITICAL: Prevent TinyMCE from converting absolute URLs to relative
@@ -667,9 +667,67 @@ function initializeDiscussionEditor() {
                 }
             }
         `,
+        paste_preprocess: function(plugin, args) {
+            // Remove text-decoration: underline from all links in pasted content and ensure text-decoration: none
+            if (args.content) {
+                args.content = args.content.replace(
+                    /<a([^>]*)>/gi,
+                    function(match, attrs) {
+                        // Check if link has style attribute
+                        const styleMatch = attrs.match(/(^|\s)style\s*=\s*["']([^"']*)["']/i);
+                        if (styleMatch) {
+                            // Has style attribute - remove underline and ensure none
+                            let styleContent = styleMatch[2];
+                            // Remove any text-decoration
+                            styleContent = styleContent.replace(/text-decoration:\s*[^;]+;?\s*/gi, '');
+                            // Add text-decoration: none
+                            styleContent = 'text-decoration: none; ' + styleContent;
+                            styleContent = styleContent.replace(/;\s*;/g, ';').trim();
+                            // Replace the style attribute in attrs
+                            const newAttrs = attrs.replace(/(^|\s)style\s*=\s*["'][^"']*["']/i, `$1style="${styleContent}"`);
+                            return `<a${newAttrs}>`;
+                        } else {
+                            // No style attribute - add one with text-decoration: none
+                            return `<a${attrs} style="text-decoration: none;">`;
+                        }
+                    }
+                );
+            }
+        },
         setup: function(editor) {
             editor.on('change', function() {
                 tinymce.triggerSave();
+            });
+            
+            // Also clean links on paste event (post-process)
+            editor.on('PastePostProcess', function(e) {
+                let content = e.node.innerHTML || '';
+                if (content) {
+                    // Process all anchor tags to remove underline and ensure none
+                    content = content.replace(
+                        /<a([^>]*)>/gi,
+                        function(match, attrs) {
+                            // Check if link has style attribute
+                            const styleMatch = attrs.match(/(^|\s)style\s*=\s*["']([^"']*)["']/i);
+                            if (styleMatch) {
+                                // Has style attribute - remove underline and ensure none
+                                let styleContent = styleMatch[2];
+                                // Remove any text-decoration
+                                styleContent = styleContent.replace(/text-decoration:\s*[^;]+;?\s*/gi, '');
+                                // Add text-decoration: none
+                                styleContent = 'text-decoration: none; ' + styleContent;
+                                styleContent = styleContent.replace(/;\s*;/g, ';').trim();
+                                // Replace the style attribute in attrs
+                                const newAttrs = attrs.replace(/(^|\s)style\s*=\s*["'][^"']*["']/i, `$1style="${styleContent}"`);
+                                return `<a${newAttrs}>`;
+                            } else {
+                                // No style attribute - add one with text-decoration: none
+                                return `<a${attrs} style="text-decoration: none;">`;
+                            }
+                        }
+                    );
+                    e.node.innerHTML = content;
+                }
             });
             
             // Register custom "Find Reference" menu item
@@ -775,38 +833,28 @@ function cleanupTinyMCEHTML(editor) {
         '<a class="tnm-btn tnm-btn-secondary" href="$1" target="_blank" rel="noopener">'
     );
     
-    // 6. Remove text-decoration: underline from links (now handled by CSS)
-    // Remove inline text-decoration styles from anchor tags that have style attributes
-    content = content.replace(
-        /<a([^>]*)\s+style="([^"]*text-decoration:\s*underline[^"]*)"([^>]*)>/g,
-        function(match, before, style, after) {
-            // Remove text-decoration: underline from style attribute
-            let newStyle = style.replace(/text-decoration:\s*underline;?\s*/gi, '').replace(/;\s*;/g, ';').trim();
-            // Clean up empty style attributes or trailing semicolons
-            if (newStyle === '' || newStyle === ';') {
-                return `<a${before}${after}>`;
-            }
-            return `<a${before} style="${newStyle}"${after}>`;
-        }
-    );
-    // Also handle style attributes that only contain text-decoration
-    content = content.replace(/<a([^>]*)\s+style="text-decoration:\s*underline;?"([^>]*)>/gi, '<a$1$2>');
-    
-    // Add text-decoration: none to links without style attributes (to override browser defaults)
-    // Match all anchor tags and add style if missing
-    // Use regex to properly detect style attribute (not just "style=" in URLs)
+    // 6. Remove text-decoration: underline from links and ensure text-decoration: none
+    // Process all anchor tags to remove underline and add none
     content = content.replace(
         /<a([^>]*)>/gi,
         function(match, attrs) {
-            // Check if link already has style attribute using regex (not just string contains)
-            // This prevents false positives when href URLs contain "style="
-            // Matches: style="...", style='...', or style=value (attribute name, not substring)
-            // Pattern: (start or whitespace) + "style" + "=" + (quote or value start)
-            if (/(^|\s)style\s*=\s*["']/i.test(attrs)) {
-                return match;
+            // Check if link has style attribute
+            const styleMatch = attrs.match(/(^|\s)style\s*=\s*["']([^"']*)["']/i);
+            if (styleMatch) {
+                // Has style attribute - remove underline and ensure none
+                let styleContent = styleMatch[2];
+                // Remove any text-decoration
+                styleContent = styleContent.replace(/text-decoration:\s*[^;]+;?\s*/gi, '');
+                // Add text-decoration: none
+                styleContent = 'text-decoration: none; ' + styleContent;
+                styleContent = styleContent.replace(/;\s*;/g, ';').trim();
+                // Replace the style attribute in attrs
+                const newAttrs = attrs.replace(/(^|\s)style\s*=\s*["'][^"']*["']/i, `$1style="${styleContent}"`);
+                return `<a${newAttrs}>`;
+            } else {
+                // No style attribute - add one with text-decoration: none
+                return `<a${attrs} style="text-decoration: none;">`;
             }
-            // Add style="text-decoration: none;" to override browser defaults
-            return `<a${attrs} style="text-decoration: none;">`;
         }
     );
     
@@ -2585,11 +2633,7 @@ function insertTnmLinksDirectly(data) {
     ` : ''}
     
     <!-- Footer -->
-    <div style="background: #f3f4f6; padding: 8px 16px; border-top: 1px solid #e5e7eb; font-size: 0.8em; color: #6b7280;">
-        <i class="fas fa-robot me-1"></i>AI-Generated Summary
-        ${isCached ? ' | <span style="color: #d97706;">From Cache</span>' : ''}
-        ${isRegenerated ? ' | <span style="color: #059669;">Regenerated</span>' : ''}
-    </div>
+    <div style="background: #f3f4f6; padding: 8px 16px; border-top: 1px solid #e5e7eb; font-size: 0.8em; color: #6b7280;"><img style="width: 36px; height: 36px; object-fit: contain;" src="https://res.cloudinary.com/dx7b7chvn/image/upload/v1769503548/frcr-rev-logo-transp_o2hmrq.png" alt="app-logo">All rights reserved<span style="padding-left: 0.5em;">&copy;</span>RadInsights</div>
 </div>
 `;
     

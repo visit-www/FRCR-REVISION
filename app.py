@@ -1412,10 +1412,16 @@ def create_case():
     
     # Create case (questions/answers are stored in separate tables now)
     try:
+        # Add footer to discussion if it has content
+        discussion = data.get('discussion', '')
+        if discussion:
+            footer = '<!-- Footer -->\n<div style="background: #f3f4f6; padding: 8px 16px; border-top: 1px solid #e5e7eb; font-size: 0.8em; color: #6b7280;"><img style="width: 36px; height: 36px; object-fit: contain;" src="https://res.cloudinary.com/dx7b7chvn/image/upload/v1769503548/frcr-rev-logo-transp_o2hmrq.png" alt="app-logo">All rights reserved<span style="padding-left: 0.5em;">&copy;</span>RadInsights</div>'
+            discussion = f"{discussion}\n{footer}"
+        
         case = Case(
             case_number=case_number,
             diagnosis=data['diagnosis'],
-            discussion=data.get('discussion', ''),
+            discussion=discussion,
             module=module_enum,
             body_part=body_part_enum,
             is_public=data.get('is_public', False),
@@ -2858,7 +2864,9 @@ def generate_preliminary_case_data(case_id):
     if discussion_html:
         existing_discussion = case.discussion or ''
         separator = '\n' if existing_discussion else ''
-        case.discussion = f"{existing_discussion}{separator}{discussion_html}"
+        # Add footer after AI-generated content
+        footer = '<!-- Footer -->\n<div style="background: #f3f4f6; padding: 8px 16px; border-top: 1px solid #e5e7eb; font-size: 0.8em; color: #6b7280;"><img style="width: 36px; height: 36px; object-fit: contain;" src="https://res.cloudinary.com/dx7b7chvn/image/upload/v1769503548/frcr-rev-logo-transp_o2hmrq.png" alt="app-logo">All rights reserved<span style="padding-left:small">&copy;</span>RadInsights</div>'
+        case.discussion = f"{existing_discussion}{separator}{discussion_html}{footer}"
 
     from models import AiPrelimCaseData
     audit = AiPrelimCaseData(
