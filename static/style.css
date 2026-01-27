@@ -4702,3 +4702,133 @@ body {
 .tnm-btn-secondary:hover * {
     color: white !important;
 }
+
+/* ============================================================================
+   TNM Staging Button - Discussion Insert Button
+   Single button linking to Student TNM View (single source of truth)
+   ============================================================================ */
+
+.tnm-staging-button-wrapper {
+    margin: 1.5rem 0;
+}
+
+.tnm-staging-btn {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: linear-gradient(135deg, #235390 0%, #1a4178 100%);
+    color: white !important;
+    text-decoration: none !important;
+    padding: 16px 20px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(35, 83, 144, 0.25);
+    transition: all 0.3s ease;
+    max-width: 500px;
+    position: relative;
+    overflow: hidden;
+}
+
+.tnm-staging-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.tnm-staging-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(35, 83, 144, 0.35);
+    color: white !important;
+    text-decoration: none !important;
+}
+
+.tnm-staging-btn:hover::before {
+    opacity: 1;
+}
+
+.tnm-staging-btn .tnm-btn-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 10px;
+    flex-shrink: 0;
+}
+
+.tnm-staging-btn .tnm-btn-icon i {
+    font-size: 1.4em;
+    color: white;
+}
+
+.tnm-staging-btn .tnm-btn-text {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.tnm-staging-btn .tnm-btn-text strong {
+    font-size: 1.1em;
+    font-weight: 600;
+    color: white !important;
+}
+
+.tnm-staging-btn .tnm-btn-text span {
+    font-size: 0.85em;
+    color: rgba(255, 255, 255, 0.8);
+    font-weight: 400;
+}
+
+.tnm-staging-btn .tnm-btn-arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+    flex-shrink: 0;
+    transition: transform 0.3s ease, background 0.3s ease;
+}
+
+.tnm-staging-btn .tnm-btn-arrow i {
+    font-size: 0.85em;
+    color: white;
+}
+
+.tnm-staging-btn:hover .tnm-btn-arrow {
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateX(3px);
+}
+
+/* Mobile responsive */
+@media (max-width: 576px) {
+    .tnm-staging-btn {
+        padding: 14px 16px;
+        gap: 12px;
+    }
+    
+    .tnm-staging-btn .tnm-btn-icon {
+        width: 40px;
+        height: 40px;
+    }
+    
+    .tnm-staging-btn .tnm-btn-icon i {
+        font-size: 1.2em;
+    }
+    
+    .tnm-staging-btn .tnm-btn-text strong {
+        font-size: 1em;
+    }
+    
+    .tnm-staging-btn .tnm-btn-text span {
+        font-size: 0.8em;
+    }
+}
