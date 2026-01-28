@@ -1298,14 +1298,21 @@ function autoResizeTnmNotes() {
     tnmNotesTextarea.style.height = Math.max(100, tnmNotesTextarea.scrollHeight) + 'px';
 }
 
+// Track if user has existing notes (to know when to delete vs skip)
+let hadExistingNotes = {{ 'true' if user_tnm_note and user_tnm_note.note_text else 'false' }};
+
 // Load existing notes into textarea
 function loadTnmNotes() {
     fetch(`/tnm/api/${diseaseId}/note`, { credentials: 'include' })
         .then(response => response.json())
         .then(data => {
-            if (data.success && data.note_text && tnmNotesTextarea) {
+            if (data.success && tnmNotesTextarea) {
+                // Update hadExistingNotes flag based on API response
+                const hasNotes = !!(data.note_text && data.note_text.trim());
+                hadExistingNotes = hasNotes;
+                
                 // Only set if textarea is empty (don't overwrite user typing)
-                if (!tnmNotesTextarea.value.trim()) {
+                if (!tnmNotesTextarea.value.trim() && hasNotes) {
                     tnmNotesTextarea.value = data.note_text;
                     autoResizeTnmNotes();
                 }
@@ -1313,9 +1320,6 @@ function loadTnmNotes() {
         })
         .catch(err => console.error('Error loading notes:', err));
 }
-
-// Track if user has existing notes (to know when to delete vs skip)
-let hadExistingNotes = {{ 'true' if user_tnm_note and user_tnm_note.note_text else 'false' }};
 
 // Save notes to backend
 function saveTnmNotes(forceDelete = false) {
