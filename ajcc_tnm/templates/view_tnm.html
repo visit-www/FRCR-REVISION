@@ -1119,9 +1119,10 @@ function convertMarkdownBoldToH4(content) {
         if (part.startsWith('<') && part.endsWith('>')) {
             return part;
         }
-        // For labels ending with colon followed by text, use <strong> (inline)
-        // Pattern: **Label:** followed by non-whitespace text
-        part = part.replace(/\*\*([^*]+?:)\*\*\s*(?=\S)/g, '<strong class="tnm-label">$1</strong> ');
+        // For labels ending with colon followed by text ON THE SAME LINE, use <strong> (inline)
+        // Pattern: **Label:** followed by optional horizontal whitespace (space/tab only, NOT newlines)
+        // then non-whitespace text. Using [ \t]* instead of \s* to avoid consuming newlines.
+        part = part.replace(/\*\*([^*]+?:)\*\*[ \t]*(?=\S)/g, '<strong class="tnm-label">$1</strong> ');
         
         // For remaining standalone bold text (headings), keep as <h4>
         part = part.replace(/\*\*([^*]+?)\*\*/g, '<h4>$1</h4>');
