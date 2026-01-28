@@ -369,35 +369,45 @@
                         <label class="detail-label fw-bold text-secondary mb-0">
                             <i class="fas fa-graduation-cap me-2" style="color: #1976d2;"></i>Essential TNM Concepts
                         </label>
+                        <a href="/essential-tnm-concepts" target="_blank" class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-external-link-alt me-1"></i>Guide to how to apply IARC Essential TNM concepts
+                        </a>
                     </div>
                     
                     <div class="tnm-content highlightable-text" data-field="essential-tnm">
                         {% set essential_tnm = intelligent_data.essential_tnm %}
                         
-                        {% if essential_tnm.figure_url %}
-                        <div class="text-center mb-4">
-                            <img src="{{ essential_tnm.figure_url }}" 
-                                 alt="{{ essential_tnm.title }}" 
-                                 class="img-fluid rounded shadow"
-                                 style="max-height: 400px; cursor: pointer;"
-                                 onclick="openImageModal(this.src, '{{ essential_tnm.title }}')">
-                            <p class="small text-muted mt-2">{{ essential_tnm.title }}</p>
+                        <!-- Two-column layout: Image (left) + Key Concepts (right) on desktop -->
+                        <div class="row g-4">
+                            {% if essential_tnm.figure_url %}
+                            <div class="col-12 col-lg-6">
+                                <div class="text-center">
+                                    <img src="{{ essential_tnm.figure_url }}" 
+                                         alt="{{ essential_tnm.title }}" 
+                                         class="img-fluid rounded shadow"
+                                         style="max-height: 400px; cursor: pointer;"
+                                         onclick="openImageModal(this.src, '{{ essential_tnm.title }}')">
+                                    <p class="small text-muted mt-2">{{ essential_tnm.title }}</p>
+                                </div>
+                            </div>
+                            {% endif %}
+                            
+                            <div class="col-12 {% if essential_tnm.figure_url %}col-lg-6{% endif %}">
+                                {% if essential_tnm.key_concepts %}
+                                <div class="mb-3">
+                                    <h6><i class="fas fa-key me-2 text-warning"></i>Key Concepts</h6>
+                                    <ul>
+                                        {% for concept in essential_tnm.key_concepts %}
+                                        <li>{{ concept }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                                {% endif %}
+                            </div>
                         </div>
-                        {% endif %}
-                        
-                        {% if essential_tnm.key_concepts %}
-                        <div class="mb-3">
-                            <h6><i class="fas fa-key me-2 text-warning"></i>Key Concepts</h6>
-                            <ul>
-                                {% for concept in essential_tnm.key_concepts %}
-                                <li>{{ concept }}</li>
-                                {% endfor %}
-                            </ul>
-                        </div>
-                        {% endif %}
                         
                         {% if essential_tnm.supplementary_table %}
-                        <div class="mb-3 tnm-html-content">
+                        <div class="mt-4 tnm-html-content">
                             <h6><i class="fas fa-table me-2 text-info"></i>Supplementary Information</h6>
                             <div class="p-3 bg-white rounded border">
                                 {{ essential_tnm.supplementary_table|safe }}
@@ -442,14 +452,26 @@
                 </div>
                 {% endif %}
 
-                <!-- ==================== SECTION 6: Explanatory Notes ==================== -->
+                <!-- ==================== SECTION 6: Explanatory Notes (Collapsible) ==================== -->
                 {% if explanatory_notes_html %}
                 <div class="detail-section mb-5 p-4 rounded-3" style="background: linear-gradient(135deg, #f5f5f5 0%, #fafafa 100%); border-left: 5px solid #9e9e9e;">
                     <div class="d-flex justify-content-between align-items-center mb-3">
-                        <label class="detail-label fw-bold text-secondary mb-0">
-                            <i class="fas fa-file-alt me-2" style="color: #9e9e9e;"></i>Explanatory Notes
-                            {% if is_curated %}<span class="badge bg-success ms-2">Curated</span>{% endif %}
-                        </label>
+                        <div class="d-flex align-items-center">
+                            <label class="detail-label fw-bold text-secondary mb-0">
+                                <i class="fas fa-file-alt me-2" style="color: #9e9e9e;"></i>Explanatory Notes
+                                {% if is_curated %}<span class="badge bg-success ms-2">Curated</span>{% endif %}
+                            </label>
+                            <button class="btn btn-sm btn-link text-decoration-none ms-2" 
+                                    type="button" 
+                                    data-bs-toggle="collapse" 
+                                    data-bs-target="#explanatoryNotesCollapse" 
+                                    aria-expanded="false" 
+                                    aria-controls="explanatoryNotesCollapse"
+                                    id="explanatoryNotesToggle">
+                                <i class="fas fa-chevron-down" id="explanatoryNotesIcon"></i>
+                                <span id="explanatoryNotesToggleText">Show</span>
+                            </button>
+                        </div>
                         {% if is_admin %}
                         <a href="{{ url_for('admin_tnm.curate_tnm_page', disease_site_id=disease.id, year=year_used or 2026) }}{% if from_case_id %}?from_case_id={{ from_case_id }}{% endif %}" 
                            class="btn btn-sm btn-outline-primary">
@@ -458,24 +480,27 @@
                         {% endif %}
                     </div>
                     
-                    <div id="explanatoryNotesContent" class="tnm-content highlightable-text tnm-html-content" 
-                         data-field="explanatory-notes">
-                        {{ explanatory_notes_html|safe }}
-                    </div>
-                    
-                    <!-- AJCC Attribution Footer -->
-                    <div class="mt-4 pt-3" style="border-top: 1px solid #e0e0e0;">
-                        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
-                            <div class="d-flex align-items-center">
-                                <i class="fas fa-book-medical me-2 text-secondary"></i>
-                                <span class="small text-muted">
-                                    Source: AJCC TNM Staging Manual — content curated for educational purposes
-                                </span>
-                            </div>
-                            <div class="d-flex align-items-center">
-                                <img src="https://res.cloudinary.com/dx7b7chvn/image/upload/v1769503548/frcr-rev-logo-transp_o2hmrq.png" 
-                                     alt="RadiologyInsights Logo" style="width: 30px; height: 30px; object-fit: contain; margin-right: 6px;">
-                                <span class="small text-muted">&copy; All rights reserved RadiologyInsights</span>
+                    <!-- Collapsed by default -->
+                    <div class="collapse" id="explanatoryNotesCollapse">
+                        <div id="explanatoryNotesContent" class="tnm-content highlightable-text tnm-html-content" 
+                             data-field="explanatory-notes">
+                            {{ explanatory_notes_html|safe }}
+                        </div>
+                        
+                        <!-- AJCC Attribution Footer -->
+                        <div class="mt-4 pt-3" style="border-top: 1px solid #e0e0e0;">
+                            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-book-medical me-2 text-secondary"></i>
+                                    <span class="small text-muted">
+                                        Source: AJCC TNM Staging Manual — content curated for educational purposes
+                                    </span>
+                                </div>
+                                <div class="d-flex align-items-center">
+                                    <img src="https://res.cloudinary.com/dx7b7chvn/image/upload/v1769503548/frcr-rev-logo-transp_o2hmrq.png" 
+                                         alt="RadiologyInsights Logo" style="width: 30px; height: 30px; object-fit: contain; margin-right: 6px;">
+                                    <span class="small text-muted">&copy; All rights reserved RadiologyInsights</span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -485,46 +510,24 @@
                 <!-- ==================== STUDENT TOOLS: Notes Section ==================== -->
                 {% if current_user.is_authenticated and current_user.role and current_user.role.value == 'student' %}
                 <div class="detail-section notes-section mt-4 mb-5 p-4 rounded-3" style="background: linear-gradient(135deg, #FFF8E7 0%, #FFFCF3 100%); border-left: 5px solid #F2CC8F;">
-                    <ul class="nav nav-tabs notes-tabs mb-3" id="notesTabs" role="tablist">
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link active" id="myNotesTab" data-bs-toggle="tab" data-bs-target="#myNotesPane" type="button" role="tab">
-                                <i class="fas fa-sticky-note me-1" style="color: #e96304;"></i>My Notes
-                            </button>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="essentialTnmTab" data-bs-toggle="tab" data-bs-target="#essentialTnmPane" type="button" role="tab">
-                                <i class="fas fa-book-medical me-1" style="color: #1a4178;"></i>Essential TNM Guide
-                            </button>
-                        </li>
-                    </ul>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <label class="detail-label fw-bold text-secondary mb-0">
+                            <i class="fas fa-sticky-note me-2" style="color: #e96304;"></i>My Notes
+                        </label>
+                    </div>
                     
-                    <div class="tab-content" id="notesTabContent">
-                        <!-- My Notes Tab -->
-                        <div class="tab-pane fade show active" id="myNotesPane" role="tabpanel">
-                            <div class="mb-3">
-                                <label for="userNoteTextarea" class="form-label visually-hidden">Your notes</label>
-                                <textarea id="userNoteTextarea" class="form-control" rows="4" placeholder="Add your notes about this TNM staging..." title="Enter your notes here"></textarea>
-                            </div>
-                            <div class="d-flex justify-content-between align-items-center">
-                                <small class="text-muted"><i class="fas fa-lock me-1"></i>Your notes are private</small>
-                                <button class="btn btn-sm btn-primary" id="saveNoteBtn" title="Save your note" aria-label="Save note">
-                                    <i class="fas fa-save me-1"></i>Save Note
-                                </button>
-                            </div>
-                            <div id="savedNotesList" class="mt-3">
-                                <!-- Notes loaded via JavaScript -->
-                            </div>
-                        </div>
-                        
-                        <!-- Essential TNM Guide Tab -->
-                        <div class="tab-pane fade" id="essentialTnmPane" role="tabpanel">
-                            <a href="/essential-tnm-concepts" target="_blank" class="btn btn-outline-primary">
-                                <i class="fas fa-external-link-alt me-2"></i>How to apply IARC Essential TNM Concepts
-                            </a>
-                            <p class="small text-muted mt-2">
-                                Covers a short guide on how to use below essential TNM conceepts by IARC
-                            </p>
-                        </div>
+                    <div class="mb-3">
+                        <label for="userNoteTextarea" class="form-label visually-hidden">Your notes</label>
+                        <textarea id="userNoteTextarea" class="form-control" rows="4" placeholder="Add your notes about this TNM staging..." title="Enter your notes here"></textarea>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <small class="text-muted"><i class="fas fa-lock me-1"></i>Your notes are private</small>
+                        <button class="btn btn-sm btn-primary" id="saveNoteBtn" title="Save your note" aria-label="Save note">
+                            <i class="fas fa-save me-1"></i>Save Note
+                        </button>
+                    </div>
+                    <div id="savedNotesList" class="mt-3">
+                        <!-- Notes loaded via JavaScript -->
                     </div>
                 </div>
                 {% endif %}
@@ -658,6 +661,23 @@
     font-family: 'Monaco', 'Menlo', monospace;
     font-size: 0.85rem;
     min-width: 50px;
+}
+
+/* Inline bold labels (e.g., "CT colonography:" followed by text on same line) */
+.tnm-label {
+    font-weight: 700;
+    color: #1a4178;
+}
+
+/* User highlights (same as view_case.html) */
+.user-highlight {
+    background-color: #FFEB3B;
+    cursor: pointer;
+    border-radius: 2px;
+    transition: background-color 0.2s ease;
+}
+.user-highlight:hover {
+    background-color: #FDD835;
 }
 
 .tnm-row {
@@ -1027,7 +1047,9 @@ function renderSafeHTML(htmlContent) {
 }
 
 /**
- * Convert markdown-style **text** to <h4> tags
+ * Convert markdown-style **text** to appropriate HTML
+ * - If **text**: is followed by more text on the same line, use <strong> (inline)
+ * - If **text** appears to be a standalone heading, use <h4> (block)
  */
 function convertMarkdownBoldToH4(content) {
     if (!content) return content;
@@ -1038,7 +1060,14 @@ function convertMarkdownBoldToH4(content) {
         if (part.startsWith('<') && part.endsWith('>')) {
             return part;
         }
-        return part.replace(/\*\*([^*]+?)\*\*/g, '<h4>$1</h4>');
+        // For labels ending with colon followed by text, use <strong> (inline)
+        // Pattern: **Label:** followed by non-whitespace text
+        part = part.replace(/\*\*([^*]+?:)\*\*\s*(?=\S)/g, '<strong class="tnm-label">$1</strong> ');
+        
+        // For remaining standalone bold text (headings), keep as <h4>
+        part = part.replace(/\*\*([^*]+?)\*\*/g, '<h4>$1</h4>');
+        
+        return part;
     }).join('');
 }
 
@@ -1442,6 +1471,315 @@ document.addEventListener('DOMContentLoaded', function() {
             navigateTnmImage('next');
         }
     });
+    
+    // Initialize highlighting system for students
+    {% if current_user.is_authenticated and current_user.role and current_user.role.value == 'student' %}
+    initHighlightSystem();
+    loadExistingHighlights();
+    {% endif %}
+    
+    // Setup collapsible explanatory notes toggle
+    const explanatoryCollapse = document.getElementById('explanatoryNotesCollapse');
+    if (explanatoryCollapse) {
+        explanatoryCollapse.addEventListener('show.bs.collapse', function() {
+            document.getElementById('explanatoryNotesIcon').classList.replace('fa-chevron-down', 'fa-chevron-up');
+            document.getElementById('explanatoryNotesToggleText').textContent = 'Hide';
+        });
+        explanatoryCollapse.addEventListener('hide.bs.collapse', function() {
+            document.getElementById('explanatoryNotesIcon').classList.replace('fa-chevron-up', 'fa-chevron-down');
+            document.getElementById('explanatoryNotesToggleText').textContent = 'Show';
+        });
+    }
 });
+
+// ==================== FLASH MESSAGE SYSTEM ====================
+function showFlash(message, type = 'success') {
+    const flashContainer = document.createElement('div');
+    flashContainer.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 9999;
+        padding: 12px 20px;
+        border-radius: 8px;
+        font-weight: 500;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        opacity: 0;
+        transition: opacity 0.3s ease;
+        max-width: 300px;
+    `;
+    
+    if (type === 'success') {
+        flashContainer.style.backgroundColor = '#a8d5ba';
+        flashContainer.style.color = '#2c3e50';
+    } else if (type === 'error') {
+        flashContainer.style.backgroundColor = '#e89580';
+        flashContainer.style.color = '#2c3e50';
+    } else if (type === 'warning') {
+        flashContainer.style.backgroundColor = '#ffc107';
+        flashContainer.style.color = '#000';
+    } else {
+        flashContainer.style.backgroundColor = '#5E899E';
+        flashContainer.style.color = '#fff';
+    }
+    
+    flashContainer.textContent = message;
+    document.body.appendChild(flashContainer);
+    
+    setTimeout(() => { flashContainer.style.opacity = '1'; }, 10);
+    setTimeout(() => {
+        flashContainer.style.opacity = '0';
+        setTimeout(() => flashContainer.remove(), 300);
+    }, 3000);
+}
+
+// ==================== HIGHLIGHTING SYSTEM (Students Only) ====================
+{% if current_user.is_authenticated and current_user.role and current_user.role.value == 'student' %}
+
+function initHighlightSystem() {
+    // Add text selection handlers
+    document.addEventListener('mouseup', handleTextSelection);
+    document.addEventListener('touchend', handleTextSelection);
+}
+
+function handleTextSelection(e) {
+    const target = e.target;
+    
+    // Ignore clicks on buttons, links, etc.
+    if (target.closest('button') || target.closest('a') || target.closest('.btn')) {
+        return;
+    }
+    
+    const selection = window.getSelection();
+    const text = selection.toString().trim();
+    
+    if (!text || text.length < 3) return;
+    
+    // Find if selection is in a highlightable area
+    const range = selection.getRangeAt(0);
+    const container = range.commonAncestorContainer;
+    const annotatable = container.nodeType === Node.TEXT_NODE 
+        ? container.parentElement.closest('.highlightable-text, [data-field]')
+        : container.closest('.highlightable-text, [data-field]');
+    
+    if (!annotatable) return;
+    
+    showSelectionMenu(e, text, annotatable);
+}
+
+function showSelectionMenu(e, selectedText, element) {
+    // Remove existing menu
+    const existing = document.getElementById('tnmSelectionMenu');
+    if (existing) existing.remove();
+    
+    // Create menu
+    const menu = document.createElement('div');
+    menu.id = 'tnmSelectionMenu';
+    menu.style.cssText = `
+        position: fixed;
+        background: white;
+        border: 2px solid #5E899E;
+        border-radius: 8px;
+        padding: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 10000;
+        display: flex;
+        gap: 8px;
+    `;
+    
+    // Position menu
+    const x = e.clientX || (e.changedTouches && e.changedTouches[0].clientX) || 0;
+    const y = e.clientY || (e.changedTouches && e.changedTouches[0].clientY) || 0;
+    menu.style.left = `${x}px`;
+    menu.style.top = `${Math.max(10, y - 60)}px`;
+    
+    // Add Highlight button
+    const highlightBtn = document.createElement('button');
+    highlightBtn.className = 'btn btn-sm btn-warning';
+    highlightBtn.innerHTML = '<i class="fas fa-highlighter"></i> Highlight';
+    highlightBtn.onclick = () => {
+        createHighlight(selectedText, element);
+        menu.remove();
+    };
+    
+    // Add Copy button
+    const copyBtn = document.createElement('button');
+    copyBtn.className = 'btn btn-sm btn-outline-secondary';
+    copyBtn.innerHTML = '<i class="fas fa-copy"></i> Copy';
+    copyBtn.onclick = () => {
+        navigator.clipboard.writeText(selectedText);
+        showFlash('Copied to clipboard', 'success');
+        menu.remove();
+    };
+    
+    menu.appendChild(highlightBtn);
+    menu.appendChild(copyBtn);
+    document.body.appendChild(menu);
+    
+    // Close on click outside
+    setTimeout(() => {
+        document.addEventListener('click', function closeMenu(e) {
+            if (!menu.contains(e.target)) {
+                menu.remove();
+                document.removeEventListener('click', closeMenu);
+            }
+        });
+    }, 100);
+}
+
+function createHighlight(selectedText, element) {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) {
+        showFlash('No text selected', 'warning');
+        return;
+    }
+    
+    const range = selection.getRangeAt(0);
+    const fieldName = element.dataset.field || 'tnm-content';
+    
+    // Get context for positioning
+    const fullText = element.textContent || '';
+    const startIndex = fullText.indexOf(selectedText);
+    
+    let contextBefore = '';
+    let contextAfter = '';
+    
+    if (startIndex !== -1) {
+        contextBefore = fullText.substring(Math.max(0, startIndex - 50), startIndex);
+        contextAfter = fullText.substring(startIndex + selectedText.length, startIndex + selectedText.length + 50);
+    }
+    
+    try {
+        const mark = document.createElement('mark');
+        mark.className = 'user-highlight';
+        mark.style.backgroundColor = '#FFEB3B';
+        mark.style.cursor = 'pointer';
+        mark.title = 'Click to remove highlight';
+        
+        range.surroundContents(mark);
+        selection.removeAllRanges();
+        
+        // Save to backend
+        fetch(`/tnm/api/${diseaseId}/highlight`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                text_content: selectedText,
+                highlight_color: 'yellow',
+                field_name: fieldName,
+                context_before: contextBefore,
+                context_after: contextAfter
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.highlight_id) {
+                mark.dataset.highlightId = data.highlight_id;
+                
+                mark.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    if (confirm('Remove this highlight?')) {
+                        deleteHighlight(data.highlight_id, mark);
+                    }
+                });
+                
+                showFlash('Text highlighted!', 'success');
+            } else {
+                unwrapMark(mark);
+                showFlash('Failed to save highlight', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Highlight save error:', error);
+            unwrapMark(mark);
+            showFlash('Error saving highlight', 'error');
+        });
+        
+    } catch (e) {
+        console.error('Error creating highlight:', e);
+        showFlash('Cannot highlight across different elements', 'warning');
+    }
+}
+
+function unwrapMark(mark) {
+    const parent = mark.parentNode;
+    while (mark.firstChild) {
+        parent.insertBefore(mark.firstChild, mark);
+    }
+    parent.removeChild(mark);
+}
+
+function deleteHighlight(highlightId, markElement) {
+    fetch(`/tnm/api/highlight/${highlightId}`, {
+        method: 'DELETE'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            unwrapMark(markElement);
+            showFlash('Highlight removed', 'success');
+        } else {
+            showFlash('Failed to remove highlight', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Highlight delete error:', error);
+        showFlash('Error removing highlight', 'error');
+    });
+}
+
+function loadExistingHighlights() {
+    fetch(`/tnm/api/${diseaseId}/highlights`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.highlights) {
+                data.highlights.forEach(h => applyHighlightToDOM(h));
+            }
+        })
+        .catch(err => console.error('Error loading highlights:', err));
+}
+
+function applyHighlightToDOM(highlight) {
+    const fieldElement = document.querySelector(`[data-field="${highlight.field_name}"]`);
+    if (!fieldElement) return;
+    
+    const text = highlight.text_content;
+    const walker = document.createTreeWalker(fieldElement, NodeFilter.SHOW_TEXT);
+    
+    while (walker.nextNode()) {
+        const node = walker.currentNode;
+        const index = node.textContent.indexOf(text);
+        
+        if (index !== -1) {
+            const range = document.createRange();
+            range.setStart(node, index);
+            range.setEnd(node, index + text.length);
+            
+            const mark = document.createElement('mark');
+            mark.className = 'user-highlight';
+            mark.style.backgroundColor = '#FFEB3B';
+            mark.style.cursor = 'pointer';
+            mark.title = 'Click to remove highlight';
+            mark.dataset.highlightId = highlight.id;
+            
+            try {
+                range.surroundContents(mark);
+                
+                mark.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    if (confirm('Remove this highlight?')) {
+                        deleteHighlight(highlight.id, mark);
+                    }
+                });
+            } catch (e) {
+                // Skip if can't apply
+            }
+            
+            break;
+        }
+    }
+}
+
+{% endif %}
 </script>
 {% endblock %}
