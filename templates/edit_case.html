@@ -699,6 +699,86 @@ function initializeDiscussionEditor() {
                 background-color: #f8f9fa;
                 font-weight: 600;
             }
+            /* TNM Staging Button Styles */
+            .tnm-staging-button-wrapper {
+                margin: 1.5rem 0;
+            }
+            .tnm-staging-btn {
+                display: flex;
+                align-items: center;
+                gap: 16px;
+                background: linear-gradient(135deg, #235390 0%, #1a4178 100%);
+                color: white !important;
+                padding: 16px 20px;
+                border-radius: 12px;
+                text-decoration: none !important;
+                box-shadow: 0 4px 12px rgba(35, 83, 144, 0.25);
+                transition: all 0.3s ease;
+                max-width: 500px;
+            }
+            .tnm-staging-btn:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 6px 16px rgba(35, 83, 144, 0.35);
+                text-decoration: none !important;
+            }
+            .tnm-staging-btn .tnm-btn-icon {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 48px;
+                height: 48px;
+                background: rgba(255, 255, 255, 0.15);
+                border-radius: 10px;
+                flex-shrink: 0;
+            }
+            .tnm-staging-btn .tnm-btn-icon i {
+                font-size: 1.4em;
+                color: white;
+            }
+            .tnm-staging-btn .tnm-btn-text {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                gap: 2px;
+            }
+            .tnm-staging-btn .tnm-btn-text strong {
+                font-size: 1.1em;
+                font-weight: 600;
+                color: white !important;
+            }
+            .tnm-staging-btn .tnm-btn-text span {
+                font-size: 0.85em;
+                color: rgba(255, 255, 255, 0.8);
+            }
+            .tnm-staging-btn .tnm-btn-arrow {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 32px;
+                height: 32px;
+                background: rgba(255, 255, 255, 0.1);
+                border-radius: 50%;
+                flex-shrink: 0;
+            }
+            .tnm-staging-btn .tnm-btn-arrow i {
+                font-size: 0.85em;
+                color: white;
+            }
+            /* Reference Block Styles */
+            .reference-block {
+                margin: 0.5rem 0;
+                padding: 8px 12px;
+                background: #fdfdfb;
+                border-left: 3px solid #5E899E;
+                border-radius: 4px;
+            }
+            .reference-block strong {
+                color: #e96304;
+            }
+            .reference-block a {
+                color: #2c3e50;
+                font-weight: 500;
+            }
             @media (max-width: 640px) {
                 table {
                     display: block;
