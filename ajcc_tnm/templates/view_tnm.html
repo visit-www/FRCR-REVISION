@@ -1220,11 +1220,40 @@ function loadTnmNotes() {
         .catch(err => console.error('Error loading notes:', err));
 }
 
+// Track if user has existing notes (to know when to delete vs skip)
+let hadExistingNotes = {{ 'true' if user_tnm_note and user_tnm_note.note_text else 'false' }};
+
 // Save notes to backend
-function saveTnmNotes() {
+function saveTnmNotes(forceDelete = false) {
     if (!tnmNotesTextarea) return;
     
     const noteText = tnmNotesTextarea.value.trim();
+    
+    // If note is empty and user never had notes, don't create empty record
+    if (!noteText && !hadExistingNotes && !forceDelete) {
+        tnmNoteSaveStatus.innerHTML = '<i class="fas fa-info-circle text-muted me-1"></i>No notes yet';
+        return;
+    }
+    
+    // If note is empty and user had existing notes, delete instead of saving empty
+    if (!noteText && hadExistingNotes) {
+        fetch(`/tnm/api/${diseaseId}/note`, {
+            method: 'DELETE',
+            credentials: 'include'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                hadExistingNotes = false;
+                tnmNoteSaveStatus.innerHTML = '<i class="fas fa-check text-success me-1"></i>Notes cleared';
+                setTimeout(() => {
+                    tnmNoteSaveStatus.innerHTML = '<i class="fas fa-info-circle text-muted me-1"></i>No notes yet';
+                }, 2000);
+            }
+        })
+        .catch(err => console.error('Error deleting notes:', err));
+        return;
+    }
     
     fetch(`/tnm/api/${diseaseId}/note`, {
         method: 'POST',
@@ -1235,6 +1264,7 @@ function saveTnmNotes() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
+            hadExistingNotes = true;
             tnmNoteSaveStatus.innerHTML = '<i class="fas fa-check text-success me-1"></i>Saved';
             setTimeout(() => {
                 tnmNoteSaveStatus.innerHTML = '<i class="fas fa-lock me-1"></i>Private & auto-saved';

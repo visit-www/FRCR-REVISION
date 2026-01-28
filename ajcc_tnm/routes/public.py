@@ -1100,6 +1100,16 @@ def tnm_note_api(disease_id):
             user_id=current_user.id
         ).first()
         
+        # If note is empty, delete existing record instead of saving empty
+        if not note_text:
+            if existing:
+                db.session.delete(existing)
+                db.session.commit()
+                return jsonify({'success': True, 'message': 'Note deleted (was empty)'})
+            else:
+                # Don't create empty record
+                return jsonify({'success': True, 'message': 'No note to save (empty)'})
+        
         if existing:
             existing.note_text = note_text
         else:
