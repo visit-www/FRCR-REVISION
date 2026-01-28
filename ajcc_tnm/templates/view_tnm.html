@@ -97,6 +97,14 @@
                         </label>
                     </div>
                     
+                    <!-- Curated Quick Reference Notes (if admin has added) -->
+                    {% if curated_quick_reference %}
+                    <div class="mb-4 p-3 rounded-3" style="background: #fff; border: 1px solid #5E899E; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                        <h6 class="mb-2" style="color: #5E899E;"><i class="fas fa-clipboard-check me-2"></i>Additional Notes</h6>
+                        <div class="tnm-html-content">{{ curated_quick_reference|safe }}</div>
+                    </div>
+                    {% endif %}
+                    
                     <div class="tnm-content highlightable-text" data-field="quick-reference">
                         {% if t_definitions or n_definitions or m_definitions %}
                         
@@ -287,12 +295,12 @@
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <label class="detail-label fw-bold text-secondary mb-0">
                             <i class="fas fa-brain me-2" style="color: #e96304;"></i>TNM Intelligence
-                            <span class="badge bg-warning text-dark ms-2">AI-Assisted</span>
                         </label>
                         {% if is_admin %}
-                        <button class="btn btn-sm btn-outline-primary" onclick="openTnmEditor('intelligence')">
+                        <a href="{{ url_for('admin_tnm.curate_tnm_page', disease_site_id=disease.id, year=year_used or 2026) }}{% if from_case_id %}?from_case_id={{ from_case_id }}{% endif %}" 
+                           class="btn btn-sm btn-outline-primary">
                             <i class="fas fa-edit me-1"></i>Edit
-                        </button>
+                        </a>
                         {% endif %}
                     </div>
                     
@@ -300,17 +308,17 @@
                          data-raw-content="{{ intelligent_data|tojson|e if intelligent_data else '{}' }}">
                         
                         <!-- Memory Aids -->
-                        {% if intelligent_data.tnm_memory_aid_t or intelligent_data.tnm_memory_aid_n or intelligent_data.tnm_memory_aid_m %}
+                        {% if intelligent_data.tnm_memory_aid and (intelligent_data.tnm_memory_aid.T or intelligent_data.tnm_memory_aid.N or intelligent_data.tnm_memory_aid.M) %}
                         <div class="mb-4">
                             <h6 class="border-bottom pb-2"><i class="fas fa-lightbulb me-2 text-warning"></i>Memory Aids</h6>
-                            {% if intelligent_data.tnm_memory_aid_t %}
-                            <div class="mb-2"><strong>T:</strong> {{ intelligent_data.tnm_memory_aid_t }}</div>
+                            {% if intelligent_data.tnm_memory_aid.T %}
+                            <div class="mb-2 memory-aid-content"><strong>T:</strong> <span>{{ intelligent_data.tnm_memory_aid.T | safe }}</span></div>
                             {% endif %}
-                            {% if intelligent_data.tnm_memory_aid_n %}
-                            <div class="mb-2"><strong>N:</strong> {{ intelligent_data.tnm_memory_aid_n }}</div>
+                            {% if intelligent_data.tnm_memory_aid.N %}
+                            <div class="mb-2 memory-aid-content"><strong>N:</strong> <span>{{ intelligent_data.tnm_memory_aid.N | safe }}</span></div>
                             {% endif %}
-                            {% if intelligent_data.tnm_memory_aid_m %}
-                            <div class="mb-2"><strong>M:</strong> {{ intelligent_data.tnm_memory_aid_m }}</div>
+                            {% if intelligent_data.tnm_memory_aid.M %}
+                            <div class="mb-2 memory-aid-content"><strong>M:</strong> <span>{{ intelligent_data.tnm_memory_aid.M | safe }}</span></div>
                             {% endif %}
                         </div>
                         {% endif %}
@@ -388,6 +396,15 @@
                         </div>
                         {% endif %}
                         
+                        {% if essential_tnm.supplementary_table %}
+                        <div class="mb-3 tnm-html-content">
+                            <h6><i class="fas fa-table me-2 text-info"></i>Supplementary Information</h6>
+                            <div class="p-3 bg-white rounded border">
+                                {{ essential_tnm.supplementary_table|safe }}
+                            </div>
+                        </div>
+                        {% endif %}
+                        
                         <!-- Attribution Footer -->
                         <div class="mt-4 pt-3" style="border-top: 1px solid #e0e0e0;">
                             <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
@@ -409,6 +426,22 @@
                 </div>
                 {% endif %}
 
+                <!-- ==================== SECTION 5b: Clinical Staging Workup (Supplemental Information) ==================== -->
+                {% if staging_data and staging_data.section_7_clinical_staging_workup_html|default('', true)|trim|length > 0 %}
+                <div class="detail-section mb-5 p-4 rounded-3" style="background: linear-gradient(135deg, #fff3e0 0%, #fffde7 100%); border-left: 5px solid #ff9800;">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <label class="detail-label fw-bold text-secondary mb-0">
+                            <i class="fas fa-stethoscope me-2" style="color: #ff9800;"></i>Clinical Staging Workup
+                            <span class="badge bg-warning text-dark ms-2">Supplemental</span>
+                        </label>
+                    </div>
+                    
+                    <div class="tnm-content highlightable-text tnm-html-content" data-field="clinical-staging-workup">
+                        {{ staging_data.section_7_clinical_staging_workup_html|safe }}
+                    </div>
+                </div>
+                {% endif %}
+
                 <!-- ==================== SECTION 6: Explanatory Notes ==================== -->
                 {% if explanatory_notes_html %}
                 <div class="detail-section mb-5 p-4 rounded-3" style="background: linear-gradient(135deg, #f5f5f5 0%, #fafafa 100%); border-left: 5px solid #9e9e9e;">
@@ -418,14 +451,15 @@
                             {% if is_curated %}<span class="badge bg-success ms-2">Curated</span>{% endif %}
                         </label>
                         {% if is_admin %}
-                        <button class="btn btn-sm btn-outline-primary" onclick="openTnmEditor('explanatory-notes')">
+                        <a href="{{ url_for('admin_tnm.curate_tnm_page', disease_site_id=disease.id, year=year_used or 2026) }}{% if from_case_id %}?from_case_id={{ from_case_id }}{% endif %}" 
+                           class="btn btn-sm btn-outline-primary">
                             <i class="fas fa-edit me-1"></i>Edit
-                        </button>
+                        </a>
                         {% endif %}
                     </div>
                     
                     <div id="explanatoryNotesContent" class="tnm-content highlightable-text tnm-html-content" 
-                         data-field="explanatory-notes" data-raw-content="{{ explanatory_notes_html|e }}">
+                         data-field="explanatory-notes">
                         {{ explanatory_notes_html|safe }}
                     </div>
                     
@@ -485,15 +519,36 @@
                         <!-- Essential TNM Guide Tab -->
                         <div class="tab-pane fade" id="essentialTnmPane" role="tabpanel">
                             <a href="/essential-tnm-concepts" target="_blank" class="btn btn-outline-primary">
-                                <i class="fas fa-external-link-alt me-2"></i>Open Complete Essential TNM Guide
+                                <i class="fas fa-external-link-alt me-2"></i>How to apply IARC Essential TNM Concepts
                             </a>
                             <p class="small text-muted mt-2">
-                                Covers staging fundamentals, clinical vs pathological staging, and more
+                                Covers a short guide on how to use below essential TNM conceepts by IARC
                             </p>
                         </div>
                     </div>
                 </div>
                 {% endif %}
+
+                <!-- ==================== SECTION 7: Reference Images ==================== -->
+                <div class="detail-section images-section mb-5 p-4 rounded-3" style="background: linear-gradient(135deg, #f0fff0 0%, #f5fff5 100%); border-left: 5px solid #a8d5a8;">
+                    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                        <label class="detail-label fw-bold text-secondary mb-0">
+                            <i class="fas fa-images me-2" style="color: #a8d5a8;"></i>Reference Images
+                            <span id="tnmImageCount" class="badge bg-secondary ms-2">0</span>
+                        </label>
+                        {% if is_admin %}
+                        <a href="{{ url_for('admin_tnm.curate_tnm_page', disease_site_id=disease.id, year=year_used or 2026) }}{% if from_case_id %}?from_case_id={{ from_case_id }}{% endif %}#imagesContainer" 
+                           class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-plus me-1"></i>Add Images
+                        </a>
+                        {% endif %}
+                    </div>
+                    
+                    <div id="tnmImagesContainer" class="detail-content mt-3">
+                        <div id="tnmImagesList" class="images-gallery d-flex flex-wrap gap-3"></div>
+                        <p id="noTnmImagesMsg" class="text-muted mt-3"><i class="fas fa-file-image me-2"></i>No reference images uploaded yet.</p>
+                    </div>
+                </div>
 
                 <!-- ==================== ADMIN ACTIONS ==================== -->
                 {% if is_admin %}
@@ -524,53 +579,79 @@
     </div>
 </div>
 
-<!-- Image Modal -->
-<div class="modal fade" id="imageModal" tabindex="-1">
-    <div class="modal-dialog modal-xl modal-dialog-centered">
+<!-- Image Viewer Modal (same pattern as view_case.html) -->
+<div id="tnmImageModal" class="modal fade" tabindex="-1" aria-labelledby="tnmImageModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="imageModalTitle">Image</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            <div class="modal-header" style="background: #c8e6f5; border-bottom: 2px solid #9ecae1;">
+                <h5 class="modal-title" id="tnmImageModalLabel" style="color: #000000;">
+                    <i class="fas fa-image me-2"></i>Image Viewer
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body text-center">
-                <img id="imageModalImg" src="" alt="" class="img-fluid">
+            <div class="modal-body text-center" style="background: #000000; padding: 2rem 1rem; position: relative;">
+                <!-- Previous Image Button -->
+                <button id="prevTnmImageBtn" class="image-nav-btn image-nav-prev" onclick="navigateTnmImage('prev')" aria-label="Previous image">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                
+                <!-- Image -->
+                <div style="margin-bottom: 1.5rem; padding: 1rem; background: #000000; border-radius: 12px; border: 3px solid #333333; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);">
+                    <img id="tnmModalImageDisplay" src="" alt="Image" style="max-width: 100%; max-height: 55vh; object-fit: contain; border-radius: 8px;">
+                </div>
+                
+                <!-- Next Image Button -->
+                <button id="nextTnmImageBtn" class="image-nav-btn image-nav-next" onclick="navigateTnmImage('next')" aria-label="Next image">
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+                
+                <!-- Image Counter -->
+                <div id="tnmImageCounter" class="image-counter" style="position: absolute; bottom: 1rem; left: 50%; transform: translateX(-50%); color: #fff; background: rgba(0,0,0,0.7); padding: 0.5rem 1rem; border-radius: 20px; font-size: 0.9rem;">
+                    <span id="currentTnmImageNum">1</span> / <span id="totalTnmImageNum">1</span>
+                </div>
+            </div>
+            <div class="modal-footer" style="background: #c8e6f5; border-top: 2px solid #9ecae1;">
+                <div id="tnmImageDescriptionFooter" style="flex: 1; text-align: left;">
+                    <span id="tnmImageDescription" style="color: #2c3e50;"></span>
+                </div>
+                <button type="button" class="btn btn-dark btn-sm" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Admin Editor Modal (for inline editing) -->
-{% if is_admin %}
-<div class="modal fade" id="tnmEditorModal" tabindex="-1">
-    <div class="modal-dialog modal-xl">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title"><i class="fas fa-edit me-2"></i>Edit <span id="editorSectionTitle"></span></h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <textarea id="tnmEditorTextarea" class="form-control" rows="15"></textarea>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" id="saveEditorBtn">
-                    <i class="fas fa-save me-1"></i>Save Changes
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-{% endif %}
+<!-- Admin Editor Modal removed - Edit buttons now link directly to edit_tnm.html -->
 
 <style>
 /* TNM-specific styles (following case view patterns) */
 .tnm-table {
     font-size: 0.9rem;
+    width: 100%;
+    table-layout: auto;
 }
 
 .tnm-table th {
     background-color: #f8f9fa;
     font-weight: 600;
+    white-space: nowrap;
+}
+
+.tnm-table td {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+
+/* Fix first column width */
+.tnm-table th:first-child,
+.tnm-table td:first-child {
+    width: 100px;
+    min-width: 80px;
+}
+
+/* Second column fills remaining space */
+.tnm-table th:nth-child(2),
+.tnm-table td:nth-child(2) {
+    width: auto;
 }
 
 .tnm-badge {
@@ -588,22 +669,142 @@
     background-color: #f0f8ff;
 }
 
-.tnm-html-content img {
-    max-width: 100%;
-    height: auto;
-    cursor: pointer;
+/* Tables in TinyMCE content - explicit table styling */
+.tnm-html-content table,
+.tnm-content table,
+.memory-aid-content table {
+    display: table !important;
+    width: 100% !important;
+    margin-bottom: 1rem;
+    border-collapse: collapse !important;
+    border-spacing: 0;
+    table-layout: auto;
 }
 
-.tnm-html-content table {
-    width: 100%;
-    margin-bottom: 1rem;
-    border-collapse: collapse;
+.tnm-html-content table tr,
+.tnm-content table tr,
+.memory-aid-content table tr {
+    display: table-row !important;
 }
 
 .tnm-html-content table th,
-.tnm-html-content table td {
-    padding: 0.5rem;
-    border: 1px solid #dee2e6;
+.tnm-html-content table td,
+.tnm-content table th,
+.tnm-content table td,
+.memory-aid-content table th,
+.memory-aid-content table td {
+    display: table-cell !important;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #dee2e6 !important;
+    vertical-align: top;
+    text-align: left;
+    width: auto;
+}
+
+/* First column should not be too wide - limit to reasonable width */
+.tnm-html-content table th:first-child,
+.tnm-html-content table td:first-child,
+.tnm-content table th:first-child,
+.tnm-content table td:first-child,
+.memory-aid-content table th:first-child,
+.memory-aid-content table td:first-child {
+    width: auto;
+    max-width: 150px;
+    white-space: normal;
+    word-wrap: break-word;
+}
+
+/* Other columns should have more space */
+.tnm-html-content table th:not(:first-child),
+.tnm-html-content table td:not(:first-child),
+.tnm-content table th:not(:first-child),
+.tnm-content table td:not(:first-child),
+.memory-aid-content table th:not(:first-child),
+.memory-aid-content table td:not(:first-child) {
+    width: auto;
+    min-width: 100px;
+}
+
+.tnm-html-content table th,
+.tnm-content table th,
+.memory-aid-content table th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+}
+
+.tnm-html-content table thead,
+.tnm-content table thead,
+.memory-aid-content table thead {
+    display: table-header-group !important;
+}
+
+.tnm-html-content table tbody,
+.tnm-content table tbody,
+.memory-aid-content table tbody {
+    display: table-row-group !important;
+}
+
+/* Responsive table wrapper */
+.table-responsive {
+    overflow-x: auto;
+}
+
+/* Memory aid content styling (for TinyMCE-formatted content) */
+.memory-aid-content {
+    line-height: 1.6;
+}
+
+.memory-aid-content p {
+    margin-bottom: 0.5rem;
+}
+
+.memory-aid-content ul, .memory-aid-content ol {
+    margin-bottom: 0.5rem;
+    padding-left: 1.5rem;
+}
+
+.memory-aid-content h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: #333;
+}
+
+/* Inline images in content (inserted via TinyMCE) */
+.tnm-html-content img,
+.tnm-content img,
+.memory-aid-content img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+    margin: 1rem 0;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.tnm-html-content img:hover,
+.tnm-content img:hover,
+.memory-aid-content img:hover {
+    transform: scale(1.02);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+}
+
+/* Figure captions (images inserted with descriptions) */
+.tnm-html-content figure,
+.tnm-content figure,
+.memory-aid-content figure {
+    margin: 1.5rem 0;
+    text-align: center;
+}
+
+.tnm-html-content figcaption,
+.tnm-content figcaption,
+.memory-aid-content figcaption {
+    margin-top: 0.5rem;
+    font-size: 0.9rem;
+    color: #666;
+    font-style: italic;
 }
 
 /* Highlight styles (same as case view) */
@@ -623,6 +824,120 @@
     border-bottom: 2px solid transparent;
     color: #6c757d;
     padding: 0.5rem 1rem;
+}
+
+/* Image Gallery Styles (same as view_case.html) */
+.images-gallery {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.image-thumbnail {
+    position: relative;
+    border-radius: 6px;
+    overflow: hidden;
+    background-color: #f8f9fa;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    border: 1px solid #dee2e6;
+}
+
+.image-thumbnail:hover {
+    transform: scale(1.05);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+.image-thumbnail img {
+    max-width: 150px;
+    max-height: 150px;
+    width: auto;
+    height: auto;
+    display: block;
+}
+
+.image-thumbnail .image-info {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(0,0,0,0.8);
+    color: white;
+    padding: 6px 8px;
+    font-size: 0.7rem;
+    line-height: 1.3;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.image-thumbnail .image-info .image-desc-text {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+}
+
+/* Image Navigation Buttons */
+.image-nav-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 50px;
+    height: 50px;
+    background: rgba(255, 255, 255, 0.15);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    z-index: 10;
+}
+
+.image-nav-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    border-color: rgba(255, 255, 255, 0.5);
+    transform: translateY(-50%) scale(1.1);
+}
+
+.image-nav-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.image-nav-prev {
+    left: 1rem;
+}
+
+.image-nav-next {
+    right: 1rem;
+}
+
+.image-nav-btn i {
+    font-size: 1.2rem;
+}
+
+.image-counter {
+    font-weight: 500;
+}
+
+@media (max-width: 767px) {
+    .image-nav-btn {
+        width: 40px;
+        height: 40px;
+    }
+    
+    .image-nav-btn i {
+        font-size: 1rem;
+    }
+    
+    .image-thumbnail img {
+        max-width: 100px;
+        max-height: 100px;
+    }
 }
 
 .notes-tabs .nav-link.active {
@@ -759,83 +1074,38 @@ function changeYear(year) {
 }
 
 // ==================== IMAGE MODAL ====================
-function openImageModal(src, title) {
-    document.getElementById('imageModalImg').src = src;
-    document.getElementById('imageModalTitle').textContent = title || 'Image';
-    const modal = new bootstrap.Modal(document.getElementById('imageModal'));
-    modal.show();
+function openImageModal(src, description) {
+    // Reuse the TNM image modal for inline content images
+    document.getElementById('tnmModalImageDisplay').src = src;
+    document.getElementById('tnmImageDescription').textContent = description || 'No description';
+    
+    // Hide navigation buttons for single inline images
+    document.getElementById('prevTnmImageBtn').style.display = 'none';
+    document.getElementById('nextTnmImageBtn').style.display = 'none';
+    document.getElementById('tnmImageCounter').style.display = 'none';
+    
+    if (!tnmImageModal) {
+        tnmImageModal = new bootstrap.Modal(document.getElementById('tnmImageModal'));
+    }
+    tnmImageModal.show();
 }
 
 // ==================== ADMIN EDITOR ====================
-{% if is_admin %}
-let currentEditorSection = null;
-let editorModal = null;
-
-function openTnmEditor(section) {
-    currentEditorSection = section;
-    document.getElementById('editorSectionTitle').textContent = section.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase());
-    
-    // Get current content
-    let contentEl;
-    if (section === 'intelligence') {
-        contentEl = document.getElementById('intelligenceContent');
-    } else if (section === 'explanatory-notes') {
-        contentEl = document.getElementById('explanatoryNotesContent');
-    }
-    
-    if (contentEl) {
-        document.getElementById('tnmEditorTextarea').value = contentEl.innerHTML;
-    }
-    
-    editorModal = new bootstrap.Modal(document.getElementById('tnmEditorModal'));
-    editorModal.show();
-}
-
-document.getElementById('saveEditorBtn')?.addEventListener('click', function() {
-    const content = document.getElementById('tnmEditorTextarea').value;
-    
-    // Save to API
-    fetch('/api/admin/tnm/save', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-            disease_site_id: diseaseId,
-            year: yearUsed,
-            section: currentEditorSection,
-            content: content
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            // Update display
-            if (currentEditorSection === 'intelligence') {
-                document.getElementById('intelligenceContent').innerHTML = content;
-            } else if (currentEditorSection === 'explanatory-notes') {
-                document.getElementById('explanatoryNotesContent').innerHTML = content;
-            }
-            editorModal.hide();
-            alert('Saved successfully!');
-        } else {
-            alert('Error saving: ' + (data.error || 'Unknown error'));
-        }
-    })
-    .catch(err => {
-        console.error('Save error:', err);
-        alert('Error saving changes');
-    });
-});
-{% endif %}
+// Edit buttons now link directly to edit_tnm.html page
 
 // ==================== STUDENT NOTES ====================
 {% if current_user.is_authenticated and current_user.role and current_user.role.value == 'student' %}
 function loadTnmNotes() {
-    fetch(`/api/notes/tnm/${diseaseId}`, { credentials: 'include' })
+    fetch(`/tnm/api/${diseaseId}/note`, { credentials: 'include' })
         .then(response => response.json())
         .then(data => {
-            if (data.success && data.notes) {
-                renderNotesList(data.notes);
+            if (data.success) {
+                // Single note per disease - display if exists
+                if (data.note_text) {
+                    renderNotesList([{ note_text: data.note_text, updated_at: data.updated_at }]);
+                } else {
+                    renderNotesList([]);
+                }
             }
         })
         .catch(err => console.error('Error loading notes:', err));
@@ -844,18 +1114,53 @@ function loadTnmNotes() {
 function renderNotesList(notes) {
     const container = document.getElementById('savedNotesList');
     if (!notes || notes.length === 0) {
-        container.innerHTML = '<p class="text-muted small">No notes yet.</p>';
+        container.innerHTML = '<p class="text-muted small">No notes yet. Add your first note above.</p>';
         return;
     }
     
     container.innerHTML = notes.map(note => `
-        <div class="card mb-2">
-            <div class="card-body p-2">
-                <p class="mb-1 small">${note.note_content}</p>
-                <small class="text-muted">${new Date(note.created_at).toLocaleDateString()}</small>
+        <div class="card mb-2 border-start border-4 border-warning">
+            <div class="card-body p-3">
+                <p class="mb-2" style="white-space: pre-wrap;">${escapeHtml(note.note_text)}</p>
+                <div class="d-flex justify-content-between align-items-center">
+                    <small class="text-muted">
+                        <i class="fas fa-clock me-1"></i>
+                        ${note.updated_at ? new Date(note.updated_at).toLocaleString() : 'Just now'}
+                    </small>
+                    <button class="btn btn-sm btn-outline-danger" onclick="deleteTnmNote()" title="Delete note">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
             </div>
         </div>
     `).join('');
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function deleteTnmNote() {
+    if (!confirm('Delete this note?')) return;
+    
+    fetch(`/tnm/api/${diseaseId}/note`, {
+        method: 'DELETE',
+        credentials: 'include'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            loadTnmNotes();
+        } else {
+            alert('Error deleting note');
+        }
+    })
+    .catch(err => {
+        console.error('Error deleting note:', err);
+        alert('Error deleting note');
+    });
 }
 
 document.getElementById('saveNoteBtn')?.addEventListener('click', function() {
@@ -867,13 +1172,12 @@ document.getElementById('saveNoteBtn')?.addEventListener('click', function() {
         return;
     }
     
-    fetch('/api/notes/tnm', {
+    fetch(`/tnm/api/${diseaseId}/note`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
-            tnm_disease_id: diseaseId,
-            note_content: content
+            note_text: content
         })
     })
     .then(response => response.json())
@@ -881,6 +1185,15 @@ document.getElementById('saveNoteBtn')?.addEventListener('click', function() {
         if (data.success) {
             textarea.value = '';
             loadTnmNotes();
+            // Show success feedback
+            const btn = document.getElementById('saveNoteBtn');
+            const originalHtml = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-check me-1"></i>Saved!';
+            btn.classList.replace('btn-primary', 'btn-success');
+            setTimeout(() => {
+                btn.innerHTML = originalHtml;
+                btn.classList.replace('btn-success', 'btn-primary');
+            }, 2000);
         } else {
             alert('Error saving note: ' + (data.error || 'Unknown error'));
         }
@@ -946,6 +1259,155 @@ function parseIntelligenceMarkdown() {
     intelligenceContent.querySelectorAll('li').forEach(parseMarkdownInElement);
 }
 
+// ==================== TNM IMAGES ====================
+let tnmImageModal;
+let allTnmImages = [];
+let currentTnmImageIndex = 0;
+
+/**
+ * Load TNM images for this disease
+ */
+function loadTnmImages() {
+    const container = document.getElementById('tnmImagesList');
+    const noImagesMsg = document.getElementById('noTnmImagesMsg');
+    const countBadge = document.getElementById('tnmImageCount');
+    
+    if (!container) return;
+    
+    fetch(`/tnm/api/images/${diseaseId}`, {
+        method: 'GET',
+        credentials: 'include'
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success && result.images && result.images.length > 0) {
+            allTnmImages = result.images;
+            renderTnmImages();
+            if (noImagesMsg) noImagesMsg.style.display = 'none';
+            if (countBadge) countBadge.textContent = result.images.length;
+        } else {
+            container.innerHTML = '';
+            if (noImagesMsg) noImagesMsg.style.display = 'block';
+            if (countBadge) countBadge.textContent = '0';
+        }
+    })
+    .catch(err => {
+        console.error('Error loading TNM images:', err);
+        if (noImagesMsg) noImagesMsg.style.display = 'block';
+    });
+}
+
+/**
+ * Render TNM images to container
+ */
+function renderTnmImages() {
+    const container = document.getElementById('tnmImagesList');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    allTnmImages.forEach((img, index) => {
+        const div = document.createElement('div');
+        div.className = 'image-thumbnail';
+        
+        div.innerHTML = `
+            <img src="${img.url}" alt="${img.alt_text || img.description || 'TNM Image'}" title="Click to view full size">
+            ${img.description ? `<div class="image-info"><span class="image-desc-text">${truncateText(img.description, 40)}</span></div>` : ''}
+        `;
+        div.addEventListener('click', () => viewTnmImage(index));
+        container.appendChild(div);
+    });
+}
+
+/**
+ * Helper: Truncate text
+ */
+function truncateText(text, maxLen) {
+    if (!text) return '';
+    return text.length > maxLen ? text.substring(0, maxLen) + '...' : text;
+}
+
+/**
+ * View a TNM image in the modal
+ */
+function viewTnmImage(index) {
+    if (!allTnmImages || allTnmImages.length === 0) return;
+    
+    currentTnmImageIndex = index;
+    const image = allTnmImages[index];
+    
+    // Update image display
+    document.getElementById('tnmModalImageDisplay').src = image.url;
+    document.getElementById('tnmImageDescription').textContent = image.description || 'No description';
+    
+    // Update counter
+    updateTnmImageCounter();
+    updateTnmNavButtons();
+    
+    // Show modal
+    if (!tnmImageModal) {
+        tnmImageModal = new bootstrap.Modal(document.getElementById('tnmImageModal'));
+    }
+    tnmImageModal.show();
+}
+
+/**
+ * Navigate between images
+ */
+function navigateTnmImage(direction) {
+    if (!allTnmImages || allTnmImages.length === 0) return;
+    
+    if (direction === 'prev') {
+        currentTnmImageIndex = (currentTnmImageIndex - 1 + allTnmImages.length) % allTnmImages.length;
+    } else {
+        currentTnmImageIndex = (currentTnmImageIndex + 1) % allTnmImages.length;
+    }
+    
+    const image = allTnmImages[currentTnmImageIndex];
+    
+    // Update image display
+    document.getElementById('tnmModalImageDisplay').src = image.url;
+    document.getElementById('tnmImageDescription').textContent = image.description || 'No description';
+    
+    // Update counter
+    updateTnmImageCounter();
+}
+
+/**
+ * Update image counter display
+ */
+function updateTnmImageCounter() {
+    const currentNum = document.getElementById('currentTnmImageNum');
+    const totalNum = document.getElementById('totalTnmImageNum');
+    const counter = document.getElementById('tnmImageCounter');
+    
+    if (allTnmImages && allTnmImages.length > 0) {
+        currentNum.textContent = currentTnmImageIndex + 1;
+        totalNum.textContent = allTnmImages.length;
+        
+        // Hide counter if only one image
+        counter.style.display = allTnmImages.length > 1 ? 'block' : 'none';
+    }
+}
+
+/**
+ * Update navigation button visibility
+ */
+function updateTnmNavButtons() {
+    const prevBtn = document.getElementById('prevTnmImageBtn');
+    const nextBtn = document.getElementById('nextTnmImageBtn');
+    
+    if (allTnmImages && allTnmImages.length > 1) {
+        // Show buttons when multiple images exist
+        prevBtn.style.display = 'flex';
+        nextBtn.style.display = 'flex';
+    } else {
+        // Hide buttons when single image
+        prevBtn.style.display = 'none';
+        nextBtn.style.display = 'none';
+    }
+}
+
 // ==================== INITIALIZATION ====================
 document.addEventListener('DOMContentLoaded', function() {
     // Clean up TNM labels
@@ -954,16 +1416,31 @@ document.addEventListener('DOMContentLoaded', function() {
     // Parse markdown in TNM Intelligence content
     parseIntelligenceMarkdown();
     
+    // Load TNM images
+    loadTnmImages();
+    
     // Load student notes if applicable
     {% if current_user.is_authenticated and current_user.role and current_user.role.value == 'student' %}
     loadTnmNotes();
     {% endif %}
     
-    // Make images clickable
+    // Make images in content clickable (for inline images)
     document.querySelectorAll('.tnm-html-content img').forEach(img => {
         img.addEventListener('click', function() {
             openImageModal(this.src, this.alt || 'Image');
         });
+    });
+    
+    // Setup keyboard navigation for image viewer
+    document.addEventListener('keydown', function(e) {
+        const modalElement = document.getElementById('tnmImageModal');
+        if (!modalElement || !modalElement.classList.contains('show')) return;
+        
+        if (e.key === 'ArrowLeft') {
+            navigateTnmImage('prev');
+        } else if (e.key === 'ArrowRight') {
+            navigateTnmImage('next');
+        }
     });
 });
 </script>

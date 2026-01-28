@@ -188,7 +188,6 @@ console.log('[TinyMCE Loader] TNM Edit - checking if TinyMCE loaded...');
                 <div class="card-header bg-gradient text-white" style="background: linear-gradient(135deg, #e96304 0%, #ff8c42 100%);">
                     <h5 class="mb-0">
                         <i class="fas fa-brain me-2"></i>TNM Intelligence
-                        <span class="badge bg-light text-dark ms-2">AI-Assisted</span>
                     </h5>
                 </div>
                 <div class="card-body p-4">
@@ -199,43 +198,42 @@ console.log('[TinyMCE Loader] TNM Edit - checking if TinyMCE loaded...');
                     </div>
                     {% endif %}
                     
-                    <!-- Memory Aids -->
+                    <!-- Memory Aids with TinyMCE -->
                     <div class="mb-4">
                         <label class="form-label fw-bold text-secondary" for="memoryAidT">T-Stage Memory Aid</label>
-                        <textarea class="form-control" id="memoryAidT" rows="2" 
+                        <textarea class="form-control rich-editor" id="memoryAidT" rows="3" 
                                   placeholder="Memory aid for T staging...">{{ intelligent_data.tnm_memory_aid.T if intelligent_data and intelligent_data.tnm_memory_aid and intelligent_data.tnm_memory_aid.T else '' }}</textarea>
                     </div>
                     <div class="mb-4">
                         <label class="form-label fw-bold text-secondary" for="memoryAidN">N-Stage Memory Aid</label>
-                        <textarea class="form-control" id="memoryAidN" rows="2" 
+                        <textarea class="form-control rich-editor" id="memoryAidN" rows="3" 
                                   placeholder="Memory aid for N staging...">{{ intelligent_data.tnm_memory_aid.N if intelligent_data and intelligent_data.tnm_memory_aid and intelligent_data.tnm_memory_aid.N else '' }}</textarea>
                     </div>
                     <div class="mb-4">
                         <label class="form-label fw-bold text-secondary" for="memoryAidM">M-Stage Memory Aid</label>
-                        <textarea class="form-control" id="memoryAidM" rows="2" 
+                        <textarea class="form-control rich-editor" id="memoryAidM" rows="3" 
                                   placeholder="Memory aid for M staging...">{{ intelligent_data.tnm_memory_aid.M if intelligent_data and intelligent_data.tnm_memory_aid and intelligent_data.tnm_memory_aid.M else '' }}</textarea>
                     </div>
                     
-                    <!-- Key Points (JSON array) -->
+                    <!-- Key Points with TinyMCE -->
                     <div class="mb-4">
-                        <label class="form-label fw-bold text-secondary" for="keyPoints">Radiologist Key Points (one per line)</label>
-                        <textarea class="form-control" id="keyPoints" rows="5" 
-                                  placeholder="Enter key points, one per line...">{% if intelligent_data and intelligent_data.radiologist_key_points %}{% for point in intelligent_data.radiologist_key_points %}{{ point }}{% if not loop.last %}
-{% endif %}{% endfor %}{% endif %}</textarea>
-                        <small class="text-muted">Each line becomes a bullet point</small>
+                        <label class="form-label fw-bold text-secondary" for="keyPoints">Radiologist Key Points</label>
+                        <textarea class="form-control rich-editor" id="keyPoints" rows="5" 
+                                  placeholder="Enter key points...">{% if intelligent_data and intelligent_data.radiologist_key_points %}<ul>{% for point in intelligent_data.radiologist_key_points %}<li>{{ point }}</li>{% endfor %}</ul>{% endif %}</textarea>
+                        <small class="text-muted">Use bullet lists in the editor for key points</small>
                     </div>
                     
-                    <!-- Upstaging Triggers -->
+                    <!-- Upstaging Triggers with TinyMCE -->
                     <div class="mb-4">
-                        <label class="form-label fw-bold text-secondary" for="upstagingTriggers">Upstaging Triggers (one per line)</label>
-                        <textarea class="form-control" id="upstagingTriggers" rows="4" 
-                                  placeholder="Enter upstaging triggers, one per line...">{% if intelligent_data and intelligent_data.upstaging_triggers %}{% for trigger in intelligent_data.upstaging_triggers %}{{ trigger }}{% if not loop.last %}
-{% endif %}{% endfor %}{% endif %}</textarea>
+                        <label class="form-label fw-bold text-secondary" for="upstagingTriggers">Upstaging Triggers</label>
+                        <textarea class="form-control rich-editor" id="upstagingTriggers" rows="4" 
+                                  placeholder="Enter upstaging triggers...">{% if intelligent_data and intelligent_data.upstaging_triggers %}<ul>{% for trigger in intelligent_data.upstaging_triggers %}<li>{{ trigger }}</li>{% endfor %}</ul>{% endif %}</textarea>
+                        <small class="text-muted">Use bullet lists in the editor for triggers</small>
                     </div>
                 </div>
             </div>
 
-            <!-- Section 6: Essential TNM Concepts (Display Only) -->
+            <!-- Section 6: Essential TNM Concepts (Editable) -->
             <div class="card shadow-sm mb-5 border-0">
                 <div class="card-header bg-gradient text-white" style="background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);">
                     <h5 class="mb-0">
@@ -244,51 +242,65 @@ console.log('[TinyMCE Loader] TNM Edit - checking if TinyMCE loaded...');
                     </h5>
                 </div>
                 <div class="card-body p-4">
-                    {% if intelligent_data and intelligent_data.essential_tnm %}
-                    <div class="row">
-                        {% if intelligent_data.essential_tnm.figure_url %}
-                        <div class="col-md-5 mb-3">
-                            <img src="{{ intelligent_data.essential_tnm.figure_url }}" 
-                                 alt="{{ intelligent_data.essential_tnm.figure_description or 'Essential TNM Figure' }}"
-                                 class="img-fluid rounded shadow-sm" style="max-height: 400px;">
-                            {% if intelligent_data.essential_tnm.figure_description %}
-                            <p class="text-muted small mt-2">{{ intelligent_data.essential_tnm.figure_description }}</p>
-                            {% endif %}
-                        </div>
-                        {% endif %}
-                        <div class="col-md-{% if intelligent_data.essential_tnm.figure_url %}7{% else %}12{% endif %}">
-                            {% if intelligent_data.essential_tnm.title %}
-                            <h6 class="fw-bold mb-3">{{ intelligent_data.essential_tnm.title }}</h6>
-                            {% endif %}
-                            
-                            {% if intelligent_data.essential_tnm.key_concepts %}
-                            <div class="mb-3">
-                                <label class="fw-bold text-secondary small">Key Concepts:</label>
-                                <ul class="mb-0">
-                                    {% for concept in intelligent_data.essential_tnm.key_concepts %}
-                                    <li class="small">{{ concept }}</li>
-                                    {% endfor %}
-                                </ul>
-                            </div>
-                            {% endif %}
-                            
-                            {% if intelligent_data.essential_tnm.supplementary_table %}
-                            <div class="mb-3">
-                                <label class="fw-bold text-secondary small">Supplementary Table:</label>
-                                <div class="small tnm-html-content">{{ intelligent_data.essential_tnm.supplementary_table | safe }}</div>
-                            </div>
-                            {% endif %}
-                        </div>
-                    </div>
-                    <div class="small text-muted border-top pt-2 mt-3">
-                        <i class="fas fa-book me-1"></i>{{ intelligent_data.essential_tnm.attribution or 'IARC Essential TNM Guide (CC BY-NC-ND 3.0 IGO)' }}
-                    </div>
-                    {% else %}
-                    <div class="alert alert-info mb-0">
+                    {% if not intelligent_data or not intelligent_data.essential_tnm %}
+                    <div class="alert alert-info mb-4">
                         <i class="fas fa-info-circle me-2"></i>
-                        No Essential TNM data available. This data is sourced from IARC and populated when TNM Intelligence is generated.
+                        No Essential TNM data available yet. This is typically sourced from IARC. You can add content manually below.
                     </div>
                     {% endif %}
+                    
+                    <!-- Preview of Current Figure (if exists) -->
+                    {% if intelligent_data and intelligent_data.essential_tnm and intelligent_data.essential_tnm.figure_url %}
+                    <div class="mb-4 p-3 bg-light rounded">
+                        <label class="form-label fw-bold text-secondary">Current Figure:</label>
+                        <div class="text-center">
+                            <img src="{{ intelligent_data.essential_tnm.figure_url }}" 
+                                 alt="{{ intelligent_data.essential_tnm.title or 'Essential TNM Figure' }}"
+                                 class="img-fluid rounded shadow-sm" style="max-height: 300px;">
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Figure URL -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold text-secondary" for="essentialTnmFigureUrl">Figure URL</label>
+                        <input type="url" class="form-control" id="essentialTnmFigureUrl" 
+                               placeholder="https://... (Cloudinary or external URL)"
+                               value="{{ intelligent_data.essential_tnm.figure_url if intelligent_data and intelligent_data.essential_tnm and intelligent_data.essential_tnm.figure_url else '' }}">
+                        <small class="text-muted">URL to the IARC figure image (preferably from Cloudinary)</small>
+                    </div>
+                    
+                    <!-- Title -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold text-secondary" for="essentialTnmTitle">Title / Figure Description</label>
+                        <input type="text" class="form-control" id="essentialTnmTitle" 
+                               placeholder="e.g., Colorectal Cancer TNM Staging Overview"
+                               value="{{ intelligent_data.essential_tnm.title if intelligent_data and intelligent_data.essential_tnm and intelligent_data.essential_tnm.title else '' }}">
+                    </div>
+                    
+                    <!-- Key Concepts -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold text-secondary" for="essentialTnmKeyConcepts">Key Concepts</label>
+                        <textarea class="form-control rich-editor" id="essentialTnmKeyConcepts" rows="5" 
+                                  placeholder="Enter key concepts...">{% if intelligent_data and intelligent_data.essential_tnm and intelligent_data.essential_tnm.key_concepts %}<ul>{% for concept in intelligent_data.essential_tnm.key_concepts %}<li>{{ concept }}</li>{% endfor %}</ul>{% endif %}</textarea>
+                        <small class="text-muted">Use bullet list for key concepts from IARC</small>
+                    </div>
+                    
+                    <!-- Supplementary Table -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold text-secondary" for="essentialTnmTable">Supplementary Table (HTML)</label>
+                        <textarea class="form-control rich-editor" id="essentialTnmTable" rows="6" 
+                                  placeholder="Enter supplementary table content...">{{ intelligent_data.essential_tnm.supplementary_table if intelligent_data and intelligent_data.essential_tnm and intelligent_data.essential_tnm.supplementary_table else '' }}</textarea>
+                        <small class="text-muted">Additional tables or content from IARC</small>
+                    </div>
+                    
+                    <!-- Attribution -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold text-secondary" for="essentialTnmAttribution">Attribution</label>
+                        <input type="text" class="form-control" id="essentialTnmAttribution" 
+                               placeholder="IARC Essential TNM Guide (CC BY-NC-ND 3.0 IGO)"
+                               value="{{ intelligent_data.essential_tnm.attribution if intelligent_data and intelligent_data.essential_tnm and intelligent_data.essential_tnm.attribution else 'IARC Essential TNM Guide (CC BY-NC-ND 3.0 IGO)' }}">
+                    </div>
                 </div>
             </div>
 
@@ -297,23 +309,32 @@ console.log('[TinyMCE Loader] TNM Edit - checking if TinyMCE loaded...');
                 <div class="card-header bg-gradient text-white" style="background: linear-gradient(135deg, #6c757d 0%, #495057 100%);">
                     <h5 class="mb-0">
                         <i class="fas fa-images me-2"></i>Reference Images
+                        <span id="imageCount" class="badge bg-light text-dark ms-2">0</span>
                     </h5>
                 </div>
                 <div class="card-body p-4">
                     <div id="imagesContainer" class="mb-4">
-                        <p class="text-muted text-center py-3">No images uploaded yet.</p>
+                        <div class="text-center py-3">
+                            <div class="spinner-border spinner-border-sm text-secondary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p class="text-muted mb-0 mt-2">Loading images...</p>
+                        </div>
                     </div>
                     
                     <div class="border-top pt-4">
-                        <label class="form-label fw-bold text-secondary mb-3" for="imageInput">Upload New Image</label>
+                        <label class="form-label fw-bold text-secondary mb-3">Upload New Image</label>
+                        <div class="mb-3">
+                            <input type="text" id="imageDescription" class="form-control" placeholder="Image description (e.g., 'T3 tumor invading muscularis')" title="Image description">
+                        </div>
                         <div class="input-group">
                             <input type="file" id="imageInput" class="form-control" accept="image/*" title="Select image to upload" aria-label="Select image to upload">
-                            <button type="button" class="btn btn-secondary" onclick="uploadImage()" aria-label="Upload image">
+                            <button type="button" class="btn btn-secondary" id="uploadBtn" onclick="uploadImage()" aria-label="Upload image">
                                 <i class="fas fa-upload me-1"></i>Upload
                             </button>
                         </div>
                         <small class="text-muted d-block mt-2">
-                            <i class="fas fa-info-circle me-1"></i>Supported formats: JPEG, PNG, GIF, WebP (Max 10MB)
+                            <i class="fas fa-info-circle me-1"></i>Supported formats: JPEG, PNG, GIF, WebP (Max 10MB). Images are stored in Cloudinary and linked to this disease.
                         </small>
                     </div>
                 </div>
@@ -417,12 +438,25 @@ function initializeEditors() {
         min_height: 300,
         max_height: 600,
         menubar: 'edit view insert format tools',
-        toolbar: 'undo redo | blocks | bold italic underline | numlist bullist | table link | code removeformat',
-        plugins: 'table link code autoresize',
+        toolbar: 'undo redo | blocks | bold italic underline | numlist bullist | table link image | code removeformat',
+        plugins: 'table link code autoresize image',
         base_url: 'https://cdn.jsdelivr.net/npm/tinymce@6',
         relative_urls: false,
         convert_urls: false,
         remove_trailing_brs: true,
+        // Image settings - allow easy editing and removal
+        image_advtab: true,
+        image_caption: true,
+        image_class_list: [
+            { title: 'Responsive', value: 'img-fluid' },
+            { title: 'Rounded', value: 'img-fluid rounded' },
+            { title: 'Thumbnail', value: 'img-thumbnail' }
+        ],
+        // Content styling - ensure images are visible
+        content_style: `
+            img { max-width: 100%; height: auto; cursor: pointer; border-radius: 4px; }
+            img:hover { outline: 2px solid #667eea; }
+        `,
         setup: function(editor) {
             editor.on('change', function() {
                 tinymce.triggerSave();
@@ -458,23 +492,40 @@ function saveTnmData() {
         explanatory_notes_html: document.getElementById('curatedExplanatoryNotes').value
     };
     
-    // Add intelligent data if present
+    // Add intelligent data - now these are TinyMCE editors, so we get HTML content
     const memoryAidT = document.getElementById('memoryAidT');
     const memoryAidN = document.getElementById('memoryAidN');
     const memoryAidM = document.getElementById('memoryAidM');
     const keyPoints = document.getElementById('keyPoints');
     const upstagingTriggers = document.getElementById('upstagingTriggers');
     
+    // Memory aids are now HTML from TinyMCE
     if (memoryAidT) data.tnm_memory_aid_t = memoryAidT.value;
     if (memoryAidN) data.tnm_memory_aid_n = memoryAidN.value;
     if (memoryAidM) data.tnm_memory_aid_m = memoryAidM.value;
     
+    // Key points and triggers are now HTML lists - we'll extract text from <li> elements
     if (keyPoints) {
-        data.radiologist_key_points = keyPoints.value.split('\n').filter(line => line.trim());
+        data.radiologist_key_points_html = keyPoints.value;
     }
     if (upstagingTriggers) {
-        data.upstaging_triggers = upstagingTriggers.value.split('\n').filter(line => line.trim());
+        data.upstaging_triggers_html = upstagingTriggers.value;
     }
+    
+    // Essential TNM Concepts data
+    const figureUrl = document.getElementById('essentialTnmFigureUrl');
+    const title = document.getElementById('essentialTnmTitle');
+    const keyConcepts = document.getElementById('essentialTnmKeyConcepts');
+    const suppTable = document.getElementById('essentialTnmTable');
+    const attribution = document.getElementById('essentialTnmAttribution');
+    
+    data.essential_tnm = {
+        figure_url: figureUrl ? figureUrl.value : '',
+        title: title ? title.value : '',
+        key_concepts_html: keyConcepts ? keyConcepts.value : '',
+        supplementary_table: suppTable ? suppTable.value : '',
+        attribution: attribution ? attribution.value : ''
+    };
     
     // Save curated data
     fetch('/api/admin/tnm/curate/save', {
@@ -486,17 +537,22 @@ function saveTnmData() {
     .then(response => response.json())
     .then(result => {
         if (result.success) {
-            // Show success message
-            showAlert('success', 'Changes saved successfully!');
+            // Show success message and redirect to view page
+            showAlert('success', 'Changes saved successfully! Redirecting...');
+            
+            // Redirect to view_tnm.html after a brief delay
+            setTimeout(() => {
+                window.location.href = `/tnm/${sectionSlug}/${diseaseSlug}/student?year=${currentYear}`;
+            }, 1000);
         } else {
             showAlert('danger', 'Error saving: ' + (result.error || 'Unknown error'));
+            saveBtn.innerHTML = originalText;
+            saveBtn.disabled = false;
         }
     })
     .catch(err => {
         console.error('Save error:', err);
         showAlert('danger', 'Error saving changes: ' + err.message);
-    })
-    .finally(() => {
         saveBtn.innerHTML = originalText;
         saveBtn.disabled = false;
     });
@@ -523,27 +579,240 @@ function showAlert(type, message) {
     }, 5000);
 }
 
-// Image upload (placeholder - implement based on your Cloudinary setup)
+// Load existing images for this disease
+function loadExistingImages() {
+    const container = document.getElementById('imagesContainer');
+    const countBadge = document.getElementById('imageCount');
+    
+    fetch(`/api/admin/tnm/curate/images/${diseaseSiteId}`, {
+        method: 'GET',
+        credentials: 'include'
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success && result.images && result.images.length > 0) {
+            container.innerHTML = '';
+            countBadge.textContent = result.images.length;
+            
+            result.images.forEach(img => {
+                container.appendChild(createImageCard(img));
+            });
+        } else {
+            container.innerHTML = '<p class="text-muted text-center py-3">No images uploaded yet.</p>';
+            countBadge.textContent = '0';
+        }
+    })
+    .catch(err => {
+        console.error('Error loading images:', err);
+        container.innerHTML = '<p class="text-danger text-center py-3">Error loading images</p>';
+    });
+}
+
+// Create image card element with inline description editing
+function createImageCard(img) {
+    const imgDiv = document.createElement('div');
+    imgDiv.className = 'mb-3 p-3 bg-light rounded';
+    imgDiv.id = `image-card-${img.id}`;
+    imgDiv.innerHTML = `
+        <div class="d-flex align-items-start gap-3">
+            <img src="${img.url}" alt="${img.alt_text || img.description || 'TNM Image'}" class="img-thumbnail" style="max-width: 120px; cursor: pointer;" onclick="window.open('${img.url}', '_blank')">
+            <div class="flex-grow-1">
+                <!-- Editable Description Field -->
+                <div class="mb-2">
+                    <div class="input-group input-group-sm">
+                        <input type="text" class="form-control form-control-sm" id="desc-${img.id}" 
+                               value="${(img.description || '').replace(/"/g, '&quot;')}" 
+                               placeholder="Enter image description"
+                               onkeypress="if(event.key==='Enter') updateImageDescription(${img.id})">
+                        <button class="btn btn-outline-secondary" type="button" onclick="updateImageDescription(${img.id})" title="Save description">
+                            <i class="fas fa-save"></i>
+                        </button>
+                    </div>
+                </div>
+                ${img.width && img.height ? `<p class="small text-muted mb-2">${img.width}×${img.height}px</p>` : ''}
+                <div class="btn-group btn-group-sm">
+                    <button type="button" class="btn btn-outline-primary" onclick="copyToClipboard('${img.url}')" title="Copy URL">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                    <button type="button" class="btn btn-outline-success" onclick="insertImageIntoEditor('${img.url}', document.getElementById('desc-${img.id}').value || 'TNM Figure')" title="Insert into editor with description">
+                        <i class="fas fa-image"></i>
+                    </button>
+                    <button type="button" class="btn btn-outline-danger" onclick="deleteImage(${img.id})" title="Delete image">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    return imgDiv;
+}
+
+// Update image description
+function updateImageDescription(imageId) {
+    const descInput = document.getElementById(`desc-${imageId}`);
+    const newDescription = descInput.value.trim();
+    
+    fetch(`/api/admin/tnm/curate/images/${imageId}/description`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ description: newDescription })
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            showAlert('success', 'Description updated!');
+        } else {
+            showAlert('danger', 'Failed to update: ' + (result.error || 'Unknown error'));
+        }
+    })
+    .catch(err => {
+        console.error('Update error:', err);
+        showAlert('danger', 'Error updating description');
+    });
+}
+
+// Image upload to Cloudinary via backend
 function uploadImage() {
     const input = document.getElementById('imageInput');
     if (!input.files || !input.files[0]) {
-        alert('Please select an image first');
+        showAlert('warning', 'Please select an image first');
         return;
     }
     
     const file = input.files[0];
+    const description = document.getElementById('imageDescription').value || '';
+    
+    // Validate file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+        showAlert('danger', 'File too large. Max 10MB allowed.');
+        return;
+    }
+    
     const formData = new FormData();
     formData.append('file', file);
     formData.append('disease_site_id', diseaseSiteId);
-    formData.append('year', currentYear);
+    formData.append('title', file.name);  // Use filename as title
+    formData.append('description', description);
     
-    // TODO: Implement image upload to your backend/Cloudinary
-    alert('Image upload not yet implemented for TNM. Please add images via the admin panel.');
+    // Show loading state
+    const uploadBtn = document.getElementById('uploadBtn');
+    const originalText = uploadBtn.innerHTML;
+    uploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Uploading...';
+    uploadBtn.disabled = true;
+    
+    fetch('/api/admin/tnm/curate/upload-image', {
+        method: 'POST',
+        credentials: 'include',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success && result.image) {
+            // Add new image card to container
+            const container = document.getElementById('imagesContainer');
+            const noImagesMsg = container.querySelector('p.text-muted');
+            if (noImagesMsg) noImagesMsg.remove();
+            
+            // Prepend the new image card
+            container.insertBefore(createImageCard(result.image), container.firstChild);
+            
+            // Update count
+            const countBadge = document.getElementById('imageCount');
+            countBadge.textContent = parseInt(countBadge.textContent || 0) + 1;
+            
+            // Clear inputs
+            input.value = '';
+            document.getElementById('imageDescription').value = '';
+            
+            showAlert('success', 'Image uploaded and linked to this disease!');
+        } else {
+            showAlert('danger', 'Error uploading image: ' + (result.error || 'Unknown error'));
+        }
+    })
+    .catch(err => {
+        console.error('Upload error:', err);
+        showAlert('danger', 'Error uploading image: ' + err.message);
+    })
+    .finally(() => {
+        uploadBtn.innerHTML = originalText;
+        uploadBtn.disabled = false;
+    });
+}
+
+// Delete an image
+function deleteImage(imageId) {
+    if (!confirm('Are you sure you want to delete this image? This cannot be undone.')) {
+        return;
+    }
+    
+    fetch(`/api/admin/tnm/curate/images/${imageId}`, {
+        method: 'DELETE',
+        credentials: 'include'
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            // Remove the image card
+            const card = document.getElementById(`image-card-${imageId}`);
+            if (card) card.remove();
+            
+            // Update count
+            const countBadge = document.getElementById('imageCount');
+            const newCount = Math.max(0, parseInt(countBadge.textContent || 0) - 1);
+            countBadge.textContent = newCount;
+            
+            // Show "no images" message if empty
+            if (newCount === 0) {
+                document.getElementById('imagesContainer').innerHTML = 
+                    '<p class="text-muted text-center py-3">No images uploaded yet.</p>';
+            }
+            
+            showAlert('success', 'Image deleted successfully');
+        } else {
+            showAlert('danger', 'Error deleting image: ' + (result.error || 'Unknown error'));
+        }
+    })
+    .catch(err => {
+        console.error('Delete error:', err);
+        showAlert('danger', 'Error deleting image: ' + err.message);
+    });
+}
+
+// Copy URL to clipboard
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(() => {
+        showAlert('success', 'URL copied to clipboard!');
+    }).catch(err => {
+        console.error('Copy failed:', err);
+        showAlert('warning', 'Failed to copy URL');
+    });
+}
+
+// Insert image into active TinyMCE editor with description as alt text and caption
+function insertImageIntoEditor(url, description = 'TNM Figure') {
+    const activeEditor = tinymce.activeEditor;
+    if (activeEditor) {
+        // Insert image with description as alt text and a caption below
+        const imgHtml = `
+            <figure style="margin: 1rem 0; text-align: center;">
+                <img src="${url}" alt="${description}" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                <figcaption style="margin-top: 0.5rem; font-size: 0.9rem; color: #666; font-style: italic;">${description}</figcaption>
+            </figure>
+        `;
+        activeEditor.insertContent(imgHtml);
+        showAlert('success', 'Image inserted with description!');
+    } else {
+        showAlert('warning', 'Please click into an editor first, then try again.');
+    }
 }
 
 // Initialize on DOM ready
 document.addEventListener('DOMContentLoaded', function() {
     console.log('[TNM Edit] Page loaded for disease:', diseaseSiteId, 'year:', currentYear);
+    
+    // Load existing images
+    loadExistingImages();
     
     // TinyMCE loader script handles initialization
     if (window.tinyMCELoaded && typeof tinymce !== 'undefined') {

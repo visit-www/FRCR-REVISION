@@ -294,6 +294,7 @@ def tnm_view(section_slug, disease_slug):
     stage_groups = []
     explanatory_notes_html = None
     quick_reference_html = None
+    curated_quick_reference = None  # Admin's additional notes for quick reference
     images = []
     is_curated = False
     cancers_staged = []
@@ -302,6 +303,9 @@ def tnm_view(section_slug, disease_slug):
     if staging_data:
         # Check if curated data exists
         is_curated = staging_data.is_curated
+        
+        # Get curated quick reference notes (admin's additional comments) - always show if exists
+        curated_quick_reference = staging_data.curated_quick_reference_html
         
         # Show curated content if available, otherwise show raw extracted data
         # Both admins and students can see content, but students get a warning if not curated
@@ -418,6 +422,7 @@ def tnm_view(section_slug, disease_slug):
             cancers_staged=cancers_staged,
             cancers_not_staged=cancers_not_staged,
             quick_reference_html=quick_reference_html,
+            curated_quick_reference=curated_quick_reference,
             explanatory_notes_html=explanatory_notes_html,
             images=images,
             intelligent_data=intelligent_data,
@@ -813,6 +818,25 @@ def get_ajcc_disease_sites_api():
             'error': str(e),
             'sites': []
         }), 500
+
+
+@tnm_bp.route('/api/images/<int:disease_site_id>', methods=['GET'])
+def get_tnm_images_public(disease_site_id):
+    """
+    Get all images for a disease site (public read access).
+    This endpoint is accessible to all authenticated users for viewing.
+    """
+    from models import TNMImage
+    
+    try:
+        images = TNMImage.get_for_disease(disease_site_id)
+        return jsonify({
+            'success': True,
+            'images': [img.to_dict() for img in images]
+        })
+    except Exception as e:
+        print(f"[TNM] Error fetching images: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 
 @tnm_bp.route('/api/save-intelligence', methods=['POST'])

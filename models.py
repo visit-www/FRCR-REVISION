@@ -1805,3 +1805,123 @@ class AnatomyFigure(db.Model):
             query = query.filter(cls.modality == modality.lower())
         
         return query.all()
+
+
+# ==================== TNM IMAGE MODEL ====================
+
+class TNMImage(db.Model):
+    """
+    Images uploaded for TNM disease sites.
+    
+    Stores images uploaded by admins for specific TNM disease sites,
+    linked to Cloudinary for CDN delivery.
+    """
+    __tablename__ = 'tnm_image'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    
+    # Link to AJCC disease site (required)
+    disease_site_id = db.Column(db.Integer, db.ForeignKey('ajcc_disease_site.id'), nullable=False, index=True)
+    
+    # Optional: link to specific diagnosis year
+    diagnosis_year_id = db.Column(db.Integer, db.ForeignKey('ajcc_diagnosis_year.id'), nullable=True, index=True)
+    
+    # Image metadata
+    title = db.Column(db.String(300), nullable=True)
+    description = db.Column(db.Text, nullable=True)
+    alt_text = db.Column(db.String(500), nullable=True)
+    
+    # Cloudinary storage
+    cloudinary_url = db.Column(db.String(500), nullable=False)
+    cloudinary_public_id = db.Column(db.String(300), nullable=False)
+    
+    # Image dimensions (useful for responsive layouts)
+    width = db.Column(db.Integer, nullable=True)
+    height = db.Column(db.Integer, nullable=True)
+    
+    # Classification
+    image_type = db.Column(db.String(50), default='reference')  # 'reference', 'diagram', 'staging', 'anatomy'
+    
+    # Tracking
+    uploaded_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    is_active = db.Column(db.Boolean, default=True)
+    
+    # Timestamps
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    disease_site = db.relationship('AJCCDiseaseSite', backref=db.backref('images', lazy='dynamic'))
+    diagnosis_year = db.relationship('AJCCDiagnosisYear', backref=db.backref('tnm_images', lazy='dynamic'))
+    uploaded_by = db.relationship('User', backref=db.backref('uploaded_tnm_images', lazy='dynamic'))
+    
+    # Index for efficient queries
+    __table_args__ = (
+        db.Index('idx_tnm_image_disease', 'disease_site_id', 'is_active'),
+    )
+    
+    def __repr__(self):
+        return f'<TNMImage {self.id}: {self.title or "Untitled"} for disease {self.disease_site_id}>'
+    
+    def to_dict(self):
+        """Convert to dictionary for API responses."""
+        return {
+            'id': self.id,
+            'disease_site_id': self.disease_site_id,
+            'diagnosis_year_id': self.diagnosis_year_id,
+            'title': self.title,
+            'description': self.description,
+            'alt_text': self.alt_text,
+            'url': self.cloudinary_url,
+            'cloudinary_public_id': self.cloudinary_public_id,
+            'width': self.width,
+            'height': self.height,
+            'image_type': self.image_type,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'uploaded_by_user_id': self.uploaded_by_user_id
+        }
+    
+    def get_html(self, size='medium'):
+        """Generate HTML for embedding in content."""
+        sizes = {
+            'small': 'max-width: 200px;',
+            'medium': 'max-width: 400px;',
+            'large': 'max-width: 600px;',
+            'full': 'max-width: 100%;'
+        }
+        style = sizes.get(size, sizes['medium'])
+        alt = self.alt_text or self.title or 'TNM Figure'
+        
+        return f'<img src="{self.cloudinary_url}" alt="{alt}" style="{style} height: auto; border-radius: 8px;">'
+    
+    @classmethod
+    def get_for_disease(cls, disease_site_id: int, active_only: bool = True):
+        """Get all images for a disease site."""
+        query = cls.query.filter_by(disease_site_id=disease_site_id)
+        if active_only:
+            query = query.filter_by(is_active=True)
+        return query.order_by(cls.created_at.desc()).all()
+    
+    @classmethod
+    def delete_from_cloudinary(cls, image_id: int) -> bool:
+        """Delete image from Cloudinary and database."""
+        import cloudinary
+        import cloudinary.uploader
+        
+        image = cls.query.get(image_id)
+        if not image:
+            return False
+        
+        try:
+            # Delete from Cloudinary
+            if image.cloudinary_public_id:
+                cloudinary.uploader.destroy(image.cloudinary_public_id)
+            
+            # Delete from database
+            db.session.delete(image)
+            db.session.commit()
+            return True
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error deleting TNM image {image_id}: {e}")
+            return False

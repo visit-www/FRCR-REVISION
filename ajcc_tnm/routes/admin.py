@@ -10,7 +10,7 @@ from datetime import datetime
 import logging
 
 # Import from main app's models (kept in main app for shared use)
-from models import db, AJCCBodySection, AJCCDiseaseSite, AJCCDiagnosisYear, AJCCStagingData, AJCCDiseaseMapping
+from models import db, AJCCBodySection, AJCCDiseaseSite, AJCCDiagnosisYear, AJCCStagingData, AJCCDiseaseMapping, IntelligentTNMData
 
 # Import from main app's access control
 from access_control import require_admin
@@ -1082,7 +1082,7 @@ def curate_tnm_page(disease_site_id, year):
 def save_curated_tnm():
     """
     Save curated TNM data.
-    Receives Quick Reference + Explanatory Notes and stores them.
+    Receives Quick Reference + Explanatory Notes + TNM Intelligence + Essential TNM and stores them.
     """
     try:
         data = request.get_json()
@@ -1124,6 +1124,75 @@ def save_curated_tnm():
             user_id=current_user.id
         )
         
+        # ============================================
+        # Save TNM Intelligence Data
+        # ============================================
+        tnm_memory_aid_t = data.get('tnm_memory_aid_t')
+        tnm_memory_aid_n = data.get('tnm_memory_aid_n')
+        tnm_memory_aid_m = data.get('tnm_memory_aid_m')
+        radiologist_key_points_html = data.get('radiologist_key_points_html')
+        upstaging_triggers_html = data.get('upstaging_triggers_html')
+        essential_tnm_data = data.get('essential_tnm')
+        
+        # Check if any intelligent data was provided
+        has_intelligent_data = any([
+            tnm_memory_aid_t, tnm_memory_aid_n, tnm_memory_aid_m,
+            radiologist_key_points_html, upstaging_triggers_html,
+            essential_tnm_data
+        ])
+        
+        if has_intelligent_data:
+            # Get or create intelligent TNM data record
+            intelligent_data = IntelligentTNMData.query.filter_by(
+                disease_site_id=disease_site_id,
+                diagnosis_year_id=diagnosis_year.id
+            ).first()
+            
+            if not intelligent_data:
+                intelligent_data = IntelligentTNMData(
+                    disease_site_id=disease_site_id,
+                    diagnosis_year_id=diagnosis_year.id,
+                    verified_by_user_id=current_user.id
+                )
+                db.session.add(intelligent_data)
+            
+            # Update memory aids
+            if tnm_memory_aid_t is not None:
+                intelligent_data.tnm_memory_aid_t = tnm_memory_aid_t
+            if tnm_memory_aid_n is not None:
+                intelligent_data.tnm_memory_aid_n = tnm_memory_aid_n
+            if tnm_memory_aid_m is not None:
+                intelligent_data.tnm_memory_aid_m = tnm_memory_aid_m
+            
+            # Parse HTML lists into arrays for key points and triggers
+            if radiologist_key_points_html:
+                key_points = _extract_list_items_from_html(radiologist_key_points_html)
+                intelligent_data.set_radiologist_key_points(key_points)
+            
+            if upstaging_triggers_html:
+                triggers = _extract_list_items_from_html(upstaging_triggers_html)
+                intelligent_data.set_upstaging_triggers(triggers)
+            
+            # Save Essential TNM data
+            if essential_tnm_data:
+                # Process key_concepts_html into array
+                key_concepts = []
+                if essential_tnm_data.get('key_concepts_html'):
+                    key_concepts = _extract_list_items_from_html(essential_tnm_data['key_concepts_html'])
+                
+                essential_tnm_obj = {
+                    'figure_url': essential_tnm_data.get('figure_url', ''),
+                    'title': essential_tnm_data.get('title', ''),
+                    'key_concepts': key_concepts,
+                    'supplementary_table': essential_tnm_data.get('supplementary_table', ''),
+                    'attribution': essential_tnm_data.get('attribution', 'IARC Essential TNM Guide (CC BY-NC-ND 3.0 IGO)')
+                }
+                intelligent_data.set_essential_tnm(essential_tnm_obj)
+            
+            # Update version and timestamps
+            intelligent_data.version = (intelligent_data.version or 0) + 1
+            intelligent_data.verified_by_user_id = current_user.id
+        
         db.session.commit()
         
         logger.info(f"Curated TNM data saved for disease_site_id={disease_site_id}, year={year} by user {current_user.id}")
@@ -1138,6 +1207,219 @@ def save_curated_tnm():
     except Exception as e:
         db.session.rollback()
         logger.error(f"Error saving curated TNM data: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+def _extract_list_items_from_html(html_content):
+    """
+    Extract text from <li> elements in HTML content.
+    Returns a list of strings.
+    """
+    import re
+    if not html_content:
+        return []
+    
+    # Match <li>...</li> content, handling nested tags
+    li_pattern = r'<li[^>]*>(.*?)</li>'
+    matches = re.findall(li_pattern, html_content, re.DOTALL | re.IGNORECASE)
+    
+    # Clean each item - remove HTML tags
+    items = []
+    for match in matches:
+        # Remove HTML tags but keep text
+        clean_text = re.sub(r'<[^>]+>', '', match)
+        clean_text = clean_text.strip()
+        if clean_text:
+            items.append(clean_text)
+    
+    # If no list items found, treat entire content as single item (stripped of HTML)
+    if not items and html_content.strip():
+        clean_text = re.sub(r'<[^>]+>', '', html_content).strip()
+        if clean_text:
+            items = [clean_text]
+    
+    return items
+
+
+@admin_tnm_bp.route('/curate/upload-image', methods=['POST'])
+@require_admin
+def upload_tnm_image():
+    """
+    Upload an image to Cloudinary for TNM content.
+    Images are stored in Frcr-revision-media/tnm-case folder.
+    Creates a database record linking the image to the disease.
+    """
+    import os
+    from models import TNMImage
+    
+    if 'file' not in request.files:
+        return jsonify({'success': False, 'error': 'No file provided'}), 400
+    
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'success': False, 'error': 'No file selected'}), 400
+    
+    disease_site_id = request.form.get('disease_site_id')
+    if not disease_site_id:
+        return jsonify({'success': False, 'error': 'Disease site ID required'}), 400
+    
+    try:
+        disease_site_id = int(disease_site_id)
+    except ValueError:
+        return jsonify({'success': False, 'error': 'Invalid disease site ID'}), 400
+    
+    # Optional fields
+    title = request.form.get('title', file.filename)
+    description = request.form.get('description', '')
+    image_type = request.form.get('image_type', 'reference')
+    
+    # Validate file type
+    allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+    ext = file.filename.rsplit('.', 1)[-1].lower() if '.' in file.filename else ''
+    if ext not in allowed_extensions:
+        return jsonify({'success': False, 'error': f'Invalid file type. Allowed: {", ".join(allowed_extensions)}'}), 400
+    
+    # Check file size (max 10MB)
+    file.seek(0, 2)  # Seek to end
+    size = file.tell()
+    file.seek(0)  # Seek back to start
+    if size > 10 * 1024 * 1024:
+        return jsonify({'success': False, 'error': 'File too large. Max 10MB'}), 400
+    
+    # Check Cloudinary configuration
+    if not os.environ.get('CLOUDINARY_CLOUD_NAME'):
+        return jsonify({'success': False, 'error': 'Image upload not configured'}), 500
+    
+    try:
+        import cloudinary
+        import cloudinary.uploader
+        import uuid
+        
+        # Generate a unique public ID
+        unique_id = str(uuid.uuid4())[:8]
+        filename_base = file.filename.rsplit('.', 1)[0] if '.' in file.filename else file.filename
+        # Sanitize filename for URL
+        filename_base = ''.join(c if c.isalnum() or c in '-_' else '_' for c in filename_base)
+        public_id = f"Frcr-revision-media/tnm-case/disease_{disease_site_id}/{filename_base}_{unique_id}"
+        
+        # Upload to Cloudinary
+        result = cloudinary.uploader.upload(
+            file,
+            public_id=public_id,
+            folder=None,  # Public ID includes the folder
+            resource_type='image',
+            tags=['tnm', 'frcr-revision', f'disease_{disease_site_id}']
+        )
+        
+        # Create database record
+        tnm_image = TNMImage(
+            disease_site_id=disease_site_id,
+            title=title,
+            description=description,
+            alt_text=title,
+            cloudinary_url=result.get('secure_url'),
+            cloudinary_public_id=result.get('public_id'),
+            width=result.get('width'),
+            height=result.get('height'),
+            image_type=image_type,
+            uploaded_by_user_id=current_user.id if current_user.is_authenticated else None
+        )
+        db.session.add(tnm_image)
+        db.session.commit()
+        
+        logger.info(f"TNM image uploaded: id={tnm_image.id}, disease={disease_site_id}, by user {current_user.id}")
+        
+        return jsonify({
+            'success': True,
+            'image': tnm_image.to_dict()
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error uploading TNM image: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_tnm_bp.route('/curate/images/<int:disease_site_id>', methods=['GET'])
+@require_admin
+def get_tnm_images(disease_site_id):
+    """
+    Get all images for a disease site.
+    """
+    from models import TNMImage
+    
+    try:
+        images = TNMImage.get_for_disease(disease_site_id)
+        return jsonify({
+            'success': True,
+            'images': [img.to_dict() for img in images]
+        })
+    except Exception as e:
+        logger.error(f"Error fetching TNM images: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_tnm_bp.route('/curate/images/<int:image_id>', methods=['DELETE'])
+@require_admin
+def delete_tnm_image(image_id):
+    """
+    Delete a TNM image from Cloudinary and database.
+    """
+    from models import TNMImage
+    
+    try:
+        image = TNMImage.query.get(image_id)
+        if not image:
+            return jsonify({'success': False, 'error': 'Image not found'}), 404
+        
+        success = TNMImage.delete_from_cloudinary(image_id)
+        if success:
+            logger.info(f"TNM image deleted: id={image_id} by user {current_user.id}")
+            return jsonify({'success': True, 'message': 'Image deleted'})
+        else:
+            return jsonify({'success': False, 'error': 'Failed to delete image'}), 500
+            
+    except Exception as e:
+        logger.error(f"Error deleting TNM image: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_tnm_bp.route('/curate/images/<int:image_id>/description', methods=['PATCH'])
+@require_admin
+def update_tnm_image_description(image_id):
+    """
+    Update the description of a TNM image.
+    """
+    from models import TNMImage
+    
+    try:
+        image = TNMImage.query.get(image_id)
+        if not image:
+            return jsonify({'success': False, 'error': 'Image not found'}), 404
+        
+        data = request.get_json()
+        if data is None:
+            return jsonify({'success': False, 'error': 'No JSON data provided'}), 400
+        
+        new_description = data.get('description', '')
+        image.description = new_description
+        image.alt_text = new_description  # Also update alt text
+        db.session.commit()
+        
+        logger.info(f"TNM image description updated: id={image_id} by user {current_user.id}")
+        return jsonify({
+            'success': True, 
+            'message': 'Description updated',
+            'image': image.to_dict()
+        })
+            
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error updating TNM image description: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
