@@ -2233,13 +2233,26 @@
     /* Links in discussion */
     .discussion-text a {
         color: #17a2b8 !important;
-        text-decoration: underline !important;
+        text-decoration: none !important;
         font-weight: 500 !important;
         transition: color 0.2s ease;
     }
     
     .discussion-text a:hover {
         color: #138496 !important;
+        text-decoration: underline !important;
+    }
+    
+    /* Reference citation superscript links - orange styling */
+    .discussion-text sup a,
+    .discussion-text .ref-cite a {
+        color: #e96304 !important;
+        text-decoration: none !important;
+        font-weight: 600 !important;
+    }
+    
+    .discussion-text sup a:hover,
+    .discussion-text .ref-cite a:hover {
         text-decoration: underline !important;
     }
     
