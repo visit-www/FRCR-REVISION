@@ -307,57 +307,95 @@
                     <div id="intelligenceContent" class="tnm-content highlightable-text" data-field="intelligence" 
                          data-raw-content="{{ intelligent_data|tojson|e if intelligent_data else '{}' }}">
                         
-                        <!-- Memory Aids -->
+                        <!-- Memory Aids - Card layout with colored borders -->
                         {% if intelligent_data.tnm_memory_aid and (intelligent_data.tnm_memory_aid.T or intelligent_data.tnm_memory_aid.N or intelligent_data.tnm_memory_aid.M) %}
                         <div class="mb-4">
                             <h6 class="border-bottom pb-2"><i class="fas fa-lightbulb me-2 text-warning"></i>Memory Aids</h6>
-                            {% if intelligent_data.tnm_memory_aid.T %}
-                            <div class="mb-2 memory-aid-content"><strong>T:</strong> <span>{{ intelligent_data.tnm_memory_aid.T | safe }}</span></div>
-                            {% endif %}
-                            {% if intelligent_data.tnm_memory_aid.N %}
-                            <div class="mb-2 memory-aid-content"><strong>N:</strong> <span>{{ intelligent_data.tnm_memory_aid.N | safe }}</span></div>
-                            {% endif %}
-                            {% if intelligent_data.tnm_memory_aid.M %}
-                            <div class="mb-2 memory-aid-content"><strong>M:</strong> <span>{{ intelligent_data.tnm_memory_aid.M | safe }}</span></div>
-                            {% endif %}
+                            <div class="row g-3">
+                                {% if intelligent_data.tnm_memory_aid.T %}
+                                <div class="col-12 col-md-4">
+                                    <div class="card h-100 border-start border-4 border-primary">
+                                        <div class="card-body p-3 memory-aid-content">
+                                            <h6 class="card-title text-primary mb-2"><i class="fas fa-crosshairs me-1"></i>T Stage</h6>
+                                            <div class="small">{{ intelligent_data.tnm_memory_aid.T | safe }}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endif %}
+                                {% if intelligent_data.tnm_memory_aid.N %}
+                                <div class="col-12 col-md-4">
+                                    <div class="card h-100 border-start border-4 border-success">
+                                        <div class="card-body p-3 memory-aid-content">
+                                            <h6 class="card-title text-success mb-2"><i class="fas fa-project-diagram me-1"></i>N Stage</h6>
+                                            <div class="small">{{ intelligent_data.tnm_memory_aid.N | safe }}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endif %}
+                                {% if intelligent_data.tnm_memory_aid.M %}
+                                <div class="col-12 col-md-4">
+                                    <div class="card h-100 border-start border-4 border-danger">
+                                        <div class="card-body p-3 memory-aid-content">
+                                            <h6 class="card-title text-danger mb-2"><i class="fas fa-globe me-1"></i>M Stage</h6>
+                                            <div class="small">{{ intelligent_data.tnm_memory_aid.M | safe }}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endif %}
+                            </div>
                         </div>
                         {% endif %}
 
-                        <!-- Key Points -->
-                        {% if intelligent_data.radiologist_key_points %}
-                        <div class="mb-4">
-                            <h6 class="border-bottom pb-2"><i class="fas fa-key me-2 text-info"></i>Key Radiologist Points</h6>
-                            <ul class="mb-0">
-                                {% for point in intelligent_data.radiologist_key_points %}
-                                <li>{{ point }}</li>
-                                {% endfor %}
-                            </ul>
-                        </div>
-                        {% endif %}
+                        <!-- Two-column grid for Key Points, Upstaging, MDT on desktop -->
+                        <div class="row g-3">
+                            <!-- Key Points -->
+                            {% if intelligent_data.radiologist_key_points %}
+                            <div class="col-12 col-lg-6">
+                                <div class="card h-100 border-0" style="background: rgba(23,162,184,0.05);">
+                                    <div class="card-body p-3">
+                                        <h6 class="border-bottom pb-2 text-info"><i class="fas fa-key me-2"></i>Key Radiologist Points</h6>
+                                        <ul class="mb-0 small">
+                                            {% for point in intelligent_data.radiologist_key_points %}
+                                            <li>{{ point }}</li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
 
-                        <!-- Upstaging Triggers -->
-                        {% if intelligent_data.upstaging_triggers %}
-                        <div class="mb-4">
-                            <h6 class="border-bottom pb-2"><i class="fas fa-arrow-up me-2 text-danger"></i>Upstaging Triggers</h6>
-                            <ul class="mb-0">
-                                {% for trigger in intelligent_data.upstaging_triggers %}
-                                <li>{{ trigger }}</li>
-                                {% endfor %}
-                            </ul>
-                        </div>
-                        {% endif %}
+                            <!-- Upstaging Triggers -->
+                            {% if intelligent_data.upstaging_triggers %}
+                            <div class="col-12 col-lg-6">
+                                <div class="card h-100 border-0" style="background: rgba(220,53,69,0.05);">
+                                    <div class="card-body p-3">
+                                        <h6 class="border-bottom pb-2 text-danger"><i class="fas fa-arrow-up me-2"></i>Upstaging Triggers</h6>
+                                        <ul class="mb-0 small">
+                                            {% for trigger in intelligent_data.upstaging_triggers %}
+                                            <li>{{ trigger }}</li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
 
-                        <!-- MDT Critical Findings -->
-                        {% if intelligent_data.mdt_critical_findings %}
-                        <div class="mb-4">
-                            <h6 class="border-bottom pb-2"><i class="fas fa-users me-2 text-primary"></i>MDT Critical Findings</h6>
-                            <ul class="mb-0">
-                                {% for finding in intelligent_data.mdt_critical_findings %}
-                                <li>{{ finding }}</li>
-                                {% endfor %}
-                            </ul>
+                            <!-- MDT Critical Findings -->
+                            {% if intelligent_data.mdt_critical_findings %}
+                            <div class="col-12 {% if not intelligent_data.radiologist_key_points and not intelligent_data.upstaging_triggers %}{% else %}col-lg-12{% endif %}">
+                                <div class="card border-0" style="background: rgba(13,110,253,0.05);">
+                                    <div class="card-body p-3">
+                                        <h6 class="border-bottom pb-2 text-primary"><i class="fas fa-users me-2"></i>MDT Critical Findings</h6>
+                                        <ul class="mb-0 small">
+                                            {% for finding in intelligent_data.mdt_critical_findings %}
+                                            <li>{{ finding }}</li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
                         </div>
-                        {% endif %}
                     </div>
                 </div>
                 {% endif %}
@@ -507,28 +545,22 @@
                 </div>
                 {% endif %}
 
-                <!-- ==================== STUDENT TOOLS: Notes Section ==================== -->
+                <!-- ==================== STUDENT TOOLS: Notes Section (Auto-save like view_case) ==================== -->
                 {% if current_user.is_authenticated and current_user.role and current_user.role.value == 'student' %}
                 <div class="detail-section notes-section mt-4 mb-5 p-4 rounded-3" style="background: linear-gradient(135deg, #FFF8E7 0%, #FFFCF3 100%); border-left: 5px solid #F2CC8F;">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <label class="detail-label fw-bold text-secondary mb-0">
                             <i class="fas fa-sticky-note me-2" style="color: #e96304;"></i>My Notes
                         </label>
+                        <small class="text-muted" id="tnmNoteSaveStatus">
+                            <i class="fas fa-lock me-1"></i>Private & auto-saved
+                        </small>
                     </div>
                     
-                    <div class="mb-3">
-                        <label for="userNoteTextarea" class="form-label visually-hidden">Your notes</label>
-                        <textarea id="userNoteTextarea" class="form-control" rows="4" placeholder="Add your notes about this TNM staging..." title="Enter your notes here"></textarea>
-                    </div>
-                    <div class="d-flex justify-content-between align-items-center">
-                        <small class="text-muted"><i class="fas fa-lock me-1"></i>Your notes are private</small>
-                        <button class="btn btn-sm btn-primary" id="saveNoteBtn" title="Save your note" aria-label="Save note">
-                            <i class="fas fa-save me-1"></i>Save Note
-                        </button>
-                    </div>
-                    <div id="savedNotesList" class="mt-3">
-                        <!-- Notes loaded via JavaScript -->
-                    </div>
+                    <textarea id="tnmNoteTextarea" 
+                              class="form-control tnm-note-textarea" 
+                              placeholder="Type your notes here... They are private and will be auto-saved."
+                              style="background-color: #FFFEF8; border: 2px solid #F2CC8F; font-family: 'Courier New', monospace; line-height: 1.6; min-height: 100px; resize: vertical;">{% if user_tnm_note %}{{ user_tnm_note.note_text }}{% endif %}</textarea>
                 </div>
                 {% endif %}
 
@@ -767,6 +799,33 @@
 /* Responsive table wrapper */
 .table-responsive {
     overflow-x: auto;
+}
+
+/* Explanatory notes two-column layout on desktop */
+@media (min-width: 992px) {
+    #explanatoryNotesContent {
+        column-count: 2;
+        column-gap: 2rem;
+        column-rule: 1px solid #e0e0e0;
+    }
+    
+    /* Prevent tables from breaking across columns */
+    #explanatoryNotesContent table,
+    #explanatoryNotesContent .table-responsive {
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+    
+    /* Prevent headings from being orphaned */
+    #explanatoryNotesContent h1,
+    #explanatoryNotesContent h2,
+    #explanatoryNotesContent h3,
+    #explanatoryNotesContent h4,
+    #explanatoryNotesContent h5,
+    #explanatoryNotesContent h6 {
+        break-after: avoid;
+        page-break-after: avoid;
+    }
 }
 
 /* Memory aid content styling (for TinyMCE-formatted content) */
@@ -1122,116 +1181,87 @@ function openImageModal(src, description) {
 // ==================== ADMIN EDITOR ====================
 // Edit buttons now link directly to edit_tnm.html page
 
-// ==================== STUDENT NOTES ====================
+// ==================== STUDENT NOTES (Auto-save like view_case) ====================
 {% if current_user.is_authenticated and current_user.role and current_user.role.value == 'student' %}
+let tnmNotesSaveTimeout = null;
+const tnmNotesTextarea = document.getElementById('tnmNoteTextarea');
+const tnmNoteSaveStatus = document.getElementById('tnmNoteSaveStatus');
+
+// Auto-resize textarea based on content
+function autoResizeTnmNotes() {
+    if (!tnmNotesTextarea) return;
+    // Reset height to auto to get the correct scrollHeight
+    tnmNotesTextarea.style.height = 'auto';
+    // Set height to scrollHeight (min 100px)
+    tnmNotesTextarea.style.height = Math.max(100, tnmNotesTextarea.scrollHeight) + 'px';
+}
+
+// Load existing notes into textarea
 function loadTnmNotes() {
     fetch(`/tnm/api/${diseaseId}/note`, { credentials: 'include' })
         .then(response => response.json())
         .then(data => {
-            if (data.success) {
-                // Single note per disease - display if exists
-                if (data.note_text) {
-                    renderNotesList([{ note_text: data.note_text, updated_at: data.updated_at }]);
-                } else {
-                    renderNotesList([]);
+            if (data.success && data.note_text && tnmNotesTextarea) {
+                // Only set if textarea is empty (don't overwrite user typing)
+                if (!tnmNotesTextarea.value.trim()) {
+                    tnmNotesTextarea.value = data.note_text;
+                    autoResizeTnmNotes();
                 }
             }
         })
         .catch(err => console.error('Error loading notes:', err));
 }
 
-function renderNotesList(notes) {
-    const container = document.getElementById('savedNotesList');
-    if (!notes || notes.length === 0) {
-        container.innerHTML = '<p class="text-muted small">No notes yet. Add your first note above.</p>';
-        return;
-    }
+// Save notes to backend
+function saveTnmNotes() {
+    if (!tnmNotesTextarea) return;
     
-    container.innerHTML = notes.map(note => `
-        <div class="card mb-2 border-start border-4 border-warning">
-            <div class="card-body p-3">
-                <p class="mb-2" style="white-space: pre-wrap;">${escapeHtml(note.note_text)}</p>
-                <div class="d-flex justify-content-between align-items-center">
-                    <small class="text-muted">
-                        <i class="fas fa-clock me-1"></i>
-                        ${note.updated_at ? new Date(note.updated_at).toLocaleString() : 'Just now'}
-                    </small>
-                    <button class="btn btn-sm btn-outline-danger" onclick="deleteTnmNote()" title="Delete note">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </div>
-            </div>
-        </div>
-    `).join('');
-}
-
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
-function deleteTnmNote() {
-    if (!confirm('Delete this note?')) return;
-    
-    fetch(`/tnm/api/${diseaseId}/note`, {
-        method: 'DELETE',
-        credentials: 'include'
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            loadTnmNotes();
-        } else {
-            alert('Error deleting note');
-        }
-    })
-    .catch(err => {
-        console.error('Error deleting note:', err);
-        alert('Error deleting note');
-    });
-}
-
-document.getElementById('saveNoteBtn')?.addEventListener('click', function() {
-    const textarea = document.getElementById('userNoteTextarea');
-    const content = textarea.value.trim();
-    
-    if (!content) {
-        alert('Please enter a note');
-        return;
-    }
+    const noteText = tnmNotesTextarea.value.trim();
     
     fetch(`/tnm/api/${diseaseId}/note`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({
-            note_text: content
-        })
+        body: JSON.stringify({ note_text: noteText })
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            textarea.value = '';
-            loadTnmNotes();
-            // Show success feedback
-            const btn = document.getElementById('saveNoteBtn');
-            const originalHtml = btn.innerHTML;
-            btn.innerHTML = '<i class="fas fa-check me-1"></i>Saved!';
-            btn.classList.replace('btn-primary', 'btn-success');
+            tnmNoteSaveStatus.innerHTML = '<i class="fas fa-check text-success me-1"></i>Saved';
             setTimeout(() => {
-                btn.innerHTML = originalHtml;
-                btn.classList.replace('btn-success', 'btn-primary');
+                tnmNoteSaveStatus.innerHTML = '<i class="fas fa-lock me-1"></i>Private & auto-saved';
             }, 2000);
         } else {
-            alert('Error saving note: ' + (data.error || 'Unknown error'));
+            tnmNoteSaveStatus.innerHTML = '<i class="fas fa-exclamation-circle text-danger me-1"></i>Error saving';
         }
     })
     .catch(err => {
-        console.error('Error saving note:', err);
-        alert('Error saving note');
+        console.error('Error saving notes:', err);
+        tnmNoteSaveStatus.innerHTML = '<i class="fas fa-exclamation-circle text-danger me-1"></i>Error saving';
     });
-});
+}
+
+// Setup auto-save on input
+if (tnmNotesTextarea) {
+    // Auto-resize on page load
+    autoResizeTnmNotes();
+    
+    tnmNotesTextarea.addEventListener('input', function() {
+        // Auto-resize
+        autoResizeTnmNotes();
+        
+        // Clear existing timeout
+        if (tnmNotesSaveTimeout) {
+            clearTimeout(tnmNotesSaveTimeout);
+        }
+        
+        // Show typing status
+        tnmNoteSaveStatus.innerHTML = '<i class="fas fa-pencil-alt text-muted me-1"></i>Typing...';
+        
+        // Set new timeout to save after 2 seconds of inactivity
+        tnmNotesSaveTimeout = setTimeout(saveTnmNotes, 2000);
+    });
+}
 {% endif %}
 
 // ==================== ROW CLICK TO COPY ====================

@@ -409,6 +409,18 @@ def tnm_view(section_slug, disease_slug):
     from datetime import datetime
     current_date = datetime.utcnow()
     
+    # Get user's TNM note for students (pre-load for auto-save textarea)
+    user_tnm_note = None
+    try:
+        if current_user.is_authenticated:
+            from models import CandidateNote
+            user_tnm_note = CandidateNote.query.filter_by(
+                tnm_disease_id=disease_site.id,
+                user_id=current_user.id
+            ).first()
+    except Exception as e:
+        print(f"[TNM] Error loading user note: {e}")
+    
     try:
         return render_template(
             'view_tnm.html',
@@ -433,7 +445,8 @@ def tnm_view(section_slug, disease_slug):
             is_curated=is_curated,
             is_admin=is_admin,
             current_date=current_date,
-            diagnosis_year=diagnosis_year
+            diagnosis_year=diagnosis_year,
+            user_tnm_note=user_tnm_note
         )
     except Exception as e:
         import traceback
