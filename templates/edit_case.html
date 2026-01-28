@@ -258,6 +258,14 @@ console.log('[TinyMCE Loader] Script URL was:', "{{ url_for('static', filename='
                     <textarea class="form-control form-control-lg rich-editor" id="editCaseDiscussion" rows="8" placeholder="Add any discussion, clinical findings, differential diagnosis, teaching points, or additional comments about this case..."></textarea>
                     <small class="text-muted d-block mt-2">Optional field for comprehensive case discussion</small>
                 </div>
+                <!-- RadiologyInsights Footer -->
+                <div class="card-footer bg-light">
+                    <div class="d-flex align-items-center justify-content-end gap-2">
+                        <img src="https://res.cloudinary.com/dx7b7chvn/image/upload/v1769503548/frcr-rev-logo-transp_o2hmrq.png" 
+                             alt="RadiologyInsights Logo" style="width: 24px; height: 24px; object-fit: contain;">
+                        <span class="small text-muted">&copy; RadiologyInsights. All rights reserved.</span>
+                    </div>
+                </div>
             </div>
 
             <!-- Section 4: Images -->
@@ -285,6 +293,32 @@ console.log('[TinyMCE Loader] Script URL was:', "{{ url_for('static', filename='
                         <small class="text-muted d-block mt-2">
                             <i class="fas fa-info-circle me-1"></i>Supported formats: JPEG, PNG, GIF, WebP (Max 10MB)
                         </small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 5: References (auto-populated from Find Reference) -->
+            <div id="referencesSection" class="card shadow-sm mb-5 border-0" style="display: none;">
+                <div class="card-header bg-gradient text-white d-flex justify-content-between align-items-center" style="background: linear-gradient(135deg, #5E899E 0%, #4a7285 100%);">
+                    <h5 class="mb-0">
+                        <i class="fas fa-bookmark me-2"></i>References
+                        <span id="referenceCount" class="badge bg-light text-dark ms-2">0</span>
+                    </h5>
+                    <button type="button" class="btn btn-sm btn-outline-light" onclick="clearAllReferences()">
+                        <i class="fas fa-trash me-1"></i>Clear All
+                    </button>
+                </div>
+                <div class="card-body p-4">
+                    <ol id="referencesList" class="mb-0" style="padding-left: 1.5rem;">
+                        <!-- References will be added here dynamically -->
+                    </ol>
+                </div>
+                <!-- RadiologyInsights Footer -->
+                <div class="card-footer bg-light">
+                    <div class="d-flex align-items-center justify-content-end gap-2">
+                        <img src="https://res.cloudinary.com/dx7b7chvn/image/upload/v1769503548/frcr-rev-logo-transp_o2hmrq.png" 
+                             alt="RadiologyInsights Logo" style="width: 24px; height: 24px; object-fit: contain;">
+                        <span class="small text-muted">&copy; RadiologyInsights. All rights reserved.</span>
                     </div>
                 </div>
             </div>
@@ -3017,28 +3051,99 @@ function renderArticle(article) {
     `;
 }
 
+// ==================== REFERENCES SECTION MANAGEMENT ====================
+let referenceCounter = 0;
+const referencesMap = new Map(); // Track references by URL to avoid duplicates
+
 function insertReferenceToDiscussion(title, journal, year, link) {
-    const refHtml = `
-<p class="reference-block">
-    <strong>Reference:</strong> <a href="${link}" target="_blank" rel="noopener">${title}</a>
-    ${journal || year ? `<br><small>${journal}${year ? ` (${year})` : ''}</small>` : ''}
-</p>
-`;
+    // Check if reference already exists (by URL)
+    let refNumber;
+    if (referencesMap.has(link)) {
+        refNumber = referencesMap.get(link);
+    } else {
+        referenceCounter++;
+        refNumber = referenceCounter;
+        referencesMap.set(link, refNumber);
+        
+        // Add to references section
+        addReferenceToSection(refNumber, title, journal, year, link);
+    }
     
-    // Insert into TinyMCE
+    // Insert superscript at cursor position in TinyMCE
     if (typeof tinymce !== 'undefined' && tinymce.get('editCaseDiscussion')) {
         const editor = tinymce.get('editCaseDiscussion');
-        const currentContent = editor.getContent();
-        editor.setContent(currentContent + refHtml);
+        const superscriptHtml = `<sup><a href="#ref-${refNumber}" style="color: #e96304; text-decoration: none; font-weight: 600;">[${refNumber}]</a></sup>`;
+        editor.insertContent(superscriptHtml);
     } else {
         const textarea = document.getElementById('editCaseDiscussion');
         if (textarea) {
-            textarea.value += '\n\n' + refHtml;
+            textarea.value += ` [${refNumber}]`;
         }
     }
     
     closeReferenceSearchModal();
-    alert('Reference added to discussion!');
+    showFlash(`Reference [${refNumber}] added!`, 'success');
+}
+
+function addReferenceToSection(refNumber, title, journal, year, url) {
+    const section = document.getElementById('referencesSection');
+    const list = document.getElementById('referencesList');
+    const countBadge = document.getElementById('referenceCount');
+    
+    // Show section if hidden
+    section.style.display = 'block';
+    
+    // Create reference entry
+    const li = document.createElement('li');
+    li.id = `ref-${refNumber}`;
+    li.className = 'mb-2 py-2 border-bottom';
+    li.style.cssText = 'list-style-type: decimal;';
+    li.innerHTML = `
+        <div class="d-flex justify-content-between align-items-start gap-2">
+            <div>
+                <a href="${escapeHtml(url)}" target="_blank" rel="noopener" style="color: #2c3e50; text-decoration: none; font-weight: 500;">
+                    ${escapeHtml(title)}
+                </a>
+                ${journal || year ? `<br><small class="text-muted">${escapeHtml(journal || '')}${year ? ` (${year})` : ''}</small>` : ''}
+            </div>
+            <button class="btn btn-sm btn-outline-danger flex-shrink-0" onclick="removeReference(${refNumber}, '${escapeHtml(url).replace(/'/g, "\\'")}')" title="Remove reference">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    `;
+    list.appendChild(li);
+    
+    // Update count badge
+    countBadge.textContent = list.children.length;
+}
+
+function removeReference(refNumber, url) {
+    const li = document.getElementById(`ref-${refNumber}`);
+    if (li) li.remove();
+    
+    // Remove from map
+    referencesMap.delete(url);
+    
+    // Update count badge
+    const list = document.getElementById('referencesList');
+    const countBadge = document.getElementById('referenceCount');
+    countBadge.textContent = list.children.length;
+    
+    // Hide section if empty
+    if (list.children.length === 0) {
+        document.getElementById('referencesSection').style.display = 'none';
+    }
+}
+
+function clearAllReferences() {
+    if (!confirm('Are you sure you want to clear all references?')) return;
+    
+    document.getElementById('referencesList').innerHTML = '';
+    document.getElementById('referencesSection').style.display = 'none';
+    document.getElementById('referenceCount').textContent = '0';
+    referenceCounter = 0;
+    referencesMap.clear();
+    showFlash('All references cleared.', 'success');
 }
 
 // Note: Context menu is now integrated into TinyMCE's context menu system
@@ -3061,6 +3166,9 @@ window.getAdminTnmLink = getAdminTnmLink;
 window.findReferenceForSelection = findReferenceForSelection;
 window.closeReferenceSearchModal = closeReferenceSearchModal;
 window.insertReferenceToDiscussion = insertReferenceToDiscussion;
+window.addReferenceToSection = addReferenceToSection;
+window.removeReference = removeReference;
+window.clearAllReferences = clearAllReferences;
 window.searchWithNewQuery = searchWithNewQuery;
 window.cleanupTinyMCEHTML = cleanupTinyMCEHTML;
 </script>

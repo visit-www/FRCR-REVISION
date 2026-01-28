@@ -340,6 +340,32 @@ console.log('[TinyMCE Loader] TNM Edit - checking if TinyMCE loaded...');
                 </div>
             </div>
 
+            <!-- Section 8: References (auto-populated from Find Reference) -->
+            <div id="referencesSection" class="card shadow-sm mb-5 border-0" style="display: none;">
+                <div class="card-header bg-gradient text-white d-flex justify-content-between align-items-center" style="background: linear-gradient(135deg, #5E899E 0%, #4a7285 100%);">
+                    <h5 class="mb-0">
+                        <i class="fas fa-bookmark me-2"></i>References
+                        <span id="referenceCount" class="badge bg-light text-dark ms-2">0</span>
+                    </h5>
+                    <button type="button" class="btn btn-sm btn-outline-light" onclick="clearAllReferences()">
+                        <i class="fas fa-trash me-1"></i>Clear All
+                    </button>
+                </div>
+                <div class="card-body p-4">
+                    <ol id="referencesList" class="mb-0" style="padding-left: 1.5rem;">
+                        <!-- References will be added here dynamically -->
+                    </ol>
+                </div>
+                <!-- RadiologyInsights Footer -->
+                <div class="card-footer bg-light">
+                    <div class="d-flex align-items-center justify-content-end gap-2">
+                        <img src="https://res.cloudinary.com/dx7b7chvn/image/upload/v1769503548/frcr-rev-logo-transp_o2hmrq.png" 
+                             alt="RadiologyInsights Logo" style="width: 24px; height: 24px; object-fit: contain;">
+                        <span class="small text-muted">&copy; RadiologyInsights. All rights reserved.</span>
+                    </div>
+                </div>
+            </div>
+
             <!-- Action Buttons -->
             <div class="sticky-bottom bg-white border-top p-3 mb-5 shadow-sm">
                 <div class="d-flex gap-2 justify-content-end align-items-center flex-wrap p-3">
@@ -1199,29 +1225,106 @@ function renderRefArticle(article) {
     `;
 }
 
+// ==================== REFERENCES SECTION MANAGEMENT ====================
+let referenceCounter = 0;
+const referencesMap = new Map(); // Track references by URL to avoid duplicates
+
 function insertReferenceToEditor(title, url) {
     const activeEditor = tinymce.activeEditor;
-    if (activeEditor) {
-        // Sanitize inputs to prevent XSS
-        const safeUrl = sanitizeUrl(url);
-        const safeTitle = escapeHtmlForRef(title);
-        
-        if (!safeUrl) {
-            showAlert('warning', 'Invalid or unsafe URL.');
-            return;
-        }
-        
-        const refHtml = `
-            <p class="reference-block" style="margin: 0.5rem 0; padding: 8px 12px; background: #fdfdfb; border-left: 3px solid #5E899E; border-radius: 4px;">
-                <strong>Reference:</strong> <a href="${safeUrl}" target="_blank" rel="noopener">${safeTitle}</a>
-            </p>
-        `;
-        activeEditor.insertContent(refHtml);
-        closeReferenceSearchModal();
-        showAlert('success', 'Reference added to editor!');
-    } else {
+    if (!activeEditor) {
         showAlert('warning', 'Please click into an editor first.');
+        return;
     }
+    
+    // Sanitize inputs
+    const safeUrl = sanitizeUrl(url);
+    const safeTitle = escapeHtmlForRef(title);
+    
+    if (!safeUrl) {
+        showAlert('warning', 'Invalid or unsafe URL.');
+        return;
+    }
+    
+    // Check if reference already exists (by URL)
+    let refNumber;
+    if (referencesMap.has(url)) {
+        refNumber = referencesMap.get(url);
+    } else {
+        referenceCounter++;
+        refNumber = referenceCounter;
+        referencesMap.set(url, refNumber);
+        
+        // Add to references section
+        addReferenceToSection(refNumber, title, url);
+    }
+    
+    // Insert superscript at cursor position in editor
+    const superscriptHtml = `<sup><a href="#ref-${refNumber}" style="color: #e96304; text-decoration: none; font-weight: 600;">[${refNumber}]</a></sup>`;
+    activeEditor.insertContent(superscriptHtml);
+    
+    closeReferenceSearchModal();
+    showAlert('success', `Reference [${refNumber}] added!`);
+}
+
+function addReferenceToSection(refNumber, title, url) {
+    const section = document.getElementById('referencesSection');
+    const list = document.getElementById('referencesList');
+    const countBadge = document.getElementById('referenceCount');
+    
+    // Show section if hidden
+    section.style.display = 'block';
+    
+    // Create reference entry
+    const li = document.createElement('li');
+    li.id = `ref-${refNumber}`;
+    li.className = 'mb-2 py-2 border-bottom';
+    li.style.cssText = 'list-style-type: decimal;';
+    li.innerHTML = `
+        <div class="d-flex justify-content-between align-items-start gap-2">
+            <div>
+                <a href="${sanitizeUrl(url)}" target="_blank" rel="noopener" style="color: #2c3e50; text-decoration: none; font-weight: 500;">
+                    ${escapeHtmlForRef(title)}
+                </a>
+                <br><small class="text-muted">${escapeHtmlForRef(url)}</small>
+            </div>
+            <button class="btn btn-sm btn-outline-danger flex-shrink-0" onclick="removeReference(${refNumber}, '${escapeForJsAttr(url)}')" title="Remove reference">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    `;
+    list.appendChild(li);
+    
+    // Update count badge
+    countBadge.textContent = list.children.length;
+}
+
+function removeReference(refNumber, url) {
+    const li = document.getElementById(`ref-${refNumber}`);
+    if (li) li.remove();
+    
+    // Remove from map
+    referencesMap.delete(url);
+    
+    // Update count badge
+    const list = document.getElementById('referencesList');
+    const countBadge = document.getElementById('referenceCount');
+    countBadge.textContent = list.children.length;
+    
+    // Hide section if empty
+    if (list.children.length === 0) {
+        document.getElementById('referencesSection').style.display = 'none';
+    }
+}
+
+function clearAllReferences() {
+    if (!confirm('Are you sure you want to clear all references?')) return;
+    
+    document.getElementById('referencesList').innerHTML = '';
+    document.getElementById('referencesSection').style.display = 'none';
+    document.getElementById('referenceCount').textContent = '0';
+    referenceCounter = 0;
+    referencesMap.clear();
+    showAlert('success', 'All references cleared.');
 }
 
 // Initialize on DOM ready
