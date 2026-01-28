@@ -356,7 +356,7 @@
                                         <h6 class="border-bottom pb-2 text-info"><i class="fas fa-key me-2"></i>Key Radiologist Points</h6>
                                         <ul class="mb-0 small">
                                             {% for point in intelligent_data.radiologist_key_points %}
-                                            <li>{{ point }}</li>
+                                            <li>{{ point | safe }}</li>
                                             {% endfor %}
                                         </ul>
                                     </div>
@@ -372,7 +372,7 @@
                                         <h6 class="border-bottom pb-2 text-danger"><i class="fas fa-arrow-up me-2"></i>Upstaging Triggers</h6>
                                         <ul class="mb-0 small">
                                             {% for trigger in intelligent_data.upstaging_triggers %}
-                                            <li>{{ trigger }}</li>
+                                            <li>{{ trigger | safe }}</li>
                                             {% endfor %}
                                         </ul>
                                     </div>
@@ -388,7 +388,7 @@
                                         <h6 class="border-bottom pb-2 text-primary"><i class="fas fa-users me-2"></i>MDT Critical Findings</h6>
                                         <ul class="mb-0 small">
                                             {% for finding in intelligent_data.mdt_critical_findings %}
-                                            <li>{{ finding }}</li>
+                                            <li>{{ finding | safe }}</li>
                                             {% endfor %}
                                         </ul>
                                     </div>
