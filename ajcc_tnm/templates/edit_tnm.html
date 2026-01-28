@@ -925,6 +925,27 @@ function escapeHtmlForRef(text) {
     return div.innerHTML;
 }
 
+// Escape for use in JavaScript string literals inside HTML attributes
+function escapeForJsAttr(str) {
+    if (!str) return '';
+    return str
+        .replace(/\\/g, '\\\\')
+        .replace(/'/g, "\\'")
+        .replace(/"/g, '&quot;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+}
+
+// Sanitize URL to prevent javascript: protocol attacks
+function sanitizeUrl(url) {
+    if (!url) return '';
+    const trimmed = url.trim().toLowerCase();
+    if (trimmed.startsWith('javascript:') || trimmed.startsWith('data:') || trimmed.startsWith('vbscript:')) {
+        return '';
+    }
+    return escapeHtmlForRef(url);
+}
+
 function closeReferenceSearchModal() {
     const modal = document.getElementById('referenceSearchModal');
     if (modal) modal.remove();
@@ -983,6 +1004,9 @@ function renderRefArticle(article) {
     const year = article.year || '';
     const url = article.url || article.doi || '';
     
+    // Sanitize URL to prevent XSS via javascript: protocol or malformed URLs
+    const safeUrl = sanitizeUrl(url);
+    
     return `
         <div>
             <div style="font-weight: 600; color: #2c3e50; margin-bottom: 5px;">${escapeHtmlForRef(title)}</div>
@@ -991,12 +1015,12 @@ function renderRefArticle(article) {
                 ${journal ? `<em>${escapeHtmlForRef(journal)}</em>` : ''}
                 ${year ? ` (${year})` : ''}
             </div>
-            ${url ? `
+            ${safeUrl ? `
                 <div style="margin-top: 8px;">
-                    <a href="${url}" target="_blank" rel="noopener" style="color: #5E899E; text-decoration: none; font-size: 0.85em;">
+                    <a href="${safeUrl}" target="_blank" rel="noopener" style="color: #5E899E; text-decoration: none; font-size: 0.85em;">
                         <i class="fas fa-external-link-alt me-1"></i>View Article
                     </a>
-                    <button onclick="insertReferenceToEditor('${escapeHtmlForRef(title)}', '${url}')" style="margin-left: 10px; background: #e96304; color: white; border: none; padding: 4px 10px; border-radius: 4px; font-size: 0.85em; cursor: pointer;">
+                    <button onclick="insertReferenceToEditor('${escapeForJsAttr(title)}', '${escapeForJsAttr(url)}')" style="margin-left: 10px; background: #e96304; color: white; border: none; padding: 4px 10px; border-radius: 4px; font-size: 0.85em; cursor: pointer;">
                         <i class="fas fa-plus me-1"></i>Add to Editor
                     </button>
                 </div>
@@ -1008,9 +1032,18 @@ function renderRefArticle(article) {
 function insertReferenceToEditor(title, url) {
     const activeEditor = tinymce.activeEditor;
     if (activeEditor) {
+        // Sanitize inputs to prevent XSS
+        const safeUrl = sanitizeUrl(url);
+        const safeTitle = escapeHtmlForRef(title);
+        
+        if (!safeUrl) {
+            showAlert('warning', 'Invalid or unsafe URL.');
+            return;
+        }
+        
         const refHtml = `
             <p class="reference-block" style="margin: 0.5rem 0; padding: 8px 12px; background: #fdfdfb; border-left: 3px solid #5E899E; border-radius: 4px;">
-                <strong>Reference:</strong> <a href="${url}" target="_blank" rel="noopener">${title}</a>
+                <strong>Reference:</strong> <a href="${safeUrl}" target="_blank" rel="noopener">${safeTitle}</a>
             </p>
         `;
         activeEditor.insertContent(refHtml);
