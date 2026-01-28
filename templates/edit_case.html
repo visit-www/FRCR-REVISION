@@ -3251,8 +3251,9 @@ function insertReferenceToDiscussion(title, journal, year, link) {
         rng.collapse(false); // false = collapse to end
         selection.setRng(rng);
         
-        // Superscript links directly to the article URL for view mode compatibility
-        const superscriptHtml = `<sup class="ref-cite"><a href="${escapeHtml(link)}" target="_blank" rel="noopener" title="${escapeHtml(title)}" style="color: #e96304; text-decoration: none; font-weight: 600;">[${refNumber}]</a></sup>`;
+        // Superscript with data attributes for view mode reconstruction
+        // Links to anchor #ref-N, stores URL and title in data attributes
+        const superscriptHtml = `<sup class="ref-cite" data-ref="${refNumber}" data-url="${escapeHtml(link)}" data-title="${escapeHtml(title)}" data-journal="${escapeHtml(journal || '')}" data-year="${year || ''}"><a href="#ref-${refNumber}" style="color: #e96304; text-decoration: none; font-weight: 600;">[${refNumber}]</a></sup>`;
         editor.insertContent(superscriptHtml);
     } else {
         const textarea = document.getElementById('editCaseDiscussion');
