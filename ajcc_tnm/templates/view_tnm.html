@@ -1299,7 +1299,7 @@ function autoResizeTnmNotes() {
 }
 
 // Track if user has existing notes (to know when to delete vs skip)
-let hadExistingNotes = {{ 'true' if user_tnm_note and user_tnm_note.note_text else 'false' }};
+let hadExistingNotes = {{ (user_tnm_note is not none and user_tnm_note.note_text is not none and user_tnm_note.note_text|trim != '')|tojson }};
 
 // Load existing notes into textarea
 function loadTnmNotes() {
