@@ -1107,8 +1107,10 @@ function renderSafeHTML(htmlContent) {
 
 /**
  * Convert markdown-style **text** to appropriate HTML
- * - If **text**: is followed by more text on the same line, use <strong> (inline)
- * - If **text** appears to be a standalone heading, use <h4> (block)
+ * Logic:
+ * 1. **Label:** followed by text on same line → <strong class="tnm-label"> (inline label)
+ * 2. **Text** at start of line with nothing else → <h4> (heading)
+ * 3. **Text** inline (surrounded by other text) → <strong> (inline bold)
  */
 function convertMarkdownBoldToH4(content) {
     if (!content) return content;
@@ -1119,13 +1121,18 @@ function convertMarkdownBoldToH4(content) {
         if (part.startsWith('<') && part.endsWith('>')) {
             return part;
         }
-        // For labels ending with colon followed by text ON THE SAME LINE, use <strong> (inline)
-        // Pattern: **Label:** followed by optional horizontal whitespace (space/tab only, NOT newlines)
-        // then non-whitespace text. Using [ \t]* instead of \s* to avoid consuming newlines.
+        
+        // 1. Labels ending with colon followed by text ON THE SAME LINE → inline <strong>
+        // Pattern: **Label:** followed by horizontal whitespace then non-whitespace text
         part = part.replace(/\*\*([^*]+?:)\*\*[ \t]*(?=\S)/g, '<strong class="tnm-label">$1</strong> ');
         
-        // For remaining standalone bold text (headings), keep as <h4>
-        part = part.replace(/\*\*([^*]+?)\*\*/g, '<h4>$1</h4>');
+        // 2. Standalone bold at start of line (heading) → <h4>
+        // Pattern: newline or start, then **text** followed by end or newline (no other text on line)
+        part = part.replace(/(^|\n)\*\*([^*]+?)\*\*(?=\s*$|\s*\n)/gm, '$1<h4>$2</h4>');
+        
+        // 3. Remaining inline bold → <strong>
+        // Any **text** that wasn't matched above is inline bold
+        part = part.replace(/\*\*([^*]+?)\*\*/g, '<strong>$1</strong>');
         
         return part;
     }).join('');
@@ -1306,17 +1313,34 @@ function parseMarkdownInElement(element) {
 }
 
 /**
- * Parse markdown in all TNM Intelligence content
+ * Parse markdown in all TNM content areas
+ * Covers: Intelligence data, Explanatory notes, Clinical staging, Essential TNM, etc.
  */
-function parseIntelligenceMarkdown() {
-    const intelligenceContent = document.getElementById('intelligenceContent');
-    if (!intelligenceContent) return;
+function parseAllMarkdown() {
+    // Process all .tnm-content and .tnm-html-content areas
+    document.querySelectorAll('.tnm-content, .tnm-html-content').forEach(container => {
+        // Process the container itself if it has text content
+        parseMarkdownInElement(container);
+        
+        // Process all text-containing elements within
+        container.querySelectorAll('p, li, div, td, th, span').forEach(parseMarkdownInElement);
+    });
     
-    // Process memory aid divs
-    intelligenceContent.querySelectorAll('div.mb-2').forEach(parseMarkdownInElement);
+    // Also process memory aid cards specifically
+    document.querySelectorAll('.memory-aid-content').forEach(container => {
+        parseMarkdownInElement(container);
+        container.querySelectorAll('p, li, div, span').forEach(parseMarkdownInElement);
+    });
     
-    // Process list items in key points, triggers, findings
-    intelligenceContent.querySelectorAll('li').forEach(parseMarkdownInElement);
+    // Process Essential TNM key concepts
+    document.querySelectorAll('[data-field="essential-tnm"] li').forEach(parseMarkdownInElement);
+    
+    // Process explanatory notes content
+    const explanatoryNotes = document.getElementById('explanatoryNotesContent');
+    if (explanatoryNotes) {
+        parseMarkdownInElement(explanatoryNotes);
+        explanatoryNotes.querySelectorAll('p, li, div, td, th').forEach(parseMarkdownInElement);
+    }
 }
 
 // ==================== TNM IMAGES ====================
@@ -1473,8 +1497,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // Clean up TNM labels
     cleanupTNMLabels();
     
-    // Parse markdown in TNM Intelligence content
-    parseIntelligenceMarkdown();
+    // Parse markdown (**bold**) in all TNM content areas
+    parseAllMarkdown();
     
     // Load TNM images
     loadTnmImages();
