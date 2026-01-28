@@ -4666,6 +4666,39 @@ body {
     color: #5a6270;
 }
 
+/* Reference Citation Superscript - for inline citations */
+.ref-cite {
+    font-size: 0.75em;
+    vertical-align: super;
+    line-height: 0;
+}
+
+.ref-cite a {
+    color: #e96304 !important;
+    text-decoration: none !important;
+    font-weight: 600;
+    padding: 0 2px;
+}
+
+.ref-cite a:hover {
+    text-decoration: underline !important;
+}
+
+/* Discussion/content superscript links (for saved references) */
+.discussion-text sup a,
+.tnm-content sup a,
+.tnm-html-content sup a {
+    color: #e96304 !important;
+    text-decoration: none !important;
+    font-weight: 600;
+}
+
+.discussion-text sup a:hover,
+.tnm-content sup a:hover,
+.tnm-html-content sup a:hover {
+    text-decoration: underline !important;
+}
+
 /* TNM Intelligence Block Button Styles - Symmetrical and Consistent */
 .tnm-btn {
     display: inline-flex;

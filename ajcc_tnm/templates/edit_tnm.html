@@ -351,10 +351,10 @@ console.log('[TinyMCE Loader] TNM Edit - checking if TinyMCE loaded...');
                         <i class="fas fa-trash me-1"></i>Clear All
                     </button>
                 </div>
-                <div class="card-body p-4">
-                    <ol id="referencesList" class="mb-0" style="padding-left: 1.5rem;">
+                <div class="card-body p-0">
+                    <div id="referencesList" class="references-list">
                         <!-- References will be added here dynamically -->
-                    </ol>
+                    </div>
                 </div>
                 <!-- RadiologyInsights Footer -->
                 <div class="card-footer bg-light">
@@ -365,6 +365,77 @@ console.log('[TinyMCE Loader] TNM Edit - checking if TinyMCE loaded...');
                     </div>
                 </div>
             </div>
+            
+            <style>
+            /* References Section Styling */
+            .references-list {
+                padding: 0;
+                margin: 0;
+            }
+            .reference-item {
+                display: flex;
+                align-items: flex-start;
+                gap: 12px;
+                padding: 16px 20px;
+                border-left: 4px solid #5E899E;
+                background: linear-gradient(90deg, rgba(94, 137, 158, 0.05) 0%, transparent 100%);
+                border-bottom: 1px solid #e9ecef;
+                transition: all 0.2s ease;
+            }
+            .reference-item:hover {
+                background: linear-gradient(90deg, rgba(94, 137, 158, 0.1) 0%, rgba(94, 137, 158, 0.02) 100%);
+                border-left-color: #e96304;
+            }
+            .reference-item:last-child {
+                border-bottom: none;
+            }
+            .reference-number {
+                flex-shrink: 0;
+                width: 28px;
+                height: 28px;
+                background: linear-gradient(135deg, #5E899E 0%, #4a7285 100%);
+                color: white;
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 0.85em;
+                font-weight: 600;
+            }
+            .reference-content {
+                flex: 1;
+                min-width: 0;
+            }
+            .reference-title {
+                color: #2c3e50;
+                font-weight: 600;
+                text-decoration: none;
+                display: block;
+                line-height: 1.4;
+                margin-bottom: 4px;
+            }
+            .reference-title:hover {
+                color: #e96304;
+                text-decoration: underline;
+            }
+            .reference-url {
+                font-size: 0.8em;
+                color: #8b94a3;
+                word-break: break-all;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                max-width: 100%;
+            }
+            .reference-remove {
+                flex-shrink: 0;
+                opacity: 0.6;
+                transition: opacity 0.2s;
+            }
+            .reference-item:hover .reference-remove {
+                opacity: 1;
+            }
+            </style>
 
             <!-- Action Buttons -->
             <div class="sticky-bottom bg-white border-top p-3 mb-5 shadow-sm">
@@ -486,6 +557,21 @@ function initializeEditors() {
             img:hover { outline: 2px solid #667eea; }
             a { text-decoration: none !important; }
             a:hover { text-decoration: underline !important; }
+            /* Reference Citation Superscript */
+            .ref-cite {
+                font-size: 0.75em;
+                vertical-align: super;
+                line-height: 0;
+            }
+            .ref-cite a {
+                color: #e96304 !important;
+                text-decoration: none !important;
+                font-weight: 600;
+                padding: 0 2px;
+            }
+            .ref-cite a:hover {
+                text-decoration: underline !important;
+            }
         `,
         setup: function(editor) {
             editor.on('change', function() {
@@ -1258,8 +1344,14 @@ function insertReferenceToEditor(title, url) {
         addReferenceToSection(refNumber, title, url);
     }
     
-    // Insert superscript at cursor position in editor
-    const superscriptHtml = `<sup><a href="#ref-${refNumber}" style="color: #e96304; text-decoration: none; font-weight: 600;">[${refNumber}]</a></sup>`;
+    // Collapse selection to end (so we insert after the selected text, not replace it)
+    const selection = activeEditor.selection;
+    const rng = selection.getRng();
+    rng.collapse(false); // false = collapse to end
+    selection.setRng(rng);
+    
+    // Insert superscript with direct link to article (for view mode compatibility)
+    const superscriptHtml = `<sup class="ref-cite"><a href="${safeUrl}" target="_blank" rel="noopener" title="${safeTitle}" style="color: #e96304; text-decoration: none; font-weight: 600;">[${refNumber}]</a></sup>`;
     activeEditor.insertContent(superscriptHtml);
     
     closeReferenceSearchModal();
@@ -1274,23 +1366,21 @@ function addReferenceToSection(refNumber, title, url) {
     // Show section if hidden
     section.style.display = 'block';
     
-    // Create reference entry
-    const li = document.createElement('li');
+    // Create reference entry with improved styling
+    const li = document.createElement('div');
     li.id = `ref-${refNumber}`;
-    li.className = 'mb-2 py-2 border-bottom';
-    li.style.cssText = 'list-style-type: decimal;';
+    li.className = 'reference-item';
     li.innerHTML = `
-        <div class="d-flex justify-content-between align-items-start gap-2">
-            <div>
-                <a href="${sanitizeUrl(url)}" target="_blank" rel="noopener" style="color: #2c3e50; text-decoration: none; font-weight: 500;">
-                    ${escapeHtmlForRef(title)}
-                </a>
-                <br><small class="text-muted">${escapeHtmlForRef(url)}</small>
-            </div>
-            <button class="btn btn-sm btn-outline-danger flex-shrink-0" onclick="removeReference(${refNumber}, '${escapeForJsAttr(url)}')" title="Remove reference">
-                <i class="fas fa-times"></i>
-            </button>
+        <div class="reference-number">${refNumber}</div>
+        <div class="reference-content">
+            <a href="${sanitizeUrl(url)}" target="_blank" rel="noopener" class="reference-title">
+                ${escapeHtmlForRef(title)}
+            </a>
+            <div class="reference-url">${escapeHtmlForRef(url)}</div>
         </div>
+        <button class="btn btn-sm btn-outline-danger reference-remove" onclick="removeReference(${refNumber}, '${escapeForJsAttr(url)}')" title="Remove reference">
+            <i class="fas fa-times"></i>
+        </button>
     `;
     list.appendChild(li);
     
