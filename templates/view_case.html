@@ -253,7 +253,7 @@
                             <div class="card shadow-sm border-0">
                                 <div class="card-header bg-gradient text-white" style="background: linear-gradient(135deg, #5E899E 0%, #4a7285 100%);">
                                     <h6 class="mb-0">
-                                        <i class="fas fa-bookmark me-2 color:"></i>References
+                                        <i class="fas fa-bookmark me-2" style="color: #e96304;"></i>References
                                         <span id="referenceCount" class="badge bg-light text-dark ms-2">0</span>
                                     </h6>
                                 </div>
@@ -3924,10 +3924,13 @@
         
         if (!referencesSection || !referencesList) return;
         
-        // Get case ID from URL
+        // Get case ID from URL (handles /view-case/123 format)
         const pathParts = window.location.pathname.split('/');
-        const caseIdIndex = pathParts.indexOf('case') + 1;
-        const caseId = caseIdIndex > 0 ? parseInt(pathParts[caseIdIndex]) : null;
+        // Look for 'view-case' in path
+        const viewCaseIndex = pathParts.findIndex(p => p === 'view-case');
+        const caseId = viewCaseIndex >= 0 && pathParts[viewCaseIndex + 1] 
+            ? parseInt(pathParts[viewCaseIndex + 1]) 
+            : null;
         
         if (!caseId) {
             referencesSection.style.display = 'none';
