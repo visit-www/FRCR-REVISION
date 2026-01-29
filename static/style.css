@@ -1,5 +1,14 @@
-flaskflasfl/* FRCR Revision - "Confident Calm" Theme */
+/* FRCR Revision - "Confident Calm" Theme */
 /* Matte pastel palette for medical professionalism */
+
+/* ==================== GLOBAL LINK STYLES ==================== */
+/* Remove underline on hover for all links */
+a {
+    text-decoration: none;
+}
+a:hover {
+    text-decoration: none !important;
+}
 
 /* Mobile-friendly text selection for highlighter */
 .highlightable-text {
