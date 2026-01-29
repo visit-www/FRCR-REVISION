@@ -3914,62 +3914,65 @@
         parseAndDisplayReferences();
     }
     
-    // Parse discussion content for reference citations and build the references section
-    function parseAndDisplayReferences() {
-        const discussionDiv = document.getElementById('discussionText');
+    // Load references from database API and display them
+    async function parseAndDisplayReferences() {
         const referencesSection = document.getElementById('referencesSection');
         const referencesList = document.getElementById('referencesList');
         const referenceCount = document.getElementById('referenceCount');
         
-        if (!discussionDiv || !referencesSection || !referencesList) return;
+        if (!referencesSection || !referencesList) return;
         
-        // Find all ref-cite elements with data attributes
-        const refCites = discussionDiv.querySelectorAll('sup.ref-cite[data-ref]');
+        // Get case ID from URL
+        const pathParts = window.location.pathname.split('/');
+        const caseIdIndex = pathParts.indexOf('case') + 1;
+        const caseId = caseIdIndex > 0 ? parseInt(pathParts[caseIdIndex]) : null;
         
-        if (refCites.length === 0) {
+        if (!caseId) {
             referencesSection.style.display = 'none';
             return;
         }
         
-        // Build references map (avoid duplicates)
-        const referencesMap = new Map();
-        
-        refCites.forEach(cite => {
-            const refNum = cite.getAttribute('data-ref');
-            const url = cite.getAttribute('data-url') || '';
-            const title = cite.getAttribute('data-title') || 'Reference';
-            const journal = cite.getAttribute('data-journal') || '';
-            const year = cite.getAttribute('data-year') || '';
+        try {
+            const response = await fetch(`/api/case/${caseId}/references`);
+            const data = await response.json();
             
-            if (refNum && !referencesMap.has(refNum)) {
-                referencesMap.set(refNum, { refNum, url, title, journal, year });
+            if (!response.ok || !data.success) {
+                console.error('[References] Failed to load:', data.error);
+                referencesSection.style.display = 'none';
+                return;
             }
-        });
-        
-        // Sort by reference number
-        const sortedRefs = Array.from(referencesMap.values()).sort((a, b) => 
-            parseInt(a.refNum) - parseInt(b.refNum)
-        );
-        
-        // Build HTML
-        let html = '';
-        sortedRefs.forEach(ref => {
-            html += `
-                <div id="ref-${ref.refNum}" class="reference-item">
-                    <div class="reference-number">${ref.refNum}</div>
-                    <div class="reference-content">
-                        <a href="${escapeHtml(ref.url)}" target="_blank" rel="noopener" class="reference-title">
-                            ${escapeHtml(ref.title)}
-                        </a>
-                        ${ref.journal || ref.year ? `<div class="reference-meta">${escapeHtml(ref.journal)}${ref.year ? ` (${ref.year})` : ''}</div>` : ''}
+            
+            const references = data.references || [];
+            
+            if (references.length === 0) {
+                referencesSection.style.display = 'none';
+                return;
+            }
+            
+            // Build HTML
+            let html = '';
+            references.forEach(ref => {
+                html += `
+                    <div id="ref-${ref.ref_number}" class="reference-item">
+                        <div class="reference-number">${ref.ref_number}</div>
+                        <div class="reference-content">
+                            <a href="${escapeHtml(ref.url)}" target="_blank" rel="noopener" class="reference-title">
+                                ${escapeHtml(ref.title)}
+                            </a>
+                            ${ref.journal || ref.year ? `<div class="reference-meta">${escapeHtml(ref.journal || '')}${ref.year ? ` (${ref.year})` : ''}</div>` : ''}
+                        </div>
                     </div>
-                </div>
-            `;
-        });
-        
-        referencesList.innerHTML = html;
-        referenceCount.textContent = sortedRefs.length;
-        referencesSection.style.display = 'block';
+                `;
+            });
+            
+            referencesList.innerHTML = html;
+            referenceCount.textContent = references.length;
+            referencesSection.style.display = 'block';
+            
+        } catch (error) {
+            console.error('[References] Error loading:', error);
+            referencesSection.style.display = 'none';
+        }
     }
     
     // Helper function to escape HTML

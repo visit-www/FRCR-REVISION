@@ -2938,6 +2938,24 @@ def delete_candidate_note(case_id):
     return jsonify({'error': 'Note not found'}), 404
 
 
+# ==================== CASE REFERENCES API (PUBLIC) ====================
+
+@app.route('/api/case/<int:case_id>/references', methods=['GET'])
+@login_required
+def get_case_references_public(case_id):
+    """Get all references for a case (for viewing)"""
+    from models import Case, CaseReference
+    
+    case = Case.query.get_or_404(case_id)
+    references = CaseReference.query.filter_by(case_id=case_id).order_by(CaseReference.ref_number).all()
+    
+    return jsonify({
+        'success': True,
+        'case_id': case_id,
+        'references': [ref.to_dict() for ref in references]
+    })
+
+
 # ==================== TEXT HIGHLIGHTS API ====================
 
 @app.route('/api/case/<int:case_id>/highlights', methods=['GET'])
