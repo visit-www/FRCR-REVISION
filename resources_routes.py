@@ -321,10 +321,11 @@ def sciencedirect_status():
     """Check if user is connected to ScienceDirect and return expiration info."""
     from datetime import datetime, timedelta
     
-    if not current_user.is_authenticated:
-        return jsonify({'connected': False}), 401
-    
-    is_admin = current_user.role.value == 'admin'
+    try:
+        if not current_user.is_authenticated:
+            return jsonify({'connected': False}), 401
+        
+        is_admin = current_user.role.value == 'admin'
     
     # Admin can use auto-login even without manual connection
     # But if they've manually connected, track expiration
@@ -390,6 +391,12 @@ def sciencedirect_status():
             'days_remaining': days_remaining,
             'expiration_days': expiration_days
         })
+    except Exception as e:
+        current_app.logger.error(f'[SCIDIRECT] Status endpoint error: {str(e)}', exc_info=True)
+        return jsonify({
+            'connected': False,
+            'error': 'Failed to check connection status'
+        }), 500
 
 
 @resources_bp.route('/api/sciencedirect/disconnect', methods=['POST'])
