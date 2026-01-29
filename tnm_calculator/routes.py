@@ -1,0 +1,240 @@
+"""
+TNM Calculator Flask Routes
+
+API endpoints and page routes for the TNM Calculator.
+"""
+
+from flask import Blueprint, render_template, request, jsonify
+import logging
+
+from .engine import TNMCalculator
+from .models import TNMInput, StagingType
+
+logger = logging.getLogger(__name__)
+
+# Create blueprint
+tnm_calc_bp = Blueprint(
+    'tnm_calculator',
+    __name__,
+    template_folder='../templates',
+    url_prefix='/tnm-calculator'
+)
+
+# Global calculator instance
+_calculator = None
+
+
+def get_calculator() -> TNMCalculator:
+    """Get or create the calculator instance."""
+    global _calculator
+    if _calculator is None:
+        _calculator = TNMCalculator()
+    return _calculator
+
+
+# ==================== PAGE ROUTES ====================
+
+@tnm_calc_bp.route('/')
+def calculator_page():
+    """Render the TNM Calculator page."""
+    calculator = get_calculator()
+    cancers = calculator.get_available_cancers()
+    
+    return render_template(
+        'tnm_calculator.html',
+        cancers=cancers
+    )
+
+
+# ==================== API ROUTES ====================
+
+@tnm_calc_bp.route('/api/calculate', methods=['POST'])
+def calculate():
+    """
+    Calculate TNM stage from input.
+    
+    Request body:
+    {
+        "cancer_type": "larynx",
+        "t_category": "T2",
+        "n_category": "N1",
+        "m_category": "M0",
+        "staging_type": "clinical",  // optional
+        "subsite": "Glottis",        // optional
+        "version": "8"               // optional
+    }
+    
+    Response:
+    {
+        "success": true,
+        "tnm_classification": "T2N1M0",
+        "stage_group": "Stage III",
+        "t_explanation": "...",
+        "n_explanation": "...",
+        "m_explanation": "...",
+        "stage_explanation": "...",
+        "disclaimer": "..."
+    }
+    """
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({"success": False, "error": "No data provided"}), 400
+        
+        # Validate required fields
+        required = ["cancer_type", "t_category", "n_category", "m_category"]
+        missing = [f for f in required if not data.get(f)]
+        if missing:
+            return jsonify({
+                "success": False,
+                "error": f"Missing required fields: {', '.join(missing)}"
+            }), 400
+        
+        # Parse staging type
+        staging_type_str = data.get("staging_type", "clinical")
+        try:
+            staging_type = StagingType(staging_type_str)
+        except ValueError:
+            staging_type = StagingType.CLINICAL
+        
+        # Create input
+        input = TNMInput(
+            cancer_type=data["cancer_type"],
+            t_category=data["t_category"],
+            n_category=data["n_category"],
+            m_category=data["m_category"],
+            staging_type=staging_type,
+            subsite=data.get("subsite"),
+            version=data.get("version", "8")
+        )
+        
+        # Calculate
+        calculator = get_calculator()
+        result = calculator.calculate(input)
+        
+        logger.info(f"[TNM Calculator API] {input.cancer_type}: "
+                   f"{result.tnm_classification} → {result.stage_group}")
+        
+        return jsonify(result.to_dict())
+        
+    except Exception as e:
+        logger.error(f"[TNM Calculator API] Error: {e}")
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+
+@tnm_calc_bp.route('/api/cancers')
+def list_cancers():
+    """
+    Get list of available cancer types.
+    
+    Response:
+    {
+        "cancers": [
+            {"name": "Larynx", "slug": "larynx", "body_section": "Head and Neck"},
+            ...
+        ]
+    }
+    """
+    calculator = get_calculator()
+    cancers = calculator.get_available_cancers()
+    
+    return jsonify({"cancers": cancers})
+
+
+@tnm_calc_bp.route('/api/cancer/<cancer_type>')
+def get_cancer_info(cancer_type: str):
+    """
+    Get detailed information about a cancer type.
+    
+    Response:
+    {
+        "name": "Larynx",
+        "slug": "larynx",
+        "subsites": ["Glottis", "Supraglottis", "Subglottis"],
+        "t_categories": {...},
+        "n_categories": {...},
+        "m_categories": [...],
+        "stage_groups": [...],
+        "notes": [...]
+    }
+    """
+    calculator = get_calculator()
+    info = calculator.get_cancer_info(cancer_type)
+    
+    if not info:
+        return jsonify({
+            "success": False,
+            "error": f"Cancer type '{cancer_type}' not found"
+        }), 404
+    
+    return jsonify({"success": True, **info})
+
+
+@tnm_calc_bp.route('/api/categories/<cancer_type>')
+def get_categories(cancer_type: str):
+    """
+    Get available T, N, M categories for a cancer type.
+    
+    Query params:
+    - subsite: Optional subsite for T categories
+    - staging_type: 'clinical' or 'pathological'
+    
+    Response:
+    {
+        "t_categories": ["TX", "T0", "Tis", "T1", ...],
+        "n_categories": ["NX", "N0", "N1", ...],
+        "m_categories": ["M0", "M1"],
+        "subsites": ["Glottis", "Supraglottis", ...]
+    }
+    """
+    subsite = request.args.get('subsite')
+    staging_type_str = request.args.get('staging_type', 'clinical')
+    
+    try:
+        staging_type = StagingType(staging_type_str)
+    except ValueError:
+        staging_type = StagingType.CLINICAL
+    
+    calculator = get_calculator()
+    info = calculator.get_cancer_info(cancer_type)
+    
+    if not info:
+        return jsonify({
+            "success": False,
+            "error": f"Cancer type '{cancer_type}' not found"
+        }), 404
+    
+    # Get T categories for the specified subsite
+    t_categories = []
+    if subsite and subsite in info["t_categories"]:
+        t_categories = info["t_categories"][subsite]
+    elif info["subsites"]:
+        # Use first subsite as default
+        first_subsite = info["subsites"][0]
+        t_categories = info["t_categories"].get(first_subsite, [])
+    else:
+        t_categories = info["t_categories"].get("default", [])
+    
+    # Get N categories
+    n_key = "pathological" if staging_type == StagingType.PATHOLOGICAL else "clinical"
+    n_categories = info["n_categories"].get(n_key, [])
+    
+    return jsonify({
+        "success": True,
+        "t_categories": t_categories,
+        "n_categories": n_categories,
+        "m_categories": info["m_categories"],
+        "subsites": info["subsites"]
+    })
+
+
+# ==================== REGISTRATION ====================
+
+def register_routes(app):
+    """Register the TNM Calculator blueprint with the Flask app."""
+    app.register_blueprint(tnm_calc_bp)
+    logger.info("[TNM Calculator] Routes registered")

@@ -1232,9 +1232,53 @@ class AJCCStagingData(db.Model):
         if pattern.lower().startswith('any'):
             return True
         
-        # Handle comma-separated values
+        # Split on comma first, then handle each option
         options = [opt.strip().upper() for opt in pattern.split(',')]
-        return value in options
+        
+        for opt in options:
+            # Handle range patterns like "T3-T4" or "T2a-T2b" or "T1mi-T1a" or "M1a-M1b"
+            if '-' in opt:
+                parts = opt.split('-')
+                if len(parts) == 2:
+                    start, end = parts[0].strip(), parts[1].strip()
+                    # Exact match with start or end
+                    if value == start or value == end:
+                        return True
+                    # Value is subcategory of start or end (e.g., T3a matches T3-T4)
+                    # But NOT T10 matching T1 - extra chars must not start with digit
+                    if value.startswith(start) and len(value) > len(start):
+                        extra = value[len(start):]
+                        if not extra[0].isdigit():
+                            return True
+                    if value.startswith(end) and len(value) > len(end):
+                        extra = value[len(end):]
+                        if not extra[0].isdigit():
+                            return True
+                    # Pattern part starts with value (e.g., M1 matches M1a-M1b)
+                    # Validate the pattern's extra chars too
+                    if start.startswith(value) and len(start) > len(value):
+                        extra = start[len(value):]
+                        if not extra[0].isdigit():
+                            return True
+                    if end.startswith(value) and len(end) > len(value):
+                        extra = end[len(value):]
+                        if not extra[0].isdigit():
+                            return True
+            elif value == opt:
+                return True
+            # Handle subcategory matching (e.g., "T1a" matches "T1")
+            # Extra chars must not start with a digit (T10 should NOT match T1)
+            elif value.startswith(opt) and len(value) > len(opt):
+                extra = value[len(opt):]
+                if not extra[0].isdigit():
+                    return True
+            # Handle parent category matching (e.g., "M1" matches "M1a", "M1b")
+            elif opt.startswith(value) and len(opt) > len(value):
+                extra = opt[len(value):]
+                if not extra[0].isdigit():
+                    return True
+        
+        return False
     
     def get_json_section(self, section_name):
         """Get a JSON section by name"""
