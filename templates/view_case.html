@@ -783,7 +783,7 @@
                                     
                                     <div class="alert alert-info small mb-0">
                                         <i class="fas fa-lightbulb me-2"></i>
-                                        <strong>Advanced Search:</strong> Automatically searches for {{ case.diagnosis if case else "diagnosis" }} with terms: "radiological diagnosis", "radiological anatomy", "radiological pathological correlation", and "what clinician needs to know". You can edit the query using the "Edit search query" link above.
+                                        <strong>Advanced Search:</strong> Automatically searches for {{ case.diagnosis if case else "diagnosis" }} with "radiological diagnosis". You can edit the query using the "Edit search query" link above.
                                     </div>
                                 </div>
                             </div>
@@ -834,7 +834,7 @@
                                     <input type="text" id="sciencedirectCustomQueryAdmin" class="form-control form-control-sm" 
                                            placeholder="Enter custom query or leave empty for auto-generated">
                                     <small class="text-muted d-block mt-1">
-                                        <i class="fas fa-info-circle me-1"></i>Leave empty to use default: {diagnosis} "radiological diagnosis" "radiological anatomy" "radiological pathological correlation" "what clinician needs to know"
+                                        <i class="fas fa-info-circle me-1"></i>Leave empty to use default: {diagnosis} "radiological diagnosis"
                                     </small>
                                 </div>
                             </div>
@@ -8611,7 +8611,7 @@
         if (customQuery && customQuery.trim()) {
             return customQuery.trim();
         } else {
-            return `${diagnosis} "radiological diagnosis" "radiological anatomy" "radiological pathological correlation" "what clinician needs to know"`;
+            return `${diagnosis} "radiological diagnosis"`;
         }
     }
     
@@ -8990,7 +8990,7 @@
         if (!diagnosis) return;
         
         // Generate the default query
-        const defaultQuery = `${diagnosis} "radiological diagnosis" "radiological anatomy" "radiological pathological correlation" "what clinician needs to know"`;
+        const defaultQuery = `${diagnosis} "radiological diagnosis"`;
         
         // Update placeholder to show the generated query
         const studentInput = document.getElementById('sciencedirectCustomQuery');
