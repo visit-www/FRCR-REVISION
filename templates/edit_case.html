@@ -2906,7 +2906,10 @@ function getSelectedText() {
     return '';
 }
 
-// Find reference for selected text
+// Track whether to insert superscript at cursor (context menu) or just add to section (search box)
+let referenceInsertAtCursor = false;
+
+// Find reference for selected text (called from context menu)
 async function findReferenceForSelection() {
     hideReferenceContextMenu();
     
@@ -2915,6 +2918,9 @@ async function findReferenceForSelection() {
         alert('Please select some text first.');
         return;
     }
+    
+    // Context menu: will insert superscript at cursor position
+    referenceInsertAtCursor = true;
     
     // Show loading modal
     showReferenceSearchModal(selectedText);
@@ -3255,8 +3261,8 @@ function renderArticle(article) {
                         <i class="fas fa-copy me-1"></i>Copy DOI
                     </button>
                 ` : ''}
-                <button class="btn btn-sm" style="background: #a8d5ba; color: #2c3e50; border: none;" onclick="insertReferenceToDiscussion('${escapeHtml(article.title)}', '${escapeHtml(article.journal || '')}', '${escapeHtml(article.year || '')}', '${link}', false)">
-                    <i class="fas fa-plus me-1"></i>Add to References
+                <button class="btn btn-sm" style="background: #a8d5ba; color: #2c3e50; border: none;" onclick="insertReferenceToDiscussion('${escapeHtml(article.title)}', '${escapeHtml(article.journal || '')}', '${escapeHtml(article.year || '')}', '${link}', referenceInsertAtCursor)">
+                    <i class="fas fa-plus me-1"></i>Add Reference
                 </button>
             </div>
         </div>
@@ -3503,6 +3509,9 @@ async function searchReferenceByTerm() {
         input.focus();
         return;
     }
+    
+    // Search box: will NOT insert superscript, just add to references section
+    referenceInsertAtCursor = false;
     
     // Show loading modal
     showReferenceSearchModal(query);
