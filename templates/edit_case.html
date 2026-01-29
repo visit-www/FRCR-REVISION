@@ -908,6 +908,11 @@ function initializeDiscussionEditor() {
                 tinymce.triggerSave();
             });
             
+            // Load existing references when editor initializes with content
+            editor.on('init', function() {
+                loadExistingReferences(editor);
+            });
+            
             // Paste handling simplified - CSS handles link styling with !important rules
             // No need for post-process link manipulation
             
@@ -3241,8 +3246,8 @@ function renderArticle(article) {
                         <i class="fas fa-copy me-1"></i>Copy DOI
                     </button>
                 ` : ''}
-                <button class="btn btn-sm" style="background: #a8d5ba; color: #2c3e50; border: none;" onclick="insertReferenceToDiscussion('${escapeHtml(article.title)}', '${escapeHtml(article.journal || '')}', '${escapeHtml(article.year || '')}', '${link}')">
-                    <i class="fas fa-plus me-1"></i>Add to Discussion
+                <button class="btn btn-sm" style="background: #a8d5ba; color: #2c3e50; border: none;" onclick="insertReferenceToDiscussion('${escapeHtml(article.title)}', '${escapeHtml(article.journal || '')}', '${escapeHtml(article.year || '')}', '${link}', false)">
+                    <i class="fas fa-plus me-1"></i>Add to References
                 </button>
             </div>
         </div>
@@ -3253,43 +3258,86 @@ function renderArticle(article) {
 let referenceCounter = 0;
 const referencesMap = new Map(); // Track references by URL to avoid duplicates
 
-function insertReferenceToDiscussion(title, journal, year, link) {
+// Load existing references from editor content when editing a case
+function loadExistingReferences(editor) {
+    const content = editor.getContent();
+    if (!content) return;
+    
+    // Create a temporary DOM to parse the content
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = content;
+    
+    // Find all reference citations
+    const citations = tempDiv.querySelectorAll('sup.ref-cite');
+    if (citations.length === 0) return;
+    
+    console.log(`[References] Found ${citations.length} existing references`);
+    
+    // Extract reference data and populate the section
+    let maxRefNumber = 0;
+    citations.forEach(cite => {
+        const refNumber = parseInt(cite.dataset.ref) || 0;
+        const url = cite.dataset.url || '';
+        const title = cite.dataset.title || 'Untitled Reference';
+        const journal = cite.dataset.journal || '';
+        const year = cite.dataset.year || '';
+        
+        if (refNumber > 0 && url && !referencesMap.has(url)) {
+            referencesMap.set(url, refNumber);
+            addReferenceToSection(refNumber, title, journal, year, url);
+            maxRefNumber = Math.max(maxRefNumber, refNumber);
+        }
+    });
+    
+    // Set counter to max found + 1 for next reference
+    if (maxRefNumber > 0) {
+        referenceCounter = maxRefNumber;
+        console.log(`[References] Loaded ${referencesMap.size} references, counter set to ${referenceCounter}`);
+    }
+}
+
+// insertIntoEditor: if true (default), inserts superscript at cursor; if false, only adds to section
+function insertReferenceToDiscussion(title, journal, year, link, insertIntoEditor = true) {
     // Check if reference already exists (by URL)
     let refNumber;
+    let isNew = false;
     if (referencesMap.has(link)) {
         refNumber = referencesMap.get(link);
     } else {
         referenceCounter++;
         refNumber = referenceCounter;
         referencesMap.set(link, refNumber);
+        isNew = true;
         
         // Add to references section
         addReferenceToSection(refNumber, title, journal, year, link);
     }
     
-    // Insert superscript AFTER selected text (not replacing it)
-    if (typeof tinymce !== 'undefined' && tinymce.get('editCaseDiscussion')) {
-        const editor = tinymce.get('editCaseDiscussion');
-        
-        // Collapse selection to end (so we insert after the selected text, not replace it)
-        const selection = editor.selection;
-        const rng = selection.getRng();
-        rng.collapse(false); // false = collapse to end
-        selection.setRng(rng);
-        
-        // Superscript with data attributes for view mode reconstruction
-        // Links to anchor #ref-N, stores URL and title in data attributes
-        const superscriptHtml = `<sup class="ref-cite" data-ref="${refNumber}" data-url="${escapeHtml(link)}" data-title="${escapeHtml(title)}" data-journal="${escapeHtml(journal || '')}" data-year="${year || ''}"><a href="#ref-${refNumber}" style="color: #e96304; text-decoration: none; font-weight: 600;">[${refNumber}]</a></sup>`;
-        editor.insertContent(superscriptHtml);
-    } else {
-        const textarea = document.getElementById('editCaseDiscussion');
-        if (textarea) {
-            textarea.value += ` [${refNumber}]`;
+    // Only insert superscript if requested (context menu use case)
+    if (insertIntoEditor) {
+        if (typeof tinymce !== 'undefined' && tinymce.get('editCaseDiscussion')) {
+            const editor = tinymce.get('editCaseDiscussion');
+            
+            // Collapse selection to end (so we insert after the selected text, not replace it)
+            const selection = editor.selection;
+            const rng = selection.getRng();
+            rng.collapse(false); // false = collapse to end
+            selection.setRng(rng);
+            
+            // Superscript with data attributes for view mode reconstruction
+            // Links to anchor #ref-N, stores URL and title in data attributes
+            const superscriptHtml = `<sup class="ref-cite" data-ref="${refNumber}" data-url="${escapeHtml(link)}" data-title="${escapeHtml(title)}" data-journal="${escapeHtml(journal || '')}" data-year="${year || ''}"><a href="#ref-${refNumber}" style="color: #e96304; text-decoration: none; font-weight: 600;">[${refNumber}]</a></sup>`;
+            editor.insertContent(superscriptHtml);
+        } else {
+            const textarea = document.getElementById('editCaseDiscussion');
+            if (textarea) {
+                textarea.value += ` [${refNumber}]`;
+            }
         }
     }
     
     closeReferenceSearchModal();
-    showFlash(`Reference [${refNumber}] added!`, 'success');
+    showFlash(`Reference [${refNumber}] ${isNew ? 'added' : 'already exists'}!`, 'success');
 }
 
 function addReferenceToSection(refNumber, title, journal, year, url) {
@@ -3498,14 +3546,14 @@ function submitManualReference() {
     // Validate URL format
     try {
         new URL(url);
-    } catch {
+    } catch (e) {
         showFlash('Please enter a valid URL', 'warning');
         document.getElementById('manualRefUrl').focus();
         return;
     }
     
-    // Use existing insert function
-    insertReferenceToDiscussion(title, journal, year, url);
+    // Add to references section only (don't insert into editor)
+    insertReferenceToDiscussion(title, journal, year, url, false);
     closeManualReferenceModal();
 }
 
@@ -3538,5 +3586,6 @@ window.searchReferenceByTerm = searchReferenceByTerm;
 window.showManualReferenceForm = showManualReferenceForm;
 window.closeManualReferenceModal = closeManualReferenceModal;
 window.submitManualReference = submitManualReference;
+window.loadExistingReferences = loadExistingReferences;
 </script>
 {% endblock %}
