@@ -391,10 +391,15 @@
                             <!-- TNM Staging tab (cancer cases only) -->
                             <div class="tab-pane fade" id="tnmStagingPane" role="tabpanel" aria-labelledby="tnmStagingTab">
                                 <div class="py-3">
-                                    <p class="text-muted small mb-3">Open the TNM staging reference and stage calculator for this cancer.</p>
-                                    <a href="{{ tnm_staging_url }}" target="_blank" rel="noopener" class="btn btn-primary" style="background: linear-gradient(135deg, #235390 0%, #1a4178 100%); border: none;">
-                                        <i class="fas fa-book-medical me-2"></i>Open TNM Staging
-                                    </a>
+                                    <p class="text-muted small mb-3">Access TNM staging reference and stage calculator for this cancer.</p>
+                                    <div class="d-flex flex-wrap gap-2">
+                                        <a href="{{ tnm_staging_url }}" target="_blank" rel="noopener" class="btn btn-primary" style="background: linear-gradient(135deg, #235390 0%, #1a4178 100%); border: none;">
+                                            <i class="fas fa-book-medical me-2"></i>TNM Reference
+                                        </a>
+                                        <a href="{{ url_for('tnm_calculator.calculator_page') }}" target="_blank" rel="noopener" class="btn btn-success" style="background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%); border: none;">
+                                            <i class="fas fa-calculator me-2"></i>TNM Calculator
+                                        </a>
+                                    </div>
                                 </div>
                             </div>
                             {% endif %}
