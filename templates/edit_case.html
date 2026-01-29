@@ -893,6 +893,14 @@ function initializeDiscussionEditor() {
             .ref-cite a:hover {
                 text-decoration: underline !important;
             }
+            /* Hidden reference data markers (for search/manual refs) */
+            .ref-data {
+                display: none !important;
+                font-size: 0 !important;
+                line-height: 0 !important;
+                position: absolute !important;
+                left: -9999px !important;
+            }
             @media (max-width: 640px) {
                 table {
                     display: block;
@@ -3379,7 +3387,8 @@ function insertReferenceToDiscussion(title, journal, year, link, insertIntoEdito
             editor.insertContent(superscriptHtml);
         } else {
             // Search/Manual: Insert HIDDEN marker at end (persists data but not visible)
-            const hiddenMarkerHtml = `<span class="ref-data" style="display:none;" data-ref="${refNumber}" data-url="${escapeHtml(link)}" data-title="${escapeHtml(title)}" data-journal="${escapeHtml(journal || '')}" data-year="${year || ''}"></span>`;
+            // Using zero-width space (&ZeroWidthSpace;) to prevent TinyMCE from stripping empty elements
+            const hiddenMarkerHtml = `<span class="ref-data" style="display:none !important; font-size:0; line-height:0; position:absolute; left:-9999px;" data-ref="${refNumber}" data-url="${escapeHtml(link)}" data-title="${escapeHtml(title)}" data-journal="${escapeHtml(journal || '')}" data-year="${year || ''}">\u200B</span>`;
             
             const currentContent = editor.getContent();
             editor.setContent(currentContent + hiddenMarkerHtml);
