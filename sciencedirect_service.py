@@ -38,8 +38,8 @@ def build_search_query(diagnosis: str, custom_query: str = None) -> str:
     if custom_query and custom_query.strip():
         return custom_query.strip()
     else:
-        # Build advanced search query focused on radiology diagnosis, anatomy, and clinical correlation
-        return f'{diagnosis} "radiological diagnosis" "radiological anatomy" "radiological pathological correlation" "what clinician needs to know"'
+        # Build advanced search query focused on radiology diagnosis.
+        return f'{diagnosis} "radiological diagnosis"'
 
 
 def build_search_url(query: str) -> str:
