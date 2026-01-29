@@ -8656,6 +8656,9 @@
             
             // Make client-side API call to Elsevier
             console.log('[SCIENCEDIRECT] Making client-side API call to Elsevier');
+            console.log('[SCIENCEDIRECT] URL:', `${apiUrl}?${params.toString()}`);
+            console.log('[SCIENCEDIRECT] Origin:', window.location.origin);
+            
             const response = await fetch(`${apiUrl}?${params.toString()}`, {
                 method: 'GET',
                 headers: {
@@ -8664,12 +8667,23 @@
                 }
             });
             
-            const data = await response.json();
+            console.log('[SCIENCEDIRECT] Response status:', response.status);
+            console.log('[SCIENCEDIRECT] Response headers:', Object.fromEntries(response.headers.entries()));
+            
+            let data;
+            try {
+                data = await response.json();
+            } catch (e) {
+                const text = await response.text();
+                console.error('[SCIENCEDIRECT] Failed to parse JSON response:', text);
+                throw new Error(`API returned invalid JSON: ${response.status} ${response.statusText}`);
+            }
             
             // Check for API errors
             if (!response.ok) {
                 const errorMsg = data['service-error'] ? (data['service-error'].status?.statusText || 'API error') : `HTTP ${response.status}: ${response.statusText}`;
-                console.error('[SCIENCEDIRECT] API error:', errorMsg, data);
+                const errorCode = data['service-error']?.status?.statusCode || '';
+                console.error('[SCIENCEDIRECT] API error:', errorMsg, 'Code:', errorCode, 'Full response:', data);
                 
                 // Build fallback URL
                 const fallbackUrl = 'https://www.sciencedirect.com/search/advanced?qs=' + encodeURIComponent(searchQuery);
@@ -8774,6 +8788,9 @@
             
             // Make client-side API call to Elsevier
             console.log('[SCIENCEDIRECT] Making client-side API call to Elsevier');
+            console.log('[SCIENCEDIRECT] URL:', `${apiUrl}?${params.toString()}`);
+            console.log('[SCIENCEDIRECT] Origin:', window.location.origin);
+            
             const response = await fetch(`${apiUrl}?${params.toString()}`, {
                 method: 'GET',
                 headers: {
@@ -8782,12 +8799,23 @@
                 }
             });
             
-            const data = await response.json();
+            console.log('[SCIENCEDIRECT] Response status:', response.status);
+            console.log('[SCIENCEDIRECT] Response headers:', Object.fromEntries(response.headers.entries()));
+            
+            let data;
+            try {
+                data = await response.json();
+            } catch (e) {
+                const text = await response.text();
+                console.error('[SCIENCEDIRECT] Failed to parse JSON response:', text);
+                throw new Error(`API returned invalid JSON: ${response.status} ${response.statusText}`);
+            }
             
             // Check for API errors
             if (!response.ok) {
                 const errorMsg = data['service-error'] ? (data['service-error'].status?.statusText || 'API error') : `HTTP ${response.status}: ${response.statusText}`;
-                console.error('[SCIENCEDIRECT] API error:', errorMsg, data);
+                const errorCode = data['service-error']?.status?.statusCode || '';
+                console.error('[SCIENCEDIRECT] API error:', errorMsg, 'Code:', errorCode, 'Full response:', data);
                 
                 // Build fallback URL
                 const fallbackUrl = 'https://www.sciencedirect.com/search/advanced?qs=' + encodeURIComponent(searchQuery);
