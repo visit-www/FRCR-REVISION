@@ -242,78 +242,21 @@ def radiology_assistant_search():
     })
 
 
-@resources_bp.route('/api/sciencedirect/search')
+@resources_bp.route('/api/sciencedirect/apikey')
 @login_required
-def sciencedirect_search():
+def sciencedirect_apikey():
     """
-    Search ScienceDirect using official Elsevier API (ADMIN ONLY).
-    
-    Uses the official ScienceDirect Search API with API key authentication.
-    Supports OAuth bearer token for user-level entitlements when available.
-    
-    Query params:
-        - diagnosis: Diagnosis to search (required)
-        - oauth_token: Optional OAuth bearer token for user-level access
+    Get ScienceDirect API key for client-side use.
+    API calls are made directly from the browser (CORS) as recommended by Elsevier.
     
     Returns:
-        - search_url: URL to view results on ScienceDirect website
-        - api_results: API response data (if API call successful)
-        - diagnosis: Original diagnosis
-        - query: Search query used
-        - logged_in: True if using API
+        API key for authenticated users
     """
-    from access_control import require_admin
-    from sciencedirect_service import search_sciencedirect
-    
-    # Check admin access
     if not current_user.is_authenticated:
         return jsonify({'error': 'Authentication required'}), 401
     
-    # Check if user is admin
-    if current_user.role.value != 'admin':
-        return jsonify({'error': 'Admin access required'}), 403
-    
-    diagnosis = request.args.get('diagnosis', '').strip()
-    if not diagnosis:
-        return jsonify({'error': 'Diagnosis parameter required'}), 400
-    
-    # Get optional OAuth token (for future OAuth implementation)
-    oauth_token = request.args.get('oauth_token', '').strip() or None
-    
-    # Get optional custom query (user can override auto-generated query)
-    custom_query = request.args.get('query', '').strip() or None
-    
-    try:
-        result = search_sciencedirect(
-            diagnosis, 
-            oauth_token=oauth_token,
-            user_id=current_user.id,
-            user_role=current_user.role.value,
-            custom_query=custom_query
-        )
-        
-        if result.get('api_success'):
-            total_results = result.get('api_results', {}).get('total_results', 0)
-            current_app.logger.info(f"[SCIDIRECT] Admin search - User: {current_user.email} (ID: {current_user.id}) - Diagnosis: '{diagnosis}' - Results: {total_results}")
-        else:
-            current_app.logger.warning(f"[SCIDIRECT] Admin search failed - User: {current_user.email} (ID: {current_user.id}) - Diagnosis: '{diagnosis}' - Error: {result.get('error', 'Unknown')}")
-        
-        return jsonify(result)
-    except Exception as e:
-        current_app.logger.error(f"ScienceDirect search error: {e}", exc_info=True)
-        # Build fallback search URL even on error
-        from urllib.parse import quote
-        search_query = f"{diagnosis} AND (radiology OR imaging OR diagnosis)"
-        encoded_query = quote(search_query)
-        search_url = f"https://www.sciencedirect.com/search/advanced?qs={encoded_query}"
-        return jsonify({
-            'error': str(e),
-            'diagnosis': diagnosis,
-            'query': search_query,
-            'search_url': search_url,
-            'message': 'ScienceDirect search failed. Please try again.',
-            'api_success': False
-        }), 500
+    from sciencedirect_service import get_api_key
+    return jsonify({'api_key': get_api_key()})
 
 
 @resources_bp.route('/api/sciencedirect/connect', methods=['POST'])
@@ -471,66 +414,6 @@ def sciencedirect_disconnect():
         return jsonify({'error': str(e)}), 500
 
 
-@resources_bp.route('/api/sciencedirect/search/student')
-@login_required
-def sciencedirect_search_student():
-    """
-    Search ScienceDirect for students using API key (server-side).
-    
-    Students now use the same API key as admins (all requests server-side).
-    Connection status tracking is optional (for analytics only).
-    OAuth tokens can be passed when available for user-level entitlements.
-    
-    Query params:
-        - diagnosis: Diagnosis to search (required)
-        - oauth_token: Optional OAuth bearer token for user-level access
-    """
-    from sciencedirect_service import search_sciencedirect_student
-    from models import db
-    
-    if not current_user.is_authenticated:
-        return jsonify({'error': 'Authentication required'}), 401
-    
-    # Admin should use the admin route (though both work the same now)
-    if current_user.role.value == 'admin':
-        return jsonify({'error': 'Use /api/sciencedirect/search for admin'}), 400
-    
-    diagnosis = request.args.get('diagnosis', '').strip()
-    if not diagnosis:
-        return jsonify({'error': 'Diagnosis parameter required'}), 400
-    
-    # Get optional OAuth token (for future OAuth implementation)
-    oauth_token = request.args.get('oauth_token', '').strip() or None
-    
-    # Get optional custom query (user can override auto-generated query)
-    custom_query = request.args.get('query', '').strip() or None
-    
-    try:
-        result = search_sciencedirect_student(current_user, diagnosis, oauth_token=oauth_token, custom_query=custom_query)
-        
-        # Log API usage for tracking
-        if result.get('api_success'):
-            total_results = result.get('api_results', {}).get('total_results', 0)
-            current_app.logger.info(f"[SCIDIRECT] Student search - User: {current_user.email} (ID: {current_user.id}) - Diagnosis: '{diagnosis}' - Results: {total_results}")
-        else:
-            current_app.logger.warning(f"[SCIDIRECT] Student search failed - User: {current_user.email} (ID: {current_user.id}) - Diagnosis: '{diagnosis}' - Error: {result.get('error', 'Unknown')}")
-        
-        return jsonify(result)
-    except Exception as e:
-        current_app.logger.error(f"[SCIDIRECT] Student search error - User: {current_user.email} (ID: {current_user.id}) - Diagnosis: '{diagnosis}' - Error: {e}", exc_info=True)
-        # Build fallback search URL even on error
-        from urllib.parse import quote
-        search_query = f"{diagnosis} AND (radiology OR imaging OR diagnosis)"
-        encoded_query = quote(search_query)
-        search_url = f"https://www.sciencedirect.com/search/advanced?qs={encoded_query}"
-        return jsonify({
-            'error': str(e),
-            'diagnosis': diagnosis,
-            'query': search_query,
-            'search_url': search_url,
-            'message': 'ScienceDirect search failed. Please try again.',
-            'api_success': False
-        }), 500
 
 
 @resources_bp.route('/api/find-reference', methods=['POST'])

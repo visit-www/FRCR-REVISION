@@ -8580,6 +8580,41 @@
     }
     
     // Search ScienceDirect (Admin - uses API key, shows inline results)
+    // Cache API key to avoid repeated requests
+    let sciencedirectApiKey = null;
+    
+    // Get API key from server
+    async function getScienceDirectApiKey() {
+        if (sciencedirectApiKey) {
+            return sciencedirectApiKey;
+        }
+        
+        try {
+            const response = await fetch('/resources/api/sciencedirect/apikey', {
+                credentials: 'include'
+            });
+            if (response.ok) {
+                const data = await response.json();
+                sciencedirectApiKey = data.api_key;
+                return sciencedirectApiKey;
+            } else {
+                throw new Error('Failed to get API key');
+            }
+        } catch (error) {
+            console.error('[SCIENCEDIRECT] Error getting API key:', error);
+            throw error;
+        }
+    }
+    
+    // Build search query
+    function buildSearchQuery(diagnosis, customQuery) {
+        if (customQuery && customQuery.trim()) {
+            return customQuery.trim();
+        } else {
+            return `${diagnosis} "radiological diagnosis" "radiological anatomy" "radiological pathological correlation" "what clinician needs to know"`;
+        }
+    }
+    
     async function searchScienceDirect() {
         const diagnosis = caseDiagnosis || '';
         if (!diagnosis) {
@@ -8600,174 +8635,104 @@
         const customQueryInput = document.getElementById('sciencedirectCustomQueryAdmin');
         const customQuery = customQueryInput ? customQueryInput.value.trim() : '';
         
-        // Build URL with optional custom query
-        let searchUrl = `/resources/api/sciencedirect/search?diagnosis=${encodeURIComponent(diagnosis)}`;
+        // Build search query
+        const searchQuery = buildSearchQuery(diagnosis, customQuery);
         if (customQuery) {
-            searchUrl += `&query=${encodeURIComponent(customQuery)}`;
             console.log('[SCIENCEDIRECT] Using custom query:', customQuery);
         }
         
         try {
-            const response = await fetch(searchUrl, {
-                credentials: 'include'
+            // Get API key
+            const apiKey = await getScienceDirectApiKey();
+            
+            // Build Elsevier API URL
+            const apiUrl = 'https://api.elsevier.com/content/search/sciencedirect';
+            const params = new URLSearchParams({
+                query: searchQuery,
+                count: '25',
+                sort: 'relevance',
+                view: 'STANDARD'
             });
+            
+            // Make client-side API call to Elsevier
+            console.log('[SCIENCEDIRECT] Making client-side API call to Elsevier');
+            const response = await fetch(`${apiUrl}?${params.toString()}`, {
+                method: 'GET',
+                headers: {
+                    'X-ELS-APIKey': apiKey,
+                    'Accept': 'application/json'
+                }
+            });
+            
             const data = await response.json();
             
-            if (!response.ok || data.error) {
-                const errorMsg = data.message || data.error || `HTTP ${response.status}: ${response.statusText}`;
-                console.error('[SCIENCEDIRECT] Search error:', errorMsg, data);
-                const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+            // Check for API errors
+            if (!response.ok) {
+                const errorMsg = data['service-error'] ? (data['service-error'].status?.statusText || 'API error') : `HTTP ${response.status}: ${response.statusText}`;
+                console.error('[SCIENCEDIRECT] API error:', errorMsg, data);
                 
                 // Build fallback URL
-                const fallbackUrl = data.search_url || ('https://www.sciencedirect.com/search/advanced?qs=' + encodeURIComponent(data.query || data.diagnosis || diagnosis || ''));
-                
-                let errorHtml = '<div class="alert alert-danger m-2">';
-                errorHtml += '<i class="fas fa-exclamation-circle me-2"></i><strong>Search Error</strong><br>';
-                errorHtml += '<small class="d-block mt-2">' + escapeHtml(errorMsg) + '</small>';
-                
-                if (isLocalhost) {
-                    errorHtml += '<small class="d-block mt-2 text-muted">';
-                    errorHtml += '<i class="fas fa-info-circle me-1"></i>If this is a domain restriction error, the API will work on production (radinsights.xyz).';
-                    errorHtml += '</small>';
-                }
-                
-                // Add fallback link
-                errorHtml += '<div class="mt-2">';
-                errorHtml += '<a href="' + fallbackUrl + '" target="_blank" class="btn btn-sm btn-outline-primary">';
-                errorHtml += '<i class="fas fa-external-link-alt me-1"></i>Open ScienceDirect Search</a>';
-                errorHtml += '</div></div>';
-                
-                // Ensure container is visible
-                if (resultsContainer && resultsList) {
-                    resultsContainer.style.display = 'block';
-                    resultsList.innerHTML = errorHtml;
-                } else {
-                    console.error('[SCIENCEDIRECT] Results container or list not found in HTTP error');
-                    console.error('Container:', resultsContainer, 'List:', resultsList);
-                    // Ultimate fallback: open directly
-                    console.log('[SCIENCEDIRECT] Opening fallback URL directly:', fallbackUrl);
-                    window.open(fallbackUrl, '_blank');
-                }
-                if (response.status === 403) {
-                    showFlash('Admin access required for ScienceDirect search', 'error');
-                } else {
-                    showFlash(errorMsg, 'error');
-                }
-                return;
-            }
-            
-            // Display results inline
-            console.log('[SCIENCEDIRECT] Checking API success - api_success:', data.api_success, 'has articles:', data.api_results && data.api_results.articles);
-            if (data.api_success && data.api_results && data.api_results.articles) {
-                displayScienceDirectResults(data.api_results.articles, data.api_results.total_results || 0);
-                showFlash('Found ' + (data.api_results.total_results || 0) + ' articles', 'success');
-            } else {
-                // API failed but we have a fallback URL
-                console.log('[SCIENCEDIRECT] API failed or no results - showing fallback');
-                const errorMsg = data.error || 'API request failed';
-                const errorCode = data.error_code || '';
-                const errorDetail = data.error_detail || '';
-                const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-                const is401 = errorCode === 401 || errorMsg.includes('401') || errorMsg.includes('authentication');
-                
-                console.warn('[SCIENCEDIRECT] API call failed:', errorMsg, errorCode, errorDetail);
+                const fallbackUrl = 'https://www.sciencedirect.com/search/advanced?qs=' + encodeURIComponent(searchQuery);
                 
                 let errorHtml = '<div class="alert alert-warning m-2">';
                 errorHtml += '<i class="fas fa-exclamation-triangle me-2"></i><strong>API search unavailable</strong><br>';
-                
-                if (is401) {
-                    errorHtml += '<small class="d-block mt-2">';
-                    errorHtml += '<i class="fas fa-info-circle me-1"></i>';
-                    errorHtml += '<strong>401 Authentication Error:</strong> ';
-                    if (isLocalhost) {
-                        errorHtml += 'Testing on localhost. The API key is registered for <strong>radinsights.xyz</strong> and may not work from localhost. ';
-                        errorHtml += 'This is expected behavior. The API will work on production (radinsights.xyz).';
-                    } else {
-                        errorHtml += 'The API key authentication failed. Please check the API key configuration or contact support.';
-                    }
-                    errorHtml += '</small>';
-                } else if (isLocalhost) {
-                    errorHtml += '<small class="d-block mt-2">';
-                    errorHtml += '<i class="fas fa-info-circle me-1"></i>Testing on localhost. ';
-                    errorHtml += 'The API key is registered for <strong>radinsights.xyz</strong> and may not work from localhost. ';
-                    errorHtml += 'This is expected behavior. The API will work on production (radinsights.xyz).';
-                    errorHtml += '</small>';
-                } else {
-                    errorHtml += '<small class="d-block mt-2">' + escapeHtml(errorMsg);
-                    if (errorCode) {
-                        errorHtml += ' (Status: ' + errorCode + ')';
-                    }
-                    errorHtml += '</small>';
-                }
-                
-                // Build fallback URL
-                const fallbackUrl = data.search_url || ('https://www.sciencedirect.com/search/advanced?qs=' + encodeURIComponent(data.query || data.diagnosis || ''));
+                errorHtml += '<small class="d-block mt-2">' + escapeHtml(errorMsg) + '</small>';
                 errorHtml += '<div class="mt-2">';
                 errorHtml += '<a href="' + fallbackUrl + '" target="_blank" class="btn btn-sm btn-outline-primary">';
                 errorHtml += '<i class="fas fa-external-link-alt me-1"></i>Open ScienceDirect Search</a>';
                 errorHtml += '</div></div>';
                 
-                // Ensure container is visible and resultsList exists
-                console.log('[SCIENCEDIRECT] Showing fallback - Container:', resultsContainer, 'List:', resultsList, 'Fallback URL:', fallbackUrl);
                 if (resultsContainer && resultsList) {
                     resultsContainer.style.display = 'block';
                     resultsList.innerHTML = errorHtml;
-                    console.log('[SCIENCEDIRECT] Fallback HTML set, container should be visible');
                 } else {
-                    console.error('[SCIENCEDIRECT] Results container or list not found');
-                    // Fallback: show in alert
-                    alert('API search unavailable. Please visit: ' + fallbackUrl);
+                    window.open(fallbackUrl, '_blank');
                 }
-                
-                if (is401) {
-                    if (isLocalhost) {
-                        showFlash('API authentication failed (401) on localhost (expected). Will work on production.', 'info');
-                    } else {
-                        showFlash('API authentication failed (401). Please check API key configuration.', 'error');
-                    }
-                } else if (isLocalhost) {
-                    showFlash('API search unavailable on localhost (expected). Use production domain for API access.', 'info');
-                } else {
-                    showFlash('API search unavailable: ' + errorMsg, 'warning');
+                showFlash('API search unavailable. Use the link to search on ScienceDirect.', 'warning');
+                return;
+            }
+            
+            // Parse ScienceDirect API response
+            const searchResults = data['search-results'] || {};
+            const entries = searchResults.entry || [];
+            const totalResults = searchResults['opensearch:totalResults'] || '0';
+            
+            // Display results
+            if (entries && entries.length > 0) {
+                displayScienceDirectResults(entries, totalResults);
+                showFlash('Found ' + totalResults + ' articles', 'success');
+            } else {
+                const fallbackUrl = 'https://www.sciencedirect.com/search/advanced?qs=' + encodeURIComponent(searchQuery);
+                if (resultsContainer && resultsList) {
+                    resultsContainer.style.display = 'block';
+                    resultsList.innerHTML = '<div class="alert alert-info m-2">No articles found. <a href="' + fallbackUrl + '" target="_blank" class="btn btn-sm btn-outline-primary mt-2"><i class="fas fa-external-link-alt me-1"></i>Search on ScienceDirect</a></div>';
                 }
+                showFlash('No articles found', 'info');
             }
         } catch (error) {
             console.error('[SCIENCEDIRECT] Search error:', error);
-            const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+            
+            const fallbackUrl = 'https://www.sciencedirect.com/search/advanced?qs=' + encodeURIComponent(searchQuery);
             
             let errorHtml = '<div class="alert alert-danger m-2">';
             errorHtml += '<i class="fas fa-exclamation-circle me-2"></i><strong>Search Error</strong><br>';
             errorHtml += '<small class="d-block mt-2">' + escapeHtml(error.message) + '</small>';
-            
-            if (isLocalhost) {
-                errorHtml += '<small class="d-block mt-2 text-muted">';
-                errorHtml += '<i class="fas fa-info-circle me-1"></i>If this is a domain restriction error, the API will work on production (radinsights.xyz).';
-                errorHtml += '</small>';
-            }
-            
-            // Add fallback search link
-            const fallbackSearchUrl = 'https://www.sciencedirect.com/search/advanced?qs=' + encodeURIComponent(caseDiagnosis || '');
             errorHtml += '<div class="mt-2">';
-            errorHtml += '<a href="' + fallbackSearchUrl + '" target="_blank" class="btn btn-sm btn-outline-primary">';
+            errorHtml += '<a href="' + fallbackUrl + '" target="_blank" class="btn btn-sm btn-outline-primary">';
             errorHtml += '<i class="fas fa-external-link-alt me-1"></i>Open ScienceDirect Search</a>';
-            errorHtml += '</div>';
-            errorHtml += '</div>';
+            errorHtml += '</div></div>';
             
-            // Ensure container is visible
             if (resultsContainer && resultsList) {
                 resultsContainer.style.display = 'block';
                 resultsList.innerHTML = errorHtml;
             } else {
-                console.error('[SCIENCEDIRECT] Results container or list not found in catch block');
-                // Fallback: show in alert
-                const fallbackSearchUrl = 'https://www.sciencedirect.com/search/advanced?qs=' + encodeURIComponent(caseDiagnosis || '');
-                alert('Error searching ScienceDirect. Please visit: ' + fallbackSearchUrl);
+                window.open(fallbackUrl, '_blank');
             }
             showFlash('Error searching ScienceDirect: ' + error.message, 'error');
         }
     }
     
-    // Search ScienceDirect (Student/Admin - uses API key server-side, shows inline results)
+    // Search ScienceDirect (Student - uses client-side API calls)
     async function searchScienceDirectStudent() {
         const diagnosis = caseDiagnosis || '';
         if (!diagnosis) {
@@ -8788,152 +8753,98 @@
         const customQueryInput = document.getElementById('sciencedirectCustomQuery');
         const customQuery = customQueryInput ? customQueryInput.value.trim() : '';
         
-        // Build URL with optional custom query
-        let searchUrl = `/resources/api/sciencedirect/search/student?diagnosis=${encodeURIComponent(diagnosis)}`;
+        // Build search query
+        const searchQuery = buildSearchQuery(diagnosis, customQuery);
         if (customQuery) {
-            searchUrl += `&query=${encodeURIComponent(customQuery)}`;
             console.log('[SCIENCEDIRECT] Using custom query:', customQuery);
         }
         
         try {
-            const response = await fetch(searchUrl, {
-                credentials: 'include'
+            // Get API key
+            const apiKey = await getScienceDirectApiKey();
+            
+            // Build Elsevier API URL
+            const apiUrl = 'https://api.elsevier.com/content/search/sciencedirect';
+            const params = new URLSearchParams({
+                query: searchQuery,
+                count: '25',
+                sort: 'relevance',
+                view: 'STANDARD'
             });
+            
+            // Make client-side API call to Elsevier
+            console.log('[SCIENCEDIRECT] Making client-side API call to Elsevier');
+            const response = await fetch(`${apiUrl}?${params.toString()}`, {
+                method: 'GET',
+                headers: {
+                    'X-ELS-APIKey': apiKey,
+                    'Accept': 'application/json'
+                }
+            });
+            
             const data = await response.json();
             
-            if (!response.ok || data.error) {
-                const errorMsg = data.message || data.error || `HTTP ${response.status}: ${response.statusText}`;
-                console.error('[SCIENCEDIRECT] Search error:', errorMsg, data);
-                // Ensure container is visible
-                if (resultsContainer && resultsList) {
-                    resultsContainer.style.display = 'block';
-                    // Build fallback URL for HTTP errors
-                    const fallbackUrl = data.search_url || ('https://www.sciencedirect.com/search/advanced?qs=' + encodeURIComponent(data.query || data.diagnosis || caseDiagnosis || ''));
-                    let errorHtml = '<div class="alert alert-danger m-2">';
-                    errorHtml += '<i class="fas fa-exclamation-circle me-2"></i><strong>Search Error</strong><br>';
-                    errorHtml += '<small class="d-block mt-2">' + escapeHtml(errorMsg) + '</small>';
-                    errorHtml += '<div class="mt-2">';
-                    errorHtml += '<a href="' + fallbackUrl + '" target="_blank" class="btn btn-sm btn-outline-primary">';
-                    errorHtml += '<i class="fas fa-external-link-alt me-1"></i>Open ScienceDirect Search</a>';
-                    errorHtml += '</div></div>';
-                    resultsList.innerHTML = errorHtml;
-                } else {
-                    console.error('[SCIENCEDIRECT] Results container or list not found in HTTP error');
-                    // Ultimate fallback: open directly
-                    const fallbackUrl = data.search_url || ('https://www.sciencedirect.com/search/advanced?qs=' + encodeURIComponent(data.query || data.diagnosis || caseDiagnosis || ''));
-                    console.log('[SCIENCEDIRECT] Opening fallback URL directly:', fallbackUrl);
-                    window.open(fallbackUrl, '_blank');
-                }
-                showFlash(errorMsg, 'error');
-                return;
-            }
-            
-            // Display results inline
-            console.log('[SCIENCEDIRECT] Checking API success - api_success:', data.api_success, 'has articles:', data.api_results && data.api_results.articles);
-            if (data.api_success && data.api_results && data.api_results.articles) {
-                displayScienceDirectResults(data.api_results.articles, data.api_results.total_results || 0);
-                showFlash('Found ' + (data.api_results.total_results || 0) + ' articles', 'success');
-            } else {
-                // API failed but we have a fallback URL
-                console.log('[SCIENCEDIRECT] API failed or no results - showing fallback');
-                const errorMsg = data.error || 'API request failed';
-                const errorCode = data.error_code || '';
-                const errorDetail = data.error_detail || '';
-                const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-                const is401 = errorCode === 401 || errorMsg.includes('401') || errorMsg.includes('authentication');
+            // Check for API errors
+            if (!response.ok) {
+                const errorMsg = data['service-error'] ? (data['service-error'].status?.statusText || 'API error') : `HTTP ${response.status}: ${response.statusText}`;
+                console.error('[SCIENCEDIRECT] API error:', errorMsg, data);
                 
-                console.warn('[SCIENCEDIRECT] API call failed:', errorMsg, errorCode, errorDetail);
+                // Build fallback URL
+                const fallbackUrl = 'https://www.sciencedirect.com/search/advanced?qs=' + encodeURIComponent(searchQuery);
                 
                 let errorHtml = '<div class="alert alert-warning m-2">';
                 errorHtml += '<i class="fas fa-exclamation-triangle me-2"></i><strong>API search unavailable</strong><br>';
-                
-                if (is401) {
-                    errorHtml += '<small class="d-block mt-2">';
-                    errorHtml += '<i class="fas fa-info-circle me-1"></i>';
-                    errorHtml += '<strong>401 Authentication Error:</strong> ';
-                    if (isLocalhost) {
-                        errorHtml += 'Testing on localhost. The API key is registered for <strong>radinsights.xyz</strong> and may not work from localhost. ';
-                        errorHtml += 'This is expected behavior. The API will work on production (radinsights.xyz).';
-                    } else {
-                        errorHtml += 'The API key authentication failed. Please check the API key configuration or contact support.';
-                    }
-                    errorHtml += '</small>';
-                } else if (isLocalhost) {
-                    errorHtml += '<small class="d-block mt-2">';
-                    errorHtml += '<i class="fas fa-info-circle me-1"></i>Testing on localhost. ';
-                    errorHtml += 'The API key is registered for <strong>radinsights.xyz</strong> and may not work from localhost. ';
-                    errorHtml += 'This is expected behavior. The API will work on production (radinsights.xyz).';
-                    errorHtml += '</small>';
-                } else {
-                    errorHtml += '<small class="d-block mt-2">' + escapeHtml(errorMsg);
-                    if (errorCode) {
-                        errorHtml += ' (Status: ' + errorCode + ')';
-                    }
-                    errorHtml += '</small>';
-                }
-                
-                // Build fallback URL
-                const fallbackUrl = data.search_url || ('https://www.sciencedirect.com/search/advanced?qs=' + encodeURIComponent(data.query || data.diagnosis || ''));
+                errorHtml += '<small class="d-block mt-2">' + escapeHtml(errorMsg) + '</small>';
                 errorHtml += '<div class="mt-2">';
                 errorHtml += '<a href="' + fallbackUrl + '" target="_blank" class="btn btn-sm btn-outline-primary">';
                 errorHtml += '<i class="fas fa-external-link-alt me-1"></i>Open ScienceDirect Search</a>';
                 errorHtml += '</div></div>';
                 
-                // Ensure container is visible and resultsList exists
-                console.log('[SCIENCEDIRECT] Showing fallback - Container:', resultsContainer, 'List:', resultsList, 'Fallback URL:', fallbackUrl);
                 if (resultsContainer && resultsList) {
                     resultsContainer.style.display = 'block';
                     resultsList.innerHTML = errorHtml;
-                    console.log('[SCIENCEDIRECT] Fallback HTML set, container should be visible');
                 } else {
-                    console.error('[SCIENCEDIRECT] Results container or list not found');
-                    // Fallback: show in alert
-                    alert('API search unavailable. Please visit: ' + fallbackUrl);
+                    window.open(fallbackUrl, '_blank');
                 }
-                
-                if (is401) {
-                    if (isLocalhost) {
-                        showFlash('API authentication failed (401) on localhost (expected). Will work on production.', 'info');
-                    } else {
-                        showFlash('API authentication failed (401). Please check API key configuration.', 'error');
-                    }
-                } else if (isLocalhost) {
-                    showFlash('API search unavailable on localhost (expected). Use production domain for API access.', 'info');
-                } else {
-                    showFlash('API search unavailable: ' + errorMsg, 'warning');
+                showFlash('API search unavailable. Use the link to search on ScienceDirect.', 'warning');
+                return;
+            }
+            
+            // Parse ScienceDirect API response
+            const searchResults = data['search-results'] || {};
+            const entries = searchResults.entry || [];
+            const totalResults = searchResults['opensearch:totalResults'] || '0';
+            
+            // Display results
+            if (entries && entries.length > 0) {
+                displayScienceDirectResults(entries, totalResults);
+                showFlash('Found ' + totalResults + ' articles', 'success');
+            } else {
+                const fallbackUrl = 'https://www.sciencedirect.com/search/advanced?qs=' + encodeURIComponent(searchQuery);
+                if (resultsContainer && resultsList) {
+                    resultsContainer.style.display = 'block';
+                    resultsList.innerHTML = '<div class="alert alert-info m-2">No articles found. <a href="' + fallbackUrl + '" target="_blank" class="btn btn-sm btn-outline-primary mt-2"><i class="fas fa-external-link-alt me-1"></i>Search on ScienceDirect</a></div>';
                 }
+                showFlash('No articles found', 'info');
             }
         } catch (error) {
             console.error('[SCIENCEDIRECT] Search error:', error);
-            const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+            
+            const fallbackUrl = 'https://www.sciencedirect.com/search/advanced?qs=' + encodeURIComponent(searchQuery);
             
             let errorHtml = '<div class="alert alert-danger m-2">';
             errorHtml += '<i class="fas fa-exclamation-circle me-2"></i><strong>Search Error</strong><br>';
             errorHtml += '<small class="d-block mt-2">' + escapeHtml(error.message) + '</small>';
-            
-            if (isLocalhost) {
-                errorHtml += '<small class="d-block mt-2 text-muted">';
-                errorHtml += '<i class="fas fa-info-circle me-1"></i>If this is a domain restriction error, the API will work on production (radinsights.xyz).';
-                errorHtml += '</small>';
-            }
-            
-                        // Add fallback search link
-            const fallbackSearchUrl = 'https://www.sciencedirect.com/search/advanced?qs=' + encodeURIComponent(caseDiagnosis || '');
             errorHtml += '<div class="mt-2">';
-            errorHtml += '<a href="' + fallbackSearchUrl + '" target="_blank" class="btn btn-sm btn-outline-primary">';
+            errorHtml += '<a href="' + fallbackUrl + '" target="_blank" class="btn btn-sm btn-outline-primary">';
             errorHtml += '<i class="fas fa-external-link-alt me-1"></i>Open ScienceDirect Search</a>';
-            errorHtml += '</div>';
-            errorHtml += '</div>';
+            errorHtml += '</div></div>';
             
-            // Ensure container is visible
             if (resultsContainer && resultsList) {
                 resultsContainer.style.display = 'block';
                 resultsList.innerHTML = errorHtml;
             } else {
-                console.error('[SCIENCEDIRECT] Results container or list not found in catch block');
-                // Fallback: show in alert
-                const fallbackSearchUrl = 'https://www.sciencedirect.com/search/advanced?qs=' + encodeURIComponent(caseDiagnosis || '');
-                alert('Error searching ScienceDirect. Please visit: ' + fallbackSearchUrl);
+                window.open(fallbackUrl, '_blank');
             }
             showFlash('Error searching ScienceDirect: ' + error.message, 'error');
         }
