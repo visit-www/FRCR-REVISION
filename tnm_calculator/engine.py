@@ -121,7 +121,8 @@ class TNMCalculator:
             input.t_category,
             input.n_category,
             input.m_category,
-            input.subsite
+            input.subsite,
+            input.staging_type
         )
         
         # Step 6: Build result

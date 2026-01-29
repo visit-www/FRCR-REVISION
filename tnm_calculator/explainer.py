@@ -142,7 +142,8 @@ class Explainer:
         t_category: str,
         n_category: str,
         m_category: str,
-        subsite: Optional[str] = None
+        subsite: Optional[str] = None,
+        staging_type: Optional[StagingType] = None
     ) -> str:
         """
         Generate comprehensive explanation for the final stage.
@@ -153,6 +154,7 @@ class Explainer:
             n_category: The N category
             m_category: The M category
             subsite: Optional subsite
+            staging_type: Clinical or pathological staging type
             
         Returns:
             Human-readable explanation of why this stage was assigned
@@ -179,8 +181,8 @@ class Explainer:
         if t_criteria:
             parts.append(f"T: {t_criteria}")
         
-        # N explanation
-        n_criteria = self.definition.get_n_criteria(n_category)
+        # N explanation - use the correct staging type
+        n_criteria = self.definition.get_n_criteria(n_category, staging_type or StagingType.CLINICAL)
         if n_criteria:
             parts.append(f"N: {n_criteria}")
         

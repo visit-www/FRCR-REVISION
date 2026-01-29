@@ -235,6 +235,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // State
     let cancerInfo = null;
+    let subsiteChangeHandler = null;  // Track the current handler to remove it
     
     // Load categories when cancer type changes
     cancerTypeSelect.addEventListener('change', async function() {
@@ -243,6 +244,12 @@ document.addEventListener('DOMContentLoaded', function() {
         // Reset UI
         resetCategories();
         resultsSection.style.display = 'none';
+        
+        // Remove previous subsite event listener if exists
+        if (subsiteChangeHandler) {
+            subsiteSelect.removeEventListener('change', subsiteChangeHandler);
+            subsiteChangeHandler = null;
+        }
         
         if (!cancerType) {
             return;
@@ -265,7 +272,9 @@ document.addEventListener('DOMContentLoaded', function() {
             if (data.subsites && data.subsites.length > 0) {
                 subsiteContainer.style.display = 'block';
                 populateSelect(subsiteSelect, data.subsites.map(s => ({ value: s, label: s })));
-                subsiteSelect.addEventListener('change', () => loadCategories(data));
+                // Create new handler and store reference for cleanup
+                subsiteChangeHandler = () => loadCategories(data);
+                subsiteSelect.addEventListener('change', subsiteChangeHandler);
             } else {
                 subsiteContainer.style.display = 'none';
             }
