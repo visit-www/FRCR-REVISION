@@ -1185,9 +1185,34 @@ class AJCCStagingData(db.Model):
         if pattern.lower().startswith('any'):
             return True
         
-        # Handle comma-separated values
+        # Split on comma first, then handle each option
         options = [opt.strip().upper() for opt in pattern.split(',')]
-        return value in options
+        
+        for opt in options:
+            # Handle range patterns like "T3-T4" or "T2a-T2b" or "T1mi-T1a" or "M1a-M1b"
+            if '-' in opt:
+                parts = opt.split('-')
+                if len(parts) == 2:
+                    start, end = parts[0].strip(), parts[1].strip()
+                    # Exact match with start or end
+                    if value == start or value == end:
+                        return True
+                    # Value starts with start or end (e.g., T3a matches T3)
+                    if value.startswith(start) or value.startswith(end):
+                        return True
+                    # Pattern part starts with value (e.g., M1 matches M1a-M1b)
+                    if start.startswith(value) or end.startswith(value):
+                        return True
+            elif value == opt:
+                return True
+            # Handle subcategory matching (e.g., "T1a" matches "T1")
+            elif value.startswith(opt) and len(value) > len(opt):
+                return True
+            # Handle parent category matching (e.g., "M1" matches "M1a", "M1b")
+            elif opt.startswith(value) and len(opt) > len(value):
+                return True
+        
+        return False
     
     def get_json_section(self, section_name):
         """Get a JSON section by name"""
