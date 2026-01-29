@@ -2742,9 +2742,10 @@ function insertTnmLinksDirectly(data) {
     
     // Build a single styled button that links to the Student TNM View
     // All TNM intelligence content is now displayed in the student view (single source of truth)
+    // Opens in same tab for seamless navigation
     const buttonHtml = `
 <div class="tnm-staging-button-wrapper" style="margin: 1.5rem 0;">
-    <a href="${hrefTnmLink || tnmLink}" target="_blank" rel="noopener" class="tnm-staging-btn">
+    <a href="${hrefTnmLink || tnmLink}" class="tnm-staging-btn">
         <div class="tnm-btn-icon">
             <i class="fas fa-book-medical"></i>
         </div>
@@ -2753,7 +2754,7 @@ function insertTnmLinksDirectly(data) {
             <span>${diseaseName} &bull; ${tnmVersion}</span>
         </div>
         <div class="tnm-btn-arrow">
-            <i class="fas fa-external-link-alt"></i>
+            <i class="fas fa-arrow-right"></i>
         </div>
     </a>
 </div>
