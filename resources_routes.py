@@ -246,13 +246,21 @@ def radiology_assistant_search():
 @login_required
 def sciencedirect_search():
     """
-    Search ScienceDirect with advanced search (radiology, imaging, diagnosis keywords).
-    ADMIN ONLY - Auto-login is performed in the backend.
+    Search ScienceDirect using official Elsevier API (ADMIN ONLY).
+    
+    Uses the official ScienceDirect Search API with API key authentication.
+    Supports OAuth bearer token for user-level entitlements when available.
     
     Query params:
         - diagnosis: Diagnosis to search (required)
+        - oauth_token: Optional OAuth bearer token for user-level access
     
-    Returns a search URL with advanced search parameters.
+    Returns:
+        - search_url: URL to view results on ScienceDirect website
+        - api_results: API response data (if API call successful)
+        - diagnosis: Original diagnosis
+        - query: Search query used
+        - logged_in: True if using API
     """
     from access_control import require_admin
     from sciencedirect_service import search_sciencedirect
@@ -269,16 +277,38 @@ def sciencedirect_search():
     if not diagnosis:
         return jsonify({'error': 'Diagnosis parameter required'}), 400
     
+    # Get optional OAuth token (for future OAuth implementation)
+    oauth_token = request.args.get('oauth_token', '').strip() or None
+    
     try:
-        result = search_sciencedirect(diagnosis)
-        current_app.logger.info(f"ScienceDirect search for '{diagnosis}': URL generated (logged in: {result.get('logged_in', False)})")
+        result = search_sciencedirect(
+            diagnosis, 
+            oauth_token=oauth_token,
+            user_id=current_user.id,
+            user_role=current_user.role.value
+        )
+        
+        if result.get('api_success'):
+            total_results = result.get('api_results', {}).get('total_results', 0)
+            current_app.logger.info(f"[SCIDIRECT] Admin search - User: {current_user.email} (ID: {current_user.id}) - Diagnosis: '{diagnosis}' - Results: {total_results}")
+        else:
+            current_app.logger.warning(f"[SCIDIRECT] Admin search failed - User: {current_user.email} (ID: {current_user.id}) - Diagnosis: '{diagnosis}' - Error: {result.get('error', 'Unknown')}")
+        
         return jsonify(result)
     except Exception as e:
         current_app.logger.error(f"ScienceDirect search error: {e}", exc_info=True)
+        # Build fallback search URL even on error
+        from urllib.parse import quote
+        search_query = f"{diagnosis} AND (radiology OR imaging OR diagnosis)"
+        encoded_query = quote(search_query)
+        search_url = f"https://www.sciencedirect.com/search/advanced?qs={encoded_query}"
         return jsonify({
             'error': str(e),
             'diagnosis': diagnosis,
-            'message': 'ScienceDirect search failed. Please try again.'
+            'query': search_query,
+            'search_url': search_url,
+            'message': 'ScienceDirect search failed. Please try again.',
+            'api_success': False
         }), 500
 
 
@@ -303,11 +333,13 @@ def sciencedirect_connect():
         connect_url = get_student_connect_url()
         
         # Mark as connected (user will login on ScienceDirect's site)
-        # Note: We can't capture cookies directly, but we mark them as connected
-        # so they don't have to click connect again
+        # Note: Students must manually log in on ScienceDirect's website with their own credentials.
+        # We mark them as "connected" so they don't have to click connect again, but they still
+        # need to authenticate on ScienceDirect's site when searching.
+        # For API access, students will need OAuth tokens (not yet implemented).
         current_user.sciencedirect_connected_at = datetime.utcnow()
         # Store a placeholder to indicate they've connected
-        # In a full implementation, you'd capture actual cookies via browser extension or OAuth
+        # TODO: When OAuth is implemented, store OAuth tokens instead of this placeholder
         current_user.sciencedirect_session_cookies = '{"connected": true}'  # Placeholder
         db.session.commit()
         
@@ -423,6 +455,7 @@ def sciencedirect_disconnect():
         return jsonify({'error': 'Authentication required'}), 401
     
     try:
+        # Clear connection status (session cookies no longer used with API)
         current_user.sciencedirect_session_cookies = None
         current_user.sciencedirect_connected_at = None
         db.session.commit()
@@ -438,10 +471,15 @@ def sciencedirect_disconnect():
 @login_required
 def sciencedirect_search_student():
     """
-    Search ScienceDirect for students (uses their saved session).
+    Search ScienceDirect for students using API key (server-side).
+    
+    Students now use the same API key as admins (all requests server-side).
+    Connection status tracking is optional (for analytics only).
+    OAuth tokens can be passed when available for user-level entitlements.
     
     Query params:
         - diagnosis: Diagnosis to search (required)
+        - oauth_token: Optional OAuth bearer token for user-level access
     """
     from sciencedirect_service import search_sciencedirect_student
     from models import db
@@ -449,43 +487,42 @@ def sciencedirect_search_student():
     if not current_user.is_authenticated:
         return jsonify({'error': 'Authentication required'}), 401
     
-    # Admin should use the admin route
+    # Admin should use the admin route (though both work the same now)
     if current_user.role.value == 'admin':
         return jsonify({'error': 'Use /api/sciencedirect/search for admin'}), 400
-    
-    # Check if connected and not expired
-    from datetime import datetime, timedelta
-    
-    if not current_user.sciencedirect_connected_at:
-        return jsonify({
-            'error': 'Not connected',
-            'message': 'Please connect to ScienceDirect first',
-            'requires_connection': True
-        }), 400
-    
-    # Check expiration (3 months for students)
-    expiration_date = current_user.sciencedirect_connected_at + timedelta(days=90)
-    if expiration_date < datetime.utcnow():
-        return jsonify({
-            'error': 'Connection expired',
-            'message': 'Your ScienceDirect connection has expired. Please reconnect.',
-            'requires_connection': True,
-            'expired': True
-        }), 400
     
     diagnosis = request.args.get('diagnosis', '').strip()
     if not diagnosis:
         return jsonify({'error': 'Diagnosis parameter required'}), 400
     
+    # Get optional OAuth token (for future OAuth implementation)
+    oauth_token = request.args.get('oauth_token', '').strip() or None
+    
     try:
-        result = search_sciencedirect_student(current_user, diagnosis)
+        result = search_sciencedirect_student(current_user, diagnosis, oauth_token=oauth_token)
+        
+        # Log API usage for tracking
+        if result.get('api_success'):
+            total_results = result.get('api_results', {}).get('total_results', 0)
+            current_app.logger.info(f"[SCIDIRECT] Student search - User: {current_user.email} (ID: {current_user.id}) - Diagnosis: '{diagnosis}' - Results: {total_results}")
+        else:
+            current_app.logger.warning(f"[SCIDIRECT] Student search failed - User: {current_user.email} (ID: {current_user.id}) - Diagnosis: '{diagnosis}' - Error: {result.get('error', 'Unknown')}")
+        
         return jsonify(result)
     except Exception as e:
-        current_app.logger.error(f"ScienceDirect student search error: {e}", exc_info=True)
+        current_app.logger.error(f"[SCIDIRECT] Student search error - User: {current_user.email} (ID: {current_user.id}) - Diagnosis: '{diagnosis}' - Error: {e}", exc_info=True)
+        # Build fallback search URL even on error
+        from urllib.parse import quote
+        search_query = f"{diagnosis} AND (radiology OR imaging OR diagnosis)"
+        encoded_query = quote(search_query)
+        search_url = f"https://www.sciencedirect.com/search/advanced?qs={encoded_query}"
         return jsonify({
             'error': str(e),
             'diagnosis': diagnosis,
-            'message': 'ScienceDirect search failed. Please try connecting again.'
+            'query': search_query,
+            'search_url': search_url,
+            'message': 'ScienceDirect search failed. Please try again.',
+            'api_success': False
         }), 500
 
 

@@ -27,16 +27,19 @@ SCIDIRECT_LOGIN = f"{SCIDIRECT_BASE}/user/identity/login"
 SCIDIRECT_SEARCH = f"{SCIDIRECT_BASE}/search/advanced"
 
 
-def search_sciencedirect(diagnosis: str, oauth_token: Optional[str] = None) -> Dict:
+def search_sciencedirect(diagnosis: str, oauth_token: Optional[str] = None, user_id: Optional[int] = None, user_role: Optional[str] = None) -> Dict:
     """
-    Search ScienceDirect using official Elsevier API (ADMIN - uses API key).
+    Search ScienceDirect using official Elsevier API (uses API key for all users).
     
     Uses the official ScienceDirect Search API endpoint with API key authentication.
+    All requests are made server-side to protect the API key.
     Supports OAuth bearer token for user-level entitlements when available.
     
     Args:
         diagnosis: Diagnosis to search for
         oauth_token: Optional OAuth bearer token for user-level access
+        user_id: Optional user ID for logging purposes
+        user_role: Optional user role for logging purposes
     
     Returns:
         Dict with:
@@ -44,7 +47,7 @@ def search_sciencedirect(diagnosis: str, oauth_token: Optional[str] = None) -> D
             - api_results: API response data (if API call successful)
             - diagnosis: Original diagnosis
             - query: Search query used
-            - logged_in: True if using API (always True for admin)
+            - logged_in: True if using API
     """
     # Build advanced search query focused on radiology
     # Format: diagnosis AND (radiology OR imaging OR diagnosis)
@@ -69,6 +72,8 @@ def search_sciencedirect(diagnosis: str, oauth_token: Optional[str] = None) -> D
     
     try:
         # Make API request
+        # Note: Elsevier API may require domain/IP registration
+        # 401 errors on localhost are expected if key is registered for radinsights.xyz
         response = requests.get(
             SCIDIRECT_API_ENDPOINT,
             headers=headers,
@@ -85,6 +90,10 @@ def search_sciencedirect(diagnosis: str, oauth_token: Optional[str] = None) -> D
             search_results = api_data.get('search-results', {})
             entries = search_results.get('entry', [])
             total_results = search_results.get('opensearch:totalResults', '0')
+            
+            # Log successful API usage
+            log_info = f"User ID: {user_id}, Role: {user_role}" if user_id else "Anonymous"
+            print(f"[SCIDIRECT] API search successful - {log_info} - Query: '{search_query}' - Results: {total_results}")
             
             # Build search URL for ScienceDirect website (for viewing full results)
             encoded_query = quote(search_query)
@@ -104,7 +113,34 @@ def search_sciencedirect(diagnosis: str, oauth_token: Optional[str] = None) -> D
             }
         else:
             # API request failed, fallback to website search URL
-            print(f"[SCIDIRECT] API request failed: {response.status_code} - {response.text}")
+            log_info = f"User ID: {user_id}, Role: {user_role}" if user_id else "Anonymous"
+            error_response = response.text[:500] if response.text else 'No response body'
+            
+            # Special handling for 401 (Unauthorized)
+            if response.status_code == 401:
+                print(f"[SCIDIRECT] API 401 Unauthorized - {log_info} - Query: '{search_query}'")
+                print(f"[SCIDIRECT] This usually means:")
+                print(f"  1. API key is invalid or not properly configured")
+                print(f"  2. API key is registered for a different domain/IP (localhost vs radinsights.xyz)")
+                print(f"  3. API key requires additional authentication headers")
+                print(f"  4. Response: {error_response[:200]}")
+            else:
+                print(f"[SCIDIRECT] API request failed: {response.status_code} - {log_info} - Query: '{search_query}' - Response: {error_response}")
+            
+            # Try to parse error message from response
+            error_message = f'API request failed: {response.status_code}'
+            if response.status_code == 401:
+                error_message = 'API authentication failed (401). The API key may not work from localhost. It should work on production (radinsights.xyz).'
+            try:
+                error_json = response.json()
+                if 'service-error' in error_json:
+                    error_detail = error_json.get('service-error', {}).get('error', {})
+                    error_message = error_detail.get('message', error_message)
+                elif 'message' in error_json:
+                    error_message = error_json.get('message', error_message)
+            except:
+                pass
+            
             encoded_query = quote(search_query)
             search_url = f"{SCIDIRECT_SEARCH}?qs={encoded_query}"
             
@@ -114,11 +150,15 @@ def search_sciencedirect(diagnosis: str, oauth_token: Optional[str] = None) -> D
                 'query': search_query,
                 'logged_in': False,
                 'api_success': False,
-                'error': f'API request failed: {response.status_code}'
+                'error': error_message,
+                'error_code': response.status_code,
+                'error_detail': error_response[:200] if len(error_response) > 200 else error_response
             }
             
     except Exception as e:
-        print(f"[SCIDIRECT] API search error: {e}")
+        log_info = f"User ID: {user_id}, Role: {user_role}" if user_id else "Anonymous"
+        error_type = type(e).__name__
+        print(f"[SCIDIRECT] API search error: {error_type}: {e} - {log_info} - Query: '{search_query}'")
         # Fallback to website search URL
         encoded_query = quote(search_query)
         search_url = f"{SCIDIRECT_SEARCH}?qs={encoded_query}"
@@ -129,7 +169,8 @@ def search_sciencedirect(diagnosis: str, oauth_token: Optional[str] = None) -> D
             'query': search_query,
             'logged_in': False,
             'api_success': False,
-            'error': str(e)
+            'error': f'{error_type}: {str(e)}',
+            'error_detail': 'Check if API key has domain restrictions (localhost vs radinsights.xyz)'
         }
 
 
@@ -146,42 +187,27 @@ def get_student_connect_url() -> str:
     return SCIDIRECT_LOGIN
 
 
-def search_sciencedirect_student(user, diagnosis: str) -> Dict:
+def search_sciencedirect_student(user, diagnosis: str, oauth_token: Optional[str] = None) -> Dict:
     """
-    Search ScienceDirect for student (manual login required).
+    Search ScienceDirect for students using API key (server-side).
     
-    IMPORTANT: Students must use their own ScienceDirect credentials.
-    This function generates a search URL that opens in a new window where
-    the student must log in with their own credentials if not already logged in.
-    
-    Note: We cannot capture cookies from ScienceDirect due to browser security.
-    Students must manually log in on ScienceDirect's website with their own account.
-    The connection status is tracked so they don't have to click "connect" again,
-    but they still need to authenticate on ScienceDirect's site.
+    Students now use the same API key as admins (server-side only).
+    All API calls are made from the server to protect the API key.
+    OAuth tokens can be used when available for user-level entitlements.
     
     Args:
-        user: User object (connection status checked)
+        user: User object (for logging and optional OAuth token)
         diagnosis: Diagnosis to search for
+        oauth_token: Optional OAuth bearer token for user-level access
     
     Returns:
-        Dict with search_url, diagnosis, query, and connection status
+        Dict with search_url, api_results, diagnosis, query, and status
     """
-    # Build search query
-    search_query = f"{diagnosis} AND (radiology OR imaging OR diagnosis)"
-    encoded_query = quote(search_query)
-    
-    # Construct search URL for ScienceDirect website
-    search_url = f"{SCIDIRECT_SEARCH}?qs={encoded_query}"
-    
-    # Check if user has connected (they've clicked connect, but still need to log in on ScienceDirect)
-    connected = user.sciencedirect_connected_at is not None
-    
-    return {
-        'search_url': search_url,
-        'login_url': SCIDIRECT_LOGIN,
-        'diagnosis': diagnosis,
-        'query': search_query,
-        'logged_in': False,  # Always False for students - they must log in on ScienceDirect
-        'connected': connected,  # Whether they've clicked "connect" in our app
-        'requires_manual_login': True
-    }
+    # Use the main API search function (same as admin)
+    # Pass user info for logging
+    return search_sciencedirect(
+        diagnosis=diagnosis,
+        oauth_token=oauth_token or (getattr(user, 'sciencedirect_oauth_token', None) if hasattr(user, 'sciencedirect_oauth_token') else None),
+        user_id=user.id if user else None,
+        user_role=user.role.value if user and hasattr(user, 'role') else None
+    )
