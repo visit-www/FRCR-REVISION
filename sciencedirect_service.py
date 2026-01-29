@@ -65,7 +65,7 @@ def get_authtoken(force_refresh: bool = False) -> Optional[str]:
         }
         
         # Try ScienceDirect platform first, fallback to SCOPUS
-        params = {'platform': 'ScienceDirect'}
+        params = {'platform': 'SCIENCEDIRECT'}
         
         print(f"[SCIDIRECT] Requesting authtoken from Authentication API...")
         response = requests.get(
@@ -131,7 +131,15 @@ def get_authtoken(force_refresh: bool = False) -> Optional[str]:
                 print(f"[SCIDIRECT] Error parsing authtoken response: {e}")
                 print(f"[SCIDIRECT] Response: {response.text[:200]}")
         else:
-            print(f"[SCIDIRECT] Authentication API failed: {response.status_code} - {response.text[:200]}")
+            print(f"[SCIDIRECT] Authentication API failed: {response.status_code}")
+            print(f"[SCIDIRECT] Response headers: {dict(response.headers)}")
+            print(f"[SCIDIRECT] Response body: {response.text[:500]}")
+            # Try to parse error details
+            try:
+                error_data = response.json()
+                print(f"[SCIDIRECT] Error JSON: {error_data}")
+            except:
+                pass
             
     except Exception as e:
         print(f"[SCIDIRECT] Error getting authtoken: {e}")
@@ -183,6 +191,8 @@ def search_sciencedirect(diagnosis: str, oauth_token: Optional[str] = None, user
     if authtoken:
         headers['X-ELS-Authtoken'] = authtoken
         print(f"[SCIDIRECT] Using authtoken for authentication")
+    else:
+        print(f"[SCIDIRECT] WARNING: Authtoken not obtained - API request may fail with 401")
     
     # Add OAuth bearer token if provided (for user-level entitlements)
     if oauth_token:
