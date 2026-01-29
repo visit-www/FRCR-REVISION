@@ -131,7 +131,7 @@ def search_sciencedirect(diagnosis: str, oauth_token: Optional[str] = None, user
             # Try to parse error message from response
             error_message = f'API request failed: {response.status_code}'
             if response.status_code == 401:
-                error_message = 'API authentication failed (401). The API key may not work from localhost. It should work on production (radinsights.xyz).'
+                error_message = 'API authentication failed (401). Please check API key configuration.'
             try:
                 error_json = response.json()
                 if 'service-error' in error_json:

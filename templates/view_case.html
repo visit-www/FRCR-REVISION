@@ -7269,6 +7269,11 @@
      * This works on Vercel because the browser can access localhost:8765
      */
     async function ankiRequestClient(action, params = {}) {
+        // On production (remote server), AnkiConnect is not available - return silently
+        if (isRemoteServer) {
+            return { error: null, result: null };
+        }
+        
         const payload = {
             action: action,
             version: 6,
