@@ -15,12 +15,13 @@ FROM intelligent_tnm_data
 GROUP BY disease_site_id 
 HAVING COUNT(*) > 1;
 
--- Delete duplicates, keeping the record with the highest ID (most recent)
+-- Delete duplicates, keeping the record with the most recent updated_at timestamp
+-- Using a subquery to find the ID of the most recently updated record per disease_site_id
 DELETE FROM intelligent_tnm_data 
 WHERE id NOT IN (
-    SELECT MAX(id) 
+    SELECT DISTINCT ON (disease_site_id) id
     FROM intelligent_tnm_data 
-    GROUP BY disease_site_id
+    ORDER BY disease_site_id, updated_at DESC NULLS LAST, id DESC
 );
 
 -- Step 2: Drop the old constraint (handles NULL duplicates poorly)

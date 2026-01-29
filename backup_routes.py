@@ -1954,9 +1954,10 @@ def restore_backup():
                 stats['intelligent_tnm_data']['skipped'] += 1
                 continue
             
+            # Query by disease_site_id only - one record per disease site
+            # (unique constraint is on disease_site_id, not disease_site_id + diagnosis_year_id)
             existing = IntelligentTNMData.query.filter_by(
-                disease_site_id=new_disease_id,
-                diagnosis_year_id=new_year_id
+                disease_site_id=new_disease_id
             ).first()
             
             if existing:
@@ -1972,6 +1973,9 @@ def restore_backup():
                     existing.reference_images_json = intel_data.get('reference_images_json')
                     existing.warnings_json = intel_data.get('warnings_json')
                     existing.version = intel_data.get('version', 1)
+                    # Update diagnosis_year_id if provided
+                    if new_year_id:
+                        existing.diagnosis_year_id = new_year_id
                     stats['intelligent_tnm_data']['updated'] += 1
                 else:
                     stats['intelligent_tnm_data']['skipped'] += 1

@@ -1143,9 +1143,10 @@ def save_curated_tnm():
         
         if has_intelligent_data:
             # Get or create intelligent TNM data record
+            # NOTE: Query by disease_site_id only - one record per disease site
+            # (unique constraint is on disease_site_id, not disease_site_id + diagnosis_year_id)
             intelligent_data = IntelligentTNMData.query.filter_by(
-                disease_site_id=disease_site_id,
-                diagnosis_year_id=diagnosis_year.id
+                disease_site_id=disease_site_id
             ).first()
             
             if not intelligent_data:
@@ -1155,6 +1156,10 @@ def save_curated_tnm():
                     verified_by_user_id=current_user.id
                 )
                 db.session.add(intelligent_data)
+            else:
+                # Update diagnosis_year_id if provided (for tracking purposes)
+                if diagnosis_year and diagnosis_year.id:
+                    intelligent_data.diagnosis_year_id = diagnosis_year.id
             
             # Update memory aids
             if tnm_memory_aid_t is not None:
