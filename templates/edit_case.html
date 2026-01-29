@@ -3296,7 +3296,7 @@ function loadExistingReferences(editor) {
     }
 }
 
-// insertIntoEditor: if true (default), inserts superscript at cursor; if false, only adds to section
+// insertIntoEditor: if true (default), inserts superscript at cursor; if false, adds hidden marker at end
 function insertReferenceToDiscussion(title, journal, year, link, insertIntoEditor = true) {
     // Check if reference already exists (by URL)
     let refNumber;
@@ -3309,30 +3309,36 @@ function insertReferenceToDiscussion(title, journal, year, link, insertIntoEdito
         referencesMap.set(link, refNumber);
         isNew = true;
         
-        // Add to references section
+        // Add to references section UI
         addReferenceToSection(refNumber, title, journal, year, link);
     }
     
-    // Only insert superscript if requested (context menu use case)
-    if (insertIntoEditor) {
-        if (typeof tinymce !== 'undefined' && tinymce.get('editCaseDiscussion')) {
-            const editor = tinymce.get('editCaseDiscussion');
-            
-            // Collapse selection to end (so we insert after the selected text, not replace it)
+    // Always persist reference data to HTML content (so it's saved with the case)
+    if (typeof tinymce !== 'undefined' && tinymce.get('editCaseDiscussion') && isNew) {
+        const editor = tinymce.get('editCaseDiscussion');
+        
+        // Superscript with data attributes for persistence and view mode reconstruction
+        const superscriptHtml = `<sup class="ref-cite" data-ref="${refNumber}" data-url="${escapeHtml(link)}" data-title="${escapeHtml(title)}" data-journal="${escapeHtml(journal || '')}" data-year="${year || ''}"><a href="#ref-${refNumber}" style="color: #e96304; text-decoration: none; font-weight: 600;">[${refNumber}]</a></sup>`;
+        
+        if (insertIntoEditor) {
+            // Insert at cursor position (context menu use case)
             const selection = editor.selection;
             const rng = selection.getRng();
-            rng.collapse(false); // false = collapse to end
+            rng.collapse(false); // false = collapse to end of selection
             selection.setRng(rng);
-            
-            // Superscript with data attributes for view mode reconstruction
-            // Links to anchor #ref-N, stores URL and title in data attributes
-            const superscriptHtml = `<sup class="ref-cite" data-ref="${refNumber}" data-url="${escapeHtml(link)}" data-title="${escapeHtml(title)}" data-journal="${escapeHtml(journal || '')}" data-year="${year || ''}"><a href="#ref-${refNumber}" style="color: #e96304; text-decoration: none; font-weight: 600;">[${refNumber}]</a></sup>`;
             editor.insertContent(superscriptHtml);
         } else {
-            const textarea = document.getElementById('editCaseDiscussion');
-            if (textarea) {
-                textarea.value += ` [${refNumber}]`;
-            }
+            // Append to end of content (search/manual add - persists data without disrupting cursor)
+            const currentContent = editor.getContent();
+            editor.setContent(currentContent + superscriptHtml);
+            // Move cursor to end
+            editor.selection.select(editor.getBody(), true);
+            editor.selection.collapse(false);
+        }
+    } else if (!tinymce.get('editCaseDiscussion')) {
+        const textarea = document.getElementById('editCaseDiscussion');
+        if (textarea && isNew) {
+            textarea.value += ` [${refNumber}]`;
         }
     }
     
