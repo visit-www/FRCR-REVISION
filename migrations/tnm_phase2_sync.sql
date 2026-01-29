@@ -1,19 +1,38 @@
 -- TNM Phase 2 Verification - Production Sync Migration
--- Generated for PostgreSQL (Vercel Postgres)
+-- Generated for PostgreSQL (Vercel Postgres / Neon)
 -- Run this on your production database to sync changes made locally
+--
+-- NOTE: Disease IDs differ between local SQLite and production PostgreSQL
+-- Local ID 89 = Production ID 98 (Cervical Lymph Nodes)
+-- Local ID 97 = Production ID 92 (Staging Principles)
 
 -- ============================================================
--- DISEASE 89: Cervical Lymph Nodes and Unknown Primary
+-- DISEASE: Cervical Lymph Nodes and Unknown Primary
+-- Production ID: 98 (Local ID: 89)
 -- ============================================================
 
--- Update T definitions to T0 only in tnm_data_json
+-- Update T definitions to T0 only
 UPDATE ajcc_staging_data
 SET tnm_data_json = jsonb_set(
     tnm_data_json::jsonb,
     '{t_definitions}',
     '[{"subsite": "Default", "categories": [{"category": "T0", "criteria": "No identifiable primary tumor"}]}]'::jsonb
 )::text
-WHERE disease_site_id = 89;
+WHERE disease_site_id = 98;
+
+-- Update stage groups to T0-only entries
+UPDATE ajcc_staging_data
+SET tnm_data_json = jsonb_set(
+    tnm_data_json::jsonb,
+    '{stage_groups}',
+    '[
+        {"T": "T0", "N": "N1", "M": "M0", "stage": "III"},
+        {"T": "T0", "N": "N2", "M": "M0", "stage": "IVA"},
+        {"T": "T0", "N": "N3", "M": "M0", "stage": "IVB"},
+        {"T": "T0", "N": "Any N", "M": "M1", "stage": "IVC"}
+    ]'::jsonb
+)::text
+WHERE disease_site_id = 98;
 
 -- Add curated quick reference notes for Cervical Lymph Nodes
 UPDATE ajcc_staging_data
@@ -39,17 +58,18 @@ SET curated_quick_reference_html = '<div class="alert alert-info">
 
 <p><em>Key takeaway: If the primary tumor is unknown, staging is based on lymph nodes — unless biology clearly identifies the cancer''s origin.</em></p>
 </div>'
-WHERE disease_site_id = 89;
+WHERE disease_site_id = 98;
 
 -- ============================================================
--- DISEASE 97: Staging Principles of Head and Neck Cancers
+-- DISEASE: Staging Principles of Head and Neck Cancers
+-- Production ID: 92 (Local ID: 97)
 -- (Info-only entry - no TNM staging, just reference content)
 -- ============================================================
 
--- Check if staging data exists for disease 97, create if not
-INSERT INTO ajcc_staging_data (disease_site_id, diagnosis_year_id, curated_quick_reference_html, extracted_at, data_version)
-SELECT 97, 1, '', NOW(), 2
-WHERE NOT EXISTS (SELECT 1 FROM ajcc_staging_data WHERE disease_site_id = 97);
+-- Remove TNM data entirely (this is an info-only page)
+UPDATE ajcc_staging_data
+SET tnm_data_json = NULL
+WHERE disease_site_id = 92;
 
 -- Add curated quick reference notes for Staging Principles
 UPDATE ajcc_staging_data
@@ -92,25 +112,31 @@ SET curated_quick_reference_html = '<div class="alert alert-primary">
 <li>If ENE uncertain → classify as ENE-negative</li>
 </ul>
 </div>'
-WHERE disease_site_id = 97;
+WHERE disease_site_id = 92;
 
 -- ============================================================
 -- CLEANUP: Remove any IntelligentTNMData that was incorrectly added
 -- ============================================================
 
-DELETE FROM intelligent_tnm_data WHERE disease_site_id IN (89, 97);
+DELETE FROM intelligent_tnm_data WHERE disease_site_id IN (92, 98);
 
 -- ============================================================
 -- VERIFICATION QUERIES (run these to confirm changes)
 -- ============================================================
 
--- Check disease 89 T definitions
--- SELECT disease_site_id, tnm_data_json::jsonb->'t_definitions' 
--- FROM ajcc_staging_data WHERE disease_site_id = 89;
+-- Check Cervical Lymph Nodes T definitions and stage groups
+-- SELECT disease_site_id, 
+--        tnm_data_json::jsonb->'t_definitions' as t_defs,
+--        tnm_data_json::jsonb->'stage_groups' as stages
+-- FROM ajcc_staging_data WHERE disease_site_id = 98;
+
+-- Check Staging Principles has no TNM data
+-- SELECT disease_site_id, tnm_data_json IS NULL as no_tnm_data
+-- FROM ajcc_staging_data WHERE disease_site_id = 92;
 
 -- Check curated notes exist
 -- SELECT disease_site_id, LEFT(curated_quick_reference_html, 100) 
--- FROM ajcc_staging_data WHERE disease_site_id IN (89, 97);
+-- FROM ajcc_staging_data WHERE disease_site_id IN (92, 98);
 
 -- Confirm IntelligentTNMData deleted
--- SELECT * FROM intelligent_tnm_data WHERE disease_site_id IN (89, 97);
+-- SELECT * FROM intelligent_tnm_data WHERE disease_site_id IN (92, 98);
