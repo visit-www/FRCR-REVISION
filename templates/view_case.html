@@ -752,11 +752,18 @@
                         <div class="collapse mt-2" id="sciencedirectQueryEditor">
                             <div class="card card-body p-2" style="background: #f8f9fa;">
                                 <label class="form-label small mb-1"><strong>Custom Search Query:</strong></label>
-                                <input type="text" id="sciencedirectCustomQuery" class="form-control form-control-sm" 
-                                       placeholder="Enter custom query or leave empty for auto-generated">
+                                <div class="input-group input-group-sm">
+                                    <input type="text" id="sciencedirectCustomQuery" class="form-control" 
+                                           placeholder="Enter custom query or leave empty for auto-generated"
+                                           onkeypress="if(event.key==='Enter') applyCustomQueryStudent()">
+                                    <button class="btn btn-outline-primary" type="button" onclick="applyCustomQueryStudent()" title="Apply this custom query for search">
+                                        <i class="fas fa-check me-1"></i>Apply
+                                    </button>
+                                </div>
                                 <small class="text-muted d-block mt-1">
-                                    <i class="fas fa-info-circle me-1"></i>Enter a custom ScienceDirect search query, or leave empty to use the auto-generated query. The default query will appear in the placeholder when you expand this section.
+                                    <i class="fas fa-info-circle me-1"></i>Enter a custom ScienceDirect search query, then click "Apply" to use it. Leave empty to use the auto-generated query.
                                 </small>
+                                <div id="sciencedirectCustomQueryStatus" class="mt-2" style="display: none;"></div>
                             </div>
                         </div>
                     </div>
@@ -831,11 +838,18 @@
                             <div class="collapse mt-2" id="sciencedirectQueryEditorAdmin">
                                 <div class="card card-body p-2" style="background: #f8f9fa;">
                                     <label class="form-label small mb-1"><strong>Custom Search Query:</strong></label>
-                                    <input type="text" id="sciencedirectCustomQueryAdmin" class="form-control form-control-sm" 
-                                           placeholder="Enter custom query or leave empty for auto-generated">
+                                    <div class="input-group input-group-sm">
+                                        <input type="text" id="sciencedirectCustomQueryAdmin" class="form-control" 
+                                               placeholder="Enter custom query or leave empty for auto-generated"
+                                               onkeypress="if(event.key==='Enter') applyCustomQueryAdmin()">
+                                        <button class="btn btn-outline-primary" type="button" onclick="applyCustomQueryAdmin()" title="Apply this custom query for search">
+                                            <i class="fas fa-check me-1"></i>Apply
+                                        </button>
+                                    </div>
                                     <small class="text-muted d-block mt-1">
-                                        <i class="fas fa-info-circle me-1"></i>Leave empty to use the most effective serach query for the case diagnosis.
+                                        <i class="fas fa-info-circle me-1"></i>Enter a custom ScienceDirect search query, then click "Apply" to use it. Leave empty to use the most effective search query for the case diagnosis.
                                     </small>
+                                    <div id="sciencedirectCustomQueryAdminStatus" class="mt-2" style="display: none;"></div>
                                 </div>
                             </div>
                         </div>
@@ -8606,12 +8620,90 @@
         }
     }
     
+    // Store custom queries (set when user clicks "Apply" button)
+    // Use window object to ensure global scope accessibility
+    window.storedCustomQueryStudent = window.storedCustomQueryStudent || '';
+    window.storedCustomQueryAdmin = window.storedCustomQueryAdmin || '';
+    
+    // Apply custom query for student
+    window.applyCustomQueryStudent = function() {
+        console.log('[SCIENCEDIRECT] Apply button clicked for student');
+        const input = document.getElementById('sciencedirectCustomQuery');
+        const statusDiv = document.getElementById('sciencedirectCustomQueryStatus');
+        
+        if (!input) {
+            console.error('[SCIENCEDIRECT] Student custom query input not found!');
+            return;
+        }
+        
+        const query = input.value.trim();
+        window.storedCustomQueryStudent = query;
+        
+        console.log('[SCIENCEDIRECT] Student custom query stored:', query || '(empty - will use default)');
+        console.log('[SCIENCEDIRECT] Stored value verified:', window.storedCustomQueryStudent);
+        
+        if (statusDiv) {
+            if (query) {
+                statusDiv.innerHTML = '<div class="alert alert-success small mb-0 py-1"><i class="fas fa-check-circle me-1"></i>Custom query applied: "' + escapeHtml(query.substring(0, 50)) + (query.length > 50 ? '...' : '') + '"</div>';
+                statusDiv.style.display = 'block';
+            } else {
+                statusDiv.innerHTML = '<div class="alert alert-info small mb-0 py-1"><i class="fas fa-info-circle me-1"></i>Custom query cleared. Default query will be used.</div>';
+                statusDiv.style.display = 'block';
+            }
+            // Hide status after 3 seconds
+            setTimeout(() => {
+                if (statusDiv) statusDiv.style.display = 'none';
+            }, 3000);
+        }
+        
+        showFlash(query ? 'Custom query applied successfully' : 'Custom query cleared', query ? 'success' : 'info');
+    };
+    
+    // Apply custom query for admin
+    window.applyCustomQueryAdmin = function() {
+        console.log('[SCIENCEDIRECT] Apply button clicked for admin');
+        const input = document.getElementById('sciencedirectCustomQueryAdmin');
+        const statusDiv = document.getElementById('sciencedirectCustomQueryAdminStatus');
+        
+        if (!input) {
+            console.error('[SCIENCEDIRECT] Admin custom query input not found!');
+            return;
+        }
+        
+        const query = input.value.trim();
+        window.storedCustomQueryAdmin = query;
+        
+        console.log('[SCIENCEDIRECT] Admin custom query stored:', query || '(empty - will use default)');
+        console.log('[SCIENCEDIRECT] Stored value verified:', window.storedCustomQueryAdmin);
+        
+        if (statusDiv) {
+            if (query) {
+                statusDiv.innerHTML = '<div class="alert alert-success small mb-0 py-1"><i class="fas fa-check-circle me-1"></i>Custom query applied: "' + escapeHtml(query.substring(0, 50)) + (query.length > 50 ? '...' : '') + '"</div>';
+                statusDiv.style.display = 'block';
+            } else {
+                statusDiv.innerHTML = '<div class="alert alert-info small mb-0 py-1"><i class="fas fa-info-circle me-1"></i>Custom query cleared. Default query will be used.</div>';
+                statusDiv.style.display = 'block';
+            }
+            // Hide status after 3 seconds
+            setTimeout(() => {
+                if (statusDiv) statusDiv.style.display = 'none';
+            }, 3000);
+        }
+        
+        showFlash(query ? 'Custom query applied successfully' : 'Custom query cleared', query ? 'success' : 'info');
+    };
+    
     // Build search query
     function buildSearchQuery(diagnosis, customQuery) {
-        if (customQuery && customQuery.trim()) {
-            return customQuery.trim();
+        // customQuery is already trimmed when passed, but double-check
+        const trimmed = customQuery ? customQuery.trim() : '';
+        if (trimmed) {
+            console.log('[SCIENCEDIRECT] buildSearchQuery - Using custom query:', trimmed);
+            return trimmed;
         } else {
-            return `${diagnosis} "radiological diagnosis"`;
+            const defaultQuery = `${diagnosis} "radiological diagnosis"`;
+            console.log('[SCIENCEDIRECT] buildSearchQuery - Using default query:', defaultQuery);
+            return defaultQuery;
         }
     }
     
@@ -8631,14 +8723,32 @@
             resultsList.innerHTML = '<div class="text-center p-4"><i class="fas fa-spinner fa-spin me-2"></i>Searching ScienceDirect...</div>';
         }
         
-        // Get custom query if provided
-        const customQueryInput = document.getElementById('sciencedirectCustomQueryAdmin');
-        const customQuery = customQueryInput ? customQueryInput.value.trim() : '';
+        // Get custom query from stored value (set by "Apply" button)
+        // Also check input field as fallback
+        let customQuery = window.storedCustomQueryAdmin || '';
+        
+        console.log('[SCIENCEDIRECT] Admin - Window stored value:', window.storedCustomQueryAdmin);
+        console.log('[SCIENCEDIRECT] Admin - Custom query from stored:', customQuery);
+        
+        // Fallback: if no stored query, try reading from input directly
+        if (!customQuery) {
+            const customQueryInput = document.getElementById('sciencedirectCustomQueryAdmin');
+            if (customQueryInput) {
+                const inputValue = customQueryInput.value.trim();
+                console.log('[SCIENCEDIRECT] Admin - Fallback: reading from input:', inputValue);
+                customQuery = inputValue;
+            }
+        }
+        
+        console.log('[SCIENCEDIRECT] Admin - Custom query value (final):', customQuery);
         
         // Build search query
         const searchQuery = buildSearchQuery(diagnosis, customQuery);
+        console.log('[SCIENCEDIRECT] Admin - Final search query:', searchQuery);
         if (customQuery) {
             console.log('[SCIENCEDIRECT] Using custom query:', customQuery);
+        } else {
+            console.log('[SCIENCEDIRECT] Using default query (no custom query provided)');
         }
         
         try {
@@ -8668,10 +8778,18 @@
             });
             
             console.log('[SCIENCEDIRECT] Response status:', response.status);
-            console.log('[SCIENCEDIRECT] Response headers:', Object.fromEntries(response.headers.entries()));
             
             // Read response as text first (can only read body once)
+            // Note: Read body before accessing headers to avoid "Body is disturbed" error
             const responseText = await response.text();
+            
+            // Log headers after reading body (headers are still accessible)
+            try {
+                console.log('[SCIENCEDIRECT] Response headers:', Object.fromEntries(response.headers.entries()));
+            } catch (e) {
+                // Headers might not be accessible after reading body in some cases
+                console.log('[SCIENCEDIRECT] Response headers: (unavailable after body read)');
+            }
             let data;
             try {
                 data = JSON.parse(responseText);
@@ -8782,14 +8900,32 @@
             resultsList.innerHTML = '<div class="text-center p-4"><i class="fas fa-spinner fa-spin me-2"></i>Searching ScienceDirect...</div>';
         }
         
-        // Get custom query if provided
-        const customQueryInput = document.getElementById('sciencedirectCustomQuery');
-        const customQuery = customQueryInput ? customQueryInput.value.trim() : '';
+        // Get custom query from stored value (set by "Apply" button)
+        // Also check input field as fallback
+        let customQuery = window.storedCustomQueryStudent || '';
+        
+        console.log('[SCIENCEDIRECT] Student - Window stored value:', window.storedCustomQueryStudent);
+        console.log('[SCIENCEDIRECT] Student - Custom query from stored:', customQuery);
+        
+        // Fallback: if no stored query, try reading from input directly
+        if (!customQuery) {
+            const customQueryInput = document.getElementById('sciencedirectCustomQuery');
+            if (customQueryInput) {
+                const inputValue = customQueryInput.value.trim();
+                console.log('[SCIENCEDIRECT] Student - Fallback: reading from input:', inputValue);
+                customQuery = inputValue;
+            }
+        }
+        
+        console.log('[SCIENCEDIRECT] Student - Custom query value (final):', customQuery);
         
         // Build search query
         const searchQuery = buildSearchQuery(diagnosis, customQuery);
+        console.log('[SCIENCEDIRECT] Student - Final search query:', searchQuery);
         if (customQuery) {
             console.log('[SCIENCEDIRECT] Using custom query:', customQuery);
+        } else {
+            console.log('[SCIENCEDIRECT] Using default query (no custom query provided)');
         }
         
         try {
@@ -8819,10 +8955,18 @@
             });
             
             console.log('[SCIENCEDIRECT] Response status:', response.status);
-            console.log('[SCIENCEDIRECT] Response headers:', Object.fromEntries(response.headers.entries()));
             
             // Read response as text first (can only read body once)
+            // Note: Read body before accessing headers to avoid "Body is disturbed" error
             const responseText = await response.text();
+            
+            // Log headers after reading body (headers are still accessible)
+            try {
+                console.log('[SCIENCEDIRECT] Response headers:', Object.fromEntries(response.headers.entries()));
+            } catch (e) {
+                // Headers might not be accessible after reading body in some cases
+                console.log('[SCIENCEDIRECT] Response headers: (unavailable after body read)');
+            }
             let data;
             try {
                 data = JSON.parse(responseText);
