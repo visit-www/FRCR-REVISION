@@ -770,6 +770,8 @@ function initializeDiscussionEditor() {
         link_assume_external_targets: true,
         content_css: 'default',
         skin: 'oxide',
+        // Allow custom reference elements with data attributes
+        extended_valid_elements: 'span[class|style|data-ref|data-url|data-title|data-journal|data-year],sup[class|style|data-ref|data-url|data-title|data-journal|data-year]',
         // Custom context menu with Find Reference
         contextmenu: 'findreference cleanuphtml | link image table',
         content_style: `
