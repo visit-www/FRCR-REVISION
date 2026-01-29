@@ -325,12 +325,19 @@ def sciencedirect_status():
         if not current_user.is_authenticated:
             return jsonify({'connected': False}), 401
         
-        is_admin = current_user.role.value == 'admin'
+        # Safely get role
+        try:
+            is_admin = current_user.role and current_user.role.value == 'admin'
+        except (AttributeError, TypeError):
+            is_admin = False
+        
+        # Safely get connection date
+        connected_at = getattr(current_user, 'sciencedirect_connected_at', None)
         
         # Admin can use auto-login even without manual connection
         # But if they've manually connected, track expiration
         if is_admin:
-            if not current_user.sciencedirect_connected_at:
+            if not connected_at:
                 # Admin with auto-login (no manual connection yet)
                 return jsonify({
                     'connected': True,  # Admin can always use auto-login
@@ -344,7 +351,7 @@ def sciencedirect_status():
             else:
                 # Admin with manual connection - check expiration (1 year)
                 expiration_days = 365
-                expiration_date = current_user.sciencedirect_connected_at + timedelta(days=expiration_days)
+                expiration_date = connected_at + timedelta(days=expiration_days)
                 now = datetime.utcnow()
                 expired = expiration_date < now
                 days_remaining = (expiration_date - now).days if not expired else 0
@@ -352,7 +359,7 @@ def sciencedirect_status():
                 
                 return jsonify({
                     'connected': connected,
-                    'connected_at': current_user.sciencedirect_connected_at.isoformat(),
+                    'connected_at': connected_at.isoformat() if connected_at else None,
                     'is_admin': True,
                     'expired': expired,
                     'expires_at': expiration_date.isoformat(),
@@ -362,7 +369,7 @@ def sciencedirect_status():
                 })
         else:
             # Student - must have manual connection
-            if not current_user.sciencedirect_connected_at:
+            if not connected_at:
                 return jsonify({
                     'connected': False,
                     'connected_at': None,
@@ -374,7 +381,7 @@ def sciencedirect_status():
             
             # Calculate expiration (3 months for student)
             expiration_days = 90
-            expiration_date = current_user.sciencedirect_connected_at + timedelta(days=expiration_days)
+            expiration_date = connected_at + timedelta(days=expiration_days)
             now = datetime.utcnow()
             expired = expiration_date < now
             days_remaining = (expiration_date - now).days if not expired else 0
@@ -384,7 +391,7 @@ def sciencedirect_status():
             
             return jsonify({
                 'connected': connected,
-                'connected_at': current_user.sciencedirect_connected_at.isoformat(),
+                'connected_at': connected_at.isoformat() if connected_at else None,
                 'is_admin': False,
                 'expired': expired,
                 'expires_at': expiration_date.isoformat(),

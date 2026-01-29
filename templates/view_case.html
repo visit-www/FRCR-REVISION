@@ -8677,9 +8677,23 @@
                 data = JSON.parse(responseText);
             } catch (e) {
                 console.error('[SCIENCEDIRECT] Failed to parse JSON response:', responseText);
-                // If not OK and not JSON, create error object
+                // If not OK and not JSON, handle gracefully
                 if (!response.ok) {
-                    throw new Error(`API returned invalid JSON: ${response.status} ${response.statusText}`);
+                    const fallbackUrl = 'https://www.sciencedirect.com/search/advanced?qs=' + encodeURIComponent(searchQuery);
+                    const errorHtml = '<div class="alert alert-warning m-2">' +
+                        '<i class="fas fa-exclamation-triangle me-2"></i><strong>API search unavailable</strong><br>' +
+                        '<small class="d-block mt-2">API returned invalid response: ' + escapeHtml(response.status + ' ' + response.statusText) + '</small>' +
+                        '<div class="mt-2"><a href="' + fallbackUrl + '" target="_blank" class="btn btn-sm btn-outline-primary">' +
+                        '<i class="fas fa-external-link-alt me-1"></i>Open ScienceDirect Search</a></div></div>';
+                    
+                    if (resultsContainer && resultsList) {
+                        resultsContainer.style.display = 'block';
+                        resultsList.innerHTML = errorHtml;
+                    } else {
+                        window.open(fallbackUrl, '_blank');
+                    }
+                    showFlash('API search unavailable. Use the link to search on ScienceDirect.', 'warning');
+                    return;
                 }
                 data = { error: 'Invalid JSON response', text: responseText };
             }
@@ -8814,9 +8828,23 @@
                 data = JSON.parse(responseText);
             } catch (e) {
                 console.error('[SCIENCEDIRECT] Failed to parse JSON response:', responseText);
-                // If not OK and not JSON, create error object
+                // If not OK and not JSON, handle gracefully
                 if (!response.ok) {
-                    throw new Error(`API returned invalid JSON: ${response.status} ${response.statusText}`);
+                    const fallbackUrl = 'https://www.sciencedirect.com/search/advanced?qs=' + encodeURIComponent(searchQuery);
+                    const errorHtml = '<div class="alert alert-warning m-2">' +
+                        '<i class="fas fa-exclamation-triangle me-2"></i><strong>API search unavailable</strong><br>' +
+                        '<small class="d-block mt-2">API returned invalid response: ' + escapeHtml(response.status + ' ' + response.statusText) + '</small>' +
+                        '<div class="mt-2"><a href="' + fallbackUrl + '" target="_blank" class="btn btn-sm btn-outline-primary">' +
+                        '<i class="fas fa-external-link-alt me-1"></i>Open ScienceDirect Search</a></div></div>';
+                    
+                    if (resultsContainer && resultsList) {
+                        resultsContainer.style.display = 'block';
+                        resultsList.innerHTML = errorHtml;
+                    } else {
+                        window.open(fallbackUrl, '_blank');
+                    }
+                    showFlash('API search unavailable. Use the link to search on ScienceDirect.', 'warning');
+                    return;
                 }
                 data = { error: 'Invalid JSON response', text: responseText };
             }
