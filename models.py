@@ -1461,10 +1461,11 @@ class IntelligentTNMData(db.Model):
     verified_by = db.relationship('User', foreign_keys=[verified_by_user_id], backref='verified_tnm_intelligence')
     source_case = db.relationship('Case', foreign_keys=[source_case_id], backref='tnm_intelligence_generated')
     
-    # Unique constraint: one intelligence record per disease/year combination
+    # DESIGN: One intelligence record per disease site (not per disease/year)
+    # The diagnosis_year_id is kept for tracking but not for uniqueness.
     __table_args__ = (
-        db.UniqueConstraint('disease_site_id', 'diagnosis_year_id', name='uq_disease_year_intelligence'),
-        db.Index('idx_disease_intelligence', 'disease_site_id', 'diagnosis_year_id'),
+        db.UniqueConstraint('disease_site_id', name='uq_disease_site_intelligence'),
+        db.Index('idx_disease_intelligence', 'disease_site_id'),
     )
     
     def __repr__(self):
