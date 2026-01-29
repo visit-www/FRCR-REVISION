@@ -74,6 +74,12 @@ class RuleLoader:
             self._cache[cancer_slug] = definition
             return definition
         
+        # Try loading from database as fallback
+        definition = self._load_from_database(cancer_slug)
+        if definition:
+            self._cache[cancer_slug] = definition
+            return definition
+        
         logger.warning(f"[TNM Calculator] No definition found for cancer type: {cancer_type}")
         return None
     
@@ -254,6 +260,104 @@ class RuleLoader:
             notes=[]
         )
     
+    def _load_from_database(self, cancer_slug: str) -> Optional[CancerDefinition]:
+        """
+        Load cancer definition from the database.
+        
+        Falls back to querying AJCCStagingData when JSON files don't have the data.
+        """
+        try:
+            # Import here to avoid circular imports
+            from models import AJCCStagingData, AJCCDiseaseSite
+            from flask import current_app
+            
+            # Find disease site by slug
+            disease = AJCCDiseaseSite.query.filter(
+                AJCCDiseaseSite.slug == cancer_slug
+            ).first()
+            
+            if not disease:
+                # Try matching by name (case-insensitive)
+                name_match = cancer_slug.replace("_", " ")
+                disease = AJCCDiseaseSite.query.filter(
+                    AJCCDiseaseSite.disease_name.ilike(f"%{name_match}%")
+                ).first()
+            
+            if not disease:
+                return None
+            
+            # Get staging data
+            staging = AJCCStagingData.query.filter_by(disease_site_id=disease.id).first()
+            if not staging or not staging.tnm_data_json:
+                return None
+            
+            # Parse tnm_data_json
+            tnm_data = json.loads(staging.tnm_data_json)
+            
+            # Build t_definitions
+            t_definitions: Dict[str, List[Dict[str, str]]] = {}
+            raw_t_defs = tnm_data.get("t_definitions", {})
+            if isinstance(raw_t_defs, dict):
+                for subsite, categories in raw_t_defs.items():
+                    if isinstance(categories, list):
+                        t_definitions[subsite] = categories
+            elif isinstance(raw_t_defs, list):
+                # Handle list format: [{subsite: "X", categories: [...]}]
+                for item in raw_t_defs:
+                    if isinstance(item, dict):
+                        subsite = item.get("subsite", "default")
+                        categories = item.get("categories", [])
+                        t_definitions[subsite] = categories
+            
+            if not t_definitions:
+                t_definitions["default"] = []
+            
+            # Build n_definitions
+            n_definitions: Dict[str, List[Dict[str, str]]] = {}
+            raw_n_defs = tnm_data.get("n_definitions", {})
+            if isinstance(raw_n_defs, dict):
+                if "clinical" in raw_n_defs:
+                    n_definitions["clinical"] = raw_n_defs["clinical"]
+                if "pathological" in raw_n_defs:
+                    n_definitions["pathological"] = raw_n_defs["pathological"]
+            elif isinstance(raw_n_defs, list):
+                n_definitions["clinical"] = raw_n_defs
+                n_definitions["pathological"] = raw_n_defs
+            
+            # M definitions
+            m_definitions = tnm_data.get("m_definitions", [])
+            if not m_definitions:
+                m_definitions = [
+                    {"category": "M0", "criteria": "No distant metastasis"},
+                    {"category": "M1", "criteria": "Distant metastasis"}
+                ]
+            
+            # Stage groups
+            stage_groups = tnm_data.get("stage_groups", [])
+            
+            # Get subsites
+            subsites = list(t_definitions.keys())
+            if subsites == ["default"]:
+                subsites = []
+            
+            logger.info(f"[TNM Calculator] Loaded {disease.disease_name} from database ({len(stage_groups)} stage groups)")
+            
+            return CancerDefinition(
+                name=disease.disease_name,
+                slug=disease.slug,
+                version="8",  # Default to AJCC 8
+                subsites=subsites,
+                t_definitions=t_definitions,
+                n_definitions=n_definitions,
+                m_definitions=m_definitions,
+                stage_groups=stage_groups,
+                notes=tnm_data.get("notes", [])
+            )
+            
+        except Exception as e:
+            logger.error(f"[TNM Calculator] Error loading from database: {e}")
+            return None
+    
     def get_available_cancers(self) -> List[Dict[str, str]]:
         """
         Get a list of all available cancer types.
@@ -280,7 +384,11 @@ class RuleLoader:
             except Exception as e:
                 logger.error(f"[TNM Calculator] Error loading cancer list: {e}")
         
-        # If no ontology, check for structured file
+        # If no cancers from ontology, try database first (has most complete data)
+        if not cancers:
+            cancers = self._get_cancers_from_database()
+        
+        # If still no cancers, check structured file as fallback
         if not cancers:
             structured_file = self.data_dir / "ajcc_tnm_structured.json"
             if structured_file.exists():
@@ -297,6 +405,45 @@ class RuleLoader:
                     logger.error(f"[TNM Calculator] Error loading structured file: {e}")
         
         return sorted(cancers, key=lambda x: x["name"])
+    
+    def _get_cancers_from_database(self) -> List[Dict[str, str]]:
+        """Get list of available cancers from database."""
+        cancers = []
+        try:
+            from models import AJCCStagingData, AJCCDiseaseSite, AJCCBodySection
+            
+            # Get all diseases that have staging data with stage_groups
+            staging_records = AJCCStagingData.query.all()
+            
+            for staging in staging_records:
+                if not staging.tnm_data_json:
+                    continue
+                
+                try:
+                    tnm_data = json.loads(staging.tnm_data_json)
+                    if not tnm_data.get("stage_groups"):
+                        continue
+                except:
+                    continue
+                
+                disease = AJCCDiseaseSite.query.get(staging.disease_site_id)
+                if not disease:
+                    continue
+                
+                section = AJCCBodySection.query.get(disease.body_section_id) if disease.body_section_id else None
+                
+                cancers.append({
+                    "name": disease.disease_name,
+                    "slug": disease.slug,
+                    "body_section": section.section_name if section else "Other"
+                })
+            
+            logger.info(f"[TNM Calculator] Loaded {len(cancers)} cancers from database")
+            
+        except Exception as e:
+            logger.error(f"[TNM Calculator] Error loading cancers from database: {e}")
+        
+        return cancers
     
     def clear_cache(self):
         """Clear the definition cache."""

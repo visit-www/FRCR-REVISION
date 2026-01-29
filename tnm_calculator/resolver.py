@@ -213,18 +213,44 @@ class StageResolver:
         if value == pattern:
             return True
         
+        # Handle range patterns like "T3-T4" or "M1a-M1b"
+        if '-' in pattern:
+            parts = pattern.split('-')
+            if len(parts) == 2:
+                start, end = parts[0].strip(), parts[1].strip()
+                # Exact match with start or end
+                if value == start or value == end:
+                    return True
+                # Value is subcategory of start or end (e.g., T3a matches T3-T4)
+                # Extra chars must not start with digit
+                if value.startswith(start) and len(value) > len(start):
+                    extra = value[len(start):]
+                    if not extra[0].isdigit():
+                        return True
+                if value.startswith(end) and len(value) > len(end):
+                    extra = value[len(end):]
+                    if not extra[0].isdigit():
+                        return True
+                # Pattern part starts with value (e.g., M1 matches M1a-M1b)
+                if start.startswith(value) and len(start) > len(value):
+                    extra = start[len(value):]
+                    if not extra[0].isdigit():
+                        return True
+                if end.startswith(value) and len(end) > len(value):
+                    extra = end[len(value):]
+                    if not extra[0].isdigit():
+                        return True
+        
         # Subcategory match (T1a matches T1)
         if value.startswith(pattern) and len(value) > len(pattern):
-            # Check if the extra part is a letter (subcategory indicator)
             extra = value[len(pattern):]
-            if len(extra) == 1 and extra.isalpha():
+            if not extra[0].isdigit():
                 return True
         
         # Parent category match (T1 matches T1a, T1b, etc.)
-        # This is less common but needed for some staging systems
         if pattern.startswith(value) and len(pattern) > len(value):
             extra = pattern[len(value):]
-            if len(extra) == 1 and extra.isalpha():
+            if not extra[0].isdigit():
                 return True
         
         return False
