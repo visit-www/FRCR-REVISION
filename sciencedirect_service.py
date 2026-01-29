@@ -177,6 +177,13 @@ def search_sciencedirect(diagnosis: str, oauth_token: Optional[str] = None, user
         'Accept': 'application/json'
     }
     
+    
+    # Get authtoken for server-side requests (required for IP-based authentication)
+    authtoken = get_authtoken()
+    if authtoken:
+        headers['X-ELS-Authtoken'] = authtoken
+        print(f"[SCIDIRECT] Using authtoken for authentication")
+    
     # Add OAuth bearer token if provided (for user-level entitlements)
     if oauth_token:
         headers['Authorization'] = f'Bearer {oauth_token}'
