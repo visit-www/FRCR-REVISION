@@ -2,9 +2,11 @@
 ScienceDirect Integration Service for FRCR-Revision
 
 Purpose: Enable residents to search ScienceDirect for radiology-related articles.
-Uses advanced search with radiology, imaging, and diagnosis keywords.
+Uses official Elsevier ScienceDirect API with API key authentication.
 
-Note: Auto-login is performed in the backend for all users using shared credentials.
+API Documentation: https://dev.elsevier.com/
+Registered Portal: https://www.radinsights.xyz
+API Key: Configured via SCIDIRECT_API_KEY environment variable
 """
 
 import os
@@ -12,210 +14,141 @@ import requests
 from typing import Dict, Optional
 from urllib.parse import quote, urlencode
 
-# ScienceDirect credentials (shared for all users)
-SCIDIRECT_USERNAME = os.getenv('SCIDIRECT_USERNAME', 'lotusheart2016@gmail.com')
-SCIDIRECT_PASSWORD = os.getenv('SCIDIRECT_PASSWORD', 'Shine@2025')
+# Elsevier API Configuration
+ELSEVIER_API_BASE = "https://api.elsevier.com"
+SCIDIRECT_API_ENDPOINT = f"{ELSEVIER_API_BASE}/content/search/sciencedirect"
 
-# ScienceDirect URLs
+# API Key from environment (fallback to provided key)
+SCIDIRECT_API_KEY = os.getenv('SCIDIRECT_API_KEY', 'ebd7f645469e104b6326952959e1cde6')
+
+# ScienceDirect Website URLs (for student manual login)
 SCIDIRECT_BASE = "https://www.sciencedirect.com"
 SCIDIRECT_LOGIN = f"{SCIDIRECT_BASE}/user/identity/login"
 SCIDIRECT_SEARCH = f"{SCIDIRECT_BASE}/search/advanced"
 
 
-class ScienceDirectSession:
-    """Manages ScienceDirect session with auto-login."""
+def search_sciencedirect(diagnosis: str, oauth_token: Optional[str] = None) -> Dict:
+    """
+    Search ScienceDirect using official Elsevier API (ADMIN - uses API key).
     
-    def __init__(self):
-        self.session = requests.Session()
-        self.logged_in = False
-        self._login()
+    Uses the official ScienceDirect Search API endpoint with API key authentication.
+    Supports OAuth bearer token for user-level entitlements when available.
     
-    def _login(self):
-        """Perform auto-login to ScienceDirect."""
-        try:
-            # First, get the login page to get CSRF token and cookies
-            login_page = self.session.get(SCIDIRECT_LOGIN, timeout=10)
+    Args:
+        diagnosis: Diagnosis to search for
+        oauth_token: Optional OAuth bearer token for user-level access
+    
+    Returns:
+        Dict with:
+            - search_url: URL to view results on ScienceDirect website
+            - api_results: API response data (if API call successful)
+            - diagnosis: Original diagnosis
+            - query: Search query used
+            - logged_in: True if using API (always True for admin)
+    """
+    # Build advanced search query focused on radiology
+    # Format: diagnosis AND (radiology OR imaging OR diagnosis)
+    search_query = f"{diagnosis} AND (radiology OR imaging OR diagnosis)"
+    
+    # Prepare API request
+    headers = {
+        'X-ELS-APIKey': SCIDIRECT_API_KEY,
+        'Accept': 'application/json'
+    }
+    
+    # Add OAuth bearer token if provided (for user-level entitlements)
+    if oauth_token:
+        headers['Authorization'] = f'Bearer {oauth_token}'
+    
+    # API parameters
+    params = {
+        'query': search_query,
+        'count': 25,  # Number of results
+        'sort': 'relevance'  # Sort by relevance
+    }
+    
+    try:
+        # Make API request
+        response = requests.get(
+            SCIDIRECT_API_ENDPOINT,
+            headers=headers,
+            params=params,
+            timeout=15
+        )
+        
+        # Check response
+        if response.status_code == 200:
+            api_data = response.json()
             
-            if login_page.status_code != 200:
-                print(f"[SCIDIRECT] Failed to load login page: {login_page.status_code}")
-                return False
+            # Extract results from API response
+            # API response structure: {'search-results': {'entry': [...], 'opensearch:totalResults': ...}}
+            search_results = api_data.get('search-results', {})
+            entries = search_results.get('entry', [])
+            total_results = search_results.get('opensearch:totalResults', '0')
             
-            # Extract CSRF token if present (ScienceDirect may use different auth methods)
-            # Try to find CSRF token in the page
-            import re
-            csrf_match = re.search(r'name=["\']_token["\']\s+value=["\']([^"\']+)["\']', login_page.text)
-            csrf_token = csrf_match.group(1) if csrf_match else None
+            # Build search URL for ScienceDirect website (for viewing full results)
+            encoded_query = quote(search_query)
+            search_url = f"{SCIDIRECT_SEARCH}?qs={encoded_query}"
             
-            # Prepare login data
-            login_data = {
-                'email': SCIDIRECT_USERNAME,
-                'password': SCIDIRECT_PASSWORD
+            return {
+                'search_url': search_url,
+                'api_results': {
+                    'articles': entries,
+                    'total_results': total_results,
+                    'query': search_query
+                },
+                'diagnosis': diagnosis,
+                'query': search_query,
+                'logged_in': True,  # API access means authenticated
+                'api_success': True
+            }
+        else:
+            # API request failed, fallback to website search URL
+            print(f"[SCIDIRECT] API request failed: {response.status_code} - {response.text}")
+            encoded_query = quote(search_query)
+            search_url = f"{SCIDIRECT_SEARCH}?qs={encoded_query}"
+            
+            return {
+                'search_url': search_url,
+                'diagnosis': diagnosis,
+                'query': search_query,
+                'logged_in': False,
+                'api_success': False,
+                'error': f'API request failed: {response.status_code}'
             }
             
-            if csrf_token:
-                login_data['_token'] = csrf_token
-            
-            # Attempt login
-            login_response = self.session.post(
-                SCIDIRECT_LOGIN,
-                data=login_data,
-                headers={
-                    'Referer': SCIDIRECT_LOGIN,
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-                },
-                allow_redirects=True,
-                timeout=10
-            )
-            
-            # Check if login was successful (redirect to dashboard or account page)
-            if login_response.status_code == 200 or login_response.status_code == 302:
-                # Check if we're logged in by looking for user indicators
-                if 'logout' in login_response.text.lower() or 'account' in login_response.url.lower():
-                    self.logged_in = True
-                    print("[SCIDIRECT] Login successful")
-                    # Save session for future use
-                    _save_session(self)
-                    return True
-                else:
-                    # Try alternative: check cookies
-                    if 'sdcore' in self.session.cookies or 'sdid' in self.session.cookies:
-                        self.logged_in = True
-                        print("[SCIDIRECT] Login successful (cookie-based)")
-                        # Save session for future use
-                        _save_session(self)
-                        return True
-            
-            print(f"[SCIDIRECT] Login may have failed: {login_response.status_code}")
-            # Even if login check fails, continue - some sites allow search without full login
-            
-        except Exception as e:
-            print(f"[SCIDIRECT] Login error: {e}")
-            # Continue anyway - search might work without full login
-        
-        return False
-    
-    def search(self, diagnosis: str) -> Dict:
-        """
-        Search ScienceDirect with advanced search parameters.
-        
-        Uses advanced search entry point with keywords: radiology, imaging, diagnosis
-        
-        Args:
-            diagnosis: Diagnosis to search for
-        
-        Returns:
-            Dict with search_url and diagnosis
-        """
-        # Build advanced search query
-        # Format: diagnosis AND (radiology OR imaging OR diagnosis)
-        # This ensures results are radiology-focused
-        search_query = f"{diagnosis} AND (radiology OR imaging OR diagnosis)"
-        
-        # ScienceDirect advanced search entry point
-        # The advanced search form uses specific parameter names
-        # We'll construct a URL that pre-fills the advanced search form
-        
-        # Encode the query for URL
+    except Exception as e:
+        print(f"[SCIDIRECT] API search error: {e}")
+        # Fallback to website search URL
         encoded_query = quote(search_query)
-        
-        # Construct advanced search URL
-        # ScienceDirect advanced search entry: https://www.sciencedirect.com/search/advanced
-        # We'll use the query parameter to pre-fill the search
         search_url = f"{SCIDIRECT_SEARCH}?qs={encoded_query}"
-        
-        # Alternative: Use the standard search with advanced query syntax
-        # This might work better for programmatic access
-        # search_url = f"{SCIDIRECT_BASE}/search?qs={encoded_query}&show=100&sortBy=relevance"
         
         return {
             'search_url': search_url,
             'diagnosis': diagnosis,
             'query': search_query,
-            'logged_in': self.logged_in
+            'logged_in': False,
+            'api_success': False,
+            'error': str(e)
         }
-
-
-# Global session instance (reused for all requests)
-# Session is persisted to maintain login state
-_session = None
-_session_file = os.path.join(os.path.dirname(__file__), 'cache', 'sciencedirect_session.pkl')
-
-
-def _save_session(session):
-    """Save session cookies to file for persistence."""
-    try:
-        import pickle
-        os.makedirs(os.path.dirname(_session_file), exist_ok=True)
-        with open(_session_file, 'wb') as f:
-            pickle.dump(dict(session.session.cookies), f)
-    except Exception as e:
-        print(f"[SCIDIRECT] Could not save session: {e}")
-
-
-def _load_session(session):
-    """Load session cookies from file."""
-    try:
-        import pickle
-        if os.path.exists(_session_file):
-            with open(_session_file, 'rb') as f:
-                cookies = pickle.load(f)
-                session.session.cookies.update(cookies)
-                print("[SCIDIRECT] Loaded saved session cookies")
-                return True
-    except Exception as e:
-        print(f"[SCIDIRECT] Could not load session: {e}")
-    return False
-
-
-def get_session() -> ScienceDirectSession:
-    """Get or create ScienceDirect session with persistence."""
-    global _session
-    if _session is None:
-        _session = ScienceDirectSession()
-        # Try to load saved session
-        if _load_session(_session):
-            # Verify session is still valid by checking if we're logged in
-            # If not, re-login will happen automatically
-            pass
-        # Save session after login
-        if _session.logged_in:
-            _save_session(_session)
-    else:
-        # If session exists, try to load saved cookies to refresh
-        _load_session(_session)
-    
-    return _session
-
-
-def search_sciencedirect(diagnosis: str) -> Dict:
-    """
-    Search ScienceDirect for articles related to diagnosis (ADMIN - uses shared session).
-    
-    Exam Relevance: Provides access to peer-reviewed radiology articles
-    from ScienceDirect's extensive database.
-    
-    Args:
-        diagnosis: Diagnosis to search for
-    
-    Returns:
-        Dict with search_url, diagnosis, query, and logged_in status
-    """
-    session = get_session()
-    return session.search(diagnosis)
 
 
 def get_student_connect_url() -> str:
     """
     Get ScienceDirect login URL for student to connect.
-    Returns the login page URL where student can authenticate.
+    
+    Students must manually log in on ScienceDirect's website with their own credentials.
+    This returns the login page URL where they can authenticate.
+    
+    Returns:
+        ScienceDirect login page URL
     """
     return SCIDIRECT_LOGIN
 
 
 def search_sciencedirect_student(user, diagnosis: str) -> Dict:
     """
-    Search ScienceDirect for student.
+    Search ScienceDirect for student (manual login required).
     
     IMPORTANT: Students must use their own ScienceDirect credentials.
     This function generates a search URL that opens in a new window where
@@ -231,18 +164,13 @@ def search_sciencedirect_student(user, diagnosis: str) -> Dict:
         diagnosis: Diagnosis to search for
     
     Returns:
-        Dict with search_url, diagnosis, query, and logged_in status
+        Dict with search_url, diagnosis, query, and connection status
     """
     # Build search query
     search_query = f"{diagnosis} AND (radiology OR imaging OR diagnosis)"
     encoded_query = quote(search_query)
     
-    # IMPORTANT: Use the login page first, then redirect to search
-    # This ensures students log in with their own credentials, not admin credentials
-    # The login page will redirect to search after authentication
-    login_url = SCIDIRECT_LOGIN
-    # After login, ScienceDirect will allow access to search
-    # We'll construct a URL that goes to login first, then search
+    # Construct search URL for ScienceDirect website
     search_url = f"{SCIDIRECT_SEARCH}?qs={encoded_query}"
     
     # Check if user has connected (they've clicked connect, but still need to log in on ScienceDirect)
@@ -250,11 +178,10 @@ def search_sciencedirect_student(user, diagnosis: str) -> Dict:
     
     return {
         'search_url': search_url,
-        'login_url': login_url,  # Provide login URL separately
+        'login_url': SCIDIRECT_LOGIN,
         'diagnosis': diagnosis,
         'query': search_query,
         'logged_in': False,  # Always False for students - they must log in on ScienceDirect
         'connected': connected,  # Whether they've clicked "connect" in our app
-        'note': 'IMPORTANT: You must log in to ScienceDirect with YOUR OWN credentials. If you see admin content, please log out of ScienceDirect and log in with your own account.',
         'requires_manual_login': True
     }

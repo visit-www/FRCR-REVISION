@@ -286,25 +286,23 @@ def sciencedirect_search():
 @login_required
 def sciencedirect_connect():
     """
-    Connect student to ScienceDirect (manual login).
-    Opens login page for student to authenticate.
-    After login, student should mark themselves as connected.
+    Connect user to ScienceDirect (manual login).
+    Opens login page for user to authenticate.
+    After login, user should mark themselves as connected.
+    - Admin: Connection valid for 1 year
+    - Student: Connection valid for 3 months
     """
     from sciencedirect_service import get_student_connect_url
     from models import db
-    from datetime import datetime
+    from datetime import datetime, timedelta
     
     if not current_user.is_authenticated:
         return jsonify({'error': 'Authentication required'}), 401
     
-    # Only for students (admin uses auto-login)
-    if current_user.role.value == 'admin':
-        return jsonify({'error': 'Admins use auto-login. No connection needed.'}), 400
-    
     try:
         connect_url = get_student_connect_url()
         
-        # Mark as connected (student will login on ScienceDirect's site)
+        # Mark as connected (user will login on ScienceDirect's site)
         # Note: We can't capture cookies directly, but we mark them as connected
         # so they don't have to click connect again
         current_user.sciencedirect_connected_at = datetime.utcnow()
@@ -313,10 +311,24 @@ def sciencedirect_connect():
         current_user.sciencedirect_session_cookies = '{"connected": true}'  # Placeholder
         db.session.commit()
         
+        # Calculate expiration based on user role
+        is_admin = current_user.role.value == 'admin'
+        if is_admin:
+            expiration_days = 365  # 1 year for admin
+            expiration_date = current_user.sciencedirect_connected_at + timedelta(days=expiration_days)
+            message = f'Please complete login on ScienceDirect. Your connection will be valid for 1 year (until {expiration_date.strftime("%Y-%m-%d")}).'
+        else:
+            expiration_days = 90  # 3 months for student
+            expiration_date = current_user.sciencedirect_connected_at + timedelta(days=expiration_days)
+            message = f'Please complete login on ScienceDirect. Your connection will be valid for 3 months (until {expiration_date.strftime("%Y-%m-%d")}).'
+        
         return jsonify({
             'connect_url': connect_url,
-            'message': 'Please complete login on ScienceDirect. Your connection will be remembered.',
-            'connected': True
+            'message': message,
+            'connected': True,
+            'expiration_date': expiration_date.isoformat(),
+            'expiration_days': expiration_days,
+            'is_admin': is_admin
         })
     except Exception as e:
         current_app.logger.error(f"ScienceDirect connect error: {e}", exc_info=True)
@@ -327,42 +339,95 @@ def sciencedirect_connect():
 @resources_bp.route('/api/sciencedirect/status')
 @login_required
 def sciencedirect_status():
-    """Check if student is connected to ScienceDirect."""
+    """Check if user is connected to ScienceDirect and return expiration info."""
+    from datetime import datetime, timedelta
+    
     if not current_user.is_authenticated:
         return jsonify({'connected': False}), 401
     
-    # Admin always has access (auto-login)
-    if current_user.role.value == 'admin':
-        return jsonify({'connected': True, 'is_admin': True})
+    is_admin = current_user.role.value == 'admin'
     
-    # Check if student has connected
-    connected = current_user.sciencedirect_connected_at is not None
-    return jsonify({
-        'connected': connected,
-        'connected_at': current_user.sciencedirect_connected_at.isoformat() if current_user.sciencedirect_connected_at else None,
-        'is_admin': False
-    })
+    # Admin can use auto-login even without manual connection
+    # But if they've manually connected, track expiration
+    if is_admin:
+        if not current_user.sciencedirect_connected_at:
+            # Admin with auto-login (no manual connection yet)
+            return jsonify({
+                'connected': True,  # Admin can always use auto-login
+                'connected_at': None,
+                'is_admin': True,
+                'expired': False,
+                'expires_at': None,
+                'days_remaining': None,
+                'uses_auto_login': True
+            })
+        else:
+            # Admin with manual connection - check expiration (1 year)
+            expiration_days = 365
+            expiration_date = current_user.sciencedirect_connected_at + timedelta(days=expiration_days)
+            now = datetime.utcnow()
+            expired = expiration_date < now
+            days_remaining = (expiration_date - now).days if not expired else 0
+            connected = not expired
+            
+            return jsonify({
+                'connected': connected,
+                'connected_at': current_user.sciencedirect_connected_at.isoformat(),
+                'is_admin': True,
+                'expired': expired,
+                'expires_at': expiration_date.isoformat(),
+                'days_remaining': days_remaining,
+                'expiration_days': expiration_days,
+                'uses_auto_login': False
+            })
+    else:
+        # Student - must have manual connection
+        if not current_user.sciencedirect_connected_at:
+            return jsonify({
+                'connected': False,
+                'connected_at': None,
+                'is_admin': False,
+                'expired': False,
+                'expires_at': None,
+                'days_remaining': None
+            })
+        
+        # Calculate expiration (3 months for student)
+        expiration_days = 90
+        expiration_date = current_user.sciencedirect_connected_at + timedelta(days=expiration_days)
+        now = datetime.utcnow()
+        expired = expiration_date < now
+        days_remaining = (expiration_date - now).days if not expired else 0
+        
+        # If expired, mark as not connected
+        connected = not expired
+        
+        return jsonify({
+            'connected': connected,
+            'connected_at': current_user.sciencedirect_connected_at.isoformat(),
+            'is_admin': False,
+            'expired': expired,
+            'expires_at': expiration_date.isoformat(),
+            'days_remaining': days_remaining,
+            'expiration_days': expiration_days
+        })
 
 
 @resources_bp.route('/api/sciencedirect/disconnect', methods=['POST'])
 @login_required
 def sciencedirect_disconnect():
-    """Disconnect student from ScienceDirect."""
+    """Disconnect user from ScienceDirect."""
     from models import db
     
     if not current_user.is_authenticated:
         return jsonify({'error': 'Authentication required'}), 401
-    
-    # Only for students
-    if current_user.role.value == 'admin':
-        return jsonify({'error': 'Admins cannot disconnect (shared account)'}), 400
     
     try:
         current_user.sciencedirect_session_cookies = None
         current_user.sciencedirect_connected_at = None
         db.session.commit()
         
-        return jsonify({'message': 'Disconnected from ScienceDirect'})
+        return jsonify({'message': 'Disconnected from ScienceDirect', 'disconnected': True})
     except Exception as e:
         current_app.logger.error(f"ScienceDirect disconnect error: {e}", exc_info=True)
         db.session.rollback()
@@ -388,12 +453,24 @@ def sciencedirect_search_student():
     if current_user.role.value == 'admin':
         return jsonify({'error': 'Use /api/sciencedirect/search for admin'}), 400
     
-    # Check if connected
+    # Check if connected and not expired
+    from datetime import datetime, timedelta
+    
     if not current_user.sciencedirect_connected_at:
         return jsonify({
             'error': 'Not connected',
             'message': 'Please connect to ScienceDirect first',
             'requires_connection': True
+        }), 400
+    
+    # Check expiration (3 months for students)
+    expiration_date = current_user.sciencedirect_connected_at + timedelta(days=90)
+    if expiration_date < datetime.utcnow():
+        return jsonify({
+            'error': 'Connection expired',
+            'message': 'Your ScienceDirect connection has expired. Please reconnect.',
+            'requires_connection': True,
+            'expired': True
         }), 400
     
     diagnosis = request.args.get('diagnosis', '').strip()

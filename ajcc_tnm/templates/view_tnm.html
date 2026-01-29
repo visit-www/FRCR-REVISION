@@ -1299,7 +1299,7 @@ function autoResizeTnmNotes() {
 }
 
 // Track if user has existing notes (to know when to delete vs skip)
-let hadExistingNotes = {{ (user_tnm_note is not none and user_tnm_note.note_text is not none and user_tnm_note.note_text|trim != '')|tojson }};
+let hadExistingNotes = {{ 'true' if user_tnm_note and user_tnm_note.note_text else 'false' }};
 
 // Load existing notes into textarea
 function loadTnmNotes() {
@@ -1921,6 +1921,7 @@ function createHighlight(selectedText, element) {
         fetch(`/tnm/api/${diseaseId}/highlight`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
             body: JSON.stringify({
                 text_content: selectedText,
                 highlight_color: 'yellow',
@@ -1969,7 +1970,8 @@ function unwrapMark(mark) {
 
 function deleteHighlight(highlightId, markElement) {
     fetch(`/tnm/api/highlight/${highlightId}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        credentials: 'include'
     })
     .then(response => response.json())
     .then(data => {
@@ -1987,7 +1989,9 @@ function deleteHighlight(highlightId, markElement) {
 }
 
 function loadExistingHighlights() {
-    fetch(`/tnm/api/${diseaseId}/highlights`)
+    fetch(`/tnm/api/${diseaseId}/highlights`, {
+        credentials: 'include'
+    })
         .then(response => response.json())
         .then(data => {
             if (data.success && data.highlights) {

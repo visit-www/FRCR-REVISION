@@ -746,21 +746,12 @@
                     <small class="text-muted d-block mt-2">
                         <i class="fas fa-info-circle me-1"></i>Opens search in new window. <strong>You must log in with YOUR OWN ScienceDirect credentials.</strong>
                     </small>
-                    <div class="alert alert-warning small mt-2 mb-0">
-                        <i class="fas fa-exclamation-triangle me-2"></i>
-                        <strong>Important:</strong> If you see admin content, please log out of ScienceDirect and log in with your own account credentials.
-                    </div>
                 </div>
                                     
                                     <!-- Subscription Info -->
                                     <div class="alert alert-warning small mb-0">
                                         <i class="fas fa-exclamation-triangle me-2"></i>
-                                        <strong>Access Note:</strong> Your access to full-text articles depends on your subscription status. 
-                                        {% if current_user.subscription_status.value == 'free' %}
-                                        <strong>You are on a free plan.</strong> Some articles may require a paid subscription for full access.
-                                        {% else %}
-                                        <strong>You have a paid subscription.</strong> You should have access to most full-text articles.
-                                        {% endif %}
+                                        <strong>Access Note:</strong> Your access to full-text articles depends on your subscription status. Some articles may require a paid subscription for full access.
                                     </div>
                                     
                                     <div class="alert alert-info small mt-2 mb-0">
@@ -1449,7 +1440,8 @@
     }
     
     /* Hidden elements in Zen Mode */
-    .zen-mode-active .notes-section {
+    .zen-mode-active .notes-section,
+    .case-details.student-case-layout.zen-mode-active .notes-section {
         display: none !important;
     }
     
@@ -1505,8 +1497,21 @@
     }
     
     /* When notes are manually shown in Zen Mode */
-    .zen-mode-active .notes-section.zen-notes-visible {
-        display: block !important;
+    .zen-mode-active .notes-section.zen-notes-visible,
+    .case-details.student-case-layout.zen-mode-active .notes-section.zen-notes-visible {
+        display: flex !important;
+        flex-direction: column !important;
+        min-height: 400px;
+    }
+    
+    /* Mobile: Ensure flex layout works on mobile too */
+    @media (max-width: 991px) {
+        .zen-mode-active .notes-section.zen-notes-visible,
+        .case-details.student-case-layout.zen-mode-active .notes-section.zen-notes-visible {
+            display: flex !important;
+            flex-direction: column !important;
+            min-height: 350px;
+        }
     }
     
     /* Hide Notes button inside notes section (appears only in Zen Mode when notes visible) */
@@ -1540,6 +1545,15 @@
     /* Show forum when manually toggled in Zen Mode */
     .zen-mode-active #discussionChatPanel.zen-forum-visible {
         display: block !important;
+        min-height: 400px;
+    }
+    
+    /* Mobile: Ensure forum panel displays properly on mobile */
+    @media (max-width: 991px) {
+        .zen-mode-active #discussionChatPanel.zen-forum-visible {
+            display: block !important;
+            min-height: 300px;
+        }
     }
     
     /* In Zen Mode by default, discussion takes full width (forum hidden) */
@@ -1675,65 +1689,70 @@
 
     /* ==================== NOTES MODAL STYLING (Match Notes Box) ==================== */
     .notes-modal-dialog {
-        max-width: 90vw;
-        width: 600px;
-        max-height: 70vh;
-        height: auto;
+        max-width: 90vw !important;
+        width: 600px !important;
+        max-height: 70vh !important;
+        height: auto !important;
     }
 
     @media (max-width: 768px) {
         .notes-modal-dialog {
-            width: 95vw;
-            max-height: 85vh;
-            margin: 1rem auto;
+            width: 95vw !important;
+            max-height: 85vh !important;
+            margin: 1rem auto !important;
         }
     }
 
     .notes-modal-content {
-        position: relative;
-        background: #FFFEF8;
-        border: 3px solid #e96304;
-        border-radius: 0.75rem;
-        box-shadow: 0 4px 12px rgba(233, 99, 4, 0.3);
-        height: 100%;
-        min-height: 400px;
-        max-height: 70vh;
-        display: flex;
-        flex-direction: column;
-        overflow: hidden;
-
+        position: relative !important;
+        background: #FFFEF8 !important;
+        border: 3px solid #e96304 !important;
+        border-radius: 0.75rem !important;
+        box-shadow: 0 4px 12px rgba(233, 99, 4, 0.3) !important;
+        height: 100% !important;
+        min-height: 400px !important;
+        max-height: 70vh !important;
+        display: flex !important;
+        flex-direction: column !important;
+        overflow: hidden !important;
     }
 
     @media (max-width: 768px) {
         .notes-modal-content {
-            min-height: 300px;
-            max-height: 85vh;
+            min-height: 300px !important;
+            max-height: 85vh !important;
         }
     }
 
     .notes-modal-textarea {
-        position: absolute;
-        top: 50px;
-        left: 0px;
-        right: 0px;
-        bottom:50px;
-        width: 100%;
-        height: 100%;
-    
-        background-color: transparent;
+        position: absolute !important;
+        top: 70px !important;
+        left: 0px !important;
+        right: 0px !important;
+        bottom: 50px !important;
+        width: 100% !important;
+        height: 100% !important;
+        background-color: transparent !important;
         border: none !important;
-        font-family: 'Courier New', monospace;
-        line-height: 1.6;
+        font-family: 'Courier New', monospace !important;
+        line-height: 1.6 !important;
         color: #2c3e50 !important;
-        padding: auto;
-        margin: 0 auto;
-        resize: none;
+        padding: auto !important;
+        margin: 0 auto !important;
+        resize: none !important;
         font-size: 0.95rem !important;
         font-weight: 400 !important;
-        overflow-y: auto;
+        overflow-y: auto !important;
         caret-color: #e96304 !important;
-        z-index: 1;
-        pointer-events: auto;
+        z-index: 1 !important;
+        pointer-events: auto !important;
+    }
+
+    /* Mobile-specific: header might be slightly different height */
+    @media (max-width: 768px) {
+        .notes-modal-textarea {
+            top: 75px !important;
+        }
     }
 
     .notes-modal-textarea::placeholder {
@@ -1743,55 +1762,55 @@
 
     .notes-modal-textarea:focus {
         outline: 2px solid #e96304 !important;
-        outline-offset: -2px;
+        outline-offset: -2px !important;
         background-color: #FFFEF8 !important;
         color: #2c3e50 !important;
     }
 
     .notes-modal-overlay {
-        position: absolute;
-        top: 0px;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        pointer-events: none;
-        z-index: 10;
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
+        position: absolute !important;
+        top: 0px !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        pointer-events: none !important;
+        z-index: 10 !important;
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: space-between !important;
     }
 
     .notes-modal-header {
-        background: #e96304;
-        border-bottom: 2px solid #8b94aF;
-        padding: 0.75rem 1.25rem;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        pointer-events: auto;
-        border-radius: 0.75rem 0.75rem 0 0;
+        background: #e96304 !important;
+        border-bottom: 2px solid #8b94aF !important;
+        padding: 0.75rem 1.25rem !important;
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        pointer-events: auto !important;
+        border-radius: 0.75rem 0.75rem 0 0 !important;
     }
 
     .notes-modal-title {
-        color: #ffffff;
-        font-weight: 600;
-        font-size: 1.1rem;
-        margin: 0;
+        color: #ffffff !important;
+        font-weight: 600 !important;
+        font-size: 1.1rem !important;
+        margin: 0 !important;
     }
 
     .notes-modal-footer {
-        background: #f8f9fa;
-        border-top: 2px solid #8b94af;
-        padding: 0.75rem 1.25rem;
-        display: flex;
-        justify-content: flex-end;
-        gap: 0.5rem;
-        pointer-events: auto;
-        border-radius: 0 0 0.75rem 0.75rem;
+        background: #f8f9fa !important;
+        border-top: 2px solid #8b94af !important;
+        padding: 0.75rem 1.25rem !important;
+        display: flex !important;
+        justify-content: flex-end !important;
+        gap: 0.5rem !important;
+        pointer-events: auto !important;
+        border-radius: 0 0 0.75rem 0.75rem !important;
     }
 
     .notes-modal-footer .btn {
-        pointer-events: auto;
+        pointer-events: auto !important;
     }
 
     /* ==================== FLAG MODAL STYLING (Match Notes Modal) ==================== */
@@ -3543,12 +3562,33 @@
                     textSpan.textContent = isActive ? 'Exit Zen' : 'Zen Mode';
                 }
                 
-                // Reset visibility states when exiting Zen Mode
-                if (!isActive) {
-                    if (notesSection) notesSection.classList.remove('zen-notes-visible');
+                if (isActive) {
+                    // When entering Zen Mode: explicitly hide notes and forum
+                    if (notesSection) {
+                        notesSection.classList.remove('zen-notes-visible');
+                        notesSection.style.display = 'none';
+                    }
+                    const currentForumPanel = document.getElementById('discussionChatPanel');
+                    if (currentForumPanel) {
+                        currentForumPanel.classList.remove('zen-forum-visible');
+                        currentForumPanel.style.display = 'none';
+                    }
+                    
+                    // Reset button text
+                    if (zenShowNotesBtn) zenShowNotesBtn.innerHTML = '<i class="fas fa-sticky-note"></i>Show Notes';
+                    if (zenShowForumBtn) zenShowForumBtn.innerHTML = '<i class="fas fa-comments"></i>Show Forum';
+                } else {
+                    // Reset visibility states when exiting Zen Mode
+                    if (notesSection) {
+                        notesSection.classList.remove('zen-notes-visible');
+                        notesSection.style.display = '';
+                    }
                     // Get the dynamically created forum panel
                     const currentForumPanel = document.getElementById('discussionChatPanel');
-                    if (currentForumPanel) currentForumPanel.classList.remove('zen-forum-visible');
+                    if (currentForumPanel) {
+                        currentForumPanel.classList.remove('zen-forum-visible');
+                        currentForumPanel.style.display = '';
+                    }
                     
                     // Reset button text
                     if (zenShowNotesBtn) zenShowNotesBtn.innerHTML = '<i class="fas fa-sticky-note"></i>Show Notes';
@@ -3562,6 +3602,11 @@
             zenShowNotesBtn.addEventListener('click', () => {
                 notesSection.classList.toggle('zen-notes-visible');
                 const isVisible = notesSection.classList.contains('zen-notes-visible');
+                if (isVisible) {
+                    notesSection.style.display = 'block';
+                } else {
+                    notesSection.style.display = 'none';
+                }
                 zenShowNotesBtn.innerHTML = isVisible 
                     ? '<i class="fas fa-eye-slash"></i>Hide Notes' 
                     : '<i class="fas fa-sticky-note"></i>Show Notes';
@@ -3573,6 +3618,7 @@
         if (zenHideNotesBtn && notesSection && zenShowNotesBtn) {
             zenHideNotesBtn.addEventListener('click', () => {
                 notesSection.classList.remove('zen-notes-visible');
+                notesSection.style.display = 'none';
                 zenShowNotesBtn.innerHTML = '<i class="fas fa-sticky-note"></i>Show Notes';
             });
         }
@@ -3581,10 +3627,22 @@
         if (zenShowForumBtn) {
             zenShowForumBtn.addEventListener('click', () => {
                 // Forum panel is created dynamically, so get it fresh
-                const currentForumPanel = document.getElementById('discussionChatPanel');
+                let currentForumPanel = document.getElementById('discussionChatPanel');
+                
+                // If forum panel doesn't exist, initialize it first
+                if (!currentForumPanel && typeof initStudentDiscussionChat === 'function') {
+                    initStudentDiscussionChat();
+                    currentForumPanel = document.getElementById('discussionChatPanel');
+                }
+                
                 if (currentForumPanel) {
                     currentForumPanel.classList.toggle('zen-forum-visible');
                     const isVisible = currentForumPanel.classList.contains('zen-forum-visible');
+                    if (isVisible) {
+                        currentForumPanel.style.display = 'block';
+                    } else {
+                        currentForumPanel.style.display = 'none';
+                    }
                     zenShowForumBtn.innerHTML = isVisible 
                         ? '<i class="fas fa-eye-slash"></i>Hide Forum' 
                         : '<i class="fas fa-comments"></i>Show Forum';
@@ -4989,13 +5047,13 @@
                     <div class="qa-mode-row mb-2">
                         <span class="qa-mode-label">Mode:</span>
                         <div class="qa-mode-buttons">
-                            <button type="button" class="qa-mode-btn active" id="qaMode_review" data-qa-mode="review" title="All questions, answers hidden">
+                            <button type="button" class="qa-mode-btn" id="qaMode_review" data-qa-mode="review" title="All questions, answers hidden">
                                 <i class="fas fa-eye-slash me-1"></i>Revision
                             </button>
                             <button type="button" class="qa-mode-btn" id="qaMode_all" data-qa-mode="all" title="Show all questions with answers">
                                 <i class="fas fa-eye me-1"></i>Reading
                             </button>
-                            <button type="button" class="qa-mode-btn" id="qaMode_flashcard" data-qa-mode="flashcard" title="One question at a time">
+                            <button type="button" class="qa-mode-btn active" id="qaMode_flashcard" data-qa-mode="flashcard" title="One question at a time">
                                 <i class="fas fa-clone me-1"></i>Flashcard
                             </button>
                             
@@ -5159,7 +5217,7 @@
         }
         
         // Study Mode state
-        let currentMode = 'review';
+        let currentMode = 'flashcard';
         let currentFilter = 'all';
         let flashcardIndex = 0;
         const allQuestionNums = pairs.map((_, i) => i + 1);
@@ -5305,6 +5363,9 @@
 
         // Update progress initially
         updateProgress();
+        
+        // Apply initial mode (flashcard)
+        applyModeAndFilter();
     }
     
     // Delete case
@@ -7180,16 +7241,24 @@
             
             return { error: null, result: result.result };
         } catch (error) {
+            // Silently handle errors in production - Anki is optional
+            // Return error without throwing to prevent blocking other code
+            const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+            
             // Handle CORS errors specifically
-            if (error.message.includes('CORS') || error.message.includes('Failed to fetch')) {
+            if (error.message.includes('CORS') || error.message.includes('Failed to fetch') || error.name === 'TypeError') {
                 return {
-                    error: 'CORS error: AnkiConnect may not be configured to allow requests from this domain. See setup instructions.',
+                    error: isLocalhost 
+                        ? 'CORS error: AnkiConnect may not be configured to allow requests from this domain. See setup instructions.'
+                        : 'AnkiConnect is only available on localhost. This feature requires Anki desktop running locally.',
                     result: null
                 };
             }
             
             return {
-                error: error.message || 'AnkiConnect not running. Please ensure Anki desktop is open with AnkiConnect installed.',
+                error: isLocalhost 
+                    ? (error.message || 'AnkiConnect not running. Please ensure Anki desktop is open with AnkiConnect installed.')
+                    : 'AnkiConnect is only available on localhost.',
                 result: null
             };
         }
@@ -7253,7 +7322,11 @@
                 }
             }
         } catch (error) {
-            console.error('[ANKI] Status check error:', error);
+            // Silently fail in production - Anki is optional and localhost-only
+            // Only log in development
+            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+                console.error('[ANKI] Status check error:', error);
+            }
             ankiConnected = false;
         }
     }
@@ -7743,7 +7816,9 @@
         
         try {
             // Load anatomy_resources.json
-            const response = await fetch('/static/anatomy_resources.json');
+            const response = await fetch('/static/anatomy_resources.json', {
+                credentials: 'include'
+            });
             if (!response.ok) throw new Error('Failed to load anatomy resources');
             
             const data = await response.json();
@@ -8111,56 +8186,265 @@
     // Check ScienceDirect connection status (for students)
     async function checkScienceDirectStatus() {
         try {
-            const response = await fetch('/resources/api/sciencedirect/status');
-            const data = await response.json();
+            const response = await fetch('/resources/api/sciencedirect/status', {
+                credentials: 'include'
+            });
             
-            if (data.connected) {
-                // Show connected state
+            if (!response.ok) {
+                // Handle authentication errors gracefully
+                if (response.status === 401 || response.status === 403) {
+                    console.warn('[SCIENCEDIRECT] Status check: Authentication required');
+                    // Show not connected state (user needs to log in)
+                    document.getElementById('sciencedirectConnectBtn').style.display = 'block';
+                    document.getElementById('sciencedirectDisconnectBtn').style.display = 'none';
+                    document.getElementById('sciencedirectSearchSection').style.display = 'none';
+                    document.getElementById('sciencedirectStatusBadge').textContent = 'Not Connected';
+                    document.getElementById('sciencedirectStatusBadge').className = 'badge bg-secondary ms-1';
+                    document.getElementById('sciencedirectStatusBadge').style.display = 'inline';
+                    document.getElementById('sciencedirectStatusText').textContent = 'Not connected. Connect to access full-text articles.';
+                    document.getElementById('sciencedirectConnectStatus').style.display = 'block';
+                    return;
+                }
+                
+                const errorText = await response.text();
+                console.error('[SCIENCEDIRECT] Status check error:', response.status, errorText);
+                return;
+            }
+            
+            const data = await response.json();
+            console.log('[SCIENCEDIRECT] Status response:', data);
+            
+            if (data.connected && !data.expired) {
+                // Show connected state with expiration info
                 document.getElementById('sciencedirectConnectBtn').style.display = 'none';
                 document.getElementById('sciencedirectDisconnectBtn').style.display = 'block';
                 document.getElementById('sciencedirectSearchSection').style.display = 'block';
                 document.getElementById('sciencedirectStatusBadge').textContent = 'Connected';
                 document.getElementById('sciencedirectStatusBadge').className = 'badge bg-success ms-1';
                 document.getElementById('sciencedirectStatusBadge').style.display = 'inline';
-                document.getElementById('sciencedirectStatusText').textContent = 'Connected to ScienceDirect';
+                
+                // Show expiration info - always show time remaining if available
+                let statusText = 'Connected to ScienceDirect';
+                
+                // Check for days_remaining first
+                if (data.days_remaining !== null && data.days_remaining !== undefined && data.days_remaining >= 0) {
+                    if (data.days_remaining > 30) {
+                        const months = Math.floor(data.days_remaining / 30);
+                        statusText += ` (${months} month${months > 1 ? 's' : ''} remaining)`;
+                    } else if (data.days_remaining > 0) {
+                        statusText += ` (${data.days_remaining} day${data.days_remaining > 1 ? 's' : ''} remaining)`;
+                    } else {
+                        statusText += ' (Expires soon)';
+                    }
+                } else if (data.expires_at) {
+                    // Fallback: calculate from expires_at if days_remaining not provided
+                    try {
+                        const expiresDate = new Date(data.expires_at);
+                        const now = new Date();
+                        const daysRemaining = Math.ceil((expiresDate - now) / (1000 * 60 * 60 * 24));
+                        if (daysRemaining > 30) {
+                            const months = Math.floor(daysRemaining / 30);
+                            statusText += ` (${months} month${months > 1 ? 's' : ''} remaining)`;
+                        } else if (daysRemaining > 0) {
+                            statusText += ` (${daysRemaining} day${daysRemaining > 1 ? 's' : ''} remaining)`;
+                        } else {
+                            statusText += ' (Expires soon)';
+                        }
+                    } catch (e) {
+                        console.warn('[SCIENCEDIRECT] Could not parse expiration date:', e);
+                    }
+                }
+                
+                document.getElementById('sciencedirectStatusText').textContent = statusText;
                 document.getElementById('sciencedirectConnectStatus').style.display = 'block';
             } else {
-                // Show not connected state
+                // Show not connected state (either never connected or expired)
                 document.getElementById('sciencedirectConnectBtn').style.display = 'block';
                 document.getElementById('sciencedirectDisconnectBtn').style.display = 'none';
                 document.getElementById('sciencedirectSearchSection').style.display = 'none';
                 document.getElementById('sciencedirectStatusBadge').textContent = 'Not Connected';
                 document.getElementById('sciencedirectStatusBadge').className = 'badge bg-secondary ms-1';
                 document.getElementById('sciencedirectStatusBadge').style.display = 'inline';
-                document.getElementById('sciencedirectStatusText').textContent = 'Not connected. Connect to access full-text articles.';
+                
+                let statusText = 'Not connected. Connect to access full-text articles.';
+                if (data.expired) {
+                    statusText = 'Connection expired. Please reconnect to ScienceDirect.';
+                }
+                document.getElementById('sciencedirectStatusText').textContent = statusText;
                 document.getElementById('sciencedirectConnectStatus').style.display = 'block';
             }
         } catch (error) {
             console.error('[SCIENCEDIRECT] Status check error:', error);
+            // On error, show not connected state
+            document.getElementById('sciencedirectConnectBtn').style.display = 'block';
+            document.getElementById('sciencedirectDisconnectBtn').style.display = 'none';
+            document.getElementById('sciencedirectSearchSection').style.display = 'none';
         }
     }
     
     // Connect to ScienceDirect (opens login page)
     async function connectScienceDirect() {
+        // Check if already connected before attempting to connect
+        try {
+            const statusResponse = await fetch('/resources/api/sciencedirect/status', {
+                credentials: 'include'
+            });
+            if (statusResponse.ok) {
+                const statusData = await statusResponse.json();
+                if (statusData.connected && !statusData.expired) {
+                    showFlash('You are already connected to ScienceDirect. Use the search button to search.', 'info');
+                    return;
+                }
+            }
+        } catch (e) {
+            // Status check failed, continue with connect
+            console.warn('[SCIENCEDIRECT] Status check before connect failed:', e);
+        }
+        
         try {
             const response = await fetch('/resources/api/sciencedirect/connect', {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json'}
+                headers: {'Content-Type': 'application/json'},
+                credentials: 'include'
             });
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                let errorData;
+                try {
+                    errorData = JSON.parse(errorText);
+                } catch (e) {
+                    errorData = { error: `HTTP ${response.status}: ${response.statusText}` };
+                }
+                console.error('[SCIENCEDIRECT] Connect response error:', response.status, errorData);
+                showFlash(errorData.error || `Failed to connect: ${response.status} ${response.statusText}`, 'error');
+                return;
+            }
+            
             const data = await response.json();
+            console.log('[SCIENCEDIRECT] Connect response:', data);
             
             if (data.error) {
                 showFlash(data.error, 'error');
                 return;
             }
             
-            // Open ScienceDirect login page
-            window.open(data.connect_url, '_blank', 'width=800,height=600');
-            showFlash('Please complete login on ScienceDirect. Your connection will be remembered.', 'info');
+            // Validate connect_url exists and is absolute
+            let connectUrl;
+            
+            if (!data.connect_url) {
+                console.warn('[SCIENCEDIRECT] No connect_url in response. Using fallback URL. Full response:', JSON.stringify(data, null, 2));
+                // Fallback: Use known ScienceDirect login URL
+                connectUrl = 'https://www.sciencedirect.com/user/identity/login';
+            } else {
+                // Ensure URL is absolute and valid
+                connectUrl = String(data.connect_url).trim();
+                
+                // Check if URL is already absolute
+                if (!connectUrl.startsWith('http://') && !connectUrl.startsWith('https://')) {
+                    // If it starts with /, it's a relative path - this is the problem!
+                    if (connectUrl.startsWith('/')) {
+                        console.error('[SCIENCEDIRECT] ERROR: Received relative URL instead of absolute:', connectUrl);
+                        console.warn('[SCIENCEDIRECT] Using fallback absolute URL instead');
+                        // Use fallback instead of failing
+                        connectUrl = 'https://www.sciencedirect.com/user/identity/login';
+                    } else {
+                        // If relative without /, make it absolute
+                        connectUrl = `https://${connectUrl}`;
+                    }
+                }
+                
+                // Validate URL format
+                try {
+                    new URL(connectUrl); // This will throw if URL is invalid
+                } catch (e) {
+                    console.error('[SCIENCEDIRECT] Invalid URL format:', connectUrl, e);
+                    console.warn('[SCIENCEDIRECT] Using fallback URL instead');
+                    // Use fallback instead of failing
+                    connectUrl = 'https://www.sciencedirect.com/user/identity/login';
+                }
+            }
+            
+            console.log('[SCIENCEDIRECT] Opening URL:', connectUrl);
+            
+            // Method 1: Try creating an anchor element and clicking it
+            // This preserves the user gesture and is less likely to be blocked
+            try {
+                const link = document.createElement('a');
+                link.href = connectUrl;
+                link.target = '_blank';
+                link.rel = 'noopener noreferrer';
+                link.style.display = 'none';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+                console.log('[SCIENCEDIRECT] Opened via anchor click method');
+                showFlash('Opening ScienceDirect login page. Please complete login in the new window.', 'info');
+            } catch (e) {
+                console.warn('[SCIENCEDIRECT] Anchor click method failed, trying window.open:', e);
+                
+                // Method 2: Fallback to window.open()
+                let newWindow = window.open(connectUrl, '_blank');
+                
+                // Check if popup was blocked
+                if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+                    // Popup was blocked - provide alternative
+                    console.warn('[SCIENCEDIRECT] Popup blocked, using alternative method');
+                    
+                    // Method 3: Try opening in same window as fallback
+                    const userConfirmed = confirm(
+                        'Popup was blocked by your browser. Would you like to open ScienceDirect login page in this window?\n\n' +
+                        'Click OK to open in this window, or Cancel to copy the link manually.'
+                    );
+                    
+                    if (userConfirmed) {
+                        // Open in current window
+                        window.location.href = connectUrl;
+                        showFlash('Opening ScienceDirect login page...', 'info');
+                    } else {
+                        // Show link for manual copy
+                        const linkText = `Please manually open this link: ${connectUrl}`;
+                        showFlash(linkText, 'warning');
+                        console.log('[SCIENCEDIRECT] Manual link:', connectUrl);
+                        
+                        // Also try to copy to clipboard if possible
+                        if (navigator.clipboard) {
+                            navigator.clipboard.writeText(connectUrl).then(() => {
+                                showFlash('Link copied to clipboard! Paste it in a new tab.', 'info');
+                            }).catch(() => {
+                                // Clipboard failed, that's okay
+                            });
+                        }
+                    }
+                } else {
+                    // Popup opened successfully
+                    console.log('[SCIENCEDIRECT] Popup opened successfully via window.open()');
+                    showFlash('Opening ScienceDirect login page. Please complete login in the new window.', 'info');
+                }
+            }
             
             // Update UI if connection was successful
             if (data.connected) {
-                checkScienceDirectStatus();
+                // Show expiration info in a follow-up message
+                if (data.expiration_date) {
+                    const expirationDate = new Date(data.expiration_date);
+                    const expirationStr = expirationDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+                    const expirationPeriod = data.is_admin ? '1 year' : '3 months';
+                    
+                    // Show expiration info after a short delay
+                    setTimeout(() => {
+                        showFlash(
+                            `Connection successful! Your ScienceDirect connection is valid for ${expirationPeriod} (until ${expirationStr}).`,
+                            'success'
+                        );
+                    }, 1000);
+                }
+                
+                // Wait a moment for the database update to propagate, then refresh status
+                setTimeout(() => {
+                    checkScienceDirectStatus();
+                }, 500);
             }
         } catch (error) {
             console.error('[SCIENCEDIRECT] Connect error:', error);
@@ -8177,20 +8461,54 @@
         try {
             const response = await fetch('/resources/api/sciencedirect/disconnect', {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json'}
+                headers: {'Content-Type': 'application/json'},
+                credentials: 'include'
             });
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                let errorData;
+                try {
+                    errorData = JSON.parse(errorText);
+                } catch (e) {
+                    errorData = { error: `HTTP ${response.status}: ${response.statusText}` };
+                }
+                console.error('[SCIENCEDIRECT] Disconnect response error:', response.status, errorData);
+                showFlash(errorData.error || `Failed to disconnect: ${response.status} ${response.statusText}`, 'error');
+                // Still try to refresh status in case disconnect partially worked
+                checkScienceDirectStatus();
+                return;
+            }
+            
             const data = await response.json();
+            console.log('[SCIENCEDIRECT] Disconnect response:', data);
             
             if (data.error) {
                 showFlash(data.error, 'error');
+                // Still refresh status
+                checkScienceDirectStatus();
                 return;
             }
             
             showFlash('Disconnected from ScienceDirect', 'success');
-            checkScienceDirectStatus(); // Refresh status
+            
+            // Immediately update UI to show disconnected state
+            document.getElementById('sciencedirectConnectBtn').style.display = 'block';
+            document.getElementById('sciencedirectDisconnectBtn').style.display = 'none';
+            document.getElementById('sciencedirectSearchSection').style.display = 'none';
+            document.getElementById('sciencedirectStatusBadge').textContent = 'Not Connected';
+            document.getElementById('sciencedirectStatusBadge').className = 'badge bg-secondary ms-1';
+            document.getElementById('sciencedirectStatusBadge').style.display = 'inline';
+            document.getElementById('sciencedirectStatusText').textContent = 'Not connected. Connect to access full-text articles.';
+            document.getElementById('sciencedirectConnectStatus').style.display = 'block';
+            
+            // Don't refresh status - the UI is already updated and we don't want it to revert
+            // The status will be refreshed naturally when the user navigates or the tab is clicked
         } catch (error) {
             console.error('[SCIENCEDIRECT] Disconnect error:', error);
             showFlash(`Error disconnecting: ${error.message}`, 'error');
+            // Still try to refresh status
+            checkScienceDirectStatus();
         }
     }
     
@@ -8238,16 +8556,22 @@
         }
         
         try {
-            const response = await fetch(`/resources/api/sciencedirect/search/student?diagnosis=${encodeURIComponent(diagnosis)}`);
+            const response = await fetch(`/resources/api/sciencedirect/search/student?diagnosis=${encodeURIComponent(diagnosis)}`, {
+                credentials: 'include'
+            });
             const data = await response.json();
             
             if (!response.ok || data.error) {
                 const errorMsg = data.message || data.error || `HTTP ${response.status}: ${response.statusText}`;
                 console.error('[SCIENCEDIRECT] Student search error:', errorMsg, data);
                 
-                // Check if connection is required
-                if (data.requires_connection || response.status === 400) {
-                    showFlash('Please connect to ScienceDirect first', 'warning');
+                // Check if connection is required or expired
+                if (data.requires_connection || data.expired || response.status === 400) {
+                    if (data.expired) {
+                        showFlash('Your ScienceDirect connection has expired. Please reconnect.', 'warning');
+                    } else {
+                        showFlash('Please connect to ScienceDirect first', 'warning');
+                    }
                     checkScienceDirectStatus();
                 } else {
                     showFlash(errorMsg, 'error');
@@ -8258,9 +8582,6 @@
             // IMPORTANT: Show warning about using own credentials
             if (data.requires_manual_login || !data.logged_in) {
                 const confirmMsg = 'IMPORTANT: You must log in to ScienceDirect with YOUR OWN credentials.\n\n' +
-                    'If you see admin content, please:\n' +
-                    '1. Log out of ScienceDirect\n' +
-                    '2. Log in with your own account\n\n' +
                     'Continue to open ScienceDirect search?';
                 
                 if (!confirm(confirmMsg)) {
