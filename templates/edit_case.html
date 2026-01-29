@@ -3359,7 +3359,7 @@ function clearAllReferences() {
 }
 
 // ==================== SEARCH REFERENCE BY TERM ====================
-function searchReferenceByTerm() {
+async function searchReferenceByTerm() {
     const input = document.getElementById('referenceSearchInput');
     const query = input.value.trim();
     
@@ -3369,8 +3369,36 @@ function searchReferenceByTerm() {
         return;
     }
     
-    // Use existing search modal infrastructure
+    // Show loading modal
     showReferenceSearchModal(query);
+    
+    try {
+        const response = await fetch('/resources/api/find-reference', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                query: query,
+                strict: true
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(data.error || `HTTP ${response.status}`);
+        }
+        
+        updateReferenceSearchModal(data);
+        
+    } catch (error) {
+        console.error('[Reference Search] Error:', error);
+        updateReferenceSearchModal({
+            error: error.message,
+            message: 'Failed to search for references. Please try again.'
+        });
+    }
 }
 
 // ==================== MANUAL REFERENCE ENTRY ====================
