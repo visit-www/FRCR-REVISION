@@ -743,6 +743,23 @@
                     <button class="btn w-100" onclick="searchScienceDirectStudent()" style="background: #ff6b35; border-color: #ff6b35; color: white;">
                         <i class="fas fa-search me-2"></i>Search "{{ case.diagnosis if case else 'Diagnosis' }}" in ScienceDirect
                     </button>
+                    
+                    <!-- Advanced Search Query Editor -->
+                    <div class="mt-2">
+                        <button class="btn btn-sm btn-link text-decoration-none p-0" type="button" data-bs-toggle="collapse" data-bs-target="#sciencedirectQueryEditor" aria-expanded="false" aria-controls="sciencedirectQueryEditor">
+                            <i class="fas fa-edit me-1"></i>Edit search query
+                        </button>
+                        <div class="collapse mt-2" id="sciencedirectQueryEditor">
+                            <div class="card card-body p-2" style="background: #f8f9fa;">
+                                <label class="form-label small mb-1"><strong>Custom Search Query:</strong></label>
+                                <input type="text" id="sciencedirectCustomQuery" class="form-control form-control-sm" 
+                                       placeholder="Enter custom query or leave empty for auto-generated">
+                                <small class="text-muted d-block mt-1">
+                                    <i class="fas fa-info-circle me-1"></i>Enter a custom ScienceDirect search query, or leave empty to use the auto-generated query. The default query will appear in the placeholder when you expand this section.
+                                </small>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                                     
                                     <!-- Search Results Container -->
@@ -766,7 +783,7 @@
                                     
                                     <div class="alert alert-info small mb-0">
                                         <i class="fas fa-lightbulb me-2"></i>
-                                        <strong>Advanced Search:</strong> Automatically searches for "{{ case.diagnosis if case else 'diagnosis' }}" AND (radiology OR imaging OR diagnosis) to find the most relevant articles.
+                                        <strong>Advanced Search:</strong> Automatically searches for "{{ case.diagnosis if case else 'diagnosis' }}" AND (radiology OR "medical imaging" OR CT OR "computed tomography" OR MRI OR "magnetic resonance" OR staging OR "tumor staging" OR "cancer staging"). You can edit the query using the "Edit search query" link above.
                                     </div>
                                 </div>
                             </div>
@@ -805,6 +822,23 @@
                         <button class="btn w-100" onclick="searchScienceDirect()" style="background: #ff6b35; border-color: #ff6b35; color: white;">
                             <i class="fas fa-search me-2"></i>Search "{{ case.diagnosis if case else 'Diagnosis' }}" in ScienceDirect
                         </button>
+                        
+                        <!-- Advanced Search Query Editor -->
+                        <div class="mt-2">
+                            <button class="btn btn-sm btn-link text-decoration-none p-0" type="button" data-bs-toggle="collapse" data-bs-target="#sciencedirectQueryEditorAdmin" aria-expanded="false" aria-controls="sciencedirectQueryEditorAdmin">
+                                <i class="fas fa-edit me-1"></i>Edit search query
+                            </button>
+                            <div class="collapse mt-2" id="sciencedirectQueryEditorAdmin">
+                                <div class="card card-body p-2" style="background: #f8f9fa;">
+                                    <label class="form-label small mb-1"><strong>Custom Search Query:</strong></label>
+                                    <input type="text" id="sciencedirectCustomQueryAdmin" class="form-control form-control-sm" 
+                                           placeholder="Enter custom query or leave empty for auto-generated">
+                                    <small class="text-muted d-block mt-1">
+                                        <i class="fas fa-info-circle me-1"></i>Leave empty to use default: "{diagnosis}" AND (radiology OR "medical imaging" OR CT OR MRI OR staging...)
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     
                     <!-- Search Results Container -->
@@ -822,7 +856,7 @@
                     
                     <div class="alert alert-info small mb-0">
                         <i class="fas fa-lightbulb me-2"></i>
-                        <strong>Advanced Search:</strong> Automatically searches for "{{ case.diagnosis if case else 'diagnosis' }}" AND (radiology OR imaging OR diagnosis) to find the most relevant articles.
+                        <strong>Advanced Search:</strong> Automatically searches for "{{ case.diagnosis if case else 'diagnosis' }}" AND (radiology OR "medical imaging" OR CT OR "computed tomography" OR MRI OR "magnetic resonance" OR staging OR "tumor staging" OR "cancer staging"). You can edit the query using the "Edit search query" link above.
                     </div>
                 </div>
                 {% endif %}
@@ -8557,8 +8591,19 @@
             resultsList.innerHTML = '<div class="text-center p-4"><i class="fas fa-spinner fa-spin me-2"></i>Searching ScienceDirect...</div>';
         }
         
+        // Get custom query if provided
+        const customQueryInput = document.getElementById('sciencedirectCustomQueryAdmin');
+        const customQuery = customQueryInput ? customQueryInput.value.trim() : '';
+        
+        // Build URL with optional custom query
+        let searchUrl = `/resources/api/sciencedirect/search?diagnosis=${encodeURIComponent(diagnosis)}`;
+        if (customQuery) {
+            searchUrl += `&query=${encodeURIComponent(customQuery)}`;
+            console.log('[SCIENCEDIRECT] Using custom query:', customQuery);
+        }
+        
         try {
-            const response = await fetch(`/resources/api/sciencedirect/search?diagnosis=${encodeURIComponent(diagnosis)}`, {
+            const response = await fetch(searchUrl, {
                 credentials: 'include'
             });
             const data = await response.json();
@@ -8734,8 +8779,19 @@
             resultsList.innerHTML = '<div class="text-center p-4"><i class="fas fa-spinner fa-spin me-2"></i>Searching ScienceDirect...</div>';
         }
         
+        // Get custom query if provided
+        const customQueryInput = document.getElementById('sciencedirectCustomQuery');
+        const customQuery = customQueryInput ? customQueryInput.value.trim() : '';
+        
+        // Build URL with optional custom query
+        let searchUrl = `/resources/api/sciencedirect/search/student?diagnosis=${encodeURIComponent(diagnosis)}`;
+        if (customQuery) {
+            searchUrl += `&query=${encodeURIComponent(customQuery)}`;
+            console.log('[SCIENCEDIRECT] Using custom query:', customQuery);
+        }
+        
         try {
-            const response = await fetch(`/resources/api/sciencedirect/search/student?diagnosis=${encodeURIComponent(diagnosis)}`, {
+            const response = await fetch(searchUrl, {
                 credentials: 'include'
             });
             const data = await response.json();
@@ -8983,6 +9039,59 @@
         }
     }
     
+    
+    // Helper: Show generated query in input field for reference
+    function updateScienceDirectQueryPreview() {
+        const diagnosis = caseDiagnosis || '';
+        if (!diagnosis) return;
+        
+        // Generate the default query
+        const defaultQuery = `"${diagnosis}" AND (radiology OR "medical imaging" OR CT OR "computed tomography" OR MRI OR "magnetic resonance" OR staging OR "tumor staging" OR "cancer staging")`;
+        
+        // Update placeholder to show the generated query
+        const studentInput = document.getElementById('sciencedirectCustomQuery');
+        const adminInput = document.getElementById('sciencedirectCustomQueryAdmin');
+        
+        if (studentInput) {
+            if (!studentInput.value.trim()) {
+                studentInput.placeholder = `Default: ${defaultQuery}`;
+            }
+            // Add event listener to show/hide placeholder when user types
+            studentInput.addEventListener('focus', function() {
+                if (!this.value.trim()) {
+                    this.placeholder = `Default: ${defaultQuery}`;
+                }
+            });
+        }
+        if (adminInput) {
+            if (!adminInput.value.trim()) {
+                adminInput.placeholder = `Default: ${defaultQuery}`;
+            }
+            // Add event listener to show/hide placeholder when user types
+            adminInput.addEventListener('focus', function() {
+                if (!this.value.trim()) {
+                    this.placeholder = `Default: ${defaultQuery}`;
+                }
+            });
+        }
+    }
+    
+    // Call on page load and when query editor is expanded
+    if (typeof caseDiagnosis !== 'undefined') {
+        updateScienceDirectQueryPreview();
+        
+        // Also update when the collapse is shown
+        const studentCollapse = document.getElementById('sciencedirectQueryEditor');
+        const adminCollapse = document.getElementById('sciencedirectQueryEditorAdmin');
+        
+        if (studentCollapse) {
+            studentCollapse.addEventListener('shown.bs.collapse', updateScienceDirectQueryPreview);
+        }
+        if (adminCollapse) {
+            adminCollapse.addEventListener('shown.bs.collapse', updateScienceDirectQueryPreview);
+        }
+    }
+
     // Initialize integrations on page load
     if (isStudent) {
         checkNotionStatus();

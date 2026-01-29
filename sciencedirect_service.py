@@ -27,7 +27,7 @@ SCIDIRECT_LOGIN = f"{SCIDIRECT_BASE}/user/identity/login"
 SCIDIRECT_SEARCH = f"{SCIDIRECT_BASE}/search/advanced"
 
 
-def search_sciencedirect(diagnosis: str, oauth_token: Optional[str] = None, user_id: Optional[int] = None, user_role: Optional[str] = None) -> Dict:
+def search_sciencedirect(diagnosis: str, oauth_token: Optional[str] = None, user_id: Optional[int] = None, user_role: Optional[str] = None, custom_query: Optional[str] = None) -> Dict:
     """
     Search ScienceDirect using official Elsevier API (uses API key for all users).
     
@@ -40,6 +40,7 @@ def search_sciencedirect(diagnosis: str, oauth_token: Optional[str] = None, user
         oauth_token: Optional OAuth bearer token for user-level access
         user_id: Optional user ID for logging purposes
         user_role: Optional user role for logging purposes
+        custom_query: Optional custom search query (overrides auto-generated query)
     
     Returns:
         Dict with:

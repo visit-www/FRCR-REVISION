@@ -280,12 +280,16 @@ def sciencedirect_search():
     # Get optional OAuth token (for future OAuth implementation)
     oauth_token = request.args.get('oauth_token', '').strip() or None
     
+    # Get optional custom query (user can override auto-generated query)
+    custom_query = request.args.get('query', '').strip() or None
+    
     try:
         result = search_sciencedirect(
             diagnosis, 
             oauth_token=oauth_token,
             user_id=current_user.id,
-            user_role=current_user.role.value
+            user_role=current_user.role.value,
+            custom_query=custom_query
         )
         
         if result.get('api_success'):
@@ -498,8 +502,11 @@ def sciencedirect_search_student():
     # Get optional OAuth token (for future OAuth implementation)
     oauth_token = request.args.get('oauth_token', '').strip() or None
     
+    # Get optional custom query (user can override auto-generated query)
+    custom_query = request.args.get('query', '').strip() or None
+    
     try:
-        result = search_sciencedirect_student(current_user, diagnosis, oauth_token=oauth_token)
+        result = search_sciencedirect_student(current_user, diagnosis, oauth_token=oauth_token, custom_query=custom_query)
         
         # Log API usage for tracking
         if result.get('api_success'):
