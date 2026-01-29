@@ -3272,15 +3272,32 @@ function loadExistingReferences(editor) {
     const content = editor.getContent();
     if (!content) return;
     
+    // Clear existing state first (in case function is called multiple times)
+    referenceCounter = 0;
+    referencesMap.clear();
+    const list = document.getElementById('referencesList');
+    if (list) list.innerHTML = '';
+    const countBadge = document.getElementById('referenceCount');
+    if (countBadge) countBadge.textContent = '0';
+    
     // Create a temporary DOM to parse the content
     const tempDiv = document.createElement('div');
     tempDiv.innerHTML = content;
     
     // Find all reference citations
     const citations = tempDiv.querySelectorAll('sup.ref-cite');
-    if (citations.length === 0) return;
+    if (citations.length === 0) {
+        // Show empty state
+        const emptyState = document.getElementById('referencesEmptyState');
+        if (emptyState) emptyState.style.display = 'block';
+        return;
+    }
     
     console.log(`[References] Found ${citations.length} existing references`);
+    
+    // Hide empty state
+    const emptyState = document.getElementById('referencesEmptyState');
+    if (emptyState) emptyState.style.display = 'none';
     
     // Extract reference data and populate the section
     let maxRefNumber = 0;
@@ -3298,7 +3315,7 @@ function loadExistingReferences(editor) {
         }
     });
     
-    // Set counter to max found + 1 for next reference
+    // Set counter to max found for next reference
     if (maxRefNumber > 0) {
         referenceCounter = maxRefNumber;
         console.log(`[References] Loaded ${referencesMap.size} references, counter set to ${referenceCounter}`);
@@ -3388,11 +3405,29 @@ function addReferenceToSection(refNumber, title, journal, year, url) {
 }
 
 function removeReference(refNumber, url) {
+    // Remove from UI
     const li = document.getElementById(`ref-${refNumber}`);
     if (li) li.remove();
     
     // Remove from map
     referencesMap.delete(url);
+    
+    // Remove from TinyMCE content (so it persists on save)
+    if (typeof tinymce !== 'undefined' && tinymce.get('editCaseDiscussion')) {
+        const editor = tinymce.get('editCaseDiscussion');
+        const content = editor.getContent();
+        
+        // Create temp DOM to find and remove the reference
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = content;
+        
+        // Find and remove all sup.ref-cite with matching data-ref
+        const citations = tempDiv.querySelectorAll(`sup.ref-cite[data-ref="${refNumber}"]`);
+        citations.forEach(cite => cite.remove());
+        
+        // Update editor content
+        editor.setContent(tempDiv.innerHTML);
+    }
     
     // Update count badge
     const list = document.getElementById('referencesList');
@@ -3404,6 +3439,8 @@ function removeReference(refNumber, url) {
         const emptyState = document.getElementById('referencesEmptyState');
         if (emptyState) emptyState.style.display = 'block';
     }
+    
+    showFlash(`Reference [${refNumber}] removed`, 'success');
 }
 
 function clearAllReferences() {
