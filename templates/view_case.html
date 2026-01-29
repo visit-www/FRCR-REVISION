@@ -734,7 +734,7 @@
                                         </button>
                                         <div class="alert alert-info small mt-2 mb-0">
                                             <i class="fas fa-info-circle me-2"></i>
-                                            <strong>Note:</strong> Search uses our institutional API key (server-side). Connection tracking is optional for analytics. The disconnect button clears your connection tracking only.
+                                            <strong>Note:</strong> Please login to ScienceDirect to search for articles. This is required only when you run seathc for the first time.
                                         </div>
                                     </div>
                                     
@@ -7904,77 +7904,104 @@
             
             const data = await response.json();
             
-            // Get case body part and module for filtering
-            const caseBodyPart = '{{ case.body_part.value if case.body_part else "" }}';
-            const caseModule = '{{ case.module.value if case.module else "" }}';
+            // Get case context (lowercase for matching)
+            const caseBodyPart = '{{ case.body_part.value if case.body_part else "" }}'.toLowerCase();
+            const caseModule = '{{ case.module.value if case.module else "" }}'.toLowerCase();
             const caseDiagnosisLower = (caseDiagnosis || '').toLowerCase();
             
-            // Build resources HTML
+            // Use keyword mappings from JSON for better matching
+            const bodyPartKeywords = data.body_part_keywords || {};
+            
+            // Find which body regions this case matches
+            let matchedRegions = [];
+            for (const [region, keywords] of Object.entries(bodyPartKeywords)) {
+                const keywordsLower = keywords.map(k => k.toLowerCase());
+                if (keywordsLower.some(kw => 
+                    caseBodyPart.includes(kw) || 
+                    caseModule.includes(kw) || 
+                    caseDiagnosisLower.includes(kw)
+                )) {
+                    matchedRegions.push(region.toLowerCase());
+                }
+            }
+            
+            // Categorize resources as matched or other
+            const matchedResources = [];
+            const otherResources = [];
+            
+            for (const resource of data.resources || []) {
+                const resourceBodyParts = (resource.body_parts || []).map(bp => bp.toLowerCase());
+                
+                // Check if resource matches case via body parts or "All" category
+                const isMatch = matchedRegions.some(region => 
+                    resourceBodyParts.includes(region)
+                ) || resourceBodyParts.includes('all');
+                
+                if (isMatch) {
+                    matchedResources.push({ ...resource, isMatch: true });
+                } else {
+                    otherResources.push({ ...resource, isMatch: false });
+                }
+            }
+            
+            // Group resources by primary body part for display
+            const grouped = {};
+            const allResources = [...matchedResources, ...otherResources];
+            
+            for (const resource of allResources) {
+                const category = (resource.body_parts?.[0]) || 'General';
+                if (!grouped[category]) {
+                    grouped[category] = { resources: [], hasMatch: false };
+                }
+                grouped[category].resources.push(resource);
+                if (resource.isMatch) grouped[category].hasMatch = true;
+            }
+            
+            // Sort: matched categories first, then alphabetically
+            const sortedCategories = Object.entries(grouped)
+                .sort((a, b) => {
+                    if (a[1].hasMatch !== b[1].hasMatch) return b[1].hasMatch ? 1 : -1;
+                    return a[0].localeCompare(b[0]);
+                });
+            
+            // Build HTML
             let html = '';
             
-            // Filter and display resources by body_region
-            if (data.resources && Array.isArray(data.resources)) {
-                const matchedCategories = [];
+            for (const [categoryName, { resources, hasMatch }] of sortedCategories) {
+                const badgeHtml = hasMatch 
+                    ? '<span class="badge bg-success ms-2" style="font-size: 0.7em;">Relevant</span>' 
+                    : '';
                 
-                for (const category of data.resources) {
-                    const categoryName = category.category || category.body_region || 'General';
-                    const links = category.links || [];
-                    
-                    if (links.length === 0) continue;
-                    
-                    // Check if category matches case
-                    const categoryLower = categoryName.toLowerCase();
-                    const isMatch = 
-                        caseBodyPart.toLowerCase().includes(categoryLower) ||
-                        categoryLower.includes(caseBodyPart.toLowerCase()) ||
-                        caseDiagnosisLower.includes(categoryLower) ||
-                        caseModule.toLowerCase().includes(categoryLower);
-                    
-                    if (isMatch) {
-                        matchedCategories.unshift({ categoryName, links, isMatch: true });
-                    } else {
-                        matchedCategories.push({ categoryName, links, isMatch: false });
-                    }
-                }
+                html += `
+                    <div class="anatomy-category mb-3 ${hasMatch ? 'matched' : ''}">
+                        <h6 class="mb-2" style="color: #5E899E;">
+                            <i class="fas fa-folder-open me-1"></i>${categoryName}${badgeHtml}
+                        </h6>
+                        <div class="ps-3">
+                `;
                 
-                // Display matched categories first
-                for (const { categoryName, links, isMatch } of matchedCategories) {
-                    const badgeHtml = isMatch 
-                        ? '<span class="badge bg-success ms-2" style="font-size: 0.7em;">Relevant</span>' 
-                        : '';
+                for (const resource of resources) {
+                    const modalities = (resource.modalities || []).join(', ');
+                    const borderColor = resource.isMatch ? '#28a745' : '#5E899E';
                     
                     html += `
-                        <div class="anatomy-category mb-3 ${isMatch ? 'matched' : ''}">
-                            <h6 class="mb-2" style="color: #5E899E;">
-                                <i class="fas fa-folder-open me-1"></i>${categoryName}${badgeHtml}
-                            </h6>
-                            <div class="ps-3">
+                        <div class="anatomy-link mb-2 p-2 rounded" style="background: #f8f9fa; border-left: 3px solid ${borderColor};">
+                            <a href="${resource.url}" target="_blank" rel="noopener" style="color: #5E899E; font-weight: 500; text-decoration: none;">
+                                <i class="fas fa-external-link-alt me-1" style="font-size: 0.8em;"></i>${resource.title}
+                            </a>
+                            ${modalities ? `<span class="badge bg-light text-muted ms-2" style="font-size: 0.7em;">${modalities}</span>` : ''}
+                            ${resource.description ? `<br><small class="text-muted">${resource.description}</small>` : ''}
+                        </div>
                     `;
-                    
-                    for (const link of links) {
-                        const title = link.title || link.name || 'Resource';
-                        const url = link.url || link.link || '#';
-                        const description = link.description || '';
-                        
-                        html += `
-                            <div class="anatomy-link mb-2 p-2 rounded" style="background: #f8f9fa; border-left: 2px solid #5E899E;">
-                                <a href="${url}" target="_blank" rel="noopener" style="color: #5E899E; font-weight: 500; text-decoration: none;">
-                                    <i class="fas fa-external-link-alt me-1" style="font-size: 0.8em;"></i>${title}
-                                </a>
-                                ${description ? `<br><small class="text-muted">${description}</small>` : ''}
-                            </div>
-                        `;
-                    }
-                    
-                    html += '</div></div>';
                 }
+                
+                html += '</div></div>';
             }
             
             if (!html) {
                 html = `
                     <div class="text-center py-3 text-muted">
-                        <i class="fas fa-info-circle me-2"></i>No specific anatomy resources found for this case's body region.
-                        <br><small>Try the general anatomy resources below.</small>
+                        <i class="fas fa-info-circle me-2"></i>No anatomy resources available.
                     </div>
                 `;
             }
