@@ -50,9 +50,13 @@ def search_sciencedirect(diagnosis: str, oauth_token: Optional[str] = None, user
             - query: Search query used
             - logged_in: True if using API
     """
-    # Format: diagnosis AND (radiology OR medical imaging OR CT OR computed tomography OR MRI OR magnetic resonance OR staging OR tumor staging)
-    # Build advanced search query focused on radiology with specific imaging modalities
-    search_query = f'"{diagnosis}" AND (radiology OR "medical imaging" OR CT OR "computed tomography" OR MRI OR "magnetic resonance" OR staging OR "tumor staging" OR "cancer staging")'
+    # Use custom query if provided, otherwise build auto-generated query
+    if custom_query and custom_query.strip():
+        # Use custom query directly
+        search_query = custom_query.strip()
+    else:
+        # Build advanced search query focused on radiology with specific imaging modalities
+        search_query = f'"{diagnosis}" AND (radiology OR "medical imaging" OR CT OR "computed tomography" OR MRI OR "magnetic resonance" OR staging OR "tumor staging" OR "cancer staging")'
     
     # Prepare API request
     headers = {
@@ -75,6 +79,11 @@ def search_sciencedirect(diagnosis: str, oauth_token: Optional[str] = None, user
         # Make API request
         # Note: Elsevier API may require domain/IP registration
         # 401 errors on localhost are expected if key is registered for radinsights.xyz
+        # Log API key status (first 8 chars only for security)
+        api_key_preview = SCIDIRECT_API_KEY[:8] + '...' if len(SCIDIRECT_API_KEY) > 8 else SCIDIRECT_API_KEY
+        print(f"[SCIDIRECT] Making API request - Key: {api_key_preview}, Endpoint: {SCIDIRECT_API_ENDPOINT}, Query: {search_query[:100]}")
+        print(f"[SCIDIRECT] Headers: {list(headers.keys())} (API key present: {'X-ELS-APIKey' in headers})")
+        
         response = requests.get(
             SCIDIRECT_API_ENDPOINT,
             headers=headers,
@@ -188,7 +197,7 @@ def get_student_connect_url() -> str:
     return SCIDIRECT_LOGIN
 
 
-def search_sciencedirect_student(user, diagnosis: str, oauth_token: Optional[str] = None) -> Dict:
+def search_sciencedirect_student(user, diagnosis: str, oauth_token: Optional[str] = None, custom_query: Optional[str] = None) -> Dict:
     """
     Search ScienceDirect for students using API key (server-side).
     
@@ -200,6 +209,7 @@ def search_sciencedirect_student(user, diagnosis: str, oauth_token: Optional[str
         user: User object (for logging and optional OAuth token)
         diagnosis: Diagnosis to search for
         oauth_token: Optional OAuth bearer token for user-level access
+        custom_query: Optional custom search query (overrides auto-generated query)
     
     Returns:
         Dict with search_url, api_results, diagnosis, query, and status
@@ -210,5 +220,6 @@ def search_sciencedirect_student(user, diagnosis: str, oauth_token: Optional[str
         diagnosis=diagnosis,
         oauth_token=oauth_token or (getattr(user, 'sciencedirect_oauth_token', None) if hasattr(user, 'sciencedirect_oauth_token') else None),
         user_id=user.id if user else None,
-        user_role=user.role.value if user and hasattr(user, 'role') else None
+        user_role=user.role.value if user and hasattr(user, 'role') else None,
+        custom_query=custom_query
     )
