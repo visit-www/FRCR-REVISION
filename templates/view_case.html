@@ -253,11 +253,11 @@
                             <div class="card shadow-sm border-0">
                                 <div class="card-header bg-gradient text-white" style="background: linear-gradient(135deg, #5E899E 0%, #4a7285 100%);">
                                     <h6 class="mb-0">
-                                        <i class="fas fa-bookmark me-2"></i>References
+                                        <i class="fas fa-bookmark me-2 color:"></i>References
                                         <span id="referenceCount" class="badge bg-light text-dark ms-2">0</span>
                                     </h6>
                                 </div>
-                                <div class="card-body p-0">
+                                <div class="card-body p-0" style="background: #ffffff;">
                                     <div id="referencesList" class="references-list">
                                         <!-- References will be populated by JavaScript -->
                                     </div>
@@ -2373,6 +2373,7 @@
     .references-list {
         padding: 0;
         margin: 0;
+        background: #ffffff;
     }
     .reference-item {
         display: flex;
@@ -2380,7 +2381,7 @@
         gap: 12px;
         padding: 12px 16px;
         border-left: 4px solid #5E899E;
-        background: linear-gradient(90deg, rgba(94, 137, 158, 0.05) 0%, transparent 100%);
+        background: linear-gradient(90deg, rgba(94, 137, 158, 0.08) 0%, #ffffff 100%);
         border-bottom: 1px solid #e9ecef;
         transition: all 0.2s ease;
     }
@@ -2411,9 +2412,10 @@
     .reference-content {
         flex: 1;
         min-width: 0;
+        color: #2c3e50;
     }
     .reference-title {
-        color: #2c3e50;
+        color: #2c3e50 !important;
         font-weight: 600;
         text-decoration: none !important;
         display: block;
@@ -2426,7 +2428,7 @@
     }
     .reference-meta {
         font-size: 0.8em;
-        color: #5E899E;
+        color: #5E899E !important;
         font-weight: 500;
     }
     
