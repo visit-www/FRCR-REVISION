@@ -55,8 +55,8 @@ def search_sciencedirect(diagnosis: str, oauth_token: Optional[str] = None, user
         # Use custom query directly
         search_query = custom_query.strip()
     else:
-        # Build advanced search query focused on radiology with specific imaging modalities
-        search_query = f'"{diagnosis}" AND (radiology OR "medical imaging" OR CT OR "computed tomography" OR MRI OR "magnetic resonance" OR staging OR "tumor staging" OR "cancer staging")'
+        # Build advanced search query focused on radiology diagnosis, anatomy, and clinical correlation
+        search_query = f'{diagnosis} "radiological diagnosis" "radiological anatomy" "radiological pathological correlation" "what clinician needs to know"'
     
     # Prepare API request
     headers = {
