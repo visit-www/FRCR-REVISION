@@ -766,48 +766,51 @@ def check_tnm_candidates_api():
 @tnm_bp.route('/api/check-existing-intelligence', methods=['GET'])
 def check_existing_intelligence_api():
     """
-    Check if intelligent TNM data already exists for a case.
+    Check if intelligent TNM data already exists for a disease site.
     
     Query params:
-    - case_id: Case ID to check
-    - disease_site_id: Disease site ID (optional, for more specific check)
+    - disease_site_id: Disease site ID (required) - TNM intelligence is stored per disease site
+    - case_id: Case ID (optional) - for backward compatibility
     
     Returns existing intelligent data if found.
     """
     from models import IntelligentTNMData, Case
     
-    case_id = request.args.get('case_id', type=int)
     disease_site_id = request.args.get('disease_site_id', type=int)
+    case_id = request.args.get('case_id', type=int)
     
-    if not case_id:
-        return jsonify({'exists': False, 'message': 'No case_id provided'})
+    # disease_site_id is required for lookup
+    if not disease_site_id:
+        return jsonify({'exists': False, 'message': 'No disease_site_id provided'})
     
     try:
-        # Check if case has stored intelligent TNM data
-        case = Case.query.get(case_id)
-        if not case:
-            return jsonify({'exists': False, 'message': 'Case not found'})
+        # Optionally verify case exists (for backward compatibility)
+        if case_id:
+            case = Case.query.get(case_id)
+            if not case:
+                print(f"[TNM] Warning: case_id={case_id} not found, continuing with disease_site_id lookup")
         
-        # Look for intelligent data associated with this case's disease site
-        if disease_site_id:
-            intel_data = IntelligentTNMData.query.filter_by(
-                disease_site_id=disease_site_id
-            ).first()
-        else:
-            # Try to find any intelligent data that might be relevant
-            intel_data = None
+        # Look for intelligent data by disease_site_id
+        # TNM intelligence is stored once per disease site, not per case
+        intel_data = IntelligentTNMData.query.filter_by(
+            disease_site_id=disease_site_id
+        ).first()
         
         if intel_data:
+            print(f"[TNM] Found existing intelligence for disease_site_id={disease_site_id}, ID={intel_data.id}, version={intel_data.version}")
             return jsonify({
                 'exists': True,
                 'data': intel_data.to_dict(),
                 'generated_at': intel_data.created_at.isoformat() if intel_data.created_at else None,
-                'disease_site_id': intel_data.disease_site_id
+                'disease_site_id': intel_data.disease_site_id,
+                'version': intel_data.version
             })
         else:
+            print(f"[TNM] No existing intelligence found for disease_site_id={disease_site_id}")
             return jsonify({'exists': False})
             
     except Exception as e:
+        print(f"[TNM] Error checking existing intelligence: {e}")
         return jsonify({'exists': False, 'error': str(e)})
 
 
@@ -912,10 +915,13 @@ def save_tnm_intelligence_api():
     source_case_id = data.get('source_case_id')
     
     try:
-        # Check if record already exists
+        # Check if record already exists for this disease site
+        # IMPORTANT: Query by disease_site_id ONLY to ensure we update existing records
+        # regardless of diagnosis_year_id. This prevents duplicate records when
+        # diagnosis_year_id is not passed from frontend (which is common).
+        # We store one intelligence record per disease site.
         existing = IntelligentTNMData.query.filter_by(
-            disease_site_id=disease_site_id,
-            diagnosis_year_id=diagnosis_year_id
+            disease_site_id=disease_site_id
         ).first()
         
         if existing:
@@ -933,8 +939,16 @@ def save_tnm_intelligence_api():
             existing.set_essential_tnm(tnm_intelligence.get('essential_tnm'))
             existing.verified_by_user_id = current_user.id
             existing.version += 1
+            # Update diagnosis_year_id if provided (useful for tracking)
+            if diagnosis_year_id:
+                existing.diagnosis_year_id = diagnosis_year_id
+            # Update source_case_id if provided
+            if source_case_id:
+                existing.source_case_id = source_case_id
             
             db.session.commit()
+            
+            print(f"[TNM Intelligence] Updated existing record ID={existing.id} for disease_site_id={disease_site_id}, version={existing.version}")
             
             return jsonify({
                 'success': True,
@@ -943,7 +957,8 @@ def save_tnm_intelligence_api():
                 'version': existing.version
             })
         else:
-            # Create new record
+            # Create new record (first time for this disease site)
+            print(f"[TNM Intelligence] Creating new record for disease_site_id={disease_site_id}")
             intel_data = IntelligentTNMData.from_ai_output(
                 ai_output=tnm_intelligence,
                 disease_site_id=disease_site_id,

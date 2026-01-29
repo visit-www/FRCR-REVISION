@@ -2060,20 +2060,26 @@ async function generateTnmIntelligenceForSite(primarySiteName, forceRegenerate =
     }
     
     // Check for existing intelligent data (unless force regenerate)
-    if (caseId && !forceRegenerate && selectedPrimarySite?.disease_site_id) {
+    // IMPORTANT: Check by disease_site_id even for staging/new cases
+    // TNM intelligence is stored per disease site, not per case
+    if (!forceRegenerate && selectedPrimarySite?.disease_site_id) {
         try {
-            const checkResponse = await fetch(
-                `/tnm/api/check-existing-intelligence?case_id=${caseId}&disease_site_id=${selectedPrimarySite.disease_site_id}`
-            );
+            // Build URL with disease_site_id (required) and case_id (optional)
+            let checkUrl = `/tnm/api/check-existing-intelligence?disease_site_id=${selectedPrimarySite.disease_site_id}`;
+            if (caseId) {
+                checkUrl += `&case_id=${caseId}`;
+            }
+            
+            const checkResponse = await fetch(checkUrl);
             const checkData = await checkResponse.json();
             
             if (checkData.exists && checkData.data) {
                 // Show dialog to use existing or regenerate
                 const useExisting = confirm(
-                    `Intelligent TNM data already exists for this case.\n\n` +
+                    `Intelligent TNM data already exists for ${selectedPrimarySite.disease_name || 'this cancer type'}.\n\n` +
                     `Generated: ${checkData.generated_at ? new Date(checkData.generated_at).toLocaleString() : 'Unknown'}\n\n` +
                     `Click OK to use the existing data.\n` +
-                    `Click Cancel to regenerate (old data will be replaced when you save).`
+                    `Click Cancel to regenerate (will replace existing).`
                 );
                 
                 if (useExisting) {
@@ -2086,11 +2092,8 @@ async function generateTnmIntelligenceForSite(primarySiteName, forceRegenerate =
                     });
                     return;
                 } else {
-                    // User wants to regenerate - warn about replacement
-                    alert(
-                        'Generating new TNM intelligence...\n\n' +
-                        'Note: When you save this case, the old intelligent data will be replaced with the new generation.'
-                    );
+                    // User wants to regenerate
+                    console.log('[TNM] User chose to regenerate, will replace existing data');
                 }
             }
         } catch (err) {
