@@ -17,14 +17,127 @@ from urllib.parse import quote, urlencode
 # Elsevier API Configuration
 ELSEVIER_API_BASE = "https://api.elsevier.com"
 SCIDIRECT_API_ENDPOINT = f"{ELSEVIER_API_BASE}/content/search/sciencedirect"
+AUTHENTICATION_API_ENDPOINT = f"{ELSEVIER_API_BASE}/authenticate"
 
 # API Key from environment (fallback to provided key)
 SCIDIRECT_API_KEY = os.getenv('SCIDIRECT_API_KEY', 'ebd7f645469e104b6326952959e1cde6')
+
+# Cache for authtoken (to avoid repeated authentication requests)
+_authtoken_cache = None
+_authtoken_cache_timestamp = None
+AUTHTOKEN_CACHE_DURATION = 3600  # Cache for 1 hour (tokens typically valid for longer)
 
 # ScienceDirect Website URLs (for student manual login)
 SCIDIRECT_BASE = "https://www.sciencedirect.com"
 SCIDIRECT_LOGIN = f"{SCIDIRECT_BASE}/user/identity/login"
 SCIDIRECT_SEARCH = f"{SCIDIRECT_BASE}/search/advanced"
+
+
+
+def get_authtoken(force_refresh: bool = False) -> Optional[str]:
+    """
+    Get authtoken from Elsevier Authentication API.
+    
+    This is required for server-side requests when IP doesn't match registered domain.
+    The authtoken is cached to avoid repeated authentication requests.
+    
+    Args:
+        force_refresh: If True, force a new token even if cached
+    
+    Returns:
+        Authtoken string, or None if authentication fails
+    """
+    global _authtoken_cache, _authtoken_cache_timestamp
+    
+    # Check cache first (unless forcing refresh)
+    if not force_refresh and _authtoken_cache:
+        import time
+        if _authtoken_cache_timestamp and (time.time() - _authtoken_cache_timestamp) < AUTHTOKEN_CACHE_DURATION:
+            print(f"[SCIDIRECT] Using cached authtoken")
+            return _authtoken_cache
+    
+    try:
+        # Request authtoken from Authentication API
+        # Platform can be SCOPUS, ScienceDirect, or empty (defaults to SCOPUS)
+        headers = {
+            'X-ELS-APIKey': SCIDIRECT_API_KEY,
+            'Accept': 'application/json'
+        }
+        
+        # Try ScienceDirect platform first, fallback to SCOPUS
+        params = {'platform': 'ScienceDirect'}
+        
+        print(f"[SCIDIRECT] Requesting authtoken from Authentication API...")
+        response = requests.get(
+            AUTHENTICATION_API_ENDPOINT,
+            headers=headers,
+            params=params,
+            timeout=10
+        )
+        
+        if response.status_code == 200:
+            # Parse response
+            try:
+                data = response.json()
+                # Response structure: {"authenticate-response": {"authtoken": "..."}}
+                if 'authenticate-response' in data:
+                    auth_response = data['authenticate-response']
+                    
+                    # Check if account choice is required
+                    if 'pathChoices' in auth_response:
+                        choices = auth_response.get('pathChoices', {}).get('choice', [])
+                        if choices:
+                            # Multiple accounts - use first one (or could let user choose)
+                            if isinstance(choices, list):
+                                choice_id = choices[0].get('@id')
+                            else:
+                                choice_id = choices.get('@id')
+                            
+                            if choice_id:
+                                # Request authtoken with choice
+                                print(f"[SCIDIRECT] Multiple accounts found, using choice: {choice_id}")
+                                params['choice'] = choice_id
+                                response = requests.get(
+                                    AUTHENTICATION_API_ENDPOINT,
+                                    headers=headers,
+                                    params=params,
+                                    timeout=10
+                                )
+                                if response.status_code == 200:
+                                    data = response.json()
+                                    auth_response = data.get('authenticate-response', {})
+                    
+                    # Extract authtoken
+                    authtoken = auth_response.get('authtoken')
+                    if authtoken:
+                        # Cache the token
+                        import time
+                        _authtoken_cache = authtoken
+                        _authtoken_cache_timestamp = time.time()
+                        print(f"[SCIDIRECT] Authtoken obtained successfully (cached)")
+                        return authtoken
+                    else:
+                        print(f"[SCIDIRECT] No authtoken in response: {auth_response}")
+                else:
+                    # Try alternative response format
+                    authtoken = data.get('authtoken') or data.get('access_token')
+                    if authtoken:
+                        import time
+                        _authtoken_cache = authtoken
+                        _authtoken_cache_timestamp = time.time()
+                        print(f"[SCIDIRECT] Authtoken obtained successfully (cached)")
+                        return authtoken
+            except Exception as e:
+                print(f"[SCIDIRECT] Error parsing authtoken response: {e}")
+                print(f"[SCIDIRECT] Response: {response.text[:200]}")
+        else:
+            print(f"[SCIDIRECT] Authentication API failed: {response.status_code} - {response.text[:200]}")
+            
+    except Exception as e:
+        print(f"[SCIDIRECT] Error getting authtoken: {e}")
+    
+    return None
+
 
 
 def search_sciencedirect(diagnosis: str, oauth_token: Optional[str] = None, user_id: Optional[int] = None, user_role: Optional[str] = None, custom_query: Optional[str] = None) -> Dict:
