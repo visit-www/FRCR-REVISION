@@ -21,6 +21,8 @@ from resources_routes import resources_bp
 # AJCC TNM Module - imports blueprints from the reusable module
 from ajcc_tnm import get_blueprints, init_app as init_ajcc_tnm
 admin_tnm_bp, tnm_bp = get_blueprints()
+# TNM Calculator - standalone clinical-grade calculator module
+from tnm_calculator.routes import tnm_calc_bp
 from ai_prelim import AiPrelimError, generate_prelim_case_data
 from datetime import datetime
 from sqlalchemy.pool import NullPool
@@ -555,6 +557,7 @@ app.register_blueprint(resources_bp)  # PubMed, TCIA, RadiologyAssistant resourc
 init_ajcc_tnm(app)
 app.register_blueprint(admin_tnm_bp)  # AJCC TNM staging system - admin routes
 app.register_blueprint(tnm_bp)  # AJCC TNM staging system - public routes
+app.register_blueprint(tnm_calc_bp)  # TNM Calculator - standalone clinical-grade calculator
 
 
 @app.route('/')

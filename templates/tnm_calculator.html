@@ -1,0 +1,494 @@
+{% extends 'base.html' %}
+
+{% block mobile_breadcrumb %}
+<li class="breadcrumb-item active text-white-50">TNM Calculator</li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row justify-content-center">
+        <div class="col-12 col-lg-10 col-xl-8">
+            
+            <!-- Header -->
+            <div class="mb-4">
+                <h1 class="h3 mb-2" style="color: #5E899E;">
+                    <i class="fas fa-calculator me-2"></i>TNM Staging Calculator
+                </h1>
+                <p class="text-muted mb-0">
+                    Clinical-grade TNM staging calculator based on AJCC 8th Edition guidelines.
+                </p>
+            </div>
+            
+            <!-- Disclaimer Banner -->
+            <div class="alert alert-warning mb-4" role="alert">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                <strong>Clinical Decision Support:</strong> This calculator is for educational purposes only. 
+                Final staging responsibility remains with the treating clinician.
+            </div>
+            
+            <!-- Main Calculator Card -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header" style="background: linear-gradient(135deg, #5E899E 0%, #4a7085 100%); color: white;">
+                    <h5 class="mb-0">
+                        <i class="fas fa-stethoscope me-2"></i>Calculate TNM Stage
+                    </h5>
+                </div>
+                <div class="card-body">
+                    
+                    <!-- Cancer Type Selection -->
+                    <div class="mb-4">
+                        <label for="cancerType" class="form-label fw-bold">
+                            <i class="fas fa-disease me-1" style="color: #5E899E;"></i>Cancer Type
+                        </label>
+                        <select id="cancerType" class="form-select form-select-lg">
+                            <option value="">Select cancer type...</option>
+                            {% for cancer in cancers %}
+                            <option value="{{ cancer.slug }}">{{ cancer.name }} ({{ cancer.body_section }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <!-- Subsite Selection (conditional) -->
+                    <div id="subsiteContainer" class="mb-4" style="display: none;">
+                        <label for="subsite" class="form-label fw-bold">
+                            <i class="fas fa-map-marker-alt me-1" style="color: #5E899E;"></i>Subsite
+                        </label>
+                        <select id="subsite" class="form-select">
+                            <option value="">Select subsite...</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Staging Type Selection -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">
+                            <i class="fas fa-microscope me-1" style="color: #5E899E;"></i>Staging Type
+                        </label>
+                        <div class="btn-group w-100" role="group">
+                            <input type="radio" class="btn-check" name="stagingType" id="stagingClinical" value="clinical" checked>
+                            <label class="btn btn-outline-primary" for="stagingClinical">
+                                <i class="fas fa-user-md me-1"></i>Clinical (cTNM)
+                            </label>
+                            
+                            <input type="radio" class="btn-check" name="stagingType" id="stagingPathological" value="pathological">
+                            <label class="btn btn-outline-primary" for="stagingPathological">
+                                <i class="fas fa-vial me-1"></i>Pathological (pTNM)
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- TNM Category Selection -->
+                    <div class="row g-3 mb-4">
+                        <!-- T Category -->
+                        <div class="col-md-4">
+                            <div class="card h-100" style="border-left: 4px solid #17a2b8;">
+                                <div class="card-body">
+                                    <label for="tCategory" class="form-label fw-bold" style="color: #17a2b8;">
+                                        <i class="fas fa-bullseye me-1"></i>T - Primary Tumor
+                                    </label>
+                                    <select id="tCategory" class="form-select" disabled>
+                                        <option value="">Select T...</option>
+                                    </select>
+                                    <small id="tCriteria" class="text-muted mt-2 d-block" style="font-size: 0.8em;"></small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- N Category -->
+                        <div class="col-md-4">
+                            <div class="card h-100" style="border-left: 4px solid #fd7e14;">
+                                <div class="card-body">
+                                    <label for="nCategory" class="form-label fw-bold" style="color: #fd7e14;">
+                                        <i class="fas fa-network-wired me-1"></i>N - Regional Nodes
+                                    </label>
+                                    <select id="nCategory" class="form-select" disabled>
+                                        <option value="">Select N...</option>
+                                    </select>
+                                    <small id="nCriteria" class="text-muted mt-2 d-block" style="font-size: 0.8em;"></small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- M Category -->
+                        <div class="col-md-4">
+                            <div class="card h-100" style="border-left: 4px solid #dc3545;">
+                                <div class="card-body">
+                                    <label for="mCategory" class="form-label fw-bold" style="color: #dc3545;">
+                                        <i class="fas fa-globe me-1"></i>M - Distant Metastasis
+                                    </label>
+                                    <select id="mCategory" class="form-select" disabled>
+                                        <option value="">Select M...</option>
+                                    </select>
+                                    <small id="mCriteria" class="text-muted mt-2 d-block" style="font-size: 0.8em;"></small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Calculate Button -->
+                    <div class="d-grid">
+                        <button id="calculateBtn" class="btn btn-lg" style="background: #5E899E; color: white;" disabled>
+                            <i class="fas fa-calculator me-2"></i>Calculate Stage
+                        </button>
+                    </div>
+                    
+                </div>
+            </div>
+            
+            <!-- Results Section (hidden until calculation) -->
+            <div id="resultsSection" style="display: none;">
+                
+                <!-- Stage Result Card -->
+                <div class="card shadow-sm mb-4" id="stageResultCard">
+                    <div class="card-body text-center py-5">
+                        <h2 class="display-4 fw-bold mb-3" id="stageDisplay">-</h2>
+                        <h4 class="text-muted mb-4" id="tnmDisplay">-</h4>
+                        <div id="metastaticBadge" class="mb-3" style="display: none;">
+                            <span class="badge bg-danger px-4 py-2">
+                                <i class="fas fa-exclamation-circle me-1"></i>Metastatic Disease
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Explanations Card -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header" style="background: #f8f9fa;">
+                        <h5 class="mb-0">
+                            <i class="fas fa-info-circle me-2" style="color: #17a2b8;"></i>Staging Explanation
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        
+                        <!-- T Explanation -->
+                        <div class="mb-3 p-3 rounded" style="background: #e7f5ff; border-left: 4px solid #17a2b8;">
+                            <h6 class="mb-2" style="color: #17a2b8;">
+                                <i class="fas fa-bullseye me-1"></i>Primary Tumor (T)
+                            </h6>
+                            <p class="mb-0" id="tExplanation">-</p>
+                        </div>
+                        
+                        <!-- N Explanation -->
+                        <div class="mb-3 p-3 rounded" style="background: #fff3e0; border-left: 4px solid #fd7e14;">
+                            <h6 class="mb-2" style="color: #fd7e14;">
+                                <i class="fas fa-network-wired me-1"></i>Regional Nodes (N)
+                            </h6>
+                            <p class="mb-0" id="nExplanation">-</p>
+                        </div>
+                        
+                        <!-- M Explanation -->
+                        <div class="mb-3 p-3 rounded" style="background: #ffebee; border-left: 4px solid #dc3545;">
+                            <h6 class="mb-2" style="color: #dc3545;">
+                                <i class="fas fa-globe me-1"></i>Distant Metastasis (M)
+                            </h6>
+                            <p class="mb-0" id="mExplanation">-</p>
+                        </div>
+                        
+                        <!-- Stage Explanation -->
+                        <div class="p-3 rounded" style="background: #e8f5e9; border-left: 4px solid #28a745;">
+                            <h6 class="mb-2" style="color: #28a745;">
+                                <i class="fas fa-chart-bar me-1"></i>Stage Assignment
+                            </h6>
+                            <p class="mb-0" id="stageExplanation">-</p>
+                        </div>
+                        
+                    </div>
+                </div>
+                
+                <!-- Disclaimer Card -->
+                <div class="card mb-4" style="border-color: #6c757d;">
+                    <div class="card-body text-muted small">
+                        <i class="fas fa-balance-scale me-2"></i>
+                        <span id="disclaimerText"></span>
+                    </div>
+                </div>
+                
+                <!-- Validation Warnings -->
+                <div id="validationWarnings" class="mb-4" style="display: none;">
+                    <div class="alert alert-warning">
+                        <h6 class="alert-heading">
+                            <i class="fas fa-exclamation-triangle me-2"></i>Validation Notes
+                        </h6>
+                        <ul id="warningsList" class="mb-0"></ul>
+                    </div>
+                </div>
+                
+            </div>
+            
+        </div>
+    </div>
+</div>
+
+<script>
+// TNM Calculator JavaScript
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('[TNM Calculator] Initializing...');
+    
+    // Elements
+    const cancerTypeSelect = document.getElementById('cancerType');
+    const subsiteContainer = document.getElementById('subsiteContainer');
+    const subsiteSelect = document.getElementById('subsite');
+    const tCategorySelect = document.getElementById('tCategory');
+    const nCategorySelect = document.getElementById('nCategory');
+    const mCategorySelect = document.getElementById('mCategory');
+    const calculateBtn = document.getElementById('calculateBtn');
+    const resultsSection = document.getElementById('resultsSection');
+    
+    // State
+    let cancerInfo = null;
+    
+    // Load categories when cancer type changes
+    cancerTypeSelect.addEventListener('change', async function() {
+        const cancerType = this.value;
+        
+        // Reset UI
+        resetCategories();
+        resultsSection.style.display = 'none';
+        
+        if (!cancerType) {
+            return;
+        }
+        
+        try {
+            console.log(`[TNM Calculator] Loading cancer info for: ${cancerType}`);
+            
+            const response = await fetch(`/tnm-calculator/api/cancer/${cancerType}`);
+            const data = await response.json();
+            
+            if (!data.success) {
+                showError(data.error || 'Failed to load cancer information');
+                return;
+            }
+            
+            cancerInfo = data;
+            
+            // Show subsite selector if applicable
+            if (data.subsites && data.subsites.length > 0) {
+                subsiteContainer.style.display = 'block';
+                populateSelect(subsiteSelect, data.subsites.map(s => ({ value: s, label: s })));
+                subsiteSelect.addEventListener('change', () => loadCategories(data));
+            } else {
+                subsiteContainer.style.display = 'none';
+            }
+            
+            // Load categories
+            loadCategories(data);
+            
+        } catch (error) {
+            console.error('[TNM Calculator] Error loading cancer info:', error);
+            showError('Failed to load cancer information');
+        }
+    });
+    
+    // Staging type change
+    document.querySelectorAll('input[name="stagingType"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+            if (cancerInfo) {
+                const key = this.value === 'pathological' ? 'pathological' : 'clinical';
+                const nCategories = cancerInfo.n_categories[key] || [];
+                populateSelect(nCategorySelect, nCategories.map(c => ({ value: c, label: c })));
+            }
+        });
+    });
+    
+    // Enable calculate button when all categories selected
+    [tCategorySelect, nCategorySelect, mCategorySelect].forEach(select => {
+        select.addEventListener('change', function() {
+            updateCalculateButton();
+            updateCriteriaDisplay();
+        });
+    });
+    
+    // Calculate button click
+    calculateBtn.addEventListener('click', async function() {
+        const cancerType = cancerTypeSelect.value;
+        const stagingType = document.querySelector('input[name="stagingType"]:checked').value;
+        const subsite = subsiteSelect.value || null;
+        const t = tCategorySelect.value;
+        const n = nCategorySelect.value;
+        const m = mCategorySelect.value;
+        
+        if (!cancerType || !t || !n || !m) {
+            showError('Please select all required fields');
+            return;
+        }
+        
+        calculateBtn.disabled = true;
+        calculateBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Calculating...';
+        
+        try {
+            const response = await fetch('/tnm-calculator/api/calculate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    cancer_type: cancerType,
+                    t_category: t,
+                    n_category: n,
+                    m_category: m,
+                    staging_type: stagingType,
+                    subsite: subsite
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                displayResult(result);
+            } else {
+                showError(result.error || 'Calculation failed');
+            }
+            
+        } catch (error) {
+            console.error('[TNM Calculator] Calculation error:', error);
+            showError('An error occurred during calculation');
+        } finally {
+            calculateBtn.disabled = false;
+            calculateBtn.innerHTML = '<i class="fas fa-calculator me-2"></i>Calculate Stage';
+        }
+    });
+    
+    // Helper functions
+    function resetCategories() {
+        [tCategorySelect, nCategorySelect, mCategorySelect].forEach(select => {
+            select.innerHTML = '<option value="">Select...</option>';
+            select.disabled = true;
+        });
+        subsiteSelect.innerHTML = '<option value="">Select subsite...</option>';
+        subsiteContainer.style.display = 'none';
+        calculateBtn.disabled = true;
+        cancerInfo = null;
+    }
+    
+    function loadCategories(data) {
+        const subsite = subsiteSelect.value || (data.subsites && data.subsites[0]) || 'default';
+        const stagingType = document.querySelector('input[name="stagingType"]:checked').value;
+        
+        // T categories
+        const tCategories = data.t_categories[subsite] || data.t_categories['default'] || [];
+        populateSelect(tCategorySelect, tCategories.map(c => ({ value: c, label: c })));
+        tCategorySelect.disabled = false;
+        
+        // N categories
+        const nKey = stagingType === 'pathological' ? 'pathological' : 'clinical';
+        const nCategories = data.n_categories[nKey] || [];
+        populateSelect(nCategorySelect, nCategories.map(c => ({ value: c, label: c })));
+        nCategorySelect.disabled = false;
+        
+        // M categories
+        const mCategories = data.m_categories || [];
+        populateSelect(mCategorySelect, mCategories.map(c => ({ value: c, label: c })));
+        mCategorySelect.disabled = false;
+    }
+    
+    function populateSelect(select, options) {
+        const currentValue = select.value;
+        select.innerHTML = '<option value="">Select...</option>';
+        
+        options.forEach(opt => {
+            const option = document.createElement('option');
+            option.value = opt.value;
+            option.textContent = opt.label;
+            select.appendChild(option);
+        });
+        
+        // Restore value if still valid
+        if (currentValue && options.some(o => o.value === currentValue)) {
+            select.value = currentValue;
+        }
+    }
+    
+    function updateCalculateButton() {
+        const t = tCategorySelect.value;
+        const n = nCategorySelect.value;
+        const m = mCategorySelect.value;
+        calculateBtn.disabled = !(t && n && m);
+    }
+    
+    function updateCriteriaDisplay() {
+        // This could be enhanced to show criteria on selection
+    }
+    
+    function displayResult(result) {
+        // Show results section
+        resultsSection.style.display = 'block';
+        
+        // Stage display
+        const stageCard = document.getElementById('stageResultCard');
+        stageCard.style.background = `linear-gradient(135deg, ${result.stage_color}20 0%, ${result.stage_color}10 100%)`;
+        stageCard.style.borderColor = result.stage_color;
+        
+        document.getElementById('stageDisplay').textContent = result.stage_group;
+        document.getElementById('stageDisplay').style.color = result.stage_color;
+        document.getElementById('tnmDisplay').textContent = result.tnm_classification;
+        
+        // Metastatic badge
+        const metastaticBadge = document.getElementById('metastaticBadge');
+        metastaticBadge.style.display = result.is_metastatic ? 'block' : 'none';
+        
+        // Explanations
+        document.getElementById('tExplanation').textContent = result.t_explanation;
+        document.getElementById('nExplanation').textContent = result.n_explanation;
+        document.getElementById('mExplanation').textContent = result.m_explanation;
+        document.getElementById('stageExplanation').textContent = result.stage_explanation;
+        
+        // Disclaimer
+        document.getElementById('disclaimerText').textContent = result.disclaimer;
+        
+        // Validation warnings
+        const warningsSection = document.getElementById('validationWarnings');
+        const warningsList = document.getElementById('warningsList');
+        
+        if (result.validation_errors && result.validation_errors.length > 0) {
+            warningsSection.style.display = 'block';
+            warningsList.innerHTML = result.validation_errors
+                .map(e => `<li>${e.message}</li>`)
+                .join('');
+        } else {
+            warningsSection.style.display = 'none';
+        }
+        
+        // Scroll to results
+        resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    
+    function showError(message) {
+        // Simple error display - could be enhanced
+        alert(message);
+    }
+    
+    console.log('[TNM Calculator] Initialized successfully');
+});
+</script>
+
+<style>
+/* TNM Calculator specific styles */
+#stageResultCard {
+    transition: all 0.3s ease;
+    border-width: 2px;
+}
+
+#stageDisplay {
+    transition: color 0.3s ease;
+}
+
+.form-select:focus {
+    border-color: #5E899E;
+    box-shadow: 0 0 0 0.2rem rgba(94, 137, 158, 0.25);
+}
+
+.btn-check:checked + .btn-outline-primary {
+    background-color: #5E899E;
+    border-color: #5E899E;
+}
+
+.btn-outline-primary {
+    color: #5E899E;
+    border-color: #5E899E;
+}
+
+.btn-outline-primary:hover {
+    background-color: #5E899E;
+    border-color: #5E899E;
+    color: white;
+}
+</style>
+{% endblock %}
