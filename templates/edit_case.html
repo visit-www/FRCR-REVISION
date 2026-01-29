@@ -3280,15 +3280,33 @@ function renderArticle(article) {
 }
 
 // ==================== REFERENCES SECTION MANAGEMENT ====================
+// References are now stored in the database (case_reference table)
 let referenceCounter = 0;
-const referencesMap = new Map(); // Track references by URL to avoid duplicates
+const referencesMap = new Map(); // Track references by URL -> {id, ref_number}
 
-// Load existing references from editor content when editing a case
-function loadExistingReferences(editor) {
-    const content = editor.getContent();
-    if (!content) return;
+// Get current case ID from the page
+function getCurrentCaseId() {
+    const caseIdInput = document.getElementById('editCaseId');
+    if (caseIdInput && caseIdInput.value) {
+        const val = caseIdInput.value;
+        // Handle staging case IDs (staging-123)
+        if (val.startsWith('staging-')) {
+            return null; // No API for staging cases yet
+        }
+        return parseInt(val) || null;
+    }
+    return null;
+}
+
+// Load references from database API
+async function loadReferencesFromDatabase() {
+    const caseId = getCurrentCaseId();
+    if (!caseId) {
+        console.log('[References] No case ID, skipping database load');
+        return;
+    }
     
-    // Clear existing state first (in case function is called multiple times)
+    // Clear existing state
     referenceCounter = 0;
     referencesMap.clear();
     const list = document.getElementById('referencesList');
@@ -3296,117 +3314,139 @@ function loadExistingReferences(editor) {
     const countBadge = document.getElementById('referenceCount');
     if (countBadge) countBadge.textContent = '0';
     
-    // Create a temporary DOM to parse the content
-    const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = content;
-    
-    // Find all reference citations (visible superscripts) AND hidden markers
-    const visibleCitations = tempDiv.querySelectorAll('sup.ref-cite');
-    const hiddenMarkers = tempDiv.querySelectorAll('span.ref-data');
-    
-    if (visibleCitations.length === 0 && hiddenMarkers.length === 0) {
-        // Show empty state
+    try {
+        const response = await fetch(`/api/admin/cases/${caseId}/references`);
+        const data = await response.json();
+        
+        if (!response.ok || !data.success) {
+            console.error('[References] Failed to load:', data.error);
+            return;
+        }
+        
+        const references = data.references || [];
+        console.log(`[References] Loaded ${references.length} references from database`);
+        
+        if (references.length === 0) {
+            const emptyState = document.getElementById('referencesEmptyState');
+            if (emptyState) emptyState.style.display = 'block';
+            return;
+        }
+        
+        // Hide empty state
         const emptyState = document.getElementById('referencesEmptyState');
-        if (emptyState) emptyState.style.display = 'block';
+        if (emptyState) emptyState.style.display = 'none';
+        
+        // Populate references
+        let maxRefNumber = 0;
+        references.forEach(ref => {
+            referencesMap.set(ref.url, { id: ref.id, ref_number: ref.ref_number });
+            addReferenceToSection(ref.ref_number, ref.title, ref.journal, ref.year, ref.url, ref.id);
+            maxRefNumber = Math.max(maxRefNumber, ref.ref_number);
+        });
+        
+        referenceCounter = maxRefNumber;
+        
+    } catch (error) {
+        console.error('[References] Error loading:', error);
+    }
+}
+
+// Legacy function for backward compatibility (loads from HTML if no case ID)
+function loadExistingReferences(editor) {
+    const caseId = getCurrentCaseId();
+    if (caseId) {
+        // Load from database for existing cases
+        loadReferencesFromDatabase();
+    }
+    // For new cases or staging, references start fresh
+}
+
+// insertIntoEditor: if true, inserts visible superscript at cursor; if false, no inline citation
+async function insertReferenceToDiscussion(title, journal, year, link, insertIntoEditor = true) {
+    const caseId = getCurrentCaseId();
+    
+    // Check if reference already exists (by URL)
+    if (referencesMap.has(link)) {
+        const existing = referencesMap.get(link);
+        const refNumber = existing.ref_number || existing;
+        closeReferenceSearchModal();
+        showFlash(`Reference [${refNumber}] already exists!`, 'info');
         return;
     }
     
-    console.log(`[References] Found ${visibleCitations.length} visible + ${hiddenMarkers.length} hidden references`);
-    
-    // Hide empty state
-    const emptyState = document.getElementById('referencesEmptyState');
-    if (emptyState) emptyState.style.display = 'none';
-    
-    // Extract reference data and populate the section
-    let maxRefNumber = 0;
-    
-    // Process visible citations
-    visibleCitations.forEach(cite => {
-        const refNumber = parseInt(cite.dataset.ref) || 0;
-        const url = cite.dataset.url || '';
-        const title = cite.dataset.title || 'Untitled Reference';
-        const journal = cite.dataset.journal || '';
-        const year = cite.dataset.year || '';
-        
-        if (refNumber > 0 && url && !referencesMap.has(url)) {
-            referencesMap.set(url, refNumber);
-            addReferenceToSection(refNumber, title, journal, year, url);
-            maxRefNumber = Math.max(maxRefNumber, refNumber);
+    // For existing cases, save to database
+    if (caseId) {
+        try {
+            const response = await fetch(`/api/admin/cases/${caseId}/references`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    title: title,
+                    url: link,
+                    journal: journal || '',
+                    year: year || '',
+                    is_inline: insertIntoEditor
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (!response.ok || !data.success) {
+                throw new Error(data.error || 'Failed to save reference');
+            }
+            
+            const ref = data.reference;
+            referencesMap.set(link, { id: ref.id, ref_number: ref.ref_number });
+            referenceCounter = Math.max(referenceCounter, ref.ref_number);
+            
+            // Add to UI
+            addReferenceToSection(ref.ref_number, ref.title, ref.journal, ref.year, ref.url, ref.id);
+            
+            // Insert inline citation if requested (context menu)
+            if (insertIntoEditor && typeof tinymce !== 'undefined' && tinymce.get('editCaseDiscussion')) {
+                const editor = tinymce.get('editCaseDiscussion');
+                const superscriptHtml = `<sup class="ref-cite" data-ref="${ref.ref_number}"><a href="#ref-${ref.ref_number}" style="color: #e96304; text-decoration: none; font-weight: 600;">[${ref.ref_number}]</a></sup>`;
+                
+                const selection = editor.selection;
+                const rng = selection.getRng();
+                rng.collapse(false);
+                selection.setRng(rng);
+                editor.insertContent(superscriptHtml);
+            }
+            
+            closeReferenceSearchModal();
+            showFlash(`Reference [${ref.ref_number}] added!`, 'success');
+            
+        } catch (error) {
+            console.error('[References] Error saving:', error);
+            showFlash('Failed to save reference: ' + error.message, 'danger');
         }
-    });
-    
-    // Process hidden markers
-    hiddenMarkers.forEach(marker => {
-        const refNumber = parseInt(marker.dataset.ref) || 0;
-        const url = marker.dataset.url || '';
-        const title = marker.dataset.title || 'Untitled Reference';
-        const journal = marker.dataset.journal || '';
-        const year = marker.dataset.year || '';
-        
-        if (refNumber > 0 && url && !referencesMap.has(url)) {
-            referencesMap.set(url, refNumber);
-            addReferenceToSection(refNumber, title, journal, year, url);
-            maxRefNumber = Math.max(maxRefNumber, refNumber);
-        }
-    });
-    
-    // Set counter to max found for next reference
-    if (maxRefNumber > 0) {
-        referenceCounter = maxRefNumber;
-        console.log(`[References] Loaded ${referencesMap.size} references, counter set to ${referenceCounter}`);
-    }
-}
-
-// insertIntoEditor: if true (default), inserts visible superscript at cursor; if false, adds hidden marker (no visible text)
-function insertReferenceToDiscussion(title, journal, year, link, insertIntoEditor = true) {
-    // Check if reference already exists (by URL)
-    let refNumber;
-    let isNew = false;
-    if (referencesMap.has(link)) {
-        refNumber = referencesMap.get(link);
     } else {
+        // For new cases (no case ID yet), use local state only
         referenceCounter++;
-        refNumber = referenceCounter;
-        referencesMap.set(link, refNumber);
-        isNew = true;
+        const refNumber = referenceCounter;
+        referencesMap.set(link, { ref_number: refNumber });
         
-        // Add to references section UI
-        addReferenceToSection(refNumber, title, journal, year, link);
-    }
-    
-    // Persist reference data to HTML content (so it's saved with the case)
-    if (typeof tinymce !== 'undefined' && tinymce.get('editCaseDiscussion') && isNew) {
-        const editor = tinymce.get('editCaseDiscussion');
+        addReferenceToSection(refNumber, title, journal, year, link, null);
         
-        if (insertIntoEditor) {
-            // Context menu: Insert VISIBLE superscript at cursor position
-            const superscriptHtml = `<sup class="ref-cite" data-ref="${refNumber}" data-url="${escapeHtml(link)}" data-title="${escapeHtml(title)}" data-journal="${escapeHtml(journal || '')}" data-year="${year || ''}"><a href="#ref-${refNumber}" style="color: #e96304; text-decoration: none; font-weight: 600;">[${refNumber}]</a></sup>`;
+        // Insert inline citation if requested
+        if (insertIntoEditor && typeof tinymce !== 'undefined' && tinymce.get('editCaseDiscussion')) {
+            const editor = tinymce.get('editCaseDiscussion');
+            const superscriptHtml = `<sup class="ref-cite" data-ref="${refNumber}"><a href="#ref-${refNumber}" style="color: #e96304; text-decoration: none; font-weight: 600;">[${refNumber}]</a></sup>`;
             
             const selection = editor.selection;
             const rng = selection.getRng();
-            rng.collapse(false); // false = collapse to end of selection
+            rng.collapse(false);
             selection.setRng(rng);
             editor.insertContent(superscriptHtml);
-        } else {
-            // Search/Manual: Insert HIDDEN marker at end (persists data but not visible)
-            // Using zero-width space (&ZeroWidthSpace;) to prevent TinyMCE from stripping empty elements
-            const hiddenMarkerHtml = `<span class="ref-data" style="display:none !important; font-size:0; line-height:0; position:absolute; left:-9999px;" data-ref="${refNumber}" data-url="${escapeHtml(link)}" data-title="${escapeHtml(title)}" data-journal="${escapeHtml(journal || '')}" data-year="${year || ''}">\u200B</span>`;
-            
-            const currentContent = editor.getContent();
-            editor.setContent(currentContent + hiddenMarkerHtml);
         }
-    } else if (!tinymce.get('editCaseDiscussion')) {
-        const textarea = document.getElementById('editCaseDiscussion');
-        if (textarea && isNew) {
-            textarea.value += ` [${refNumber}]`;
-        }
+        
+        closeReferenceSearchModal();
+        showFlash(`Reference [${refNumber}] added! (Will be saved when case is saved)`, 'success');
     }
-    
-    closeReferenceSearchModal();
-    showFlash(`Reference [${refNumber}] ${isNew ? 'added' : 'already exists'}!`, 'success');
 }
 
-function addReferenceToSection(refNumber, title, journal, year, url) {
+function addReferenceToSection(refNumber, title, journal, year, url, refId = null) {
     const section = document.getElementById('referencesSection');
     const list = document.getElementById('referencesList');
     const countBadge = document.getElementById('referenceCount');
@@ -3419,6 +3459,8 @@ function addReferenceToSection(refNumber, title, journal, year, url) {
     const li = document.createElement('li');
     li.id = `ref-${refNumber}`;
     li.className = 'reference-item';
+    li.dataset.refId = refId || '';
+    li.dataset.url = url;
     li.innerHTML = `
         <div class="reference-number">${refNumber}</div>
         <div class="reference-content">
@@ -3428,7 +3470,7 @@ function addReferenceToSection(refNumber, title, journal, year, url) {
             ${journal || year ? `<div class="reference-meta">${escapeHtml(journal || '')}${year ? ` (${year})` : ''}</div>` : ''}
             <div class="reference-url">${escapeHtml(url)}</div>
         </div>
-        <button class="btn btn-sm btn-outline-danger reference-remove" onclick="removeReference(${refNumber}, '${escapeHtml(url).replace(/'/g, "\\'")}')" title="Remove reference">
+        <button class="btn btn-sm btn-outline-danger reference-remove" onclick="removeReference(${refNumber}, ${refId || 'null'})" title="Remove reference">
             <i class="fas fa-times"></i>
         </button>
     `;
@@ -3438,30 +3480,48 @@ function addReferenceToSection(refNumber, title, journal, year, url) {
     countBadge.textContent = list.children.length;
 }
 
-function removeReference(refNumber, url) {
+async function removeReference(refNumber, refId) {
+    const caseId = getCurrentCaseId();
+    
+    // Remove from database if we have IDs
+    if (caseId && refId) {
+        try {
+            const response = await fetch(`/api/admin/cases/${caseId}/references/${refId}`, {
+                method: 'DELETE'
+            });
+            
+            const data = await response.json();
+            
+            if (!response.ok || !data.success) {
+                throw new Error(data.error || 'Failed to delete reference');
+            }
+        } catch (error) {
+            console.error('[References] Error deleting:', error);
+            showFlash('Failed to delete reference: ' + error.message, 'danger');
+            return;
+        }
+    }
+    
     // Remove from UI
     const li = document.getElementById(`ref-${refNumber}`);
+    const url = li?.dataset?.url;
     if (li) li.remove();
     
     // Remove from map
-    referencesMap.delete(url);
+    if (url) referencesMap.delete(url);
     
-    // Remove from TinyMCE content (so it persists on save)
+    // Remove inline citations from TinyMCE content
     if (typeof tinymce !== 'undefined' && tinymce.get('editCaseDiscussion')) {
         const editor = tinymce.get('editCaseDiscussion');
         const content = editor.getContent();
         
-        // Create temp DOM to find and remove the reference
         const tempDiv = document.createElement('div');
         tempDiv.innerHTML = content;
         
-        // Find and remove all visible citations AND hidden markers with matching data-ref
+        // Remove superscripts with matching ref number
         const citations = tempDiv.querySelectorAll(`sup.ref-cite[data-ref="${refNumber}"]`);
-        const markers = tempDiv.querySelectorAll(`span.ref-data[data-ref="${refNumber}"]`);
         citations.forEach(cite => cite.remove());
-        markers.forEach(marker => marker.remove());
         
-        // Update editor content
         editor.setContent(tempDiv.innerHTML);
     }
     
@@ -3479,8 +3539,29 @@ function removeReference(refNumber, url) {
     showFlash(`Reference [${refNumber}] removed`, 'success');
 }
 
-function clearAllReferences() {
+async function clearAllReferences() {
     if (!confirm('Are you sure you want to clear all references?')) return;
+    
+    const caseId = getCurrentCaseId();
+    
+    // Delete from database
+    if (caseId) {
+        try {
+            const response = await fetch(`/api/admin/cases/${caseId}/references`, {
+                method: 'DELETE'
+            });
+            
+            const data = await response.json();
+            
+            if (!response.ok || !data.success) {
+                throw new Error(data.error || 'Failed to clear references');
+            }
+        } catch (error) {
+            console.error('[References] Error clearing:', error);
+            showFlash('Failed to clear references: ' + error.message, 'danger');
+            return;
+        }
+    }
     
     // Clear UI
     document.getElementById('referencesList').innerHTML = '';
@@ -3488,7 +3569,7 @@ function clearAllReferences() {
     referenceCounter = 0;
     referencesMap.clear();
     
-    // Remove all references from TinyMCE content
+    // Remove all inline citations from TinyMCE content
     if (typeof tinymce !== 'undefined' && tinymce.get('editCaseDiscussion')) {
         const editor = tinymce.get('editCaseDiscussion');
         const content = editor.getContent();
@@ -3496,9 +3577,8 @@ function clearAllReferences() {
         const tempDiv = document.createElement('div');
         tempDiv.innerHTML = content;
         
-        // Remove all visible citations and hidden markers
+        // Remove all superscript citations
         tempDiv.querySelectorAll('sup.ref-cite').forEach(el => el.remove());
-        tempDiv.querySelectorAll('span.ref-data').forEach(el => el.remove());
         
         editor.setContent(tempDiv.innerHTML);
     }

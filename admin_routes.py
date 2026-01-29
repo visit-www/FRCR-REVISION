@@ -1311,6 +1311,116 @@ def get_approval_history():
 
 
 # ============================================================================
+# CASE REFERENCES API
+# ============================================================================
+
+@admin_bp.route('/cases/<int:case_id>/references', methods=['GET'])
+@require_role(UserRole.ADMIN, UserRole.CONTENT_MANAGER)
+def get_case_references(case_id):
+    """Get all references for a case"""
+    from models import Case, CaseReference
+    
+    case = Case.query.get_or_404(case_id)
+    references = CaseReference.query.filter_by(case_id=case_id).order_by(CaseReference.ref_number).all()
+    
+    return jsonify({
+        'success': True,
+        'case_id': case_id,
+        'references': [ref.to_dict() for ref in references]
+    })
+
+
+@admin_bp.route('/cases/<int:case_id>/references', methods=['POST'])
+@require_role(UserRole.ADMIN, UserRole.CONTENT_MANAGER)
+def add_case_reference(case_id):
+    """Add a reference to a case"""
+    from models import Case, CaseReference, db
+    
+    case = Case.query.get_or_404(case_id)
+    data = request.get_json()
+    
+    if not data:
+        return jsonify({'success': False, 'error': 'No data provided'}), 400
+    
+    title = data.get('title', '').strip()
+    url = data.get('url', '').strip()
+    
+    if not title:
+        return jsonify({'success': False, 'error': 'Title is required'}), 400
+    if not url:
+        return jsonify({'success': False, 'error': 'URL is required'}), 400
+    
+    # Check if URL already exists for this case
+    existing = CaseReference.query.filter_by(case_id=case_id, url=url).first()
+    if existing:
+        return jsonify({
+            'success': True,
+            'reference': existing.to_dict(),
+            'is_duplicate': True,
+            'message': f'Reference already exists as [{existing.ref_number}]'
+        })
+    
+    # Get next ref_number
+    max_ref = db.session.query(db.func.max(CaseReference.ref_number)).filter_by(case_id=case_id).scalar()
+    next_ref_number = (max_ref or 0) + 1
+    
+    # Create new reference
+    reference = CaseReference(
+        case_id=case_id,
+        ref_number=next_ref_number,
+        title=title,
+        url=url,
+        journal=data.get('journal', '').strip() or None,
+        year=data.get('year', '').strip() or None,
+        is_inline=data.get('is_inline', False)
+    )
+    
+    db.session.add(reference)
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'reference': reference.to_dict(),
+        'is_duplicate': False,
+        'message': f'Reference [{next_ref_number}] added'
+    })
+
+
+@admin_bp.route('/cases/<int:case_id>/references/<int:ref_id>', methods=['DELETE'])
+@require_role(UserRole.ADMIN, UserRole.CONTENT_MANAGER)
+def delete_case_reference(case_id, ref_id):
+    """Delete a reference from a case"""
+    from models import CaseReference, db
+    
+    reference = CaseReference.query.filter_by(id=ref_id, case_id=case_id).first_or_404()
+    ref_number = reference.ref_number
+    
+    db.session.delete(reference)
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'message': f'Reference [{ref_number}] deleted'
+    })
+
+
+@admin_bp.route('/cases/<int:case_id>/references', methods=['DELETE'])
+@require_role(UserRole.ADMIN, UserRole.CONTENT_MANAGER)
+def clear_case_references(case_id):
+    """Clear all references for a case"""
+    from models import Case, CaseReference, db
+    
+    case = Case.query.get_or_404(case_id)
+    count = CaseReference.query.filter_by(case_id=case_id).delete()
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'message': f'{count} references cleared'
+    })
+
+
+# ============================================================================
 # ERROR HANDLERS
 # ============================================================================
 

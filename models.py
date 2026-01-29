@@ -355,6 +355,53 @@ class Answer(db.Model):
         return f'<Answer {self.answer_number} for Case {self.case_id}>'
 
 
+class CaseReference(db.Model):
+    """Store references for a case - proper database model for better integrity and queryability"""
+    __tablename__ = 'case_reference'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    case_id = db.Column(db.Integer, db.ForeignKey('case.id'), nullable=False, index=True)
+    
+    # Reference data
+    ref_number = db.Column(db.Integer, nullable=False)  # The [1], [2], etc. display number
+    title = db.Column(db.Text, nullable=False)
+    url = db.Column(db.Text, nullable=False)
+    journal = db.Column(db.String(500), nullable=True)
+    year = db.Column(db.String(10), nullable=True)
+    
+    # Whether this reference has an inline citation (superscript) in the discussion
+    # False = added via search/manual (reference list only)
+    # True = added via context menu (has [N] superscript in text)
+    is_inline = db.Column(db.Boolean, default=False)
+    
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationship back to Case
+    case = db.relationship('Case', backref=db.backref('references', lazy=True, cascade='all, delete-orphan'))
+    
+    # Unique constraint: one ref_number per case
+    __table_args__ = (
+        db.UniqueConstraint('case_id', 'ref_number', name='uq_case_ref_number'),
+        db.UniqueConstraint('case_id', 'url', name='uq_case_ref_url'),
+    )
+    
+    def __repr__(self):
+        return f'<CaseReference [{self.ref_number}] for Case {self.case_id}>'
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'case_id': self.case_id,
+            'ref_number': self.ref_number,
+            'title': self.title,
+            'url': self.url,
+            'journal': self.journal,
+            'year': self.year,
+            'is_inline': self.is_inline,
+            'created_at': self.created_at.isoformat() if self.created_at else None
+        }
+
+
 class CaseImage(db.Model):
     """Store images for a case - using Cloudinary for storage"""
     id = db.Column(db.Integer, primary_key=True)
