@@ -7311,6 +7311,14 @@
             // Use client-side direct connection
             const { result, error } = await ankiRequestHybrid('version');
             
+            // On production, AnkiConnect won't be available - this is expected
+            const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+            if (error && !isLocalhost) {
+                // Silently fail on production - Anki is optional and localhost-only
+                ankiConnected = false;
+                return;
+            }
+            
             ankiConnected = result !== null;
             
             const notConnected = document.getElementById('ankiNotConnected');
@@ -8617,15 +8625,20 @@
                 let errorHtml = '<div class="alert alert-warning m-2">';
                 errorHtml += '<i class="fas fa-exclamation-triangle me-2"></i><strong>API search unavailable</strong><br>';
                 
-                if (is401 || isLocalhost) {
+                if (is401) {
                     errorHtml += '<small class="d-block mt-2">';
                     errorHtml += '<i class="fas fa-info-circle me-1"></i>';
-                    if (is401) {
-                        errorHtml += '<strong>401 Authentication Error:</strong> ';
-                    }
+                    errorHtml += '<strong>401 Authentication Error:</strong> ';
                     if (isLocalhost) {
-                        errorHtml += 'Testing on localhost. ';
+                        errorHtml += 'Testing on localhost. The API key is registered for <strong>radinsights.xyz</strong> and may not work from localhost. ';
+                        errorHtml += 'This is expected behavior. The API will work on production (radinsights.xyz).';
+                    } else {
+                        errorHtml += 'The API key authentication failed. Please check the API key configuration or contact support.';
                     }
+                    errorHtml += '</small>';
+                } else if (isLocalhost) {
+                    errorHtml += '<small class="d-block mt-2">';
+                    errorHtml += '<i class="fas fa-info-circle me-1"></i>Testing on localhost. ';
                     errorHtml += 'The API key is registered for <strong>radinsights.xyz</strong> and may not work from localhost. ';
                     errorHtml += 'This is expected behavior. The API will work on production (radinsights.xyz).';
                     errorHtml += '</small>';
@@ -8656,8 +8669,14 @@
                     alert('API search unavailable. Please visit: ' + fallbackUrl);
                 }
                 
-                if (is401 || isLocalhost) {
-                    showFlash('API authentication failed (401) on localhost (expected). Will work on production.', 'info');
+                if (is401) {
+                    if (isLocalhost) {
+                        showFlash('API authentication failed (401) on localhost (expected). Will work on production.', 'info');
+                    } else {
+                        showFlash('API authentication failed (401). Please check API key configuration.', 'error');
+                    }
+                } else if (isLocalhost) {
+                    showFlash('API search unavailable on localhost (expected). Use production domain for API access.', 'info');
                 } else {
                     showFlash('API search unavailable: ' + errorMsg, 'warning');
                 }
@@ -8767,15 +8786,20 @@
                 let errorHtml = '<div class="alert alert-warning m-2">';
                 errorHtml += '<i class="fas fa-exclamation-triangle me-2"></i><strong>API search unavailable</strong><br>';
                 
-                if (is401 || isLocalhost) {
+                if (is401) {
                     errorHtml += '<small class="d-block mt-2">';
                     errorHtml += '<i class="fas fa-info-circle me-1"></i>';
-                    if (is401) {
-                        errorHtml += '<strong>401 Authentication Error:</strong> ';
-                    }
+                    errorHtml += '<strong>401 Authentication Error:</strong> ';
                     if (isLocalhost) {
-                        errorHtml += 'Testing on localhost. ';
+                        errorHtml += 'Testing on localhost. The API key is registered for <strong>radinsights.xyz</strong> and may not work from localhost. ';
+                        errorHtml += 'This is expected behavior. The API will work on production (radinsights.xyz).';
+                    } else {
+                        errorHtml += 'The API key authentication failed. Please check the API key configuration or contact support.';
                     }
+                    errorHtml += '</small>';
+                } else if (isLocalhost) {
+                    errorHtml += '<small class="d-block mt-2">';
+                    errorHtml += '<i class="fas fa-info-circle me-1"></i>Testing on localhost. ';
                     errorHtml += 'The API key is registered for <strong>radinsights.xyz</strong> and may not work from localhost. ';
                     errorHtml += 'This is expected behavior. The API will work on production (radinsights.xyz).';
                     errorHtml += '</small>';
@@ -8806,8 +8830,14 @@
                     alert('API search unavailable. Please visit: ' + fallbackUrl);
                 }
                 
-                if (is401 || isLocalhost) {
-                    showFlash('API authentication failed (401) on localhost (expected). Will work on production.', 'info');
+                if (is401) {
+                    if (isLocalhost) {
+                        showFlash('API authentication failed (401) on localhost (expected). Will work on production.', 'info');
+                    } else {
+                        showFlash('API authentication failed (401). Please check API key configuration.', 'error');
+                    }
+                } else if (isLocalhost) {
+                    showFlash('API search unavailable on localhost (expected). Use production domain for API access.', 'info');
                 } else {
                     showFlash('API search unavailable: ' + errorMsg, 'warning');
                 }

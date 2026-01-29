@@ -49,9 +49,9 @@ def search_sciencedirect(diagnosis: str, oauth_token: Optional[str] = None, user
             - query: Search query used
             - logged_in: True if using API
     """
-    # Build advanced search query focused on radiology
-    # Format: diagnosis AND (radiology OR imaging OR diagnosis)
-    search_query = f"{diagnosis} AND (radiology OR imaging OR diagnosis)"
+    # Format: diagnosis AND (radiology OR medical imaging OR CT OR computed tomography OR MRI OR magnetic resonance OR staging OR tumor staging)
+    # Build advanced search query focused on radiology with specific imaging modalities
+    search_query = f'"{diagnosis}" AND (radiology OR "medical imaging" OR CT OR "computed tomography" OR MRI OR "magnetic resonance" OR staging OR "tumor staging" OR "cancer staging")'
     
     # Prepare API request
     headers = {
