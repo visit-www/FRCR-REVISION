@@ -298,19 +298,41 @@ console.log('[TinyMCE Loader] Script URL was:', "{{ url_for('static', filename='
             </div>
 
             <!-- Section 5: References (auto-populated from Find Reference) -->
-            <div id="referencesSection" class="card shadow-sm mb-5 border-0" style="display: none;">
-                <div class="card-header bg-gradient text-white d-flex justify-content-between align-items-center" style="background: linear-gradient(135deg, #5E899E 0%, #4a7285 100%);">
-                    <h5 class="mb-0">
-                        <i class="fas fa-bookmark me-2"></i>References
-                        <span id="referenceCount" class="badge bg-light text-dark ms-2">0</span>
-                    </h5>
-                    <button type="button" class="btn btn-sm btn-outline-light" onclick="clearAllReferences()">
-                        <i class="fas fa-trash me-1"></i>Clear All
-                    </button>
+            <div id="referencesSection" class="card shadow-sm mb-5 border-0">
+                <div class="card-header bg-gradient text-white" style="background: linear-gradient(135deg, #5E899E 0%, #4a7285 100%);">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h5 class="mb-0">
+                            <i class="fas fa-bookmark me-2"></i>References
+                            <span id="referenceCount" class="badge bg-light text-dark ms-2">0</span>
+                        </h5>
+                        <button type="button" class="btn btn-sm btn-outline-light" onclick="clearAllReferences()">
+                            <i class="fas fa-trash me-1"></i>Clear All
+                        </button>
+                    </div>
+                    <!-- Search and Manual Entry Tools -->
+                    <div class="d-flex gap-2 flex-wrap">
+                        <div class="input-group input-group-sm" style="max-width: 280px;">
+                            <input type="text" id="referenceSearchInput" class="form-control" 
+                                   placeholder="Search any term..." 
+                                   onkeypress="if(event.key==='Enter') searchReferenceByTerm()">
+                            <button class="btn btn-light" type="button" onclick="searchReferenceByTerm()" title="Search references">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-light" onclick="showManualReferenceForm()" title="Add manual reference">
+                            <i class="fas fa-plus me-1"></i>Add Manual
+                        </button>
+                    </div>
                 </div>
                 <div class="card-body p-0">
                     <div id="referencesList" class="references-list">
                         <!-- References will be added here dynamically -->
+                    </div>
+                    <!-- Empty state placeholder -->
+                    <div id="referencesEmptyState" class="text-center py-4" style="color: #6c757d;">
+                        <i class="fas fa-bookmark fa-2x mb-2" style="opacity: 0.3;"></i>
+                        <p class="mb-1">No references added yet</p>
+                        <small>Use the search box above or right-click selected text in the editor</small>
                     </div>
                 </div>
                 <!-- RadiologyInsights Footer -->
@@ -3273,9 +3295,10 @@ function addReferenceToSection(refNumber, title, journal, year, url) {
     const section = document.getElementById('referencesSection');
     const list = document.getElementById('referencesList');
     const countBadge = document.getElementById('referenceCount');
+    const emptyState = document.getElementById('referencesEmptyState');
     
-    // Show section if hidden
-    section.style.display = 'block';
+    // Hide empty state when adding references
+    if (emptyState) emptyState.style.display = 'none';
     
     // Create reference entry with improved styling
     const li = document.createElement('li');
@@ -3312,9 +3335,10 @@ function removeReference(refNumber, url) {
     const countBadge = document.getElementById('referenceCount');
     countBadge.textContent = list.children.length;
     
-    // Hide section if empty
+    // Show empty state if no references left
     if (list.children.length === 0) {
-        document.getElementById('referencesSection').style.display = 'none';
+        const emptyState = document.getElementById('referencesEmptyState');
+        if (emptyState) emptyState.style.display = 'block';
     }
 }
 
@@ -3322,11 +3346,138 @@ function clearAllReferences() {
     if (!confirm('Are you sure you want to clear all references?')) return;
     
     document.getElementById('referencesList').innerHTML = '';
-    document.getElementById('referencesSection').style.display = 'none';
     document.getElementById('referenceCount').textContent = '0';
     referenceCounter = 0;
     referencesMap.clear();
+    
+    // Show empty state
+    const emptyState = document.getElementById('referencesEmptyState');
+    if (emptyState) emptyState.style.display = 'block';
+    
     showFlash('All references cleared.', 'success');
+}
+
+// ==================== SEARCH REFERENCE BY TERM ====================
+function searchReferenceByTerm() {
+    const input = document.getElementById('referenceSearchInput');
+    const query = input.value.trim();
+    
+    if (!query) {
+        showFlash('Please enter a search term', 'warning');
+        input.focus();
+        return;
+    }
+    
+    // Use existing search modal infrastructure
+    showReferenceSearchModal(query);
+}
+
+// ==================== MANUAL REFERENCE ENTRY ====================
+function showManualReferenceForm() {
+    // Remove existing modal
+    const existing = document.getElementById('manualReferenceModal');
+    if (existing) existing.remove();
+    
+    const modal = document.createElement('div');
+    modal.id = 'manualReferenceModal';
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.6);
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+    `;
+    
+    modal.innerHTML = `
+        <div style="background: white; border-radius: 12px; max-width: 500px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
+            <div style="background: linear-gradient(135deg, #5E899E 0%, #4a7285 100%); color: white; padding: 16px 20px; border-radius: 12px 12px 0 0; display: flex; justify-content: space-between; align-items: center;">
+                <h5 style="margin: 0; font-weight: 600;">
+                    <i class="fas fa-plus-circle me-2"></i>Add Manual Reference
+                </h5>
+                <button onclick="closeManualReferenceModal()" style="background: none; border: none; color: white; font-size: 20px; cursor: pointer;">&times;</button>
+            </div>
+            <div style="padding: 20px;">
+                <div class="mb-3">
+                    <label class="form-label fw-medium" style="color: #2c3e50;">Title <span class="text-danger">*</span></label>
+                    <input type="text" id="manualRefTitle" class="form-control" placeholder="e.g., Imaging Features of Lung Cancer">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-medium" style="color: #2c3e50;">Journal / Source</label>
+                    <input type="text" id="manualRefJournal" class="form-control" placeholder="e.g., Radiology, Radiopaedia">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-medium" style="color: #2c3e50;">Year</label>
+                    <input type="text" id="manualRefYear" class="form-control" placeholder="e.g., 2024" maxlength="4">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-medium" style="color: #2c3e50;">URL <span class="text-danger">*</span></label>
+                    <input type="url" id="manualRefUrl" class="form-control" placeholder="https://...">
+                </div>
+                <div class="d-flex justify-content-end gap-2 mt-4">
+                    <button type="button" class="btn btn-outline-secondary" onclick="closeManualReferenceModal()">Cancel</button>
+                    <button type="button" class="btn" style="background: #e96304; color: white;" onclick="submitManualReference()">
+                        <i class="fas fa-plus me-1"></i>Add Reference
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Close on backdrop click
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) {
+            closeManualReferenceModal();
+        }
+    });
+    
+    // Focus first input
+    setTimeout(() => document.getElementById('manualRefTitle').focus(), 100);
+}
+
+function closeManualReferenceModal() {
+    const modal = document.getElementById('manualReferenceModal');
+    if (modal) modal.remove();
+}
+
+function submitManualReference() {
+    const title = document.getElementById('manualRefTitle').value.trim();
+    const journal = document.getElementById('manualRefJournal').value.trim();
+    const year = document.getElementById('manualRefYear').value.trim();
+    const url = document.getElementById('manualRefUrl').value.trim();
+    
+    // Validate required fields
+    if (!title) {
+        showFlash('Please enter a title', 'warning');
+        document.getElementById('manualRefTitle').focus();
+        return;
+    }
+    
+    if (!url) {
+        showFlash('Please enter a URL', 'warning');
+        document.getElementById('manualRefUrl').focus();
+        return;
+    }
+    
+    // Validate URL format
+    try {
+        new URL(url);
+    } catch {
+        showFlash('Please enter a valid URL', 'warning');
+        document.getElementById('manualRefUrl').focus();
+        return;
+    }
+    
+    // Use existing insert function
+    insertReferenceToDiscussion(title, journal, year, url);
+    closeManualReferenceModal();
 }
 
 // Note: Context menu is now integrated into TinyMCE's context menu system
@@ -3354,5 +3505,9 @@ window.removeReference = removeReference;
 window.clearAllReferences = clearAllReferences;
 window.searchWithNewQuery = searchWithNewQuery;
 window.cleanupTinyMCEHTML = cleanupTinyMCEHTML;
+window.searchReferenceByTerm = searchReferenceByTerm;
+window.showManualReferenceForm = showManualReferenceForm;
+window.closeManualReferenceModal = closeManualReferenceModal;
+window.submitManualReference = submitManualReference;
 </script>
 {% endblock %}

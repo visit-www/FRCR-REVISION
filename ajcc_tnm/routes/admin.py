@@ -1036,12 +1036,12 @@ def curate_tnm_page(disease_site_id, year):
         available_years = sorted(available_years, reverse=True) if available_years else [year]
         
         # Get intelligent TNM data if available
-        # Query by disease_site_id only - one record per disease site regardless of year
         intelligent_data = None
         try:
             from models import IntelligentTNMData
             intel_record = IntelligentTNMData.query.filter_by(
-                disease_site_id=disease_site_id
+                disease_site_id=disease_site_id,
+                diagnosis_year_id=diagnosis_year.id
             ).first()
             if intel_record:
                 intelligent_data = intel_record.to_dict()
