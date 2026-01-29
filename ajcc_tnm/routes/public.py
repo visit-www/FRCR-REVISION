@@ -377,19 +377,12 @@ def tnm_view(section_slug, disease_slug):
         diagnosis_year = staging_data.diagnosis_year
     
     # Get intelligent TNM data if available
+    # Query by disease_site_id only - one record per disease site regardless of year
     intelligent_data = None
     try:
-        # First try exact match with diagnosis_year_id
         intel_record = IntelligentTNMData.query.filter_by(
-            disease_site_id=disease_site.id,
-            diagnosis_year_id=diagnosis_year_id
+            disease_site_id=disease_site.id
         ).first()
-        
-        # If not found, try without year filter (for legacy data or NULL year)
-        if not intel_record:
-            intel_record = IntelligentTNMData.query.filter_by(
-                disease_site_id=disease_site.id
-            ).first()
         
         if intel_record:
             intelligent_data = intel_record.to_dict()

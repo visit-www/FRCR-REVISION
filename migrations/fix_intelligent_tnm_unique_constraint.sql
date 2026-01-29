@@ -16,7 +16,7 @@ GROUP BY disease_site_id
 HAVING COUNT(*) > 1;
 
 -- Delete duplicates, keeping the record with the most recent updated_at timestamp
--- Using a subquery to find the ID of the most recently updated record per disease_site_id
+-- Using DISTINCT ON to find the ID of the most recently updated record per disease_site_id
 DELETE FROM intelligent_tnm_data 
 WHERE id NOT IN (
     SELECT DISTINCT ON (disease_site_id) id
