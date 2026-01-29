@@ -3284,16 +3284,18 @@ function loadExistingReferences(editor) {
     const tempDiv = document.createElement('div');
     tempDiv.innerHTML = content;
     
-    // Find all reference citations
-    const citations = tempDiv.querySelectorAll('sup.ref-cite');
-    if (citations.length === 0) {
+    // Find all reference citations (visible superscripts) AND hidden markers
+    const visibleCitations = tempDiv.querySelectorAll('sup.ref-cite');
+    const hiddenMarkers = tempDiv.querySelectorAll('span.ref-data');
+    
+    if (visibleCitations.length === 0 && hiddenMarkers.length === 0) {
         // Show empty state
         const emptyState = document.getElementById('referencesEmptyState');
         if (emptyState) emptyState.style.display = 'block';
         return;
     }
     
-    console.log(`[References] Found ${citations.length} existing references`);
+    console.log(`[References] Found ${visibleCitations.length} visible + ${hiddenMarkers.length} hidden references`);
     
     // Hide empty state
     const emptyState = document.getElementById('referencesEmptyState');
@@ -3301,12 +3303,29 @@ function loadExistingReferences(editor) {
     
     // Extract reference data and populate the section
     let maxRefNumber = 0;
-    citations.forEach(cite => {
+    
+    // Process visible citations
+    visibleCitations.forEach(cite => {
         const refNumber = parseInt(cite.dataset.ref) || 0;
         const url = cite.dataset.url || '';
         const title = cite.dataset.title || 'Untitled Reference';
         const journal = cite.dataset.journal || '';
         const year = cite.dataset.year || '';
+        
+        if (refNumber > 0 && url && !referencesMap.has(url)) {
+            referencesMap.set(url, refNumber);
+            addReferenceToSection(refNumber, title, journal, year, url);
+            maxRefNumber = Math.max(maxRefNumber, refNumber);
+        }
+    });
+    
+    // Process hidden markers
+    hiddenMarkers.forEach(marker => {
+        const refNumber = parseInt(marker.dataset.ref) || 0;
+        const url = marker.dataset.url || '';
+        const title = marker.dataset.title || 'Untitled Reference';
+        const journal = marker.dataset.journal || '';
+        const year = marker.dataset.year || '';
         
         if (refNumber > 0 && url && !referencesMap.has(url)) {
             referencesMap.set(url, refNumber);
@@ -3322,7 +3341,7 @@ function loadExistingReferences(editor) {
     }
 }
 
-// insertIntoEditor: if true (default), inserts superscript at cursor; if false, adds hidden marker at end
+// insertIntoEditor: if true (default), inserts visible superscript at cursor; if false, adds hidden marker (no visible text)
 function insertReferenceToDiscussion(title, journal, year, link, insertIntoEditor = true) {
     // Check if reference already exists (by URL)
     let refNumber;
@@ -3339,27 +3358,25 @@ function insertReferenceToDiscussion(title, journal, year, link, insertIntoEdito
         addReferenceToSection(refNumber, title, journal, year, link);
     }
     
-    // Always persist reference data to HTML content (so it's saved with the case)
+    // Persist reference data to HTML content (so it's saved with the case)
     if (typeof tinymce !== 'undefined' && tinymce.get('editCaseDiscussion') && isNew) {
         const editor = tinymce.get('editCaseDiscussion');
         
-        // Superscript with data attributes for persistence and view mode reconstruction
-        const superscriptHtml = `<sup class="ref-cite" data-ref="${refNumber}" data-url="${escapeHtml(link)}" data-title="${escapeHtml(title)}" data-journal="${escapeHtml(journal || '')}" data-year="${year || ''}"><a href="#ref-${refNumber}" style="color: #e96304; text-decoration: none; font-weight: 600;">[${refNumber}]</a></sup>`;
-        
         if (insertIntoEditor) {
-            // Insert at cursor position (context menu use case)
+            // Context menu: Insert VISIBLE superscript at cursor position
+            const superscriptHtml = `<sup class="ref-cite" data-ref="${refNumber}" data-url="${escapeHtml(link)}" data-title="${escapeHtml(title)}" data-journal="${escapeHtml(journal || '')}" data-year="${year || ''}"><a href="#ref-${refNumber}" style="color: #e96304; text-decoration: none; font-weight: 600;">[${refNumber}]</a></sup>`;
+            
             const selection = editor.selection;
             const rng = selection.getRng();
             rng.collapse(false); // false = collapse to end of selection
             selection.setRng(rng);
             editor.insertContent(superscriptHtml);
         } else {
-            // Append to end of content (search/manual add - persists data without disrupting cursor)
+            // Search/Manual: Insert HIDDEN marker at end (persists data but not visible)
+            const hiddenMarkerHtml = `<span class="ref-data" style="display:none;" data-ref="${refNumber}" data-url="${escapeHtml(link)}" data-title="${escapeHtml(title)}" data-journal="${escapeHtml(journal || '')}" data-year="${year || ''}"></span>`;
+            
             const currentContent = editor.getContent();
-            editor.setContent(currentContent + superscriptHtml);
-            // Move cursor to end
-            editor.selection.select(editor.getBody(), true);
-            editor.selection.collapse(false);
+            editor.setContent(currentContent + hiddenMarkerHtml);
         }
     } else if (!tinymce.get('editCaseDiscussion')) {
         const textarea = document.getElementById('editCaseDiscussion');
@@ -3421,9 +3438,11 @@ function removeReference(refNumber, url) {
         const tempDiv = document.createElement('div');
         tempDiv.innerHTML = content;
         
-        // Find and remove all sup.ref-cite with matching data-ref
+        // Find and remove all visible citations AND hidden markers with matching data-ref
         const citations = tempDiv.querySelectorAll(`sup.ref-cite[data-ref="${refNumber}"]`);
+        const markers = tempDiv.querySelectorAll(`span.ref-data[data-ref="${refNumber}"]`);
         citations.forEach(cite => cite.remove());
+        markers.forEach(marker => marker.remove());
         
         // Update editor content
         editor.setContent(tempDiv.innerHTML);
@@ -3446,10 +3465,26 @@ function removeReference(refNumber, url) {
 function clearAllReferences() {
     if (!confirm('Are you sure you want to clear all references?')) return;
     
+    // Clear UI
     document.getElementById('referencesList').innerHTML = '';
     document.getElementById('referenceCount').textContent = '0';
     referenceCounter = 0;
     referencesMap.clear();
+    
+    // Remove all references from TinyMCE content
+    if (typeof tinymce !== 'undefined' && tinymce.get('editCaseDiscussion')) {
+        const editor = tinymce.get('editCaseDiscussion');
+        const content = editor.getContent();
+        
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = content;
+        
+        // Remove all visible citations and hidden markers
+        tempDiv.querySelectorAll('sup.ref-cite').forEach(el => el.remove());
+        tempDiv.querySelectorAll('span.ref-data').forEach(el => el.remove());
+        
+        editor.setContent(tempDiv.innerHTML);
+    }
     
     // Show empty state
     const emptyState = document.getElementById('referencesEmptyState');
