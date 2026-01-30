@@ -31,6 +31,10 @@ class TNMInput:
         staging_type: Clinical, pathological, or post-therapy staging
         subsite: Optional subsite for cancers with subsite-specific T definitions
         version: AJCC version (default: "8")
+        grade: Optional tumor grade for prognostic staging (G1, G2, G3)
+        her2_status: Optional HER2 status for breast (Positive, Negative)
+        er_status: Optional ER status for breast (Positive, Negative)
+        pr_status: Optional PR status for breast (Positive, Negative)
     """
     cancer_type: str
     t_category: str
@@ -39,6 +43,11 @@ class TNMInput:
     staging_type: StagingType = StagingType.CLINICAL
     subsite: Optional[str] = None
     version: str = "8"
+    # Biomarkers for prognostic staging (breast cancer, etc.)
+    grade: Optional[str] = None  # G1, G2, G3
+    her2_status: Optional[str] = None  # Positive, Negative
+    er_status: Optional[str] = None  # Positive, Negative
+    pr_status: Optional[str] = None  # Positive, Negative
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
@@ -49,8 +58,20 @@ class TNMInput:
             "m_category": self.m_category,
             "staging_type": self.staging_type.value,
             "subsite": self.subsite,
-            "version": self.version
+            "version": self.version,
+            "grade": self.grade,
+            "her2_status": self.her2_status,
+            "er_status": self.er_status,
+            "pr_status": self.pr_status
         }
+    
+    def has_biomarkers(self) -> bool:
+        """Check if biomarker data is provided."""
+        return any([self.grade, self.her2_status, self.er_status, self.pr_status])
+    
+    def has_complete_biomarkers(self) -> bool:
+        """Check if all biomarker fields are provided (for prognostic staging)."""
+        return all([self.grade, self.her2_status, self.er_status, self.pr_status])
     
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "TNMInput":
@@ -66,7 +87,11 @@ class TNMInput:
             m_category=data["m_category"],
             staging_type=staging_type,
             subsite=data.get("subsite"),
-            version=data.get("version", "8")
+            version=data.get("version", "8"),
+            grade=data.get("grade"),
+            her2_status=data.get("her2_status"),
+            er_status=data.get("er_status"),
+            pr_status=data.get("pr_status")
         )
 
 
@@ -125,6 +150,14 @@ class TNMResult:
     available_n_categories: List[str] = field(default_factory=list)
     available_m_categories: List[str] = field(default_factory=list)
     
+    # Prognostic staging (breast cancer, etc.)
+    uses_prognostic_staging: bool = False
+    grade: Optional[str] = None
+    her2_status: Optional[str] = None
+    er_status: Optional[str] = None
+    pr_status: Optional[str] = None
+    prognostic_explanation: str = ""
+    
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
         return {
@@ -152,7 +185,14 @@ class TNMResult:
             "is_metastatic": self.is_metastatic,
             "available_t_categories": self.available_t_categories,
             "available_n_categories": self.available_n_categories,
-            "available_m_categories": self.available_m_categories
+            "available_m_categories": self.available_m_categories,
+            # Prognostic staging fields
+            "uses_prognostic_staging": self.uses_prognostic_staging,
+            "grade": self.grade,
+            "her2_status": self.her2_status,
+            "er_status": self.er_status,
+            "pr_status": self.pr_status,
+            "prognostic_explanation": self.prognostic_explanation
         }
     
     @staticmethod
@@ -201,6 +241,9 @@ class CancerDefinition:
     m_definitions: List[Dict[str, str]]
     stage_groups: List[Dict[str, str]]
     notes: List[str] = field(default_factory=list)
+    # Prognostic staging (breast cancer uses Grade, HER2, ER, PR)
+    prognostic_stage_groups: List[Dict[str, str]] = field(default_factory=list)
+    requires_biomarkers: bool = False  # True for cancers that use prognostic staging
     
     def get_t_categories(self, subsite: Optional[str] = None) -> List[str]:
         """Get available T categories for a subsite."""

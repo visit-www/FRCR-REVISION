@@ -261,6 +261,237 @@ class StageResolver:
         stage_clean = stage.replace("Stage ", "").strip()
         return self.STAGE_COLORS.get(stage_clean, "#5E899E")
     
+    def resolve_prognostic(
+        self,
+        t_category: str,
+        n_category: str,
+        m_category: str,
+        grade: str,
+        her2_status: str,
+        er_status: str,
+        pr_status: str
+    ) -> Tuple[str, bool, str, str]:
+        """
+        Resolve the prognostic stage group using biomarkers (for breast cancer).
+        
+        Args:
+            t_category: The T category
+            n_category: The N category
+            m_category: The M category
+            grade: Tumor grade (G1, G2, G3)
+            her2_status: HER2 status (Positive, Negative)
+            er_status: ER status (Positive, Negative)
+            pr_status: PR status (Positive, Negative)
+            
+        Returns:
+            Tuple of (stage_group, is_metastatic, stage_color, explanation)
+        """
+        # Normalize categories
+        t_cat = self._normalize_category(t_category)
+        n_cat = self._normalize_category(n_category)
+        m_cat = self._normalize_category(m_category)
+        
+        # Normalize biomarkers
+        grade_norm = grade.upper() if grade else ""
+        her2_norm = her2_status.capitalize() if her2_status else ""
+        er_norm = er_status.capitalize() if er_status else ""
+        pr_norm = pr_status.capitalize() if pr_status else ""
+        
+        # Check for M1 override first - always Stage IV
+        if m_cat.startswith("M1"):
+            explanation = "M1 (distant metastasis) automatically classifies as Stage IV regardless of biomarkers."
+            return ("Stage IV", True, self.STAGE_COLORS.get("IV", "#dc3545"), explanation)
+        
+        # Match against prognostic stage groups
+        if not hasattr(self.definition, 'prognostic_stage_groups') or not self.definition.prognostic_stage_groups:
+            # Fall back to anatomic staging
+            stage, is_meta, color = self.resolve(t_category, n_category, m_category)
+            explanation = "Prognostic staging data not available. Using anatomic staging."
+            return (stage, is_meta, color, explanation)
+        
+        # Find matching prognostic stage
+        for group in self.definition.prognostic_stage_groups:
+            if self._matches_prognostic_pattern(
+                t_cat, n_cat, m_cat,
+                grade_norm, her2_norm, er_norm, pr_norm,
+                group
+            ):
+                stage = group.get("stage", "")
+                is_metastatic = stage.startswith("IV")
+                color = self.STAGE_COLORS.get(stage, "#5E899E")
+                
+                # Build explanation
+                explanation = self._build_prognostic_explanation(
+                    t_cat, n_cat, m_cat,
+                    grade_norm, her2_norm, er_norm, pr_norm,
+                    stage
+                )
+                
+                return (f"Stage {stage}", is_metastatic, color, explanation)
+        
+        # No exact match found - try to find closest match
+        logger.warning(f"[TNM Calculator] No prognostic stage match for "
+                      f"{t_cat}{n_cat}{m_cat} G:{grade_norm} HER2:{her2_norm} ER:{er_norm} PR:{pr_norm}")
+        
+        # Fall back to anatomic staging with warning
+        stage, is_meta, color = self.resolve(t_category, n_category, m_category)
+        explanation = (f"No exact prognostic stage match found for this biomarker combination. "
+                      f"Using anatomic stage ({stage}) as fallback.")
+        return (stage, is_meta, color, explanation)
+    
+    def _matches_prognostic_pattern(
+        self,
+        t_cat: str, n_cat: str, m_cat: str,
+        grade: str, her2: str, er: str, pr: str,
+        group: Dict[str, str]
+    ) -> bool:
+        """Check if T/N/M and biomarkers match a prognostic stage group pattern."""
+        # Get patterns from group
+        tnm_pattern = group.get("tnm", "").upper()
+        grade_pattern = group.get("grade", "").upper()
+        her2_pattern = group.get("her2", "").capitalize()
+        er_pattern = group.get("er", "").capitalize()
+        pr_pattern = group.get("pr", "").capitalize()
+        
+        # Match TNM pattern (can be comma-separated like "T1 N0 M0, T0 N1mi M0")
+        if not self._matches_tnm_combo(t_cat, n_cat, m_cat, tnm_pattern):
+            return False
+        
+        # Match grade (handle "Any", "G1-G2", etc.)
+        if not self._matches_biomarker_pattern(grade, grade_pattern):
+            return False
+        
+        # Match HER2
+        if not self._matches_biomarker_pattern(her2, her2_pattern):
+            return False
+        
+        # Match ER
+        if not self._matches_biomarker_pattern(er, er_pattern):
+            return False
+        
+        # Match PR
+        if not self._matches_biomarker_pattern(pr, pr_pattern):
+            return False
+        
+        return True
+    
+    def _matches_tnm_combo(self, t_cat: str, n_cat: str, m_cat: str, pattern: str) -> bool:
+        """Match T/N/M against a TNM pattern like 'T1 N0 M0, T0 N1MI M0'."""
+        if not pattern or "ANY" in pattern.upper():
+            return True
+        
+        # Split by comma for multiple TNM combos
+        combos = [c.strip() for c in pattern.split(",")]
+        
+        for combo in combos:
+            # Parse T, N, M from combo (e.g., "T1 N0 M0" or "T2N1M0")
+            parts = combo.replace(" ", "").upper()
+            
+            # Extract T, N, M using regex
+            t_match = re.search(r'(T[0-9A-Z]+)', parts)
+            n_match = re.search(r'(N[0-9A-Z]+)', parts)
+            m_match = re.search(r'(M[0-9A-Z]+)', parts)
+            
+            t_pattern = t_match.group(1) if t_match else ""
+            n_pattern = n_match.group(1) if n_match else ""
+            m_pattern_str = m_match.group(1) if m_match else ""
+            
+            # Check if current values match this combo
+            t_matches = self._matches_pattern(t_cat, t_pattern) if t_pattern else True
+            n_matches = self._matches_pattern(n_cat, n_pattern) if n_pattern else True
+            m_matches = self._matches_pattern(m_cat, m_pattern_str) if m_pattern_str else True
+            
+            if t_matches and n_matches and m_matches:
+                return True
+        
+        return False
+    
+    def _matches_biomarker_pattern(self, value: str, pattern: str) -> bool:
+        """Match a biomarker value against a pattern."""
+        if not pattern or pattern.upper() == "ANY":
+            return True
+        
+        value_upper = value.upper() if value else ""
+        pattern_upper = pattern.upper()
+        
+        # Handle "Positive" / "Negative" matching to "+" / "-"
+        if value_upper == "POSITIVE" and pattern_upper in ["POSITIVE", "+"]:
+            return True
+        if value_upper == "NEGATIVE" and pattern_upper in ["NEGATIVE", "-"]:
+            return True
+        
+        # Handle grade ranges like "G1-G2"
+        if "-" in pattern_upper and value_upper:
+            parts = pattern_upper.split("-")
+            if len(parts) == 2:
+                if value_upper == parts[0] or value_upper == parts[1]:
+                    return True
+                # Check if value is between (e.g., G2 in G1-G3)
+                if value_upper.startswith("G") and parts[0].startswith("G") and parts[1].startswith("G"):
+                    try:
+                        v = int(value_upper[1:])
+                        low = int(parts[0][1:])
+                        high = int(parts[1][1:])
+                        if low <= v <= high:
+                            return True
+                    except ValueError:
+                        pass
+        
+        # Exact match
+        return value_upper == pattern_upper
+    
+    def _build_prognostic_explanation(
+        self,
+        t_cat: str, n_cat: str, m_cat: str,
+        grade: str, her2: str, er: str, pr: str,
+        stage: str
+    ) -> str:
+        """Build a human-readable explanation for prognostic staging."""
+        # Determine biology profile
+        biology_desc = []
+        if er == "Positive" or er == "POSITIVE":
+            biology_desc.append("ER+")
+        else:
+            biology_desc.append("ER-")
+        
+        if pr == "Positive" or pr == "POSITIVE":
+            biology_desc.append("PR+")
+        else:
+            biology_desc.append("PR-")
+        
+        if her2 == "Positive" or her2 == "POSITIVE":
+            biology_desc.append("HER2+")
+        else:
+            biology_desc.append("HER2-")
+        
+        biology_str = "/".join(biology_desc)
+        
+        # Determine if favorable or unfavorable
+        favorable_factors = []
+        unfavorable_factors = []
+        
+        if er.upper() == "POSITIVE" or pr.upper() == "POSITIVE":
+            favorable_factors.append("hormone receptor positive")
+        if her2.upper() == "POSITIVE":
+            favorable_factors.append("HER2 positive (targeted therapy available)")
+        if grade in ["G1", "g1"]:
+            favorable_factors.append("low grade (G1)")
+        
+        if er.upper() == "NEGATIVE" and pr.upper() == "NEGATIVE" and her2.upper() == "NEGATIVE":
+            unfavorable_factors.append("triple negative")
+        if grade in ["G3", "g3"]:
+            unfavorable_factors.append("high grade (G3)")
+        
+        # Build explanation
+        explanation = f"Clinical Prognostic Stage {stage} based on {t_cat}{n_cat}{m_cat} with {grade} and {biology_str}. "
+        
+        if favorable_factors:
+            explanation += f"Favorable factors: {', '.join(favorable_factors)}. "
+        if unfavorable_factors:
+            explanation += f"Unfavorable factors: {', '.join(unfavorable_factors)}. "
+        
+        return explanation.strip()
+    
     def compare_stages(self, stage1: str, stage2: str) -> int:
         """
         Compare two stages.

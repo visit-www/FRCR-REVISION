@@ -182,16 +182,23 @@ class RuleLoader:
         if subsites == ["default"]:
             subsites = []
         
+        # Prognostic stage groups (for breast cancer with biomarkers)
+        prognostic_stage_groups = tnm.get("clinical_prognostic_stage_groups", [])
+        slug = data.get("disease_name", "unknown").lower().replace(" ", "_")
+        requires_biomarkers = len(prognostic_stage_groups) > 0 or "breast" in slug.lower()
+        
         return CancerDefinition(
             name=data.get("disease_name", "Unknown"),
-            slug=data.get("disease_name", "unknown").lower().replace(" ", "_"),
+            slug=slug,
             version=str(data.get("diagnosis_year", "8")),
             subsites=subsites,
             t_definitions=t_definitions,
             n_definitions=n_definitions,
             m_definitions=m_definitions,
             stage_groups=stage_groups,
-            notes=tnm.get("notes", [])
+            notes=tnm.get("notes", []),
+            prognostic_stage_groups=prognostic_stage_groups,
+            requires_biomarkers=requires_biomarkers
         )
     
     def _parse_ontology_disease(self, disease: Dict[str, Any]) -> CancerDefinition:
@@ -248,16 +255,21 @@ class RuleLoader:
                 "stage": sg.get("stage", "")
             })
         
+        slug = disease.get("slug", "unknown")
+        requires_biomarkers = "breast" in slug.lower()
+        
         return CancerDefinition(
             name=disease.get("name", "Unknown"),
-            slug=disease.get("slug", "unknown"),
+            slug=slug,
             version="8",
             subsites=[],
             t_definitions=t_definitions,
             n_definitions=n_definitions,
             m_definitions=m_definitions,
             stage_groups=stage_groups,
-            notes=[]
+            notes=[],
+            prognostic_stage_groups=[],
+            requires_biomarkers=requires_biomarkers
         )
     
     def _load_from_database(self, cancer_slug: str) -> Optional[CancerDefinition]:
@@ -335,12 +347,19 @@ class RuleLoader:
             # Stage groups
             stage_groups = tnm_data.get("stage_groups", [])
             
+            # Prognostic stage groups (for breast cancer with biomarkers)
+            prognostic_stage_groups = tnm_data.get("clinical_prognostic_stage_groups", [])
+            
+            # Detect if cancer requires biomarkers (breast cancer)
+            requires_biomarkers = len(prognostic_stage_groups) > 0 or disease.slug.lower() == "breast"
+            
             # Get subsites
             subsites = list(t_definitions.keys())
             if subsites == ["default"]:
                 subsites = []
             
-            logger.info(f"[TNM Calculator] Loaded {disease.disease_name} from database ({len(stage_groups)} stage groups)")
+            logger.info(f"[TNM Calculator] Loaded {disease.disease_name} from database "
+                       f"({len(stage_groups)} stage groups, {len(prognostic_stage_groups)} prognostic groups)")
             
             return CancerDefinition(
                 name=disease.disease_name,
@@ -351,7 +370,9 @@ class RuleLoader:
                 n_definitions=n_definitions,
                 m_definitions=m_definitions,
                 stage_groups=stage_groups,
-                notes=tnm_data.get("notes", [])
+                notes=tnm_data.get("notes", []),
+                prognostic_stage_groups=prognostic_stage_groups,
+                requires_biomarkers=requires_biomarkers
             )
             
         except Exception as e:

@@ -61,7 +61,12 @@ def calculate():
         "m_category": "M0",
         "staging_type": "clinical",  // optional
         "subsite": "Glottis",        // optional
-        "version": "8"               // optional
+        "version": "8",              // optional
+        // Biomarkers for breast cancer prognostic staging (optional)
+        "grade": "G2",               // G1, G2, G3
+        "her2_status": "Positive",   // Positive, Negative
+        "er_status": "Positive",     // Positive, Negative
+        "pr_status": "Negative"      // Positive, Negative
     }
     
     Response:
@@ -73,7 +78,12 @@ def calculate():
         "n_explanation": "...",
         "m_explanation": "...",
         "stage_explanation": "...",
-        "disclaimer": "..."
+        "disclaimer": "...",
+        "uses_prognostic_staging": false,
+        "grade": null,
+        "her2_status": null,
+        "er_status": null,
+        "pr_status": null
     }
     """
     try:
@@ -106,7 +116,12 @@ def calculate():
             m_category=data["m_category"],
             staging_type=staging_type,
             subsite=data.get("subsite"),
-            version=data.get("version", "8")
+            version=data.get("version", "8"),
+            # Biomarkers for prognostic staging (breast cancer)
+            grade=data.get("grade"),
+            her2_status=data.get("her2_status"),
+            er_status=data.get("er_status"),
+            pr_status=data.get("pr_status")
         )
         
         # Calculate

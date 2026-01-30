@@ -105,27 +105,58 @@ class TNMCalculator:
         resolver = StageResolver(definition)
         explainer = Explainer(definition)
         
-        # Step 4: Resolve stage
-        stage_group, is_metastatic, stage_color = resolver.resolve(
-            input.t_category,
-            input.n_category,
-            input.m_category
-        )
+        # Step 4: Check if this cancer uses prognostic staging (breast)
+        uses_prognostic = definition.requires_biomarkers or definition.slug.lower() == "breast"
+        prognostic_explanation = ""
         
-        # Step 5: Generate explanations
+        # Step 5: Resolve stage (prognostic or anatomic)
+        if uses_prognostic and input.has_complete_biomarkers():
+            # Use prognostic staging with biomarkers
+            stage_group, is_metastatic, stage_color, prognostic_explanation = resolver.resolve_prognostic(
+                input.t_category,
+                input.n_category,
+                input.m_category,
+                input.grade,
+                input.her2_status,
+                input.er_status,
+                input.pr_status
+            )
+            logger.info(f"[TNM Calculator] Using prognostic staging for {definition.name}")
+        else:
+            # Use standard anatomic staging
+            stage_group, is_metastatic, stage_color = resolver.resolve(
+                input.t_category,
+                input.n_category,
+                input.m_category
+            )
+            
+            # Add warning if biomarkers expected but not provided
+            if uses_prognostic and not input.has_complete_biomarkers():
+                validation_errors.append(ValidationError(
+                    field="biomarkers",
+                    message=f"{definition.name} uses Clinical Prognostic Staging which requires Grade, HER2, ER, and PR status. "
+                           f"Showing anatomic stage only. For accurate prognostic staging, provide all biomarkers.",
+                    severity="warning"
+                ))
+        
+        # Step 6: Generate explanations
         t_explanation = explainer.explain_t(input.t_category, input.subsite)
         n_explanation = explainer.explain_n(input.n_category, input.staging_type)
         m_explanation = explainer.explain_m(input.m_category)
-        stage_explanation = explainer.explain_stage(
-            stage_group,
-            input.t_category,
-            input.n_category,
-            input.m_category,
-            input.subsite,
-            input.staging_type
-        )
         
-        # Step 6: Build result
+        if prognostic_explanation:
+            stage_explanation = prognostic_explanation
+        else:
+            stage_explanation = explainer.explain_stage(
+                stage_group,
+                input.t_category,
+                input.n_category,
+                input.m_category,
+                input.subsite,
+                input.staging_type
+            )
+        
+        # Step 7: Build result
         tnm_classification = f"{input.t_category}{input.n_category}{input.m_category}"
         
         result = TNMResult(
@@ -149,7 +180,14 @@ class TNMCalculator:
             is_metastatic=is_metastatic,
             available_t_categories=definition.get_t_categories(input.subsite),
             available_n_categories=definition.get_n_categories(input.staging_type),
-            available_m_categories=definition.get_m_categories()
+            available_m_categories=definition.get_m_categories(),
+            # Prognostic staging fields
+            uses_prognostic_staging=uses_prognostic,
+            grade=input.grade,
+            her2_status=input.her2_status,
+            er_status=input.er_status,
+            pr_status=input.pr_status,
+            prognostic_explanation=prognostic_explanation
         )
         
         logger.info(f"[TNM Calculator] Result: {tnm_classification} → {stage_group}")
@@ -291,7 +329,10 @@ class TNMCalculator:
             },
             "m_categories": definition.get_m_categories(),
             "stage_groups": definition.stage_groups,
-            "notes": definition.notes
+            "notes": definition.notes,
+            # Prognostic staging (for breast cancer with biomarkers)
+            "requires_biomarkers": definition.requires_biomarkers,
+            "has_prognostic_staging": len(definition.prognostic_stage_groups) > 0
         }
     
     def get_available_cancers(self) -> List[Dict[str, str]]:

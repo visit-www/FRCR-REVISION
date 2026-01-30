@@ -124,6 +124,88 @@
                         </div>
                     </div>
                     
+                    <!-- Biomarker Section (for breast cancer prognostic staging) -->
+                    <div id="biomarkerSection" class="mb-4" style="display: none;">
+                        <div class="card" style="border: 2px solid #e96304; background: linear-gradient(135deg, #fff3e0 0%, #fff8e1 100%);">
+                            <div class="card-header" style="background: #e96304; color: white;">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-dna me-2"></i>Prognostic Factors (Required for Clinical Prognostic Stage)
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <p class="small text-muted mb-3">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    Breast cancer uses Clinical Prognostic Staging which incorporates biomarkers.
+                                    Provide all factors for accurate prognostic staging.
+                                </p>
+                                
+                                <div class="row g-3">
+                                    <!-- Grade -->
+                                    <div class="col-md-3 col-6">
+                                        <label for="gradeSelect" class="form-label fw-bold small">
+                                            <i class="fas fa-chart-line me-1" style="color: #e96304;"></i>Grade
+                                        </label>
+                                        <select id="gradeSelect" class="form-select form-select-sm">
+                                            <option value="">Select...</option>
+                                            <option value="G1">G1 - Low</option>
+                                            <option value="G2">G2 - Intermediate</option>
+                                            <option value="G3">G3 - High</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <!-- HER2 -->
+                                    <div class="col-md-3 col-6">
+                                        <label class="form-label fw-bold small">
+                                            <i class="fas fa-vial me-1" style="color: #e96304;"></i>HER2 Status
+                                        </label>
+                                        <div class="btn-group w-100" role="group">
+                                            <input type="radio" class="btn-check" name="her2Status" id="her2Positive" value="Positive">
+                                            <label class="btn btn-outline-success btn-sm" for="her2Positive">+</label>
+                                            <input type="radio" class="btn-check" name="her2Status" id="her2Negative" value="Negative">
+                                            <label class="btn btn-outline-secondary btn-sm" for="her2Negative">-</label>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- ER -->
+                                    <div class="col-md-3 col-6">
+                                        <label class="form-label fw-bold small">
+                                            <i class="fas fa-vial me-1" style="color: #e96304;"></i>ER Status
+                                        </label>
+                                        <div class="btn-group w-100" role="group">
+                                            <input type="radio" class="btn-check" name="erStatus" id="erPositive" value="Positive">
+                                            <label class="btn btn-outline-success btn-sm" for="erPositive">+</label>
+                                            <input type="radio" class="btn-check" name="erStatus" id="erNegative" value="Negative">
+                                            <label class="btn btn-outline-secondary btn-sm" for="erNegative">-</label>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- PR -->
+                                    <div class="col-md-3 col-6">
+                                        <label class="form-label fw-bold small">
+                                            <i class="fas fa-vial me-1" style="color: #e96304;"></i>PR Status
+                                        </label>
+                                        <div class="btn-group w-100" role="group">
+                                            <input type="radio" class="btn-check" name="prStatus" id="prPositive" value="Positive">
+                                            <label class="btn btn-outline-success btn-sm" for="prPositive">+</label>
+                                            <input type="radio" class="btn-check" name="prStatus" id="prNegative" value="Negative">
+                                            <label class="btn btn-outline-secondary btn-sm" for="prNegative">-</label>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Quick reference badges -->
+                                <div class="mt-3 pt-2 border-top">
+                                    <small class="text-muted">
+                                        <strong>Quick Reference:</strong>
+                                        <span class="badge bg-success ms-2">Triple Positive</span> = Best prognosis |
+                                        <span class="badge bg-secondary">Triple Negative</span> = Worst prognosis |
+                                        <span class="badge" style="background: #5E899E; color: white;">HER2+</span> = Targeted therapy available
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <!-- Calculate Button -->
                     <div class="d-grid">
                         <button id="calculateBtn" class="btn btn-lg" style="background: #5E899E; color: white;" disabled>
@@ -191,6 +273,17 @@
                             <p class="mb-0" id="stageExplanation">-</p>
                         </div>
                         
+                        <!-- Prognostic Factors Summary (shown when biomarkers used) -->
+                        <div id="prognosticSummary" class="mt-3 p-3 rounded" style="display: none; background: linear-gradient(135deg, #fff3e0 0%, #fff8e1 100%); border-left: 4px solid #e96304;">
+                            <h6 class="mb-2" style="color: #e96304;">
+                                <i class="fas fa-dna me-1"></i>Prognostic Factors Applied
+                            </h6>
+                            <div class="d-flex flex-wrap gap-2" id="biomarkerBadges">
+                                <!-- Badges inserted by JavaScript -->
+                            </div>
+                            <p class="mb-0 mt-2 small" id="prognosticExplanation">-</p>
+                        </div>
+                        
                     </div>
                 </div>
                 
@@ -233,9 +326,17 @@ document.addEventListener('DOMContentLoaded', function() {
     const calculateBtn = document.getElementById('calculateBtn');
     const resultsSection = document.getElementById('resultsSection');
     
+    // Biomarker elements (for breast cancer prognostic staging)
+    const biomarkerSection = document.getElementById('biomarkerSection');
+    const gradeSelect = document.getElementById('gradeSelect');
+    const prognosticSummary = document.getElementById('prognosticSummary');
+    const biomarkerBadges = document.getElementById('biomarkerBadges');
+    const prognosticExplanation = document.getElementById('prognosticExplanation');
+    
     // State
     let cancerInfo = null;
     let subsiteChangeHandler = null;  // Track the current handler to remove it
+    let requiresBiomarkers = false;  // Whether current cancer needs biomarkers
     
     // Load categories when cancer type changes
     cancerTypeSelect.addEventListener('change', async function() {
@@ -267,6 +368,16 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             cancerInfo = data;
+            
+            // Show/hide biomarker section based on cancer type
+            requiresBiomarkers = data.requires_biomarkers || false;
+            if (requiresBiomarkers) {
+                biomarkerSection.style.display = 'block';
+                console.log('[TNM Calculator] Biomarkers required for this cancer type');
+            } else {
+                biomarkerSection.style.display = 'none';
+                resetBiomarkers();
+            }
             
             // Show subsite selector if applicable
             if (data.subsites && data.subsites.length > 0) {
@@ -316,6 +427,12 @@ document.addEventListener('DOMContentLoaded', function() {
         const n = nCategorySelect.value;
         const m = mCategorySelect.value;
         
+        // Get biomarker values if required
+        const grade = gradeSelect ? gradeSelect.value : null;
+        const her2Status = document.querySelector('input[name="her2Status"]:checked')?.value || null;
+        const erStatus = document.querySelector('input[name="erStatus"]:checked')?.value || null;
+        const prStatus = document.querySelector('input[name="prStatus"]:checked')?.value || null;
+        
         if (!cancerType || !t || !n || !m) {
             showError('Please select all required fields');
             return;
@@ -325,17 +442,28 @@ document.addEventListener('DOMContentLoaded', function() {
         calculateBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Calculating...';
         
         try {
+            // Build request body
+            const requestBody = {
+                cancer_type: cancerType,
+                t_category: t,
+                n_category: n,
+                m_category: m,
+                staging_type: stagingType,
+                subsite: subsite
+            };
+            
+            // Add biomarkers if provided (for breast cancer)
+            if (requiresBiomarkers) {
+                if (grade) requestBody.grade = grade;
+                if (her2Status) requestBody.her2_status = her2Status;
+                if (erStatus) requestBody.er_status = erStatus;
+                if (prStatus) requestBody.pr_status = prStatus;
+            }
+            
             const response = await fetch('/tnm-calculator/api/calculate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    cancer_type: cancerType,
-                    t_category: t,
-                    n_category: n,
-                    m_category: m,
-                    staging_type: stagingType,
-                    subsite: subsite
-                })
+                body: JSON.stringify(requestBody)
             });
             
             const result = await response.json();
@@ -363,6 +491,9 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         subsiteSelect.innerHTML = '<option value="">Select subsite...</option>';
         subsiteContainer.style.display = 'none';
+        biomarkerSection.style.display = 'none';
+        requiresBiomarkers = false;
+        resetBiomarkers();
         calculateBtn.disabled = true;
         cancerInfo = null;
     }
@@ -460,8 +591,54 @@ document.addEventListener('DOMContentLoaded', function() {
             warningsSection.style.display = 'none';
         }
         
+        // Display prognostic factors if used
+        if (result.uses_prognostic_staging && (result.grade || result.her2_status || result.er_status || result.pr_status)) {
+            prognosticSummary.style.display = 'block';
+            
+            // Build biomarker badges
+            biomarkerBadges.innerHTML = '';
+            
+            if (result.grade) {
+                const gradeClass = result.grade === 'G1' ? 'bg-success' : 
+                                   result.grade === 'G2' ? 'bg-warning text-dark' : 'bg-danger';
+                biomarkerBadges.innerHTML += `<span class="badge ${gradeClass}">${result.grade}</span>`;
+            }
+            
+            if (result.her2_status) {
+                const her2Class = result.her2_status === 'Positive' ? 'bg-info' : 'bg-secondary';
+                const her2Text = result.her2_status === 'Positive' ? 'HER2+' : 'HER2-';
+                biomarkerBadges.innerHTML += `<span class="badge ${her2Class}">${her2Text}</span>`;
+            }
+            
+            if (result.er_status) {
+                const erClass = result.er_status === 'Positive' ? 'bg-info' : 'bg-secondary';
+                const erText = result.er_status === 'Positive' ? 'ER+' : 'ER-';
+                biomarkerBadges.innerHTML += `<span class="badge ${erClass}">${erText}</span>`;
+            }
+            
+            if (result.pr_status) {
+                const prClass = result.pr_status === 'Positive' ? 'bg-info' : 'bg-secondary';
+                const prText = result.pr_status === 'Positive' ? 'PR+' : 'PR-';
+                biomarkerBadges.innerHTML += `<span class="badge ${prClass}">${prText}</span>`;
+            }
+            
+            // Display prognostic explanation
+            prognosticExplanation.textContent = result.prognostic_explanation || 
+                'Clinical Prognostic Stage determined using tumor biology markers.';
+        } else {
+            prognosticSummary.style.display = 'none';
+        }
+        
         // Scroll to results
         resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    
+    function resetBiomarkers() {
+        // Reset biomarker inputs
+        if (gradeSelect) gradeSelect.value = '';
+        document.querySelectorAll('input[name="her2Status"]').forEach(r => r.checked = false);
+        document.querySelectorAll('input[name="erStatus"]').forEach(r => r.checked = false);
+        document.querySelectorAll('input[name="prStatus"]').forEach(r => r.checked = false);
     }
     
     function showError(message) {
