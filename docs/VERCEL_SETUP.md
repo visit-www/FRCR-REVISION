@@ -68,15 +68,21 @@ vercel --prod
 
 ## Database Migration
 
-After setting up Neon, run migrations:
+After setting up Neon, run migrations **manually** (they are not run on Vercel deploy):
 
 ```bash
-# Set DATABASE_URL locally for migration
+# Activate venv and set DATABASE_URL to your Neon connection string
+source venv/bin/activate
 export DATABASE_URL="postgresql://...@neon.tech/..."
 
-# Run migrations
-flask db upgrade
+# If you have multiple migration heads, upgrade all heads:
+flask db upgrade heads
+
+# Or upgrade to a specific revision, e.g. after adding display_order:
+# flask db upgrade seed_head_neck_display_order
 ```
+
+Run this whenever you add or change migrations (e.g. new columns, enum values, or data seeds like Head and Neck `display_order`) so the production DB stays in sync.
 
 ### Keeping the Vercel/Neon DB in sync with model enums
 

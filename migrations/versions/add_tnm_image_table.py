@@ -18,6 +18,23 @@ depends_on = None
 
 
 def upgrade():
+    from sqlalchemy import text
+    conn = op.get_bind()
+    # Idempotent: skip if table already exists (Neon may have it from a partial run).
+    if conn.dialect.name == "postgresql":
+        r = conn.execute(text(
+            "SELECT 1 FROM information_schema.tables "
+            "WHERE table_schema = 'public' AND table_name = 'tnm_image'"
+        )).fetchone()
+        if r:
+            return
+    elif conn.dialect.name == "sqlite":
+        r = conn.execute(text(
+            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'tnm_image'"
+        )).fetchone()
+        if r:
+            return
+
     # Create tnm_image table
     op.create_table(
         'tnm_image',

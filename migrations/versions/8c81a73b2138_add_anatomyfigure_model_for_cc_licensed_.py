@@ -17,6 +17,23 @@ depends_on = None
 
 
 def upgrade():
+    from sqlalchemy import text
+    conn = op.get_bind()
+    # Idempotent: skip if table already exists (Neon may have it from a partial run).
+    if conn.dialect.name == "postgresql":
+        r = conn.execute(text(
+            "SELECT 1 FROM information_schema.tables "
+            "WHERE table_schema = 'public' AND table_name = 'anatomy_figure'"
+        )).fetchone()
+        if r:
+            return
+    elif conn.dialect.name == "sqlite":
+        r = conn.execute(text(
+            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'anatomy_figure'"
+        )).fetchone()
+        if r:
+            return
+
     # Create AnatomyFigure table for CC-licensed anatomy and staging figures
     op.create_table('anatomy_figure',
         sa.Column('id', sa.Integer(), nullable=False),
@@ -43,7 +60,7 @@ def upgrade():
         sa.Column('updated_at', sa.DateTime(), nullable=True),
         sa.PrimaryKeyConstraint('id')
     )
-    
+
     # Create indexes
     op.create_index(op.f('ix_anatomy_figure_figure_id'), 'anatomy_figure', ['figure_id'], unique=True)
     op.create_index(op.f('ix_anatomy_figure_source'), 'anatomy_figure', ['source'], unique=False)
