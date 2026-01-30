@@ -1970,8 +1970,8 @@ class TNMImage(db.Model):
     
     # Image metadata
     title = db.Column(db.String(300), nullable=True)
-    description = db.Column(db.Text, nullable=True)
-    alt_text = db.Column(db.String(500), nullable=True)
+    description = db.Column(db.Text, nullable=True)  # Rich text (HTML) for detailed captions
+    alt_text = db.Column(db.Text, nullable=True)  # Can be long for accessibility
     
     # Cloudinary storage
     cloudinary_url = db.Column(db.String(500), nullable=False)

@@ -793,24 +793,28 @@ function loadExistingImages() {
     });
 }
 
-// Create image card element with inline description editing
+// Create image card element with rich description editing
 function createImageCard(img) {
     const imgDiv = document.createElement('div');
     imgDiv.className = 'mb-3 p-3 bg-light rounded';
     imgDiv.id = `image-card-${img.id}`;
+    
+    // Truncate description for preview (strip HTML tags)
+    const plainDesc = (img.description || '').replace(/<[^>]*>/g, '');
+    const previewDesc = plainDesc.length > 60 ? plainDesc.substring(0, 60) + '...' : plainDesc;
+    
     imgDiv.innerHTML = `
         <div class="d-flex align-items-start gap-3">
-            <img src="${img.url}" alt="${img.alt_text || img.description || 'TNM Image'}" class="img-thumbnail" style="max-width: 120px; cursor: pointer;" onclick="window.open('${img.url}', '_blank')">
+            <img src="${img.url}" alt="${img.alt_text || plainDesc || 'TNM Image'}" class="img-thumbnail" style="max-width: 120px; cursor: pointer;" onclick="window.open('${img.url}', '_blank')">
             <div class="flex-grow-1">
-                <!-- Editable Description Field -->
+                <!-- Description Preview & Edit Button -->
                 <div class="mb-2">
-                    <div class="input-group input-group-sm">
-                        <input type="text" class="form-control form-control-sm" id="desc-${img.id}" 
-                               value="${(img.description || '').replace(/"/g, '&quot;')}" 
-                               placeholder="Enter image description"
-                               onkeypress="if(event.key==='Enter') updateImageDescription(${img.id})">
-                        <button class="btn btn-outline-secondary" type="button" onclick="updateImageDescription(${img.id})" title="Save description">
-                            <i class="fas fa-save"></i>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="text-muted small flex-grow-1" id="desc-preview-${img.id}" style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                            ${previewDesc || '<em>No description</em>'}
+                        </span>
+                        <button class="btn btn-sm btn-outline-secondary" type="button" onclick="openImageDescriptionEditor(${img.id}, '${escapeForJsAttr(img.description || '')}')" title="Edit description">
+                            <i class="fas fa-edit"></i> Edit
                         </button>
                     </div>
                 </div>
@@ -819,7 +823,7 @@ function createImageCard(img) {
                     <button type="button" class="btn btn-outline-primary" onclick="copyToClipboard('${img.url}')" title="Copy URL">
                         <i class="fas fa-copy"></i>
                     </button>
-                    <button type="button" class="btn btn-outline-success" onclick="insertImageIntoEditor('${img.url}', document.getElementById('desc-${img.id}').value || 'TNM Figure')" title="Insert into editor with description">
+                    <button type="button" class="btn btn-outline-success" onclick="insertImageWithDescription(${img.id}, '${img.url}')" title="Insert into editor with description">
                         <i class="fas fa-image"></i>
                     </button>
                     <button type="button" class="btn btn-outline-danger" onclick="deleteImage(${img.id})" title="Delete image">
@@ -829,13 +833,109 @@ function createImageCard(img) {
             </div>
         </div>
     `;
+    
+    // Store the full description as data attribute
+    imgDiv.dataset.description = img.description || '';
+    
     return imgDiv;
 }
 
-// Update image description
-function updateImageDescription(imageId) {
-    const descInput = document.getElementById(`desc-${imageId}`);
-    const newDescription = descInput.value.trim();
+// Store image descriptions for retrieval
+const imageDescriptions = new Map();
+
+// Open modal with TinyMCE for editing image description
+function openImageDescriptionEditor(imageId, currentDescription) {
+    // Remove existing modal
+    const existing = document.getElementById('imageDescModal');
+    if (existing) existing.remove();
+    
+    const modal = document.createElement('div');
+    modal.id = 'imageDescModal';
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.6);
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+    `;
+    
+    modal.innerHTML = `
+        <div style="background: white; border-radius: 12px; max-width: 700px; width: 100%; max-height: 90vh; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
+            <div style="background: linear-gradient(135deg, #5E899E 0%, #4a7285 100%); color: white; padding: 16px 20px; border-radius: 12px 12px 0 0; display: flex; justify-content: space-between; align-items: center;">
+                <h5 style="margin: 0; font-weight: 600;">
+                    <i class="fas fa-image me-2"></i>Edit Image Description
+                </h5>
+                <button onclick="closeImageDescModal()" style="background: none; border: none; color: white; font-size: 20px; cursor: pointer;">&times;</button>
+            </div>
+            <div style="padding: 20px; max-height: calc(90vh - 140px); overflow-y: auto;">
+                <textarea id="imageDescEditor" style="visibility: hidden;"></textarea>
+            </div>
+            <div style="padding: 15px 20px; border-top: 1px solid #e9ecef; display: flex; justify-content: flex-end; gap: 10px;">
+                <button type="button" class="btn btn-outline-secondary" onclick="closeImageDescModal()">Cancel</button>
+                <button type="button" class="btn" style="background: #e96304; color: white;" onclick="saveImageDescription(${imageId})">
+                    <i class="fas fa-save me-1"></i>Save Description
+                </button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Close on backdrop click
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) {
+            closeImageDescModal();
+        }
+    });
+    
+    // Initialize TinyMCE
+    setTimeout(() => {
+        tinymce.init({
+            selector: '#imageDescEditor',
+            height: 300,
+            menubar: false,
+            plugins: 'lists link autolink',
+            toolbar: 'bold italic underline | bullist numlist | link | removeformat',
+            content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 14px; line-height: 1.5; }',
+            setup: function(editor) {
+                editor.on('init', function() {
+                    // Decode HTML entities and set content
+                    const decodedDesc = currentDescription
+                        .replace(/&quot;/g, '"')
+                        .replace(/&#39;/g, "'")
+                        .replace(/&lt;/g, '<')
+                        .replace(/&gt;/g, '>')
+                        .replace(/&amp;/g, '&');
+                    editor.setContent(decodedDesc);
+                });
+            }
+        });
+    }, 100);
+}
+
+function closeImageDescModal() {
+    // Destroy TinyMCE instance
+    if (tinymce.get('imageDescEditor')) {
+        tinymce.get('imageDescEditor').remove();
+    }
+    const modal = document.getElementById('imageDescModal');
+    if (modal) modal.remove();
+}
+
+function saveImageDescription(imageId) {
+    const editor = tinymce.get('imageDescEditor');
+    if (!editor) {
+        showAlert('danger', 'Editor not found');
+        return;
+    }
+    
+    const newDescription = editor.getContent();
     
     fetch(`/api/admin/tnm/curate/images/${imageId}/description`, {
         method: 'PATCH',
@@ -846,6 +946,19 @@ function updateImageDescription(imageId) {
     .then(response => response.json())
     .then(result => {
         if (result.success) {
+            // Update preview in card
+            const plainDesc = newDescription.replace(/<[^>]*>/g, '');
+            const previewDesc = plainDesc.length > 60 ? plainDesc.substring(0, 60) + '...' : plainDesc;
+            const previewEl = document.getElementById(`desc-preview-${imageId}`);
+            if (previewEl) {
+                previewEl.innerHTML = previewDesc || '<em>No description</em>';
+            }
+            
+            // Store updated description
+            const card = document.getElementById(`image-card-${imageId}`);
+            if (card) card.dataset.description = newDescription;
+            
+            closeImageDescModal();
             showAlert('success', 'Description updated!');
         } else {
             showAlert('danger', 'Failed to update: ' + (result.error || 'Unknown error'));
@@ -856,6 +969,14 @@ function updateImageDescription(imageId) {
         showAlert('danger', 'Error updating description');
     });
 }
+
+// Insert image into editor with its stored description
+function insertImageWithDescription(imageId, url) {
+    const card = document.getElementById(`image-card-${imageId}`);
+    const description = card?.dataset?.description || 'TNM Figure';
+    insertImageIntoEditor(url, description);
+}
+
 
 // Image upload to Cloudinary via backend
 function uploadImage() {
