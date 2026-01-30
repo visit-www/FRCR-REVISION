@@ -433,7 +433,7 @@ class RuleLoader:
         try:
             from models import AJCCStagingData, AJCCDiseaseSite, AJCCBodySection
             
-            # Get all diseases that have staging data with stage_groups
+            # Get all diseases that have staging data with stage_groups OR clinical_prognostic_stage_groups
             staging_records = AJCCStagingData.query.all()
             
             for staging in staging_records:
@@ -442,7 +442,9 @@ class RuleLoader:
                 
                 try:
                     tnm_data = json.loads(staging.tnm_data_json)
-                    if not tnm_data.get("stage_groups"):
+                    # Include cancers with either regular or prognostic stage groups
+                    has_staging = tnm_data.get("stage_groups") or tnm_data.get("clinical_prognostic_stage_groups")
+                    if not has_staging:
                         continue
                 except:
                     continue
