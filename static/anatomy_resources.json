@@ -1,7 +1,7 @@
 {
   "version": "1.0",
   "last_updated": "2026-01-26",
-  "description": "Curated radiological anatomy resources for FRCR revision",
+  "description": "Curated radiological anatomy resources for radiology exam preparation",
   "resources": [
     {
       "id": "head_ct_castle",

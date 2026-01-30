@@ -52,7 +52,7 @@ def download_backup():
                 'backup_date': datetime.utcnow().isoformat(),
                 'database_type': 'postgresql' if os.getenv('DATABASE_URL') or os.getenv('DATABASE_POSTGRES_URL_NON_POOLING') else 'sqlite',
                 'version': '2.3',  # Bumped for AJCC TNM data
-                'app_name': 'FRCR_REVISION'
+                'app_name': 'RadInsights'
             },
             'users': [],
             'cases': [],
@@ -359,7 +359,7 @@ def download_backup():
         
         # Generate filename
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        filename = f'frcr_revision_backup_{timestamp}.json'
+        filename = f'radinsights_backup_{timestamp}.json'
         
         # Update session with last backup time
         session['last_backup_time'] = datetime.utcnow().isoformat()
@@ -453,7 +453,7 @@ def restore_backup():
         metadata = backup_data.get('metadata', {})
         app_name = metadata.get('app_name', '').upper()
         is_frcr_examiner = 'EXAMINER' in app_name or metadata.get('source_system') == 'frcr_examiner'
-        is_frcr_revision = 'REVISION' in app_name or metadata.get('app_name') == 'FRCR_REVISION'
+        is_frcr_revision = 'REVISION' in app_name or metadata.get('app_name') == 'FRCR_REVISION' or metadata.get('app_name') == 'RadInsights'
         
         # Default to FRCR Examiner if cannot determine (for backward compatibility)
         if not is_frcr_examiner and not is_frcr_revision:

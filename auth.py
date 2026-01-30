@@ -24,7 +24,7 @@ def send_recovery_email(email, token):
     import resend
     
     # Build recovery URL properly
-    app_url = os.getenv('APP_URL', 'https://frcr-revision.vercel.app').rstrip('/')
+    app_url = os.getenv('APP_URL', 'https://www.radinsights.xyz').rstrip('/')
     reset_path = url_for('auth.reset_password', token=token, _external=False)
     recovery_url = f"{app_url}{reset_path}"
     print(f"[EMAIL] Recovery URL generated: {recovery_url}")
@@ -39,17 +39,17 @@ def send_recovery_email(email, token):
     resend.api_key = resend_key
     
     # Use verified domain or Resend's test domain
-    from_email = os.getenv('EMAIL_FROM', 'FRCR Revision <onboarding@resend.dev>')
+    from_email = os.getenv('EMAIL_FROM', 'RadInsights <onboarding@resend.dev>')
     
     try:
         params = {
             "from": from_email,
             "to": [email],
-            "subject": "Reset Your FRCR Revision Password",
+            "subject": "Reset Your RadInsights Password",
             "html": f"""
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                 <h2 style="color: #2c3e50;">Password Reset Request</h2>
-                <p>We received a request to reset your password for FRCR Revision.</p>
+                <p>We received a request to reset your password for RadInsights.</p>
                 <p style="margin: 30px 0;">
                     <a href="{recovery_url}" style="background-color: #e96304; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">
                         Reset Password
@@ -103,7 +103,7 @@ def send_admin_approval_email(requesting_admin_email, requesting_admin_name, tar
         return {'success': False, 'error': error_msg, 'email_id': None}
     
     resend.api_key = resend_key
-    from_email = os.getenv('EMAIL_FROM', 'FRCR Revision <onboarding@resend.dev>')
+    from_email = os.getenv('EMAIL_FROM', 'RadInsights <onboarding@resend.dev>')
     
     # Build details section
     details_html = ""
@@ -206,7 +206,7 @@ def send_admin_approval_email(requesting_admin_email, requesting_admin_name, tar
                 
                 <!-- Footer -->
                 <div style="background-color: #2c3e50; color: #aaa; padding: 15px; text-align: center; font-size: 12px;">
-                    <p style="margin: 0;">FRCR Revision Admin System</p>
+                    <p style="margin: 0;">RadInsights Admin System</p>
                     <p style="margin: 5px 0 0 0;">This is an automated security notification.</p>
                 </div>
             </div>
@@ -647,7 +647,7 @@ def test_email():
             'resend_key_set': bool(resend_key),
             'resend_key_length': len(resend_key) if resend_key else 0,
             'requests_available': True,
-            'app_url': os.getenv('APP_URL', 'https://frcr-revision.vercel.app'),
+            'app_url': os.getenv('APP_URL', 'https://www.radinsights.xyz'),
             'email_from': os.getenv('EMAIL_FROM', 'onboarding@resend.dev')
         }
         
@@ -680,7 +680,7 @@ def test_send_email():
             json={
                 "from": from_email,
                 "to": [test_to],
-                "subject": "Test Email from FRCR Examiner",
+                "subject": "Test Email from RadInsights",
                 "html": "<h1>Test Email</h1><p>This is a test email.</p>"
             },
             timeout=10
@@ -772,7 +772,7 @@ def send_recovery_code_email(email, code, request_metadata=None):
         return False
     
     resend.api_key = resend_key
-    from_email = os.getenv('EMAIL_FROM', 'FRCR Revision <onboarding@resend.dev>')
+    from_email = os.getenv('EMAIL_FROM', 'RadInsights <onboarding@resend.dev>')
     
     metadata_html = ""
     if request_metadata:
@@ -782,7 +782,7 @@ def send_recovery_code_email(email, code, request_metadata=None):
         params = {
             "from": from_email,
             "to": [email],
-            "subject": "Account Recovery Request – FRCR Revision",
+            "subject": "Account Recovery Request – RadInsights",
             "html": f"""
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                 <h2 style="color: #5E899E;">Account Recovery Request</h2>

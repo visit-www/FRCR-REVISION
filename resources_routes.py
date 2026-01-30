@@ -928,7 +928,7 @@ def search_crossref_for_reference(query: str, journals: list = None, max_results
         response = requests.get(
             "https://api.crossref.org/works",
             params=params,
-            headers={'User-Agent': 'FRCR-Revision/1.0 (mailto:admin@frcr-revision.com)'},
+            headers={'User-Agent': 'RadInsights/1.0 (mailto:admin@radinsights.com)'},
             timeout=10
         )
         

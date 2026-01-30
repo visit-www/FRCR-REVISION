@@ -1,5 +1,5 @@
 """
-ScienceDirect Integration Service for FRCR-Revision
+ScienceDirect Integration Service for RadInsights
 
 Purpose: Helper functions for ScienceDirect integration.
 Uses client-side API calls (CORS) as recommended by Elsevier.

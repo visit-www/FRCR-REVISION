@@ -894,7 +894,7 @@ function saveEditedCase(event) {
         discussion = document.getElementById('editCaseDiscussion').value.trim();
     }
     
-    // Get FRCR Revision fields
+    // Get RadInsights fields
     const module = document.getElementById('editCaseModule')?.value || null;
     const bodyPart = document.getElementById('editCaseBodyPart')?.value || null;
     const ageGroup = document.getElementById('editCaseAgeGroup')?.value || null;

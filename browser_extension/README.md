@@ -1,6 +1,6 @@
 # AJCC TNM Cookie Sync Browser Extension
 
-This Chrome extension automatically syncs your AJCC authentication cookies with the local FRCR Revision app, enabling seamless data extraction.
+This Chrome extension automatically syncs your AJCC authentication cookies with the local RadInsights app, enabling seamless data extraction.
 
 ## Installation
 

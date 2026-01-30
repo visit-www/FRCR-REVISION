@@ -320,7 +320,7 @@ Using existing Resend integration in `auth.py`:
 **Domain:** `radinsights.xyz`
 
 Once DNS propagates:
-1. Update `APP_URL` in Vercel environment variables to `https://radinsights.xyz`
+1. Update `APP_URL` in Vercel environment variables to `https://www.radinsights.xyz`
 2. Update `.env` locally
 3. Redeploy application
 4. Test password reset emails use new domain

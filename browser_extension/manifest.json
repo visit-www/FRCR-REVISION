@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "AJCC TNM Cookie Sync",
   "version": "1.0.0",
-  "description": "Automatically syncs AJCC authentication cookies with your local FRCR Revision app",
+  "description": "Automatically syncs AJCC authentication cookies with your local RadInsights app",
   "permissions": [
     "cookies",
     "storage"

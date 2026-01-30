@@ -176,7 +176,7 @@ function showIOSInstallInstructions() {
           <div class="d-flex align-items-center flex-grow-1">
             <i class="fas fa-mobile-alt me-2" style="font-size: 1.2rem;"></i>
             <div>
-              <strong>Install FRCR Revision</strong>
+              <strong>Install RadInsights</strong>
               <div class="small mt-1 d-none d-md-block">Tap <i class="fas fa-share"></i> Share button → "Add to Home Screen"</div>
               <div class="small mt-1 d-block d-md-none">Tap <i class="fas fa-share"></i> → "Add to Home Screen"</div>
             </div>

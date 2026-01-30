@@ -153,7 +153,7 @@ class User(UserMixin, db.Model):
     
     # === ANKI INTEGRATION ===
     anki_api_key = db.Column(db.String(255), nullable=True)  # AnkiWeb API key (if using AnkiWeb)
-    anki_deck_name = db.Column(db.String(100), nullable=True, default='FRCR Revision')  # Default deck name
+    anki_deck_name = db.Column(db.String(100), nullable=True, default='RadInsights')  # Default deck name
     anki_connected_at = db.Column(db.DateTime, nullable=True)  # When Anki was connected
     
     # === SCIENCE DIRECT INTEGRATION (Student) ===

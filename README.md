@@ -4,7 +4,7 @@ A comprehensive exam preparation platform for FRCR (Fellowship of the Royal Coll
 
 ## 🌐 Live Application
 
-**Production**: [https://frcr-revision.vercel.app](https://frcr-revision.vercel.app)
+**Production**: [https://www.radinsights.xyz](https://www.radinsights.xyz)
 
 ---
 

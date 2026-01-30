@@ -512,7 +512,7 @@
                                         <small class="text-muted">
                                             <i class="fas fa-check-circle text-success me-1"></i>Connected to Anki
                                         </small>
-                                        <span class="badge bg-primary" id="ankiDeckName">FRCR Revision</span>
+                                        <span class="badge bg-primary" id="ankiDeckName">RadInsights</span>
                                     </div>
                                     
                                     <!-- Quick Flashcard Creator -->
@@ -7416,7 +7416,7 @@
                     if (deckName) {
                         // Try to get current deck from Anki
                         const { result: decks } = await ankiRequestHybrid('deckNames');
-                        deckName.textContent = decks && decks.length > 0 ? decks[0] : 'FRCR Revision';
+                        deckName.textContent = decks && decks.length > 0 ? decks[0] : 'RadInsights';
                     }
                 } else {
                     notConnected.style.display = 'block';
@@ -7469,7 +7469,7 @@
             }
             
             // Connection successful
-            const deckName = 'FRCR Revision';
+            const deckName = 'RadInsights';
             
             // Create deck if it doesn't exist
             await ankiRequestHybrid('createDeck', { deck: deckName });
@@ -7534,7 +7534,7 @@
         
         try {
             // Get deck name (default or from user settings)
-            const deckName = 'FRCR Revision'; // Could be retrieved from user settings
+            const deckName = 'RadInsights'; // Could be retrieved from user settings
             
             // Ensure deck exists
             await ankiRequestHybrid('createDeck', { deck: deckName });
@@ -7610,7 +7610,7 @@
         }
         
         try {
-            const deckName = 'FRCR Revision';
+            const deckName = 'RadInsights';
             const tags = ['FRCR', 'Radiology', 'Case-' + caseId, 'Bulk'];
             
             // Ensure deck exists

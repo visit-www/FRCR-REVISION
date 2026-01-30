@@ -1,7 +1,7 @@
 {
-  "name": "FRCR-Revision",
-  "short_name": "FRCR-Revision",
-  "description": "Your companion app for FRCR exam preparation - practice cases, take notes, and build confidence for success.",
+  "name": "RadInsights",
+  "short_name": "RadInsights",
+  "description": "Your companion app for radiology exam preparation - practice cases, take notes, and build confidence for success.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
