@@ -330,7 +330,13 @@ def tnm_view(section_slug, disease_slug):
         stage_groups = staging_data.get_stage_groups()
         
         # Get clinical prognostic stage groups (for cancers like Breast that use biomarkers)
-        clinical_prognostic_stage_groups = staging_data.get_json_section('clinical_prognostic_stage_groups') or []
+        # This is stored inside tnm_data_json, not as a separate field
+        if staging_data.tnm_data_json:
+            import json
+            tnm_data = staging_data.tnm_data_json
+            if isinstance(tnm_data, str):
+                tnm_data = json.loads(tnm_data)
+            clinical_prognostic_stage_groups = tnm_data.get('clinical_prognostic_stage_groups', [])
         
         # Get cancers staged and not staged (handle nested JSON structure)
         cancers_staged_data = staging_data.get_json_section('cancers_staged') or {}
