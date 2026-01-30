@@ -402,6 +402,53 @@ class CaseReference(db.Model):
         }
 
 
+class TnmReference(db.Model):
+    """Store references for TNM disease sites - mirrors CaseReference structure"""
+    __tablename__ = 'tnm_reference'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    disease_site_id = db.Column(db.Integer, db.ForeignKey('ajcc_disease_site.id'), nullable=False, index=True)
+    
+    # Reference data
+    ref_number = db.Column(db.Integer, nullable=False)  # The [1], [2], etc. display number
+    title = db.Column(db.Text, nullable=False)
+    url = db.Column(db.Text, nullable=False)
+    journal = db.Column(db.String(500), nullable=True)
+    year = db.Column(db.String(10), nullable=True)
+    
+    # Whether this reference has an inline citation (superscript) in the content
+    # False = added via search/manual (reference list only, hidden superscript)
+    # True = added via context menu (has visible [N] superscript in text)
+    is_inline = db.Column(db.Boolean, default=False)
+    
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relationship back to AJCCDiseaseSite
+    disease_site = db.relationship('AJCCDiseaseSite', backref=db.backref('references', lazy=True, cascade='all, delete-orphan'))
+    
+    # Unique constraint: one ref_number per disease site, one URL per disease site
+    __table_args__ = (
+        db.UniqueConstraint('disease_site_id', 'ref_number', name='uq_tnm_ref_number'),
+        db.UniqueConstraint('disease_site_id', 'url', name='uq_tnm_ref_url'),
+    )
+    
+    def __repr__(self):
+        return f'<TnmReference [{self.ref_number}] for DiseaseSite {self.disease_site_id}>'
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'disease_site_id': self.disease_site_id,
+            'ref_number': self.ref_number,
+            'title': self.title,
+            'url': self.url,
+            'journal': self.journal,
+            'year': self.year,
+            'is_inline': self.is_inline,
+            'created_at': self.created_at.isoformat() if self.created_at else None
+        }
+
+
 class CaseImage(db.Model):
     """Store images for a case - using Cloudinary for storage"""
     id = db.Column(db.Integer, primary_key=True)

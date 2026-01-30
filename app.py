@@ -2959,6 +2959,24 @@ def get_case_references_public(case_id):
     })
 
 
+# ==================== TNM REFERENCES API (PUBLIC) ====================
+
+@app.route('/api/tnm/<int:disease_site_id>/references', methods=['GET'])
+@login_required
+def get_tnm_references_public(disease_site_id):
+    """Get all references for a TNM disease site (for viewing by students and admins)"""
+    from models import AJCCDiseaseSite, TnmReference
+    
+    disease = AJCCDiseaseSite.query.get_or_404(disease_site_id)
+    references = TnmReference.query.filter_by(disease_site_id=disease_site_id).order_by(TnmReference.ref_number).all()
+    
+    return jsonify({
+        'success': True,
+        'disease_site_id': disease_site_id,
+        'references': [ref.to_dict() for ref in references]
+    })
+
+
 # ==================== TEXT HIGHLIGHTS API ====================
 
 @app.route('/api/case/<int:case_id>/highlights', methods=['GET'])

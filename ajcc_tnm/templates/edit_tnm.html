@@ -346,19 +346,41 @@ console.log('[TinyMCE Loader] TNM Edit - checking if TinyMCE loaded...');
             </div>
 
             <!-- Section 8: References (auto-populated from Find Reference) -->
-            <div id="referencesSection" class="card shadow-sm mb-5 border-0" style="display: none;">
-                <div class="card-header bg-gradient text-white d-flex justify-content-between align-items-center" style="background: linear-gradient(135deg, #5E899E 0%, #4a7285 100%);">
-                    <h5 class="mb-0">
-                        <i class="fas fa-bookmark me-2"></i>References
-                        <span id="referenceCount" class="badge bg-light text-dark ms-2">0</span>
-                    </h5>
-                    <button type="button" class="btn btn-sm btn-outline-light" onclick="clearAllReferences()">
-                        <i class="fas fa-trash me-1"></i>Clear All
-                    </button>
+            <div id="referencesSection" class="card shadow-sm mb-5 border-0">
+                <div class="card-header bg-gradient text-white" style="background: linear-gradient(135deg, #5E899E 0%, #4a7285 100%);">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h5 class="mb-0">
+                            <i class="fas fa-bookmark me-2"></i>References
+                            <span id="referenceCount" class="badge bg-light text-dark ms-2">0</span>
+                        </h5>
+                        <button type="button" class="btn btn-sm btn-outline-light" onclick="clearAllReferences()">
+                            <i class="fas fa-trash me-1"></i>Clear All
+                        </button>
+                    </div>
+                    <!-- Search and Manual Entry Tools -->
+                    <div class="d-flex gap-2 flex-wrap">
+                        <div class="input-group input-group-sm" style="max-width: 280px;">
+                            <input type="text" id="referenceSearchInput" class="form-control" 
+                                   placeholder="Search any term..." 
+                                   onkeypress="if(event.key==='Enter') searchReferenceByTerm()">
+                            <button class="btn btn-light" type="button" onclick="searchReferenceByTerm()" title="Search references">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-light" onclick="showManualReferenceForm()" title="Add manual reference">
+                            <i class="fas fa-plus me-1"></i>Add Manual
+                        </button>
+                    </div>
                 </div>
                 <div class="card-body p-0">
                     <div id="referencesList" class="references-list">
                         <!-- References will be added here dynamically -->
+                    </div>
+                    <!-- Empty state placeholder -->
+                    <div id="referencesEmptyState" class="text-center py-4" style="color: #6c757d;">
+                        <i class="fas fa-bookmark fa-2x mb-2" style="opacity: 0.3;"></i>
+                        <p class="mb-1">No references added yet</p>
+                        <small>Use the search box above or right-click selected text in the editor</small>
                     </div>
                 </div>
                 <!-- RadiologyInsights Footer -->
@@ -422,6 +444,12 @@ console.log('[TinyMCE Loader] TNM Edit - checking if TinyMCE loaded...');
             .reference-title:hover {
                 color: #e96304;
                 text-decoration: underline;
+            }
+            .reference-meta {
+                font-size: 0.85em;
+                color: #5E899E;
+                font-weight: 500;
+                margin-bottom: 2px;
             }
             .reference-url {
                 font-size: 0.8em;
@@ -973,6 +1001,9 @@ window.findReferenceForSelection = async function(selectedText) {
         return;
     }
     
+    // Context menu: will insert VISIBLE superscript at cursor position
+    referenceInsertAtCursor = true;
+    
     showReferenceSearchModal(selectedText);
     
     try {
@@ -1307,8 +1338,8 @@ function renderRefArticle(article) {
                     <a href="${safeLink}" target="_blank" class="btn btn-sm" style="background: #e96304; color: white; border: none;">
                         <i class="fas fa-external-link-alt me-1"></i>View Article
                     </a>
-                    <button onclick="insertReferenceToEditor('${escapeForJsAttr(title)}', '${escapeForJsAttr(link)}')" class="btn btn-sm" style="background: #5E899E; color: white; border: none;">
-                        <i class="fas fa-plus me-1"></i>Add to Editor
+                    <button onclick="insertReferenceToDiscussion('${escapeForJsAttr(title)}', '${escapeForJsAttr(journal)}', '${escapeForJsAttr(year)}', '${escapeForJsAttr(link)}', referenceInsertAtCursor)" class="btn btn-sm" style="background: #5E899E; color: white; border: none;">
+                        <i class="fas fa-plus me-1"></i>Add Reference
                     </button>
                 ` : ''}
             </div>
@@ -1317,74 +1348,149 @@ function renderRefArticle(article) {
 }
 
 // ==================== REFERENCES SECTION MANAGEMENT ====================
+// References are stored in the database (tnm_reference table)
 let referenceCounter = 0;
-const referencesMap = new Map(); // Track references by URL to avoid duplicates
+const referencesMap = new Map(); // Track references by URL -> {id, ref_number}
 
-function insertReferenceToEditor(title, url) {
-    const activeEditor = tinymce.activeEditor;
-    if (!activeEditor) {
-        showAlert('warning', 'Please click into an editor first.');
-        return;
-    }
+// Track whether to insert superscript at cursor (context menu) or just add to section (search box/manual)
+let referenceInsertAtCursor = false;
+
+// Load references from database API
+async function loadReferencesFromDatabase() {
+    // Clear existing state
+    referenceCounter = 0;
+    referencesMap.clear();
+    const list = document.getElementById('referencesList');
+    if (list) list.innerHTML = '';
+    const countBadge = document.getElementById('referenceCount');
+    if (countBadge) countBadge.textContent = '0';
     
-    // Sanitize inputs
-    const safeUrl = sanitizeUrl(url);
-    const safeTitle = escapeHtmlForRef(title);
-    
-    if (!safeUrl) {
-        showAlert('warning', 'Invalid or unsafe URL.');
-        return;
-    }
-    
-    // Check if reference already exists (by URL)
-    let refNumber;
-    if (referencesMap.has(url)) {
-        refNumber = referencesMap.get(url);
-    } else {
-        referenceCounter++;
-        refNumber = referenceCounter;
-        referencesMap.set(url, refNumber);
+    try {
+        const response = await fetch(`/api/admin/tnm/${diseaseSiteId}/references`);
+        const data = await response.json();
         
-        // Add to references section
-        addReferenceToSection(refNumber, title, url);
+        if (!response.ok || !data.success) {
+            console.error('[References] Failed to load:', data.error);
+            return;
+        }
+        
+        const references = data.references || [];
+        console.log(`[References] Loaded ${references.length} references from database`);
+        
+        if (references.length === 0) {
+            const emptyState = document.getElementById('referencesEmptyState');
+            if (emptyState) emptyState.style.display = 'block';
+            return;
+        }
+        
+        // Hide empty state
+        const emptyState = document.getElementById('referencesEmptyState');
+        if (emptyState) emptyState.style.display = 'none';
+        
+        // Populate references
+        let maxRefNumber = 0;
+        references.forEach(ref => {
+            referencesMap.set(ref.url, { id: ref.id, ref_number: ref.ref_number });
+            addReferenceToSection(ref.ref_number, ref.title, ref.journal, ref.year, ref.url, ref.id);
+            maxRefNumber = Math.max(maxRefNumber, ref.ref_number);
+        });
+        
+        referenceCounter = maxRefNumber;
+        
+    } catch (error) {
+        console.error('[References] Error loading:', error);
     }
-    
-    // Collapse selection to end (so we insert after the selected text, not replace it)
-    const selection = activeEditor.selection;
-    const rng = selection.getRng();
-    rng.collapse(false); // false = collapse to end
-    selection.setRng(rng);
-    
-    // Superscript with data attributes for view mode reconstruction
-    // Links to anchor #ref-N, stores URL and title in data attributes
-    const superscriptHtml = `<sup class="ref-cite" data-ref="${refNumber}" data-url="${safeUrl}" data-title="${safeTitle}"><a href="#ref-${refNumber}" style="color: #e96304; text-decoration: none; font-weight: 600;">[${refNumber}]</a></sup>`;
-    activeEditor.insertContent(superscriptHtml);
-    
-    closeReferenceSearchModal();
-    showAlert('success', `Reference [${refNumber}] added!`);
 }
 
-function addReferenceToSection(refNumber, title, url) {
-    const section = document.getElementById('referencesSection');
+// insertIntoEditor: if true, inserts visible superscript at cursor; if false, no inline citation (hidden)
+async function insertReferenceToDiscussion(title, journal, year, link, insertIntoEditor = true) {
+    // Check if reference already exists (by URL)
+    if (referencesMap.has(link)) {
+        const existing = referencesMap.get(link);
+        const refNumber = existing.ref_number || existing;
+        closeReferenceSearchModal();
+        showAlert('info', `Reference [${refNumber}] already exists!`);
+        return;
+    }
+    
+    // Save to database
+    try {
+        const response = await fetch(`/api/admin/tnm/${diseaseSiteId}/references`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                title: title,
+                url: link,
+                journal: journal || '',
+                year: year || '',
+                is_inline: insertIntoEditor
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok || !data.success) {
+            throw new Error(data.error || 'Failed to save reference');
+        }
+        
+        const ref = data.reference;
+        referencesMap.set(link, { id: ref.id, ref_number: ref.ref_number });
+        referenceCounter = Math.max(referenceCounter, ref.ref_number);
+        
+        // Add to UI
+        addReferenceToSection(ref.ref_number, ref.title, ref.journal, ref.year, ref.url, ref.id);
+        
+        // Insert inline citation if requested (context menu) - VISIBLE superscript
+        if (insertIntoEditor && typeof tinymce !== 'undefined' && tinymce.activeEditor) {
+            const editor = tinymce.activeEditor;
+            const superscriptHtml = `<sup class="ref-cite" data-ref="${ref.ref_number}"><a href="#ref-${ref.ref_number}" style="color: #e96304; text-decoration: none; font-weight: 600;">[${ref.ref_number}]</a></sup>`;
+            
+            const selection = editor.selection;
+            const rng = selection.getRng();
+            rng.collapse(false);
+            selection.setRng(rng);
+            editor.insertContent(superscriptHtml);
+        }
+        
+        closeReferenceSearchModal();
+        showAlert('success', `Reference [${ref.ref_number}] added!`);
+        
+    } catch (error) {
+        console.error('[References] Error saving:', error);
+        showAlert('danger', 'Failed to save reference: ' + error.message);
+    }
+}
+
+// Legacy function for backward compatibility
+function insertReferenceToEditor(title, url) {
+    // Context menu path - insert visible superscript
+    insertReferenceToDiscussion(title, '', '', url, referenceInsertAtCursor);
+}
+
+function addReferenceToSection(refNumber, title, journal, year, url, refId = null) {
     const list = document.getElementById('referencesList');
     const countBadge = document.getElementById('referenceCount');
+    const emptyState = document.getElementById('referencesEmptyState');
     
-    // Show section if hidden
-    section.style.display = 'block';
+    // Hide empty state when adding references
+    if (emptyState) emptyState.style.display = 'none';
     
     // Create reference entry with improved styling
     const li = document.createElement('div');
     li.id = `ref-${refNumber}`;
     li.className = 'reference-item';
+    li.dataset.refId = refId || '';
+    li.dataset.url = url;
     li.innerHTML = `
         <div class="reference-number">${refNumber}</div>
         <div class="reference-content">
             <a href="${sanitizeUrl(url)}" target="_blank" rel="noopener" class="reference-title">
                 ${escapeHtmlForRef(title)}
             </a>
+            ${journal || year ? `<div class="reference-meta">${escapeHtmlForRef(journal || '')}${year ? ` (${year})` : ''}</div>` : ''}
             <div class="reference-url">${escapeHtmlForRef(url)}</div>
         </div>
-        <button class="btn btn-sm btn-outline-danger reference-remove" onclick="removeReference(${refNumber}, '${escapeForJsAttr(url)}')" title="Remove reference">
+        <button class="btn btn-sm btn-outline-danger reference-remove" onclick="removeReference(${refNumber}, ${refId || 'null'})" title="Remove reference">
             <i class="fas fa-times"></i>
         </button>
     `;
@@ -1394,33 +1500,268 @@ function addReferenceToSection(refNumber, title, url) {
     countBadge.textContent = list.children.length;
 }
 
-function removeReference(refNumber, url) {
+async function removeReference(refNumber, refId) {
+    // Remove from database if we have ID
+    if (refId) {
+        try {
+            const response = await fetch(`/api/admin/tnm/${diseaseSiteId}/references/${refId}`, {
+                method: 'DELETE'
+            });
+            
+            const data = await response.json();
+            
+            if (!response.ok || !data.success) {
+                throw new Error(data.error || 'Failed to delete reference');
+            }
+        } catch (error) {
+            console.error('[References] Error deleting:', error);
+            showAlert('danger', 'Failed to delete reference: ' + error.message);
+            return;
+        }
+    }
+    
+    // Remove from UI
     const li = document.getElementById(`ref-${refNumber}`);
+    const url = li?.dataset?.url;
     if (li) li.remove();
     
     // Remove from map
-    referencesMap.delete(url);
+    if (url) referencesMap.delete(url);
+    
+    // Remove inline citations from all TinyMCE editors
+    document.querySelectorAll('.rich-editor').forEach(textarea => {
+        const editorId = textarea.id;
+        if (typeof tinymce !== 'undefined' && tinymce.get(editorId)) {
+            const editor = tinymce.get(editorId);
+            const content = editor.getContent();
+            
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = content;
+            
+            // Remove superscripts with matching ref number
+            const citations = tempDiv.querySelectorAll(`sup.ref-cite[data-ref="${refNumber}"]`);
+            citations.forEach(cite => cite.remove());
+            
+            editor.setContent(tempDiv.innerHTML);
+        }
+    });
     
     // Update count badge
     const list = document.getElementById('referencesList');
     const countBadge = document.getElementById('referenceCount');
     countBadge.textContent = list.children.length;
     
-    // Hide section if empty
+    // Show empty state if no references left
     if (list.children.length === 0) {
-        document.getElementById('referencesSection').style.display = 'none';
+        const emptyState = document.getElementById('referencesEmptyState');
+        if (emptyState) emptyState.style.display = 'block';
     }
+    
+    showAlert('success', `Reference [${refNumber}] removed`);
 }
 
-function clearAllReferences() {
+async function clearAllReferences() {
     if (!confirm('Are you sure you want to clear all references?')) return;
     
+    // Delete from database
+    try {
+        const response = await fetch(`/api/admin/tnm/${diseaseSiteId}/references`, {
+            method: 'DELETE'
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok || !data.success) {
+            throw new Error(data.error || 'Failed to clear references');
+        }
+    } catch (error) {
+        console.error('[References] Error clearing:', error);
+        showAlert('danger', 'Failed to clear references: ' + error.message);
+        return;
+    }
+    
+    // Clear UI
     document.getElementById('referencesList').innerHTML = '';
-    document.getElementById('referencesSection').style.display = 'none';
     document.getElementById('referenceCount').textContent = '0';
     referenceCounter = 0;
     referencesMap.clear();
+    
+    // Remove all inline citations from all TinyMCE editors
+    document.querySelectorAll('.rich-editor').forEach(textarea => {
+        const editorId = textarea.id;
+        if (typeof tinymce !== 'undefined' && tinymce.get(editorId)) {
+            const editor = tinymce.get(editorId);
+            const content = editor.getContent();
+            
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = content;
+            
+            // Remove all superscript citations
+            tempDiv.querySelectorAll('sup.ref-cite').forEach(el => el.remove());
+            
+            editor.setContent(tempDiv.innerHTML);
+        }
+    });
+    
+    // Show empty state
+    const emptyState = document.getElementById('referencesEmptyState');
+    if (emptyState) emptyState.style.display = 'block';
+    
     showAlert('success', 'All references cleared.');
+}
+
+// ==================== SEARCH REFERENCE BY TERM ====================
+async function searchReferenceByTerm() {
+    const input = document.getElementById('referenceSearchInput');
+    const query = input.value.trim();
+    
+    if (!query) {
+        showAlert('warning', 'Please enter a search term');
+        input.focus();
+        return;
+    }
+    
+    // Search box: will NOT insert superscript, just add to references section
+    referenceInsertAtCursor = false;
+    
+    // Show loading modal
+    showReferenceSearchModal(query);
+    
+    try {
+        const response = await fetch('/resources/api/find-reference', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                query: query,
+                strict: true
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(data.error || `HTTP ${response.status}`);
+        }
+        
+        updateReferenceSearchModal(data, query);
+        
+    } catch (error) {
+        console.error('[Reference Search] Error:', error);
+        updateReferenceSearchModal({
+            error: error.message,
+            message: 'Failed to search for references. Please try again.'
+        }, query);
+    }
+}
+
+// ==================== MANUAL REFERENCE ENTRY ====================
+function showManualReferenceForm() {
+    // Remove existing modal
+    const existing = document.getElementById('manualReferenceModal');
+    if (existing) existing.remove();
+    
+    const modal = document.createElement('div');
+    modal.id = 'manualReferenceModal';
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.6);
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+    `;
+    
+    modal.innerHTML = `
+        <div style="background: white; border-radius: 12px; max-width: 500px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
+            <div style="background: linear-gradient(135deg, #5E899E 0%, #4a7285 100%); color: white; padding: 16px 20px; border-radius: 12px 12px 0 0; display: flex; justify-content: space-between; align-items: center;">
+                <h5 style="margin: 0; font-weight: 600;">
+                    <i class="fas fa-plus-circle me-2"></i>Add Manual Reference
+                </h5>
+                <button onclick="closeManualReferenceModal()" style="background: none; border: none; color: white; font-size: 20px; cursor: pointer;">&times;</button>
+            </div>
+            <div style="padding: 20px;">
+                <div class="mb-3">
+                    <label class="form-label fw-medium" style="color: #2c3e50;">Title <span class="text-danger">*</span></label>
+                    <input type="text" id="manualRefTitle" class="form-control" placeholder="e.g., Imaging Features of Lung Cancer">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-medium" style="color: #2c3e50;">Journal / Source</label>
+                    <input type="text" id="manualRefJournal" class="form-control" placeholder="e.g., Radiology, Radiopaedia">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-medium" style="color: #2c3e50;">Year</label>
+                    <input type="text" id="manualRefYear" class="form-control" placeholder="e.g., 2024" maxlength="4">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-medium" style="color: #2c3e50;">URL <span class="text-danger">*</span></label>
+                    <input type="url" id="manualRefUrl" class="form-control" placeholder="https://...">
+                </div>
+                <div class="d-flex justify-content-end gap-2 mt-4">
+                    <button type="button" class="btn btn-outline-secondary" onclick="closeManualReferenceModal()">Cancel</button>
+                    <button type="button" class="btn" style="background: #e96304; color: white;" onclick="submitManualReference()">
+                        <i class="fas fa-plus me-1"></i>Add Reference
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Close on backdrop click
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) {
+            closeManualReferenceModal();
+        }
+    });
+    
+    // Focus first input
+    setTimeout(() => document.getElementById('manualRefTitle').focus(), 100);
+}
+
+function closeManualReferenceModal() {
+    const modal = document.getElementById('manualReferenceModal');
+    if (modal) modal.remove();
+}
+
+function submitManualReference() {
+    const title = document.getElementById('manualRefTitle').value.trim();
+    const journal = document.getElementById('manualRefJournal').value.trim();
+    const year = document.getElementById('manualRefYear').value.trim();
+    const url = document.getElementById('manualRefUrl').value.trim();
+    
+    // Validate required fields
+    if (!title) {
+        showAlert('warning', 'Please enter a title');
+        document.getElementById('manualRefTitle').focus();
+        return;
+    }
+    
+    if (!url) {
+        showAlert('warning', 'Please enter a URL');
+        document.getElementById('manualRefUrl').focus();
+        return;
+    }
+    
+    // Validate URL format
+    try {
+        new URL(url);
+    } catch (e) {
+        showAlert('warning', 'Please enter a valid URL');
+        document.getElementById('manualRefUrl').focus();
+        return;
+    }
+    
+    // Add to references section only (don't insert into editor)
+    insertReferenceToDiscussion(title, journal, year, url, false);
+    closeManualReferenceModal();
 }
 
 // Initialize on DOM ready
@@ -1429,6 +1770,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Load existing images
     loadExistingImages();
+    
+    // Load existing references from database
+    loadReferencesFromDatabase();
     
     // TinyMCE loader script handles initialization
     if (window.tinyMCELoaded && typeof tinymce !== 'undefined') {

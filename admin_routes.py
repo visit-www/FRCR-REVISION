@@ -1421,6 +1421,116 @@ def clear_case_references(case_id):
 
 
 # ============================================================================
+# TNM REFERENCES API (ADMIN)
+# ============================================================================
+
+@admin_bp.route('/tnm/<int:disease_site_id>/references', methods=['GET'])
+@require_role(UserRole.ADMIN, UserRole.CONTENT_MANAGER)
+def get_tnm_references(disease_site_id):
+    """Get all references for a TNM disease site"""
+    from models import AJCCDiseaseSite, TnmReference
+    
+    disease = AJCCDiseaseSite.query.get_or_404(disease_site_id)
+    references = TnmReference.query.filter_by(disease_site_id=disease_site_id).order_by(TnmReference.ref_number).all()
+    
+    return jsonify({
+        'success': True,
+        'disease_site_id': disease_site_id,
+        'references': [ref.to_dict() for ref in references]
+    })
+
+
+@admin_bp.route('/tnm/<int:disease_site_id>/references', methods=['POST'])
+@require_role(UserRole.ADMIN, UserRole.CONTENT_MANAGER)
+def add_tnm_reference(disease_site_id):
+    """Add a reference to a TNM disease site"""
+    from models import AJCCDiseaseSite, TnmReference, db
+    
+    disease = AJCCDiseaseSite.query.get_or_404(disease_site_id)
+    data = request.get_json()
+    
+    if not data:
+        return jsonify({'success': False, 'error': 'No data provided'}), 400
+    
+    title = data.get('title', '').strip()
+    url = data.get('url', '').strip()
+    
+    if not title:
+        return jsonify({'success': False, 'error': 'Title is required'}), 400
+    if not url:
+        return jsonify({'success': False, 'error': 'URL is required'}), 400
+    
+    # Check if URL already exists for this disease site
+    existing = TnmReference.query.filter_by(disease_site_id=disease_site_id, url=url).first()
+    if existing:
+        return jsonify({
+            'success': True,
+            'reference': existing.to_dict(),
+            'is_duplicate': True,
+            'message': f'Reference already exists as [{existing.ref_number}]'
+        })
+    
+    # Get next ref_number
+    max_ref = db.session.query(db.func.max(TnmReference.ref_number)).filter_by(disease_site_id=disease_site_id).scalar()
+    next_ref_number = (max_ref or 0) + 1
+    
+    # Create new reference
+    reference = TnmReference(
+        disease_site_id=disease_site_id,
+        ref_number=next_ref_number,
+        title=title,
+        url=url,
+        journal=data.get('journal', '').strip() or None,
+        year=data.get('year', '').strip() or None,
+        is_inline=data.get('is_inline', False)
+    )
+    
+    db.session.add(reference)
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'reference': reference.to_dict(),
+        'is_duplicate': False,
+        'message': f'Reference [{next_ref_number}] added'
+    })
+
+
+@admin_bp.route('/tnm/<int:disease_site_id>/references/<int:ref_id>', methods=['DELETE'])
+@require_role(UserRole.ADMIN, UserRole.CONTENT_MANAGER)
+def delete_tnm_reference(disease_site_id, ref_id):
+    """Delete a reference from a TNM disease site"""
+    from models import TnmReference, db
+    
+    reference = TnmReference.query.filter_by(id=ref_id, disease_site_id=disease_site_id).first_or_404()
+    ref_number = reference.ref_number
+    
+    db.session.delete(reference)
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'message': f'Reference [{ref_number}] deleted'
+    })
+
+
+@admin_bp.route('/tnm/<int:disease_site_id>/references', methods=['DELETE'])
+@require_role(UserRole.ADMIN, UserRole.CONTENT_MANAGER)
+def clear_tnm_references(disease_site_id):
+    """Clear all references for a TNM disease site"""
+    from models import AJCCDiseaseSite, TnmReference, db
+    
+    disease = AJCCDiseaseSite.query.get_or_404(disease_site_id)
+    count = TnmReference.query.filter_by(disease_site_id=disease_site_id).delete()
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'message': f'{count} references cleared'
+    })
+
+
+# ============================================================================
 # ERROR HANDLERS
 # ============================================================================
 
