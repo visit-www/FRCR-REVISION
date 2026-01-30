@@ -76,8 +76,30 @@
                         </div>
                     </div>
                     
-                    <!-- TNM Category Selection -->
-                    <div class="row g-3 mb-4">
+                    <!-- Input Mode Toggle -->
+                    <div class="mb-4">
+                        <div class="d-flex align-items-center justify-content-center">
+                            <label class="form-label mb-0 me-3 fw-bold text-muted">
+                                <i class="fas fa-sliders-h me-1"></i>Input Mode:
+                            </label>
+                            <div class="btn-group" role="group" aria-label="Input mode selection">
+                                <input type="radio" class="btn-check" name="inputMode" id="directTnmMode" value="direct" checked>
+                                <label class="btn btn-outline-primary" for="directTnmMode">
+                                    <i class="fas fa-hashtag me-1"></i>Direct TNM
+                                </label>
+                                <input type="radio" class="btn-check" name="inputMode" id="definitionMode" value="definition">
+                                <label class="btn btn-outline-primary" for="definitionMode">
+                                    <i class="fas fa-file-alt me-1"></i>Definition-based
+                                </label>
+                            </div>
+                        </div>
+                        <p class="text-center text-muted small mt-2 mb-0" id="modeDescription">
+                            Select T, N, M categories directly (e.g., T2, N1, M0)
+                        </p>
+                    </div>
+                    
+                    <!-- Direct TNM Category Selection (Mode A) -->
+                    <div id="directTnmSection" class="row g-3 mb-4">
                         <!-- T Category -->
                         <div class="col-md-4">
                             <div class="card h-100" style="border-left: 4px solid #17a2b8;">
@@ -119,6 +141,59 @@
                                         <option value="">Select M...</option>
                                     </select>
                                     <small id="mCriteria" class="text-muted mt-2 d-block" style="font-size: 0.8em;"></small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Definition-based Selection (Mode B) - Hidden by default -->
+                    <div id="definitionSection" class="mb-4" style="display: none;">
+                        <!-- T Definition -->
+                        <div class="card mb-3" style="border-left: 4px solid #17a2b8;">
+                            <div class="card-body">
+                                <label for="tDefinition" class="form-label fw-bold" style="color: #17a2b8;">
+                                    <i class="fas fa-bullseye me-1"></i>T - Primary Tumor
+                                </label>
+                                <select id="tDefinition" class="form-select" disabled>
+                                    <option value="">Select T definition...</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <!-- N Definition -->
+                        <div class="card mb-3" style="border-left: 4px solid #fd7e14;">
+                            <div class="card-body">
+                                <label for="nDefinition" class="form-label fw-bold" style="color: #fd7e14;">
+                                    <i class="fas fa-network-wired me-1"></i>N - Regional Nodes
+                                </label>
+                                <select id="nDefinition" class="form-select" disabled>
+                                    <option value="">Select N definition...</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <!-- M Definition -->
+                        <div class="card mb-3" style="border-left: 4px solid #dc3545;">
+                            <div class="card-body">
+                                <label for="mDefinition" class="form-label fw-bold" style="color: #dc3545;">
+                                    <i class="fas fa-globe me-1"></i>M - Distant Metastasis
+                                </label>
+                                <select id="mDefinition" class="form-select" disabled>
+                                    <option value="">Select M definition...</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <!-- Derived TNM Display -->
+                        <div class="card" style="background: linear-gradient(135deg, #e8f5e9 0%, #f1f8e9 100%); border: 2px solid #28a745;">
+                            <div class="card-body text-center py-3">
+                                <label class="form-label fw-bold mb-2" style="color: #28a745;">
+                                    <i class="fas fa-check-circle me-1"></i>Derived TNM Classification
+                                </label>
+                                <div class="d-flex justify-content-center gap-3">
+                                    <span class="badge fs-5 px-3 py-2" style="background: #17a2b8;" id="derivedT">T?</span>
+                                    <span class="badge fs-5 px-3 py-2" style="background: #fd7e14;" id="derivedN">N?</span>
+                                    <span class="badge fs-5 px-3 py-2" style="background: #dc3545;" id="derivedM">M?</span>
                                 </div>
                             </div>
                         </div>
@@ -326,6 +401,17 @@ document.addEventListener('DOMContentLoaded', function() {
     const calculateBtn = document.getElementById('calculateBtn');
     const resultsSection = document.getElementById('resultsSection');
     
+    // Input mode elements
+    const directTnmSection = document.getElementById('directTnmSection');
+    const definitionSection = document.getElementById('definitionSection');
+    const modeDescription = document.getElementById('modeDescription');
+    const tDefinitionSelect = document.getElementById('tDefinition');
+    const nDefinitionSelect = document.getElementById('nDefinition');
+    const mDefinitionSelect = document.getElementById('mDefinition');
+    const derivedT = document.getElementById('derivedT');
+    const derivedN = document.getElementById('derivedN');
+    const derivedM = document.getElementById('derivedM');
+    
     // Biomarker elements (for breast cancer prognostic staging)
     const biomarkerSection = document.getElementById('biomarkerSection');
     const gradeSelect = document.getElementById('gradeSelect');
@@ -337,6 +423,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let cancerInfo = null;
     let subsiteChangeHandler = null;  // Track the current handler to remove it
     let requiresBiomarkers = false;  // Whether current cancer needs biomarkers
+    let inputMode = 'direct';  // 'direct' or 'definition'
     
     // Load categories when cancer type changes
     cancerTypeSelect.addEventListener('change', async function() {
@@ -405,8 +492,51 @@ document.addEventListener('DOMContentLoaded', function() {
             if (cancerInfo) {
                 const key = this.value === 'pathological' ? 'pathological' : 'clinical';
                 const nCategories = cancerInfo.n_categories[key] || [];
+                const nDefinitions = cancerInfo.n_definitions?.[key] || [];
+                
                 populateSelect(nCategorySelect, nCategories.map(c => ({ value: c, label: c })));
+                populateDefinitionSelect(nDefinitionSelect, nDefinitions, 'N');
             }
+        });
+    });
+    
+    // Input mode toggle
+    document.querySelectorAll('input[name="inputMode"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+            inputMode = this.value;
+            
+            if (inputMode === 'direct') {
+                directTnmSection.style.display = 'flex';
+                definitionSection.style.display = 'none';
+                modeDescription.textContent = 'Select T, N, M categories directly (e.g., T2, N1, M0)';
+            } else {
+                directTnmSection.style.display = 'none';
+                definitionSection.style.display = 'block';
+                modeDescription.textContent = 'Select clinical definitions and see derived TNM codes';
+            }
+            
+            // Sync values between modes when switching
+            syncModeValues();
+            updateCalculateButton();
+        });
+    });
+    
+    // Definition select change handlers
+    [tDefinitionSelect, nDefinitionSelect, mDefinitionSelect].forEach((select, index) => {
+        select.addEventListener('change', function() {
+            // Update derived display
+            const category = this.value;
+            if (index === 0) {
+                derivedT.textContent = category || 'T?';
+                tCategorySelect.value = category;
+            } else if (index === 1) {
+                derivedN.textContent = category || 'N?';
+                nCategorySelect.value = category;
+            } else {
+                derivedM.textContent = category || 'M?';
+                mCategorySelect.value = category;
+            }
+            updateCalculateButton();
         });
     });
     
@@ -423,9 +553,18 @@ document.addEventListener('DOMContentLoaded', function() {
         const cancerType = cancerTypeSelect.value;
         const stagingType = document.querySelector('input[name="stagingType"]:checked').value;
         const subsite = subsiteSelect.value || null;
-        const t = tCategorySelect.value;
-        const n = nCategorySelect.value;
-        const m = mCategorySelect.value;
+        
+        // Get T, N, M values from the active mode
+        let t, n, m;
+        if (inputMode === 'definition') {
+            t = tDefinitionSelect.value;
+            n = nDefinitionSelect.value;
+            m = mDefinitionSelect.value;
+        } else {
+            t = tCategorySelect.value;
+            n = nCategorySelect.value;
+            m = mCategorySelect.value;
+        }
         
         // Get biomarker values if required
         const grade = gradeSelect ? gradeSelect.value : null;
@@ -485,10 +624,25 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Helper functions
     function resetCategories() {
+        // Reset direct TNM selects
         [tCategorySelect, nCategorySelect, mCategorySelect].forEach(select => {
             select.innerHTML = '<option value="">Select...</option>';
             select.disabled = true;
         });
+        
+        // Reset definition selects
+        tDefinitionSelect.innerHTML = '<option value="">Select T definition...</option>';
+        tDefinitionSelect.disabled = true;
+        nDefinitionSelect.innerHTML = '<option value="">Select N definition...</option>';
+        nDefinitionSelect.disabled = true;
+        mDefinitionSelect.innerHTML = '<option value="">Select M definition...</option>';
+        mDefinitionSelect.disabled = true;
+        
+        // Reset derived display
+        derivedT.textContent = 'T?';
+        derivedN.textContent = 'N?';
+        derivedM.textContent = 'M?';
+        
         subsiteSelect.innerHTML = '<option value="">Select subsite...</option>';
         subsiteContainer.style.display = 'none';
         biomarkerSection.style.display = 'none';
@@ -502,21 +656,41 @@ document.addEventListener('DOMContentLoaded', function() {
         const subsite = subsiteSelect.value || (data.subsites && data.subsites[0]) || 'default';
         const stagingType = document.querySelector('input[name="stagingType"]:checked').value;
         
-        // T categories
+        // T categories (Direct mode)
         const tCategories = data.t_categories[subsite] || data.t_categories['default'] || [];
         populateSelect(tCategorySelect, tCategories.map(c => ({ value: c, label: c })));
         tCategorySelect.disabled = false;
         
-        // N categories
+        // N categories (Direct mode)
         const nKey = stagingType === 'pathological' ? 'pathological' : 'clinical';
         const nCategories = data.n_categories[nKey] || [];
         populateSelect(nCategorySelect, nCategories.map(c => ({ value: c, label: c })));
         nCategorySelect.disabled = false;
         
-        // M categories
+        // M categories (Direct mode)
         const mCategories = data.m_categories || [];
         populateSelect(mCategorySelect, mCategories.map(c => ({ value: c, label: c })));
         mCategorySelect.disabled = false;
+        
+        // T definitions (Definition mode)
+        const tDefinitions = data.t_definitions?.[subsite] || data.t_definitions?.['default'] || [];
+        populateDefinitionSelect(tDefinitionSelect, tDefinitions, 'T');
+        tDefinitionSelect.disabled = false;
+        
+        // N definitions (Definition mode)
+        const nDefinitions = data.n_definitions?.[nKey] || [];
+        populateDefinitionSelect(nDefinitionSelect, nDefinitions, 'N');
+        nDefinitionSelect.disabled = false;
+        
+        // M definitions (Definition mode)
+        const mDefinitions = data.m_definitions || [];
+        populateDefinitionSelect(mDefinitionSelect, mDefinitions, 'M');
+        mDefinitionSelect.disabled = false;
+        
+        // Reset derived display
+        derivedT.textContent = 'T?';
+        derivedN.textContent = 'N?';
+        derivedM.textContent = 'M?';
     }
     
     function populateSelect(select, options) {
@@ -536,10 +710,69 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
+    function populateDefinitionSelect(select, definitions, prefix) {
+        const currentValue = select.value;
+        select.innerHTML = `<option value="">Select ${prefix} definition...</option>`;
+        
+        definitions.forEach(def => {
+            const option = document.createElement('option');
+            option.value = def.category;
+            // Format: "Criteria text (Category)" e.g., "Tumor >2cm (T2)"
+            const criteria = def.criteria || def.category;
+            option.textContent = `${criteria} (${def.category})`;
+            select.appendChild(option);
+        });
+        
+        // Restore value if still valid
+        if (currentValue && definitions.some(d => d.category === currentValue)) {
+            select.value = currentValue;
+        }
+    }
+    
+    function syncModeValues() {
+        if (inputMode === 'definition') {
+            // Sync from direct to definition mode
+            if (tCategorySelect.value) {
+                tDefinitionSelect.value = tCategorySelect.value;
+                derivedT.textContent = tCategorySelect.value;
+            }
+            if (nCategorySelect.value) {
+                nDefinitionSelect.value = nCategorySelect.value;
+                derivedN.textContent = nCategorySelect.value;
+            }
+            if (mCategorySelect.value) {
+                mDefinitionSelect.value = mCategorySelect.value;
+                derivedM.textContent = mCategorySelect.value;
+            }
+        } else {
+            // Sync from definition to direct mode
+            if (tDefinitionSelect.value) {
+                tCategorySelect.value = tDefinitionSelect.value;
+            }
+            if (nDefinitionSelect.value) {
+                nCategorySelect.value = nDefinitionSelect.value;
+            }
+            if (mDefinitionSelect.value) {
+                mCategorySelect.value = mDefinitionSelect.value;
+            }
+        }
+    }
+    
     function updateCalculateButton() {
-        const t = tCategorySelect.value;
-        const n = nCategorySelect.value;
-        const m = mCategorySelect.value;
+        let t, n, m;
+        
+        if (inputMode === 'definition') {
+            // Use definition-based values
+            t = tDefinitionSelect.value;
+            n = nDefinitionSelect.value;
+            m = mDefinitionSelect.value;
+        } else {
+            // Use direct TNM values
+            t = tCategorySelect.value;
+            n = nCategorySelect.value;
+            m = mCategorySelect.value;
+        }
+        
         calculateBtn.disabled = !(t && n && m);
     }
     

@@ -294,3 +294,27 @@ class CancerDefinition:
             if cat["category"] == m_category:
                 return cat.get("criteria", "")
         return None
+    
+    def get_t_definitions(self, subsite: Optional[str] = None) -> List[Dict[str, str]]:
+        """Get full T definitions (category + criteria) for a subsite."""
+        if subsite and subsite in self.t_definitions:
+            return self.t_definitions[subsite]
+        # Return first subsite's definitions if no specific subsite
+        if self.t_definitions:
+            first_subsite = list(self.t_definitions.keys())[0]
+            return self.t_definitions[first_subsite]
+        return []
+    
+    def get_n_definitions(self, staging_type: StagingType = StagingType.CLINICAL) -> List[Dict[str, str]]:
+        """Get full N definitions (category + criteria)."""
+        key = "pathological" if staging_type == StagingType.PATHOLOGICAL else "clinical"
+        if key in self.n_definitions:
+            return self.n_definitions[key]
+        # Fallback to any available
+        for cats in self.n_definitions.values():
+            return cats
+        return []
+    
+    def get_m_definitions(self) -> List[Dict[str, str]]:
+        """Get full M definitions (category + criteria)."""
+        return self.m_definitions

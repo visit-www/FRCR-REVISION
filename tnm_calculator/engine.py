@@ -319,6 +319,7 @@ class TNMCalculator:
             "version": definition.version,
             "subsites": definition.subsites,
             "has_subsites": len(definition.subsites) > 0,
+            # Category codes only (for Direct TNM mode)
             "t_categories": {
                 subsite: definition.get_t_categories(subsite)
                 for subsite in (definition.subsites or ["default"])
@@ -328,6 +329,16 @@ class TNMCalculator:
                 "pathological": definition.get_n_categories(StagingType.PATHOLOGICAL)
             },
             "m_categories": definition.get_m_categories(),
+            # Full definitions with criteria (for Definition-based mode)
+            "t_definitions": {
+                subsite: definition.get_t_definitions(subsite)
+                for subsite in (definition.subsites or ["default"])
+            },
+            "n_definitions": {
+                "clinical": definition.get_n_definitions(StagingType.CLINICAL),
+                "pathological": definition.get_n_definitions(StagingType.PATHOLOGICAL)
+            },
+            "m_definitions": definition.get_m_definitions(),
             "stage_groups": definition.stage_groups,
             "notes": definition.notes,
             # Prognostic staging (for breast cancer with biomarkers)
