@@ -231,7 +231,7 @@
                 <div class="detail-section mb-5 p-4 rounded-3" style="background: linear-gradient(135deg, #f8f5ff 0%, #faf8ff 100%); border-left: 5px solid #6c757d;">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <label class="detail-label fw-bold text-secondary mb-0">
-                            <i class="fas fa-layer-group me-2" style="color: #6c757d;"></i>Prognostic Stage Groups
+                            <i class="fas fa-layer-group me-2" style="color: #6c757d;"></i>Anatomic Stage Groups
                         </label>
                     </div>
                     
@@ -253,6 +253,85 @@
                                         <td><span class="badge bg-success">{{ group.N }}</span></td>
                                         <td><span class="badge bg-danger">{{ group.M }}</span></td>
                                         <td><strong>{{ group.stage }}</strong></td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                
+                <!-- ==================== SECTION 2B: Clinical Prognostic Stage Groups (Breast, etc.) ==================== -->
+                {% if clinical_prognostic_stage_groups %}
+                <div class="detail-section mb-5 p-4 rounded-3" style="background: linear-gradient(135deg, #fff3e0 0%, #fff8e1 100%); border-left: 5px solid #e96304;">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <label class="detail-label fw-bold text-secondary mb-0">
+                            <i class="fas fa-dna me-2" style="color: #e96304;"></i>Clinical Prognostic Stage Groups
+                        </label>
+                        <span class="badge bg-warning text-dark">Includes Biomarkers</span>
+                    </div>
+                    <p class="small text-muted mb-3">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Stage groups incorporate Grade, HER2, ER, and PR status in addition to TNM categories.
+                    </p>
+                    
+                    <div class="tnm-content highlightable-text" data-field="prognostic-stage-groups">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered table-hover">
+                                <thead class="table-warning">
+                                    <tr>
+                                        <th style="min-width: 150px;">TNM</th>
+                                        <th>Grade</th>
+                                        <th>HER2</th>
+                                        <th>ER</th>
+                                        <th>PR</th>
+                                        <th>Stage</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for group in clinical_prognostic_stage_groups %}
+                                    <tr>
+                                        <td><code class="text-dark">{{ group.tnm }}</code></td>
+                                        <td>
+                                            {% if group.grade == 'G1' %}
+                                            <span class="badge bg-success">{{ group.grade }}</span>
+                                            {% elif group.grade == 'G2' %}
+                                            <span class="badge bg-warning text-dark">{{ group.grade }}</span>
+                                            {% elif group.grade == 'G3' %}
+                                            <span class="badge bg-danger">{{ group.grade }}</span>
+                                            {% else %}
+                                            <span class="badge bg-secondary">{{ group.grade }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if group.her2 == 'Positive' %}
+                                            <span class="badge bg-info">+</span>
+                                            {% elif group.her2 == 'Negative' %}
+                                            <span class="badge bg-secondary">-</span>
+                                            {% else %}
+                                            <span class="text-muted">{{ group.her2 }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if group.er == 'Positive' %}
+                                            <span class="badge bg-info">+</span>
+                                            {% elif group.er == 'Negative' %}
+                                            <span class="badge bg-secondary">-</span>
+                                            {% else %}
+                                            <span class="text-muted">{{ group.er }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if group.pr == 'Positive' %}
+                                            <span class="badge bg-info">+</span>
+                                            {% elif group.pr == 'Negative' %}
+                                            <span class="badge bg-secondary">-</span>
+                                            {% else %}
+                                            <span class="text-muted">{{ group.pr }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td><strong class="text-primary">{{ group.stage }}</strong></td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>

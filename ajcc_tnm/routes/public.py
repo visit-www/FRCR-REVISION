@@ -292,6 +292,7 @@ def tnm_view(section_slug, disease_slug):
     n_definitions = {}
     m_definitions = []
     stage_groups = []
+    clinical_prognostic_stage_groups = []
     explanatory_notes_html = None
     quick_reference_html = None
     curated_quick_reference = None  # Admin's additional notes for quick reference
@@ -327,6 +328,9 @@ def tnm_view(section_slug, disease_slug):
         n_definitions = staging_data.get_n_definitions()
         m_definitions = staging_data.get_m_definitions()
         stage_groups = staging_data.get_stage_groups()
+        
+        # Get clinical prognostic stage groups (for cancers like Breast that use biomarkers)
+        clinical_prognostic_stage_groups = staging_data.get_json_section('clinical_prognostic_stage_groups') or []
         
         # Get cancers staged and not staged (handle nested JSON structure)
         cancers_staged_data = staging_data.get_json_section('cancers_staged') or {}
@@ -424,6 +428,7 @@ def tnm_view(section_slug, disease_slug):
             n_definitions=n_definitions,
             m_definitions=m_definitions,
             stage_groups=stage_groups,
+            clinical_prognostic_stage_groups=clinical_prognostic_stage_groups,
             cancers_staged=cancers_staged,
             cancers_not_staged=cancers_not_staged,
             quick_reference_html=quick_reference_html,
