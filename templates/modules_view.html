@@ -47,6 +47,7 @@
             {% elif 'CNS' in module.display_name or 'Head' in module.display_name or 'Neck' in module.display_name %}
                 {% set module_icon_color = '#9fa8da' %}
                 {% set module_icon_bg = '#eff0fb' %}
+                {% set is_head_neck = true %}
             {% else %}
                 {% set module_icon_color = '#90a4ae' %}
                 {% set module_icon_bg = '#f1f3f4' %}
@@ -56,7 +57,11 @@
                 <div class="card-body p-4">
                     <div class="d-flex align-items-start mb-3">
                         <div class="module-icon me-3" style="color: {{ module_icon_color }}; background: {{ module_icon_bg }}; border-radius: 50%;">
+                            {% if is_head_neck %}
+                            <img src="https://res.cloudinary.com/dx7b7chvn/image/upload/v1769760432/head-neck-icon_wdshui.png" alt="Head & Neck" style="width: 32px; height: 32px;">
+                            {% else %}
                             <i class="{{ module.icon }}"></i>
+                            {% endif %}
                         </div>
                         <div class="flex-grow-1">
                             <h5 class="card-title mb-1">{{ module.display_name }}</h5>

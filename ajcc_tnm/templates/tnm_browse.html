@@ -39,7 +39,11 @@
             <div class="card h-100 shadow-sm">
                 <div class="card-body">
                     <h5 class="card-title">
+                        {% if 'Head' in section.section_name and 'Neck' in section.section_name %}
+                        <img src="https://res.cloudinary.com/dx7b7chvn/image/upload/v1769760432/head-neck-icon_wdshui.png" alt="Head & Neck" style="width: 20px; height: 20px; margin-right: 8px; vertical-align: middle;">
+                        {% else %}
                         <i class="fas fa-folder-open text-primary me-2"></i>
+                        {% endif %}
                         {{ section.section_name }}
                     </h5>
                     <p class="card-text text-muted">View diseases in this section</p>

@@ -5,7 +5,7 @@
     <li class="breadcrumb-item"><a href="/api/admin/tnm/management" class="text-white">TNM Mgmt</a></li>
     {% endif %}
     <li class="breadcrumb-item"><a href="/tnm" class="text-white">Browse TNM Staging</a></li>
-    <li class="breadcrumb-item"><a href="/tnm/{{ section.slug }}" class="text-white">{{ section.section_name }}</a></li>
+    <li class="breadcrumb-item"><a href="/tnm/{{ section.slug }}" class="text-white">{% if 'Head' in section.section_name and 'Neck' in section.section_name %}<img src="https://res.cloudinary.com/dx7b7chvn/image/upload/v1769760432/head-neck-icon_wdshui.png" alt="Head & Neck" style="width: 14px; height: 14px; margin-right: 4px; vertical-align: middle; filter: brightness(0) invert(1);">{% endif %}{{ section.section_name }}</a></li>
     <li class="breadcrumb-item active text-white" aria-current="page">{{ disease_site.disease_name }}</li>
 {% endblock %}
 
@@ -19,7 +19,7 @@
             <li class="breadcrumb-item"><a href="/api/admin/tnm/management"><i class="fas fa-cog"></i> TNM Management</a></li>
             {% endif %}
             <li class="breadcrumb-item"><a href="/tnm"><i class="fas fa-stethoscope"></i> Browse TNM Staging</a></li>
-            <li class="breadcrumb-item"><a href="/tnm/{{ section.slug }}">{{ section.section_name }}</a></li>
+            <li class="breadcrumb-item"><a href="/tnm/{{ section.slug }}">{% if 'Head' in section.section_name and 'Neck' in section.section_name %}<img src="https://res.cloudinary.com/dx7b7chvn/image/upload/v1769760432/head-neck-icon_wdshui.png" alt="Head & Neck" style="width: 16px; height: 16px; margin-right: 4px; vertical-align: middle;">{% endif %}{{ section.section_name }}</a></li>
             <li class="breadcrumb-item active" aria-current="page">{{ disease_site.disease_name }}</li>
         </ol>
     </nav>

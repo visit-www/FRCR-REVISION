@@ -8,7 +8,12 @@
 </li>
 <li class="breadcrumb-item">
     <a href="{{ url_for('tnm.section_page', section_slug=section.slug) }}" class="text-white text-decoration-none">
-        <i class="fas fa-folder me-1"></i>{{ section.section_name }}
+        {% if 'Head' in section.section_name and 'Neck' in section.section_name %}
+        <img src="https://res.cloudinary.com/dx7b7chvn/image/upload/v1769760432/head-neck-icon_wdshui.png" alt="Head & Neck" style="width: 14px; height: 14px; margin-right: 4px; vertical-align: middle; filter: brightness(0) invert(1);">
+        {% else %}
+        <i class="fas fa-folder me-1"></i>
+        {% endif %}
+        {{ section.section_name }}
     </a>
 </li>
 <li class="breadcrumb-item active text-white" aria-current="page">
@@ -54,7 +59,7 @@ console.log('[TinyMCE Loader] TNM Edit - checking if TinyMCE loaded...');
             <ol class="breadcrumb breadcrumb-custom">
                 <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}"><i class="fas fa-home me-1"></i>Home</a></li>
                 <li class="breadcrumb-item"><a href="{{ url_for('tnm.browse') }}"><i class="fas fa-sitemap me-1"></i>TNM Browser</a></li>
-                <li class="breadcrumb-item"><a href="{{ url_for('tnm.section_page', section_slug=section.slug) }}"><i class="fas fa-folder me-1"></i>{{ section.section_name }}</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('tnm.section_page', section_slug=section.slug) }}">{% if 'Head' in section.section_name and 'Neck' in section.section_name %}<img src="https://res.cloudinary.com/dx7b7chvn/image/upload/v1769760432/head-neck-icon_wdshui.png" alt="Head & Neck" style="width: 16px; height: 16px; margin-right: 4px; vertical-align: middle;">{% else %}<i class="fas fa-folder me-1"></i>{% endif %}{{ section.section_name }}</a></li>
                 <li class="breadcrumb-item active"><i class="fas fa-edit me-1"></i>Edit: {{ disease.disease_name }}</li>
             </ol>
         </nav>
