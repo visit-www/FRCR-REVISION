@@ -115,10 +115,115 @@ SET curated_quick_reference_html = '<div class="alert alert-primary">
 WHERE disease_site_id = 92;
 
 -- ============================================================
+-- DISEASE: Cutaneous Carcinoma of the Head and Neck
+-- Production ID: 97
+-- (Was corrupted - TNM data wiped, wrong notes applied)
+-- ============================================================
+
+UPDATE ajcc_staging_data
+SET tnm_data_json = '{
+  "t_definitions": [
+    {
+      "subsite": "Default",
+      "categories": [
+        {"category": "TX", "criteria": "Primary tumor cannot be assessed"},
+        {"category": "Tis", "criteria": "Carcinoma in situ"},
+        {"category": "T1", "criteria": "Tumor ≤2 cm in greatest dimension"},
+        {"category": "T2", "criteria": "Tumor >2 cm but ≤4 cm in greatest dimension"},
+        {"category": "T3", "criteria": "Tumor >4 cm in maximum dimension OR minor bone erosion OR perineural invasion OR deep invasion"},
+        {"category": "T4", "criteria": "Tumor with gross cortical bone/marrow, skull base invasion and/or skull base foramen invasion"},
+        {"category": "T4a", "criteria": "Tumor with gross cortical bone/marrow invasion"},
+        {"category": "T4b", "criteria": "Tumor with skull base invasion and/or skull base foramen involvement"}
+      ]
+    }
+  ],
+  "n_definitions": [
+    {
+      "subsite": "Clinical (cN)",
+      "categories": [
+        {"category": "NX", "criteria": "Regional lymph nodes cannot be assessed"},
+        {"category": "N0", "criteria": "No regional lymph node metastasis"},
+        {"category": "N1", "criteria": "Metastasis in a single ipsilateral lymph node, ≤3 cm and ENE(-)"},
+        {"category": "N2", "criteria": "Metastasis in single ipsilateral node >3 cm but ≤6 cm and ENE(-); or multiple ipsilateral nodes ≤6 cm and ENE(-); or bilateral/contralateral nodes ≤6 cm and ENE(-)"},
+        {"category": "N2a", "criteria": "Metastasis in single ipsilateral node >3 cm but ≤6 cm and ENE(-)"},
+        {"category": "N2b", "criteria": "Metastasis in multiple ipsilateral nodes, none >6 cm and ENE(-)"},
+        {"category": "N2c", "criteria": "Metastasis in bilateral or contralateral lymph nodes, none >6 cm and ENE(-)"},
+        {"category": "N3", "criteria": "Metastasis in node >6 cm and ENE(-); or any node(s) with clinically overt ENE(+)"},
+        {"category": "N3a", "criteria": "Metastasis in node >6 cm and ENE(-)"},
+        {"category": "N3b", "criteria": "Metastasis in any node(s) with ENE(+)"}
+      ]
+    },
+    {
+      "subsite": "Pathological (pN)",
+      "categories": [
+        {"category": "NX", "criteria": "Regional lymph nodes cannot be assessed"},
+        {"category": "N0", "criteria": "No regional lymph node metastasis"},
+        {"category": "N1", "criteria": "Metastasis in a single ipsilateral lymph node, ≤3 cm and ENE(-)"},
+        {"category": "N2", "criteria": "Single ipsilateral node ≤3 cm with ENE(+); or >3 cm but ≤6 cm and ENE(-); or multiple ipsilateral ≤6 cm and ENE(-); or bilateral/contralateral ≤6 cm and ENE(-)"},
+        {"category": "N2a", "criteria": "Single ipsilateral node ≤3 cm with ENE(+); or single ipsilateral >3 cm but ≤6 cm and ENE(-)"},
+        {"category": "N2b", "criteria": "Multiple ipsilateral nodes, none >6 cm and ENE(-)"},
+        {"category": "N2c", "criteria": "Bilateral or contralateral nodes, none >6 cm and ENE(-)"},
+        {"category": "N3", "criteria": "Node >6 cm and ENE(-); or single ipsilateral >3 cm with ENE(+); or multiple nodes any with ENE(+); or single contralateral any size with ENE(+)"},
+        {"category": "N3a", "criteria": "Metastasis in node >6 cm and ENE(-)"},
+        {"category": "N3b", "criteria": "Single ipsilateral >3 cm with ENE(+); or multiple nodes any with ENE(+); or single contralateral any size with ENE(+)"}
+      ]
+    }
+  ],
+  "m_definitions": [
+    {
+      "subsite": "Default",
+      "categories": [
+        {"category": "M0", "criteria": "No distant metastasis"},
+        {"category": "M1", "criteria": "Distant metastasis"}
+      ]
+    }
+  ],
+  "stage_groups": [
+    {"T": "Tis", "N": "N0", "M": "M0", "stage": "0"},
+    {"T": "T1", "N": "N0", "M": "M0", "stage": "I"},
+    {"T": "T2", "N": "N0", "M": "M0", "stage": "II"},
+    {"T": "T3", "N": "N0", "M": "M0", "stage": "III"},
+    {"T": "T1", "N": "N1", "M": "M0", "stage": "III"},
+    {"T": "T2", "N": "N1", "M": "M0", "stage": "III"},
+    {"T": "T3", "N": "N1", "M": "M0", "stage": "III"},
+    {"T": "T1", "N": "N2", "M": "M0", "stage": "IV"},
+    {"T": "T2", "N": "N2", "M": "M0", "stage": "IV"},
+    {"T": "T3", "N": "N2", "M": "M0", "stage": "IV"},
+    {"T": "Any T", "N": "N3", "M": "M0", "stage": "IV"},
+    {"T": "T4", "N": "Any N", "M": "M0", "stage": "IV"},
+    {"T": "Any T", "N": "Any N", "M": "M1", "stage": "IV"}
+  ]
+}',
+curated_quick_reference_html = '<div class="alert alert-info">
+<h5><i class="fas fa-info-circle me-2"></i>Cutaneous Carcinoma of the Head and Neck - Key Notes</h5>
+
+<h6>Deep Invasion (T3 criteria):</h6>
+<ul>
+<li>Invasion beyond subcutaneous fat OR</li>
+<li>Depth &gt;6 mm (measured from granular layer of adjacent normal epidermis to base of tumor)</li>
+</ul>
+
+<h6>Perineural Invasion (T3 criteria):</h6>
+<ul>
+<li>Tumor cells within nerve sheath deeper than dermis, OR</li>
+<li>Nerve ≥0.1 mm caliber, OR</li>
+<li>Clinical/radiographic involvement of named nerves (without skull base invasion)</li>
+</ul>
+
+<h6>N Category Modifiers:</h6>
+<ul>
+<li><strong>U</strong> = metastasis above lower border of cricoid</li>
+<li><strong>L</strong> = metastasis below lower border of cricoid</li>
+<li>Record ENE status as <strong>ENE(-)</strong> or <strong>ENE(+)</strong></li>
+</ul>
+</div>'
+WHERE disease_site_id = 97;
+
+-- ============================================================
 -- CLEANUP: Remove any IntelligentTNMData that was incorrectly added
 -- ============================================================
 
-DELETE FROM intelligent_tnm_data WHERE disease_site_id IN (92, 98);
+DELETE FROM intelligent_tnm_data WHERE disease_site_id IN (92, 97, 98);
 
 -- ============================================================
 -- VERIFICATION QUERIES (run these to confirm changes)
