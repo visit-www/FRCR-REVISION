@@ -89,9 +89,17 @@ class AJCCStagingData(db.Model):
         return tnm.get('t_definitions', []) if tnm else []
     
     def get_n_definitions(self):
-        """Get N stage definitions (clinical and pathological)"""
+        """Get N stage definitions (clinical and pathological). Normalizes list format to dict."""
         tnm = self.get_tnm_data()
-        return tnm.get('n_definitions', {}) if tnm else {}
+        raw = tnm.get('n_definitions', {}) if tnm else {}
+        if isinstance(raw, list):
+            return {'clinical': raw, 'pathological': []}
+        if isinstance(raw, dict) and ('clinical' in raw or 'pathological' in raw):
+            return {
+                'clinical': raw.get('clinical', []),
+                'pathological': raw.get('pathological', []),
+            }
+        return {'clinical': [], 'pathological': []}
     
     def get_m_definitions(self):
         """Get M stage definitions"""

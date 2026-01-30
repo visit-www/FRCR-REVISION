@@ -223,9 +223,10 @@
                         {% endif %}
                         
                         <!-- N Definitions -->
-                        {% if tnm_data.n_definitions %}
+                        {% set n_definitions = staging_data.get_n_definitions() %}
+                        {% if n_definitions.clinical or n_definitions.pathological %}
                         <h6 class="text-primary mb-3"><i class="fas fa-circle-nodes me-2"></i>N Stage (Regional Lymph Nodes)</h6>
-                        {% if tnm_data.n_definitions.clinical %}
+                        {% if n_definitions.clinical %}
                         <p class="text-muted mb-2"><em>Clinical (cN)</em></p>
                         <div class="table-responsive mb-4">
                             <table class="table table-bordered table-hover tnm-table">
@@ -236,7 +237,7 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {% for cat in tnm_data.n_definitions.clinical %}
+                                    {% for cat in n_definitions.clinical %}
                                     <tr>
                                         <td class="fw-bold">{{ cat.category }}</td>
                                         <td>{{ cat.criteria }}</td>
@@ -246,7 +247,7 @@
                             </table>
                         </div>
                         {% endif %}
-                        {% if tnm_data.n_definitions.pathological %}
+                        {% if n_definitions.pathological %}
                         <p class="text-muted mb-2"><em>Pathological (pN)</em></p>
                         <div class="table-responsive mb-4">
                             <table class="table table-bordered table-hover tnm-table">
@@ -257,7 +258,7 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {% for cat in tnm_data.n_definitions.pathological %}
+                                    {% for cat in n_definitions.pathological %}
                                     <tr>
                                         <td class="fw-bold">{{ cat.category }}</td>
                                         <td>{{ cat.criteria }}</td>
