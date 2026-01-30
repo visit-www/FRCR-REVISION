@@ -1,6 +1,9 @@
 -- Migration: Add display_order column to ajcc_disease_site
 -- Purpose: Enable custom ordering of disease sites within sections
 -- Date: 2026-01-30
+--
+-- Prefer Alembic: flask db upgrade add_display_order_ajcc_site
+-- (Use that target if you have multiple heads: flask db upgrade add_display_order_ajcc_site)
 
 -- Add display_order column if it doesn't exist
 ALTER TABLE ajcc_disease_site 
