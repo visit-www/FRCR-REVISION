@@ -121,7 +121,7 @@ def section_page(section_slug):
     section = AJCCBodySection.query.filter_by(slug=section_slug).first_or_404()
     diseases = AJCCDiseaseSite.query.filter_by(
         body_section_id=section.id
-    ).order_by(AJCCDiseaseSite.disease_name).all()
+    ).order_by(AJCCDiseaseSite.display_order, AJCCDiseaseSite.disease_name).all()
     
     return render_template('tnm_section.html', section=section, diseases=diseases)
 

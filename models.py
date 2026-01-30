@@ -1030,6 +1030,9 @@ class AJCCDiseaseSite(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
+    # Display ordering within section
+    display_order = db.Column(db.Integer, default=0)  # Lower numbers appear first
+    
     # FRCR App Integration - maps AJCC sites to app's module/body_part/age_group
     frcr_module = db.Column(db.String(100), nullable=True)  # e.g., "CNS and Head & Neck (incl. spine, eyes, ENT, salivary, dental)"
     frcr_body_part = db.Column(db.String(100), nullable=True)  # e.g., "Brain and Pituitary", "HEAD_NECK"

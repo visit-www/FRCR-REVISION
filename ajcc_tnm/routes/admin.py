@@ -65,7 +65,7 @@ def list_diseases():
         if not section_id:
             return jsonify({'success': False, 'error': 'section_id required'}), 400
         
-        diseases = AJCCDiseaseSite.query.filter_by(body_section_id=section_id).order_by(AJCCDiseaseSite.disease_name).all()
+        diseases = AJCCDiseaseSite.query.filter_by(body_section_id=section_id).order_by(AJCCDiseaseSite.display_order, AJCCDiseaseSite.disease_name).all()
         return jsonify({
             'success': True,
             'diseases': [{
