@@ -154,9 +154,16 @@
                                 <label for="tDefinition" class="form-label fw-bold" style="color: #17a2b8;">
                                     <i class="fas fa-bullseye me-1"></i>T - Primary Tumor
                                 </label>
-                                <select id="tDefinition" class="form-select" disabled>
-                                    <option value="">Select T definition...</option>
-                                </select>
+                                <div class="tnm-def-dropdown-wrapper" id="tDefinitionWrapper">
+                                    <input type="hidden" id="tDefinition" value="">
+                                    <div class="tnm-def-dropdown">
+                                        <button type="button" class="tnm-def-trigger form-select text-start" disabled aria-haspopup="listbox" aria-expanded="false" aria-label="Select T definition">
+                                            <span class="tnm-def-trigger-text">Select T definition...</span>
+                                            <i class="fas fa-chevron-down tnm-def-chevron ms-auto"></i>
+                                        </button>
+                                        <div class="tnm-def-panel" role="listbox" aria-hidden="true"></div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                         
@@ -166,9 +173,16 @@
                                 <label for="nDefinition" class="form-label fw-bold" style="color: #fd7e14;">
                                     <i class="fas fa-network-wired me-1"></i>N - Regional Nodes
                                 </label>
-                                <select id="nDefinition" class="form-select" disabled>
-                                    <option value="">Select N definition...</option>
-                                </select>
+                                <div class="tnm-def-dropdown-wrapper" id="nDefinitionWrapper">
+                                    <input type="hidden" id="nDefinition" value="">
+                                    <div class="tnm-def-dropdown">
+                                        <button type="button" class="tnm-def-trigger form-select text-start" disabled aria-haspopup="listbox" aria-expanded="false" aria-label="Select N definition">
+                                            <span class="tnm-def-trigger-text">Select N definition...</span>
+                                            <i class="fas fa-chevron-down tnm-def-chevron ms-auto"></i>
+                                        </button>
+                                        <div class="tnm-def-panel" role="listbox" aria-hidden="true"></div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                         
@@ -178,9 +192,16 @@
                                 <label for="mDefinition" class="form-label fw-bold" style="color: #dc3545;">
                                     <i class="fas fa-globe me-1"></i>M - Distant Metastasis
                                 </label>
-                                <select id="mDefinition" class="form-select" disabled>
-                                    <option value="">Select M definition...</option>
-                                </select>
+                                <div class="tnm-def-dropdown-wrapper" id="mDefinitionWrapper">
+                                    <input type="hidden" id="mDefinition" value="">
+                                    <div class="tnm-def-dropdown">
+                                        <button type="button" class="tnm-def-trigger form-select text-start" disabled aria-haspopup="listbox" aria-expanded="false" aria-label="Select M definition">
+                                            <span class="tnm-def-trigger-text">Select M definition...</span>
+                                            <i class="fas fa-chevron-down tnm-def-chevron ms-auto"></i>
+                                        </button>
+                                        <div class="tnm-def-panel" role="listbox" aria-hidden="true"></div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                         
@@ -521,10 +542,9 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
-    // Definition select change handlers
-    [tDefinitionSelect, nDefinitionSelect, mDefinitionSelect].forEach((select, index) => {
-        select.addEventListener('change', function() {
-            // Update derived display
+    // Definition dropdown change handlers (hidden inputs dispatch change)
+    [tDefinitionSelect, nDefinitionSelect, mDefinitionSelect].forEach((inputEl, index) => {
+        inputEl.addEventListener('change', function() {
             const category = this.value;
             if (index === 0) {
                 derivedT.textContent = category || 'T?';
@@ -539,6 +559,56 @@ document.addEventListener('DOMContentLoaded', function() {
             updateCalculateButton();
         });
     });
+    
+    // Custom definition dropdown: toggle panel, select option, close on outside click
+    definitionSection.addEventListener('click', function(e) {
+        const trigger = e.target.closest('.tnm-def-trigger');
+        const option = e.target.closest('.tnm-def-option');
+        const dropdown = e.target.closest('.tnm-def-dropdown');
+        
+        if (option && dropdown) {
+            const value = option.dataset.value;
+            const criteria = option.dataset.criteria || value;
+            const inputEl = dropdown.closest('.tnm-def-dropdown-wrapper').querySelector('input[type="hidden"]');
+            const triggerText = dropdown.querySelector('.tnm-def-trigger-text');
+            const panel = dropdown.querySelector('.tnm-def-panel');
+            
+            inputEl.value = value;
+            triggerText.textContent = criteria;
+            panel.style.display = 'none';
+            panel.setAttribute('aria-hidden', 'true');
+            dropdown.querySelector('.tnm-def-trigger').setAttribute('aria-expanded', 'false');
+            inputEl.dispatchEvent(new Event('change', { bubbles: true }));
+            return;
+        }
+        
+        if (trigger && !trigger.disabled) {
+            const panel = trigger.nextElementSibling;
+            const isOpen = panel.style.display === 'block';
+            document.querySelectorAll('.tnm-def-panel').forEach(p => { p.style.display = 'none'; p.setAttribute('aria-hidden', 'true'); });
+            document.querySelectorAll('.tnm-def-trigger').forEach(t => t.setAttribute('aria-expanded', 'false'));
+            if (!isOpen) {
+                panel.style.display = 'block';
+                panel.setAttribute('aria-hidden', 'false');
+                trigger.setAttribute('aria-expanded', 'true');
+            }
+        }
+    });
+    
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.tnm-def-dropdown')) {
+            closeAllDefinitionPanels();
+        }
+    });
+    
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') closeAllDefinitionPanels();
+    });
+    
+    function closeAllDefinitionPanels() {
+        document.querySelectorAll('.tnm-def-panel').forEach(p => { p.style.display = 'none'; p.setAttribute('aria-hidden', 'true'); });
+        document.querySelectorAll('.tnm-def-trigger').forEach(t => t.setAttribute('aria-expanded', 'false'));
+    }
     
     // Enable calculate button when all categories selected
     [tCategorySelect, nCategorySelect, mCategorySelect].forEach(select => {
@@ -630,13 +700,10 @@ document.addEventListener('DOMContentLoaded', function() {
             select.disabled = true;
         });
         
-        // Reset definition selects
-        tDefinitionSelect.innerHTML = '<option value="">Select T definition...</option>';
-        tDefinitionSelect.disabled = true;
-        nDefinitionSelect.innerHTML = '<option value="">Select N definition...</option>';
-        nDefinitionSelect.disabled = true;
-        mDefinitionSelect.innerHTML = '<option value="">Select M definition...</option>';
-        mDefinitionSelect.disabled = true;
+        // Reset definition dropdowns (custom full-text dropdowns)
+        resetDefinitionDropdown(tDefinitionSelect, 'T');
+        resetDefinitionDropdown(nDefinitionSelect, 'N');
+        resetDefinitionDropdown(mDefinitionSelect, 'M');
         
         // Reset derived display
         derivedT.textContent = 'T?';
@@ -672,20 +739,17 @@ document.addEventListener('DOMContentLoaded', function() {
         populateSelect(mCategorySelect, mCategories.map(c => ({ value: c, label: c })));
         mCategorySelect.disabled = false;
         
-        // T definitions (Definition mode)
+        // T definitions (Definition mode) - custom dropdown shows full text
         const tDefinitions = data.t_definitions?.[subsite] || data.t_definitions?.['default'] || [];
         populateDefinitionSelect(tDefinitionSelect, tDefinitions, 'T');
-        tDefinitionSelect.disabled = false;
         
         // N definitions (Definition mode)
         const nDefinitions = data.n_definitions?.[nKey] || [];
         populateDefinitionSelect(nDefinitionSelect, nDefinitions, 'N');
-        nDefinitionSelect.disabled = false;
         
         // M definitions (Definition mode)
         const mDefinitions = data.m_definitions || [];
         populateDefinitionSelect(mDefinitionSelect, mDefinitions, 'M');
-        mDefinitionSelect.disabled = false;
         
         // Reset derived display
         derivedT.textContent = 'T?';
@@ -710,38 +774,82 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    function populateDefinitionSelect(select, definitions, prefix) {
-        const currentValue = select.value;
-        select.innerHTML = `<option value="">Select ${prefix} definition...</option>`;
+    function getDefinitionDropdownParts(inputEl) {
+        const wrapper = inputEl.closest('.tnm-def-dropdown-wrapper');
+        if (!wrapper) return null;
+        return {
+            trigger: wrapper.querySelector('.tnm-def-trigger'),
+            triggerText: wrapper.querySelector('.tnm-def-trigger-text'),
+            panel: wrapper.querySelector('.tnm-def-panel')
+        };
+    }
+    
+    function resetDefinitionDropdown(inputEl, prefix) {
+        inputEl.value = '';
+        const parts = getDefinitionDropdownParts(inputEl);
+        if (parts) {
+            parts.triggerText.textContent = `Select ${prefix} definition...`;
+            parts.panel.innerHTML = '';
+            parts.panel.style.display = 'none';
+            parts.trigger.disabled = true;
+            parts.trigger.setAttribute('aria-expanded', 'false');
+        }
+    }
+    
+    function populateDefinitionSelect(inputEl, definitions, prefix) {
+        const currentValue = inputEl.value;
+        const parts = getDefinitionDropdownParts(inputEl);
+        if (!parts) return;
+        
+        parts.panel.innerHTML = '';
+        const placeholder = `Select ${prefix} definition...`;
+        parts.triggerText.textContent = placeholder;
+        inputEl.value = '';
+        parts.trigger.disabled = definitions.length === 0;
         
         definitions.forEach(def => {
-            const option = document.createElement('option');
-            option.value = def.category;
-            // Format: "Criteria text (Category)" e.g., "Tumor >2cm (T2)"
             const criteria = def.criteria || def.category;
-            option.textContent = `${criteria} (${def.category})`;
-            select.appendChild(option);
+            const option = document.createElement('div');
+            option.className = 'tnm-def-option';
+            option.setAttribute('role', 'option');
+            option.dataset.value = def.category;
+            option.dataset.criteria = criteria;
+            option.innerHTML = `
+                <span class="tnm-def-badge">${def.category}</span>
+                <span class="tnm-def-criteria">${escapeHtml(criteria)}</span>
+            `;
+            parts.panel.appendChild(option);
         });
         
         // Restore value if still valid
         if (currentValue && definitions.some(d => d.category === currentValue)) {
-            select.value = currentValue;
+            const def = definitions.find(d => d.category === currentValue);
+            if (def) {
+                inputEl.value = currentValue;
+                parts.triggerText.textContent = def.criteria || def.category;
+            }
         }
+    }
+    
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
     
     function syncModeValues() {
         if (inputMode === 'definition') {
             // Sync from direct to definition mode
             if (tCategorySelect.value) {
-                tDefinitionSelect.value = tCategorySelect.value;
+                setDefinitionDropdownValue(tDefinitionSelect, tCategorySelect.value);
                 derivedT.textContent = tCategorySelect.value;
             }
             if (nCategorySelect.value) {
-                nDefinitionSelect.value = nCategorySelect.value;
+                setDefinitionDropdownValue(nDefinitionSelect, nCategorySelect.value);
                 derivedN.textContent = nCategorySelect.value;
             }
             if (mCategorySelect.value) {
-                mDefinitionSelect.value = mCategorySelect.value;
+                setDefinitionDropdownValue(mDefinitionSelect, mCategorySelect.value);
                 derivedM.textContent = mCategorySelect.value;
             }
         } else {
@@ -755,6 +863,15 @@ document.addEventListener('DOMContentLoaded', function() {
             if (mDefinitionSelect.value) {
                 mCategorySelect.value = mDefinitionSelect.value;
             }
+        }
+    }
+    
+    function setDefinitionDropdownValue(inputEl, value) {
+        inputEl.value = value;
+        const parts = getDefinitionDropdownParts(inputEl);
+        if (parts) {
+            const option = Array.from(parts.panel.querySelectorAll('.tnm-def-option')).find(o => o.dataset.value === value);
+            parts.triggerText.textContent = option ? (option.dataset.criteria || value) : value;
         }
     }
     
@@ -913,6 +1030,68 @@ document.addEventListener('DOMContentLoaded', function() {
     background-color: #5E899E;
     border-color: #5E899E;
     color: white;
+}
+
+/* Definition dropdown - inline expand, full text, no truncation */
+.tnm-def-dropdown-wrapper { }
+.tnm-def-dropdown { }
+.tnm-def-trigger {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    min-height: 38px;
+    padding: 0.375rem 0.75rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.tnm-def-trigger .tnm-def-trigger-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.tnm-def-trigger .tnm-def-chevron { flex-shrink: 0; opacity: 0.7; }
+.tnm-def-trigger:disabled { cursor: not-allowed; opacity: 0.65; }
+/* Inline panel - flows below trigger, no z-index/overflow hacks */
+.tnm-def-panel {
+    display: none;
+    margin-top: 6px;
+    padding: 8px;
+    max-height: 280px;
+    overflow-y: auto;
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+}
+.tnm-def-option {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    padding: 10px 12px;
+    margin-bottom: 4px;
+    cursor: pointer;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    transition: background 0.15s, border-color 0.15s;
+}
+.tnm-def-option:last-child { margin-bottom: 0; }
+.tnm-def-option:hover { background: #f0f7ff; border-color: #5E899E40; }
+.tnm-def-option:focus { outline: none; background: #e8f4fc; border-color: #5E899E; }
+.tnm-def-badge {
+    flex-shrink: 0;
+    font-weight: 600;
+    font-size: 0.85em;
+    min-width: 36px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: #5E899E20;
+    color: #5E899E;
+}
+.tnm-def-criteria {
+    flex: 1;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    white-space: normal;
+    font-size: 0.95rem;
+    line-height: 1.4;
+    color: #333;
+    min-width: 0;
 }
 </style>
 {% endblock %}
