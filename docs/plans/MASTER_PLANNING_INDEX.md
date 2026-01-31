@@ -1,8 +1,8 @@
 # FRCR Revision App - Master Planning Index
 
-> **Last Updated:** January 29, 2026  
+> **Last Updated:** January 31, 2026  
 > **Status:** Active Development  
-> **Total Plans:** 6 Feature Areas
+> **Total Plans:** 7 Feature Areas
 
 ---
 
@@ -22,6 +22,7 @@ This document serves as the master index for all planned features and enhancemen
 | 4 | TNM Calculator (Standalone) | High | Very High | Planned |
 | 5 | Business Model Implementation | High | Critical | Planned |
 | 6 | AI/RAG Knowledge System | Very High | Transformative | Planned |
+| 7 | Case DICOM Viewer | Medium-High | High | Planned |
 
 ---
 
@@ -228,6 +229,36 @@ Build an AI-powered knowledge system using RAG (Retrieval-Augmented Generation) 
 
 ---
 
+## Plan 7: Case DICOM Viewer
+
+**Priority:** 7 (Content Enhancement)  
+**Complexity:** Medium-High  
+**Estimated Effort:** ~12 days  
+**Dependencies:** Azure app registration, OneDrive account  
+**Branch:** `feature/case-dicom-viewer`
+
+### Summary
+Build a standalone, exportable module (`case_dicom_viewer`) that links OneDrive folders to cases via OAuth and share links, and displays image stacks (JPEG) in a DICOM-like viewer using Cornerstone3D. Admin adds image stack in edit_case; students view in view_case sidebar tab.
+
+### Key Deliverables
+- OneDrive OAuth and folder listing (share link parsing, Graph API)
+- Cornerstone3D viewer with plan selection (axial, sagittal, etc.) and slice scrolling
+- Admin UI: "Upload Image Stack" button and OneDrive link modal
+- Student UI: Image Stack tab with viewer component
+- Standalone module structure for export to other apps
+
+### Files Affected
+- `case_dicom_viewer/` (new module)
+- `models.py` (CaseImageStack)
+- `app.py` (blueprint registration)
+- `templates/edit_case.html`
+- `templates/view_case.html`
+
+### Plan Document
+📄 **Location:** `docs/plans/CASE_DICOM_VIEWER_PLAN.md`
+
+---
+
 ## Implementation Roadmap
 
 ```
@@ -236,7 +267,8 @@ Phase 1: Quick Wins (Week 1-2)
 └── ClinicalKey Integration
 
 Phase 2: Content Enhancement (Week 3-5)
-└── Reference Image Curation
+├── Reference Image Curation
+└── Case DICOM Viewer
 
 Phase 3: Core Features (Week 6-9)
 ├── TNM Calculator
@@ -287,6 +319,7 @@ Phase 4: AI Transformation (Week 10-20)
 | TNM Calculator | `.cursor/plans/tnm_calculator_standalone_*.plan.md` | - |
 | Business Model | - | `docs/plans/BUSINESS_MODEL_PLAN.md` |
 | AI/RAG System | `.cursor/plans/ai_rag_knowledge_system_*.plan.md` | - |
+| Case DICOM Viewer | - | `docs/plans/CASE_DICOM_VIEWER_PLAN.md` |
 
 ---
 
@@ -305,4 +338,5 @@ Phase 4: AI Transformation (Week 10-20)
 | Date | Change | Author |
 |------|--------|--------|
 | 2026-01-29 | Initial master index created | AI Assistant |
+| 2026-01-31 | Added Case DICOM Viewer plan | AI Assistant |
 
