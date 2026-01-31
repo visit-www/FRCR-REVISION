@@ -9,8 +9,9 @@ from models import (
     RevisionSession, RevisionHistory, CaseFlag, TextHighlight, CandidateNote,
     ImportedCaseStaging, UserRole, FRCRModule, BodyPart, AgeGroup,
     ForumMessage, ForumMessageVote, ForumMessageFlag,
+    CaseReference, TnmReference, AnatomyFigure, TNMImage,
     # AJCC TNM Models
-    AJCCBodySection, AJCCDiseaseSite, AJCCDiagnosisYear, 
+    AJCCBodySection, AJCCDiseaseSite, AJCCDiagnosisYear,
     AJCCStagingData, AJCCDiseaseMapping, AJCCStagingTimePrefix,
     IntelligentTNMData
 )
@@ -51,7 +52,7 @@ def download_backup():
             'metadata': {
                 'backup_date': datetime.utcnow().isoformat(),
                 'database_type': 'postgresql' if os.getenv('DATABASE_URL') or os.getenv('DATABASE_POSTGRES_URL_NON_POOLING') else 'sqlite',
-                'version': '2.3',  # Bumped for AJCC TNM data
+                'version': '2.4',  # Bumped for curated cols, disease display_order, refs, anatomy, tnm_images
                 'app_name': 'RadInsights'
             },
             'users': [],
@@ -76,6 +77,11 @@ def download_backup():
             'ajcc_disease_mappings': [],
             'ajcc_staging_time_prefixes': [],
             'intelligent_tnm_data': [],  # AI-generated TNM intelligence
+            # Reference and media tables
+            'case_references': [],
+            'tnm_references': [],
+            'anatomy_figures': [],
+            'tnm_images': [],
         }
         
         # Export users (with passwords for sync purposes)
@@ -257,6 +263,10 @@ def download_backup():
                 'disease_name': disease.disease_name,
                 'slug': disease.slug,
                 'ajcc_url_path': disease.ajcc_url_path,
+                'display_order': getattr(disease, 'display_order', 0) or 0,
+                'frcr_module': getattr(disease, 'frcr_module', None),
+                'frcr_body_part': getattr(disease, 'frcr_body_part', None),
+                'frcr_age_group': getattr(disease, 'frcr_age_group', None),
                 'created_at': disease.created_at.isoformat() if disease.created_at else None,
                 'updated_at': disease.updated_at.isoformat() if disease.updated_at else None,
             })
@@ -304,6 +314,11 @@ def download_backup():
                 'section_10_explanatory_notes_html': staging.section_10_explanatory_notes_html,
                 # Raw HTML content (full page backup)
                 'raw_html_content': staging.raw_html_content,
+                # Curated admin content
+                'curated_quick_reference_html': getattr(staging, 'curated_quick_reference_html', None),
+                'curated_explanatory_notes_html': getattr(staging, 'curated_explanatory_notes_html', None),
+                'curated_by_user_id': getattr(staging, 'curated_by_user_id', None),
+                'curated_at': staging.curated_at.isoformat() if getattr(staging, 'curated_at', None) else None,
             }
             backup_data['ajcc_staging_data'].append(staging_entry)
         
@@ -351,6 +366,81 @@ def download_backup():
                 'version': intel.version,
                 'created_at': intel.created_at.isoformat() if intel.created_at else None,
                 'updated_at': intel.updated_at.isoformat() if intel.updated_at else None,
+            })
+        
+        # Export Case References
+        for ref in CaseReference.query.all():
+            backup_data['case_references'].append({
+                'id': ref.id,
+                'case_id': ref.case_id,
+                'ref_number': ref.ref_number,
+                'title': ref.title,
+                'url': ref.url,
+                'journal': ref.journal,
+                'year': ref.year,
+                'is_inline': ref.is_inline,
+                'created_at': ref.created_at.isoformat() if ref.created_at else None,
+            })
+        
+        # Export TNM References
+        for ref in TnmReference.query.all():
+            backup_data['tnm_references'].append({
+                'id': ref.id,
+                'disease_site_id': ref.disease_site_id,
+                'ref_number': ref.ref_number,
+                'title': ref.title,
+                'url': ref.url,
+                'journal': ref.journal,
+                'year': ref.year,
+                'is_inline': ref.is_inline,
+                'created_at': ref.created_at.isoformat() if ref.created_at else None,
+            })
+        
+        # Export Anatomy Figures
+        for fig in AnatomyFigure.query.all():
+            backup_data['anatomy_figures'].append({
+                'id': fig.id,
+                'figure_id': fig.figure_id,
+                'title': fig.title,
+                'description': fig.description,
+                'source': fig.source,
+                'body_region': fig.body_region,
+                'figure_type': fig.figure_type,
+                'keywords': fig.keywords,
+                'modality': fig.modality,
+                'cancer_type': fig.cancer_type,
+                'staging_category': fig.staging_category,
+                'original_url': fig.original_url,
+                'cloudinary_url': fig.cloudinary_url,
+                'cloudinary_public_id': fig.cloudinary_public_id,
+                'thumbnail_url': fig.thumbnail_url,
+                'license': fig.license,
+                'attribution': fig.attribution,
+                'chapter': fig.chapter,
+                'page_number': fig.page_number,
+                'is_active': fig.is_active,
+                'created_at': fig.created_at.isoformat() if fig.created_at else None,
+                'updated_at': fig.updated_at.isoformat() if fig.updated_at else None,
+            })
+        
+        # Export TNM Images
+        for img in TNMImage.query.all():
+            backup_data['tnm_images'].append({
+                'id': img.id,
+                'disease_site_id': img.disease_site_id,
+                'diagnosis_year_id': img.diagnosis_year_id,
+                'title': img.title,
+                'description': img.description,
+                'alt_text': img.alt_text,
+                'cloudinary_url': img.cloudinary_url,
+                'cloudinary_public_id': img.cloudinary_public_id,
+                'width': img.width,
+                'height': img.height,
+                'image_type': img.image_type,
+                'uploaded_by_user_id': img.uploaded_by_user_id,
+                'is_active': img.is_active,
+                'created_at': img.created_at.isoformat() if img.created_at else None,
+                'updated_at': img.updated_at.isoformat() if img.updated_at else None,
             })
         
         # Create JSON file in memory
@@ -1753,6 +1843,14 @@ def restore_backup():
                 if overwrite_existing:
                     existing.disease_name = disease_data.get('disease_name', existing.disease_name)
                     existing.ajcc_url_path = disease_data.get('ajcc_url_path', existing.ajcc_url_path)
+                    if 'display_order' in disease_data:
+                        existing.display_order = disease_data.get('display_order', 0)
+                    if disease_data.get('frcr_module') is not None:
+                        existing.frcr_module = disease_data.get('frcr_module')
+                    if disease_data.get('frcr_body_part') is not None:
+                        existing.frcr_body_part = disease_data.get('frcr_body_part')
+                    if disease_data.get('frcr_age_group') is not None:
+                        existing.frcr_age_group = disease_data.get('frcr_age_group')
                     stats['ajcc_disease_sites']['updated'] += 1
                 else:
                     stats['ajcc_disease_sites']['skipped'] += 1
@@ -1764,6 +1862,10 @@ def restore_backup():
                     disease_name=disease_data.get('disease_name', ''),
                     slug=slug,
                     ajcc_url_path=disease_data.get('ajcc_url_path'),
+                    display_order=disease_data.get('display_order', 0),
+                    frcr_module=disease_data.get('frcr_module'),
+                    frcr_body_part=disease_data.get('frcr_body_part'),
+                    frcr_age_group=disease_data.get('frcr_age_group'),
                 )
                 db.session.add(disease)
                 db.session.flush()
@@ -1832,17 +1934,29 @@ def restore_backup():
                 'section_7_clinical_staging_workup_html', 'section_8_staging_rules_html',
                 'section_9_common_scenarios_html', 'section_10_explanatory_notes_html'
             ]
+            curated_columns = [
+                'curated_quick_reference_html', 'curated_explanatory_notes_html'
+            ]
             
             if existing:
                 if overwrite_existing:
-                    # Update all JSON and HTML columns
-                    for col in json_columns + html_columns:
+                    # Update all JSON, HTML, and curated columns
+                    for col in json_columns + html_columns + curated_columns:
                         if staging_data.get(col) is not None:
                             setattr(existing, col, staging_data[col])
                     if staging_data.get('raw_html_content') is not None:
                         existing.raw_html_content = staging_data['raw_html_content']
                     if staging_data.get('data_version') is not None:
                         existing.data_version = staging_data['data_version']
+                    if staging_data.get('curated_by_user_id') is not None:
+                        old_uid = staging_data['curated_by_user_id']
+                        existing.curated_by_user_id = user_id_map.get(old_uid) if old_uid else None
+                    if staging_data.get('curated_at'):
+                        try:
+                            val = staging_data['curated_at']
+                            existing.curated_at = datetime.fromisoformat(val.replace('Z', '+00:00')) if isinstance(val, str) else val
+                        except (ValueError, TypeError):
+                            pass
                     existing.last_updated_at = datetime.utcnow()
                     stats['ajcc_staging_data']['updated'] += 1
                 else:
@@ -1852,8 +1966,8 @@ def restore_backup():
                     disease_site_id=new_disease_id,
                     diagnosis_year_id=new_year_id,
                 )
-                # Set all JSON and HTML columns
-                for col in json_columns + html_columns:
+                # Set all JSON, HTML, and curated columns
+                for col in json_columns + html_columns + curated_columns:
                     if staging_data.get(col) is not None:
                         setattr(staging, col, staging_data[col])
                 if staging_data.get('raw_html_content') is not None:
@@ -1863,13 +1977,23 @@ def restore_backup():
                 # Set extracted_at from backup
                 if staging_data.get('extracted_at'):
                     try:
-                        staging.extracted_at = datetime.fromisoformat(staging_data['extracted_at']) if isinstance(staging_data['extracted_at'], str) else staging_data['extracted_at']
+                        val = staging_data['extracted_at']
+                        staging.extracted_at = datetime.fromisoformat(val.replace('Z', '+00:00')) if isinstance(val, str) else val
                     except (ValueError, TypeError):
                         pass
-                # Set extracted_by_user_id using user_id_map
+                # Set extracted_by_user_id and curated_by_user_id using user_id_map
                 if staging_data.get('extracted_by_user_id'):
                     old_user_id = staging_data['extracted_by_user_id']
                     staging.extracted_by_user_id = user_id_map.get(old_user_id) if old_user_id else None
+                if staging_data.get('curated_by_user_id'):
+                    old_uid = staging_data['curated_by_user_id']
+                    staging.curated_by_user_id = user_id_map.get(old_uid) if old_uid else None
+                if staging_data.get('curated_at'):
+                    try:
+                        val = staging_data['curated_at']
+                        staging.curated_at = datetime.fromisoformat(val.replace('Z', '+00:00')) if isinstance(val, str) else val
+                    except (ValueError, TypeError):
+                        pass
                 db.session.add(staging)
                 stats['ajcc_staging_data']['added'] += 1
         
@@ -2003,10 +2127,172 @@ def restore_backup():
                 db.session.add(intel)
                 stats['intelligent_tnm_data']['added'] += 1
         
+        # Import Case References (map case_id via case_id_map)
+        stats['case_references'] = {'added': 0, 'updated': 0, 'skipped': 0}
+        for ref_data in backup_data.get('case_references', []):
+            if not isinstance(ref_data, dict):
+                continue
+            old_case_id = ref_data.get('case_id')
+            new_case_id = case_id_map.get(old_case_id)
+            if not new_case_id:
+                stats['case_references']['skipped'] += 1
+                continue
+            existing = CaseReference.query.filter_by(case_id=new_case_id, ref_number=ref_data.get('ref_number')).first()
+            if existing and not overwrite_existing:
+                stats['case_references']['skipped'] += 1
+                continue
+            if existing and overwrite_existing:
+                existing.title = ref_data.get('title', '')
+                existing.url = ref_data.get('url', '')
+                existing.journal = ref_data.get('journal')
+                existing.year = ref_data.get('year')
+                existing.is_inline = ref_data.get('is_inline', False)
+                stats['case_references']['updated'] += 1
+            else:
+                ref = CaseReference(
+                    case_id=new_case_id,
+                    ref_number=ref_data.get('ref_number', 1),
+                    title=ref_data.get('title', ''),
+                    url=ref_data.get('url', ''),
+                    journal=ref_data.get('journal'),
+                    year=ref_data.get('year'),
+                    is_inline=ref_data.get('is_inline', False),
+                )
+                db.session.add(ref)
+                stats['case_references']['added'] += 1
+        
+        # Import TNM References (map disease_site_id via ajcc_disease_id_map)
+        stats['tnm_references'] = {'added': 0, 'updated': 0, 'skipped': 0}
+        for ref_data in backup_data.get('tnm_references', []):
+            if not isinstance(ref_data, dict):
+                continue
+            old_disease_id = ref_data.get('disease_site_id')
+            new_disease_id = ajcc_disease_id_map.get(old_disease_id)
+            if not new_disease_id:
+                stats['tnm_references']['skipped'] += 1
+                continue
+            existing = TnmReference.query.filter_by(disease_site_id=new_disease_id, ref_number=ref_data.get('ref_number')).first()
+            if existing and not overwrite_existing:
+                stats['tnm_references']['skipped'] += 1
+                continue
+            if existing and overwrite_existing:
+                existing.title = ref_data.get('title', '')
+                existing.url = ref_data.get('url', '')
+                existing.journal = ref_data.get('journal')
+                existing.year = ref_data.get('year')
+                existing.is_inline = ref_data.get('is_inline', False)
+                stats['tnm_references']['updated'] += 1
+            else:
+                ref = TnmReference(
+                    disease_site_id=new_disease_id,
+                    ref_number=ref_data.get('ref_number', 1),
+                    title=ref_data.get('title', ''),
+                    url=ref_data.get('url', ''),
+                    journal=ref_data.get('journal'),
+                    year=ref_data.get('year'),
+                    is_inline=ref_data.get('is_inline', False),
+                )
+                db.session.add(ref)
+                stats['tnm_references']['added'] += 1
+        
+        # Import Anatomy Figures (standalone - match by figure_id)
+        stats['anatomy_figures'] = {'added': 0, 'updated': 0, 'skipped': 0}
+        for fig_data in backup_data.get('anatomy_figures', []):
+            if not isinstance(fig_data, dict):
+                continue
+            figure_id = fig_data.get('figure_id')
+            if not figure_id:
+                stats['anatomy_figures']['skipped'] += 1
+                continue
+            existing = AnatomyFigure.query.filter_by(figure_id=figure_id).first()
+            if existing:
+                if overwrite_existing:
+                    for attr in ('title', 'description', 'source', 'body_region', 'figure_type', 'keywords', 'modality',
+                                'cancer_type', 'staging_category', 'original_url', 'cloudinary_url', 'cloudinary_public_id',
+                                'thumbnail_url', 'license', 'attribution', 'chapter', 'page_number', 'is_active'):
+                        if fig_data.get(attr) is not None:
+                            setattr(existing, attr, fig_data[attr])
+                    stats['anatomy_figures']['updated'] += 1
+                else:
+                    stats['anatomy_figures']['skipped'] += 1
+            else:
+                fig = AnatomyFigure(
+                    figure_id=figure_id,
+                    title=fig_data.get('title', ''),
+                    description=fig_data.get('description'),
+                    source=fig_data.get('source', ''),
+                    body_region=fig_data.get('body_region'),
+                    figure_type=fig_data.get('figure_type'),
+                    keywords=fig_data.get('keywords'),
+                    modality=fig_data.get('modality'),
+                    cancer_type=fig_data.get('cancer_type'),
+                    staging_category=fig_data.get('staging_category'),
+                    original_url=fig_data.get('original_url'),
+                    cloudinary_url=fig_data.get('cloudinary_url'),
+                    cloudinary_public_id=fig_data.get('cloudinary_public_id'),
+                    thumbnail_url=fig_data.get('thumbnail_url'),
+                    license=fig_data.get('license', 'CC BY 4.0'),
+                    attribution=fig_data.get('attribution', ''),
+                    chapter=fig_data.get('chapter'),
+                    page_number=fig_data.get('page_number'),
+                    is_active=fig_data.get('is_active', True),
+                )
+                db.session.add(fig)
+                stats['anatomy_figures']['added'] += 1
+        
+        # Import TNM Images (map disease_site_id, diagnosis_year_id, uploaded_by_user_id)
+        stats['tnm_images'] = {'added': 0, 'updated': 0, 'skipped': 0}
+        for img_data in backup_data.get('tnm_images', []):
+            if not isinstance(img_data, dict):
+                continue
+            old_disease_id = img_data.get('disease_site_id')
+            new_disease_id = ajcc_disease_id_map.get(old_disease_id)
+            if not new_disease_id:
+                stats['tnm_images']['skipped'] += 1
+                continue
+            new_year_id = ajcc_year_id_map.get(img_data.get('diagnosis_year_id')) if img_data.get('diagnosis_year_id') else None
+            new_user_id = user_id_map.get(img_data.get('uploaded_by_user_id')) if img_data.get('uploaded_by_user_id') else None
+            cloudinary_public_id = img_data.get('cloudinary_public_id') or ''
+            existing = TNMImage.query.filter_by(
+                disease_site_id=new_disease_id,
+                cloudinary_public_id=cloudinary_public_id,
+            ).first() if cloudinary_public_id else None
+            if existing and not overwrite_existing:
+                stats['tnm_images']['skipped'] += 1
+                continue
+            if existing and overwrite_existing:
+                existing.title = img_data.get('title')
+                existing.description = img_data.get('description')
+                existing.alt_text = img_data.get('alt_text')
+                existing.diagnosis_year_id = new_year_id
+                existing.width = img_data.get('width')
+                existing.height = img_data.get('height')
+                existing.image_type = img_data.get('image_type', 'reference')
+                existing.uploaded_by_user_id = new_user_id
+                existing.is_active = img_data.get('is_active', True)
+                stats['tnm_images']['updated'] += 1
+            else:
+                img = TNMImage(
+                    disease_site_id=new_disease_id,
+                    diagnosis_year_id=new_year_id,
+                    title=img_data.get('title'),
+                    description=img_data.get('description'),
+                    alt_text=img_data.get('alt_text'),
+                    cloudinary_url=img_data.get('cloudinary_url', ''),
+                    cloudinary_public_id=cloudinary_public_id,
+                    width=img_data.get('width'),
+                    height=img_data.get('height'),
+                    image_type=img_data.get('image_type', 'reference'),
+                    uploaded_by_user_id=new_user_id,
+                    is_active=img_data.get('is_active', True),
+                )
+                db.session.add(img)
+                stats['tnm_images']['added'] += 1
+        
         # Commit AJCC data
         try:
             db.session.commit()
-            print(f"[IMPORT] AJCC data imported: {stats['ajcc_body_sections']['added']} sections, {stats['ajcc_disease_sites']['added']} diseases, {stats['ajcc_staging_data']['added']} staging entries, {stats['intelligent_tnm_data']['added']} intelligent TNM records")
+            print(f"[IMPORT] AJCC data imported: {stats['ajcc_body_sections']['added']} sections, {stats['ajcc_disease_sites']['added']} diseases, {stats['ajcc_staging_data']['added']} staging entries, {stats['intelligent_tnm_data']['added']} intelligent TNM records, {stats.get('case_references', {}).get('added', 0)} case refs, {stats.get('tnm_references', {}).get('added', 0)} TNM refs, {stats.get('anatomy_figures', {}).get('added', 0)} anatomy figs, {stats.get('tnm_images', {}).get('added', 0)} TNM images")
         except Exception as ajcc_error:
             db.session.rollback()
             print(f"[IMPORT] ERROR during AJCC commit: {ajcc_error}")

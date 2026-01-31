@@ -1,6 +1,14 @@
-# Load environment variables from .env file (must be first!)
+# Load environment variables (must be first!)
+# Order: .env -> .env.local (local overrides) -> .env.production (when ENV=production)
+# .env.local overrides shell/vercel vars so USE_LOCAL_DB works for local runs
+import os
+from pathlib import Path
 from dotenv import load_dotenv
-load_dotenv()
+_env_dir = Path(__file__).resolve().parent
+load_dotenv(_env_dir / '.env')
+load_dotenv(_env_dir / '.env.local', override=True)  # Local overrides (e.g. USE_LOCAL_DB=1)
+if os.getenv('ENV') == 'production' or os.getenv('FLASK_ENV') == 'production':
+    load_dotenv(_env_dir / '.env.production', override=True)
 
 # ==================== STUDENT CASE BROWSER ====================
 # (Moved below app initialization)
@@ -26,7 +34,6 @@ from tnm_calculator.routes import tnm_calc_bp
 from ai_prelim import AiPrelimError, generate_prelim_case_data
 from datetime import datetime
 from sqlalchemy.pool import NullPool
-import os
 from io import BytesIO
 import mimetypes
 import json
@@ -65,15 +72,17 @@ except Exception as e:
     instance_path = '/tmp'
 
 # Configuration
-# Use PostgreSQL on production (Vercel/Neon), SQLite locally
-# Production envs can be POSTGRES_URL(_NON_POOLING) or DATABASE_* variants
-# Priority: Use non-pooling URL first for serverless environments
-DATABASE_URL = (
+# Set USE_LOCAL_DB=1 in .env.local to force SQLite for faster local startup
+# Production (Vercel) uses PostgreSQL (Neon)
+USE_LOCAL_DB = os.getenv('USE_LOCAL_DB', '').strip() in ('1', 'true', 'yes')
+DATABASE_URL = None if USE_LOCAL_DB else (
     os.getenv('DATABASE_POSTGRES_URL_NON_POOLING')
     or os.getenv('POSTGRES_URL_NON_POOLING')
     or os.getenv('DATABASE_URL')
     or os.getenv('POSTGRES_URL')
     or os.getenv('DATABASE_POSTGRES_URL')
+    or os.getenv('frcr_revision_db_POSTGRES_URL_NON_POOLING')
+    or os.getenv('frcr_revision_db_DATABASE_URL')
 )
 
 if DATABASE_URL:
