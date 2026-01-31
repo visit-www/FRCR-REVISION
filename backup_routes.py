@@ -8,6 +8,7 @@ from models import (
     db, User, Case, CaseImage, Question, Answer,
     RevisionSession, RevisionHistory, CaseFlag, TextHighlight, CandidateNote,
     ImportedCaseStaging, UserRole, FRCRModule, BodyPart, AgeGroup,
+    SubscriptionStatus, PaymentStatus,
     ForumMessage, ForumMessageVote, ForumMessageFlag,
     CaseReference, TnmReference, AnatomyFigure, TNMImage,
     # AJCC TNM Models
@@ -654,13 +655,11 @@ def restore_backup():
                                     print(f"[IMPORT] Warning: Could not set user role to {value}: {e}")
                             elif key == 'subscription_status' and value:
                                 try:
-                                    from models import SubscriptionStatus
                                     existing_user.subscription_status = SubscriptionStatus(value)
                                 except (ValueError, KeyError) as e:
                                     print(f"[IMPORT] Warning: Could not set subscription_status to {value}: {e}")
                             elif key == 'payment_status' and value:
                                 try:
-                                    from models import PaymentStatus
                                     existing_user.payment_status = PaymentStatus(value)
                                 except (ValueError, KeyError) as e:
                                     print(f"[IMPORT] Warning: Could not set payment_status to {value}: {e}")
@@ -706,13 +705,11 @@ def restore_backup():
                         user.last_case_viewed_id = user_data['last_case_viewed_id']
                     
                     if filtered_data.get('subscription_status'):
-                        from models import SubscriptionStatus
                         try:
                             user.subscription_status = SubscriptionStatus(filtered_data['subscription_status'])
                         except (ValueError, KeyError) as e:
                             print(f"[IMPORT] Warning: Could not set subscription_status to {filtered_data.get('subscription_status')}: {e}")
                     if filtered_data.get('payment_status'):
-                        from models import PaymentStatus
                         try:
                             user.payment_status = PaymentStatus(filtered_data['payment_status'])
                         except (ValueError, KeyError) as e:
@@ -778,7 +775,6 @@ def restore_backup():
                     # Update existing case
                     for key, value in filtered_data.items():
                         if key in ['module', 'body_part', 'age_group'] and value:
-                            from models import FRCRModule, BodyPart, AgeGroup
                             try:
                                 # Convert to string and strip whitespace
                                 enum_value_str = str(value).strip() if value is not None else None
