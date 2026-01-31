@@ -39,6 +39,22 @@ def get_model_fields(model_class):
     """Get all column names for a model class"""
     return [column.name for column in inspect(model_class).columns]
 
+def _parse_datetime_for_sqlite(value):
+    """Parse value to naive Python datetime for SQLite compatibility.
+    SQLite rejects timezone-aware datetimes."""
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value.replace(tzinfo=None) if value.tzinfo else value
+    if isinstance(value, str) and value.strip():
+        try:
+            s = value.replace('Z', '+00:00')
+            dt = datetime.fromisoformat(s)
+            return dt.replace(tzinfo=None) if dt.tzinfo else dt
+        except (ValueError, TypeError):
+            return None
+    return None
+
 @backup_bp.route('/download', methods=['GET'])
 @login_required
 def download_backup():
@@ -100,7 +116,7 @@ def download_backup():
                 'payment_status': user.payment_status.value if user.payment_status else 'no_subscription',
                 'subscription_start_date': user.subscription_start_date.isoformat() if user.subscription_start_date else None,
                 'subscription_end_date': user.subscription_end_date.isoformat() if user.subscription_end_date else None,
-                'last_case_viewed': user.last_case_viewed,
+                'last_case_viewed': user.last_case_viewed.isoformat() if user.last_case_viewed else None,
                 'last_case_viewed_id': user.last_case_viewed_id,
                 'created_at': user.created_at.isoformat() if user.created_at else None,
                 'last_login': user.last_login.isoformat() if user.last_login else None,
@@ -622,39 +638,40 @@ def restore_backup():
                 
                 if existing_user:
                     if overwrite_existing:
-                        # Update existing user
+                        # Update existing user - datetime and enum fields need special handling for SQLite
+                        USER_DATETIME_KEYS = [
+                            'created_at', 'last_login', 'subscription_start_date', 'subscription_end_date',
+                            'deleted_at', 'last_case_viewed', 'notion_connected_at', 'anki_connected_at',
+                            'sciencedirect_connected_at', 'recovery_token_expires'
+                        ]
                         for key, value in filtered_data.items():
+                            if key in ('email', 'id'):
+                                continue
                             if key == 'role' and value:
                                 try:
                                     existing_user.role = UserRole(value)
                                 except (ValueError, KeyError) as e:
                                     print(f"[IMPORT] Warning: Could not set user role to {value}: {e}")
-                                    pass
                             elif key == 'subscription_status' and value:
-                                from models import SubscriptionStatus
                                 try:
+                                    from models import SubscriptionStatus
                                     existing_user.subscription_status = SubscriptionStatus(value)
                                 except (ValueError, KeyError) as e:
                                     print(f"[IMPORT] Warning: Could not set subscription_status to {value}: {e}")
-                                    pass
                             elif key == 'payment_status' and value:
-                                from models import PaymentStatus
                                 try:
+                                    from models import PaymentStatus
                                     existing_user.payment_status = PaymentStatus(value)
                                 except (ValueError, KeyError) as e:
                                     print(f"[IMPORT] Warning: Could not set payment_status to {value}: {e}")
-                                    pass
-                            elif key in ['created_at', 'last_login'] and value:
-                                # Convert ISO string to datetime object for SQLite compatibility
-                                try:
-                                    if isinstance(value, str):
-                                        existing_user.__setattr__(key, datetime.fromisoformat(value))
-                                    elif isinstance(value, datetime):
-                                        existing_user.__setattr__(key, value)
-                                except (ValueError, TypeError) as e:
-                                    print(f"[IMPORT] Warning: Could not parse {key} datetime: {value}, error: {e}")
-                                    pass
-                            elif key not in ['email', 'id'] and hasattr(existing_user, key):
+                            elif key in USER_DATETIME_KEYS and value is not None:
+                                parsed = _parse_datetime_for_sqlite(value)
+                                if parsed is not None and hasattr(existing_user, key):
+                                    setattr(existing_user, key, parsed)
+                            elif hasattr(existing_user, key) and key not in USER_DATETIME_KEYS:
+                                # Skip enum-like fields that might be empty string
+                                if key in ('subscription_status', 'payment_status') and not value:
+                                    continue
                                 setattr(existing_user, key, value)
                         stats['users']['updated'] += 1
                     else:
@@ -682,8 +699,9 @@ def restore_backup():
                         user.profile_picture_public_id = user_data['profile_picture_public_id']
                     if user_data.get('public_display_name'):
                         user.public_display_name = user_data['public_display_name']
-                    if user_data.get('last_case_viewed'):
-                        user.last_case_viewed = user_data['last_case_viewed']
+                    parsed_lcv = _parse_datetime_for_sqlite(user_data.get('last_case_viewed'))
+                    if parsed_lcv is not None:
+                        user.last_case_viewed = parsed_lcv
                     if user_data.get('last_case_viewed_id'):
                         user.last_case_viewed_id = user_data['last_case_viewed_id']
                     
@@ -699,29 +717,18 @@ def restore_backup():
                             user.payment_status = PaymentStatus(filtered_data['payment_status'])
                         except (ValueError, KeyError) as e:
                             print(f"[IMPORT] Warning: Could not set payment_status to {filtered_data.get('payment_status')}: {e}")
-                    if user_data.get('subscription_start_date'):
-                        try:
-                            user.subscription_start_date = datetime.fromisoformat(user_data['subscription_start_date']) if isinstance(user_data['subscription_start_date'], str) else user_data['subscription_start_date']
-                        except (ValueError, TypeError):
-                            pass
-                    if user_data.get('subscription_end_date'):
-                        try:
-                            user.subscription_end_date = datetime.fromisoformat(user_data['subscription_end_date']) if isinstance(user_data['subscription_end_date'], str) else user_data['subscription_end_date']
-                        except (ValueError, TypeError):
-                            pass
-                    if filtered_data.get('created_at'):
-                        try:
-                            if isinstance(filtered_data['created_at'], str):
-                                user.created_at = datetime.fromisoformat(filtered_data['created_at'])
-                            elif isinstance(filtered_data['created_at'], datetime):
-                                user.created_at = filtered_data['created_at']
-                        except (ValueError, TypeError) as e:
-                            print(f"[IMPORT] Warning: Could not parse user created_at datetime: {filtered_data.get('created_at')}, error: {e}")
-                    if user_data.get('last_login'):
-                        try:
-                            user.last_login = datetime.fromisoformat(user_data['last_login']) if isinstance(user_data['last_login'], str) else user_data['last_login']
-                        except (ValueError, TypeError):
-                            pass
+                    parsed_sd = _parse_datetime_for_sqlite(user_data.get('subscription_start_date'))
+                    if parsed_sd is not None:
+                        user.subscription_start_date = parsed_sd
+                    parsed_ed = _parse_datetime_for_sqlite(user_data.get('subscription_end_date'))
+                    if parsed_ed is not None:
+                        user.subscription_end_date = parsed_ed
+                    parsed_ca = _parse_datetime_for_sqlite(filtered_data.get('created_at'))
+                    if parsed_ca is not None:
+                        user.created_at = parsed_ca
+                    parsed_ll = _parse_datetime_for_sqlite(user_data.get('last_login'))
+                    if parsed_ll is not None:
+                        user.last_login = parsed_ll
                     db.session.add(user)
                     stats['users']['added'] += 1
             
