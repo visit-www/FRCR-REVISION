@@ -32,6 +32,7 @@ from ajcc_tnm import get_blueprints, init_app as init_ajcc_tnm
 admin_tnm_bp, tnm_bp = get_blueprints()
 # TNM Calculator - standalone clinical-grade calculator module
 from tnm_calculator.routes import tnm_calc_bp
+from case_dicom_viewer import init_app as init_case_dicom, get_blueprint as get_case_dicom_bp
 from ai_prelim import AiPrelimError, generate_prelim_case_data
 from datetime import datetime
 from sqlalchemy.pool import NullPool
@@ -569,6 +570,8 @@ init_ajcc_tnm(app)
 app.register_blueprint(admin_tnm_bp)  # AJCC TNM staging system - admin routes
 app.register_blueprint(tnm_bp)  # AJCC TNM staging system - public routes
 app.register_blueprint(tnm_calc_bp)  # TNM Calculator - standalone clinical-grade calculator
+init_case_dicom(app)
+app.register_blueprint(get_case_dicom_bp())  # Case DICOM Viewer - OneDrive image stacks
 
 
 @app.route('/')

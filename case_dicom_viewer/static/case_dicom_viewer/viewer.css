@@ -1,0 +1,15 @@
+/* Case DICOM Viewer - scoped styles */
+/* Accent: #17a2b8 (info blue) per plan */
+.case-dicom-viewer-viewport {
+  min-height: 300px;
+  background: #1a1a2e;
+  border-radius: 8px;
+  border: 1px solid #c5cad1;
+}
+.case-dicom-viewer-plan-tabs .nav-link {
+  color: #5e899e;
+}
+.case-dicom-viewer-plan-tabs .nav-link.active {
+  color: #17a2b8;
+  font-weight: 600;
+}

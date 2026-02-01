@@ -1,0 +1,19 @@
+{# Case DICOM Viewer - reusable viewer partial for view_case #}
+<div class="case-dicom-viewer" id="caseDicomViewerContainer">
+  <div class="mb-2">
+    <ul class="nav nav-tabs case-dicom-viewer-plan-tabs" id="caseDicomPlanTabs">
+      <li class="nav-item">
+        <button class="nav-link active" data-plan="axial">Axial</button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link" data-plan="sagittal">Sagittal</button>
+      </li>
+      <li class="nav-item">
+        <button class="nav-link" data-plan="coronal">Coronal</button>
+      </li>
+    </ul>
+  </div>
+  <div class="case-dicom-viewer-viewport" id="caseDicomViewport">
+    <p class="text-muted text-center py-5">Image stack viewer (Cornerstone3D) - coming soon</p>
+  </div>
+</div>

@@ -265,6 +265,11 @@ Build a standalone, exportable module (`case_dicom_viewer`) that links OneDrive 
 ### Plan Document
 📄 **Location:** `docs/plans/CASE_DICOM_VIEWER_PLAN.md`
 
+### Implementation Status
+- **Branch:** `feature/case-dicom-viewer`
+- **Phase 1 (skeleton):** Module structure, CaseImageStack model, migration, blueprint registered
+- **Remaining:** OneDrive OAuth, folder listing, admin UI, Cornerstone3D viewer, view_case tab
+
 ---
 
 ## Implementation Roadmap

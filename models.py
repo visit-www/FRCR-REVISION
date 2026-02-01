@@ -522,6 +522,35 @@ class CaseReferenceImage(db.Model):
         }
 
 
+class CaseImageStack(db.Model):
+    """OneDrive-linked image stack for a case. Plans (axial, sagittal, etc.) with image URLs."""
+    __tablename__ = 'case_image_stack'
+
+    id = db.Column(db.Integer, primary_key=True)
+    case_id = db.Column(db.Integer, db.ForeignKey('case.id'), nullable=False, unique=True)
+    onedrive_share_id = db.Column(db.String(500), nullable=False)
+    onedrive_folder_path = db.Column(db.String(500), nullable=True)
+    config_json = db.Column(db.Text, nullable=False)  # JSON: { "axial": [url1, url2], "sagittal": [...] }
+    created_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    case = db.relationship('Case', backref=db.backref('image_stack', uselist=False, lazy=True, cascade='all, delete-orphan'))
+    created_by = db.relationship('User', backref='created_image_stacks')
+
+    def get_config(self):
+        import json
+        if self.config_json:
+            try:
+                return json.loads(self.config_json)
+            except (json.JSONDecodeError, TypeError):
+                return {}
+        return {}
+
+    def set_config(self, config: dict):
+        import json
+        self.config_json = json.dumps(config, ensure_ascii=False) if config else "{}"
+
+
 class CandidateNote(db.Model):
     """Store student/candidate notes for cases and TNM disease sites"""
     id = db.Column(db.Integer, primary_key=True)
