@@ -4,11 +4,24 @@ Case DICOM Viewer - Flask Blueprint and API routes.
 OAuth, folder parse, case stack CRUD.
 """
 
-from flask import Blueprint, jsonify, request, redirect, url_for
+import logging
+import secrets
+
+import msal
+from flask import Blueprint, jsonify, request, redirect, session, url_for
 from flask_login import login_required, current_user
 
+from case_dicom_viewer.config import (
+    get_client_id,
+    get_client_secret,
+    get_oauth_redirect_uri,
+    SCOPES,
+    AUTHORITY,
+)
 from models import CaseImageStack
 from access_control import has_case_view_access, has_case_edit_permission, is_admin
+
+logger = logging.getLogger(__name__)
 
 case_dicom_bp = Blueprint(
     "case_dicom_viewer",
@@ -20,31 +33,142 @@ case_dicom_bp = Blueprint(
 )
 
 
+def _get_msal_app():
+    """Build MSAL ConfidentialClientApplication."""
+    client_id = get_client_id()
+    client_secret = get_client_secret()
+    if not client_id or not client_secret:
+        return None
+    return msal.ConfidentialClientApplication(
+        client_id=client_id,
+        client_credential=client_secret,
+        authority=AUTHORITY,
+    )
+
+
 @case_dicom_bp.route("/oauth/authorize")
 @login_required
 def oauth_authorize():
     """Redirect to Microsoft login for OneDrive OAuth."""
-    # TODO: Build authorization URL, redirect
-    return jsonify({"error": "Not implemented yet"}), 501
+    app_msal = _get_msal_app()
+    if not app_msal:
+        return jsonify({"error": "OneDrive integration not configured (missing AZURE_CLIENT_ID or AZURE_CLIENT_SECRET)"}), 503
+
+    state = secrets.token_urlsafe(32)
+    session["onedrive_oauth_state"] = state
+    session["onedrive_oauth_next"] = (
+        request.args.get("next") or request.referrer or "/"
+    ).strip() or "/"
+
+    auth_url = app_msal.get_authorization_request_url(
+        scopes=SCOPES,
+        state=state,
+        redirect_uri=get_oauth_redirect_uri(),
+    )
+    return redirect(auth_url)
 
 
 @case_dicom_bp.route("/oauth/callback")
 def oauth_callback():
     """Handle OAuth callback from Microsoft."""
-    # TODO: Exchange code for tokens, store in session
-    return jsonify({"error": "Not implemented yet"}), 501
+    error = request.args.get("error")
+    if error:
+        desc = request.args.get("error_description", error)
+        logger.warning("[CaseDicomViewer] OAuth error: %s", desc)
+        next_url = session.pop("onedrive_oauth_next", "/")
+        return redirect(f"{next_url}?onedrive_error={error}")
+
+    state_in = request.args.get("state")
+    state_stored = session.pop("onedrive_oauth_state", None)
+    if not state_in or state_in != state_stored:
+        logger.warning("[CaseDicomViewer] OAuth state mismatch")
+        return redirect("/?onedrive_error=invalid_state")
+
+    code = request.args.get("code")
+    if not code:
+        return redirect("/?onedrive_error=missing_code")
+
+    app_msal = _get_msal_app()
+    if not app_msal:
+        return redirect("/?onedrive_error=config")
+
+    result = app_msal.acquire_token_by_authorization_code(
+        code=code,
+        scopes=SCOPES,
+        redirect_uri=get_oauth_redirect_uri(),
+    )
+    if "error" in result:
+        logger.warning("[CaseDicomViewer] Token error: %s", result.get("error_description", result["error"]))
+        next_url = session.pop("onedrive_oauth_next", "/")
+        return redirect(f"{next_url}?onedrive_error=token_failed")
+
+    session["onedrive_tokens"] = {
+        "access_token": result["access_token"],
+        "refresh_token": result.get("refresh_token"),
+        "expires_in": result.get("expires_in"),
+    }
+
+    next_url = session.pop("onedrive_oauth_next", "/")
+    sep = "&" if "?" in next_url else "?"
+    return redirect(f"{next_url}{sep}onedrive_connected=1")
+
+
+@case_dicom_bp.route("/api/status")
+@login_required
+def onedrive_status():
+    """Return whether OneDrive is connected (has valid tokens)."""
+    token = _get_access_token()
+    return jsonify({"connected": bool(token)})
+
+
+def _get_access_token():
+    """Return valid access token, refreshing if needed. Returns None if not connected."""
+    tokens = session.get("onedrive_tokens")
+    if not tokens or not tokens.get("access_token"):
+        return None
+    app_msal = _get_msal_app()
+    if not app_msal:
+        return tokens.get("access_token")
+    # Try refresh if we have refresh_token (MSAL will return cached if still valid)
+    refresh_token = tokens.get("refresh_token")
+    if refresh_token:
+        result = app_msal.acquire_token_by_refresh_token(
+            refresh_token=refresh_token,
+            scopes=SCOPES,
+        )
+        if result and "access_token" in result:
+            session["onedrive_tokens"] = {
+                "access_token": result["access_token"],
+                "refresh_token": result.get("refresh_token") or refresh_token,
+                "expires_in": result.get("expires_in"),
+            }
+            return result["access_token"]
+    return tokens.get("access_token")
 
 
 @case_dicom_bp.route("/api/folder/parse", methods=["POST"])
 @login_required
 def folder_parse():
     """Parse OneDrive share link, return folder tree + image URLs."""
+    token = _get_access_token()
+    if not token:
+        return jsonify({"error": "Connect OneDrive first", "code": "not_connected"}), 401
+
     data = request.get_json() or {}
     share_url = (data.get("share_url") or data.get("share_link") or "").strip()
     if not share_url:
         return jsonify({"error": "share_url required"}), 400
-    # TODO: Call onedrive_service.parse_share_link, list_folder_contents
-    return jsonify({"error": "Not implemented yet", "plans": []}), 501
+
+    from case_dicom_viewer.onedrive_service import parse_share_link_and_list
+
+    result = parse_share_link_and_list(token, share_url)
+    if "error" in result and result["error"]:
+        return jsonify({"error": result["error"], "plans": result.get("plans", {})}), 400
+    return jsonify({
+        "items": result.get("items", []),
+        "plans": result.get("plans", {}),
+        "encoded_share_id": result.get("encoded_share_id"),
+    })
 
 
 @case_dicom_bp.route("/api/case/<int:case_id>/stack", methods=["GET"])

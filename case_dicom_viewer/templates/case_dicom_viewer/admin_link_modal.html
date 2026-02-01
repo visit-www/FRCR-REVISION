@@ -1,23 +1,38 @@
 {# Case DICOM Viewer - OneDrive link modal (admin) #}
 <div class="modal fade" id="caseDicomLinkModal" tabindex="-1">
-  <div class="modal-dialog">
+  <div class="modal-dialog modal-lg">
     <div class="modal-content">
       <div class="modal-header" style="background: linear-gradient(135deg, #17a2b8 0%, #138496 100%); color: white;">
         <h5 class="modal-title"><i class="fas fa-cloud me-2"></i>Link OneDrive Image Stack</h5>
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
-        <p class="text-muted small">Connect OneDrive and paste a share link to a folder containing image stacks (axial, sagittal, etc.).</p>
+        <p class="text-muted small mb-3">Connect OneDrive and paste a share link to a folder containing image stacks (axial, sagittal, coronal, etc.).</p>
+        <div id="caseDicomConnectRequired" class="alert alert-info small py-2 mb-3" style="display: none;">
+          <i class="fas fa-info-circle me-1"></i><strong>Step 1:</strong> Click "Connect OneDrive" below to sign in with Microsoft. You must do this before parsing a share link.
+        </div>
+        <div class="mb-3">
+          <a href="#" id="caseDicomConnectBtn" class="btn btn-outline-primary btn-sm mb-2">
+            <i class="fas fa-plug me-1"></i><span id="caseDicomConnectLabel">Connect OneDrive</span>
+          </a>
+        </div>
         <div class="mb-3">
           <label class="form-label">OneDrive Share Link</label>
           <input type="url" class="form-control" id="caseDicomShareLink" placeholder="https://1drv.ms/... or https://onedrive.live.com/...">
         </div>
-        <p class="small text-muted">Not implemented yet. See docs/plans/CASE_DICOM_VIEWER_PLAN.md</p>
+        <div id="caseDicomPlansContainer" class="mb-3" style="display: none;">
+          <label class="form-label">Detected plans (select to include)</label>
+          <div id="caseDicomPlansList" class="border rounded p-2" style="max-height: 200px; overflow-y: auto;"></div>
+        </div>
+        <div id="caseDicomError" class="alert alert-danger small py-2" style="display: none;"></div>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button type="button" class="btn btn-info" id="caseDicomParseBtn" disabled>
-          <i class="fas fa-link me-1"></i>Parse & Select
+        <button type="button" class="btn btn-info" id="caseDicomParseBtn">
+          <i class="fas fa-search me-1"></i>Parse Link
+        </button>
+        <button type="button" class="btn btn-primary" id="caseDicomSaveBtn" style="display: none;">
+          <i class="fas fa-save me-1"></i>Save to Case
         </button>
       </div>
     </div>

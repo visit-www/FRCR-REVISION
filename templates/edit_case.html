@@ -308,6 +308,18 @@ console.log('[TinyMCE Loader] Script URL was:', "{{ url_for('static', filename='
                             <!-- Reference images added here -->
                         </div>
                     </div>
+
+                    <!-- Image Stack (OneDrive: axial, sagittal, coronal) -->
+                    <div class="border-top pt-4 mt-4">
+                        <label class="form-label fw-bold text-secondary mb-2">
+                            <i class="fas fa-layer-group me-1" style="color: #17a2b8;"></i>Image Stack (OneDrive)
+                        </label>
+                        <p class="small text-muted mb-2">Link a OneDrive folder with image stacks (axial, sagittal, etc.) for DICOM-like slice scrolling in the case view.</p>
+                        <button type="button" class="btn btn-outline-info" id="linkImageStackBtn" onclick="openCaseDicomLinkModal()">
+                            <i class="fas fa-cloud me-1"></i>Link Image Stack
+                        </button>
+                        <div id="imageStackStatus" class="mt-2 small text-muted"></div>
+                    </div>
                 </div>
             </div>
 
@@ -683,6 +695,8 @@ console.log('[TinyMCE Loader] Script URL was:', "{{ url_for('static', filename='
                 </div>
             </div>
         </form>
+
+        {% include 'case_dicom_viewer/admin_link_modal.html' %}
     </div>
 </div>
 
@@ -888,6 +902,154 @@ function handleSaveCase(event) {
 }
 </script>
 <script src="/static/edit-case-modal.js"></script>
+<script>
+// Case DICOM Viewer - OneDrive Image Stack
+let _caseDicomParsedData = null;
+function openCaseDicomLinkModal() {
+    const caseId = document.getElementById('editCaseId')?.value;
+    if (!caseId || caseId === 'new' || String(caseId).startsWith('staging-')) {
+        alert('Save the case first before linking an image stack.');
+        return;
+    }
+    _caseDicomParsedData = null;
+    document.getElementById('caseDicomShareLink').value = '';
+    document.getElementById('caseDicomPlansContainer').style.display = 'none';
+    document.getElementById('caseDicomSaveBtn').style.display = 'none';
+    document.getElementById('caseDicomError').style.display = 'none';
+    const params = new URLSearchParams(window.location.search);
+    const connectBtn = document.getElementById('caseDicomConnectBtn');
+    const connectLabel = document.getElementById('caseDicomConnectLabel');
+    document.getElementById('caseDicomConnectRequired').style.display = 'none';
+    document.getElementById('caseDicomParseBtn').disabled = false;
+    if (params.get('onedrive_connected') === '1') {
+        connectLabel.textContent = 'Connected';
+        connectBtn.classList.remove('btn-outline-primary');
+        connectBtn.classList.add('btn-success');
+        connectBtn.href = '#';
+        connectBtn.onclick = (e) => { e.preventDefault(); };
+    } else if (params.get('onedrive_error')) {
+        document.getElementById('caseDicomError').textContent = 'OneDrive error: ' + params.get('onedrive_error');
+        document.getElementById('caseDicomError').style.display = 'block';
+    } else {
+        document.getElementById('caseDicomParseBtn').disabled = true;
+        fetch('/case-dicom-viewer/api/status', { credentials: 'include' }).then(r => r.json()).then(data => {
+            if (data.connected) {
+                connectLabel.textContent = 'Connected';
+                connectBtn.classList.remove('btn-outline-primary');
+                connectBtn.classList.add('btn-success');
+                connectBtn.href = '#';
+                connectBtn.onclick = (e) => { e.preventDefault(); };
+                document.getElementById('caseDicomParseBtn').disabled = false;
+            } else {
+                document.getElementById('caseDicomConnectRequired').style.display = 'block';
+            }
+        }).catch(() => {
+            document.getElementById('caseDicomConnectRequired').style.display = 'block';
+        });
+    }
+    const modal = new bootstrap.Modal(document.getElementById('caseDicomLinkModal'));
+    modal.show();
+}
+document.addEventListener('DOMContentLoaded', function() {
+    const connectBtn = document.getElementById('caseDicomConnectBtn');
+    if (connectBtn) {
+        connectBtn.addEventListener('click', function(e) {
+            if (this.classList.contains('btn-success')) return;
+            e.preventDefault();
+            const caseId = document.getElementById('editCaseId')?.value;
+            const next = encodeURIComponent(window.location.origin + '/edit-case?id=' + (caseId || ''));
+            window.location.href = '/case-dicom-viewer/oauth/authorize?next=' + next;
+        });
+    }
+    const parseBtn = document.getElementById('caseDicomParseBtn');
+    if (parseBtn) {
+        parseBtn.addEventListener('click', function() {
+            const url = document.getElementById('caseDicomShareLink').value.trim();
+            if (!url) { alert('Paste a OneDrive share link first.'); return; }
+            parseBtn.disabled = true;
+            parseBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Parsing...';
+            document.getElementById('caseDicomError').style.display = 'none';
+            fetch('/case-dicom-viewer/api/folder/parse', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ share_url: url })
+            }).then(r => {
+                return r.json().then(data => ({ status: r.status, data }));
+            }).then(({ status, data }) => {
+                parseBtn.disabled = false;
+                parseBtn.innerHTML = '<i class="fas fa-search me-1"></i>Parse Link';
+                if (data.error) {
+                    document.getElementById('caseDicomError').textContent = data.error;
+                    document.getElementById('caseDicomError').style.display = 'block';
+                    if (status === 401 && data.code === 'not_connected') {
+                        document.getElementById('caseDicomConnectRequired').style.display = 'block';
+                        parseBtn.disabled = true;
+                    }
+                    return;
+                }
+                _caseDicomParsedData = data;
+                const plans = data.plans || {};
+                const container = document.getElementById('caseDicomPlansContainer');
+                const listEl = document.getElementById('caseDicomPlansList');
+                listEl.innerHTML = '';
+                if (Object.keys(plans).length === 0) {
+                    listEl.innerHTML = '<p class="text-muted small mb-0">No image plans found. Ensure the folder has subfolders (axial, sagittal, etc.) with images.</p>';
+                } else {
+                    for (const [name, urls] of Object.entries(plans)) {
+                        const div = document.createElement('div');
+                        div.className = 'form-check';
+                        div.innerHTML = '<input class="form-check-input" type="checkbox" id="plan-' + name + '" value="' + name + '" checked> ' +
+                            '<label class="form-check-label" for="plan-' + name + '">' + name + ' (' + (urls.length) + ' images)</label>';
+                        listEl.appendChild(div);
+                    }
+                }
+                container.style.display = 'block';
+                document.getElementById('caseDicomSaveBtn').style.display = 'inline-block';
+            }).catch(err => {
+                parseBtn.disabled = false;
+                parseBtn.innerHTML = '<i class="fas fa-search me-1"></i>Parse Link';
+                document.getElementById('caseDicomError').textContent = err.message || 'Request failed';
+                document.getElementById('caseDicomError').style.display = 'block';
+            });
+        });
+    }
+    const saveBtn = document.getElementById('caseDicomSaveBtn');
+    if (saveBtn) {
+        saveBtn.addEventListener('click', function() {
+            if (!_caseDicomParsedData || !_caseDicomParsedData.encoded_share_id) { alert('Parse the link first.'); return; }
+            const caseId = document.getElementById('editCaseId')?.value;
+            if (!caseId) { alert('Case ID missing.'); return; }
+            const checked = Array.from(document.querySelectorAll('#caseDicomPlansList .form-check-input:checked')).map(c => c.value);
+            const config = {};
+            for (const name of checked) {
+                if (_caseDicomParsedData.plans && _caseDicomParsedData.plans[name])
+                    config[name] = _caseDicomParsedData.plans[name];
+            }
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Saving...';
+            fetch('/case-dicom-viewer/api/case/' + caseId + '/stack', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ config, onedrive_share_id: _caseDicomParsedData.encoded_share_id })
+            }).then(r => r.json()).then(data => {
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = '<i class="fas fa-save me-1"></i>Save to Case';
+                if (data.error) {
+                    alert('Error: ' + data.error);
+                    return;
+                }
+                bootstrap.Modal.getInstance(document.getElementById('caseDicomLinkModal')).hide();
+                document.getElementById('imageStackStatus').innerHTML = '<i class="fas fa-check text-success me-1"></i>Image stack linked (' + Object.keys(config).length + ' plans)';
+            }).catch(err => {
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = '<i class="fas fa-save me-1"></i>Save to Case';
+                alert('Save failed: ' + (err.message || 'Unknown error'));
+            });
+        });
+    }
+});
+</script>
 <script>
 // Reference Image Curation (CC-licensed)
 function openRefImageSearchModal() {

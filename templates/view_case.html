@@ -312,6 +312,11 @@
                                 </button>
                             </li>
                             <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="imageStackTab" data-bs-toggle="tab" data-bs-target="#imageStackPane" type="button" role="tab" aria-controls="imageStackPane" aria-selected="false">
+                                    <i class="fas fa-layer-group me-1" style="color: #17a2b8;"></i>Image Stack
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
                                 <button class="nav-link" id="radiologyAssistantTab" data-bs-toggle="tab" data-bs-target="#radiologyAssistantPane" type="button" role="tab" aria-controls="radiologyAssistantPane" aria-selected="false">
                                     <i class="fas fa-stethoscope me-1" style="color: #6c757d;"></i>RadiologyAssistant
                                 </button>
@@ -697,6 +702,31 @@
                                     <div id="tciaNoResults" style="display: none;" class="text-center py-3">
                                         <i class="fas fa-search text-muted" style="font-size: 2rem; opacity: 0.5;"></i>
                                         <p class="text-muted small mt-2 mb-0">No datasets found. Try different search terms.</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Image Stack Tab (OneDrive-linked) -->
+                            <div class="tab-pane fade" id="imageStackPane" role="tabpanel" aria-labelledby="imageStackTab">
+                                <div class="p-3">
+                                    <h6 class="mb-3"><i class="fas fa-layer-group me-2" style="color: #17a2b8;"></i>Image Stack</h6>
+                                    <div id="imageStackContent">
+                                        <p class="text-muted small mb-2">Loading...</p>
+                                    </div>
+                                    <div id="imageStackEmpty" class="text-center py-4" style="display: none;">
+                                        <i class="fas fa-layer-group text-muted" style="font-size: 2rem; opacity: 0.5;"></i>
+                                        <p class="text-muted small mt-2 mb-0">No image stack linked for this case.</p>
+                                    </div>
+                                    <div id="imageStackViewer" style="display: none;">
+                                        <div class="btn-group btn-group-sm mb-2" id="imageStackPlanTabs" role="group"></div>
+                                        <div class="border rounded bg-dark position-relative" style="min-height: 300px;">
+                                            <img id="imageStackImg" src="" alt="Slice" class="img-fluid w-100" style="max-height: 500px; object-fit: contain;">
+                                        </div>
+                                        <div class="d-flex justify-content-between align-items-center mt-2">
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" id="imageStackPrev"><i class="fas fa-chevron-left me-1"></i>Prev</button>
+                                            <span class="small text-muted" id="imageStackSliceInfo">1 / 1</span>
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" id="imageStackNext">Next<i class="fas fa-chevron-right ms-1"></i></button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -8160,6 +8190,11 @@
                 }
             });
         }
+        // Image Stack: load when tab is shown
+        const imageStackTab = document.getElementById('imageStackTab');
+        if (imageStackTab) {
+            imageStackTab.addEventListener('shown.bs.tab', loadImageStack);
+        }
     });
     
     // ==================== PUBMED ====================
@@ -8306,6 +8341,74 @@
             if (statusEl) statusEl.style.display = 'none';
             showFlash('Error searching guidelines', 'error');
         }
+    }
+    
+    // ==================== Image Stack (OneDrive) ====================
+    let _imageStackData = null;
+    let _imageStackCurrentPlan = null;
+    let _imageStackCurrentIndex = 0;
+    async function loadImageStack() {
+        const content = document.getElementById('imageStackContent');
+        const empty = document.getElementById('imageStackEmpty');
+        const viewer = document.getElementById('imageStackViewer');
+        if (!content || !empty || !viewer) return;
+        content.style.display = 'block';
+        content.innerHTML = '<p class="text-muted small mb-2"><i class="fas fa-spinner fa-spin me-1"></i>Loading...</p>';
+        empty.style.display = 'none';
+        viewer.style.display = 'none';
+        try {
+            const r = await fetch(`/case-dicom-viewer/api/case/${caseId}/stack`, { credentials: 'include' });
+            const data = await r.json();
+            content.style.display = 'none';
+            if (!data.has_stack || !data.plans || Object.keys(data.plans).length === 0) {
+                empty.style.display = 'block';
+                return;
+            }
+            _imageStackData = data.plans;
+            const planNames = Object.keys(_imageStackData);
+            _imageStackCurrentPlan = planNames[0];
+            _imageStackCurrentIndex = 0;
+            const tabsEl = document.getElementById('imageStackPlanTabs');
+            tabsEl.innerHTML = planNames.map((name, i) =>
+                `<button type="button" class="btn ${i === 0 ? 'btn-info' : 'btn-outline-secondary'}" data-plan="${name}">${name}</button>`
+            ).join('');
+            tabsEl.querySelectorAll('button').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    _imageStackCurrentPlan = this.dataset.plan;
+                    _imageStackCurrentIndex = 0;
+                    tabsEl.querySelectorAll('button').forEach(b => { b.className = b.dataset.plan === _imageStackCurrentPlan ? 'btn btn-info' : 'btn btn-outline-secondary'; });
+                    updateImageStackDisplay();
+                });
+            });
+            document.getElementById('imageStackPrev').onclick = () => { _imageStackCurrentIndex = Math.max(0, _imageStackCurrentIndex - 1); updateImageStackDisplay(); };
+            document.getElementById('imageStackNext').onclick = () => {
+                const urls = _imageStackData[_imageStackCurrentPlan] || [];
+                _imageStackCurrentIndex = Math.min(urls.length - 1, _imageStackCurrentIndex + 1);
+                updateImageStackDisplay();
+            };
+            viewer.style.display = 'block';
+            updateImageStackDisplay();
+        } catch (e) {
+            content.style.display = 'block';
+            content.innerHTML = '<p class="text-danger small">Failed to load image stack.</p>';
+        }
+    }
+    function updateImageStackDisplay() {
+        const urls = _imageStackData && _imageStackData[_imageStackCurrentPlan] ? _imageStackData[_imageStackCurrentPlan] : [];
+        const img = document.getElementById('imageStackImg');
+        const info = document.getElementById('imageStackSliceInfo');
+        if (!img || !info) return;
+        if (urls.length === 0) {
+            img.src = '';
+            img.alt = 'No images';
+            info.textContent = '0 / 0';
+            return;
+        }
+        const idx = Math.min(_imageStackCurrentIndex, urls.length - 1);
+        _imageStackCurrentIndex = idx;
+        img.src = urls[idx];
+        img.alt = `Slice ${idx + 1}`;
+        info.textContent = `${idx + 1} / ${urls.length}`;
     }
     
     // ==================== TCIA ====================

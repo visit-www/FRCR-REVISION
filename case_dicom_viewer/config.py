@@ -30,5 +30,9 @@ def get_oauth_redirect_uri() -> str:
     return f"{get_app_url()}/case-dicom-viewer/oauth/callback"
 
 
-# Microsoft Graph API scopes for OneDrive
-SCOPES = ["Files.Read", "Files.Read.All", "User.Read", "offline_access"]
+# Microsoft Graph API scopes for OneDrive (User.Read, Files.Read)
+# Note: offline_access, openid, profile are MSAL-reserved; do not include them
+SCOPES = ["User.Read", "Files.Read"]
+
+# Authority for personal Microsoft accounts (supports both personal and work/school)
+AUTHORITY = "https://login.microsoftonline.com/common"
