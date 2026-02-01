@@ -27,9 +27,14 @@ if _env_vercel.exists():
             line = line.strip()
             if line and not line.startswith('#') and '=' in line:
                 key, value = line.split('=', 1)
-                # Remove quotes and whitespace (e.g. trailing newline from .env)
-                value = value.strip().strip('"\'')
+                # Remove quotes, newlines, and surrounding whitespace (fixes sslmode "require\n")
+                value = value.strip().strip('"\' \n\r\t')
                 os.environ[key] = value
+    # Ensure DATABASE_URL has no trailing newlines (common in .env.vercel)
+    for k in ('DATABASE_URL', 'POSTGRES_URL', 'POSTGRES_URL_NON_POOLING', 'DATABASE_POSTGRES_URL_NON_POOLING'):
+        v = os.environ.get(k)
+        if v and ('\n' in v or v != v.strip()):
+            os.environ[k] = v.strip()
 
 # Set Flask app
 os.environ['FLASK_APP'] = 'app.py'

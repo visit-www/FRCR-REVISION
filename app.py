@@ -88,6 +88,8 @@ DATABASE_URL = None if USE_LOCAL_DB else (
 )
 
 if DATABASE_URL:
+    # Sanitize: strip embedded newlines and literal \n (common when loading from .env)
+    DATABASE_URL = DATABASE_URL.strip().replace('\n', '').replace('\r', '').replace('\\n', '')
     # PostgreSQL on Vercel or external
     print(f"[DB] Using PostgreSQL: {DATABASE_URL[:60]}...")
     # Handle both postgres:// and postgresql:// schemes
@@ -106,7 +108,8 @@ if DATABASE_URL:
             unsupported_params = ['supa', 'pgbouncer', 'supabase']
             for param in unsupported_params:
                 params.pop(param, None)
-            
+            # Sanitize values (strip newlines and literal \n from .env)
+            params = {k: [v.strip().replace('\n', '').replace('\r', '').replace('\\n', '') for v in vals] for k, vals in params.items()}
             # Rebuild query string
             new_query = urlencode(params, doseq=True) if params else ''
             # Rebuild URL
