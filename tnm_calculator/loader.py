@@ -28,6 +28,12 @@ class RuleLoader:
     
     # Cache for loaded definitions
     _cache: Dict[str, CancerDefinition] = {}
+    
+    # Introductory/meta sections to exclude from TNM calculator dropdown (not actual staging diseases)
+    EXCLUDED_CANCER_SLUGS = frozenset({
+        "introduction-to-hematologic-malignancies",
+        "introduction-to-soft-tissue-sarcoma",
+    })
     _all_cancers_loaded: bool = False
     
     def __init__(self, data_dir: Optional[str] = None):
@@ -397,9 +403,12 @@ class RuleLoader:
                 
                 for section in data.get("body_sections", []):
                     for disease in section.get("diseases", []):
+                        slug = disease.get("slug", "unknown")
+                        if slug.lower() in self.EXCLUDED_CANCER_SLUGS:
+                            continue
                         cancers.append({
                             "name": disease.get("name", "Unknown"),
-                            "slug": disease.get("slug", "unknown"),
+                            "slug": slug,
                             "body_section": section.get("name", "Other")
                         })
             except Exception as e:
@@ -426,7 +435,7 @@ class RuleLoader:
                     logger.error(f"[TNM Calculator] Error loading structured file: {e}")
         
         return sorted(cancers, key=lambda x: x["name"])
-    
+
     def _get_cancers_from_database(self) -> List[Dict[str, str]]:
         """Get list of available cancers from database."""
         cancers = []
@@ -451,6 +460,9 @@ class RuleLoader:
                 
                 disease = AJCCDiseaseSite.query.get(staging.disease_site_id)
                 if not disease:
+                    continue
+                
+                if disease.slug and disease.slug.lower() in self.EXCLUDED_CANCER_SLUGS:
                     continue
                 
                 section = AJCCBodySection.query.get(disease.body_section_id) if disease.body_section_id else None

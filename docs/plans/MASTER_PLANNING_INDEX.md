@@ -146,6 +146,9 @@ Build a clinical-grade, deterministic, rule-based TNM staging calculator as a st
 ### Plan Document
 📄 **Location:** `.cursor/plans/tnm_calculator_standalone_module_d75d258d.plan.md`
 
+### Implemented – Backend Documentation
+📄 **Code flow & excluded slugs:** [TNM_CALCULATOR_BACKEND.md](../TNM_CALCULATOR_BACKEND.md)
+
 ---
 
 ## Plan 5: Business Model Implementation

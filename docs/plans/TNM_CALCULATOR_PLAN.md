@@ -3,7 +3,9 @@
 > **Priority:** 4 (Core Feature)  
 > **Complexity:** High  
 > **Estimated Effort:** 3-4 weeks  
-> **Status:** Planned
+> **Status:** Implemented
+
+**Backend documentation:** See [TNM_CALCULATOR_BACKEND.md](../TNM_CALCULATOR_BACKEND.md) for the exact code flow, data sources, and excluded cancer slugs.
 
 ## Executive Summary
 
