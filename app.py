@@ -26,6 +26,7 @@ from admin_routes import admin_bp
 from admin_enrichment_routes import enrichment_bp
 from notes_integration_routes import notes_bp
 from resources_routes import resources_bp
+from reference_image_routes import reference_image_bp
 # AJCC TNM Module - imports blueprints from the reusable module
 from ajcc_tnm import get_blueprints, init_app as init_ajcc_tnm
 admin_tnm_bp, tnm_bp = get_blueprints()
@@ -562,6 +563,7 @@ app.register_blueprint(admin_bp)  # Sprint 2: Admin user management
 app.register_blueprint(enrichment_bp)  # Data migration: Import, enrich, promote cases
 app.register_blueprint(notes_bp)  # Notion + Anki integration for student notes
 app.register_blueprint(resources_bp)  # PubMed, TCIA, RadiologyAssistant resources
+app.register_blueprint(reference_image_bp)  # Reference image curation (CC-licensed CT/MRI, anatomy, concept)
 # Initialize AJCC TNM module and register its blueprints
 init_ajcc_tnm(app)
 app.register_blueprint(admin_tnm_bp)  # AJCC TNM staging system - admin routes

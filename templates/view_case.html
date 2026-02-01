@@ -588,6 +588,12 @@
                             <!-- Anatomy Resources Tab -->
                             <div class="tab-pane fade" id="anatomyPane" role="tabpanel" aria-labelledby="anatomyTab">
                                 <div class="p-3">
+                                    <!-- Curated Reference Images (CC-licensed, admin-added) -->
+                                    <div id="anatomyCuratedImagesContainer" class="mb-4" style="display: none;">
+                                        <h6 class="mb-2"><i class="fas fa-images me-2" style="color: #28a745;"></i>Curated Reference Images</h6>
+                                        <p class="text-muted small mb-2">CT/MRI, anatomy diagrams, and concept diagrams. All CC-licensed.</p>
+                                        <div id="anatomyCuratedImagesList" class="d-flex flex-wrap gap-3"></div>
+                                    </div>
                                     <h6 class="mb-3"><i class="fas fa-bone me-2" style="color: #5E899E;"></i>Anatomy Resources</h6>
                                     <p class="text-muted small mb-3">Curated external anatomy resources relevant to this case's body region.</p>
                                     
@@ -7915,6 +7921,46 @@
         
         const container = document.getElementById('anatomyResourcesContainer');
         if (!container) return;
+
+        // Load curated reference images for this case
+        const caseId = {{ case.id if case else 'null' }};
+        if (caseId) {
+            try {
+                const refRes = await fetch('/api/reference-images/case/' + caseId, { credentials: 'include' });
+                if (refRes.ok) {
+                    const refImages = await refRes.json();
+                    const refList = Array.isArray(refImages) ? refImages : [];
+                    const curatedContainer = document.getElementById('anatomyCuratedImagesContainer');
+                    const curatedList = document.getElementById('anatomyCuratedImagesList');
+                    if (curatedContainer && curatedList && refList.length > 0) {
+                        const byType = { ct_mri: [], anatomy_diagram: [], concept_diagram: [] };
+                        refList.forEach(img => {
+                            const t = img.image_type || 'ct_mri';
+                            if (byType[t]) byType[t].push(img);
+                            else byType.ct_mri.push(img);
+                        });
+                        let html = '';
+                        for (const [type, imgs] of Object.entries(byType)) {
+                            if (imgs.length === 0) continue;
+                            const label = type.replace('_', ' ');
+                            html += '<div class="mb-2"><small class="text-muted fw-bold">' + label + '</small></div>';
+                            html += '<div class="d-flex flex-wrap gap-2 mb-3">';
+                            imgs.forEach(img => {
+                                html += '<a href="' + (img.source_url || '#') + '" target="_blank" rel="noopener" class="text-decoration-none">';
+                                html += '<div class="border rounded p-2" style="width:100px;background:#f8f9fa;">';
+                                html += '<img src="' + (img.thumbnail_url || img.source_url) + '" alt="" style="width:90px;height:70px;object-fit:cover;border-radius:4px;" onerror="this.style.display=\'none\'">';
+                                html += '<small class="d-block mt-1 text-dark" style="font-size:0.75rem;">' + (img.ai_description || img.source_domain || '').substring(0, 20) + '...</small>';
+                                html += '<small class="text-muted" style="font-size:0.65rem;">' + (img.attribution || '').substring(0, 25) + '</small>';
+                                html += '</div></a>';
+                            });
+                            html += '</div>';
+                        }
+                        curatedList.innerHTML = html;
+                        curatedContainer.style.display = 'block';
+                    }
+                }
+            } catch (e) { console.warn('[Anatomy] Curated images load failed:', e); }
+        }
         
         try {
             // Load anatomy_resources.json

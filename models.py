@@ -476,7 +476,50 @@ class CaseImage(db.Model):
         return self.image_url is not None
 
 
-
+class CaseReferenceImage(db.Model):
+    """Admin-curated reference images for cases (CT/MRI, anatomy diagrams, concept diagrams).
+    All images MUST be Creative Commons or public domain. Stored for display in Anatomy tab."""
+    __tablename__ = 'case_reference_image'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    case_id = db.Column(db.Integer, db.ForeignKey('case.id'), nullable=False, index=True)
+    
+    source_url = db.Column(db.String(1000), nullable=False)
+    source_domain = db.Column(db.String(255), nullable=False)
+    thumbnail_url = db.Column(db.String(500), nullable=True)
+    # image_type: 'ct_mri' | 'anatomy_diagram' | 'concept_diagram'
+    image_type = db.Column(db.String(50), nullable=False, default='ct_mri')
+    modality = db.Column(db.String(50), nullable=True)  # CT, MRI, etc. (for imaging type)
+    
+    ai_description = db.Column(db.Text, nullable=True)
+    ai_relevance_score = db.Column(db.Float, nullable=True)
+    admin_note = db.Column(db.Text, nullable=True)
+    display_order = db.Column(db.Integer, default=0)
+    added_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # REQUIRED: License must be Creative Commons or public domain
+    license = db.Column(db.String(100), nullable=False, default='CC BY 4.0')
+    attribution = db.Column(db.String(500), nullable=False)
+    
+    case = db.relationship('Case', backref=db.backref('reference_images', lazy=True, cascade='all, delete-orphan'))
+    added_by = db.relationship('User', backref='added_reference_images')
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'case_id': self.case_id,
+            'source_url': self.source_url,
+            'source_domain': self.source_domain,
+            'thumbnail_url': self.thumbnail_url,
+            'image_type': self.image_type,
+            'modality': self.modality,
+            'ai_description': self.ai_description,
+            'admin_note': self.admin_note,
+            'display_order': self.display_order,
+            'license': self.license,
+            'attribution': self.attribution,
+        }
 
 
 class CandidateNote(db.Model):

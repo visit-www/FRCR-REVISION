@@ -294,6 +294,20 @@ console.log('[TinyMCE Loader] Script URL was:', "{{ url_for('static', filename='
                             <i class="fas fa-info-circle me-1"></i>Supported formats: JPEG, PNG, GIF, WebP (Max 10MB)
                         </small>
                     </div>
+
+                    <!-- Reference Images (CC-licensed: CT/MRI, anatomy, concept) -->
+                    <div class="border-top pt-4 mt-4">
+                        <label class="form-label fw-bold text-secondary mb-2">
+                            <i class="fas fa-images me-1" style="color: #28a745;"></i>Reference Images (CC-licensed)
+                        </label>
+                        <p class="small text-muted mb-2">Curate CT/MRI, anatomy diagrams, and concept diagrams for the Anatomy tab. All images must be Creative Commons.</p>
+                        <button type="button" class="ref-image-trigger-btn" id="refImageSearchBtn" onclick="openRefImageSearchModal()">
+                            <i class="fas fa-search me-1"></i>Search Reference Images
+                        </button>
+                        <div id="refImagesList" class="mt-3">
+                            <!-- Reference images added here -->
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -419,6 +433,214 @@ console.log('[TinyMCE Loader] Script URL was:', "{{ url_for('static', filename='
             }
             .reference-item:hover .reference-remove {
                 opacity: 1;
+            }
+            </style>
+
+            <!-- Reference Image Search Panel (app-styled, no Bootstrap modal) -->
+            <div id="refImageSearchOverlay" class="ref-image-overlay" style="display: none;" onclick="closeRefImageSearchPanel(event)">
+                <div class="ref-image-panel" onclick="event.stopPropagation()">
+                    <div class="ref-image-panel-header">
+                        <h5 class="ref-image-panel-title"><i class="fas fa-search me-2"></i>Search Reference Images (CC-licensed)</h5>
+                        <button type="button" class="ref-image-close-btn" onclick="closeRefImageSearchPanel()" aria-label="Close">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="ref-image-panel-body">
+                        <div class="ref-image-field mb-3">
+                            <label class="ref-image-label">Diagnosis</label>
+                            <input type="text" id="refImageDiagnosis" class="form-control" placeholder="From case">
+                        </div>
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-4">
+                                <label class="ref-image-label">Body Part</label>
+                                <input type="text" id="refImageBodyPart" class="form-control" placeholder="e.g. brain, knee">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="ref-image-label">Modality</label>
+                                <select id="refImageModality" class="form-select">
+                                    <option value="CT">CT</option>
+                                    <option value="MRI">MRI</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="ref-image-label">Image Type</label>
+                                <select id="refImageTypeFilter" class="form-select">
+                                    <option value="">All</option>
+                                    <option value="ct_mri">CT/MRI imaging</option>
+                                    <option value="anatomy_diagram">Anatomy diagrams</option>
+                                    <option value="concept_diagram">Concept diagrams</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button type="button" class="ref-image-search-btn" onclick="searchRefImages()" id="refImageSearchSubmitBtn">
+                            <i class="fas fa-search me-1"></i>Search
+                        </button>
+                        <div id="refImageSearchResults" class="ref-image-results" style="display: none;">
+                            <p class="ref-image-results-hint">Results will appear here. Add images with attribution.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <style>
+            .ref-image-overlay {
+                position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+                background: rgba(44, 62, 80, 0.6);
+                z-index: 9999;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 1rem;
+                animation: refImageFadeIn 0.2s ease;
+            }
+            @keyframes refImageFadeIn {
+                from { opacity: 0; } to { opacity: 1; }
+            }
+            .ref-image-panel {
+                background: #ffffff;
+                border: 1px solid #c5cad1;
+                border-radius: 8px;
+                box-shadow: 0 8px 32px rgba(44, 62, 80, 0.2);
+                max-width: 640px;
+                width: 100%;
+                max-height: 90vh;
+                overflow: hidden;
+                display: flex;
+                flex-direction: column;
+                animation: refImageSlideIn 0.25s ease;
+            }
+            @keyframes refImageSlideIn {
+                from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: translateY(0); }
+            }
+            .ref-image-panel-header {
+                background: linear-gradient(135deg, #5E899E 0%, #4a7285 100%);
+                color: white;
+                padding: 1rem 1.25rem;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                flex-shrink: 0;
+            }
+            .ref-image-panel-title {
+                margin: 0;
+                font-size: 1.1rem;
+                font-weight: 600;
+                color: white;
+            }
+            .ref-image-close-btn {
+                background: rgba(255,255,255,0.2);
+                border: none;
+                color: white;
+                width: 36px;
+                height: 36px;
+                border-radius: 6px;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                transition: background 0.2s;
+            }
+            .ref-image-close-btn:hover {
+                background: rgba(255,255,255,0.35);
+            }
+            .ref-image-panel-body {
+                padding: 1.25rem;
+                overflow-y: auto;
+                flex: 1;
+            }
+            .ref-image-label {
+                display: block;
+                font-size: 0.9rem;
+                font-weight: 500;
+                color: #2c3e50;
+                margin-bottom: 0.35rem;
+            }
+            .ref-image-search-btn {
+                background: #e96304;
+                color: white;
+                border: none;
+                padding: 0.5rem 1rem;
+                border-radius: 6px;
+                font-weight: 500;
+                cursor: pointer;
+                transition: background 0.2s;
+            }
+            .ref-image-search-btn:hover {
+                background: #d45703;
+            }
+            .ref-image-search-btn:disabled {
+                background: #c5cad1;
+                cursor: not-allowed;
+            }
+            .ref-image-results {
+                margin-top: 1rem;
+                padding: 1rem;
+                border: 1px solid #c5cad1;
+                border-radius: 8px;
+                background: #fdfdfb;
+                max-height: 400px;
+                overflow-y: auto;
+            }
+            .ref-image-results-hint {
+                margin: 0;
+                font-size: 0.9rem;
+                color: #8b94a3;
+            }
+            .ref-image-result-card {
+                background: #fdfdfb;
+                border: 1px solid #c5cad1;
+                border-radius: 8px;
+                border-left: 3px solid #5E899E;
+            }
+            .ref-image-thumb {
+                width: 80px;
+                height: 80px;
+                object-fit: cover;
+                border-radius: 6px;
+            }
+            .ref-image-type-badge {
+                display: inline-block;
+                background: #5E899E;
+                color: white;
+                padding: 2px 8px;
+                border-radius: 4px;
+                font-size: 0.75rem;
+            }
+            .ref-image-title {
+                font-size: 0.9rem;
+                color: #2c3e50;
+                margin: 0.35rem 0;
+            }
+            .ref-image-domain {
+                font-size: 0.8rem;
+                color: #8b94a3;
+                display: block;
+            }
+            .ref-image-add-btn {
+                background: #a8d5ba;
+                color: #2c3e50;
+                border: none;
+                padding: 0.35rem 0.75rem;
+                border-radius: 6px;
+                font-weight: 500;
+                cursor: pointer;
+                transition: background 0.2s;
+            }
+            .ref-image-add-btn:hover {
+                background: #94c9a8;
+            }
+            .ref-image-trigger-btn {
+                background: transparent;
+                color: #5E899E;
+                border: 1px solid #5E899E;
+                padding: 0.4rem 0.9rem;
+                border-radius: 6px;
+                font-weight: 500;
+                cursor: pointer;
+                transition: all 0.2s;
+            }
+            .ref-image-trigger-btn:hover {
+                background: #5E899E;
+                color: white;
             }
             </style>
 
@@ -657,6 +879,151 @@ function handleSaveCase(event) {
 }
 </script>
 <script src="/static/edit-case-modal.js"></script>
+<script>
+// Reference Image Curation (CC-licensed)
+function openRefImageSearchModal() {
+    const caseId = document.getElementById('editCaseId')?.value;
+    if (!caseId) {
+        alert('Save the case first before adding reference images.');
+        return;
+    }
+    const diagnosis = document.getElementById('editCaseDiagnosis')?.value || '';
+    const module = document.getElementById('editCaseModule')?.value || '';
+    document.getElementById('refImageDiagnosis').value = diagnosis;
+    document.getElementById('refImageBodyPart').value = (module || '').replace(/_/g, ' ').toLowerCase();
+    const overlay = document.getElementById('refImageSearchOverlay');
+    overlay.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+    overlay._escapeHandler = function(e) { if (e.key === 'Escape') closeRefImageSearchPanel(); };
+    document.addEventListener('keydown', overlay._escapeHandler);
+}
+function closeRefImageSearchPanel(ev) {
+    if (ev && ev.target !== ev.currentTarget) return;
+    const overlay = document.getElementById('refImageSearchOverlay');
+    overlay.style.display = 'none';
+    document.body.style.overflow = '';
+    if (overlay._escapeHandler) {
+        document.removeEventListener('keydown', overlay._escapeHandler);
+        overlay._escapeHandler = null;
+    }
+}
+function searchRefImages() {
+    const diagnosis = document.getElementById('refImageDiagnosis').value.trim();
+    if (!diagnosis) {
+        alert('Enter a diagnosis to search.');
+        return;
+    }
+    const bodyPart = document.getElementById('refImageBodyPart').value.trim();
+    const modality = document.getElementById('refImageModality').value;
+    const imageType = document.getElementById('refImageTypeFilter').value;
+    const btn = document.getElementById('refImageSearchSubmitBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Searching...';
+    const params = new URLSearchParams({ diagnosis, body_part: bodyPart, modality });
+    if (imageType) params.set('image_type', imageType);
+    fetch('/api/reference-images/search?' + params)
+        .then(r => r.json())
+        .then(data => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-search me-1"></i>Search';
+            const container = document.getElementById('refImageSearchResults');
+            container.style.display = 'block';
+            if (data.error) {
+                container.innerHTML = '<p class="text-danger"><strong>Error:</strong> ' + data.error + '</p><p class="small text-muted mt-2">Check .env has GOOGLE_SEARCH_API_KEY and GOOGLE_SEARCH_ENGINE_ID, then restart Flask.</p>';
+                return;
+            }
+            const results = data.results || [];
+            if (results.length === 0) {
+                const hint = data.hint || 'Try a different query.';
+                container.innerHTML = '<p class="text-muted">No results.</p><p class="small text-muted">' + hint + '</p>';
+                return;
+            }
+            container.innerHTML = results.map((r, i) => `
+                <div class="d-flex gap-3 align-items-start mb-3 p-2 ref-image-result-card">
+                    <img src="${r.thumbnail_link || r.link}" alt="" class="ref-image-thumb" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2280%22 height=%2280%22><rect fill=%22%23ddd%22 width=%2280%22 height=%2280%22/><text x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22%23999%22>?</text></svg>'">
+                    <div class="flex-grow-1">
+                        <span class="ref-image-type-badge">${r.image_type || 'ct_mri'}</span>
+                        <p class="ref-image-title">${(r.title || '').substring(0, 80)}...</p>
+                        <small class="ref-image-domain">${r.displayLink || r.source_domain || ''}</small>
+                        <input type="text" class="form-control form-control-sm mt-1" placeholder="Attribution (required)" id="refAttrib${i}" value="Source: ${r.displayLink || r.source_domain || 'unknown'}">
+                        <button type="button" class="ref-image-add-btn mt-1" onclick="addRefImageFromSearch('${r.link.replace(/'/g, "\\'")}', '${(r.source_domain || '').replace(/'/g, "\\'")}', '${(r.thumbnail_link || r.link || '').replace(/'/g, "\\'")}', '${(r.image_type || 'ct_mri').replace(/'/g, "\\'")}', ${i})">
+                            <i class="fas fa-plus me-1"></i>Add
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        })
+        .catch(err => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-search me-1"></i>Search';
+            document.getElementById('refImageSearchResults').innerHTML = '<p class="text-danger">Search failed: ' + err.message + '</p>';
+            document.getElementById('refImageSearchResults').style.display = 'block';
+        });
+}
+function addRefImageFromSearch(link, sourceDomain, thumbnailLink, imageType, idx) {
+    const attribution = document.getElementById('refAttrib' + idx)?.value?.trim();
+    if (!attribution) {
+        alert('Attribution is required for CC compliance.');
+        return;
+    }
+    const caseId = document.getElementById('editCaseId')?.value;
+    if (!caseId) return;
+    fetch('/api/reference-images/case/' + caseId, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            source_url: link,
+            source_domain: sourceDomain || 'unknown',
+            thumbnail_url: thumbnailLink,
+            image_type: imageType || 'ct_mri',
+            license: 'CC BY 4.0',
+            attribution: attribution
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.error) {
+            alert(data.error);
+            return;
+        }
+        loadRefImagesList();
+        closeRefImageSearchPanel();
+    })
+    .catch(err => alert('Add failed: ' + err.message));
+}
+function loadRefImagesList() {
+    const caseId = document.getElementById('editCaseId')?.value;
+    if (!caseId) return;
+    fetch('/api/reference-images/case/' + caseId)
+        .then(r => r.json())
+        .then(renderRefImagesList)
+        .catch(() => renderRefImagesList([]));
+}
+function renderRefImagesList(images) {
+    const container = document.getElementById('refImagesList');
+    if (!container) return;
+    if (!images || images.length === 0) {
+        container.innerHTML = '<p class="text-muted small">No reference images yet.</p>';
+        return;
+    }
+    const caseId = document.getElementById('editCaseId')?.value;
+    container.innerHTML = images.map(img => `
+        <div class="d-inline-block me-2 mb-2 p-2 border rounded" style="background:#f8f9fa;">
+            <img src="${img.thumbnail_url || img.source_url}" alt="" style="width:60px;height:60px;object-fit:cover;border-radius:4px;">
+            <small class="d-block mt-1">${(img.image_type || 'ct_mri').replace('_',' ')}</small>
+            <button type="button" class="btn btn-outline-danger btn-sm mt-1" onclick="deleteRefImage(${img.id})"><i class="fas fa-trash"></i></button>
+        </div>
+    `).join('');
+}
+function deleteRefImage(imageId) {
+    const caseId = document.getElementById('editCaseId')?.value;
+    if (!caseId) return;
+    if (!confirm('Remove this reference image?')) return;
+    fetch('/api/reference-images/case/' + caseId + '/' + imageId, { method: 'DELETE' })
+        .then(r => { if (r.ok) loadRefImagesList(); })
+        .catch(err => alert('Delete failed: ' + err.message));
+}
+</script>
 <script>
 // Expose functions globally after edit-case-modal.js loads
 (function() {
@@ -1170,9 +1537,10 @@ function loadCaseForEdit(caseId) {
                 return [];
             }
             return r.json();
-        })
+        }),
+        fetch(`/api/reference-images/case/${caseId}`).then(r => r.ok ? r.json() : [])
     ])
-    .then(([caseData, images, qaPairs]) => {
+    .then(([caseData, images, qaPairs, refImages]) => {
         document.getElementById('editCaseId').value = caseData.id;
         const subtitle = document.getElementById('pageSubtitle');
         if (subtitle) {
@@ -1295,6 +1663,9 @@ function loadCaseForEdit(caseId) {
             }
         }
         populateImagesWithRetry();
+        if (typeof renderRefImagesList === 'function') {
+            renderRefImagesList(refImages || []);
+        }
     })
     .catch(error => {
         console.error('Error loading case:', error);
