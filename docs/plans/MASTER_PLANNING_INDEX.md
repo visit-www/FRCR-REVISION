@@ -112,6 +112,11 @@ Implement an admin-side AI-assisted reference image curation system that uses Go
 ### Plan Document
 📄 **Location:** `.cursor/plans/reference_image_curation_feature_11c6d6e5.plan.md`
 
+### Reference Image: Beyond Google (Sub-plan)
+Extend reference image search with Open-i, Bing, and Wikimedia Commons alongside Google.
+- **Plan:** [reference_image-beyond-google.md](reference_image-beyond-google.md)
+- **Status:** Implemented
+
 ---
 
 ## Plan 4: TNM Calculator (Standalone Module)

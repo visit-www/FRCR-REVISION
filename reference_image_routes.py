@@ -10,7 +10,8 @@ from flask_login import login_required, current_user
 
 from access_control import require_admin, has_case_edit_permission, has_case_view_access
 from models import db, Case, CaseReferenceImage
-from google_search_service import search_reference_images, build_manual_search_url
+from reference_image_search import search_reference_images
+from google_search_service import build_manual_search_url
 from google_search_service import IMAGE_TYPE_CT_MRI, IMAGE_TYPE_ANATOMY_DIAGRAM, IMAGE_TYPE_CONCEPT_DIAGRAM
 
 reference_image_bp = Blueprint("reference_images", __name__, url_prefix="/api/reference-images")
@@ -79,7 +80,7 @@ def search():
             return jsonify({
                 "results": [],
                 "diagnosis": diagnosis,
-                "hint": "API responded but returned 0 images. Ensure your Programmable Search Engine has Image search ON and is set to search the entire web.",
+                "hint": "No images found from Wikimedia Commons or Open-i. Try a different query or use the manual search link below.",
                 "manual_search_url": manual_url,
             })
         return jsonify({"results": results, "diagnosis": diagnosis})
