@@ -6,23 +6,29 @@ Can be run locally with Vercel environment variables.
 Usage:
     vercel env pull .env.vercel
     source venv/bin/activate
-    python3 run_migration.py
+    python scripts/utilities/run_migration.py
 """
 
 import os
 import sys
-from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
+from pathlib import Path
 
-# Load environment variables from .env.vercel if it exists
-if os.path.exists('.env.vercel'):
+# Add project root to path so "from app import app" works
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+if str(_PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(_PROJECT_ROOT))
+
+# Load environment variables from .env.vercel if it exists (project root)
+_env_vercel = _PROJECT_ROOT / '.env.vercel'
+if _env_vercel.exists():
     print("[INFO] Loading environment variables from .env.vercel")
-    with open('.env.vercel', 'r') as f:
+    with open(_env_vercel, 'r') as f:
         for line in f:
             line = line.strip()
             if line and not line.startswith('#') and '=' in line:
                 key, value = line.split('=', 1)
-                # Remove quotes if present
-                value = value.strip('"\'')
+                # Remove quotes and whitespace (e.g. trailing newline from .env)
+                value = value.strip().strip('"\'')
                 os.environ[key] = value
 
 # Set Flask app

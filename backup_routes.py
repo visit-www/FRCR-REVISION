@@ -10,7 +10,7 @@ from models import (
     ImportedCaseStaging, UserRole, FRCRModule, BodyPart, AgeGroup,
     SubscriptionStatus, PaymentStatus,
     ForumMessage, ForumMessageVote, ForumMessageFlag,
-    CaseReference, TnmReference, AnatomyFigure, TNMImage,
+    CaseReference, CaseReferenceImage, TnmReference, AnatomyFigure, TNMImage,
     # AJCC TNM Models
     AJCCBodySection, AJCCDiseaseSite, AJCCDiagnosisYear,
     AJCCStagingData, AJCCDiseaseMapping, AJCCStagingTimePrefix,
@@ -69,7 +69,7 @@ def download_backup():
             'metadata': {
                 'backup_date': datetime.utcnow().isoformat(),
                 'database_type': 'postgresql' if os.getenv('DATABASE_URL') or os.getenv('DATABASE_POSTGRES_URL_NON_POOLING') else 'sqlite',
-                'version': '2.4',  # Bumped for curated cols, disease display_order, refs, anatomy, tnm_images
+                'version': '2.5',  # Bumped for case_reference_images
                 'app_name': 'RadInsights'
             },
             'users': [],
@@ -96,6 +96,7 @@ def download_backup():
             'intelligent_tnm_data': [],  # AI-generated TNM intelligence
             # Reference and media tables
             'case_references': [],
+            'case_reference_images': [],  # CC-licensed curated images for Anatomy tab
             'tnm_references': [],
             'anatomy_figures': [],
             'tnm_images': [],
@@ -397,6 +398,26 @@ def download_backup():
                 'year': ref.year,
                 'is_inline': ref.is_inline,
                 'created_at': ref.created_at.isoformat() if ref.created_at else None,
+            })
+        
+        # Export Case Reference Images (CC-licensed curated images for Anatomy tab)
+        for img in CaseReferenceImage.query.order_by(CaseReferenceImage.case_id, CaseReferenceImage.display_order).all():
+            backup_data['case_reference_images'].append({
+                'id': img.id,
+                'case_id': img.case_id,
+                'source_url': img.source_url,
+                'source_domain': img.source_domain,
+                'thumbnail_url': img.thumbnail_url,
+                'image_type': img.image_type,
+                'modality': img.modality,
+                'ai_description': img.ai_description,
+                'ai_relevance_score': img.ai_relevance_score,
+                'admin_note': img.admin_note,
+                'display_order': img.display_order,
+                'added_by_user_id': img.added_by_user_id,
+                'created_at': img.created_at.isoformat() if img.created_at else None,
+                'license': img.license,
+                'attribution': img.attribution,
             })
         
         # Export TNM References
@@ -2164,6 +2185,57 @@ def restore_backup():
                 db.session.add(ref)
                 stats['case_references']['added'] += 1
         
+        # Import Case Reference Images (map case_id via case_id_map, added_by_user_id via user_id_map)
+        stats['case_reference_images'] = {'added': 0, 'updated': 0, 'skipped': 0}
+        for img_data in backup_data.get('case_reference_images', []):
+            if not isinstance(img_data, dict):
+                continue
+            old_case_id = img_data.get('case_id')
+            new_case_id = case_id_map.get(old_case_id)
+            if not new_case_id:
+                stats['case_reference_images']['skipped'] += 1
+                continue
+            new_user_id = user_id_map.get(img_data.get('added_by_user_id')) if img_data.get('added_by_user_id') else None
+            source_url = img_data.get('source_url', '')
+            existing = CaseReferenceImage.query.filter_by(
+                case_id=new_case_id,
+                source_url=source_url,
+            ).first() if source_url else None
+            if existing and not overwrite_existing:
+                stats['case_reference_images']['skipped'] += 1
+                continue
+            if existing and overwrite_existing:
+                existing.source_domain = img_data.get('source_domain', '')
+                existing.thumbnail_url = img_data.get('thumbnail_url')
+                existing.image_type = img_data.get('image_type', 'ct_mri')
+                existing.modality = img_data.get('modality')
+                existing.ai_description = img_data.get('ai_description')
+                existing.ai_relevance_score = img_data.get('ai_relevance_score')
+                existing.admin_note = img_data.get('admin_note')
+                existing.display_order = img_data.get('display_order', 0)
+                existing.added_by_user_id = new_user_id
+                existing.license = img_data.get('license', 'CC BY 4.0')
+                existing.attribution = img_data.get('attribution', '')
+                stats['case_reference_images']['updated'] += 1
+            else:
+                ref_img = CaseReferenceImage(
+                    case_id=new_case_id,
+                    source_url=source_url,
+                    source_domain=img_data.get('source_domain', ''),
+                    thumbnail_url=img_data.get('thumbnail_url'),
+                    image_type=img_data.get('image_type', 'ct_mri'),
+                    modality=img_data.get('modality'),
+                    ai_description=img_data.get('ai_description'),
+                    ai_relevance_score=img_data.get('ai_relevance_score'),
+                    admin_note=img_data.get('admin_note'),
+                    display_order=img_data.get('display_order', 0),
+                    added_by_user_id=new_user_id,
+                    license=img_data.get('license', 'CC BY 4.0'),
+                    attribution=img_data.get('attribution', ''),
+                )
+                db.session.add(ref_img)
+                stats['case_reference_images']['added'] += 1
+        
         # Import TNM References (map disease_site_id via ajcc_disease_id_map)
         stats['tnm_references'] = {'added': 0, 'updated': 0, 'skipped': 0}
         for ref_data in backup_data.get('tnm_references', []):
@@ -2295,7 +2367,7 @@ def restore_backup():
         # Commit AJCC data
         try:
             db.session.commit()
-            print(f"[IMPORT] AJCC data imported: {stats['ajcc_body_sections']['added']} sections, {stats['ajcc_disease_sites']['added']} diseases, {stats['ajcc_staging_data']['added']} staging entries, {stats['intelligent_tnm_data']['added']} intelligent TNM records, {stats.get('case_references', {}).get('added', 0)} case refs, {stats.get('tnm_references', {}).get('added', 0)} TNM refs, {stats.get('anatomy_figures', {}).get('added', 0)} anatomy figs, {stats.get('tnm_images', {}).get('added', 0)} TNM images")
+            print(f"[IMPORT] AJCC data imported: {stats['ajcc_body_sections']['added']} sections, {stats['ajcc_disease_sites']['added']} diseases, {stats['ajcc_staging_data']['added']} staging entries, {stats['intelligent_tnm_data']['added']} intelligent TNM records, {stats.get('case_references', {}).get('added', 0)} case refs, {stats.get('case_reference_images', {}).get('added', 0)} case ref images, {stats.get('tnm_references', {}).get('added', 0)} TNM refs, {stats.get('anatomy_figures', {}).get('added', 0)} anatomy figs, {stats.get('tnm_images', {}).get('added', 0)} TNM images")
         except Exception as ajcc_error:
             db.session.rollback()
             print(f"[IMPORT] ERROR during AJCC commit: {ajcc_error}")
@@ -2410,6 +2482,7 @@ def backup_status():
         'ajcc_staging_data': AJCCStagingData.query.count(),
         'ajcc_disease_mappings': AJCCDiseaseMapping.query.count(),
         'intelligent_tnm_data': IntelligentTNMData.query.count(),
+        'case_reference_images': CaseReferenceImage.query.count(),
     }
     
     return jsonify({
