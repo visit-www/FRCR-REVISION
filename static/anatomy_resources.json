@@ -357,13 +357,13 @@
     }
   ],
   "body_part_keywords": {
-    "Head": ["head", "brain", "skull", "cranial", "intracranial", "cerebral"],
-    "Neck": ["neck", "cervical", "larynx", "pharynx", "thyroid"],
-    "Chest": ["chest", "thorax", "lung", "mediastinum", "pulmonary", "cardiac", "heart"],
-    "Abdomen": ["abdomen", "abdominal", "liver", "spleen", "kidney", "pancreas", "bowel", "colon"],
-    "Pelvis": ["pelvis", "pelvic", "bladder", "uterus", "ovary", "prostate", "rectum"],
-    "Spine": ["spine", "spinal", "vertebra", "vertebral", "lumbar", "thoracic", "cervical"],
-    "MSK": ["knee", "shoulder", "ankle", "elbow", "wrist", "hip", "bone", "joint", "musculoskeletal", "msk"]
+    "Head": ["head", "brain", "skull", "cranial", "intracranial", "cerebral", "pituitary", "temporal", "sinus", "paranasal", "nasal", "nasopharynx", "orbit", "optic", "eye"],
+    "Neck": ["neck", "cervical", "larynx", "pharynx", "thyroid", "parathyroid", "head and neck", "salivary", "dental", "ent", "oral", "tongue", "oropharynx", "hypopharynx", "nasopharynx"],
+    "Chest": ["chest", "thorax", "lung", "mediastinum", "pulmonary", "cardiac", "heart", "cardiovascular", "vascular", "chest wall", "pleural", "bronchus", "trachea"],
+    "Abdomen": ["abdomen", "abdominal", "liver", "spleen", "kidney", "pancreas", "bowel", "colon", "gastrointestinal", "gastro", "hepatopancreaticobiliary", "hpb", "biliary", "kub", "upper gi", "lower gi", "oesophagus", "stomach", "renal", "hepatic", "colorectal", "rectal", "gastric", "duodenum", "ileum", "jejunum"],
+    "Pelvis": ["pelvis", "pelvic", "bladder", "uterus", "ovary", "prostate", "rectum", "gynaecology", "gynae", "genito", "urinary", "genitourinary", "breast", "adrenal", "male genital", "female pelvis", "endometrial", "ovarian", "testicular", "penile", "vaginal", "vulvar"],
+    "Spine": ["spine", "spinal", "vertebra", "vertebral", "lumbar", "thoracic", "cervical", "cord", "cns", "sacral", "cauda"],
+    "MSK": ["knee", "shoulder", "ankle", "elbow", "wrist", "hip", "bone", "joint", "musculoskeletal", "msk", "upper limb", "lower limb", "bones", "soft tissue", "trauma", "paediatric", "pediatric", "skeletal", "sarcoma", "osteosarcoma", "chondrosarcoma"]
   },
   "modality_keywords": {
     "CT": ["ct", "computed tomography", "hrct"],

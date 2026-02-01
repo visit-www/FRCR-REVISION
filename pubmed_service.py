@@ -93,6 +93,20 @@ def cache_result(cache_key: str, results: List[Dict]):
         print(f"Cache write error: {e}")
 
 
+def clear_pubmed_cache() -> int:
+    """Remove all PubMed cache files. Returns count of files removed."""
+    count = 0
+    try:
+        if os.path.exists(CACHE_DIR):
+            for f in os.listdir(CACHE_DIR):
+                if f.endswith('.json'):
+                    os.remove(os.path.join(CACHE_DIR, f))
+                    count += 1
+    except Exception as e:
+        print(f"Cache clear error: {e}")
+    return count
+
+
 def build_pubmed_query(topic: str, filters: Optional[Dict] = None) -> str:
     """
     Build PubMed query string with exam-relevant filters.
@@ -132,7 +146,7 @@ def build_pubmed_query(topic: str, filters: Optional[Dict] = None) -> str:
     return query
 
 
-def search_pubmed(topic: str, max_results: int = 20, filters: Optional[Dict] = None) -> List[Dict]:
+def search_pubmed(topic: str, max_results: int = 20, filters: Optional[Dict] = None, nocache: bool = False) -> List[Dict]:
     """
     Search PubMed for articles related to a topic.
     
@@ -143,17 +157,19 @@ def search_pubmed(topic: str, max_results: int = 20, filters: Optional[Dict] = N
         topic: Search topic (e.g., diagnosis, classification system)
         max_results: Maximum number of results to return
         filters: Optional filters (free_full_text, article_type, date_range)
+        nocache: If True, bypass cache and fetch fresh results
     
     Returns:
         List of article dictionaries with title, authors, journal, year, abstract, PMID, full-text links
     """
     filters = filters or {}
     
-    # Check cache first
+    # Check cache first (unless nocache requested)
     cache_key = get_cache_key(topic, filters)
-    cached = get_cached_result(cache_key)
-    if cached:
-        return cached[:max_results]
+    if not nocache:
+        cached = get_cached_result(cache_key)
+        if cached:
+            return cached[:max_results]
     
     # Build query
     query = build_pubmed_query(topic, filters)
@@ -314,8 +330,8 @@ def search_pubmed(topic: str, max_results: int = 20, filters: Optional[Dict] = N
         # Fallback to requests-based method
         results = _search_pubmed_requests(query, max_results)
     
-    # Cache results
-    if results:
+    # Cache results (unless nocache requested)
+    if results and not nocache:
         cache_result(cache_key, results)
     
     return results[:max_results]
@@ -423,7 +439,7 @@ def _search_pubmed_requests(query: str, max_results: int) -> List[Dict]:
     return free_text_articles + other_articles
 
 
-def search_latest_guidelines(topic: str, max_results: int = 10) -> List[Dict]:
+def search_latest_guidelines(topic: str, max_results: int = 10, nocache: bool = False) -> List[Dict]:
     """
     Search for latest guidelines and reviews on a topic.
     
@@ -433,6 +449,7 @@ def search_latest_guidelines(topic: str, max_results: int = 10) -> List[Dict]:
     Args:
         topic: Topic to search (e.g., "BI-RADS", "LI-RADS")
         max_results: Maximum number of results
+        nocache: If True, bypass cache and fetch fresh results
     
     Returns:
         List of guideline/review articles
@@ -443,4 +460,4 @@ def search_latest_guidelines(topic: str, max_results: int = 10) -> List[Dict]:
         'date_range': {'from': '2020'}  # Last 4 years
     }
     
-    return search_pubmed(topic, max_results=max_results, filters=filters)
+    return search_pubmed(topic, max_results=max_results, filters=filters, nocache=nocache)

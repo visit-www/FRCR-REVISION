@@ -34,34 +34,55 @@ params = {
     "q": "brain CT imaging",
     "searchType": "image",
     "num": 3,
-    "rights": "cc_publicdomain,cc_attribute,cc_sharealike",
 }
-# Try without rights first to see if CSE works at all
-params_no_rights = {**params}
-del params_no_rights["rights"]
+params_with_rights = {**params, "rights": "cc_publicdomain,cc_attribute,cc_sharealike"}
 
-print("Test 1: With CC rights filter")
+print("Test 1: Basic search (no CC filter)")
 r = requests.get(url, params=params, timeout=10)
 data = r.json()
 if "error" in data:
-    print(f"  ERROR: {data['error'].get('message', data['error'])}")
-    print(f"  Code: {data['error'].get('code')}")
+    err = data["error"]
+    code = err.get("code", "")
+    msg = err.get("message", str(err))
+    print(f"  ERROR: {msg}")
+    print(f"  Code: {code}")
+    if code == 403 or "access" in msg.lower():
+        print()
+        print("=" * 60)
+        print("403 FIX CHECKLIST (Custom Search JSON API):")
+        print("=" * 60)
+        print("1. Enable API: console.cloud.google.com -> APIs & Services ->")
+        print("   Library -> search 'Custom Search API' -> ENABLE")
+        print()
+        print("2. Billing: APIs & Services -> Billing. Link a billing account.")
+        print("   (Required even for free tier. Free: 100 queries/day)")
+        print()
+        print("3. Same project: Ensure API key and Custom Search API are in")
+        print("   the SAME Google Cloud project.")
+        print()
+        print("4. API key restrictions: Credentials -> your key -> if 'Restrict key',")
+        print("   ensure 'Custom Search API' is in the allowed APIs list.")
+        print("   Or temporarily use 'Don't restrict key' to test.")
+        print()
+        print("5. Wait: After enabling billing/API, wait 5-15 min for propagation.")
+        print("=" * 60)
+    sys.exit(1)
 else:
     items = data.get("items", [])
-    print(f"  Status: {r.status_code}, Items: {len(items)}")
+    print(f"  OK - Status: {r.status_code}, Items: {len(items)}")
     for i, it in enumerate(items[:2], 1):
         print(f"  [{i}] {it.get('link', '')[:60]}...")
 
 print()
-print("Test 2: Without rights filter (to check if CSE works)")
-r2 = requests.get(url, params=params_no_rights, timeout=10)
+print("Test 2: With CC rights filter")
+r2 = requests.get(url, params=params_with_rights, timeout=10)
 data2 = r2.json()
 if "error" in data2:
     print(f"  ERROR: {data2['error'].get('message', data2['error'])}")
 else:
     items2 = data2.get("items", [])
-    print(f"  Status: {r2.status_code}, Items: {len(items2)}")
+    print(f"  OK - Items: {len(items2)}")
     if items2:
-        print("  CSE works. If Test 1 had 0 items, the CC rights filter may be too strict.")
+        print("  All tests passed.")
     else:
-        print("  No items. Check: CSE has Image search ON and searches the entire web.")
+        print("  CSE works but 0 CC results. Try different query or relax filter.")

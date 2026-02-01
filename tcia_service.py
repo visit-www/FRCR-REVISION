@@ -16,11 +16,15 @@ TCIA's native web viewer is used for image viewing.
 """
 
 import os
+import logging
 import requests
 from typing import List, Dict, Optional
+from urllib.parse import urlencode
 import json
 import hashlib
 from datetime import datetime, timedelta
+
+logger = logging.getLogger(__name__)
 
 # TCIA/NBIA API base URL
 TCIA_API_BASE = "https://services.cancerimagingarchive.net/nbia-api/services/v1"
@@ -28,6 +32,48 @@ TCIA_API_BASE = "https://services.cancerimagingarchive.net/nbia-api/services/v1"
 # Cache configuration
 CACHE_DIR = os.path.join(os.path.dirname(__file__), 'cache', 'tcia')
 CACHE_DURATION_HOURS = 168  # Cache for 1 week (metadata doesn't change often)
+CACHE_VERSION = 2  # Bump when viewer URL format changes to invalidate old cache
+
+
+def get_study_page_link(patient_id: str, collection: str) -> str:
+    """NBIA search page - pre-fills Collection + PatientId (for browsing, not viewing)."""
+    params = {'Collection': collection, 'PatientId': patient_id}
+    return f"https://nbia.cancerimagingarchive.net/nbia-search/?{urlencode(params)}"
+
+
+def get_study_viewer_links(study_instance_uid: str) -> Dict[str, str]:
+    """Viewer URLs for entire study (all series). Use these for 'View Study' button."""
+    # IDC: study UID in path, no series = entire study
+    idc_url = f"https://viewer.imaging.datacommons.cancer.gov/viewer/{study_instance_uid}"
+    # TCIA/NBIA viewer: studyInstanceUID only = entire study
+    nbia_params = urlencode({'studyInstanceUID': study_instance_uid})
+    nbia_url = f"https://www.cancerimagingarchive.net/viewer/?{nbia_params}"
+    return {'idc': idc_url, 'nbia': nbia_url}
+
+
+def get_viewer_links(study_instance_uid: str, series_uid: str) -> Dict[str, str]:
+    """Generate viewer URLs with fallback options.
+    IDC requires StudyInstanceUID in path; NBIA needs both in query params."""
+    # IDC: study UID in path, series as ?seriesInstanceUID=...
+    idc_base = f"https://viewer.imaging.datacommons.cancer.gov/viewer/{study_instance_uid}"
+    idc_primary = f"{idc_base}?seriesInstanceUID={series_uid}" if series_uid else idc_base
+    # OHIF v3: query params
+    ohif_params = urlencode({
+        'StudyInstanceUIDs': study_instance_uid,
+        'SeriesInstanceUIDs': series_uid or ''
+    })
+    ohif_url = f"https://viewer.imaging.datacommons.cancer.gov/v3/viewer/?{ohif_params}" if series_uid else idc_base
+    # NBIA: studyInstanceUID and seriesInstanceUID (camelCase)
+    nbia_params = urlencode({
+        'studyInstanceUID': study_instance_uid,
+        'seriesInstanceUID': series_uid
+    })
+    nbia_url = f"https://www.cancerimagingarchive.net/viewer/?{nbia_params}"
+    return {
+        'primary': idc_primary,
+        'fallback_nbia': nbia_url,
+        'ohif': ohif_url,
+    }
 
 
 def ensure_cache_dir():
@@ -37,8 +83,25 @@ def ensure_cache_dir():
 
 def get_cache_key(endpoint: str, params: Dict) -> str:
     """Generate cache key from endpoint and parameters."""
-    cache_data = f"{endpoint}_{json.dumps(params, sort_keys=True)}"
+    cache_data = f"{CACHE_VERSION}_{endpoint}_{json.dumps(params, sort_keys=True)}"
     return hashlib.md5(cache_data.encode()).hexdigest()
+
+
+def clear_tcia_cache() -> int:
+    """Remove all TCIA cache files. Returns count of files removed."""
+    if not os.path.isdir(CACHE_DIR):
+        return 0
+    count = 0
+    for f in os.listdir(CACHE_DIR):
+        if f.endswith('.json'):
+            try:
+                os.remove(os.path.join(CACHE_DIR, f))
+                count += 1
+            except OSError:
+                pass
+    if count:
+        logger.info("[TCIA] Cleared %d cache files", count)
+    return count
 
 
 def get_cached_result(cache_key: str) -> Optional[Dict]:
@@ -58,7 +121,7 @@ def get_cached_result(cache_key: str) -> Optional[Dict]:
         if datetime.now() - cache_time < timedelta(hours=CACHE_DURATION_HOURS):
             return cached_data.get('result')
     except Exception as e:
-        print(f"TCIA cache read error: {e}")
+        logger.debug("[TCIA] Cache read error: %s", e)
     
     return None
 
@@ -75,7 +138,7 @@ def cache_result(cache_key: str, result: Dict):
                 'result': result
             }, f)
     except Exception as e:
-        print(f"TCIA cache write error: {e}")
+        logger.debug("[TCIA] Cache write error: %s", e)
 
 
 def search_collections(
@@ -121,10 +184,10 @@ def search_collections(
         
         # Parse simple format: [{"Collection":"name"}, ...]
         collections = response.json()
-        print(f"[DEBUG] TCIA found {len(collections)} collections")
+        logger.debug("[TCIA] Found %d collections", len(collections))
         
         if not isinstance(collections, list):
-            print(f"[DEBUG] TCIA unexpected format: {type(collections)}")
+            logger.warning("[TCIA] Unexpected API format: %s", type(collections))
             return []
         
         # Filter collections
@@ -161,9 +224,7 @@ def search_collections(
         return filtered[:max_results]
         
     except Exception as e:
-        print(f"TCIA search error: {e}")
-        import traceback
-        traceback.print_exc()
+        logger.error("[TCIA] Search error: %s", e, exc_info=True)
         return []
 
 
@@ -214,7 +275,7 @@ def get_collection_studies(collection_id: str, max_results: int = 20) -> List[Di
         return formatted_studies
         
     except Exception as e:
-        print(f"TCIA get studies error: {e}")
+        logger.error("[TCIA] Get studies error: %s", e)
         return []
 
 
@@ -245,16 +306,11 @@ def get_study_series(study_instance_uid: str) -> List[Dict]:
         
         series_list = response.json()
         
-        # Format series
+        # Format series with correct viewer URLs and fallbacks
         formatted_series = []
         for series in series_list:
             series_uid = series.get('SeriesInstanceUID', '')
-            
-            # Generate TCIA viewer link (for image viewing)
-            viewer_link = f"https://www.cancerimagingarchive.net/viewer/?studyInstanceUID={study_instance_uid}&seriesInstanceUID={series_uid}"
-            
-            # Generate study page link (for case/study metadata)
-            study_page_link = f"https://www.cancerimagingarchive.net/viewer/?studyInstanceUID={study_instance_uid}"
+            viewer_links = get_viewer_links(study_instance_uid, series_uid)
             
             formatted_series.append({
                 'series_instance_uid': series_uid,
@@ -262,8 +318,8 @@ def get_study_series(study_instance_uid: str) -> List[Dict]:
                 'modality': series.get('Modality', ''),
                 'body_part': series.get('BodyPartExamined', ''),
                 'image_count': series.get('NumberOfSeriesRelatedInstances', 0),
-                'viewer_link': viewer_link,  # Direct to image viewer
-                'study_page_link': study_page_link,  # Link to study page (all series)
+                'viewer_link': viewer_links['primary'],
+                'viewer_links': viewer_links,
                 'study_instance_uid': study_instance_uid
             })
         
@@ -273,7 +329,7 @@ def get_study_series(study_instance_uid: str) -> List[Dict]:
         return formatted_series
         
     except Exception as e:
-        print(f"TCIA get series error: {e}")
+        logger.error("[TCIA] Get series error: %s", e)
         return []
 
 
@@ -384,25 +440,33 @@ def search_by_diagnosis(diagnosis: str, modality: Optional[str] = None) -> Dict:
     for collection in relevant_collections:
         collection_id = collection['collection_id']
         try:
-            studies = get_collection_studies(collection_id, max_results=2)  # Limit to 2 studies per collection
+            studies = get_collection_studies(collection_id, max_results=3)
             
             for study in studies:
                 series_list = get_study_series(study['study_instance_uid'])
+                patient_id = study.get('patient_id', '')
+                study_page_link = get_study_page_link(patient_id, collection_id)
                 
-                # Add collection page link
+                # Add study_page_link to each series for frontend
+                for s in series_list[:5]:  # Top 5 series per study
+                    s['study_page_link'] = study_page_link
+                
                 collection_page_link = f"https://www.cancerimagingarchive.net/collection/{collection_id}/"
+                study_viewer_links = get_study_viewer_links(study['study_instance_uid'])
                 
                 results.append({
                     'collection': collection,
-                    'collection_page_link': collection_page_link,  # Link to collection page
+                    'collection_page_link': collection_page_link,
                     'study': study,
-                    'series': series_list[:2]  # Top 2 series per study
+                    'study_page_link': study_page_link,
+                    'study_viewer_links': study_viewer_links,
+                    'series': series_list[:5]
                 })
         except Exception as e:
-            print(f"Error getting studies for {collection_id}: {e}")
+            logger.warning("[TCIA] Error getting studies for %s: %s", collection_id, e)
             continue
     
-    print(f"[DEBUG] TCIA search_by_diagnosis returning {len(results)} results (cancer-related: {is_cancer})")
+    logger.info("[TCIA] search_by_diagnosis: %d results for '%s' (cancer-related: %s)", len(results), diagnosis, is_cancer)
     
     return {
         'results': results,

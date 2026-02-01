@@ -3,7 +3,7 @@
 > **Priority:** 1 (Quick Win)  
 > **Complexity:** Low  
 > **Estimated Effort:** 1-2 days  
-> **Status:** Planned
+> **Status:** Implemented
 
 ## Executive Summary
 
@@ -139,9 +139,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
 ## Todos
 
-- [ ] Fix viewer URL construction with collection context
-- [ ] Add auto-search when TCIA tab is opened
-- [ ] Add fallback viewer options (NBIA, OHIF)
-- [ ] Add debug logging for troubleshooting
-- [ ] Update result display with viewer dropdown
+- [x] Fix viewer URL construction with collection context
+- [x] Add auto-search when TCIA tab is opened
+- [x] Add fallback viewer options (NBIA, OHIF)
+- [x] Add debug logging for troubleshooting
+- [x] Update result display with viewer dropdown
 - [ ] Test with various collections and diagnoses

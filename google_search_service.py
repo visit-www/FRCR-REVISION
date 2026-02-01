@@ -103,7 +103,8 @@ def search_images(
             missing.append("GOOGLE_SEARCH_ENGINE_ID")
         raise ValueError(f"Missing config: {', '.join(missing)}. Add to .env and restart.")
 
-    url = "https://www.googleapis.com/customsearch/v1"
+    # Canonical endpoint per Google docs (cse.list method)
+    url = "https://customsearch.googleapis.com/customsearch/v1"
     params = {
         "key": api_key,
         "cx": cx,
@@ -111,7 +112,7 @@ def search_images(
         "searchType": "image",
         "num": min(max_results, 10),
         "rights": rights,
-        "safe": "active",
+        "safe": "off",
     }
 
     try:

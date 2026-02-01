@@ -929,7 +929,11 @@ function searchRefImages() {
             const container = document.getElementById('refImageSearchResults');
             container.style.display = 'block';
             if (data.error) {
-                container.innerHTML = '<p class="text-danger"><strong>Error:</strong> ' + data.error + '</p><p class="small text-muted mt-2">Check .env has GOOGLE_SEARCH_API_KEY and GOOGLE_SEARCH_ENGINE_ID, then restart Flask.</p>';
+                const q = encodeURIComponent(document.getElementById('refImageDiagnosis').value || 'radiology CT imaging');
+                const manualUrl = 'https://www.google.com/search?q=' + q + '&tbm=isch&tbs=sur:fc';
+                container.innerHTML = '<p class="text-danger"><strong>Error:</strong> ' + data.error + '</p>' +
+                    '<p class="small text-muted mt-2">Run <code>python scripts/test_google_search_api.py</code> for a fix checklist.</p>' +
+                    '<a href="' + manualUrl + '" target="_blank" class="btn btn-sm btn-outline-secondary mt-2">Search Google Images (CC) manually</a>';
                 return;
             }
             const results = data.results || [];

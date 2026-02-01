@@ -9,11 +9,42 @@ These routes provide exam-relevant resources for FRCR 2B candidates:
 
 from flask import Blueprint, request, jsonify, current_app
 from flask_login import login_required, current_user
-from pubmed_service import search_pubmed, search_latest_guidelines
-from tcia_service import search_collections, get_collection_studies, get_study_series, search_by_diagnosis
+from pathlib import Path
+import json
+from pubmed_service import search_pubmed, search_latest_guidelines, clear_pubmed_cache
+from tcia_service import search_collections, get_collection_studies, get_study_series, search_by_diagnosis, clear_tcia_cache
 import urllib.parse
 
 resources_bp = Blueprint('resources', __name__, url_prefix='/resources')
+
+
+@resources_bp.route('/api/anatomy-resources')
+@login_required
+def anatomy_resources():
+    """Serve curated anatomy resources JSON (used by Anatomy tab in Notes)."""
+    static_path = Path(current_app.static_folder or '') / 'anatomy_resources.json'
+    try:
+        with open(static_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        return jsonify(data)
+    except FileNotFoundError:
+        current_app.logger.error("anatomy_resources.json not found at %s", static_path)
+        return jsonify({'error': 'Anatomy resources file not found', 'resources': [], 'body_part_keywords': {}}), 404
+    except Exception as e:
+        current_app.logger.error(f"Anatomy resources load error: {e}", exc_info=True)
+        return jsonify({'error': str(e), 'resources': [], 'body_part_keywords': {}}), 500
+
+
+@resources_bp.route('/api/pubmed/cache/clear', methods=['POST'])
+@login_required
+def pubmed_clear_cache():
+    """Clear PubMed search cache. Use when results seem stale."""
+    try:
+        count = clear_pubmed_cache()
+        return jsonify({'message': f'Cleared {count} cached PubMed results', 'count': count})
+    except Exception as e:
+        current_app.logger.error("PubMed cache clear error: %s", e, exc_info=True)
+        return jsonify({'error': str(e), 'message': 'Failed to clear cache'}), 500
 
 
 @resources_bp.route('/api/pubmed/search')
@@ -25,6 +56,7 @@ def pubmed_search():
     Query params:
         - topic: Search topic (required)
         - max_results: Maximum results (default 20)
+        - nocache: If "true", bypass cache and fetch fresh results
         - free_full_text: Filter for free full text (default true)
         - article_type: Comma-separated article types (optional)
     """
@@ -33,6 +65,7 @@ def pubmed_search():
         return jsonify({'error': 'Topic parameter required', 'articles': []}), 400
     
     max_results = int(request.args.get('max_results', 20))
+    nocache = request.args.get('nocache', 'false').lower() == 'true'
     free_full_text = request.args.get('free_full_text', 'true').lower() == 'true'
     
     article_types = []
@@ -45,7 +78,7 @@ def pubmed_search():
     }
     
     try:
-        articles = search_pubmed(topic, max_results=max_results, filters=filters)
+        articles = search_pubmed(topic, max_results=max_results, filters=filters, nocache=nocache)
         current_app.logger.info(f"PubMed search for '{topic}': found {len(articles)} articles")
         return jsonify({
             'articles': articles,
@@ -77,9 +110,10 @@ def pubmed_guidelines():
         return jsonify({'error': 'Topic parameter required', 'articles': []}), 400
     
     max_results = int(request.args.get('max_results', 10))
+    nocache = request.args.get('nocache', 'false').lower() == 'true'
     
     try:
-        articles = search_latest_guidelines(topic, max_results=max_results)
+        articles = search_latest_guidelines(topic, max_results=max_results, nocache=nocache)
         return jsonify({
             'articles': articles,
             'total': len(articles),
@@ -162,6 +196,53 @@ def tcia_study_series(study_instance_uid):
     except Exception as e:
         current_app.logger.error(f"TCIA series error: {e}")
         return jsonify({'error': str(e), 'series': []}), 500
+
+
+@resources_bp.route('/api/tcia/cache/clear', methods=['POST'])
+@login_required
+def tcia_clear_cache():
+    """Clear TCIA search cache. Use when results seem stale or after URL format changes."""
+    try:
+        count = clear_tcia_cache()
+        return jsonify({'message': f'Cleared {count} cached items', 'count': count})
+    except Exception as e:
+        current_app.logger.error(f"TCIA cache clear error: {e}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
+
+@resources_bp.route('/api/tcia/search/debug')
+@login_required
+def tcia_search_debug():
+    """Debug: return raw TCIA search result with URLs for troubleshooting."""
+    diagnosis = request.args.get('diagnosis', 'lung cancer').strip() or 'lung cancer'
+    try:
+        from tcia_service import search_by_diagnosis
+        result = search_by_diagnosis(diagnosis)
+        # Sanitize for JSON: keep first result, first series with viewer URLs
+        results = result.get('results', [])[:1]
+        debug_data = []
+        for r in results:
+            series_list = r.get('series', [])[:2]
+            debug_data.append({
+                'collection': r.get('collection', {}).get('name'),
+                'study': r.get('study', {}),
+                'study_page_link': r.get('study_page_link'),
+                'series_sample': [{
+                    'series_instance_uid': s.get('series_instance_uid'),
+                    'study_instance_uid': s.get('study_instance_uid'),
+                    'viewer_link': s.get('viewer_link'),
+                    'viewer_links': s.get('viewer_links'),
+                } for s in series_list]
+            })
+        return jsonify({
+            'diagnosis': diagnosis,
+            'result_count': len(result.get('results', [])),
+            'sample': debug_data,
+            'warning': result.get('warning'),
+        })
+    except Exception as e:
+        current_app.logger.exception("TCIA debug error")
+        return jsonify({'error': str(e)}), 500
 
 
 @resources_bp.route('/api/tcia/search')

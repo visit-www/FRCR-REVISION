@@ -627,12 +627,15 @@
                                                 <i class="fas fa-search"></i>
                                             </button>
                                         </div>
-                                        <div class="d-flex gap-2 mt-2">
+                                        <div class="d-flex gap-2 mt-2 flex-wrap align-items-center">
                                             <button class="btn btn-sm btn-outline-success" onclick="searchPubMedGuidelines()" title="Search for latest guidelines">
                                                 <i class="fas fa-file-medical me-1"></i>Latest Guidelines
                                             </button>
+                                            <button class="btn btn-sm btn-outline-secondary" onclick="clearPubMedCacheAndSearch()" title="Clear cache and refresh (use if results seem stale)">
+                                                <i class="fas fa-sync-alt"></i>
+                                            </button>
                                             <small class="text-muted align-self-center ms-auto">
-                                                <i class="fas fa-info-circle me-1"></i>Focuses on free full-text articles
+                                                <i class="fas fa-info-circle me-1"></i>Focuses on free full-text. Use <i class="fas fa-sync-alt"></i> to clear cache.
                                             </small>
                                         </div>
                                     </div>
@@ -659,18 +662,24 @@
                             <div class="tab-pane fade" id="tciaPane" role="tabpanel" aria-labelledby="tciaTab">
                                 <div class="p-3">
                                     <h6 class="mb-3"><i class="fas fa-x-ray me-2" style="color: #17a2b8;"></i>TCIA Imaging Datasets</h6>
-                                    <p class="text-muted small mb-3">Browse real DICOM imaging datasets for practice. Opens in TCIA's native viewer.</p>
+                                    <p class="text-muted small mb-3">Browse real DICOM imaging datasets for practice.</p>
+                                    <div class="alert alert-light border py-2 px-3 mb-3 small" style="background: #f8f9fa;">
+                                        <strong>How it works:</strong> Each result = one <strong>Collection</strong> (dataset) + one <strong>Study</strong> (patient scan) + several <strong>Series</strong> (e.g. axial CT, coronal). Click a <strong>series</strong> to open the DICOM viewer. Green = TCIA viewer. Use IDC/OHIF icons if TCIA opens empty.
+                                    </div>
                                     
                                     <!-- Search Box -->
                                     <div class="mb-3">
                                         <div class="input-group input-group-sm">
                                             <input type="text" id="tciaSearchQuery" class="form-control" placeholder="Search by diagnosis or keywords..." value="{{ case.diagnosis if case else '' }}" onkeypress="if(event.key==='Enter') searchTCIA()">
-                                            <button class="btn btn-info" type="button" onclick="searchTCIA()" style="background: #17a2b8; border-color: #17a2b8;">
+                                            <button class="btn btn-info" type="button" onclick="searchTCIA()" style="background: #28a745; border-color: #28a745;">
                                                 <i class="fas fa-search"></i>
+                                            </button>
+                                            <button class="btn btn-outline-secondary" type="button" onclick="clearTciaCacheAndSearch()" title="Clear cache and refresh (use if results seem stale)">
+                                                <i class="fas fa-sync-alt"></i>
                                             </button>
                                         </div>
                                         <small class="text-muted d-block mt-2">
-                                            <i class="fas fa-info-circle me-1"></i>Opens in TCIA web viewer - no downloads required
+                                            <i class="fas fa-info-circle me-1"></i>Opens in TCIA web viewer - no downloads required. Use <i class="fas fa-sync-alt"></i> to clear cache if results seem stale.
                                         </small>
                                     </div>
                                     
@@ -7917,10 +7926,15 @@
     let anatomyResourcesLoaded = false;
     
     async function loadAnatomyResources() {
+        const container = document.getElementById('anatomyResourcesContainer');
+        if (!container) {
+            console.warn('[Anatomy] Container not found - notes section may be hidden (student role only)');
+            return;
+        }
         if (anatomyResourcesLoaded) return;
         
-        const container = document.getElementById('anatomyResourcesContainer');
-        if (!container) return;
+        // Show loading state
+        container.innerHTML = '<div class="text-center py-3"><i class="fas fa-spinner fa-spin me-2"></i>Loading anatomy resources...</div>';
 
         // Load curated reference images for this case
         const caseId = {{ case.id if case else 'null' }};
@@ -7963,8 +7977,8 @@
         }
         
         try {
-            // Load anatomy_resources.json
-            const response = await fetch('/static/anatomy_resources.json', {
+            // Load anatomy resources via API (more reliable than static path)
+            const response = await fetch('/resources/api/anatomy-resources', {
                 credentials: 'include'
             });
             if (!response.ok) throw new Error('Failed to load anatomy resources');
@@ -7972,50 +7986,69 @@
             const data = await response.json();
             
             // Get case context (lowercase for matching)
-            const caseBodyPart = '{{ case.body_part.value if case.body_part else "" }}'.toLowerCase();
-            const caseModule = '{{ case.module.value if case.module else "" }}'.toLowerCase();
-            const caseDiagnosisLower = (caseDiagnosis || '').toLowerCase();
+            const caseBodyPart = ('{{ case.body_part.value if case and case.body_part else "" }}').toLowerCase();
+            const caseModule = ('{{ case.module.value if case and case.module else "" }}').toLowerCase();
+            const caseDiagnosisLower = (typeof caseDiagnosis !== 'undefined' ? (caseDiagnosis || '') : '').toLowerCase();
             
-            // Use keyword mappings from JSON for better matching
-            const bodyPartKeywords = data.body_part_keywords || {};
+            // Use keyword mappings from JSON for better matching (fallback if missing)
+            const DEFAULT_KEYWORDS = {
+                "Head": ["head","brain","skull","cranial","cerebral","pituitary"],
+                "Neck": ["neck","cervical","thyroid","head and neck"],
+                "Chest": ["chest","thorax","lung","mediastinum","cardiac","heart"],
+                "Abdomen": ["abdomen","liver","spleen","kidney","pancreas","bowel","gastro"],
+                "Pelvis": ["pelvis","bladder","uterus","ovary","prostate","breast","gynae"],
+                "Spine": ["spine","vertebra","lumbar","thoracic","cervical","cord"],
+                "MSK": ["knee","shoulder","ankle","elbow","wrist","hip","bone","msk","limb"]
+            };
+            const bodyPartKeywords = data.body_part_keywords || DEFAULT_KEYWORDS;
             
             // Find which body regions this case matches
+            // Priority 1: body part mentioned in diagnosis (e.g. "lung cancer" -> lung, "breast carcinoma" -> breast)
+            // Priority 2: fall back to case body_part and module if diagnosis yields nothing
             let matchedRegions = [];
-            for (const [region, keywords] of Object.entries(bodyPartKeywords)) {
-                const keywordsLower = keywords.map(k => k.toLowerCase());
-                if (keywordsLower.some(kw => 
-                    caseBodyPart.includes(kw) || 
-                    caseModule.includes(kw) || 
-                    caseDiagnosisLower.includes(kw)
-                )) {
-                    matchedRegions.push(region.toLowerCase());
+            
+            const matchFromText = (text) => {
+                const regions = [];
+                for (const [region, keywords] of Object.entries(bodyPartKeywords)) {
+                    const keywordsLower = keywords.map(k => k.toLowerCase());
+                    if (keywordsLower.some(kw => text.includes(kw))) {
+                        regions.push(region.toLowerCase());
+                    }
                 }
+                return regions;
+            };
+            
+            if (caseDiagnosisLower.trim()) {
+                matchedRegions = matchFromText(caseDiagnosisLower);
+            }
+            if (matchedRegions.length === 0 && (caseBodyPart || caseModule)) {
+                matchedRegions = matchFromText(caseBodyPart + ' ' + caseModule);
             }
             
-            // Categorize resources as matched or other
-            const matchedResources = [];
-            const otherResources = [];
+            // Categorize: case-specific matches (NOT "All") first, then other specific, then generic "All"
+            const specificMatches = [];
+            const otherSpecific = [];
+            const genericAll = [];
             
             for (const resource of data.resources || []) {
                 const resourceBodyParts = (resource.body_parts || []).map(bp => bp.toLowerCase());
-                
-                // Check if resource matches case via body parts or "All" category
-                const isMatch = matchedRegions.some(region => 
+                const isGenericAll = resourceBodyParts.includes('all');
+                const isCaseMatch = !isGenericAll && matchedRegions.some(region => 
                     resourceBodyParts.includes(region)
-                ) || resourceBodyParts.includes('all');
+                );
                 
-                if (isMatch) {
-                    matchedResources.push({ ...resource, isMatch: true });
+                if (isCaseMatch) {
+                    specificMatches.push({ ...resource, isMatch: true });
+                } else if (isGenericAll) {
+                    genericAll.push({ ...resource, isMatch: false });  // Never mark generic as "Relevant"
                 } else {
-                    otherResources.push({ ...resource, isMatch: false });
+                    otherSpecific.push({ ...resource, isMatch: false });
                 }
             }
             
-            // Group resources by primary body part for display
+            // Build display order: case-specific first, then other specific by category, then generic at bottom
             const grouped = {};
-            const allResources = [...matchedResources, ...otherResources];
-            
-            for (const resource of allResources) {
+            for (const resource of [...specificMatches, ...otherSpecific]) {
                 const category = (resource.body_parts?.[0]) || 'General';
                 if (!grouped[category]) {
                     grouped[category] = { resources: [], hasMatch: false };
@@ -8024,25 +8057,46 @@
                 if (resource.isMatch) grouped[category].hasMatch = true;
             }
             
-            // Sort: matched categories first, then alphabetically
+            // Sort: matched categories first, then alphabetically. "All" goes last.
             const sortedCategories = Object.entries(grouped)
                 .sort((a, b) => {
                     if (a[1].hasMatch !== b[1].hasMatch) return b[1].hasMatch ? 1 : -1;
                     return a[0].localeCompare(b[0]);
                 });
             
-            // Build HTML
+            // Add generic "All" section at the bottom (collapsed by default if we have case-specific matches)
+            if (genericAll.length > 0) {
+                sortedCategories.push(['General reference', { resources: genericAll, hasMatch: false }]);
+            }
+            
+            // Build HTML - case-specific matches shown first with clear labeling
             let html = '';
+            if (specificMatches.length > 0) {
+                html += `<div class="alert alert-success py-2 px-3 mb-3 small" style="background: rgba(40, 167, 69, 0.12); border: 1px solid rgba(40, 167, 69, 0.4);">
+                    <i class="fas fa-check-circle me-2" style="color: #28a745;"></i>
+                    <strong>${specificMatches.length} resource${specificMatches.length !== 1 ? 's' : ''} relevant to this case</strong> (from diagnosis/body part)
+                </div>`;
+            } else if (matchedRegions.length === 0) {
+                html += `<div class="alert alert-light border py-2 px-3 mb-3 small">
+                    <i class="fas fa-info-circle me-2 text-muted"></i>
+                    No body part detected from diagnosis. Showing general anatomy references.
+                </div>`;
+            } else {
+                html += `<div class="alert alert-light border py-2 px-3 mb-3 small">
+                    <i class="fas fa-info-circle me-2 text-muted"></i>
+                    No case-specific resources for detected regions (${matchedRegions.join(', ')}). General references below.
+                </div>`;
+            }
             
             for (const [categoryName, { resources, hasMatch }] of sortedCategories) {
                 const badgeHtml = hasMatch 
-                    ? '<span class="badge bg-success ms-2" style="font-size: 0.7em;">Relevant</span>' 
-                    : '';
+                    ? '<span class="badge bg-success ms-2" style="font-size: 0.7em;">Relevant to case</span>' 
+                    : (categoryName === 'General reference' ? '<span class="badge bg-secondary ms-2" style="font-size: 0.7em;">General</span>' : '');
                 
                 html += `
                     <div class="anatomy-category mb-3 ${hasMatch ? 'matched' : ''}">
-                        <h6 class="mb-2" style="color: #5E899E;">
-                            <i class="fas fa-folder-open me-1"></i>${categoryName}${badgeHtml}
+                        <h6 class="mb-2" style="color: ${hasMatch ? '#28a745' : '#5E899E'};">
+                            <i class="fas fa-${hasMatch ? 'star' : 'folder-open'} me-1"></i>${categoryName}${badgeHtml}
                         </h6>
                         <div class="ps-3">
                 `;
@@ -8077,10 +8131,13 @@
             anatomyResourcesLoaded = true;
             
         } catch (error) {
-            console.error('[ANATOMY] Error loading resources:', error);
+            console.error('[Anatomy] Error loading resources:', error);
+            anatomyResourcesLoaded = false;  // Allow retry on next tab click
             container.innerHTML = `
-                <div class="text-center py-3 text-danger">
-                    <i class="fas fa-exclamation-triangle me-2"></i>Failed to load anatomy resources.
+                <div class="text-center py-3">
+                    <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+                    <span class="text-danger">Failed to load anatomy resources.</span>
+                    <p class="small text-muted mt-2 mb-0">Click the Anatomy tab again to retry, or check the browser console.</p>
                 </div>
             `;
         }
@@ -8092,11 +8149,33 @@
         if (anatomyTab) {
             anatomyTab.addEventListener('shown.bs.tab', loadAnatomyResources);
         }
+        // TCIA: auto-search when tab is opened (if diagnosis is pre-filled)
+        const tciaTab = document.getElementById('tciaTab');
+        if (tciaTab) {
+            let tciaSearched = false;
+            tciaTab.addEventListener('shown.bs.tab', function() {
+                if (!tciaSearched && caseDiagnosis) {
+                    tciaSearched = true;
+                    searchTCIA();
+                }
+            });
+        }
     });
     
     // ==================== PUBMED ====================
     
-    async function searchPubMed() {
+    async function clearPubMedCacheAndSearch() {
+        try {
+            const r = await fetch('/resources/api/pubmed/cache/clear', { method: 'POST', credentials: 'include' });
+            const data = await r.json();
+            showFlash(data.message || 'PubMed cache cleared', 'info');
+            searchPubMed(true);  // nocache=true to fetch fresh results
+        } catch (e) {
+            showFlash('Failed to clear cache: ' + e.message, 'error');
+        }
+    }
+    
+    async function searchPubMed(nocache = false) {
         const query = document.getElementById('pubmedSearchQuery')?.value.trim() || caseDiagnosis;
         const statusEl = document.getElementById('pubmedSearchStatus');
         const resultsDiv = document.getElementById('pubmedResults');
@@ -8112,7 +8191,8 @@
         if (noResults) noResults.style.display = 'none';
         
         try {
-            const response = await fetch(`/resources/api/pubmed/search?topic=${encodeURIComponent(query)}&max_results=20`);
+            const nc = nocache ? '&nocache=true' : '';
+            const response = await fetch(`/resources/api/pubmed/search?topic=${encodeURIComponent(query)}&max_results=20${nc}`);
             const data = await response.json();
             
             if (statusEl) statusEl.style.display = 'none';
@@ -8230,6 +8310,16 @@
     
     // ==================== TCIA ====================
     
+    async function clearTciaCacheAndSearch() {
+        try {
+            const r = await fetch('/resources/api/tcia/cache/clear', { method: 'POST', credentials: 'include' });
+            const data = await r.json();
+            showFlash(data.message || 'Cache cleared', 'info');
+            searchTCIA();
+        } catch (e) {
+            showFlash('Failed to clear cache: ' + e.message, 'error');
+        }
+    }
     async function searchTCIA() {
         const query = document.getElementById('tciaSearchQuery')?.value.trim() || caseDiagnosis;
         const statusEl = document.getElementById('tciaSearchStatus');
@@ -8277,7 +8367,7 @@
                     const collectionPageLink = result.collection_page_link || '#';
                     
                     return `
-                        <div class="tcia-result mb-3 p-3 rounded" style="background: #fff; border: 1px solid #e0e0e0; border-left: 3px solid #17a2b8;">
+                        <div class="tcia-result mb-3 p-3 rounded" style="background: #fff; border: 1px solid #c5cad1; border-left: 3px solid #28a745;">
                             <div class="d-flex justify-content-between align-items-start mb-2">
                                 <h6 class="mb-0" style="color: #2c3e50;">
                                     <i class="fas fa-database me-2"></i>${escapeHtml(collection.name)}
@@ -8297,19 +8387,28 @@
                             ${series.length > 0 ? `
                                 <div class="mt-2">
                                     <div class="d-flex justify-content-between align-items-center mb-2">
-                                        <strong class="small">Available Series:</strong>
-                                        ${series[0] && series[0].study_page_link ? `
-                                            <a href="${series[0].study_page_link}" target="_blank" class="btn btn-sm btn-outline-info" title="View all series in this study">
-                                                <i class="fas fa-list me-1"></i>View Study
-                                            </a>
-                                        ` : ''}
+                                        <strong class="small">Open in viewer:</strong>
+                                        <span class="text-muted small">Click a series below</span>
                                     </div>
-                                    <div class="d-flex flex-wrap gap-2 mt-1">
-                                        ${series.map(s => `
-                                            <a href="${s.viewer_link}" target="_blank" class="btn btn-sm btn-info" style="background: #17a2b8; border-color: #17a2b8;" title="View this series in DICOM viewer">
-                                                <i class="fas fa-eye me-1"></i>${escapeHtml(s.series_description || 'View Series')}
-                                            </a>
-                                        `).join('')}
+                                    <div class="mt-2">
+                                        <strong class="small">Series (click to view):</strong>
+                                        <div class="d-flex flex-wrap gap-2 mt-1">
+                                        ${series.map(s => {
+                                            const links = s.viewer_links || { primary: s.viewer_link, fallback_nbia: '', ohif: '' };
+                                            const primaryUrl = links.primary || s.viewer_link;
+                                            const nbiaUrl = links.fallback_nbia || '';
+                                            const ohifUrl = links.ohif || '';
+                                            const desc = escapeHtml((s.series_description || 'Series').substring(0, 30));
+                                            return `
+                                            <div class="btn-group btn-group-sm" role="group">
+                                                <a href="${nbiaUrl || primaryUrl}" target="_blank" class="btn btn-sm" style="background: #28a745; color: white; border: none;" title="View this series (TCIA)">
+                                                    <i class="fas fa-image me-1"></i>${desc}
+                                                </a>
+                                                <a href="${primaryUrl}" target="_blank" class="btn btn-sm btn-outline-secondary" title="IDC"><i class="fas fa-eye"></i></a>
+                                                <a href="${ohifUrl}" target="_blank" class="btn btn-sm btn-outline-secondary" title="OHIF v3"><i class="fas fa-images"></i></a>
+                                            </div>`;
+                                        }).join('')}
+                                        </div>
                                     </div>
                                 </div>
                             ` : ''}
