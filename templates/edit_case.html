@@ -448,16 +448,26 @@ console.log('[TinyMCE Loader] Script URL was:', "{{ url_for('static', filename='
                     <div class="ref-image-panel-body">
                         <div class="ref-image-field mb-3">
                             <label class="ref-image-label">Diagnosis</label>
-                            <input type="text" id="refImageDiagnosis" class="form-control" placeholder="From case">
+                            <input type="text" id="refImageDiagnosis" class="form-control" placeholder="Custom diagnosis (from case or enter your own)">
                         </div>
                         <div class="row g-2 mb-3">
                             <div class="col-md-4">
                                 <label class="ref-image-label">Body Part</label>
-                                <input type="text" id="refImageBodyPart" class="form-control" placeholder="e.g. brain, knee">
+                                <select id="refImageBodyPart" class="form-select">
+                                    <option value="">Select body part...</option>
+                                    {% for group_label, options in body_part_groups %}
+                                    <optgroup label="{{ group_label }}">
+                                        {% for name, value in options %}
+                                        <option value="{{ name }}">{{ value }}</option>
+                                        {% endfor %}
+                                    </optgroup>
+                                    {% endfor %}
+                                </select>
                             </div>
                             <div class="col-md-4">
                                 <label class="ref-image-label">Modality</label>
                                 <select id="refImageModality" class="form-select">
+                                    <option value="">Any</option>
                                     <option value="CT">CT</option>
                                     <option value="MRI">MRI</option>
                                 </select>
@@ -466,7 +476,6 @@ console.log('[TinyMCE Loader] Script URL was:', "{{ url_for('static', filename='
                                 <label class="ref-image-label">Image Type</label>
                                 <select id="refImageTypeFilter" class="form-select">
                                     <option value="">All</option>
-                                    <option value="ct_mri">CT/MRI imaging</option>
                                     <option value="anatomy_diagram">Anatomy diagrams</option>
                                     <option value="concept_diagram">Concept diagrams</option>
                                 </select>
@@ -888,9 +897,9 @@ function openRefImageSearchModal() {
         return;
     }
     const diagnosis = document.getElementById('editCaseDiagnosis')?.value || '';
-    const module = document.getElementById('editCaseModule')?.value || '';
+    const bodyPart = document.getElementById('editCaseBodyPart')?.value || '';
     document.getElementById('refImageDiagnosis').value = diagnosis;
-    document.getElementById('refImageBodyPart').value = (module || '').replace(/_/g, ' ').toLowerCase();
+    document.getElementById('refImageBodyPart').value = bodyPart;
     const overlay = document.getElementById('refImageSearchOverlay');
     overlay.style.display = 'flex';
     document.body.style.overflow = 'hidden';
@@ -929,17 +938,18 @@ function searchRefImages() {
             const container = document.getElementById('refImageSearchResults');
             container.style.display = 'block';
             if (data.error) {
-                const q = encodeURIComponent(document.getElementById('refImageDiagnosis').value || 'radiology CT imaging');
-                const manualUrl = 'https://www.google.com/search?q=' + q + '&tbm=isch&tbs=sur:fc';
+                const manualUrl = data.manual_search_url || ('https://www.google.com/search?q=' + encodeURIComponent(document.getElementById('refImageDiagnosis').value || 'radiology CT imaging') + '&tbm=isch&tbs=sur:fc');
                 container.innerHTML = '<p class="text-danger"><strong>Error:</strong> ' + data.error + '</p>' +
-                    '<p class="small text-muted mt-2">Run <code>python scripts/test_google_search_api.py</code> for a fix checklist.</p>' +
-                    '<a href="' + manualUrl + '" target="_blank" class="btn btn-sm btn-outline-secondary mt-2">Search Google Images (CC) manually</a>';
+                    '<p class="small text-muted mt-2">API unavailable. Search Google Images directly with the same parameters:</p>' +
+                    '<a href="' + manualUrl + '" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary mt-2"><i class="fas fa-external-link-alt me-1"></i>Search Google Images (CC)</a>';
                 return;
             }
             const results = data.results || [];
             if (results.length === 0) {
                 const hint = data.hint || 'Try a different query.';
-                container.innerHTML = '<p class="text-muted">No results.</p><p class="small text-muted">' + hint + '</p>';
+                const manualUrl = data.manual_search_url;
+                container.innerHTML = '<p class="text-muted">No results.</p><p class="small text-muted">' + hint + '</p>' +
+                    (manualUrl ? '<a href="' + manualUrl + '" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary mt-2"><i class="fas fa-external-link-alt me-1"></i>Search Google Images (CC)</a>' : '');
                 return;
             }
             container.innerHTML = results.map((r, i) => `

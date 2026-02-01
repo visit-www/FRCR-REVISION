@@ -10,7 +10,7 @@ from flask_login import login_required, current_user
 
 from access_control import require_admin, has_case_edit_permission, has_case_view_access
 from models import db, Case, CaseReferenceImage
-from google_search_service import search_reference_images
+from google_search_service import search_reference_images, build_manual_search_url
 from google_search_service import IMAGE_TYPE_CT_MRI, IMAGE_TYPE_ANATOMY_DIAGRAM, IMAGE_TYPE_CONCEPT_DIAGRAM
 
 reference_image_bp = Blueprint("reference_images", __name__, url_prefix="/api/reference-images")
@@ -49,7 +49,7 @@ def search():
         return jsonify({"error": "diagnosis is required", "results": []}), 400
 
     body_part = request.args.get("body_part", "").strip()
-    modality = request.args.get("modality", "CT").strip() or "CT"
+    modality = request.args.get("modality", "").strip()  # CT, MRI, or empty
     image_type = request.args.get("image_type", "").strip()
     max_per_type = min(int(request.args.get("max_per_type", 5)), 10)
 
@@ -70,14 +70,32 @@ def search():
             r.setdefault("attribution", f"Source: {r.get('displayLink', r.get('source_domain', 'unknown'))}")
             r.setdefault("license", "CC (filtered by search)")
         if not results:
+            manual_url = build_manual_search_url(
+                diagnosis=diagnosis,
+                body_part=body_part,
+                modality=modality,
+                image_type=image_type if image_type else None,
+            )
             return jsonify({
                 "results": [],
                 "diagnosis": diagnosis,
                 "hint": "API responded but returned 0 images. Ensure your Programmable Search Engine has Image search ON and is set to search the entire web.",
+                "manual_search_url": manual_url,
             })
         return jsonify({"results": results, "diagnosis": diagnosis})
     except Exception as e:
-        return jsonify({"error": str(e), "results": []})
+        # Fallback: direct Google Images URL with same parameters (CC filter)
+        manual_url = build_manual_search_url(
+            diagnosis=diagnosis,
+            body_part=body_part,
+            modality=modality,
+            image_type=image_type if image_type else None,
+        )
+        return jsonify({
+            "error": str(e),
+            "results": [],
+            "manual_search_url": manual_url,
+        })
 
 
 @reference_image_bp.route("/case/<int:case_id>", methods=["GET"])

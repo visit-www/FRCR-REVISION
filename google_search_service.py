@@ -32,47 +32,97 @@ def _get_cx():
     return os.environ.get("GOOGLE_SEARCH_ENGINE_ID") or os.environ.get("GOOGLE_CSE_ID")
 
 
-def build_search_queries(diagnosis: str, body_part: str = "", modality: str = "CT") -> dict:
+def _normalize_body_part(body_part: str) -> str:
+    """Convert enum-style (LUNG_MEDIASTINUM) or display text to search-friendly string."""
+    if not body_part:
+        return ""
+    s = (body_part or "").strip().replace("_", " ").lower()
+    return s
+
+
+def build_search_queries(
+    diagnosis: str,
+    body_part: str = "",
+    modality: str = "",
+    include_radiology: bool = True,
+) -> dict:
     """
     Build search queries for each image type.
+    - diagnosis: from case or custom user input
+    - body_part: from dropdown (enum or display text)
+    - modality: CT, MRI, or empty (empty = no imaging-specific queries)
+    - include_radiology: always add "radiology" to imaging queries
     Returns dict: { image_type: [query1, query2, ...] }
     """
     diagnosis = (diagnosis or "").strip()
-    body_part = (body_part or "").strip()
-    modality = (modality or "CT").strip().upper()
+    body_part = _normalize_body_part(body_part)
+    modality = (modality or "").strip().upper()
+    rad = " radiology" if include_radiology else ""
 
     queries = {}
 
-    # CT/MRI imaging: diagnosis + modality
+    # CT/MRI imaging: diagnosis + radiology + (modality if set)
     if diagnosis:
-        queries[IMAGE_TYPE_CT_MRI] = [
-            f"{diagnosis} {modality} imaging",
-            f"{diagnosis} MRI" if modality == "CT" else f"{diagnosis} CT",
-            f"{diagnosis} radiology",
-        ]
+        if modality:
+            queries[IMAGE_TYPE_CT_MRI] = [
+                f"{diagnosis}{rad} {modality} imaging",
+                f"{diagnosis}{rad} {modality}",
+                f"{diagnosis} {modality} radiology",
+            ]
+        else:
+            queries[IMAGE_TYPE_CT_MRI] = [
+                f"{diagnosis}{rad} imaging",
+                f"{diagnosis} radiology",
+            ]
 
     # Anatomy diagrams: body part + line diagram / schematic
     if body_part:
         queries[IMAGE_TYPE_ANATOMY_DIAGRAM] = [
-            f"{body_part} anatomy line diagram",
+            f"{body_part} anatomy line diagram radiology",
             f"{body_part} anatomy cross section diagram",
             f"{body_part} anatomy schematic",
         ]
     elif diagnosis:
         queries[IMAGE_TYPE_ANATOMY_DIAGRAM] = [
-            f"{diagnosis} anatomy diagram",
+            f"{diagnosis} anatomy diagram radiology",
             f"{diagnosis} anatomy schematic",
         ]
 
     # Concept diagrams: staging, flowchart
     if diagnosis:
         queries[IMAGE_TYPE_CONCEPT_DIAGRAM] = [
-            f"{diagnosis} staging diagram",
+            f"{diagnosis} staging diagram radiology",
             f"{diagnosis} classification flowchart",
             f"{diagnosis} TNM staging diagram",
         ]
 
     return queries
+
+
+def build_manual_search_url(
+    diagnosis: str,
+    body_part: str = "",
+    modality: str = "",
+    image_type: str | None = None,
+) -> str:
+    """
+    Build a Google Images URL for manual search (fallback when API fails).
+    Uses the same query logic as the API. tbs=sur:fc = Creative Commons filter.
+    """
+    queries = build_search_queries(diagnosis, body_part, modality)
+    # Use first query from preferred type, or first available
+    if image_type and image_type in queries and queries[image_type]:
+        q = queries[image_type][0]
+    else:
+        for qlist in (queries.get(IMAGE_TYPE_CT_MRI), queries.get(IMAGE_TYPE_ANATOMY_DIAGRAM), queries.get(IMAGE_TYPE_CONCEPT_DIAGRAM)):
+            if qlist:
+                q = qlist[0]
+                break
+        else:
+            q = f"{(diagnosis or 'radiology')} radiology {modality + ' imaging' if modality else 'imaging'}"
+    from urllib.parse import quote_plus
+    encoded = quote_plus(q.strip())
+    return f"https://www.google.com/search?q={encoded}&tbm=isch&tbs=sur:fc"
 
 
 def search_images(
@@ -169,16 +219,20 @@ def _extract_domain(url: str) -> str:
 def search_reference_images(
     diagnosis: str,
     body_part: str = "",
-    modality: str = "CT",
+    modality: str = "",
     image_types: list[str] | None = None,
     max_per_type: int = 5,
 ) -> list[dict]:
     """
     Search for CC-licensed reference images across all types.
+    - image_types: when None or "all", search anatomy + concept + (ct_mri if modality set)
+    - ct_mri is only included when modality (CT/MRI) is provided
     Returns combined, deduplicated results.
     """
-    if image_types is None:
-        image_types = [IMAGE_TYPE_CT_MRI, IMAGE_TYPE_ANATOMY_DIAGRAM, IMAGE_TYPE_CONCEPT_DIAGRAM]
+    if image_types is None or not image_types:
+        image_types = [IMAGE_TYPE_ANATOMY_DIAGRAM, IMAGE_TYPE_CONCEPT_DIAGRAM]
+        if modality and modality.strip().upper() in ("CT", "MRI"):
+            image_types = [IMAGE_TYPE_CT_MRI] + image_types
 
     queries = build_search_queries(diagnosis, body_part, modality)
     seen_urls = set()
