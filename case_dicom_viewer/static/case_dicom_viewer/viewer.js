@@ -2,7 +2,7 @@
  * Case DICOM Viewer - Cornerstone.js v4.x Integration
  * Features: Stack scroll (mouse wheel), zoom, pan, window/level, annotations
  * Self-hosted libraries for reliable API compatibility
- * v4: Full Cornerstone v4.x integration with annotations support
+ * v5: Fixed webImage loader registration (explicit register after external set)
  */
 (function () {
   "use strict";
@@ -45,9 +45,24 @@
       cornerstoneTools.external.cornerstoneMath = cornerstoneMath;
     }
 
-    // Configure web image loader
-    if (cornerstoneWebImageLoader && cornerstoneWebImageLoader.external) {
-      cornerstoneWebImageLoader.external.cornerstone = cornerstone;
+    // Configure and register web image loader
+    if (cornerstoneWebImageLoader) {
+      if (cornerstoneWebImageLoader.external) {
+        cornerstoneWebImageLoader.external.cornerstone = cornerstone;
+      }
+      // Explicitly register the web image loader with cornerstone
+      // The loader may not auto-register if external wasn't set at load time
+      if (cornerstoneWebImageLoader.loadImage) {
+        cornerstone.registerImageLoader('webImage', cornerstoneWebImageLoader.loadImage);
+        console.log("[CaseDicomViewer] Registered webImage loader");
+      } else if (cornerstoneWebImageLoader.webImageLoader && cornerstoneWebImageLoader.webImageLoader.loadImage) {
+        cornerstone.registerImageLoader('webImage', cornerstoneWebImageLoader.webImageLoader.loadImage);
+        console.log("[CaseDicomViewer] Registered webImage loader (alt path)");
+      } else {
+        console.warn("[CaseDicomViewer] Could not find loadImage function in cornerstoneWebImageLoader");
+      }
+    } else {
+      console.warn("[CaseDicomViewer] cornerstoneWebImageLoader not available");
     }
 
     // Initialize cornerstone-tools
