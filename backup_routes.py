@@ -494,6 +494,7 @@ def download_backup():
                 'onedrive_share_id': stack.onedrive_share_id,
                 'onedrive_folder_path': stack.onedrive_folder_path,
                 'config_json': stack.config_json,
+                'onedrive_refresh_token_encrypted': getattr(stack, 'onedrive_refresh_token_encrypted', None),
                 'created_by_user_id': stack.created_by_user_id,
                 'created_at': stack.created_at.isoformat() if stack.created_at else None,
             })
@@ -2411,6 +2412,7 @@ def restore_backup():
                 existing.onedrive_share_id = stack_data.get('onedrive_share_id', '')
                 existing.onedrive_folder_path = stack_data.get('onedrive_folder_path')
                 existing.config_json = stack_data.get('config_json', '{}')
+                existing.onedrive_refresh_token_encrypted = stack_data.get('onedrive_refresh_token_encrypted')
                 existing.created_by_user_id = new_user_id
                 stats['case_image_stacks']['updated'] += 1
             else:
@@ -2419,6 +2421,7 @@ def restore_backup():
                     onedrive_share_id=stack_data.get('onedrive_share_id', ''),
                     onedrive_folder_path=stack_data.get('onedrive_folder_path'),
                     config_json=stack_data.get('config_json', '{}'),
+                    onedrive_refresh_token_encrypted=stack_data.get('onedrive_refresh_token_encrypted'),
                     created_by_user_id=new_user_id,
                 )
                 db.session.add(stack)

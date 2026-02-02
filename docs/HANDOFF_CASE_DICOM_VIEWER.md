@@ -37,6 +37,7 @@ Read this file and `docs/plans/CASE_DICOM_VIEWER_PLAN.md`. Key module: `case_dic
 - **Annotation storage** – `CaseImageAnnotation` model, GET/POST/DELETE API endpoints
 - **Annotation toolbar UI** – Admin-only toolbar with tool buttons, save/clear functionality
 - **Future MPR plan** – Documented in `docs/plans/DICOM_MPR_INFRASTRUCTURE_PLAN.md`
+- **Server-side OneDrive token refresh** – When admin links a stack, the refresh token is stored (encrypted) in `CaseImageStack.onedrive_refresh_token_encrypted`. When anyone (including students) requests the stack, the server uses this token to get fresh download URLs from Graph API. No OneDrive login required for viewers.
 
 ### 🔲 Remaining (optional enhancements)
 1. **OneDrive browse** – Allow browsing signed-in user's OneDrive instead of only pasting share links
@@ -50,14 +51,16 @@ Read this file and `docs/plans/CASE_DICOM_VIEWER_PLAN.md`. Key module: `case_dic
 
 | File | Purpose |
 |------|---------|
-| `case_dicom_viewer/routes.py` | OAuth, status, folder/parse, api/image proxy, case stack CRUD, **annotations API** |
+| `case_dicom_viewer/routes.py` | OAuth, status, folder/parse, api/image proxy, case stack CRUD, **annotations API**, **stored refresh token for URL refresh** |
+| `case_dicom_viewer/token_utils.py` | Encrypt/decrypt OneDrive refresh token (Fernet, key from SECRET_KEY) |
 | `case_dicom_viewer/onedrive_service.py` | Share URL encoding, Graph API folder listing |
 | `case_dicom_viewer/config.py` | SCOPES, AUTHORITY, env helpers |
 | `case_dicom_viewer/static/.../lib/` | **Self-hosted Cornerstone.js libraries (v4.x)** |
 | `case_dicom_viewer/static/.../viewer.js` | **v4 Cornerstone viewer** with scroll, zoom, pan, W/L, annotations |
 | `templates/edit_case.html` | Link Image Stack button, modal include, JS, remove stack option |
 | `templates/view_case.html` | Image Stack tab, annotation toolbar (admin), `loadImageStack()`, proxy URLs |
-| `models.py` | `CaseImageStack`, **`CaseImageAnnotation`** models |
+| `models.py` | `CaseImageStack` (incl. **onedrive_refresh_token_encrypted**), **`CaseImageAnnotation`** models |
+| `migrations/add_case_image_stack_refresh_token.sql` | Add onedrive_refresh_token_encrypted column |
 | `migrations/add_case_image_annotation_table.sql` | New annotation table migration |
 | `docs/plans/CASE_DICOM_VIEWER_PLAN.md` | Original plan |
 | `docs/plans/DICOM_MPR_INFRASTRUCTURE_PLAN.md` | **Future MPR/DICOM infrastructure plan** |

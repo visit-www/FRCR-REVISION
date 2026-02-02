@@ -20,7 +20,8 @@ from case_dicom_viewer.config import (
     AUTHORITY,
 )
 from models import CaseImageStack, CaseImageAnnotation
-from access_control import has_case_view_access, has_case_edit_permission, is_admin
+from access_control import has_case_view_access, has_case_edit_permission, is_admin, is_admin_or_content_manager
+from case_dicom_viewer.token_utils import encrypt_refresh_token, decrypt_refresh_token
 
 logger = logging.getLogger(__name__)
 

@@ -3194,7 +3194,7 @@
 <script src="{{ url_for('case_dicom_viewer.static', filename='case_dicom_viewer/lib/cornerstoneMath.min.js') }}"></script>
 <script src="{{ url_for('case_dicom_viewer.static', filename='case_dicom_viewer/lib/cornerstoneTools.min.js') }}"></script>
 <script src="{{ url_for('case_dicom_viewer.static', filename='case_dicom_viewer/lib/cornerstoneWebImageLoader.min.js') }}"></script>
-<script src="{{ url_for('case_dicom_viewer.static', filename='case_dicom_viewer/viewer.js') }}?v=7"></script>
+<script src="{{ url_for('case_dicom_viewer.static', filename='case_dicom_viewer/viewer.js') }}?v=8"></script>
 
 <script>
     const caseId = {{ case.id if case else 'null' }};
@@ -8403,14 +8403,10 @@
     let _imageStackData = null;
     let _imageStackCurrentPlan = null;
     let _imageStackCurrentIndex = 0;
-    function imageStackProxyUrl(originalUrl, useProxy) {
+    function imageStackProxyUrl(originalUrl) {
         if (!originalUrl) return '';
-        // For img fallback, try direct URL first (browser handles OneDrive auth)
-        // For Cornerstone (XHR), always use proxy to avoid CORS
-        if (useProxy === false) return originalUrl;
         return '/case-dicom-viewer/api/image?url=' + encodeURIComponent(originalUrl);
     }
-    var _imageStackRawUrls = {}; // Store raw URLs for img fallback
     async function loadImageStack() {
         console.log('[ImageStack] loadImageStack called, caseId:', caseId);
         const content = document.getElementById('imageStackContent');
@@ -8470,13 +8466,11 @@
             // Store annotations for viewer initialization
             var _imageStackAnnotations = annotationsData.annotations || {};
             try {
-                // Store raw URLs for img fallback, proxy URLs for Cornerstone
+                // Rewrite URLs via proxy to avoid CORS / OneDrive expiry
                 const plans = data.plans;
-                _imageStackData = {};  // Proxy URLs for Cornerstone
-                _imageStackRawUrls = {};  // Raw URLs for img fallback
+                _imageStackData = {};
                 for (const [name, urls] of Object.entries(plans)) {
-                    _imageStackRawUrls[name] = Array.isArray(urls) ? urls.slice() : [];
-                    _imageStackData[name] = Array.isArray(urls) ? urls.map(u => imageStackProxyUrl(u, true)) : [];
+                    _imageStackData[name] = Array.isArray(urls) ? urls.map(imageStackProxyUrl) : [];
                 }
                 const planNames = Object.keys(_imageStackData);
                 if (planNames.length === 0) {
@@ -8566,8 +8560,7 @@
         }
     }
     function updateImageStackDisplay() {
-        // Use raw URLs for img tag (browser handles OneDrive auth better than XHR)
-        const urls = _imageStackRawUrls && _imageStackRawUrls[_imageStackCurrentPlan] ? _imageStackRawUrls[_imageStackCurrentPlan] : [];
+        const urls = _imageStackData && _imageStackData[_imageStackCurrentPlan] ? _imageStackData[_imageStackCurrentPlan] : [];
         const img = document.getElementById('imageStackImg');
         const info = document.getElementById('imageStackSliceInfo');
         if (!img || !info) return;
