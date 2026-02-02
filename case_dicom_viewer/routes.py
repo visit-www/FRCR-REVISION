@@ -148,6 +148,39 @@ def _get_access_token():
     return tokens.get("access_token")
 
 
+def _get_token_for_stack(stack) -> str | None:
+    """
+    Return an access token for fetching stack URLs.
+    Tries session first, then stack's stored refresh token (server-side refresh).
+    This allows all viewers (including students) to get fresh URLs.
+    """
+    token = _get_access_token()
+    if token:
+        return token
+    # Fallback: use stack's stored refresh token for server-side refresh
+    if not stack or not stack.onedrive_share_id:
+        return None
+    encrypted = getattr(stack, "onedrive_refresh_token_encrypted", None)
+    if not encrypted:
+        return None
+    plain = decrypt_refresh_token(encrypted)
+    if not plain:
+        return None
+    app_msal = _get_msal_app()
+    if not app_msal:
+        return None
+    try:
+        result = app_msal.acquire_token_by_refresh_token(
+            refresh_token=plain,
+            scopes=SCOPES,
+        )
+        if result and "access_token" in result:
+            return result["access_token"]
+    except Exception as e:
+        logger.debug("[CaseDicomViewer] Server-side refresh from stored token failed: %s", e)
+    return None
+
+
 @case_dicom_bp.route("/api/folder/parse", methods=["POST"])
 @login_required
 def folder_parse():
@@ -250,7 +283,7 @@ def _safe_stack_response(plans, has_stack=True, description_html=None, error_det
 @case_dicom_bp.route("/api/case/<int:case_id>/stack", methods=["GET"])
 @login_required
 def get_case_stack(case_id):
-    """Return image stack config for case. Refreshes URLs from Graph when viewer has OneDrive tokens."""
+    """Return image stack config for case. Refreshes URLs from Graph using session or stored refresh token."""
     from models import Case
     from sqlalchemy.exc import OperationalError, ProgrammingError
 
@@ -279,7 +312,7 @@ def get_case_stack(case_id):
                 {}, has_stack=False,
                 error_detail="Failed to load stack config: " + str(e)[:200],
             )
-        token = _get_access_token()
+        token = _get_token_for_stack(stack)
         if token and stack.onedrive_share_id:
             try:
                 from case_dicom_viewer.onedrive_service import list_folder_contents
@@ -332,6 +365,13 @@ def save_case_stack(case_id):
                 stack.onedrive_share_id = share_id
                 stack.onedrive_folder_path = folder_path
                 stack.set_config(config)
+                # Store refresh token for server-side URL refresh (all viewers get fresh URLs)
+                tokens = session.get("onedrive_tokens")
+                if tokens and tokens.get("refresh_token"):
+                    encrypted = encrypt_refresh_token(tokens["refresh_token"])
+                    if encrypted:
+                        stack.onedrive_refresh_token_encrypted = encrypted
+                        logger.debug("[CaseDicomViewer] Stored refresh token for server-side URL refresh")
             if description_html is not None:
                 try:
                     stack.description_html = description_html if description_html else None
@@ -351,6 +391,13 @@ def save_case_stack(case_id):
             except Exception:
                 pass
             stack.set_config(config)
+            # Store refresh token for server-side URL refresh (all viewers get fresh URLs)
+            tokens = session.get("onedrive_tokens")
+            if tokens and tokens.get("refresh_token"):
+                encrypted = encrypt_refresh_token(tokens["refresh_token"])
+                if encrypted:
+                    stack.onedrive_refresh_token_encrypted = encrypted
+                    logger.debug("[CaseDicomViewer] Stored refresh token for server-side URL refresh")
             db.session.add(stack)
         db.session.commit()
         return jsonify({

@@ -24,6 +24,7 @@
   var _onSliderReady = null;
   var _isAdmin = false;
   var _annotations = {}; // { planName: { imageIndex: [annotations] } }
+  var _annotationsVisible = true;
   var _preloadedImages = {};
   var _panModeActive = false;
   var _keyboardListener = null;
@@ -120,7 +121,7 @@
   function preloadFullStack() {
     if (!cornerstone || !_element || !_imageIds.length) return;
     var total = _imageIds.length;
-    var batchSize = 8;
+    var batchSize = 4;
     var index = 0;
     var sliderReadyFired = false;
     var readyThreshold = Math.max(1, Math.ceil(total * 0.02)); // ~2%
@@ -165,7 +166,7 @@
     }
 
     function scheduleNext() {
-      if (index < total) setTimeout(loadNextBatch, 30);
+      if (index < total) setTimeout(loadNextBatch, 150);
       else reportProgress();
     }
 
@@ -214,6 +215,12 @@
       function (image) {
         cornerstone.displayImage(_element, image);
         _preloadedImages[imageId] = true;
+
+        if (_annotationsVisible) {
+          applyAnnotationsForImage();
+        } else {
+          clearAnnotations();
+        }
 
         // Update stack tool state
         var stackState = cornerstoneTools.getToolState(_element, "stack");
@@ -446,6 +453,7 @@
       }
       if (key === "p" || key === "P") {
         e.preventDefault();
+        e.stopPropagation();
         if (window.CaseDicomViewer) window.CaseDicomViewer.setPanMode(true);
         return;
       }
@@ -922,6 +930,24 @@
      */
     clearAnnotations: function () {
       clearAnnotations();
+    },
+
+    /**
+     * Show or hide annotations (student toggle; does not delete data)
+     */
+    setAnnotationsVisible: function (visible) {
+      _annotationsVisible = !!visible;
+      if (_element && _imageIds.length) displaySlice(_currentIndex);
+    },
+
+    toggleAnnotationsVisible: function () {
+      _annotationsVisible = !_annotationsVisible;
+      if (_element && _imageIds.length) displaySlice(_currentIndex);
+      return _annotationsVisible;
+    },
+
+    getAnnotationsVisible: function () {
+      return _annotationsVisible;
     },
 
     /**

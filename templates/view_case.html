@@ -706,9 +706,12 @@
                                 </div>
                             </div>
                             
-                            <!-- Image Stack Tab (OneDrive-linked) -->
+                            <!-- Image Stack Tab (OneDrive-linked) - student only; admin sees Image Stack below Case Images -->
                             <div class="tab-pane fade" id="imageStackPane" role="tabpanel" aria-labelledby="imageStackTab">
                                 <div class="p-3">
+                                    {% if current_user.is_authenticated and current_user.role and (current_user.role.value == 'admin' or current_user.role.value == 'content_manager') %}
+                                    <p class="text-muted small mb-0"><i class="fas fa-layer-group me-1"></i>Image Stack is shown above (below Case Images) for editors.</p>
+                                    {% else %}
                                     <h6 class="mb-3"><i class="fas fa-layer-group me-2" style="color: #17a2b8;"></i>Image Stack</h6>
                                     <div id="imageStackContent">
                                         <p class="text-muted small mb-2">Loading...</p>
@@ -796,6 +799,7 @@
                                                     <button type="button" class="btn btn-sm btn-outline-secondary" id="imageStackFit" title="Fit to window"><i class="fas fa-compress-arrows-alt"></i></button>
                                                     <button type="button" class="btn btn-sm btn-outline-secondary" id="imageStackPanBtn" title="Pan mode (left-drag to move image, or use arrow keys)"><i class="fas fa-arrows-alt"></i></button>
                                                     <button type="button" class="btn btn-sm btn-outline-secondary" id="imageStackFullscreenBtn" title="Toggle fullscreen"><i class="fas fa-expand"></i></button>
+                                                    <button type="button" class="btn btn-sm btn-outline-info" id="imageStackToggleAnnotationsBtn" title="Show or hide annotations" style="display: none;"><i class="fas fa-eye me-1"></i><span id="imageStackToggleAnnotationsLabel">Show annotations</span></button>
                                                 </div>
                                             </div>
                                             <div id="imageStackCacheStatus" class="d-none small text-muted d-flex align-items-center gap-2" style="min-height: 20px;">
@@ -807,6 +811,7 @@
                                         </div>
                                     </div>
                                 </div>
+                                    {% endif %}
                             </div>
                             
                             <!-- RadiologyAssistant Tab -->
@@ -928,6 +933,72 @@
                             <p id="noImagesMsg" class="text-muted mt-3"><i class="fas fa-file-image me-2"></i>No images uploaded yet. Click Edit Case to add images.</p>
                         </div>
                     </div>
+
+                    {% if current_user.is_authenticated and current_user.role and (current_user.role.value == 'admin' or current_user.role.value == 'content_manager') %}
+                    <!-- Image Stack (OneDrive) - admin: below Case Images -->
+                    <div class="detail-section mb-5" id="imageStackSectionAdmin">
+                        <label class="section-title fw-bold mb-4 d-block"><i class="fas fa-layer-group me-2" style="color: #17a2b8;"></i>Image Stack (OneDrive)</label>
+                        <div id="imageStackContent"><p class="text-muted small mb-2">Loading...</p></div>
+                        <div id="imageStackEmpty" class="text-center py-4" style="display: none;"><i class="fas fa-layer-group text-muted" style="font-size: 2rem; opacity: 0.5;"></i><p class="text-muted small mt-2 mb-0">No image stack available for this study.</p></div>
+                        <div id="imageStackViewer" style="display: none;" tabindex="0">
+                            <div id="imageStackDescription" class="image-stack-description mb-3 p-3 rounded border bg-light" style="display: none;"></div>
+                            <div class="btn-group btn-group-sm mb-2" id="imageStackPlanTabs" role="group"></div>
+                            <div id="imageStackAnnotationToolbar" class="mb-2 p-2 rounded" style="background: rgba(102,126,234,0.1); display: none;">
+                                <div class="d-flex flex-wrap align-items-center gap-2">
+                                    <span class="small text-muted me-1"><i class="fas fa-pen-fancy me-1"></i>Tools:</span>
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <button type="button" class="btn btn-outline-primary annotation-tool-btn active" data-tool="view" title="View Mode (Window/Level)"><i class="fas fa-hand-pointer"></i></button>
+                                        <button type="button" class="btn btn-outline-primary annotation-tool-btn" data-tool="ArrowAnnotate" title="Arrow Annotation"><i class="fas fa-arrow-right"></i></button>
+                                        <button type="button" class="btn btn-outline-primary annotation-tool-btn" data-tool="TextMarker" title="Text Marker"><i class="fas fa-font"></i></button>
+                                        <button type="button" class="btn btn-outline-primary annotation-tool-btn" data-tool="FreehandRoi" title="Freehand Draw"><i class="fas fa-draw-polygon"></i></button>
+                                        <button type="button" class="btn btn-outline-primary annotation-tool-btn" data-tool="Length" title="Measure Length"><i class="fas fa-ruler"></i></button>
+                                        <button type="button" class="btn btn-outline-primary annotation-tool-btn" data-tool="EllipticalRoi" title="Ellipse ROI"><i class="fas fa-circle"></i></button>
+                                    </div>
+                                    <div class="btn-group btn-group-sm ms-2" role="group">
+                                        <button type="button" class="btn btn-outline-secondary" id="imageStackResetView" title="Reset View"><i class="fas fa-compress-arrows-alt"></i></button>
+                                        <button type="button" class="btn btn-outline-warning" id="imageStackClearAnnotations" title="Clear Annotations"><i class="fas fa-eraser"></i></button>
+                                    </div>
+                                    <button type="button" class="btn btn-sm btn-success ms-auto" id="imageStackSaveAnnotations"><i class="fas fa-save me-1"></i>Save</button>
+                                </div>
+                                <small class="text-muted d-block mt-1" style="font-size: 0.7rem;"><strong>Controls:</strong> Scroll=Navigate | Left-drag=Tool | Right-drag=Zoom | Middle-drag=Pan<br><strong>Keys:</strong> Z=reset | +/= zoom in | − zoom out | W=window | P=pan | Page Up/Down=slice | Ctrl+←/→=plan</small>
+                            </div>
+                            <div id="imageStackViewerWrapper" class="border rounded bg-dark position-relative">
+                                <div id="imageStackFullscreenPlanOverlay" class="d-none" aria-label="Plan selection"><span class="image-stack-fs-plan-label text-white me-2">Plan:</span><div id="imageStackFullscreenPlanTabs" class="btn-group btn-group-sm flex-wrap"></div></div>
+                                <div id="imageStackFullscreenOverlay" class="d-none" aria-label="Fullscreen toolbar">
+                                    <div class="d-flex flex-wrap align-items-center gap-2">
+                                        <button type="button" class="btn btn-sm btn-outline-light" id="imageStackFsZoomOut" title="Zoom out"><i class="fas fa-search-minus"></i></button>
+                                        <button type="button" class="btn btn-sm btn-outline-light" id="imageStackFsZoomIn" title="Zoom in"><i class="fas fa-search-plus"></i></button>
+                                        <button type="button" class="btn btn-sm btn-outline-light" id="imageStackFsPan" title="Pan"><i class="fas fa-arrows-alt"></i></button>
+                                        <small id="imageStackFullscreenSliceInfo" class="ms-2 text-white">1 / 1</small>
+                                        <small class="text-white-50 ms-2" style="font-size: 0.7rem;">Z=reset | +/− zoom | W=window | P=pan</small>
+                                    </div>
+                                </div>
+                                <button type="button" class="btn btn-sm btn-outline-light position-absolute top-0 end-0 m-2" id="imageStackExitFullscreenBtn" style="display: none; z-index: 11;" title="Exit fullscreen"><i class="fas fa-compress"></i></button>
+                                <div id="imageStackViewport" style="display: none;"></div>
+                                <img id="imageStackImg" src="" alt="Slice" class="img-fluid w-100" style="max-height: 500px; object-fit: contain;">
+                            </div>
+                            <div class="d-flex flex-column gap-2 mt-2">
+                                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                    <div class="d-flex align-items-center gap-1">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" id="imageStackPrev"><i class="fas fa-chevron-left me-1"></i>Prev</button>
+                                        <span class="small text-muted fw-medium" id="imageStackSliceInfo">1 / 1</span>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" id="imageStackNext">Next<i class="fas fa-chevron-right ms-1"></i></button>
+                                    </div>
+                                    <div id="imageStackZoomBtns" class="d-none d-flex align-items-center gap-1 flex-wrap" title="Keys: Z=zoom fit, P=pan, W=window/level, +/− zoom, arrows pan, Page Up/Down=slice, Ctrl+←/→=plan">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" id="imageStackZoomOut" title="Zoom out (or press -)"><i class="fas fa-search-minus"></i></button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" id="imageStackZoomIn" title="Zoom in (or press +)"><i class="fas fa-search-plus"></i></button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" id="imageStackFit" title="Fit to window"><i class="fas fa-compress-arrows-alt"></i></button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" id="imageStackPanBtn" title="Pan mode (left-drag to move image, or use arrow keys)"><i class="fas fa-arrows-alt"></i></button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" id="imageStackFullscreenBtn" title="Toggle fullscreen"><i class="fas fa-expand"></i></button>
+                                    </div>
+                                </div>
+                                <div id="imageStackCacheStatus" class="d-none small text-muted d-flex align-items-center gap-2" style="min-height: 20px;"><span class="spinner-border spinner-border-sm" role="status" id="imageStackCacheSpinner" style="width:14px;height:14px;"></span><span id="imageStackCacheText">Caching… 0 / 0</span></div>
+                                <input type="range" class="form-range" id="imageStackSliceSlider" min="1" max="1" value="1" step="1" style="min-height: 24px;">
+                                <small class="text-muted d-block mt-1" style="font-size: 0.7rem;">Keys: Z=reset | +/= zoom in | − zoom out | W=window | P=pan | Page Up/Down=slice | Ctrl+←/→=plan</small>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
                 </div>
 
                 <!-- Floating Notes Button (Phase 2: Unified Notes System) -->
@@ -1000,7 +1071,7 @@
                 {% if current_user.is_authenticated and current_user.role and (current_user.role.value == 'admin' or current_user.role.value == 'content_manager') %}
                 <div class="action-buttons mt-5 pt-4 border-top">
                     <div class="btn-group-actions">
-                        <a href="/edit-case?id={{ case.id }}" 
+                        <a href="/edit-case?id={{ case.id }}&returnTo=/view-case/{{ case.id }}" 
                            class="btn btn-warning rounded-pill px-4 py-2"
                            id="editCaseButton">
                             <i class="fas fa-edit me-2"></i>Edit Case
@@ -3224,6 +3295,20 @@
 
 <!-- Case DICOM Viewer: Self-hosted Cornerstone.js v4.x libraries -->
 <link rel="stylesheet" href="{{ url_for('case_dicom_viewer.static', filename='case_dicom_viewer/viewer.css') }}">
+<!-- Patch canvas.getContext for willReadFrequently before Cornerstone loads (fixes getImageData perf warning) -->
+<script>
+(function() {
+  var orig = HTMLCanvasElement.prototype.getContext;
+  HTMLCanvasElement.prototype.getContext = function(type, attributes) {
+    if (type === '2d') {
+      var attrs = (attributes && typeof attributes === 'object') ? Object.assign({}, attributes) : {};
+      if (attrs.willReadFrequently === undefined) attrs.willReadFrequently = true;
+      return orig.call(this, type, attrs);
+    }
+    return orig.call(this, type, attributes);
+  };
+})();
+</script>
 <script src="{{ url_for('case_dicom_viewer.static', filename='case_dicom_viewer/lib/hammer.min.js') }}"></script>
 <script src="{{ url_for('case_dicom_viewer.static', filename='case_dicom_viewer/lib/cornerstone.min.js') }}"></script>
 <script src="{{ url_for('case_dicom_viewer.static', filename='case_dicom_viewer/lib/cornerstoneMath.min.js') }}"></script>
@@ -5305,7 +5390,7 @@
                         <span class="fw-bold">Progress: <span id="qaProgressText">${reviewedCount}/${totalCount} (${percent}%)</span></span>
                         <small class="text-muted" id="qaFlashcardNav" style="display: none;">
                             <span id="qaFlashcardCurrent">1</span> / <span id="qaFlashcardTotal">${totalCount}</span>
-                            <button type="button" class="btn btn-sm btn-link p-0 ms-2" id="qaFlashcardPrev" title="Previous (P)"><i class="fas fa-chevron-left"></i></button>
+                            <button type="button" class="btn btn-sm btn-link p-0 ms-2" id="qaFlashcardPrev" title="Previous (←)"><i class="fas fa-chevron-left"></i></button>
                             <button type="button" class="btn btn-sm btn-link p-0 ms-1" id="qaFlashcardNext" title="Next (N)"><i class="fas fa-chevron-right"></i></button>
                         </small>
                     </div>
@@ -5555,7 +5640,7 @@
                     flashcardIndex++;
                     applyModeAndFilter();
                     e.preventDefault();
-                } else if (e.key === 'p' || e.key === 'P' || e.key === 'ArrowLeft') {
+                } else if (e.key === 'ArrowLeft') {
                     flashcardIndex--;
                     applyModeAndFilter();
                     e.preventDefault();
@@ -6942,7 +7027,8 @@
                 e.preventDefault();
                 e.stopPropagation();
                 const caseId = {{ case.id }};
-                window.location.href = `/edit-case?id=${caseId}`;
+                const returnTo = encodeURIComponent(`/view-case/${caseId}`);
+                window.location.href = `/edit-case?id=${caseId}&returnTo=${returnTo}`;
             });
         }
     });
@@ -8277,13 +8363,17 @@
                 }
             });
         }
-        // Image Stack: load when tab is shown
+        // Image Stack: load when tab is shown (student), or on load (admin - viewer is below Case Images)
         const imageStackTab = document.getElementById('imageStackTab');
         if (imageStackTab) {
             imageStackTab.addEventListener('shown.bs.tab', function() {
                 console.log('[ImageStack] Tab shown, loading stack...');
                 loadImageStack();
             });
+        }
+        if (isAdminUser && document.getElementById('imageStackSectionAdmin')) {
+            console.log('[ImageStack] Admin: loading stack on page load');
+            loadImageStack();
         }
     });
     
@@ -8710,6 +8800,20 @@
                     if (annotationToolbar && isAdminUser) {
                         annotationToolbar.style.display = 'block';
                         setupAnnotationToolbar();
+                    }
+                    // Student: show annotations toggle (no add/save)
+                    const toggleAnnotationsBtn = document.getElementById('imageStackToggleAnnotationsBtn');
+                    const toggleAnnotationsLabel = document.getElementById('imageStackToggleAnnotationsLabel');
+                    if (toggleAnnotationsBtn && !isAdminUser && window.CaseDicomViewer) {
+                        toggleAnnotationsBtn.style.display = 'inline-block';
+                        function updateAnnotationsToggleLabel() {
+                            if (toggleAnnotationsLabel) toggleAnnotationsLabel.textContent = window.CaseDicomViewer.getAnnotationsVisible() ? 'Hide annotations' : 'Show annotations';
+                        }
+                        updateAnnotationsToggleLabel();
+                        toggleAnnotationsBtn.onclick = function() {
+                            window.CaseDicomViewer.toggleAnnotationsVisible();
+                            updateAnnotationsToggleLabel();
+                        };
                     }
                 } else if (viewportEl && imgEl) {
                     viewportEl.style.display = 'none';
