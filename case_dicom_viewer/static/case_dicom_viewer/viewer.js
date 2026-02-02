@@ -499,29 +499,27 @@
       var exited = !document.fullscreenElement;
       if (exited) {
         _fullscreenContainer = null;
-        /* Reset wrapper so it returns to CSS dimensions (400px height, 100% width). */
+        /* Clear any inline dimensions so CSS (562×400) applies again. */
         if (wrapperEl) {
           wrapperEl.style.width = "";
           wrapperEl.style.height = "";
-          wrapperEl.style.minHeight = "";
+          wrapperEl.style.maxWidth = "";
         }
-        /* Resize after fullscreen has fully exited and layout has reflowed. */
+        /* Resize after exit so Cornerstone redraws canvas to normal size. */
         requestAnimationFrame(function () {
           requestAnimationFrame(function () {
             resizeViewport();
-            setTimeout(resizeViewport, 100);
-            setTimeout(resizeViewport, 350);
-            setTimeout(resizeViewport, 500);
+            setTimeout(resizeViewport, 150);
+            setTimeout(resizeViewport, 400);
           });
         });
       } else {
-        /* Entered fullscreen: resize after layout has applied so canvas fills height. */
+        /* Entered fullscreen: CSS sets wrapper to 90vw×90vh; resize so Cornerstone picks it up. */
         requestAnimationFrame(function () {
           requestAnimationFrame(function () {
             resizeViewport();
             setTimeout(resizeViewport, 100);
-            setTimeout(resizeViewport, 200);
-            setTimeout(resizeViewport, 350);
+            setTimeout(resizeViewport, 250);
           });
         });
       }
