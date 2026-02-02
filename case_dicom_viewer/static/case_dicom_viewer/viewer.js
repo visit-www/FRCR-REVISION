@@ -411,7 +411,8 @@
   }
 
   /**
-   * Attach keyboard zoom/pan (+, -, arrow keys). Call with element that should receive focus.
+   * Attach keyboard: Z=zoom, P=pan, W=window, Page Up/Down=scroll, Numpad Left/Right=plan.
+   * Call with element that should receive focus (e.g. viewer wrapper).
    */
   function attachKeyboardNavigation(containerEl) {
     if (_keyboardListener) return;
@@ -423,24 +424,82 @@
       var tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : "";
       if (tag === "input" || tag === "textarea" || tag === "select") return;
       var key = e.key;
+      var loc = e.location;
+      /* Change series/plan: Numpad Left/Right (location 3) or Ctrl+Arrow Left/Right */
+      var numpadLeft = (key === "ArrowLeft" || key === "Left") && (loc === 3 || e.ctrlKey);
+      var numpadRight = (key === "ArrowRight" || key === "Right") && (loc === 3 || e.ctrlKey);
+      if (numpadLeft) {
+        e.preventDefault();
+        document.dispatchEvent(new CustomEvent("caseDicomViewerPrevPlan"));
+        return;
+      }
+      if (numpadRight) {
+        e.preventDefault();
+        document.dispatchEvent(new CustomEvent("caseDicomViewerNextPlan"));
+        return;
+      }
+      /* Z = zoom (fit to window), P = pan mode, W = window/level mode */
+      if (key === "z" || key === "Z") {
+        e.preventDefault();
+        if (window.CaseDicomViewer) window.CaseDicomViewer.fitToWindow();
+        return;
+      }
+      if (key === "p" || key === "P") {
+        e.preventDefault();
+        if (window.CaseDicomViewer) window.CaseDicomViewer.setPanMode(true);
+        return;
+      }
+      if (key === "w" || key === "W") {
+        e.preventDefault();
+        if (window.CaseDicomViewer) window.CaseDicomViewer.setPanMode(false);
+        return;
+      }
+      /* Page Down / Page Up = scroll slices */
+      if (key === "PageDown") {
+        e.preventDefault();
+        if (_imageIds.length && _currentIndex < _imageIds.length - 1) {
+          displaySlice(_currentIndex + 1);
+        }
+        return;
+      }
+      if (key === "PageUp") {
+        e.preventDefault();
+        if (_imageIds.length && _currentIndex > 0) {
+          displaySlice(_currentIndex - 1);
+        }
+        return;
+      }
+      /* + / - = zoom in/out */
       if (key === "+" || key === "=") {
         e.preventDefault();
-        window.CaseDicomViewer.zoomIn();
-      } else if (key === "-") {
+        if (window.CaseDicomViewer) window.CaseDicomViewer.zoomIn();
+        return;
+      }
+      if (key === "-") {
         e.preventDefault();
-        window.CaseDicomViewer.zoomOut();
-      } else if (key === "ArrowLeft") {
+        if (window.CaseDicomViewer) window.CaseDicomViewer.zoomOut();
+        return;
+      }
+      /* Arrow keys (non-numpad) = pan */
+      if (key === "ArrowLeft") {
         e.preventDefault();
         panBy(20, 0);
-      } else if (key === "ArrowRight") {
+        return;
+      }
+      if (key === "ArrowRight") {
         e.preventDefault();
         panBy(-20, 0);
-      } else if (key === "ArrowUp") {
+        return;
+      }
+      if (key === "ArrowUp") {
         e.preventDefault();
         panBy(0, 20);
-      } else if (key === "ArrowDown") {
+        return;
+      }
+      if (key === "ArrowDown") {
         e.preventDefault();
         panBy(0, -20);
+        return;
       }
     };
     el.addEventListener("keydown", _keyboardListener);
@@ -479,7 +538,10 @@
   }
 
   /**
-   * Resize Cornerstone viewport (call after fullscreen change or container resize)
+   * Resize Cornerstone viewport (call after fullscreen change or container resize).
+   * Cornerstone reads the viewport element's offsetWidth/offsetHeight and resizes
+   * the canvas.cornerstone-canvas to match. If the viewport hasn't been laid out
+   * yet (e.g. right after fullscreen enter), the canvas stays small.
    */
   function resizeViewport() {
     if (!_element || !cornerstone) return;
@@ -490,22 +552,58 @@
     }
   }
 
+  /**
+   * Force viewport (and thus canvas) to match wrapper size in pixels, then resize.
+   * Used when not in fullscreen (e.g. window resize).
+   */
+  function resizeViewportToWrapper() {
+    if (!_element || !cornerstone) return;
+    var wrapperEl = document.getElementById("imageStackViewerWrapper");
+    if (!wrapperEl) {
+      resizeViewport();
+      return;
+    }
+    var w = wrapperEl.clientWidth;
+    var h = wrapperEl.clientHeight;
+    if (w > 0 && h > 0) {
+      _element.style.width = w + "px";
+      _element.style.height = h + "px";
+    }
+    resizeViewport();
+  }
+
   var _fullscreenChangeHandler = null;
 
   function attachFullscreenResize(containerEl) {
     if (_fullscreenChangeHandler) return;
     var wrapperEl = document.getElementById("imageStackViewerWrapper");
+    var exitFullscreenBtn = document.getElementById("imageStackExitFullscreenBtn");
     _fullscreenChangeHandler = function () {
       var exited = !document.fullscreenElement;
       if (exited) {
         _fullscreenContainer = null;
-        /* Clear any inline dimensions so CSS (562×400) applies again. */
+        if (exitFullscreenBtn) exitFullscreenBtn.style.display = "none";
+        var planOverlay = document.getElementById("imageStackFullscreenPlanOverlay");
+        var toolbarOverlay = document.getElementById("imageStackFullscreenOverlay");
+        if (planOverlay) {
+          planOverlay.style.display = "none";
+          planOverlay.classList.remove("image-stack-fullscreen-overlay-visible");
+          planOverlay.classList.add("d-none");
+        }
+        if (toolbarOverlay) {
+          toolbarOverlay.style.display = "none";
+          toolbarOverlay.classList.remove("image-stack-fullscreen-overlay-visible");
+          toolbarOverlay.classList.add("d-none");
+        }
         if (wrapperEl) {
           wrapperEl.style.width = "";
           wrapperEl.style.height = "";
           wrapperEl.style.maxWidth = "";
         }
-        /* Resize after exit so Cornerstone redraws canvas to normal size. */
+        if (_element) {
+          _element.style.width = "";
+          _element.style.height = "";
+        }
         requestAnimationFrame(function () {
           requestAnimationFrame(function () {
             resizeViewport();
@@ -514,12 +612,25 @@
           });
         });
       } else {
-        /* Entered fullscreen: CSS sets wrapper to 90vw×90vh; resize so Cornerstone picks it up. */
+        /* Fullscreen: show top-left plan overlay and bottom toolbar overlay */
+        if (exitFullscreenBtn) exitFullscreenBtn.style.display = "block";
+        var planOverlay = document.getElementById("imageStackFullscreenPlanOverlay");
+        var toolbarOverlay = document.getElementById("imageStackFullscreenOverlay");
+        if (planOverlay) {
+          planOverlay.classList.remove("d-none");
+          planOverlay.classList.add("image-stack-fullscreen-overlay-visible");
+          planOverlay.style.display = "flex";
+        }
+        if (toolbarOverlay) {
+          toolbarOverlay.classList.remove("d-none");
+          toolbarOverlay.classList.add("image-stack-fullscreen-overlay-visible");
+          toolbarOverlay.style.display = "flex";
+        }
         requestAnimationFrame(function () {
           requestAnimationFrame(function () {
-            resizeViewport();
-            setTimeout(resizeViewport, 100);
-            setTimeout(resizeViewport, 250);
+            resizeViewportToWrapper();
+            setTimeout(resizeViewportToWrapper, 50);
+            setTimeout(resizeViewportToWrapper, 150);
           });
         });
       }
@@ -834,6 +945,9 @@
      */
     setPanMode: function (active) {
       setPanMode(active);
+      try {
+        document.dispatchEvent(new CustomEvent("caseDicomViewerPanModeChange", { detail: { active: !!active } }));
+      } catch (err) {}
     },
 
     /**

@@ -75,17 +75,34 @@ except Exception as e:
 
 # Configuration
 # Set USE_LOCAL_DB=1 in .env.local to force SQLite for faster local startup
+# Set USE_POOLED_DB=1 in .env.local to prefer Neon pooled URL (avoids "postgres message too large" with direct connection)
 # Production (Vercel) uses PostgreSQL (Neon)
 USE_LOCAL_DB = os.getenv('USE_LOCAL_DB', '').strip() in ('1', 'true', 'yes')
-DATABASE_URL = None if USE_LOCAL_DB else (
-    os.getenv('DATABASE_POSTGRES_URL_NON_POOLING')
-    or os.getenv('POSTGRES_URL_NON_POOLING')
-    or os.getenv('DATABASE_URL')
-    or os.getenv('POSTGRES_URL')
-    or os.getenv('DATABASE_POSTGRES_URL')
-    or os.getenv('frcr_revision_db_POSTGRES_URL_NON_POOLING')
-    or os.getenv('frcr_revision_db_DATABASE_URL')
-)
+USE_POOLED_DB = os.getenv('USE_POOLED_DB', '').strip() in ('1', 'true', 'yes')
+if USE_LOCAL_DB:
+    DATABASE_URL = None
+else:
+    # Prefer pooled URL when USE_POOLED_DB=1 (fixes "postgres message too large" on local with Neon direct)
+    if USE_POOLED_DB:
+        DATABASE_URL = (
+            os.getenv('DATABASE_URL')
+            or os.getenv('POSTGRES_URL')
+            or os.getenv('DATABASE_POSTGRES_URL')
+            or os.getenv('DATABASE_POSTGRES_URL_NON_POOLING')
+            or os.getenv('POSTGRES_URL_NON_POOLING')
+            or os.getenv('frcr_revision_db_DATABASE_URL')
+            or os.getenv('frcr_revision_db_POSTGRES_URL_NON_POOLING')
+        )
+    else:
+        DATABASE_URL = (
+            os.getenv('DATABASE_POSTGRES_URL_NON_POOLING')
+            or os.getenv('POSTGRES_URL_NON_POOLING')
+            or os.getenv('DATABASE_URL')
+            or os.getenv('POSTGRES_URL')
+            or os.getenv('DATABASE_POSTGRES_URL')
+            or os.getenv('frcr_revision_db_POSTGRES_URL_NON_POOLING')
+            or os.getenv('frcr_revision_db_DATABASE_URL')
+        )
 
 if DATABASE_URL:
     # Sanitize: strip embedded newlines and literal \n (common when loading from .env)

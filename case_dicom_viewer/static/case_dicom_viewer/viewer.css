@@ -31,13 +31,118 @@
   position: relative;
   overflow: hidden;
 }
+/* Fullscreen: top-left overlay = plan/plane selection only */
+#imageStackFullscreenPlanOverlay {
+  display: none;
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 12;
+  padding: 10px 12px;
+  min-height: 44px;
+  background: rgba(0, 0, 0, 0.9);
+  border-radius: 0 0 8px 0;
+  box-sizing: border-box;
+}
+#imageStackFullscreenPlanOverlay.image-stack-fullscreen-overlay-visible {
+  display: flex !important;
+  align-items: center;
+  flex-wrap: wrap;
+}
+#imageStackFullscreenPlanOverlay .image-stack-fs-plan-label {
+  color: #fff !important;
+  font-size: 0.875rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+#imageStackFullscreenPlanOverlay .btn-group,
+#imageStackFullscreenPlanOverlay #imageStackFullscreenPlanTabs {
+  display: inline-flex !important;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  visibility: visible;
+}
+#imageStackFullscreenPlanOverlay .btn,
+#imageStackFullscreenPlanOverlay #imageStackFullscreenPlanTabs .btn {
+  color: #fff !important;
+  border: 1px solid rgba(255, 255, 255, 0.9) !important;
+  background: rgba(255, 255, 255, 0.2) !important;
+  font-size: 0.875rem !important;
+  padding: 6px 12px !important;
+  visibility: visible !important;
+}
+#imageStackFullscreenPlanOverlay .btn:hover,
+#imageStackFullscreenPlanOverlay #imageStackFullscreenPlanTabs .btn:hover {
+  background: rgba(255, 255, 255, 0.35) !important;
+  color: #fff !important;
+}
+#imageStackFullscreenPlanOverlay .btn-info,
+#imageStackFullscreenPlanOverlay .btn.btn-info,
+#imageStackFullscreenPlanOverlay #imageStackFullscreenPlanTabs .btn.btn-info {
+  background: #17a2b8 !important;
+  border-color: #17a2b8 !important;
+  color: #fff !important;
+}
+
+/* Fullscreen: bottom overlay = zoom, pan, slice info */
+#imageStackFullscreenOverlay {
+  display: none;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.8);
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+#imageStackFullscreenOverlay.image-stack-fullscreen-overlay-visible {
+  display: flex;
+}
+#imageStackFullscreenOverlay .btn {
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.15);
+  font-size: 0.875rem;
+  padding: 6px 10px;
+}
+#imageStackFullscreenOverlay .btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  color: #fff;
+}
+#imageStackFullscreenOverlay .btn.active,
+#imageStackFullscreenOverlay .btn.btn-info {
+  background: #17a2b8;
+  border-color: #17a2b8;
+  color: #fff;
+}
+#imageStackFullscreenSliceInfo {
+  color: #fff;
+  font-size: 0.875rem;
+  margin-left: 4px;
+}
+#imageStackExitFullscreenBtn {
+  z-index: 11;
+}
 #imageStackViewport {
   width: 100%;
   height: 100%;
   display: block;
+  position: relative;
+  z-index: 1;
 }
-#imageStackViewport canvas {
-  display: block;
+/* Canvas must fill viewport so it covers the full area (Cornerstone may set small pixel dimensions) */
+#imageStackViewport canvas,
+#imageStackViewport .cornerstone-canvas,
+#imageStackViewport .cornerstone-viewer {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
 }
 
 /* Mobile: use full width, keep 400px height (or you can use min-height and let it grow) */
@@ -49,39 +154,56 @@
 }
 
 /*
- * Fullscreen: viewer root gets full screen; we want canvas area = 90vw × 90vh.
- * Set wrapper to 90vw × 90vh so viewport/canvas get that size when Cornerstone.resize() runs.
+ * Fullscreen: we fullscreen #imageStackViewerWrapper (the wrapper), so these rules
+ * target the wrapper when it is the fullscreen element. Viewport/canvas fill the wrapper;
+ * overlay sits on top at top:0 with z-index 100.
  */
-#imageStackViewer:fullscreen,
-#imageStackViewer:-webkit-full-screen,
-#imageStackViewer:-moz-full-screen,
-#imageStackViewer:-ms-fullscreen {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  position: fixed !important;
-  inset: 0 !important;
-  width: 90vw !important;
-  height: 90vh !important;
-  padding: 0.5rem;
-  background: #1a1a2e;
-  box-sizing: border-box;
-  overflow: hidden;
-}
-/* In fullscreen, wrapper is exactly 90vw × 90vh so resize() gets correct dimensions */
-#imageStackViewer:fullscreen > #imageStackViewerWrapper,
-#imageStackViewer:-webkit-full-screen > #imageStackViewerWrapper,
-#imageStackViewer:-moz-full-screen > #imageStackViewerWrapper,
-#imageStackViewer:-ms-fullscreen > #imageStackViewerWrapper {
-  width: 90vw !important;
+#imageStackViewerWrapper:fullscreen,
+#imageStackViewerWrapper:-webkit-full-screen,
+#imageStackViewerWrapper:-moz-full-screen,
+#imageStackViewerWrapper:-ms-fullscreen {
+  width: 100% !important;
   max-width: none !important;
-  height: 90vh !important;
-  flex: none !important;
+  height: 100% !important;
+  display: block !important;
+  position: relative !important;
+  background: #1a1a2e !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+  border: none !important;
+  border-radius: 0 !important;
 }
-#imageStackViewer:fullscreen > #imageStackViewerWrapper > #imageStackViewport,
-#imageStackViewer:-webkit-full-screen > #imageStackViewerWrapper > #imageStackViewport,
-#imageStackViewer:-moz-full-screen > #imageStackViewerWrapper > #imageStackViewport,
-#imageStackViewer:-ms-fullscreen > #imageStackViewerWrapper > #imageStackViewport {
+#imageStackViewerWrapper:fullscreen > #imageStackViewport,
+#imageStackViewerWrapper:-webkit-full-screen > #imageStackViewport,
+#imageStackViewerWrapper:-moz-full-screen > #imageStackViewport,
+#imageStackViewerWrapper:-ms-fullscreen > #imageStackViewport {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
   width: 100% !important;
   height: 100% !important;
+}
+#imageStackViewerWrapper:fullscreen #imageStackViewport canvas,
+#imageStackViewerWrapper:fullscreen #imageStackViewport .cornerstone-canvas,
+#imageStackViewerWrapper:fullscreen #imageStackViewport .cornerstone-viewer,
+#imageStackViewerWrapper:-webkit-full-screen #imageStackViewport canvas,
+#imageStackViewerWrapper:-webkit-full-screen #imageStackViewport .cornerstone-canvas,
+#imageStackViewerWrapper:-webkit-full-screen #imageStackViewport .cornerstone-viewer,
+#imageStackViewerWrapper:-moz-full-screen #imageStackViewport canvas,
+#imageStackViewerWrapper:-moz-full-screen #imageStackViewport .cornerstone-canvas,
+#imageStackViewerWrapper:-moz-full-screen #imageStackViewport .cornerstone-viewer,
+#imageStackViewerWrapper:-ms-fullscreen #imageStackViewport canvas,
+#imageStackViewerWrapper:-ms-fullscreen #imageStackViewport .cornerstone-canvas,
+#imageStackViewerWrapper:-ms-fullscreen #imageStackViewport .cornerstone-viewer {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
 }

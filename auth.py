@@ -321,6 +321,9 @@ def register():
 def login():
     """User login"""
     if current_user.is_authenticated:
+        # Return JSON for fetch/XHR so client gets JSON instead of following redirect to HTML
+        if request.method == 'POST' and (request.is_json or request.headers.get('Accept', '').find('application/json') >= 0):
+            return jsonify({'success': True, 'message': 'Already logged in'}), 200
         return redirect(url_for('index'))
     
     if request.method == 'POST':
