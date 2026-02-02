@@ -8470,12 +8470,15 @@
             }
             
             console.log('[ImageStack] Response ok:', stackResponse.ok, 'status:', stackResponse.status, 'has_stack:', data.has_stack, 'plans keys:', data.plans ? Object.keys(data.plans || {}) : [], 'has_annotations:', annotationsData.has_annotations || false);
+            if (data.error_detail) {
+                console.warn('[ImageStack] Server message:', data.error_detail);
+            }
             if (!stackResponse.ok) {
                 console.warn('[ImageStack] Non-OK response:', stackResponse.status, data.error || data.message || '(no message)');
             }
             content.style.display = 'none';
             if (!stackResponse.ok || !data.has_stack || !data.plans || Object.keys(data.plans).length === 0) {
-                console.log('[ImageStack] Showing empty (not ok or no stack/plans)');
+                console.log('[ImageStack] Showing empty (not ok or no stack/plans)' + (data.error_detail ? '. ' + data.error_detail : ''));
                 empty.style.display = 'block';
                 return;
             }

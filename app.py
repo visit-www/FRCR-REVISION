@@ -187,12 +187,16 @@ def load_user(user_id):
 
 @login_manager.unauthorized_handler
 def unauthorized():
-    """Handle unauthorized access - redirect to login"""
+    """Handle unauthorized access - return JSON for API/fetch, else redirect to login"""
     from flask import redirect, url_for, request
-    # If it's an AJAX request, return JSON
+    # Return JSON for API requests (fetch, XHR, or Accept: application/json)
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         return jsonify({'error': 'Login required'}), 401
-    # Otherwise redirect to login
+    if request.headers.get('Accept', '').lower().find('application/json') >= 0:
+        return jsonify({'error': 'Login required'}), 401
+    path = (request.path or '').strip()
+    if path.startswith('/api/') or path.startswith('/case-dicom-viewer/api/'):
+        return jsonify({'error': 'Login required'}), 401
     return redirect(url_for('auth.login'))
 
 

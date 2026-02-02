@@ -1172,8 +1172,23 @@ document.addEventListener('DOMContentLoaded', function() {
             fetch('/case-dicom-viewer/api/case/' + caseId + '/stack', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
                 body: JSON.stringify({ config, onedrive_share_id: _caseDicomParsedData.encoded_share_id })
-            }).then(r => r.json()).then(data => {
+            }).then(function(r) {
+                var ct = (r.headers.get('Content-Type') || '').toLowerCase();
+                if (!ct.includes('application/json')) {
+                    if (r.status === 401) {
+                        throw new Error('Session expired or not logged in. Please log in again and try saving.');
+                    }
+                    if (r.status === 403) {
+                        throw new Error('You do not have permission to link image stacks.');
+                    }
+                    return r.text().then(function(t) {
+                        throw new Error('Server returned an error (status ' + r.status + '). Try logging in again or refresh the page.');
+                    });
+                }
+                return r.json();
+            }).then(function(data) {
                 saveBtn.disabled = false;
                 saveBtn.innerHTML = '<i class="fas fa-save me-1"></i>Save to Case';
                 if (data.error) {
@@ -1182,7 +1197,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 bootstrap.Modal.getInstance(document.getElementById('caseDicomLinkModal')).hide();
                 updateImageStackStatus(caseId);
-            }).catch(err => {
+            }).catch(function(err) {
                 saveBtn.disabled = false;
                 saveBtn.innerHTML = '<i class="fas fa-save me-1"></i>Save to Case';
                 alert('Save failed: ' + (err.message || 'Unknown error'));

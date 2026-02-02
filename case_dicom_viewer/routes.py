@@ -235,13 +235,16 @@ def proxy_image():
         return jsonify({"error": "Failed to fetch image"}), 502
 
 
-def _safe_stack_response(plans, has_stack=True, description_html=None):
+def _safe_stack_response(plans, has_stack=True, description_html=None, error_detail=None):
     """Return JSON response for stack API (same shape so frontend never breaks)."""
-    return jsonify({
+    out = {
         "plans": plans if plans is not None else {},
         "has_stack": bool(has_stack),
         "description_html": description_html,
-    })
+    }
+    if error_detail:
+        out["error_detail"] = error_detail
+    return jsonify(out)
 
 
 @case_dicom_bp.route("/api/case/<int:case_id>/stack", methods=["GET"])
@@ -262,14 +265,20 @@ def get_case_stack(case_id):
                 "[CaseDicomViewer] Stack query failed (run migration add_case_image_stack_description.sql?): %s",
                 e,
             )
-            return _safe_stack_response({}, has_stack=False)
+            return _safe_stack_response(
+                {}, has_stack=False,
+                error_detail="Database schema may be out of date. Run migration add_case_image_stack_description.sql",
+            )
         if not stack:
             return _safe_stack_response({}, has_stack=False)
         try:
             plans = stack.get_config()
         except Exception as e:
             logger.warning("[CaseDicomViewer] get_config failed: %s", e)
-            return _safe_stack_response({}, has_stack=False)
+            return _safe_stack_response(
+                {}, has_stack=False,
+                error_detail="Failed to load stack config: " + str(e)[:200],
+            )
         token = _get_access_token()
         if token and stack.onedrive_share_id:
             try:
@@ -287,7 +296,10 @@ def get_case_stack(case_id):
         return _safe_stack_response(plans, has_stack=True, description_html=description_html)
     except Exception as e:
         logger.exception("[CaseDicomViewer] get_case_stack failed for case_id=%s: %s", case_id, e)
-        return _safe_stack_response({}, has_stack=False)
+        return _safe_stack_response(
+            {}, has_stack=False,
+            error_detail="Server error loading stack: " + str(e)[:200],
+        )
 
 
 @case_dicom_bp.route("/api/case/<int:case_id>/stack", methods=["POST"])
