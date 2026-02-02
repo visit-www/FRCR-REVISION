@@ -318,6 +318,9 @@ console.log('[TinyMCE Loader] Script URL was:', "{{ url_for('static', filename='
                         <button type="button" class="btn btn-outline-info" id="linkImageStackBtn" onclick="openCaseDicomLinkModal()">
                             <i class="fas fa-cloud me-1"></i>Link Image Stack
                         </button>
+                        <button type="button" class="btn btn-outline-danger btn-sm ms-2" id="removeImageStackBtn" style="display: none;" onclick="removeCaseImageStack()" title="Remove image stack link">
+                            <i class="fas fa-unlink me-1"></i>Remove image stack
+                        </button>
                         <div id="imageStackStatus" class="mt-2 small text-muted"></div>
                     </div>
                 </div>
@@ -963,6 +966,47 @@ function setLinkImageStackButtonConnected(connected) {
         btn.classList.add('btn-outline-info');
     }
 }
+function updateImageStackStatus(caseId) {
+    const statusEl = document.getElementById('imageStackStatus');
+    const removeBtn = document.getElementById('removeImageStackBtn');
+    if (!statusEl || !caseId) return;
+    fetch('/case-dicom-viewer/api/case/' + caseId + '/stack', { credentials: 'include' })
+        .then(r => r.json())
+        .then(data => {
+            if (data.has_stack && data.plans && Object.keys(data.plans).length > 0) {
+                statusEl.innerHTML = '<i class="fas fa-check text-success me-1"></i>Image stack linked (' + Object.keys(data.plans).length + ' plans)';
+                if (removeBtn) removeBtn.style.display = 'inline-block';
+            } else {
+                statusEl.textContent = '';
+                if (removeBtn) removeBtn.style.display = 'none';
+            }
+        })
+        .catch(() => {
+            statusEl.textContent = '';
+            if (removeBtn) removeBtn.style.display = 'none';
+        });
+}
+function removeCaseImageStack() {
+    const caseId = document.getElementById('editCaseId')?.value;
+    if (!caseId) return;
+    if (!confirm('Remove the image stack link for this case? The OneDrive folder will not be changed.')) return;
+    const removeBtn = document.getElementById('removeImageStackBtn');
+    if (removeBtn) removeBtn.disabled = true;
+    fetch('/case-dicom-viewer/api/case/' + caseId + '/stack', { method: 'DELETE', credentials: 'include' })
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) {
+                alert('Error: ' + data.error);
+            } else {
+                document.getElementById('imageStackStatus').textContent = '';
+                if (removeBtn) { removeBtn.style.display = 'none'; removeBtn.disabled = false; }
+            }
+        })
+        .catch(err => {
+            alert('Failed to remove: ' + (err.message || 'Unknown error'));
+            if (removeBtn) removeBtn.disabled = false;
+        });
+}
 document.addEventListener('DOMContentLoaded', function() {
     fetch('/case-dicom-viewer/api/status', { credentials: 'include' }).then(r => r.json()).then(data => {
         if (data.connected) setLinkImageStackButtonConnected(true);
@@ -1056,7 +1100,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     return;
                 }
                 bootstrap.Modal.getInstance(document.getElementById('caseDicomLinkModal')).hide();
-                document.getElementById('imageStackStatus').innerHTML = '<i class="fas fa-check text-success me-1"></i>Image stack linked (' + Object.keys(config).length + ' plans)';
+                updateImageStackStatus(caseId);
             }).catch(err => {
                 saveBtn.disabled = false;
                 saveBtn.innerHTML = '<i class="fas fa-save me-1"></i>Save to Case';
@@ -1673,7 +1717,11 @@ document.addEventListener('DOMContentLoaded', function() {
 function initializeNewStandaloneCase() {
     // Mark as new case
     document.getElementById('editCaseId').value = 'new';
-    
+    var statusEl = document.getElementById('imageStackStatus');
+    var removeBtn = document.getElementById('removeImageStackBtn');
+    if (statusEl) statusEl.textContent = '';
+    if (removeBtn) removeBtn.style.display = 'none';
+
     // Update page title and subtitle
     document.querySelector('h1').innerHTML = '<i class="fas fa-plus me-3" style="color: #667eea;"></i>Create New Case';
     const subtitle = document.getElementById('pageSubtitle');
@@ -1734,6 +1782,7 @@ function loadCaseForEdit(caseId) {
     ])
     .then(([caseData, images, qaPairs, refImages]) => {
         document.getElementById('editCaseId').value = caseData.id;
+        if (typeof updateImageStackStatus === 'function') updateImageStackStatus(caseData.id);
         const subtitle = document.getElementById('pageSubtitle');
         if (subtitle) {
             subtitle.textContent = `Case #${caseData.case_number} - ${caseData.diagnosis}`;

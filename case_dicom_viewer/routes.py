@@ -173,7 +173,7 @@ def folder_parse():
 
 
 def _is_allowed_proxy_url(url: str) -> bool:
-    """Allow only HTTPS; prefer OneDrive/Graph hosts to reduce SSRF risk."""
+    """Allow only HTTPS; OneDrive/SharePoint/Graph download hosts to reduce SSRF risk."""
     if not url or not isinstance(url, str):
         return False
     url = url.strip()
@@ -185,13 +185,17 @@ def _is_allowed_proxy_url(url: str) -> bool:
         host = (parsed.netloc or "").lower()
         if not host:
             return False
-        # Allow OneDrive/SharePoint/Graph download hosts
+        # OneDrive/SharePoint/Graph download and redirect hosts (downloadUrl can point to these)
         allowed = (
             "sharepoint.com",
             "1drv.ms",
+            "1drv.com",
             "onedrive.com",
             "live.com",
             "microsoft.com",
+            "office.com",
+            "officecdn-df.microsoft.com",
+            "df.office.net",
         )
         return any(a in host for a in allowed)
     except Exception:
@@ -209,6 +213,12 @@ def proxy_image():
     if not url:
         return jsonify({"error": "url required"}), 400
     if not _is_allowed_proxy_url(url):
+        try:
+            from urllib.parse import urlparse
+            host = (urlparse(url.strip()).netloc or "").lower()
+            logger.warning("[CaseDicomViewer] proxy_image rejected host: %s", host or "(empty)")
+        except Exception:
+            pass
         return jsonify({"error": "URL not allowed for proxy"}), 403
     try:
         r = requests.get(url, timeout=30, stream=True)
@@ -226,7 +236,7 @@ def proxy_image():
 @case_dicom_bp.route("/api/case/<int:case_id>/stack", methods=["GET"])
 @login_required
 def get_case_stack(case_id):
-    """Return image stack config for case (student view)."""
+    """Return image stack config for case. Refreshes URLs from Graph when viewer has OneDrive tokens."""
     from models import Case
     case = Case.query.get(case_id)
     if not case or not has_case_view_access(case):
@@ -234,7 +244,18 @@ def get_case_stack(case_id):
     stack = CaseImageStack.query.filter_by(case_id=case_id).first()
     if not stack:
         return jsonify({"plans": {}, "has_stack": False})
-    return jsonify({"plans": stack.get_config(), "has_stack": True})
+    plans = stack.get_config()
+    token = _get_access_token()
+    if token and stack.onedrive_share_id:
+        try:
+            from case_dicom_viewer.onedrive_service import list_folder_contents
+            fresh = list_folder_contents(token, stack.onedrive_share_id)
+            if fresh.get("plans"):
+                plans = fresh["plans"]
+                logger.info("[CaseDicomViewer] Refreshed stack URLs from Graph for case %s", case_id)
+        except Exception as e:
+            logger.debug("[CaseDicomViewer] Could not refresh stack from Graph (using stored): %s", e)
+    return jsonify({"plans": plans, "has_stack": True})
 
 
 @case_dicom_bp.route("/api/case/<int:case_id>/stack", methods=["POST"])
@@ -270,6 +291,28 @@ def save_case_stack(case_id):
     try:
         db.session.commit()
         return jsonify({"message": "Stack saved", "plans": stack.get_config()})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+
+@case_dicom_bp.route("/api/case/<int:case_id>/stack", methods=["DELETE"])
+@login_required
+def delete_case_stack(case_id):
+    """Remove image stack link for case (admin)."""
+    from models import Case, db
+    if not is_admin():
+        return jsonify({"error": "Admin access required"}), 403
+    case = Case.query.get(case_id)
+    if not case or not has_case_edit_permission(case):
+        return jsonify({"error": "Case not found or access denied"}), 404
+    stack = CaseImageStack.query.filter_by(case_id=case_id).first()
+    if not stack:
+        return jsonify({"message": "No image stack linked", "has_stack": False})
+    try:
+        db.session.delete(stack)
+        db.session.commit()
+        return jsonify({"message": "Image stack removed", "has_stack": False})
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
