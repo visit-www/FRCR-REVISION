@@ -1,38 +1,232 @@
-{# Case DICOM Viewer - OneDrive link modal (admin) #}
+{# Case DICOM Viewer - OneDrive link modal (admin) - App style only; !important overrides global modal #}
+<style>
+  #caseDicomLinkModal .modal-content {
+    background: var(--brand-bg-offwhite, #fdfdfb) !important;
+    border: 2px solid var(--brand-success, #a8d5ba) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12) !important;
+    overflow: hidden !important;
+  }
+  #caseDicomLinkModal .modal-header {
+    background: linear-gradient(135deg, #5E899E 0%, #4a7285 100%) !important;
+    color: #fff !important;
+    border: none !important;
+    padding: 1rem 1.25rem !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+  }
+  #caseDicomLinkModal .modal-header .modal-title {
+    font-weight: 600 !important;
+    font-size: 1.15rem !important;
+    color: #fff !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
+  }
+  #caseDicomLinkModal .modal-header .btn-close {
+    filter: brightness(0) invert(1) !important;
+    opacity: 0.9 !important;
+  }
+  #caseDicomLinkModal .modal-header .btn-close:hover {
+    opacity: 1 !important;
+  }
+  #caseDicomLinkModal .modal-body {
+    background: var(--brand-bg-offwhite, #fdfdfb) !important;
+    padding: 1.5rem 1.25rem !important;
+    color: var(--brand-text-primary, #2c3e50) !important;
+    display: block !important;
+    align-items: unset !important;
+    justify-content: unset !important;
+    min-height: unset !important;
+  }
+  #caseDicomLinkModal .modal-body .case-dicom-desc {
+    color: var(--brand-text-secondary, #5a6270);
+    font-size: 0.9rem;
+    margin-bottom: 1.25rem;
+  }
+  #caseDicomLinkModal .case-dicom-step {
+    background: rgba(94, 137, 158, 0.08);
+    border-left: 4px solid #5E899E;
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+    margin-bottom: 1rem;
+    border-radius: 0 8px 8px 0;
+    color: var(--brand-text-primary, #2c3e50);
+  }
+  #caseDicomLinkModal .case-dicom-step strong { color: #5E899E; }
+  #caseDicomLinkModal .case-dicom-actions {
+    margin-bottom: 1.25rem;
+  }
+  #caseDicomLinkModal .case-dicom-connect {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    font-weight: 600;
+    font-size: 0.9rem;
+    border-radius: 0.5rem;
+    border: 2px solid #5E899E;
+    color: #5E899E;
+    background: transparent;
+    transition: background 0.2s, color 0.2s;
+  }
+  #caseDicomLinkModal .case-dicom-connect:hover {
+    background: #5E899E;
+    color: #fff;
+  }
+  #caseDicomLinkModal .case-dicom-connect.case-dicom-connected {
+    border-color: var(--brand-success, #a8d5ba) !important;
+    color: var(--brand-success, #a8d5ba) !important;
+    background: rgba(168, 213, 186, 0.15) !important;
+  }
+  #caseDicomLinkModal .case-dicom-connect.case-dicom-connected:hover {
+    background: var(--brand-success, #a8d5ba) !important;
+    color: var(--brand-text-primary, #2c3e50) !important;
+  }
+  #caseDicomLinkModal .case-dicom-field {
+    margin-bottom: 1.25rem;
+  }
+  #caseDicomLinkModal .form-label {
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    color: var(--brand-text-primary, #2c3e50);
+  }
+  #caseDicomLinkModal .form-control {
+    border: 2px solid #c5cad1;
+    border-radius: 8px;
+    padding: 0.625rem 0.875rem;
+  }
+  #caseDicomLinkModal .form-control:focus {
+    border-color: var(--brand-success, #a8d5ba);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(168, 213, 186, 0.25);
+  }
+  #caseDicomLinkModal #caseDicomPlansContainer {
+    margin-bottom: 1rem;
+  }
+  #caseDicomLinkModal #caseDicomPlansList {
+    max-height: 200px;
+    overflow-y: auto;
+    border: 2px solid #c5cad1;
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    background: #fff;
+  }
+  #caseDicomLinkModal .form-check {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.35rem 0;
+  }
+  #caseDicomLinkModal .form-check-input {
+    width: 1.1em;
+    height: 1.1em;
+    margin: 0;
+    accent-color: var(--brand-success, #a8d5ba);
+  }
+  #caseDicomLinkModal .form-check-label {
+    font-size: 0.9rem;
+    color: var(--brand-text-primary, #2c3e50);
+  }
+  #caseDicomLinkModal #caseDicomPlansList p {
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--brand-text-secondary, #5a6270);
+  }
+  #caseDicomLinkModal .case-dicom-msg {
+    padding: 0.6rem 0.875rem;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    margin-bottom: 1rem;
+  }
+  #caseDicomLinkModal .case-dicom-msg.info {
+    background: rgba(94, 137, 158, 0.12);
+    border: 1px solid rgba(94, 137, 158, 0.3);
+    color: var(--brand-text-primary, #2c3e50);
+  }
+  #caseDicomLinkModal .case-dicom-msg.error {
+    background: rgba(233, 99, 4, 0.08);
+    border: 1px solid rgba(233, 99, 4, 0.35);
+    color: #c75002;
+  }
+  #caseDicomLinkModal .modal-footer {
+    background: #f5f5f3 !important;
+    border-top: 1px solid #c5cad1 !important;
+    padding: 1rem 1.25rem !important;
+    border-radius: 0 0 12px 12px !important;
+    display: flex !important;
+    gap: 0.75rem !important;
+    flex-wrap: wrap !important;
+  }
+  #caseDicomLinkModal .modal-footer .btn {
+    font-weight: 600 !important;
+    border-radius: 0.5rem !important;
+    padding: 0.5rem 1rem !important;
+  }
+  #caseDicomLinkModal .modal-footer .btn-secondary {
+    background: #8b94a3 !important;
+    color: #fff !important;
+    border: none !important;
+  }
+  #caseDicomLinkModal .modal-footer .btn-secondary:hover {
+    background: #7a8391 !important;
+    color: #fff !important;
+  }
+  #caseDicomLinkModal .modal-footer .btn-info {
+    background: #5E899E !important;
+    color: #fff !important;
+    border: none !important;
+  }
+  #caseDicomLinkModal .modal-footer .btn-info:hover {
+    background: #4a7285 !important;
+    color: #fff !important;
+  }
+  #caseDicomLinkModal .modal-footer .btn-primary {
+    background: var(--brand-success, #a8d5ba) !important;
+    color: var(--brand-text-primary, #2c3e50) !important;
+    border: none !important;
+  }
+  #caseDicomLinkModal .modal-footer .btn-primary:hover {
+    background: #8bc9a3 !important;
+    color: var(--brand-text-primary, #2c3e50) !important;
+  }
+</style>
+
 <div class="modal fade" id="caseDicomLinkModal" tabindex="-1">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
-      <div class="modal-header" style="background: linear-gradient(135deg, #17a2b8 0%, #138496 100%); color: white;">
-        <h5 class="modal-title"><i class="fas fa-cloud me-2"></i>Link OneDrive Image Stack</h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fas fa-cloud" aria-hidden="true"></i>Link OneDrive Image Stack</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
-        <p class="text-muted small mb-3">Connect OneDrive and paste a share link to a folder containing image stacks (axial, sagittal, coronal, etc.).</p>
-        <div id="caseDicomConnectRequired" class="alert alert-info small py-2 mb-3" style="display: none;">
-          <i class="fas fa-info-circle me-1"></i><strong>Step 1:</strong> Click "Connect OneDrive" below to sign in with Microsoft. You must do this before parsing a share link.
+        <p class="case-dicom-desc">Connect OneDrive and paste a share link to a folder containing image stacks (axial, sagittal, coronal, etc.).</p>
+        <div id="caseDicomConnectRequired" class="case-dicom-step" style="display: none;">
+          <strong>Step 1:</strong> Click "Connect OneDrive" below to sign in with Microsoft. You must do this before parsing a share link.
         </div>
-        <div class="mb-3">
-          <a href="#" id="caseDicomConnectBtn" class="btn btn-outline-primary btn-sm mb-2">
-            <i class="fas fa-plug me-1"></i><span id="caseDicomConnectLabel">Connect OneDrive</span>
+        <div class="case-dicom-actions">
+          <a href="#" id="caseDicomConnectBtn" class="case-dicom-connect">
+            <i class="fas fa-plug" aria-hidden="true"></i><span id="caseDicomConnectLabel">Connect OneDrive</span>
           </a>
         </div>
-        <div class="mb-3">
-          <label class="form-label">OneDrive Share Link</label>
+        <div class="case-dicom-field">
+          <label class="form-label" for="caseDicomShareLink">OneDrive Share Link</label>
           <input type="url" class="form-control" id="caseDicomShareLink" placeholder="https://1drv.ms/... or https://onedrive.live.com/...">
         </div>
-        <div id="caseDicomPlansContainer" class="mb-3" style="display: none;">
+        <div id="caseDicomPlansContainer" style="display: none;">
           <label class="form-label">Detected plans (select to include)</label>
-          <div id="caseDicomPlansList" class="border rounded p-2" style="max-height: 200px; overflow-y: auto;"></div>
+          <div id="caseDicomPlansList"></div>
         </div>
-        <div id="caseDicomError" class="alert alert-danger small py-2" style="display: none;"></div>
+        <div id="caseDicomError" class="case-dicom-msg error" style="display: none;"></div>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
         <button type="button" class="btn btn-info" id="caseDicomParseBtn">
-          <i class="fas fa-search me-1"></i>Parse Link
+          <i class="fas fa-search" aria-hidden="true"></i> Parse Link
         </button>
         <button type="button" class="btn btn-primary" id="caseDicomSaveBtn" style="display: none;">
-          <i class="fas fa-save me-1"></i>Save to Case
+          <i class="fas fa-save" aria-hidden="true"></i> Save to Case
         </button>
       </div>
     </div>

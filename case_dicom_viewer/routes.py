@@ -8,8 +8,9 @@ import logging
 import secrets
 
 import msal
-from flask import Blueprint, jsonify, request, redirect, session, url_for
+from flask import Blueprint, Response, jsonify, request, redirect, session, url_for
 from flask_login import login_required, current_user
+import requests
 
 from case_dicom_viewer.config import (
     get_client_id,
@@ -169,6 +170,57 @@ def folder_parse():
         "plans": result.get("plans", {}),
         "encoded_share_id": result.get("encoded_share_id"),
     })
+
+
+def _is_allowed_proxy_url(url: str) -> bool:
+    """Allow only HTTPS; prefer OneDrive/Graph hosts to reduce SSRF risk."""
+    if not url or not isinstance(url, str):
+        return False
+    url = url.strip()
+    if not url.startswith("https://"):
+        return False
+    try:
+        from urllib.parse import urlparse
+        parsed = urlparse(url)
+        host = (parsed.netloc or "").lower()
+        if not host:
+            return False
+        # Allow OneDrive/SharePoint/Graph download hosts
+        allowed = (
+            "sharepoint.com",
+            "1drv.ms",
+            "onedrive.com",
+            "live.com",
+            "microsoft.com",
+        )
+        return any(a in host for a in allowed)
+    except Exception:
+        return False
+
+
+@case_dicom_bp.route("/api/image", methods=["GET"])
+@login_required
+def proxy_image():
+    """
+    Proxy image from OneDrive (or allowed HTTPS) to avoid CORS and expiry.
+    GET /case-dicom-viewer/api/image?url=<encoded_url>
+    """
+    url = request.args.get("url")
+    if not url:
+        return jsonify({"error": "url required"}), 400
+    if not _is_allowed_proxy_url(url):
+        return jsonify({"error": "URL not allowed for proxy"}), 403
+    try:
+        r = requests.get(url, timeout=30, stream=True)
+        r.raise_for_status()
+        headers = {}
+        ct = r.headers.get("Content-Type")
+        if ct:
+            headers["Content-Type"] = ct
+        return Response(r.iter_content(chunk_size=8192), status=r.status_code, headers=headers)
+    except requests.RequestException as e:
+        logger.warning("[CaseDicomViewer] proxy_image failed: %s", e)
+        return jsonify({"error": "Failed to fetch image"}), 502
 
 
 @case_dicom_bp.route("/api/case/<int:case_id>/stack", methods=["GET"])

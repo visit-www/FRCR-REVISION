@@ -924,9 +924,10 @@ function openCaseDicomLinkModal() {
     if (params.get('onedrive_connected') === '1') {
         connectLabel.textContent = 'Connected';
         connectBtn.classList.remove('btn-outline-primary');
-        connectBtn.classList.add('btn-success');
+        connectBtn.classList.add('case-dicom-connected');
         connectBtn.href = '#';
         connectBtn.onclick = (e) => { e.preventDefault(); };
+        setLinkImageStackButtonConnected(true);
     } else if (params.get('onedrive_error')) {
         document.getElementById('caseDicomError').textContent = 'OneDrive error: ' + params.get('onedrive_error');
         document.getElementById('caseDicomError').style.display = 'block';
@@ -936,10 +937,11 @@ function openCaseDicomLinkModal() {
             if (data.connected) {
                 connectLabel.textContent = 'Connected';
                 connectBtn.classList.remove('btn-outline-primary');
-                connectBtn.classList.add('btn-success');
+                connectBtn.classList.add('case-dicom-connected');
                 connectBtn.href = '#';
                 connectBtn.onclick = (e) => { e.preventDefault(); };
                 document.getElementById('caseDicomParseBtn').disabled = false;
+                setLinkImageStackButtonConnected(true);
             } else {
                 document.getElementById('caseDicomConnectRequired').style.display = 'block';
             }
@@ -950,11 +952,25 @@ function openCaseDicomLinkModal() {
     const modal = new bootstrap.Modal(document.getElementById('caseDicomLinkModal'));
     modal.show();
 }
+function setLinkImageStackButtonConnected(connected) {
+    const btn = document.getElementById('linkImageStackBtn');
+    if (!btn) return;
+    if (connected) {
+        btn.classList.remove('btn-outline-info');
+        btn.classList.add('btn-success-outline');
+    } else {
+        btn.classList.remove('btn-success-outline');
+        btn.classList.add('btn-outline-info');
+    }
+}
 document.addEventListener('DOMContentLoaded', function() {
+    fetch('/case-dicom-viewer/api/status', { credentials: 'include' }).then(r => r.json()).then(data => {
+        if (data.connected) setLinkImageStackButtonConnected(true);
+    }).catch(function() {});
     const connectBtn = document.getElementById('caseDicomConnectBtn');
     if (connectBtn) {
         connectBtn.addEventListener('click', function(e) {
-            if (this.classList.contains('btn-success')) return;
+            if (this.classList.contains('case-dicom-connected')) return;
             e.preventDefault();
             const caseId = document.getElementById('editCaseId')?.value;
             const next = encodeURIComponent(window.location.origin + '/edit-case?id=' + (caseId || ''));

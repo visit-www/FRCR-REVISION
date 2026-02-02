@@ -720,6 +720,7 @@
                                     <div id="imageStackViewer" style="display: none;">
                                         <div class="btn-group btn-group-sm mb-2" id="imageStackPlanTabs" role="group"></div>
                                         <div class="border rounded bg-dark position-relative" style="min-height: 300px;">
+                                            <div id="imageStackViewport" style="min-height: 300px; width: 100%; display: none;"></div>
                                             <img id="imageStackImg" src="" alt="Slice" class="img-fluid w-100" style="max-height: 500px; object-fit: contain;">
                                         </div>
                                         <div class="d-flex justify-content-between align-items-center mt-2">
@@ -3143,6 +3144,13 @@
     }
     
 </style>
+
+<!-- Case DICOM Viewer: Cornerstone stack (optional; fallback to img if not loaded) -->
+<script src="https://cdn.jsdelivr.net/npm/cornerstone-core@2.6.4/dist/cornerstone.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/cornerstone-math@0.1.10/dist/cornerstoneMath.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/cornerstone-tools@6.0.10/dist/cornerstoneTools.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/cornerstone-web-image-loader@2.1.1/dist/cornerstoneWebImageLoader.min.js"></script>
+<script src="{{ url_for('case_dicom_viewer.static', filename='case_dicom_viewer/viewer.js') }}"></script>
 
 <script>
     const caseId = {{ case.id }};
@@ -8347,6 +8355,10 @@
     let _imageStackData = null;
     let _imageStackCurrentPlan = null;
     let _imageStackCurrentIndex = 0;
+    function imageStackProxyUrl(originalUrl) {
+        if (!originalUrl) return '';
+        return '/case-dicom-viewer/api/image?url=' + encodeURIComponent(originalUrl);
+    }
     async function loadImageStack() {
         const content = document.getElementById('imageStackContent');
         const empty = document.getElementById('imageStackEmpty');
@@ -8364,10 +8376,32 @@
                 empty.style.display = 'block';
                 return;
             }
-            _imageStackData = data.plans;
+            // Rewrite URLs via proxy to avoid CORS / OneDrive expiry
+            const plans = data.plans;
+            _imageStackData = {};
+            for (const [name, urls] of Object.entries(plans)) {
+                _imageStackData[name] = Array.isArray(urls) ? urls.map(imageStackProxyUrl) : [];
+            }
             const planNames = Object.keys(_imageStackData);
             _imageStackCurrentPlan = planNames[0];
             _imageStackCurrentIndex = 0;
+            const viewportEl = document.getElementById('imageStackViewport');
+            const imgEl = document.getElementById('imageStackImg');
+            const sliceInfoEl = document.getElementById('imageStackSliceInfo');
+            const useCornerstone = window.CaseDicomViewer && window.CaseDicomViewer.init('imageStackViewport', _imageStackData);
+            if (useCornerstone && viewportEl && imgEl) {
+                viewportEl.style.display = '';
+                imgEl.style.display = 'none';
+                window.CaseDicomViewer.onSliceChange(function (current, total) {
+                    if (sliceInfoEl) sliceInfoEl.textContent = current + ' / ' + total;
+                });
+                if (sliceInfoEl && _imageStackData[_imageStackCurrentPlan]) {
+                    sliceInfoEl.textContent = '1 / ' + (_imageStackData[_imageStackCurrentPlan].length || 0);
+                }
+            } else if (viewportEl && imgEl) {
+                viewportEl.style.display = 'none';
+                imgEl.style.display = '';
+            }
             const tabsEl = document.getElementById('imageStackPlanTabs');
             tabsEl.innerHTML = planNames.map((name, i) =>
                 `<button type="button" class="btn ${i === 0 ? 'btn-info' : 'btn-outline-secondary'}" data-plan="${name}">${name}</button>`
@@ -8377,17 +8411,35 @@
                     _imageStackCurrentPlan = this.dataset.plan;
                     _imageStackCurrentIndex = 0;
                     tabsEl.querySelectorAll('button').forEach(b => { b.className = b.dataset.plan === _imageStackCurrentPlan ? 'btn btn-info' : 'btn btn-outline-secondary'; });
-                    updateImageStackDisplay();
+                    if (useCornerstone && window.CaseDicomViewer) {
+                        window.CaseDicomViewer.loadStack(_imageStackCurrentPlan, _imageStackData[_imageStackCurrentPlan] || []);
+                        if (sliceInfoEl) sliceInfoEl.textContent = '1 / ' + ((_imageStackData[_imageStackCurrentPlan] || []).length || 0);
+                    } else {
+                        updateImageStackDisplay();
+                    }
                 });
             });
-            document.getElementById('imageStackPrev').onclick = () => { _imageStackCurrentIndex = Math.max(0, _imageStackCurrentIndex - 1); updateImageStackDisplay(); };
+            document.getElementById('imageStackPrev').onclick = () => {
+                if (useCornerstone && window.CaseDicomViewer) {
+                    const idx = window.CaseDicomViewer.getCurrentIndex();
+                    window.CaseDicomViewer.setSliceIndex(idx - 1);
+                } else {
+                    _imageStackCurrentIndex = Math.max(0, _imageStackCurrentIndex - 1);
+                    updateImageStackDisplay();
+                }
+            };
             document.getElementById('imageStackNext').onclick = () => {
-                const urls = _imageStackData[_imageStackCurrentPlan] || [];
-                _imageStackCurrentIndex = Math.min(urls.length - 1, _imageStackCurrentIndex + 1);
-                updateImageStackDisplay();
+                if (useCornerstone && window.CaseDicomViewer) {
+                    const idx = window.CaseDicomViewer.getCurrentIndex();
+                    window.CaseDicomViewer.setSliceIndex(idx + 1);
+                } else {
+                    const urls = _imageStackData[_imageStackCurrentPlan] || [];
+                    _imageStackCurrentIndex = Math.min(urls.length - 1, _imageStackCurrentIndex + 1);
+                    updateImageStackDisplay();
+                }
             };
             viewer.style.display = 'block';
-            updateImageStackDisplay();
+            if (!useCornerstone) updateImageStackDisplay();
         } catch (e) {
             content.style.display = 'block';
             content.innerHTML = '<p class="text-danger small">Failed to load image stack.</p>';
