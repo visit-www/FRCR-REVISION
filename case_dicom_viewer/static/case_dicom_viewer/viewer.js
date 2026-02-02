@@ -495,16 +495,26 @@
   function attachFullscreenResize(containerEl) {
     if (_fullscreenChangeHandler) return;
     _fullscreenChangeHandler = function () {
-      if (!document.fullscreenElement) {
+      var exited = !document.fullscreenElement;
+      if (exited) {
         _fullscreenContainer = null;
-      }
-      resizeViewport();
-      setTimeout(resizeViewport, 50);
-      setTimeout(resizeViewport, 150);
-      setTimeout(resizeViewport, 400);
-      if (document.fullscreenElement) {
-        setTimeout(resizeViewport, 100);
-        setTimeout(resizeViewport, 300);
+        /* Resize only after fullscreen has fully exited and layout has reflowed.
+           Do not resize synchronously - element may still have fullscreen size. */
+        requestAnimationFrame(function () {
+          requestAnimationFrame(function () {
+            resizeViewport();
+            setTimeout(resizeViewport, 100);
+            setTimeout(resizeViewport, 350);
+          });
+        });
+      } else {
+        /* Entered fullscreen: resize after layout has applied */
+        requestAnimationFrame(function () {
+          requestAnimationFrame(function () {
+            resizeViewport();
+            setTimeout(resizeViewport, 100);
+          });
+        });
       }
     };
     document.addEventListener("fullscreenchange", _fullscreenChangeHandler);
