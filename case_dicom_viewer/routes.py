@@ -235,33 +235,59 @@ def proxy_image():
         return jsonify({"error": "Failed to fetch image"}), 502
 
 
+def _safe_stack_response(plans, has_stack=True, description_html=None):
+    """Return JSON response for stack API (same shape so frontend never breaks)."""
+    return jsonify({
+        "plans": plans if plans is not None else {},
+        "has_stack": bool(has_stack),
+        "description_html": description_html,
+    })
+
+
 @case_dicom_bp.route("/api/case/<int:case_id>/stack", methods=["GET"])
 @login_required
 def get_case_stack(case_id):
     """Return image stack config for case. Refreshes URLs from Graph when viewer has OneDrive tokens."""
     from models import Case
-    case = Case.query.get(case_id)
-    if not case or not has_case_view_access(case):
-        return jsonify({"error": "Case not found or access denied"}), 404
-    stack = CaseImageStack.query.filter_by(case_id=case_id).first()
-    if not stack:
-        return jsonify({"plans": {}, "has_stack": False, "description_html": None})
-    plans = stack.get_config()
-    token = _get_access_token()
-    if token and stack.onedrive_share_id:
+    from sqlalchemy.exc import OperationalError, ProgrammingError
+
+    try:
+        case = Case.query.get(case_id)
+        if not case or not has_case_view_access(case):
+            return jsonify({"error": "Case not found or access denied"}), 404
         try:
-            from case_dicom_viewer.onedrive_service import list_folder_contents
-            fresh = list_folder_contents(token, stack.onedrive_share_id)
-            if fresh.get("plans"):
-                plans = fresh["plans"]
-                logger.info("[CaseDicomViewer] Refreshed stack URLs from Graph for case %s", case_id)
+            stack = CaseImageStack.query.filter_by(case_id=case_id).first()
+        except (OperationalError, ProgrammingError) as e:
+            logger.warning(
+                "[CaseDicomViewer] Stack query failed (run migration add_case_image_stack_description.sql?): %s",
+                e,
+            )
+            return _safe_stack_response({}, has_stack=False)
+        if not stack:
+            return _safe_stack_response({}, has_stack=False)
+        try:
+            plans = stack.get_config()
         except Exception as e:
-            logger.debug("[CaseDicomViewer] Could not refresh stack from Graph (using stored): %s", e)
-    return jsonify({
-        "plans": plans,
-        "has_stack": True,
-        "description_html": getattr(stack, "description_html", None) or None,
-    })
+            logger.warning("[CaseDicomViewer] get_config failed: %s", e)
+            return _safe_stack_response({}, has_stack=False)
+        token = _get_access_token()
+        if token and stack.onedrive_share_id:
+            try:
+                from case_dicom_viewer.onedrive_service import list_folder_contents
+                fresh = list_folder_contents(token, stack.onedrive_share_id)
+                if fresh.get("plans"):
+                    plans = fresh["plans"]
+                    logger.info("[CaseDicomViewer] Refreshed stack URLs from Graph for case %s", case_id)
+            except Exception as e:
+                logger.debug("[CaseDicomViewer] Could not refresh stack from Graph (using stored): %s", e)
+        try:
+            description_html = getattr(stack, "description_html", None) or None
+        except Exception:
+            description_html = None
+        return _safe_stack_response(plans, has_stack=True, description_html=description_html)
+    except Exception as e:
+        logger.exception("[CaseDicomViewer] get_case_stack failed for case_id=%s: %s", case_id, e)
+        return _safe_stack_response({}, has_stack=False)
 
 
 @case_dicom_bp.route("/api/case/<int:case_id>/stack", methods=["POST"])
