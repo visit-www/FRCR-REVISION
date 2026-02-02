@@ -498,7 +498,14 @@
       if (!document.fullscreenElement) {
         _fullscreenContainer = null;
       }
-      setTimeout(resizeViewport, 10);
+      resizeViewport();
+      setTimeout(resizeViewport, 50);
+      setTimeout(resizeViewport, 150);
+      setTimeout(resizeViewport, 400);
+      if (document.fullscreenElement) {
+        setTimeout(resizeViewport, 100);
+        setTimeout(resizeViewport, 300);
+      }
     };
     document.addEventListener("fullscreenchange", _fullscreenChangeHandler);
     document.addEventListener("webkitfullscreenchange", _fullscreenChangeHandler);
