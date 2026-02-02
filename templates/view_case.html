@@ -765,10 +765,13 @@
                                             <div id="imageStackViewport" style="min-height: 400px; width: 100%; display: none;"></div>
                                             <img id="imageStackImg" src="" alt="Slice" class="img-fluid w-100" style="max-height: 500px; object-fit: contain;">
                                         </div>
-                                        <div class="d-flex justify-content-between align-items-center mt-2">
-                                            <button type="button" class="btn btn-sm btn-outline-secondary" id="imageStackPrev"><i class="fas fa-chevron-left me-1"></i>Prev</button>
-                                            <span class="small text-muted" id="imageStackSliceInfo">1 / 1</span>
-                                            <button type="button" class="btn btn-sm btn-outline-secondary" id="imageStackNext">Next<i class="fas fa-chevron-right ms-1"></i></button>
+                                        <div class="d-flex flex-column gap-2 mt-2">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <button type="button" class="btn btn-sm btn-outline-secondary" id="imageStackPrev"><i class="fas fa-chevron-left me-1"></i>Prev</button>
+                                                <span class="small text-muted fw-medium" id="imageStackSliceInfo">1 / 1</span>
+                                                <button type="button" class="btn btn-sm btn-outline-secondary" id="imageStackNext">Next<i class="fas fa-chevron-right ms-1"></i></button>
+                                            </div>
+                                            <input type="range" class="form-range" id="imageStackSliceSlider" min="1" max="1" value="1" step="1" style="min-height: 24px;">
                                         </div>
                                     </div>
                                 </div>
@@ -3194,7 +3197,7 @@
 <script src="{{ url_for('case_dicom_viewer.static', filename='case_dicom_viewer/lib/cornerstoneMath.min.js') }}"></script>
 <script src="{{ url_for('case_dicom_viewer.static', filename='case_dicom_viewer/lib/cornerstoneTools.min.js') }}"></script>
 <script src="{{ url_for('case_dicom_viewer.static', filename='case_dicom_viewer/lib/cornerstoneWebImageLoader.min.js') }}"></script>
-<script src="{{ url_for('case_dicom_viewer.static', filename='case_dicom_viewer/viewer.js') }}?v=8"></script>
+<script src="{{ url_for('case_dicom_viewer.static', filename='case_dicom_viewer/viewer.js') }}?v=9"></script>
 
 <script>
     const caseId = {{ case.id if case else 'null' }};
@@ -8482,6 +8485,7 @@
                 const viewportEl = document.getElementById('imageStackViewport');
                 const imgEl = document.getElementById('imageStackImg');
                 const sliceInfoEl = document.getElementById('imageStackSliceInfo');
+                const sliceSliderEl = document.getElementById('imageStackSliceSlider');
                 const tabsEl = document.getElementById('imageStackPlanTabs');
                 const prevBtn = document.getElementById('imageStackPrev');
                 const nextBtn = document.getElementById('imageStackNext');
@@ -8491,14 +8495,30 @@
                 }
                 const useCornerstone = window.CaseDicomViewer && viewportEl && imgEl && window.CaseDicomViewer.init('imageStackViewport', _imageStackData, { isAdmin: isAdminUser, annotations: _imageStackAnnotations });
                 console.log('[ImageStack] useCornerstone:', useCornerstone, 'isAdmin:', isAdminUser, 'hasAnnotations:', Object.keys(_imageStackAnnotations).length > 0);
+                const totalSlices = (_imageStackData[_imageStackCurrentPlan] || []).length;
+                if (sliceSliderEl) {
+                    sliceSliderEl.min = 1;
+                    sliceSliderEl.max = Math.max(1, totalSlices);
+                    sliceSliderEl.value = 1;
+                }
                 if (useCornerstone && viewportEl && imgEl) {
                     viewportEl.style.display = '';
                     imgEl.style.display = 'none';
                     window.CaseDicomViewer.onSliceChange(function (current, total) {
                         if (sliceInfoEl) sliceInfoEl.textContent = current + ' / ' + total;
+                        if (sliceSliderEl) {
+                            sliceSliderEl.max = Math.max(1, total);
+                            sliceSliderEl.value = current;
+                        }
                     });
                     if (sliceInfoEl && _imageStackData[_imageStackCurrentPlan]) {
                         sliceInfoEl.textContent = '1 / ' + (_imageStackData[_imageStackCurrentPlan].length || 0);
+                    }
+                    if (sliceSliderEl) {
+                        sliceSliderEl.addEventListener('input', function() {
+                            const idx = parseInt(this.value, 10) - 1;
+                            if (window.CaseDicomViewer) window.CaseDicomViewer.setSliceIndex(idx);
+                        });
                     }
                     // Show annotation toolbar for admins
                     const annotationToolbar = document.getElementById('imageStackAnnotationToolbar');
@@ -8509,6 +8529,12 @@
                 } else if (viewportEl && imgEl) {
                     viewportEl.style.display = 'none';
                     imgEl.style.display = '';
+                    if (sliceSliderEl) {
+                        sliceSliderEl.addEventListener('input', function() {
+                            _imageStackCurrentIndex = Math.max(0, parseInt(this.value, 10) - 1);
+                            updateImageStackDisplay();
+                        });
+                    }
                 }
                 tabsEl.innerHTML = planNames.map((name, i) =>
                     `<button type="button" class="btn ${i === 0 ? 'btn-info' : 'btn-outline-secondary'}" data-plan="${name}">${name}</button>`
@@ -8518,9 +8544,14 @@
                         _imageStackCurrentPlan = this.dataset.plan;
                         _imageStackCurrentIndex = 0;
                         tabsEl.querySelectorAll('button').forEach(b => { b.className = b.dataset.plan === _imageStackCurrentPlan ? 'btn btn-info' : 'btn btn-outline-secondary'; });
+                        const planLen = (_imageStackData[_imageStackCurrentPlan] || []).length;
+                        if (sliceSliderEl) {
+                            sliceSliderEl.max = Math.max(1, planLen);
+                            sliceSliderEl.value = 1;
+                        }
                         if (useCornerstone && window.CaseDicomViewer) {
                             window.CaseDicomViewer.loadStack(_imageStackCurrentPlan, _imageStackData[_imageStackCurrentPlan] || []);
-                            if (sliceInfoEl) sliceInfoEl.textContent = '1 / ' + ((_imageStackData[_imageStackCurrentPlan] || []).length || 0);
+                            if (sliceInfoEl) sliceInfoEl.textContent = '1 / ' + planLen;
                         } else {
                             updateImageStackDisplay();
                         }
@@ -8563,11 +8594,13 @@
         const urls = _imageStackData && _imageStackData[_imageStackCurrentPlan] ? _imageStackData[_imageStackCurrentPlan] : [];
         const img = document.getElementById('imageStackImg');
         const info = document.getElementById('imageStackSliceInfo');
+        const slider = document.getElementById('imageStackSliceSlider');
         if (!img || !info) return;
         if (urls.length === 0) {
             img.src = '';
             img.alt = 'No images';
             info.textContent = '0 / 0';
+            if (slider) { slider.min = 1; slider.max = 1; slider.value = 1; }
             return;
         }
         const idx = Math.min(_imageStackCurrentIndex, urls.length - 1);
@@ -8575,6 +8608,10 @@
         img.src = urls[idx];
         img.alt = `Slice ${idx + 1}`;
         info.textContent = `${idx + 1} / ${urls.length}`;
+        if (slider) {
+            slider.max = Math.max(1, urls.length);
+            slider.value = idx + 1;
+        }
     }
     
     // Annotation toolbar setup (admin only)

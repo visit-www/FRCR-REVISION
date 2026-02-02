@@ -6,7 +6,8 @@ Share link encoding, folder listing, image URL extraction.
 
 import base64
 import logging
-from urllib.parse import urlparse
+import re
+from urllib.parse import urlparse, unquote
 
 import requests
 
@@ -16,6 +17,19 @@ GRAPH_BASE = "https://graph.microsoft.com/v1.0"
 
 # Image extensions for stack viewer
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".tiff", ".tif"}
+
+
+def _natural_sort_key(url: str):
+    """
+    Return a sort key for natural/human order (1, 2, 10 not 1, 10, 2).
+    Uses the filename part of the URL so slice order is preserved.
+    """
+    path = urlparse(url).path or url
+    name = path.rsplit("/", 1)[-1] if "/" in path else path
+    name = unquote(name)
+    # Split into alternating non-digits and digits; convert digits to int
+    parts = re.split(r"(\d+)", name.lower())
+    return tuple(int(p) if p.isdigit() else p for p in parts if p)
 
 
 def encode_share_url(share_url: str) -> str | None:
@@ -58,14 +72,31 @@ def _fetch_children(
     access_token: str,
     drive_id: str,
     item_id: str,
+    *,
+    next_link: str | None = None,
 ) -> list:
-    """Fetch children of a drive item via /drives/{driveId}/items/{itemId}/children."""
+    """
+    Fetch all children of a drive item via Graph API.
+    Follows @odata.nextLink to get all pages (Graph returns 200 items per page by default).
+    """
     headers = {"Authorization": f"Bearer {access_token}"}
-    url = f"{GRAPH_BASE}/drives/{drive_id}/items/{item_id}/children"
-    resp = requests.get(url, headers=headers, timeout=30)
-    resp.raise_for_status()
-    data = resp.json()
-    return data.get("value", []) or []
+    all_children: list = []
+    # Request up to 999 per page (Graph default is 200); nextLink still used if more
+    url = next_link or f"{GRAPH_BASE}/drives/{drive_id}/items/{item_id}/children?$top=999"
+    page = 0
+    while url:
+        page += 1
+        resp = requests.get(url, headers=headers, timeout=60)
+        resp.raise_for_status()
+        data = resp.json()
+        value = data.get("value", []) or []
+        all_children.extend(value)
+        url = data.get("@odata.nextLink") or None
+        if url and value:
+            logger.debug("[CaseDicomViewer] Paginating folder children, page %s, got %s so far", page, len(all_children))
+    if page > 1:
+        logger.info("[CaseDicomViewer] Fetched %s children in %s page(s) for item %s", len(all_children), page, item_id[:20])
+    return all_children
 
 
 def list_folder_contents(
@@ -124,7 +155,8 @@ def list_folder_contents(
                         if dl:
                             image_urls.append(dl)
                 if image_urls:
-                    plans[name.lower()] = sorted(image_urls)
+                    # Natural sort by filename so slice order is preserved (1, 2, 10 not 1, 10, 2)
+                    plans[name.lower()] = sorted(image_urls, key=_natural_sort_key)
             except Exception as e:
                 logger.warning("[CaseDicomViewer] Failed to fetch subfolder %s: %s", name, e)
 
@@ -133,7 +165,7 @@ def list_folder_contents(
             plans.setdefault("images", []).append(download_url)
 
     if plans.get("images"):
-        plans["images"] = sorted(plans["images"])
+        plans["images"] = sorted(plans["images"], key=_natural_sort_key)
 
     return {"items": items, "plans": plans}
 

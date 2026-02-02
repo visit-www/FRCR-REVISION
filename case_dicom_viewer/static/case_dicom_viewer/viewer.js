@@ -1,8 +1,7 @@
 /**
  * Case DICOM Viewer - Cornerstone.js v4.x Integration
  * Features: Stack scroll (mouse wheel), zoom, pan, window/level, annotations
- * Self-hosted libraries for reliable API compatibility
- * v8: Server-side token refresh implemented; Cornerstone re-enabled
+ * v9: Slice counter sync on render + stack scroll; natural sort order in backend
  */
 (function () {
   "use strict";
@@ -64,7 +63,6 @@
           if (imageId.indexOf('webImage:') === 0) {
             url = imageId.substring(9); // Remove 'webImage:' (9 chars)
           }
-          console.log("[CaseDicomViewer] Loading image:", url.substring(0, 80) + "...");
           return originalLoadImage(url);
         };
         cornerstone.registerImageLoader('webImage', webImageLoader);
@@ -453,20 +451,35 @@
         // Set up stack
         setupStack(urls);
 
-        // Listen for image rendered to apply annotations
+        // Update slice counter whenever an image is rendered (covers wheel scroll and any navigation)
+        function syncSliceCounter() {
+          var stackState = cornerstoneTools.getToolState(_element, "stack");
+          if (stackState && stackState.data && stackState.data[0]) {
+            var idx = stackState.data[0].currentImageIdIndex;
+            if (typeof idx === "number" && idx >= 0 && idx < _imageIds.length) {
+              _currentIndex = idx;
+              if (_onSliceChange) {
+                _onSliceChange(_currentIndex + 1, _imageIds.length);
+              }
+            }
+          }
+        }
+
         el.addEventListener("cornerstoneimagerendered", function () {
-          // Apply any saved annotations for this image
-          // Note: This would need debouncing for production
+          syncSliceCounter();
         });
 
-        // Listen for scroll events to update slice counter
+        // Listen for stack scroll events (v4 may use different property names)
         el.addEventListener("cornerstonestackscroll", function (e) {
-          var eventData = e.detail;
-          if (eventData && typeof eventData.newImageIdIndex !== "undefined") {
-            _currentIndex = eventData.newImageIdIndex;
+          var eventData = e.detail || {};
+          var idx = eventData.newImageIdIndex ?? eventData.imageIdIndex ?? eventData.newIndex;
+          if (typeof idx === "number" && idx >= 0 && idx < _imageIds.length) {
+            _currentIndex = idx;
             if (_onSliceChange) {
               _onSliceChange(_currentIndex + 1, _imageIds.length);
             }
+          } else {
+            syncSliceCounter();
           }
         });
 
@@ -598,5 +611,5 @@
     },
   };
 
-  console.log("[CaseDicomViewer] viewer.js v8 loaded (self-hosted Cornerstone, server-side token refresh)");
+  console.log("[CaseDicomViewer] viewer.js v9 loaded (slice counter + slider, natural sort order)");
 })();
