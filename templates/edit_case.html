@@ -1054,7 +1054,18 @@ function saveImageStackDescription() {
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ description_html: html })
-    }).then(r => r.json()).then(data => {
+    }).then(function(r) {
+        return r.text().then(function(text) {
+            var data = null;
+            try { data = JSON.parse(text); } catch (e) {}
+            if (!r.ok) {
+                var err = new Error((data && data.error) ? data.error : ('Request failed (status ' + r.status + ')'));
+                err.data = data;
+                throw err;
+            }
+            return data || {};
+        });
+    }).then(function(data) {
         if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-save me-1"></i>Save description'; }
         if (data.error) {
             if (statusEl) statusEl.textContent = 'Error: ' + data.error;
@@ -1175,19 +1186,24 @@ document.addEventListener('DOMContentLoaded', function() {
                 credentials: 'include',
                 body: JSON.stringify({ config, onedrive_share_id: _caseDicomParsedData.encoded_share_id })
             }).then(function(r) {
-                var ct = (r.headers.get('Content-Type') || '').toLowerCase();
-                if (!ct.includes('application/json')) {
-                    if (r.status === 401) {
-                        throw new Error('Session expired or not logged in. Please log in again and try saving.');
-                    }
-                    if (r.status === 403) {
-                        throw new Error('You do not have permission to link image stacks.');
-                    }
-                    return r.text().then(function(t) {
-                        throw new Error('Server returned an error (status ' + r.status + '). Try logging in again or refresh the page.');
-                    });
+                if (r.status === 401) {
+                    throw new Error('Session expired or not logged in. Please log in again and try saving.');
                 }
-                return r.json();
+                if (r.status === 403) {
+                    throw new Error('You do not have permission to link image stacks.');
+                }
+                var ct = (r.headers.get('Content-Type') || '').toLowerCase();
+                return r.text().then(function(text) {
+                    var data = null;
+                    if (ct.includes('application/json')) {
+                        try { data = JSON.parse(text); } catch (e) {}
+                    }
+                    if (!r.ok) {
+                        var msg = (data && data.error) ? data.error : ('Server returned an error (status ' + r.status + '). Try logging in again or refresh the page.');
+                        throw new Error(msg);
+                    }
+                    return data || {};
+                });
             }).then(function(data) {
                 saveBtn.disabled = false;
                 saveBtn.innerHTML = '<i class="fas fa-save me-1"></i>Save to Case';
