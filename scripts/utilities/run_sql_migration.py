@@ -59,14 +59,23 @@ def main():
     from models import db
     from sqlalchemy import text
 
+    def _strip_sql_comments(stmt):
+        """Remove comment lines so statements like '-- comment\nALTER TABLE...' are executed."""
+        lines = []
+        for line in stmt.split('\n'):
+            line = line.strip()
+            if line and not line.startswith('--'):
+                lines.append(line)
+        return ' '.join(lines).strip()
+
     with app.app_context():
         try:
-            with db.engine.connect() as conn:
+            # engine.begin() commits when the block exits (single transaction).
+            with db.engine.begin() as conn:
                 for stmt in sql.split(';'):
-                    stmt = stmt.strip()
-                    if stmt and not stmt.startswith('--'):
+                    stmt = _strip_sql_comments(stmt.strip())
+                    if stmt:
                         conn.execute(text(stmt))
-                        conn.commit()
             print(f"[OK] Ran {sql_path.name}")
         except Exception as e:
             print(f"[ERROR] {e}")

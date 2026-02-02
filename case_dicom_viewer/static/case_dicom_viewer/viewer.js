@@ -494,25 +494,34 @@
 
   function attachFullscreenResize(containerEl) {
     if (_fullscreenChangeHandler) return;
+    var wrapperEl = document.getElementById("imageStackViewerWrapper");
     _fullscreenChangeHandler = function () {
       var exited = !document.fullscreenElement;
       if (exited) {
         _fullscreenContainer = null;
-        /* Resize only after fullscreen has fully exited and layout has reflowed.
-           Do not resize synchronously - element may still have fullscreen size. */
+        /* Reset wrapper so it returns to CSS dimensions (400px height, 100% width). */
+        if (wrapperEl) {
+          wrapperEl.style.width = "";
+          wrapperEl.style.height = "";
+          wrapperEl.style.minHeight = "";
+        }
+        /* Resize after fullscreen has fully exited and layout has reflowed. */
         requestAnimationFrame(function () {
           requestAnimationFrame(function () {
             resizeViewport();
             setTimeout(resizeViewport, 100);
             setTimeout(resizeViewport, 350);
+            setTimeout(resizeViewport, 500);
           });
         });
       } else {
-        /* Entered fullscreen: resize after layout has applied */
+        /* Entered fullscreen: resize after layout has applied so canvas fills height. */
         requestAnimationFrame(function () {
           requestAnimationFrame(function () {
             resizeViewport();
             setTimeout(resizeViewport, 100);
+            setTimeout(resizeViewport, 200);
+            setTimeout(resizeViewport, 350);
           });
         });
       }

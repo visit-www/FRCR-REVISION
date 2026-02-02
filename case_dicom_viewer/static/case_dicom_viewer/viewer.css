@@ -15,9 +15,30 @@
 }
 
 /*
+ * Non-fullscreen: explicit dimensions so layout is predictable and exits cleanly.
+ * Wrapper 400px height, viewport/canvas fill it.
+ */
+#imageStackViewerWrapper {
+  height: 400px;
+  width: 100%;
+  max-width: 100%;
+  min-height: 400px;
+}
+#imageStackViewport {
+  height: 100%;
+  width: 100%;
+  min-height: 0;
+}
+#imageStackViewport .cornerstone-canvas,
+#imageStackViewport canvas {
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
+}
+
+/*
  * Fullscreen: only #imageStackViewer is the fullscreen root.
- * Use direct-child selectors so only our viewer children are affected.
- * Wrapper must grow (flex: 1 1 0); all other direct children must not grow (flex: 0 0 auto).
+ * Wrapper grows to fill; viewport and canvas fill wrapper so height is full.
  */
 #imageStackViewer:fullscreen,
 #imageStackViewer:-webkit-full-screen,
@@ -34,24 +55,22 @@
   box-sizing: border-box;
   overflow: hidden;
 }
-/* All direct children of fullscreen viewer: do not grow */
 #imageStackViewer:fullscreen > *,
 #imageStackViewer:-webkit-full-screen > *,
 #imageStackViewer:-moz-full-screen > *,
 #imageStackViewer:-ms-fullscreen > * {
   flex: 0 0 auto !important;
 }
-/* Except the wrapper: it takes all remaining space */
 #imageStackViewer:fullscreen > #imageStackViewerWrapper,
 #imageStackViewer:-webkit-full-screen > #imageStackViewerWrapper,
 #imageStackViewer:-moz-full-screen > #imageStackViewerWrapper,
 #imageStackViewer:-ms-fullscreen > #imageStackViewerWrapper {
   flex: 1 1 0 !important;
   min-height: 0 !important;
+  width: 100% !important;
   overflow: hidden;
   position: relative !important;
 }
-/* Viewport fills the wrapper in fullscreen */
 #imageStackViewer:fullscreen > #imageStackViewerWrapper > #imageStackViewport,
 #imageStackViewer:-webkit-full-screen > #imageStackViewerWrapper > #imageStackViewport,
 #imageStackViewer:-moz-full-screen > #imageStackViewerWrapper > #imageStackViewport,
@@ -64,4 +83,18 @@
   width: 100% !important;
   height: 100% !important;
   min-height: 0 !important;
+}
+/* Canvas must fill viewport in fullscreen (Cornerstone may set pixel dimensions; override to fill) */
+#imageStackViewer:fullscreen #imageStackViewport .cornerstone-canvas,
+#imageStackViewer:fullscreen #imageStackViewport canvas,
+#imageStackViewer:-webkit-full-screen #imageStackViewport .cornerstone-canvas,
+#imageStackViewer:-webkit-full-screen #imageStackViewport canvas,
+#imageStackViewer:-moz-full-screen #imageStackViewport .cornerstone-canvas,
+#imageStackViewer:-moz-full-screen #imageStackViewport canvas,
+#imageStackViewer:-ms-fullscreen #imageStackViewport .cornerstone-canvas,
+#imageStackViewer:-ms-fullscreen #imageStackViewport canvas {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
 }
