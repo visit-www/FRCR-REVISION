@@ -13,3 +13,37 @@
   color: #17a2b8;
   font-weight: 600;
 }
+
+/* Fullscreen: viewer fills screen, viewport grows to fill space */
+#imageStackViewer:fullscreen,
+#imageStackViewer:-webkit-full-screen,
+#imageStackViewer:-moz-full-screen,
+#imageStackViewer:-ms-fullscreen {
+  display: flex !important;
+  flex-direction: column;
+  width: 100vw;
+  height: 100vh;
+  max-width: 100%;
+  max-height: 100%;
+  padding: 0.5rem;
+  background: #1a1a2e;
+  box-sizing: border-box;
+}
+#imageStackViewer:fullscreen #imageStackViewerWrapper,
+#imageStackViewer:-webkit-full-screen #imageStackViewerWrapper,
+#imageStackViewer:-moz-full-screen #imageStackViewerWrapper,
+#imageStackViewer:-ms-fullscreen #imageStackViewerWrapper {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+#imageStackViewer:fullscreen #imageStackViewport,
+#imageStackViewer:-webkit-full-screen #imageStackViewport,
+#imageStackViewer:-moz-full-screen #imageStackViewport,
+#imageStackViewer:-ms-fullscreen #imageStackViewport {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+}

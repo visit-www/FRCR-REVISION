@@ -3205,7 +3205,7 @@
 </style>
 
 <!-- Case DICOM Viewer: Self-hosted Cornerstone.js v4.x libraries -->
-<!-- Self-hosted for reliable API compatibility (CDN versions had issues) -->
+<link rel="stylesheet" href="{{ url_for('case_dicom_viewer.static', filename='case_dicom_viewer/viewer.css') }}">
 <script src="{{ url_for('case_dicom_viewer.static', filename='case_dicom_viewer/lib/hammer.min.js') }}"></script>
 <script src="{{ url_for('case_dicom_viewer.static', filename='case_dicom_viewer/lib/cornerstone.min.js') }}"></script>
 <script src="{{ url_for('case_dicom_viewer.static', filename='case_dicom_viewer/lib/cornerstoneMath.min.js') }}"></script>
@@ -8514,6 +8514,10 @@
                     empty.style.display = 'block';
                     return;
                 }
+                content.style.display = 'none';
+                empty.style.display = 'none';
+                viewer.style.display = 'block';
+                setTimeout(function() {
                 const useCornerstone = window.CaseDicomViewer && viewportEl && imgEl && window.CaseDicomViewer.init('imageStackViewport', _imageStackData, { isAdmin: isAdminUser, annotations: _imageStackAnnotations });
                 console.log('[ImageStack] useCornerstone:', useCornerstone, 'isAdmin:', isAdminUser, 'hasAnnotations:', Object.keys(_imageStackAnnotations).length > 0);
                 const totalSlices = (_imageStackData[_imageStackCurrentPlan] || []).length;
@@ -8567,7 +8571,7 @@
                         fullscreenBtn.onclick = function() {
                             if (!window.CaseDicomViewer) return;
                             const entering = !window.CaseDicomViewer.isFullscreen();
-                            window.CaseDicomViewer.toggleFullscreen('imageStackViewerWrapper');
+                            window.CaseDicomViewer.toggleFullscreen('imageStackViewer');
                             this.querySelector('i').className = entering ? 'fas fa-compress' : 'fas fa-expand';
                         };
                     }
@@ -8675,9 +8679,9 @@
                         updateImageStackDisplay();
                     }
                 };
-                viewer.style.display = 'block';
                 if (!useCornerstone) updateImageStackDisplay();
                 console.log('[ImageStack] Viewer shown, plans:', Object.keys(_imageStackData || {}));
+                }, 80);
             } catch (innerErr) {
                 console.warn('[ImageStack] Inner error (showing empty):', innerErr);
                 content.style.display = 'none';

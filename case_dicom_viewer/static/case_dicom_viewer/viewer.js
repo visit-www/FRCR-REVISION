@@ -479,6 +479,39 @@
   }
 
   /**
+   * Resize Cornerstone viewport (call after fullscreen change or container resize)
+   */
+  function resizeViewport() {
+    if (!_element || !cornerstone) return;
+    try {
+      cornerstone.resize(_element);
+    } catch (e) {
+      console.warn("[CaseDicomViewer] resize:", e);
+    }
+  }
+
+  var _fullscreenChangeHandler = null;
+
+  function attachFullscreenResize(containerEl) {
+    if (_fullscreenChangeHandler) return;
+    _fullscreenChangeHandler = function () {
+      if (!document.fullscreenElement) {
+        _fullscreenContainer = null;
+      }
+      setTimeout(resizeViewport, 10);
+    };
+    document.addEventListener("fullscreenchange", _fullscreenChangeHandler);
+    document.addEventListener("webkitfullscreenchange", _fullscreenChangeHandler);
+  }
+
+  function detachFullscreenResize() {
+    if (!_fullscreenChangeHandler) return;
+    document.removeEventListener("fullscreenchange", _fullscreenChangeHandler);
+    document.removeEventListener("webkitfullscreenchange", _fullscreenChangeHandler);
+    _fullscreenChangeHandler = null;
+  }
+
+  /**
    * Get all annotations for current image
    */
   function getAnnotationsForImage() {
@@ -670,6 +703,7 @@
           }
         });
 
+        attachFullscreenResize(el.parentElement || el);
         console.log("[CaseDicomViewer] Initialized with", urls.length, "images in plan:", _currentPlan);
         return true;
       } catch (e) {
@@ -805,6 +839,13 @@
     },
 
     /**
+     * Resize viewport (e.g. after fullscreen or container size change)
+     */
+    resize: function () {
+      resizeViewport();
+    },
+
+    /**
      * Zoom in (scale *= 1.25)
      */
     zoomIn: function () {
@@ -866,6 +907,7 @@
      * Clean up viewer
      */
     destroy: function () {
+      detachFullscreenResize();
       detachKeyboardNavigation();
       if (_element && cornerstone) {
         try {
