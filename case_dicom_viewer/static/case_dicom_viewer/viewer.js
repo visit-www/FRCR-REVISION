@@ -2,7 +2,7 @@
  * Case DICOM Viewer - Cornerstone.js v4.x Integration
  * Features: Stack scroll (mouse wheel), zoom, pan, window/level, annotations
  * Self-hosted libraries for reliable API compatibility
- * v5: Fixed webImage loader registration (explicit register after external set)
+ * v6: Fixed webImage loader - strip prefix before XHR request
  */
 (function () {
   "use strict";
@@ -50,14 +50,25 @@
       if (cornerstoneWebImageLoader.external) {
         cornerstoneWebImageLoader.external.cornerstone = cornerstone;
       }
-      // Explicitly register the web image loader with cornerstone
-      // The loader may not auto-register if external wasn't set at load time
-      if (cornerstoneWebImageLoader.loadImage) {
-        cornerstone.registerImageLoader('webImage', cornerstoneWebImageLoader.loadImage);
-        console.log("[CaseDicomViewer] Registered webImage loader");
-      } else if (cornerstoneWebImageLoader.webImageLoader && cornerstoneWebImageLoader.webImageLoader.loadImage) {
-        cornerstone.registerImageLoader('webImage', cornerstoneWebImageLoader.webImageLoader.loadImage);
-        console.log("[CaseDicomViewer] Registered webImage loader (alt path)");
+      
+      // Create a wrapper that strips the webImage: prefix before calling the loader
+      // The cornerstone loader receives full imageId (webImage:https://...) but the 
+      // cornerstoneWebImageLoader.loadImage expects just the URL
+      var originalLoadImage = cornerstoneWebImageLoader.loadImage || 
+                              (cornerstoneWebImageLoader.webImageLoader && cornerstoneWebImageLoader.webImageLoader.loadImage);
+      
+      if (originalLoadImage) {
+        var webImageLoader = function(imageId) {
+          // Strip the webImage: prefix to get the actual URL
+          var url = imageId;
+          if (imageId.indexOf('webImage:') === 0) {
+            url = imageId.substring(9); // Remove 'webImage:' (9 chars)
+          }
+          console.log("[CaseDicomViewer] Loading image:", url.substring(0, 80) + "...");
+          return originalLoadImage(url);
+        };
+        cornerstone.registerImageLoader('webImage', webImageLoader);
+        console.log("[CaseDicomViewer] Registered webImage loader with prefix stripper");
       } else {
         console.warn("[CaseDicomViewer] Could not find loadImage function in cornerstoneWebImageLoader");
       }
