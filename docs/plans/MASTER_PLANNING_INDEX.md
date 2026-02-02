@@ -1,8 +1,8 @@
 # FRCR Revision App - Master Planning Index
 
-> **Last Updated:** January 31, 2026  
+> **Last Updated:** February 2, 2026  
 > **Status:** Active Development  
-> **Total Plans:** 7 Feature Areas
+> **Total Plans:** 8 Feature Areas
 
 ---
 
@@ -22,7 +22,8 @@ This document serves as the master index for all planned features and enhancemen
 | 4 | TNM Calculator (Standalone) | High | Very High | Planned |
 | 5 | Business Model Implementation | High | Critical | Planned |
 | 6 | AI/RAG Knowledge System | Very High | Transformative | Planned |
-| 7 | Case DICOM Viewer | Medium-High | High | Planned |
+| 7 | Case DICOM Viewer | Medium-High | High | **Implemented** |
+| 8 | DICOM/MPR Infrastructure | Very High | High | Future (Documented) |
 
 ---
 
@@ -266,9 +267,46 @@ Build a standalone, exportable module (`case_dicom_viewer`) that links OneDrive 
 📄 **Location:** `docs/plans/CASE_DICOM_VIEWER_PLAN.md`
 
 ### Implementation Status
-- **Branch:** `feature/case-dicom-viewer`
-- **Phase 1 (skeleton):** Module structure, CaseImageStack model, migration, blueprint registered
-- **Remaining:** OneDrive OAuth, folder listing, admin UI, Cornerstone3D viewer, view_case tab
+- **Branch:** `main` (merged)
+- **Status:** ✅ Fully Implemented
+- **Features Completed:**
+  - OneDrive OAuth and folder parsing
+  - Self-hosted Cornerstone.js v4.x viewer
+  - Mouse wheel scroll, zoom, pan, window/level
+  - Admin annotation tools (arrow, text, freehand, length, ellipse)
+  - Image proxy for CORS/expiry handling
+  - CaseImageStack and CaseImageAnnotation models
+
+---
+
+## Plan 8: DICOM/MPR Infrastructure (Future)
+
+**Priority:** 8 (Future Enhancement)  
+**Complexity:** Very High  
+**Estimated Effort:** 8-12 weeks  
+**Dependencies:** DICOM server, Cornerstone3D, significant infrastructure
+
+### Summary
+Future plan to enable true Multi-Planar Reconstruction (MPR) viewing. Would require storing original DICOM volumetric data instead of pre-rendered 2D images, plus DICOM server infrastructure (Orthanc or cloud PACS).
+
+### Why Not Now?
+- Current pre-rendered 2D approach works well for FRCR education
+- Full DICOM/MPR requires significant infrastructure investment
+- Cost/benefit ratio not justified for current use case
+
+### Key Requirements (If Implemented)
+- DICOM server (Orthanc self-hosted or Google Cloud Healthcare)
+- Cornerstone3D with volume rendering
+- DICOMweb API proxy layer
+- HIPAA compliance considerations
+
+### Files Affected
+- New DICOM server infrastructure
+- `case_dicom_viewer/` module updates
+- Database schema for DICOM metadata
+
+### Plan Document
+📄 **Location:** `docs/plans/DICOM_MPR_INFRASTRUCTURE_PLAN.md`
 
 ---
 
@@ -333,6 +371,7 @@ Phase 4: AI Transformation (Week 10-20)
 | Business Model | - | `docs/plans/BUSINESS_MODEL_PLAN.md` |
 | AI/RAG System | `.cursor/plans/ai_rag_knowledge_system_*.plan.md` | - |
 | Case DICOM Viewer | - | `docs/plans/CASE_DICOM_VIEWER_PLAN.md` |
+| DICOM/MPR Infrastructure | - | `docs/plans/DICOM_MPR_INFRASTRUCTURE_PLAN.md` |
 
 ---
 
@@ -352,4 +391,5 @@ Phase 4: AI Transformation (Week 10-20)
 |------|--------|--------|
 | 2026-01-29 | Initial master index created | AI Assistant |
 | 2026-01-31 | Added Case DICOM Viewer plan | AI Assistant |
+| 2026-02-02 | Case DICOM Viewer marked implemented; added DICOM/MPR Infrastructure plan | AI Assistant |
 

@@ -14,7 +14,9 @@ from models import (
     # AJCC TNM Models
     AJCCBodySection, AJCCDiseaseSite, AJCCDiagnosisYear,
     AJCCStagingData, AJCCDiseaseMapping, AJCCStagingTimePrefix,
-    IntelligentTNMData
+    IntelligentTNMData,
+    # Case DICOM Viewer Models
+    CaseImageStack, CaseImageAnnotation
 )
 from datetime import datetime, timedelta
 from sqlalchemy import inspect
@@ -100,6 +102,9 @@ def download_backup():
             'tnm_references': [],
             'anatomy_figures': [],
             'tnm_images': [],
+            # Case DICOM Viewer (OneDrive image stacks and annotations)
+            'case_image_stacks': [],
+            'case_image_annotations': [],
         }
         
         # Export users (with passwords for sync purposes)
@@ -479,6 +484,29 @@ def download_backup():
                 'is_active': img.is_active,
                 'created_at': img.created_at.isoformat() if img.created_at else None,
                 'updated_at': img.updated_at.isoformat() if img.updated_at else None,
+            })
+        
+        # Export Case Image Stacks (OneDrive linked image folders)
+        for stack in CaseImageStack.query.all():
+            backup_data['case_image_stacks'].append({
+                'id': stack.id,
+                'case_id': stack.case_id,
+                'onedrive_share_id': stack.onedrive_share_id,
+                'onedrive_folder_path': stack.onedrive_folder_path,
+                'config_json': stack.config_json,
+                'created_by_user_id': stack.created_by_user_id,
+                'created_at': stack.created_at.isoformat() if stack.created_at else None,
+            })
+        
+        # Export Case Image Annotations (Cornerstone.js annotations)
+        for ann in CaseImageAnnotation.query.all():
+            backup_data['case_image_annotations'].append({
+                'id': ann.id,
+                'case_id': ann.case_id,
+                'annotations_json': ann.annotations_json,
+                'created_by_user_id': ann.created_by_user_id,
+                'created_at': ann.created_at.isoformat() if ann.created_at else None,
+                'updated_at': ann.updated_at.isoformat() if ann.updated_at else None,
             })
         
         # Create JSON file in memory
@@ -2364,10 +2392,70 @@ def restore_backup():
                 db.session.add(img)
                 stats['tnm_images']['added'] += 1
         
+        # Import Case Image Stacks (OneDrive linked image folders)
+        stats['case_image_stacks'] = {'added': 0, 'updated': 0, 'skipped': 0}
+        for stack_data in backup_data.get('case_image_stacks', []):
+            if not isinstance(stack_data, dict):
+                continue
+            old_case_id = stack_data.get('case_id')
+            new_case_id = case_id_map.get(old_case_id)
+            if not new_case_id:
+                stats['case_image_stacks']['skipped'] += 1
+                continue
+            new_user_id = user_id_map.get(stack_data.get('created_by_user_id')) if stack_data.get('created_by_user_id') else None
+            existing = CaseImageStack.query.filter_by(case_id=new_case_id).first()
+            if existing and not overwrite_existing:
+                stats['case_image_stacks']['skipped'] += 1
+                continue
+            if existing and overwrite_existing:
+                existing.onedrive_share_id = stack_data.get('onedrive_share_id', '')
+                existing.onedrive_folder_path = stack_data.get('onedrive_folder_path')
+                existing.config_json = stack_data.get('config_json', '{}')
+                existing.created_by_user_id = new_user_id
+                stats['case_image_stacks']['updated'] += 1
+            else:
+                stack = CaseImageStack(
+                    case_id=new_case_id,
+                    onedrive_share_id=stack_data.get('onedrive_share_id', ''),
+                    onedrive_folder_path=stack_data.get('onedrive_folder_path'),
+                    config_json=stack_data.get('config_json', '{}'),
+                    created_by_user_id=new_user_id,
+                )
+                db.session.add(stack)
+                stats['case_image_stacks']['added'] += 1
+        
+        # Import Case Image Annotations (Cornerstone.js annotations)
+        stats['case_image_annotations'] = {'added': 0, 'updated': 0, 'skipped': 0}
+        for ann_data in backup_data.get('case_image_annotations', []):
+            if not isinstance(ann_data, dict):
+                continue
+            old_case_id = ann_data.get('case_id')
+            new_case_id = case_id_map.get(old_case_id)
+            if not new_case_id:
+                stats['case_image_annotations']['skipped'] += 1
+                continue
+            new_user_id = user_id_map.get(ann_data.get('created_by_user_id')) if ann_data.get('created_by_user_id') else None
+            existing = CaseImageAnnotation.query.filter_by(case_id=new_case_id).first()
+            if existing and not overwrite_existing:
+                stats['case_image_annotations']['skipped'] += 1
+                continue
+            if existing and overwrite_existing:
+                existing.annotations_json = ann_data.get('annotations_json', '{}')
+                existing.created_by_user_id = new_user_id
+                stats['case_image_annotations']['updated'] += 1
+            else:
+                ann = CaseImageAnnotation(
+                    case_id=new_case_id,
+                    annotations_json=ann_data.get('annotations_json', '{}'),
+                    created_by_user_id=new_user_id,
+                )
+                db.session.add(ann)
+                stats['case_image_annotations']['added'] += 1
+        
         # Commit AJCC data
         try:
             db.session.commit()
-            print(f"[IMPORT] AJCC data imported: {stats['ajcc_body_sections']['added']} sections, {stats['ajcc_disease_sites']['added']} diseases, {stats['ajcc_staging_data']['added']} staging entries, {stats['intelligent_tnm_data']['added']} intelligent TNM records, {stats.get('case_references', {}).get('added', 0)} case refs, {stats.get('case_reference_images', {}).get('added', 0)} case ref images, {stats.get('tnm_references', {}).get('added', 0)} TNM refs, {stats.get('anatomy_figures', {}).get('added', 0)} anatomy figs, {stats.get('tnm_images', {}).get('added', 0)} TNM images")
+            print(f"[IMPORT] AJCC data imported: {stats['ajcc_body_sections']['added']} sections, {stats['ajcc_disease_sites']['added']} diseases, {stats['ajcc_staging_data']['added']} staging entries, {stats['intelligent_tnm_data']['added']} intelligent TNM records, {stats.get('case_references', {}).get('added', 0)} case refs, {stats.get('case_reference_images', {}).get('added', 0)} case ref images, {stats.get('tnm_references', {}).get('added', 0)} TNM refs, {stats.get('anatomy_figures', {}).get('added', 0)} anatomy figs, {stats.get('tnm_images', {}).get('added', 0)} TNM images, {stats.get('case_image_stacks', {}).get('added', 0)} image stacks, {stats.get('case_image_annotations', {}).get('added', 0)} annotations")
         except Exception as ajcc_error:
             db.session.rollback()
             print(f"[IMPORT] ERROR during AJCC commit: {ajcc_error}")
