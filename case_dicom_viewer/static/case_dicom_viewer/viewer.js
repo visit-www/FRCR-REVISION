@@ -1,7 +1,7 @@
 /**
  * Case DICOM Viewer - Cornerstone.js v4.x Integration
  * Features: Stack scroll (mouse wheel), zoom, pan, window/level, annotations
- * v9: Slice counter sync on render + stack scroll; natural sort order in backend
+ * v10: Slider at ~2% loaded; global cache per plan; cache indicator on plan switch
  */
 (function () {
   "use strict";
@@ -21,6 +21,7 @@
   var _onSliceChange = null;
   var _onCacheProgress = null;
   var _onAllCached = null;
+  var _onSliderReady = null;
   var _isAdmin = false;
   var _annotations = {}; // { planName: { imageIndex: [annotations] } }
   var _preloadedImages = {};
@@ -109,27 +110,28 @@
   }
 
   /**
-   * Preload full stack in background and report progress (for cache indicator)
+   * Preload full stack in background and report progress (for cache indicator).
+   * Skips images already in _preloadedImages (global cache per imageId).
    */
   function preloadFullStack() {
     if (!cornerstone || !_element || !_imageIds.length) return;
     var total = _imageIds.length;
     var batchSize = 8;
     var index = 0;
+    var sliderReadyFired = false;
+    var readyThreshold = Math.max(1, Math.ceil(total * 0.02)); // ~2%
 
     function reportProgress() {
       var cached = getCachedCount();
       if (_onCacheProgress) _onCacheProgress(cached, total);
+      if (!sliderReadyFired && cached >= readyThreshold && _onSliderReady) {
+        sliderReadyFired = true;
+        _onSliderReady();
+      }
       if (cached >= total && _onAllCached) _onAllCached();
     }
 
     reportProgress();
-
-    function reportProgress() {
-      var cached = getCachedCount();
-      if (_onCacheProgress) _onCacheProgress(cached, total);
-      if (cached >= total && _onAllCached) _onAllCached();
-    }
 
     function loadNextBatch() {
       var end = Math.min(index + batchSize, total);
@@ -263,7 +265,7 @@
     });
 
     _currentIndex = 0;
-    _preloadedImages = {};
+    // Keep _preloadedImages global: do not clear so switching plans reuses cached images
 
     // Display first image
     if (_imageIds.length) {
@@ -570,12 +572,21 @@
     },
 
     /**
-     * Switch to a different plan
+     * Switch to a different plan. Preserves global image cache; starts preload for new plan.
      */
     loadStack: function (planName, imageUrls) {
       if (!_element || !cornerstone) return;
       _currentPlan = planName;
       setupStack(imageUrls || _stackConfig[planName] || []);
+      // Report cache progress for current plan and preload remaining images
+      setTimeout(function () { preloadFullStack(); }, 100);
+    },
+
+    /**
+     * Start background preload for current stack (e.g. after plan switch). Safe to call multiple times.
+     */
+    startPreload: function () {
+      preloadFullStack();
     },
 
     /**
@@ -704,6 +715,13 @@
     },
 
     /**
+     * Register callback when slider can be used (e.g. ~2% of current stack cached)
+     */
+    onSliderReady: function (cb) {
+      _onSliderReady = typeof cb === "function" ? cb : null;
+    },
+
+    /**
      * Clean up viewer
      */
     destroy: function () {
@@ -722,6 +740,7 @@
       _onSliceChange = null;
       _onCacheProgress = null;
       _onAllCached = null;
+      _onSliderReady = null;
       _annotations = {};
       _preloadedImages = {};
     },
@@ -741,5 +760,5 @@
     },
   };
 
-  console.log("[CaseDicomViewer] viewer.js v9 loaded (slice counter + slider, natural sort order)");
+  console.log("[CaseDicomViewer] viewer.js v10 loaded (slider at 2%%, global cache, cache indicator per plan)");
 })();

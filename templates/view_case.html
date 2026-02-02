@@ -8511,6 +8511,7 @@
                     sliceSliderEl.min = 1;
                     sliceSliderEl.max = Math.max(1, totalSlices);
                     sliceSliderEl.value = 1;
+                    sliceSliderEl.disabled = totalSlices > 1;
                 }
                 if (useCornerstone && viewportEl && imgEl) {
                     viewportEl.style.display = '';
@@ -8554,13 +8555,23 @@
                         }
                     }
                     if (window.CaseDicomViewer) {
-                        window.CaseDicomViewer.onCacheProgress(function(cached, total) {
-                            if (cacheTextEl) cacheTextEl.textContent = total <= 1 ? '' : ('Caching… ' + cached + ' / ' + total);
-                            if (cacheSpinnerEl) cacheSpinnerEl.style.visibility = (cached >= total && total > 1) ? 'hidden' : 'visible';
-                        });
+                        function updateCacheUI(cached, total) {
+                            if (total <= 1) {
+                                if (cacheTextEl) cacheTextEl.textContent = '';
+                            } else if (cached >= total) {
+                                if (cacheTextEl) cacheTextEl.textContent = 'All images cached – smooth scrolling';
+                                if (cacheSpinnerEl) cacheSpinnerEl.style.visibility = 'hidden';
+                            } else {
+                                if (cacheTextEl) cacheTextEl.textContent = 'Caching… ' + cached + ' / ' + total;
+                                if (cacheSpinnerEl) cacheSpinnerEl.style.visibility = 'visible';
+                            }
+                        }
+                        window.CaseDicomViewer.onCacheProgress(updateCacheUI);
                         window.CaseDicomViewer.onAllCached(function() {
-                            if (cacheTextEl) cacheTextEl.textContent = 'All images cached – smooth scrolling';
-                            if (cacheSpinnerEl) cacheSpinnerEl.style.visibility = 'hidden';
+                            updateCacheUI(window.CaseDicomViewer.getCachedCount(), window.CaseDicomViewer.getImageCount());
+                        });
+                        window.CaseDicomViewer.onSliderReady(function() {
+                            if (sliceSliderEl) sliceSliderEl.removeAttribute('disabled');
                         });
                         const totalImg = window.CaseDicomViewer.getImageCount();
                         if (cacheTextEl && totalImg <= 1) cacheTextEl.textContent = '';
@@ -8593,10 +8604,21 @@
                         if (sliceSliderEl) {
                             sliceSliderEl.max = Math.max(1, planLen);
                             sliceSliderEl.value = 1;
+                            sliceSliderEl.disabled = planLen > 1;
                         }
                         if (useCornerstone && window.CaseDicomViewer) {
                             window.CaseDicomViewer.loadStack(_imageStackCurrentPlan, _imageStackData[_imageStackCurrentPlan] || []);
                             if (sliceInfoEl) sliceInfoEl.textContent = '1 / ' + planLen;
+                            // Update cache indicator immediately for current plan (avoids stuck old count)
+                            const cacheTextEl = document.getElementById('imageStackCacheText');
+                            const cacheSpinnerEl = document.getElementById('imageStackCacheSpinner');
+                            if (cacheTextEl && planLen > 1) {
+                                const c = window.CaseDicomViewer.getCachedCount();
+                                const t = window.CaseDicomViewer.getImageCount();
+                                cacheTextEl.textContent = c >= t ? 'All images cached – smooth scrolling' : ('Caching… ' + c + ' / ' + t);
+                                if (cacheSpinnerEl) cacheSpinnerEl.style.visibility = (c >= t) ? 'hidden' : 'visible';
+                                if (sliceSliderEl && c >= Math.max(1, Math.ceil(t * 0.02))) sliceSliderEl.disabled = false;
+                            }
                         } else {
                             updateImageStackDisplay();
                         }
