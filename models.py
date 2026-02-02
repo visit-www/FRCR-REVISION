@@ -551,6 +551,34 @@ class CaseImageStack(db.Model):
         self.config_json = json.dumps(config, ensure_ascii=False) if config else "{}"
 
 
+class CaseImageAnnotation(db.Model):
+    """Annotations for case image stacks (admin-created arrows, text, measurements)."""
+    __tablename__ = 'case_image_annotation'
+
+    id = db.Column(db.Integer, primary_key=True)
+    case_id = db.Column(db.Integer, db.ForeignKey('case.id'), nullable=False, unique=True, index=True)
+    annotations_json = db.Column(db.Text, nullable=False, default='{}')  # { planName: { imageIndex: [annotations] } }
+    created_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    case = db.relationship('Case', backref=db.backref('image_annotations', uselist=False, lazy=True, cascade='all, delete-orphan'))
+    created_by = db.relationship('User', backref='created_image_annotations')
+
+    def get_annotations(self):
+        import json
+        if self.annotations_json:
+            try:
+                return json.loads(self.annotations_json)
+            except (json.JSONDecodeError, TypeError):
+                return {}
+        return {}
+
+    def set_annotations(self, annotations: dict):
+        import json
+        self.annotations_json = json.dumps(annotations, ensure_ascii=False) if annotations else "{}"
+
+
 class CandidateNote(db.Model):
     """Store student/candidate notes for cases and TNM disease sites"""
     id = db.Column(db.Integer, primary_key=True)

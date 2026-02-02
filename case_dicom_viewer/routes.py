@@ -19,7 +19,7 @@ from case_dicom_viewer.config import (
     SCOPES,
     AUTHORITY,
 )
-from models import CaseImageStack
+from models import CaseImageStack, CaseImageAnnotation
 from access_control import has_case_view_access, has_case_edit_permission, is_admin
 
 logger = logging.getLogger(__name__)
@@ -193,6 +193,7 @@ def _is_allowed_proxy_url(url: str) -> bool:
             "onedrive.com",
             "live.com",
             "microsoft.com",
+            "microsoftpersonalcontent.com",
             "office.com",
             "officecdn-df.microsoft.com",
             "df.office.net",
@@ -313,6 +314,94 @@ def delete_case_stack(case_id):
         db.session.delete(stack)
         db.session.commit()
         return jsonify({"message": "Image stack removed", "has_stack": False})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+
+# ==================== ANNOTATIONS API ====================
+
+@case_dicom_bp.route("/api/case/<int:case_id>/annotations", methods=["GET"])
+@login_required
+def get_case_annotations(case_id):
+    """Return annotations for a case's image stack."""
+    from models import Case, CaseImageAnnotation
+    case = Case.query.get(case_id)
+    if not case or not has_case_view_access(case):
+        return jsonify({"error": "Case not found or access denied"}), 404
+    
+    annotation = CaseImageAnnotation.query.filter_by(case_id=case_id).first()
+    if not annotation:
+        return jsonify({"annotations": {}, "has_annotations": False})
+    
+    return jsonify({
+        "annotations": annotation.get_annotations(),
+        "has_annotations": True,
+        "updated_at": annotation.updated_at.isoformat() if annotation.updated_at else None,
+    })
+
+
+@case_dicom_bp.route("/api/case/<int:case_id>/annotations", methods=["POST"])
+@login_required
+def save_case_annotations(case_id):
+    """Save annotations for a case's image stack (admin/content manager only)."""
+    from models import Case, CaseImageAnnotation, db
+    if not is_admin():
+        return jsonify({"error": "Admin access required"}), 403
+    
+    case = Case.query.get(case_id)
+    if not case or not has_case_edit_permission(case):
+        return jsonify({"error": "Case not found or access denied"}), 404
+    
+    data = request.get_json() or {}
+    annotations = data.get("annotations", {})
+    
+    annotation = CaseImageAnnotation.query.filter_by(case_id=case_id).first()
+    if annotation:
+        annotation.set_annotations(annotations)
+    else:
+        annotation = CaseImageAnnotation(
+            case_id=case_id,
+            created_by_user_id=current_user.id if current_user.is_authenticated else None,
+        )
+        annotation.set_annotations(annotations)
+        db.session.add(annotation)
+    
+    try:
+        db.session.commit()
+        logger.info("[CaseDicomViewer] Saved annotations for case %s by user %s", case_id, current_user.id)
+        return jsonify({
+            "message": "Annotations saved",
+            "has_annotations": True,
+            "updated_at": annotation.updated_at.isoformat() if annotation.updated_at else None,
+        })
+    except Exception as e:
+        db.session.rollback()
+        logger.error("[CaseDicomViewer] Failed to save annotations: %s", e)
+        return jsonify({"error": str(e)}), 500
+
+
+@case_dicom_bp.route("/api/case/<int:case_id>/annotations", methods=["DELETE"])
+@login_required
+def delete_case_annotations(case_id):
+    """Delete all annotations for a case (admin only)."""
+    from models import Case, CaseImageAnnotation, db
+    if not is_admin():
+        return jsonify({"error": "Admin access required"}), 403
+    
+    case = Case.query.get(case_id)
+    if not case or not has_case_edit_permission(case):
+        return jsonify({"error": "Case not found or access denied"}), 404
+    
+    annotation = CaseImageAnnotation.query.filter_by(case_id=case_id).first()
+    if not annotation:
+        return jsonify({"message": "No annotations found", "has_annotations": False})
+    
+    try:
+        db.session.delete(annotation)
+        db.session.commit()
+        logger.info("[CaseDicomViewer] Deleted annotations for case %s by user %s", case_id, current_user.id)
+        return jsonify({"message": "Annotations deleted", "has_annotations": False})
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 500

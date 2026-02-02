@@ -719,8 +719,50 @@
                                     </div>
                                     <div id="imageStackViewer" style="display: none;">
                                         <div class="btn-group btn-group-sm mb-2" id="imageStackPlanTabs" role="group"></div>
-                                        <div class="border rounded bg-dark position-relative" style="min-height: 300px;">
-                                            <div id="imageStackViewport" style="min-height: 300px; width: 100%; display: none;"></div>
+                                        <!-- Annotation Toolbar (Admin Only) -->
+                                        {% if current_user.is_authenticated and current_user.role and (current_user.role.value == 'admin' or current_user.role.value == 'content_manager') %}
+                                        <div id="imageStackAnnotationToolbar" class="mb-2 p-2 rounded" style="background: rgba(102,126,234,0.1); display: none;">
+                                            <div class="d-flex flex-wrap align-items-center gap-2">
+                                                <span class="small text-muted me-1"><i class="fas fa-pen-fancy me-1"></i>Tools:</span>
+                                                <div class="btn-group btn-group-sm" role="group">
+                                                    <button type="button" class="btn btn-outline-primary annotation-tool-btn active" data-tool="view" title="View Mode (Window/Level)">
+                                                        <i class="fas fa-hand-pointer"></i>
+                                                    </button>
+                                                    <button type="button" class="btn btn-outline-primary annotation-tool-btn" data-tool="ArrowAnnotate" title="Arrow Annotation">
+                                                        <i class="fas fa-arrow-right"></i>
+                                                    </button>
+                                                    <button type="button" class="btn btn-outline-primary annotation-tool-btn" data-tool="TextMarker" title="Text Marker">
+                                                        <i class="fas fa-font"></i>
+                                                    </button>
+                                                    <button type="button" class="btn btn-outline-primary annotation-tool-btn" data-tool="FreehandRoi" title="Freehand Draw">
+                                                        <i class="fas fa-draw-polygon"></i>
+                                                    </button>
+                                                    <button type="button" class="btn btn-outline-primary annotation-tool-btn" data-tool="Length" title="Measure Length">
+                                                        <i class="fas fa-ruler"></i>
+                                                    </button>
+                                                    <button type="button" class="btn btn-outline-primary annotation-tool-btn" data-tool="EllipticalRoi" title="Ellipse ROI">
+                                                        <i class="fas fa-circle"></i>
+                                                    </button>
+                                                </div>
+                                                <div class="btn-group btn-group-sm ms-2" role="group">
+                                                    <button type="button" class="btn btn-outline-secondary" id="imageStackResetView" title="Reset View">
+                                                        <i class="fas fa-compress-arrows-alt"></i>
+                                                    </button>
+                                                    <button type="button" class="btn btn-outline-warning" id="imageStackClearAnnotations" title="Clear Annotations">
+                                                        <i class="fas fa-eraser"></i>
+                                                    </button>
+                                                </div>
+                                                <button type="button" class="btn btn-sm btn-success ms-auto" id="imageStackSaveAnnotations">
+                                                    <i class="fas fa-save me-1"></i>Save
+                                                </button>
+                                            </div>
+                                            <small class="text-muted d-block mt-1" style="font-size: 0.7rem;">
+                                                <strong>Controls:</strong> Scroll=Navigate | Left-drag=Tool | Right-drag=Zoom | Middle-drag=Pan
+                                            </small>
+                                        </div>
+                                        {% endif %}
+                                        <div class="border rounded bg-dark position-relative" style="min-height: 400px;">
+                                            <div id="imageStackViewport" style="min-height: 400px; width: 100%; display: none;"></div>
                                             <img id="imageStackImg" src="" alt="Slice" class="img-fluid w-100" style="max-height: 500px; object-fit: contain;">
                                         </div>
                                         <div class="d-flex justify-content-between align-items-center mt-2">
@@ -3145,16 +3187,17 @@
     
 </style>
 
-<!-- Case DICOM Viewer: Cornerstone stack (optional; fallback to img if not loaded) -->
-<!-- Pin to versions known to have correct dist paths on jsDelivr (2.6.4 had 404) -->
-<script src="https://cdn.jsdelivr.net/npm/cornerstone-core@2.6.1/dist/cornerstone.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/cornerstone-math@0.1.10/dist/cornerstoneMath.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/cornerstone-tools@6.0.10/dist/cornerstoneTools.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/cornerstone-web-image-loader@2.1.1/dist/cornerstoneWebImageLoader.min.js"></script>
-<script src="{{ url_for('case_dicom_viewer.static', filename='case_dicom_viewer/viewer.js') }}"></script>
+<!-- Case DICOM Viewer: Self-hosted Cornerstone.js v4.x libraries -->
+<!-- Self-hosted for reliable API compatibility (CDN versions had issues) -->
+<script src="{{ url_for('case_dicom_viewer.static', filename='case_dicom_viewer/lib/hammer.min.js') }}"></script>
+<script src="{{ url_for('case_dicom_viewer.static', filename='case_dicom_viewer/lib/cornerstone.min.js') }}"></script>
+<script src="{{ url_for('case_dicom_viewer.static', filename='case_dicom_viewer/lib/cornerstoneMath.min.js') }}"></script>
+<script src="{{ url_for('case_dicom_viewer.static', filename='case_dicom_viewer/lib/cornerstoneTools.min.js') }}"></script>
+<script src="{{ url_for('case_dicom_viewer.static', filename='case_dicom_viewer/lib/cornerstoneWebImageLoader.min.js') }}"></script>
+<script src="{{ url_for('case_dicom_viewer.static', filename='case_dicom_viewer/viewer.js') }}?v=4"></script>
 
 <script>
-    const caseId = {{ case.id }};
+    const caseId = {{ case.id if case else 'null' }};
     const isStudent = {% if current_user.is_authenticated and current_user.role and current_user.role.value == 'student' %}true{% else %}false{% endif %};
     const isAdminUser = {% if current_user.is_authenticated and current_user.role and (current_user.role.value == 'admin' or current_user.role.value == 'content_manager') %}true{% else %}false{% endif %};
     const currentUserId = {% if current_user.is_authenticated %}{{ current_user.id }}{% else %}null{% endif %};
@@ -8202,7 +8245,10 @@
         // Image Stack: load when tab is shown
         const imageStackTab = document.getElementById('imageStackTab');
         if (imageStackTab) {
-            imageStackTab.addEventListener('shown.bs.tab', loadImageStack);
+            imageStackTab.addEventListener('shown.bs.tab', function() {
+                console.log('[ImageStack] Tab shown, loading stack...');
+                loadImageStack();
+            });
         }
     });
     
@@ -8353,6 +8399,7 @@
     }
     
     // ==================== Image Stack (OneDrive) ====================
+    console.log('[ImageStack] Script loaded, caseId:', typeof caseId !== 'undefined' ? caseId : 'undefined');
     let _imageStackData = null;
     let _imageStackCurrentPlan = null;
     let _imageStackCurrentIndex = 0;
@@ -8361,27 +8408,63 @@
         return '/case-dicom-viewer/api/image?url=' + encodeURIComponent(originalUrl);
     }
     async function loadImageStack() {
+        console.log('[ImageStack] loadImageStack called, caseId:', caseId);
         const content = document.getElementById('imageStackContent');
         const empty = document.getElementById('imageStackEmpty');
         const viewer = document.getElementById('imageStackViewer');
-        if (!content || !empty || !viewer) return;
+        if (!content || !empty || !viewer) {
+            console.warn('[ImageStack] Missing DOM elements (content, empty, or viewer)');
+            return;
+        }
+        if (!caseId) {
+            console.warn('[ImageStack] No caseId, showing empty');
+            content.style.display = 'none';
+            empty.style.display = 'block';
+            return;
+        }
         content.style.display = 'block';
         content.innerHTML = '<p class="text-muted small mb-2"><i class="fas fa-spinner fa-spin me-1"></i>Loading...</p>';
         empty.style.display = 'none';
         viewer.style.display = 'none';
         try {
-            const r = await fetch(`/case-dicom-viewer/api/case/${caseId}/stack`, { credentials: 'include' });
+            // Fetch stack and annotations in parallel
+            const stackUrl = `/case-dicom-viewer/api/case/${caseId}/stack`;
+            const annotationsUrl = `/case-dicom-viewer/api/case/${caseId}/annotations`;
+            console.log('[ImageStack] Fetching', stackUrl);
+            
+            const [stackResponse, annotationsResponse] = await Promise.all([
+                fetch(stackUrl, { credentials: 'include' }),
+                fetch(annotationsUrl, { credentials: 'include' }).catch(() => null)
+            ]);
+            
             let data = {};
+            let annotationsData = {};
             try {
-                data = await r.json();
+                data = await stackResponse.json();
             } catch (_) {
                 data = {};
             }
+            try {
+                if (annotationsResponse && annotationsResponse.ok) {
+                    annotationsData = await annotationsResponse.json();
+                }
+            } catch (_) {
+                annotationsData = {};
+            }
+            
+            console.log('[ImageStack] Response ok:', stackResponse.ok, 'status:', stackResponse.status, 'has_stack:', data.has_stack, 'plans keys:', data.plans ? Object.keys(data.plans || {}) : [], 'has_annotations:', annotationsData.has_annotations || false);
+            if (!stackResponse.ok) {
+                console.warn('[ImageStack] Non-OK response:', stackResponse.status, data.error || data.message || '(no message)');
+            }
             content.style.display = 'none';
-            if (!r.ok || !data.has_stack || !data.plans || Object.keys(data.plans).length === 0) {
+            if (!stackResponse.ok || !data.has_stack || !data.plans || Object.keys(data.plans).length === 0) {
+                console.log('[ImageStack] Showing empty (not ok or no stack/plans)');
                 empty.style.display = 'block';
                 return;
             }
+            
+            // Store annotations for viewer initialization
+            var _imageStackAnnotations = annotationsData.annotations || {};
             try {
                 // Rewrite URLs via proxy to avoid CORS / OneDrive expiry
                 const plans = data.plans;
@@ -8406,7 +8489,8 @@
                     empty.style.display = 'block';
                     return;
                 }
-                const useCornerstone = window.CaseDicomViewer && viewportEl && imgEl && window.CaseDicomViewer.init('imageStackViewport', _imageStackData);
+                const useCornerstone = window.CaseDicomViewer && viewportEl && imgEl && window.CaseDicomViewer.init('imageStackViewport', _imageStackData, { isAdmin: isAdminUser, annotations: _imageStackAnnotations });
+                console.log('[ImageStack] useCornerstone:', useCornerstone, 'isAdmin:', isAdminUser, 'hasAnnotations:', Object.keys(_imageStackAnnotations).length > 0);
                 if (useCornerstone && viewportEl && imgEl) {
                     viewportEl.style.display = '';
                     imgEl.style.display = 'none';
@@ -8415,6 +8499,12 @@
                     });
                     if (sliceInfoEl && _imageStackData[_imageStackCurrentPlan]) {
                         sliceInfoEl.textContent = '1 / ' + (_imageStackData[_imageStackCurrentPlan].length || 0);
+                    }
+                    // Show annotation toolbar for admins
+                    const annotationToolbar = document.getElementById('imageStackAnnotationToolbar');
+                    if (annotationToolbar && isAdminUser) {
+                        annotationToolbar.style.display = 'block';
+                        setupAnnotationToolbar();
                     }
                 } else if (viewportEl && imgEl) {
                     viewportEl.style.display = 'none';
@@ -8457,11 +8547,14 @@
                 };
                 viewer.style.display = 'block';
                 if (!useCornerstone) updateImageStackDisplay();
+                console.log('[ImageStack] Viewer shown, plans:', Object.keys(_imageStackData || {}));
             } catch (innerErr) {
+                console.warn('[ImageStack] Inner error (showing empty):', innerErr);
                 content.style.display = 'none';
                 empty.style.display = 'block';
             }
         } catch (e) {
+            console.error('[ImageStack] Outer error:', e);
             content.style.display = 'block';
             content.innerHTML = '<p class="text-danger small">Failed to load image stack.</p>';
         }
@@ -8482,6 +8575,72 @@
         img.src = urls[idx];
         img.alt = `Slice ${idx + 1}`;
         info.textContent = `${idx + 1} / ${urls.length}`;
+    }
+    
+    // Annotation toolbar setup (admin only)
+    function setupAnnotationToolbar() {
+        const toolbar = document.getElementById('imageStackAnnotationToolbar');
+        if (!toolbar || !window.CaseDicomViewer) return;
+        
+        // Tool buttons
+        toolbar.querySelectorAll('.annotation-tool-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const tool = this.dataset.tool;
+                toolbar.querySelectorAll('.annotation-tool-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                
+                if (tool === 'view') {
+                    window.CaseDicomViewer.resetToViewingMode();
+                } else {
+                    window.CaseDicomViewer.setAnnotationTool(tool);
+                }
+            });
+        });
+        
+        // Reset view button
+        const resetBtn = document.getElementById('imageStackResetView');
+        if (resetBtn) {
+            resetBtn.addEventListener('click', function() {
+                window.CaseDicomViewer.resetView();
+            });
+        }
+        
+        // Clear annotations button
+        const clearBtn = document.getElementById('imageStackClearAnnotations');
+        if (clearBtn) {
+            clearBtn.addEventListener('click', function() {
+                if (confirm('Clear all annotations on this image?')) {
+                    window.CaseDicomViewer.clearAnnotations();
+                }
+            });
+        }
+        
+        // Save annotations button
+        const saveBtn = document.getElementById('imageStackSaveAnnotations');
+        if (saveBtn) {
+            saveBtn.addEventListener('click', async function() {
+                const annotations = window.CaseDicomViewer.getAnnotations();
+                try {
+                    const response = await fetch(`/case-dicom-viewer/api/case/${caseId}/annotations`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify({ annotations: annotations })
+                    });
+                    const data = await response.json();
+                    if (response.ok) {
+                        showFlash('Annotations saved successfully', 'success');
+                    } else {
+                        showFlash(data.error || 'Failed to save annotations', 'error');
+                    }
+                } catch (e) {
+                    console.error('[ImageStack] Save annotations error:', e);
+                    showFlash('Failed to save annotations: ' + e.message, 'error');
+                }
+            });
+        }
+        
+        console.log('[ImageStack] Annotation toolbar initialized');
     }
     
     // ==================== TCIA ====================
