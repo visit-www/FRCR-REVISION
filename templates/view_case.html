@@ -717,7 +717,8 @@
                                         <i class="fas fa-layer-group text-muted" style="font-size: 2rem; opacity: 0.5;"></i>
                                         <p class="text-muted small mt-2 mb-0">No image stack available for this study.</p>
                                     </div>
-                                    <div id="imageStackViewer" style="display: none;">
+                                    <div id="imageStackViewer" style="display: none;" tabindex="0">
+                                        <div id="imageStackDescription" class="image-stack-description mb-3 p-3 rounded border bg-light" style="display: none;"></div>
                                         <div class="btn-group btn-group-sm mb-2" id="imageStackPlanTabs" role="group"></div>
                                         <!-- Annotation Toolbar (Admin Only) -->
                                         {% if current_user.is_authenticated and current_user.role and (current_user.role.value == 'admin' or current_user.role.value == 'content_manager') %}
@@ -761,7 +762,7 @@
                                             </small>
                                         </div>
                                         {% endif %}
-                                        <div class="border rounded bg-dark position-relative" style="min-height: 400px;">
+                                        <div id="imageStackViewerWrapper" class="border rounded bg-dark position-relative" style="min-height: 400px;">
                                             <div id="imageStackViewport" style="min-height: 400px; width: 100%; display: none;"></div>
                                             <img id="imageStackImg" src="" alt="Slice" class="img-fluid w-100" style="max-height: 500px; object-fit: contain;">
                                         </div>
@@ -772,10 +773,12 @@
                                                     <span class="small text-muted fw-medium" id="imageStackSliceInfo">1 / 1</span>
                                                     <button type="button" class="btn btn-sm btn-outline-secondary" id="imageStackNext">Next<i class="fas fa-chevron-right ms-1"></i></button>
                                                 </div>
-                                                <div id="imageStackZoomBtns" class="d-none d-flex align-items-center gap-1" title="Zoom (also: right-drag on image)">
-                                                    <button type="button" class="btn btn-sm btn-outline-secondary" id="imageStackZoomOut" title="Zoom out"><i class="fas fa-search-minus"></i></button>
-                                                    <button type="button" class="btn btn-sm btn-outline-secondary" id="imageStackZoomIn" title="Zoom in"><i class="fas fa-search-plus"></i></button>
+                                                <div id="imageStackZoomBtns" class="d-none d-flex align-items-center gap-1 flex-wrap" title="Zoom (right-drag) | Pan (button or middle-drag) | Keys: +/− zoom, arrows pan">
+                                                    <button type="button" class="btn btn-sm btn-outline-secondary" id="imageStackZoomOut" title="Zoom out (or press -)"><i class="fas fa-search-minus"></i></button>
+                                                    <button type="button" class="btn btn-sm btn-outline-secondary" id="imageStackZoomIn" title="Zoom in (or press +)"><i class="fas fa-search-plus"></i></button>
                                                     <button type="button" class="btn btn-sm btn-outline-secondary" id="imageStackFit" title="Fit to window"><i class="fas fa-compress-arrows-alt"></i></button>
+                                                    <button type="button" class="btn btn-sm btn-outline-secondary" id="imageStackPanBtn" title="Pan mode (left-drag to move image, or use arrow keys)"><i class="fas fa-arrows-alt"></i></button>
+                                                    <button type="button" class="btn btn-sm btn-outline-secondary" id="imageStackFullscreenBtn" title="Toggle fullscreen"><i class="fas fa-expand"></i></button>
                                                 </div>
                                             </div>
                                             <div id="imageStackCacheStatus" class="d-none small text-muted d-flex align-items-center gap-2" style="min-height: 20px;">
@@ -8476,7 +8479,14 @@
                 empty.style.display = 'block';
                 return;
             }
-            
+            var descEl = document.getElementById('imageStackDescription');
+            if (descEl && data.description_html) {
+                descEl.innerHTML = data.description_html;
+                descEl.style.display = 'block';
+            } else if (descEl) {
+                descEl.innerHTML = '';
+                descEl.style.display = 'none';
+            }
             // Store annotations for viewer initialization
             var _imageStackAnnotations = annotationsData.annotations || {};
             try {
@@ -8541,6 +8551,28 @@
                     if (zoomInBtn) zoomInBtn.onclick = () => window.CaseDicomViewer && window.CaseDicomViewer.zoomIn();
                     if (zoomOutBtn) zoomOutBtn.onclick = () => window.CaseDicomViewer && window.CaseDicomViewer.zoomOut();
                     if (zoomFitBtn) zoomFitBtn.onclick = () => window.CaseDicomViewer && window.CaseDicomViewer.fitToWindow();
+                    const panBtn = document.getElementById('imageStackPanBtn');
+                    const fullscreenBtn = document.getElementById('imageStackFullscreenBtn');
+                    if (panBtn) {
+                        panBtn.onclick = function() {
+                            if (!window.CaseDicomViewer) return;
+                            const active = !this.classList.contains('active');
+                            window.CaseDicomViewer.setPanMode(active);
+                            this.classList.toggle('active', active);
+                            this.classList.toggle('btn-outline-secondary', !active);
+                            this.classList.toggle('btn-info', active);
+                        };
+                    }
+                    if (fullscreenBtn) {
+                        fullscreenBtn.onclick = function() {
+                            if (!window.CaseDicomViewer) return;
+                            const entering = !window.CaseDicomViewer.isFullscreen();
+                            window.CaseDicomViewer.toggleFullscreen('imageStackViewerWrapper');
+                            this.querySelector('i').className = entering ? 'fas fa-compress' : 'fas fa-expand';
+                        };
+                    }
+                    const viewerWrapper = document.getElementById('imageStackViewerWrapper');
+                    if (viewerWrapper && window.CaseDicomViewer) window.CaseDicomViewer.attachKeyboard(viewerWrapper);
                     // Cache status indicator (Cornerstone only)
                     const cacheStatusEl = document.getElementById('imageStackCacheStatus');
                     const cacheSpinnerEl = document.getElementById('imageStackCacheSpinner');

@@ -321,7 +321,23 @@ console.log('[TinyMCE Loader] Script URL was:', "{{ url_for('static', filename='
                         <button type="button" class="btn btn-outline-danger btn-sm ms-2" id="removeImageStackBtn" style="display: none;" onclick="removeCaseImageStack()" title="Remove image stack link">
                             <i class="fas fa-unlink me-1"></i>Remove image stack
                         </button>
+                        <a href="#" id="viewCaseAsStudentLink" class="btn btn-outline-secondary btn-sm ms-2" style="display: none;" target="_blank" rel="noopener" title="Open case view as students see it (image stack and all tabs)">
+                            <i class="fas fa-external-link-alt me-1"></i>View case (as student)
+                        </a>
                         <div id="imageStackStatus" class="mt-2 small text-muted"></div>
+                        <div id="imageStackDescriptionSection" class="mt-3" style="display: none;">
+                            <label class="form-label fw-bold text-secondary mb-2">
+                                <i class="fas fa-align-left me-1" style="color: #17a2b8;"></i>Case description (Image Stack)
+                            </label>
+                            <p class="small text-muted mb-2">Rich text shown to students above the image viewer. Use for clinical context, findings, or instructions.</p>
+                            <textarea id="imageStackDescription" class="form-control" rows="6" placeholder="Optional case description (supports rich text)..."></textarea>
+                            <div class="mt-2 d-flex align-items-center gap-2">
+                                <button type="button" class="btn btn-sm btn-info" id="saveImageStackDescriptionBtn">
+                                    <i class="fas fa-save me-1"></i>Save description
+                                </button>
+                                <span id="imageStackDescriptionSaveStatus" class="small text-muted"></span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -966,9 +982,11 @@ function setLinkImageStackButtonConnected(connected) {
         btn.classList.add('btn-outline-info');
     }
 }
+var _imageStackDescriptionEditorInited = false;
 function updateImageStackStatus(caseId) {
     const statusEl = document.getElementById('imageStackStatus');
     const removeBtn = document.getElementById('removeImageStackBtn');
+    const descSection = document.getElementById('imageStackDescriptionSection');
     if (!statusEl || !caseId) return;
     fetch('/case-dicom-viewer/api/case/' + caseId + '/stack', { credentials: 'include' })
         .then(r => r.json())
@@ -976,15 +994,78 @@ function updateImageStackStatus(caseId) {
             if (data.has_stack && data.plans && Object.keys(data.plans).length > 0) {
                 statusEl.innerHTML = '<i class="fas fa-check text-success me-1"></i>Image stack linked (' + Object.keys(data.plans).length + ' plans)';
                 if (removeBtn) removeBtn.style.display = 'inline-block';
+                if (descSection) {
+                    descSection.style.display = 'block';
+                    initImageStackDescriptionEditor(data.description_html || '');
+                }
             } else {
                 statusEl.textContent = '';
                 if (removeBtn) removeBtn.style.display = 'none';
+                if (descSection) descSection.style.display = 'none';
             }
         })
         .catch(() => {
             statusEl.textContent = '';
             if (removeBtn) removeBtn.style.display = 'none';
+            if (descSection) descSection.style.display = 'none';
         });
+}
+function initImageStackDescriptionEditor(initialHtml) {
+    const ta = document.getElementById('imageStackDescription');
+    if (!ta) return;
+    if (_imageStackDescriptionEditorInited && typeof tinymce !== 'undefined' && tinymce.get('imageStackDescription')) {
+        tinymce.get('imageStackDescription').setContent(initialHtml || '');
+        return;
+    }
+    if (typeof tinymce === 'undefined' || !tinymce.init) {
+        ta.value = initialHtml || '';
+        return;
+    }
+    tinymce.init({
+        selector: '#imageStackDescription',
+        height: 220,
+        menubar: false,
+        plugins: 'lists link code',
+        toolbar: 'undo redo | formatselect | bold italic | alignleft aligncenter alignright | bullist numlist | link | code',
+        content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 14px; }',
+        base_url: 'https://cdn.jsdelivr.net/npm/tinymce@6',
+        init_instance_callback: function(ed) {
+            ed.setContent(initialHtml || '');
+            _imageStackDescriptionEditorInited = true;
+        }
+    });
+}
+function saveImageStackDescription() {
+    const caseId = document.getElementById('editCaseId')?.value;
+    if (!caseId) { alert('Case ID missing.'); return; }
+    const statusEl = document.getElementById('imageStackDescriptionSaveStatus');
+    const btn = document.getElementById('saveImageStackDescriptionBtn');
+    let html = '';
+    if (typeof tinymce !== 'undefined' && tinymce.get('imageStackDescription')) {
+        tinymce.triggerSave();
+        html = tinymce.get('imageStackDescription').getContent();
+    } else {
+        html = document.getElementById('imageStackDescription')?.value || '';
+    }
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Saving...'; }
+    if (statusEl) statusEl.textContent = '';
+    fetch('/case-dicom-viewer/api/case/' + caseId + '/stack/description', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ description_html: html })
+    }).then(r => r.json()).then(data => {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-save me-1"></i>Save description'; }
+        if (data.error) {
+            if (statusEl) statusEl.textContent = 'Error: ' + data.error;
+            return;
+        }
+        if (statusEl) statusEl.textContent = 'Saved.';
+        setTimeout(function() { if (statusEl) statusEl.textContent = ''; }, 2000);
+    }).catch(function(err) {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-save me-1"></i>Save description'; }
+        if (statusEl) statusEl.textContent = 'Failed: ' + (err.message || 'Unknown error');
+    });
 }
 function removeCaseImageStack() {
     const caseId = document.getElementById('editCaseId')?.value;
@@ -1108,6 +1189,8 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     }
+    const saveDescBtn = document.getElementById('saveImageStackDescriptionBtn');
+    if (saveDescBtn) saveDescBtn.addEventListener('click', function() { saveImageStackDescription(); });
 });
 </script>
 <script>
@@ -1719,8 +1802,10 @@ function initializeNewStandaloneCase() {
     document.getElementById('editCaseId').value = 'new';
     var statusEl = document.getElementById('imageStackStatus');
     var removeBtn = document.getElementById('removeImageStackBtn');
+    var descSection = document.getElementById('imageStackDescriptionSection');
     if (statusEl) statusEl.textContent = '';
     if (removeBtn) removeBtn.style.display = 'none';
+    if (descSection) descSection.style.display = 'none';
 
     // Update page title and subtitle
     document.querySelector('h1').innerHTML = '<i class="fas fa-plus me-3" style="color: #667eea;"></i>Create New Case';
@@ -1782,6 +1867,11 @@ function loadCaseForEdit(caseId) {
     ])
     .then(([caseData, images, qaPairs, refImages]) => {
         document.getElementById('editCaseId').value = caseData.id;
+        var viewAsStudentLink = document.getElementById('viewCaseAsStudentLink');
+        if (viewAsStudentLink) {
+            viewAsStudentLink.href = '/view-case?id=' + encodeURIComponent(caseData.id);
+            viewAsStudentLink.style.display = 'inline-block';
+        }
         if (typeof updateImageStackStatus === 'function') updateImageStackStatus(caseData.id);
         const subtitle = document.getElementById('pageSubtitle');
         if (subtitle) {

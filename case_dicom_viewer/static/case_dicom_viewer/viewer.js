@@ -25,6 +25,10 @@
   var _isAdmin = false;
   var _annotations = {}; // { planName: { imageIndex: [annotations] } }
   var _preloadedImages = {};
+  var _panModeActive = false;
+  var _keyboardListener = null;
+  var _keyboardContainer = null;
+  var _fullscreenContainer = null;
 
   /**
    * Initialize external modules - call after libraries are loaded
@@ -365,9 +369,113 @@
       } catch (e) { /* Tool might not exist */ }
     });
 
-    // Reactivate Wwwc on left button
-    cornerstoneTools.setToolActive("Wwwc", { mouseButtonMask: 1 });
+    // Reactivate Wwwc or Pan on left button depending on pan mode
+    if (_panModeActive) {
+      cornerstoneTools.setToolPassive("Wwwc");
+      cornerstoneTools.setToolActive("Pan", { mouseButtonMask: 1 });
+    } else {
+      cornerstoneTools.setToolPassive("Pan");
+      cornerstoneTools.setToolActive("Wwwc", { mouseButtonMask: 1 });
+    }
     console.log("[CaseDicomViewer] Reset to viewing mode");
+  }
+
+  /**
+   * Set pan mode: when true, left-drag pans; when false, left-drag is window/level
+   */
+  function setPanMode(active) {
+    if (!cornerstoneTools) return;
+    _panModeActive = !!active;
+    cornerstoneTools.setToolPassive("Wwwc");
+    cornerstoneTools.setToolPassive("Pan");
+    if (_panModeActive) {
+      cornerstoneTools.setToolActive("Pan", { mouseButtonMask: 1 });
+    } else {
+      cornerstoneTools.setToolActive("Wwwc", { mouseButtonMask: 1 });
+    }
+    console.log("[CaseDicomViewer] Pan mode:", _panModeActive);
+  }
+
+  /**
+   * Pan viewport by delta (pixels)
+   */
+  function panBy(dx, dy) {
+    if (!_element || !cornerstone) return;
+    try {
+      var vp = cornerstone.getViewport(_element);
+      vp.translation = vp.translation || { x: 0, y: 0 };
+      vp.translation.x += dx;
+      vp.translation.y += dy;
+      cornerstone.setViewport(_element, vp);
+    } catch (e) { console.warn("[CaseDicomViewer] panBy:", e); }
+  }
+
+  /**
+   * Attach keyboard zoom/pan (+, -, arrow keys). Call with element that should receive focus.
+   */
+  function attachKeyboardNavigation(containerEl) {
+    if (_keyboardListener) return;
+    var el = containerEl || _element;
+    if (!el) return;
+    _keyboardContainer = el;
+    _keyboardListener = function (e) {
+      if (!_element || !cornerstone) return;
+      var tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : "";
+      if (tag === "input" || tag === "textarea" || tag === "select") return;
+      var key = e.key;
+      if (key === "+" || key === "=") {
+        e.preventDefault();
+        window.CaseDicomViewer.zoomIn();
+      } else if (key === "-") {
+        e.preventDefault();
+        window.CaseDicomViewer.zoomOut();
+      } else if (key === "ArrowLeft") {
+        e.preventDefault();
+        panBy(20, 0);
+      } else if (key === "ArrowRight") {
+        e.preventDefault();
+        panBy(-20, 0);
+      } else if (key === "ArrowUp") {
+        e.preventDefault();
+        panBy(0, 20);
+      } else if (key === "ArrowDown") {
+        e.preventDefault();
+        panBy(0, -20);
+      }
+    };
+    el.addEventListener("keydown", _keyboardListener);
+    el.setAttribute("tabindex", "0");
+    if (el.focus) el.focus();
+  }
+
+  function detachKeyboardNavigation(containerEl) {
+    var el = containerEl || _keyboardContainer || _element;
+    if (el && _keyboardListener) {
+      el.removeEventListener("keydown", _keyboardListener);
+      _keyboardListener = null;
+      _keyboardContainer = null;
+    }
+  }
+
+  /**
+   * Toggle fullscreen on a container (default: viewer parent)
+   */
+  function toggleFullscreen(containerId) {
+    var el = containerId ? document.getElementById(containerId) : (_element && _element.parentElement);
+    if (!el) return false;
+    if (!document.fullscreenElement) {
+      _fullscreenContainer = el;
+      el.requestFullscreen && el.requestFullscreen();
+      return true;
+    } else {
+      document.exitFullscreen && document.exitFullscreen();
+      _fullscreenContainer = null;
+      return false;
+    }
+  }
+
+  function isFullscreen() {
+    return !!(document.fullscreenElement);
   }
 
   /**
@@ -664,6 +772,39 @@
     },
 
     /**
+     * Toggle pan mode (left-drag pans when true, window/level when false)
+     */
+    setPanMode: function (active) {
+      setPanMode(active);
+    },
+
+    /**
+     * Pan viewport by delta (pixels)
+     */
+    panBy: function (dx, dy) {
+      panBy(dx, dy);
+    },
+
+    /**
+     * Attach keyboard zoom/pan to a container (+, -, arrows). Pass container element or id.
+     */
+    attachKeyboard: function (containerElOrId) {
+      var el = typeof containerElOrId === "string" ? document.getElementById(containerElOrId) : containerElOrId;
+      attachKeyboardNavigation(el);
+    },
+
+    /**
+     * Toggle fullscreen for viewer container. Pass optional container element id.
+     */
+    toggleFullscreen: function (containerId) {
+      return toggleFullscreen(containerId);
+    },
+
+    isFullscreen: function () {
+      return isFullscreen();
+    },
+
+    /**
      * Zoom in (scale *= 1.25)
      */
     zoomIn: function () {
@@ -725,6 +866,7 @@
      * Clean up viewer
      */
     destroy: function () {
+      detachKeyboardNavigation();
       if (_element && cornerstone) {
         try {
           cornerstone.disable(_element);
@@ -733,6 +875,10 @@
         }
         _element = null;
       }
+      _fullscreenContainer = null;
+      _keyboardListener = null;
+      _keyboardContainer = null;
+      _panModeActive = false;
       _stackConfig = null;
       _currentPlan = null;
       _currentIndex = 0;

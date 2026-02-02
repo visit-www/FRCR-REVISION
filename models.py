@@ -533,6 +533,8 @@ class CaseImageStack(db.Model):
     config_json = db.Column(db.Text, nullable=False)  # JSON: { "axial": [url1, url2], "sagittal": [...] }
     # Encrypted refresh token for server-side URL refresh (all viewers get fresh URLs)
     onedrive_refresh_token_encrypted = db.Column(db.Text, nullable=True)
+    # Rich-text case description (TinyMCE HTML) for image stack
+    description_html = db.Column(db.Text, nullable=True)
     created_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 

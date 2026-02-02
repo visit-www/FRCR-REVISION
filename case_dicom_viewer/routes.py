@@ -245,7 +245,7 @@ def get_case_stack(case_id):
         return jsonify({"error": "Case not found or access denied"}), 404
     stack = CaseImageStack.query.filter_by(case_id=case_id).first()
     if not stack:
-        return jsonify({"plans": {}, "has_stack": False})
+        return jsonify({"plans": {}, "has_stack": False, "description_html": None})
     plans = stack.get_config()
     token = _get_access_token()
     if token and stack.onedrive_share_id:
@@ -257,7 +257,11 @@ def get_case_stack(case_id):
                 logger.info("[CaseDicomViewer] Refreshed stack URLs from Graph for case %s", case_id)
         except Exception as e:
             logger.debug("[CaseDicomViewer] Could not refresh stack from Graph (using stored): %s", e)
-    return jsonify({"plans": plans, "has_stack": True})
+    return jsonify({
+        "plans": plans,
+        "has_stack": True,
+        "description_html": getattr(stack, "description_html", None) or None,
+    })
 
 
 @case_dicom_bp.route("/api/case/<int:case_id>/stack", methods=["POST"])
@@ -274,25 +278,63 @@ def save_case_stack(case_id):
     config = data.get("config") or data.get("config_json") or data.get("plans") or {}
     share_id = (data.get("onedrive_share_id") or data.get("share_id") or "").strip()
     folder_path = (data.get("onedrive_folder_path") or data.get("folder_path") or "").strip() or None
-    if not share_id:
-        return jsonify({"error": "onedrive_share_id required"}), 400
+    description_html = data.get("description_html")
     stack = CaseImageStack.query.filter_by(case_id=case_id).first()
     if stack:
-        stack.onedrive_share_id = share_id
-        stack.onedrive_folder_path = folder_path
-        stack.set_config(config)
+        if share_id:
+            stack.onedrive_share_id = share_id
+            stack.onedrive_folder_path = folder_path
+            stack.set_config(config)
+        if description_html is not None:
+            stack.description_html = description_html if description_html else None
     else:
+        if not share_id:
+            return jsonify({"error": "onedrive_share_id required"}), 400
         stack = CaseImageStack(
             case_id=case_id,
             onedrive_share_id=share_id,
             onedrive_folder_path=folder_path,
+            description_html=description_html if description_html else None,
             created_by_user_id=current_user.id if current_user.is_authenticated else None,
         )
         stack.set_config(config)
         db.session.add(stack)
     try:
         db.session.commit()
-        return jsonify({"message": "Stack saved", "plans": stack.get_config()})
+        return jsonify({
+            "message": "Stack saved",
+            "plans": stack.get_config(),
+            "description_html": getattr(stack, "description_html", None),
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+
+@case_dicom_bp.route("/api/case/<int:case_id>/stack/description", methods=["PATCH", "PUT"])
+@login_required
+def update_case_stack_description(case_id):
+    """Update only the rich-text description for the image stack (admin/content manager)."""
+    from models import Case, db
+    if not is_admin_or_content_manager():
+        return jsonify({"error": "Admin or content manager access required"}), 403
+    case = Case.query.get(case_id)
+    if not case or not has_case_edit_permission(case):
+        return jsonify({"error": "Case not found or access denied"}), 404
+    stack = CaseImageStack.query.filter_by(case_id=case_id).first()
+    if not stack:
+        return jsonify({"error": "No image stack linked to this case"}), 404
+    data = request.get_json() or {}
+    description_html = data.get("description_html")
+    if description_html is None:
+        return jsonify({"error": "description_html required"}), 400
+    stack.description_html = description_html if description_html else None
+    try:
+        db.session.commit()
+        return jsonify({
+            "message": "Description saved",
+            "description_html": getattr(stack, "description_html", None),
+        })
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
