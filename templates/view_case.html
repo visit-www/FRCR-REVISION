@@ -715,7 +715,7 @@
                                     </div>
                                     <div id="imageStackEmpty" class="text-center py-4" style="display: none;">
                                         <i class="fas fa-layer-group text-muted" style="font-size: 2rem; opacity: 0.5;"></i>
-                                        <p class="text-muted small mt-2 mb-0">No image stack linked for this case.</p>
+                                        <p class="text-muted small mt-2 mb-0">No image stack available for this study.</p>
                                     </div>
                                     <div id="imageStackViewer" style="display: none;">
                                         <div class="btn-group btn-group-sm mb-2" id="imageStackPlanTabs" role="group"></div>
@@ -8371,9 +8371,14 @@
         viewer.style.display = 'none';
         try {
             const r = await fetch(`/case-dicom-viewer/api/case/${caseId}/stack`, { credentials: 'include' });
-            const data = await r.json();
+            let data = {};
+            try {
+                data = await r.json();
+            } catch (_) {
+                data = {};
+            }
             content.style.display = 'none';
-            if (!data.has_stack || !data.plans || Object.keys(data.plans).length === 0) {
+            if (!r.ok || !data.has_stack || !data.plans || Object.keys(data.plans).length === 0) {
                 empty.style.display = 'block';
                 return;
             }
