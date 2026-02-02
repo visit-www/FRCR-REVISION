@@ -2,7 +2,8 @@
  * Case DICOM Viewer - Cornerstone.js v4.x Integration
  * Features: Stack scroll (mouse wheel), zoom, pan, window/level, annotations
  * Self-hosted libraries for reliable API compatibility
- * v6: Fixed webImage loader - strip prefix before XHR request
+ * v7: Force img fallback - OneDrive token expiry makes XHR fail with 502
+ *     Cornerstone will be re-enabled when server-side token refresh is implemented
  */
 (function () {
   "use strict";
@@ -400,6 +401,12 @@
     init: function (containerId, stackConfig, options) {
       options = options || {};
       _isAdmin = options.isAdmin || false;
+
+      // TEMPORARY: Force img fallback until server-side OneDrive token refresh is implemented
+      // The proxy fails with 502 when OneDrive tempauth tokens expire (~1 hour)
+      // TODO: Remove this when token refresh is implemented
+      console.log("[CaseDicomViewer] Using img fallback (v7 - OneDrive token expiry workaround)");
+      return false;
 
       // Initialize external modules
       if (!initExternalModules()) {
