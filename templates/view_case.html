@@ -766,10 +766,21 @@
                                             <img id="imageStackImg" src="" alt="Slice" class="img-fluid w-100" style="max-height: 500px; object-fit: contain;">
                                         </div>
                                         <div class="d-flex flex-column gap-2 mt-2">
-                                            <div class="d-flex justify-content-between align-items-center">
-                                                <button type="button" class="btn btn-sm btn-outline-secondary" id="imageStackPrev"><i class="fas fa-chevron-left me-1"></i>Prev</button>
-                                                <span class="small text-muted fw-medium" id="imageStackSliceInfo">1 / 1</span>
-                                                <button type="button" class="btn btn-sm btn-outline-secondary" id="imageStackNext">Next<i class="fas fa-chevron-right ms-1"></i></button>
+                                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                                <div class="d-flex align-items-center gap-1">
+                                                    <button type="button" class="btn btn-sm btn-outline-secondary" id="imageStackPrev"><i class="fas fa-chevron-left me-1"></i>Prev</button>
+                                                    <span class="small text-muted fw-medium" id="imageStackSliceInfo">1 / 1</span>
+                                                    <button type="button" class="btn btn-sm btn-outline-secondary" id="imageStackNext">Next<i class="fas fa-chevron-right ms-1"></i></button>
+                                                </div>
+                                                <div id="imageStackZoomBtns" class="d-none d-flex align-items-center gap-1" title="Zoom (also: right-drag on image)">
+                                                    <button type="button" class="btn btn-sm btn-outline-secondary" id="imageStackZoomOut" title="Zoom out"><i class="fas fa-search-minus"></i></button>
+                                                    <button type="button" class="btn btn-sm btn-outline-secondary" id="imageStackZoomIn" title="Zoom in"><i class="fas fa-search-plus"></i></button>
+                                                    <button type="button" class="btn btn-sm btn-outline-secondary" id="imageStackFit" title="Fit to window"><i class="fas fa-compress-arrows-alt"></i></button>
+                                                </div>
+                                            </div>
+                                            <div id="imageStackCacheStatus" class="d-none small text-muted d-flex align-items-center gap-2" style="min-height: 20px;">
+                                                <span class="spinner-border spinner-border-sm" role="status" id="imageStackCacheSpinner" style="width:14px;height:14px;"></span>
+                                                <span id="imageStackCacheText">Caching… 0 / 0</span>
                                             </div>
                                             <input type="range" class="form-range" id="imageStackSliceSlider" min="1" max="1" value="1" step="1" style="min-height: 24px;">
                                         </div>
@@ -8519,6 +8530,40 @@
                             const idx = parseInt(this.value, 10) - 1;
                             if (window.CaseDicomViewer) window.CaseDicomViewer.setSliceIndex(idx);
                         });
+                    }
+                    // Zoom buttons (Cornerstone only)
+                    const zoomBtns = document.getElementById('imageStackZoomBtns');
+                    const zoomInBtn = document.getElementById('imageStackZoomIn');
+                    const zoomOutBtn = document.getElementById('imageStackZoomOut');
+                    const zoomFitBtn = document.getElementById('imageStackFit');
+                    if (zoomBtns) zoomBtns.classList.remove('d-none');
+                    if (zoomInBtn) zoomInBtn.onclick = () => window.CaseDicomViewer && window.CaseDicomViewer.zoomIn();
+                    if (zoomOutBtn) zoomOutBtn.onclick = () => window.CaseDicomViewer && window.CaseDicomViewer.zoomOut();
+                    if (zoomFitBtn) zoomFitBtn.onclick = () => window.CaseDicomViewer && window.CaseDicomViewer.fitToWindow();
+                    // Cache status indicator (Cornerstone only)
+                    const cacheStatusEl = document.getElementById('imageStackCacheStatus');
+                    const cacheSpinnerEl = document.getElementById('imageStackCacheSpinner');
+                    const cacheTextEl = document.getElementById('imageStackCacheText');
+                    if (cacheStatusEl) {
+                        const totalImg = window.CaseDicomViewer ? window.CaseDicomViewer.getImageCount() : 0;
+                        if (totalImg > 1) {
+                            cacheStatusEl.classList.remove('d-none');
+                            cacheStatusEl.style.display = 'flex';
+                        } else {
+                            cacheStatusEl.style.display = 'none';
+                        }
+                    }
+                    if (window.CaseDicomViewer) {
+                        window.CaseDicomViewer.onCacheProgress(function(cached, total) {
+                            if (cacheTextEl) cacheTextEl.textContent = total <= 1 ? '' : ('Caching… ' + cached + ' / ' + total);
+                            if (cacheSpinnerEl) cacheSpinnerEl.style.visibility = (cached >= total && total > 1) ? 'hidden' : 'visible';
+                        });
+                        window.CaseDicomViewer.onAllCached(function() {
+                            if (cacheTextEl) cacheTextEl.textContent = 'All images cached – smooth scrolling';
+                            if (cacheSpinnerEl) cacheSpinnerEl.style.visibility = 'hidden';
+                        });
+                        const totalImg = window.CaseDicomViewer.getImageCount();
+                        if (cacheTextEl && totalImg <= 1) cacheTextEl.textContent = '';
                     }
                     // Show annotation toolbar for admins
                     const annotationToolbar = document.getElementById('imageStackAnnotationToolbar');

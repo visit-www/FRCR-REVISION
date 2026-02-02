@@ -19,6 +19,8 @@
   var _currentIndex = 0;
   var _imageIds = [];
   var _onSliceChange = null;
+  var _onCacheProgress = null;
+  var _onAllCached = null;
   var _isAdmin = false;
   var _annotations = {}; // { planName: { imageIndex: [annotations] } }
   var _preloadedImages = {};
@@ -92,6 +94,76 @@
     if (url.indexOf("http://") === 0 || url.indexOf("https://") === 0) return url;
     var origin = window.location ? window.location.origin : "";
     return origin + (url.indexOf("/") === 0 ? url : "/" + url);
+  }
+
+  /**
+   * Count how many images in current stack are cached
+   */
+  function getCachedCount() {
+    if (!_imageIds.length) return 0;
+    var n = 0;
+    for (var i = 0; i < _imageIds.length; i++) {
+      if (_preloadedImages[_imageIds[i]]) n++;
+    }
+    return n;
+  }
+
+  /**
+   * Preload full stack in background and report progress (for cache indicator)
+   */
+  function preloadFullStack() {
+    if (!cornerstone || !_element || !_imageIds.length) return;
+    var total = _imageIds.length;
+    var batchSize = 8;
+    var index = 0;
+
+    function reportProgress() {
+      var cached = getCachedCount();
+      if (_onCacheProgress) _onCacheProgress(cached, total);
+      if (cached >= total && _onAllCached) _onAllCached();
+    }
+
+    reportProgress();
+
+    function reportProgress() {
+      var cached = getCachedCount();
+      if (_onCacheProgress) _onCacheProgress(cached, total);
+      if (cached >= total && _onAllCached) _onAllCached();
+    }
+
+    function loadNextBatch() {
+      var end = Math.min(index + batchSize, total);
+      var pending = 0;
+      for (var i = index; i < end; i++) {
+        var imageId = _imageIds[i];
+        if (_preloadedImages[imageId]) continue;
+        pending++;
+        (function (id) {
+          cornerstone.loadImage(id).then(
+            function () {
+              _preloadedImages[id] = true;
+              reportProgress();
+              pending--;
+              if (pending === 0) scheduleNext();
+            },
+            function () {
+              pending--;
+              if (pending === 0) scheduleNext();
+            }
+          );
+        })(imageId);
+      }
+      if (pending === 0 && end < total) scheduleNext();
+      else if (end >= total) reportProgress();
+      index = end;
+    }
+
+    function scheduleNext() {
+      if (index < total) setTimeout(loadNextBatch, 30);
+      else reportProgress();
+    }
+
+    loadNextBatch();
   }
 
   /**
@@ -451,6 +523,11 @@
         // Set up stack
         setupStack(urls);
 
+        // Start full-stack preload in background (reports progress for cache indicator)
+        setTimeout(function () {
+          preloadFullStack();
+        }, 800);
+
         // Update slice counter whenever an image is rendered (covers wheel scroll and any navigation)
         function syncSliceCounter() {
           var stackState = cornerstoneTools.getToolState(_element, "stack");
@@ -576,6 +653,57 @@
     },
 
     /**
+     * Zoom in (scale *= 1.25)
+     */
+    zoomIn: function () {
+      if (!_element || !cornerstone) return;
+      try {
+        var vp = cornerstone.getViewport(_element);
+        vp.scale = (vp.scale || 1) * 1.25;
+        if (vp.scale > 50) vp.scale = 50;
+        cornerstone.setViewport(_element, vp);
+      } catch (e) {
+        console.warn("[CaseDicomViewer] zoomIn:", e);
+      }
+    },
+
+    /**
+     * Zoom out (scale /= 1.25)
+     */
+    zoomOut: function () {
+      if (!_element || !cornerstone) return;
+      try {
+        var vp = cornerstone.getViewport(_element);
+        vp.scale = (vp.scale || 1) / 1.25;
+        if (vp.scale < 0.1) vp.scale = 0.1;
+        cornerstone.setViewport(_element, vp);
+      } catch (e) {
+        console.warn("[CaseDicomViewer] zoomOut:", e);
+      }
+    },
+
+    /**
+     * Cache progress: get cached count (for UI indicator)
+     */
+    getCachedCount: function () {
+      return getCachedCount();
+    },
+
+    /**
+     * Register cache progress callback (cached, total)
+     */
+    onCacheProgress: function (cb) {
+      _onCacheProgress = typeof cb === "function" ? cb : null;
+    },
+
+    /**
+     * Register callback when all images in stack are cached
+     */
+    onAllCached: function (cb) {
+      _onAllCached = typeof cb === "function" ? cb : null;
+    },
+
+    /**
      * Clean up viewer
      */
     destroy: function () {
@@ -592,6 +720,8 @@
       _currentIndex = 0;
       _imageIds = [];
       _onSliceChange = null;
+      _onCacheProgress = null;
+      _onAllCached = null;
       _annotations = {};
       _preloadedImages = {};
     },
