@@ -57,13 +57,12 @@
 #imageStackViewer:-moz-full-screen,
 #imageStackViewer:-ms-fullscreen {
   display: flex !important;
-  flex-direction: column !important;
   align-items: center !important;
   justify-content: center !important;
   position: fixed !important;
   inset: 0 !important;
-  width: 100% !important;
-  height: 100% !important;
+  width: 90vw !important;
+  height: 90vh !important;
   padding: 0.5rem;
   background: #1a1a2e;
   box-sizing: border-box;
