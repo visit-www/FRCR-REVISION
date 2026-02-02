@@ -346,8 +346,8 @@ def get_case_annotations(case_id):
 def save_case_annotations(case_id):
     """Save annotations for a case's image stack (admin/content manager only)."""
     from models import Case, CaseImageAnnotation, db
-    if not is_admin():
-        return jsonify({"error": "Admin access required"}), 403
+    if not is_admin_or_content_manager():
+        return jsonify({"error": "Admin or content manager access required"}), 403
     
     case = Case.query.get(case_id)
     if not case or not has_case_edit_permission(case):
