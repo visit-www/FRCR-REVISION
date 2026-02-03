@@ -2,7 +2,7 @@
 
 > **Last Updated:** February 2, 2026  
 > **Status:** Active Development  
-> **Total Plans:** 8 Feature Areas
+> **Total Plans:** 9 Feature Areas
 
 ---
 
@@ -24,6 +24,7 @@ This document serves as the master index for all planned features and enhancemen
 | 6 | AI/RAG Knowledge System | Very High | Transformative | Planned |
 | 7 | Case DICOM Viewer | Medium-High | High | **Implemented** |
 | 8 | DICOM/MPR Infrastructure | Very High | High | Future (Documented) |
+| 9 | R2 Migration and Viewer Upgrade | Medium-High | High | Planned |
 
 ---
 
@@ -310,6 +311,38 @@ Future plan to enable true Multi-Planar Reconstruction (MPR) viewing. Would requ
 
 ---
 
+## Plan 9: R2 Migration and Viewer Upgrade
+
+**Priority:** 9 (Case DICOM Viewer Upgrade)  
+**Complexity:** Medium-High  
+**Estimated Effort:** 3-4 weeks  
+**Dependencies:** Plan 7 (Case DICOM Viewer), Cloudflare R2 account
+
+### Summary
+Migrate case image stacks from OneDrive to Cloudflare R2, upgrade the DICOM viewer for smooth plan switching and session-long caching, and repurpose OneDrive for folder browsing to support Claude AI context. No batch migration script: admins delete existing stacks and re-add via new "Upload from OneDrive to R2" admin UI.
+
+### Key Deliverables
+- R2 storage for case images (100-500 MB/case, direct CORS, no proxy)
+- Admin UI: "Upload from OneDrive to R2" – browse OneDrive folder, backend downloads and uploads to R2
+- Viewer upgrades: preload cancellation on plan switch, Cornerstone cache 2 GB
+- OneDrive repurposed for folder browse -> AI context (future)
+
+### Key Points
+- No migration script: existing OneDrive-linked stacks are deleted and re-added manually
+- Presigned or public R2 URLs; no Vercel Fast Origin Transfer for images
+- Cloudinary for general app assets; R2 for DICOM stacks only
+
+### Files Affected
+- `case_dicom_viewer/routes.py`, `case_dicom_viewer/r2_service.py` (new)
+- `case_dicom_viewer/static/case_dicom_viewer/viewer.js`
+- `models.py` (CaseImageStack: storage_backend, r2_config_json)
+- `templates/edit_case.html`, `templates/view_case.html`
+
+### Plan Document
+📄 **Location:** [docs/plans/R2_MIGRATION_AND_VIEWER_UPGRADE_PLAN.md](R2_MIGRATION_AND_VIEWER_UPGRADE_PLAN.md)
+
+---
+
 ## Implementation Roadmap
 
 ```
@@ -319,7 +352,8 @@ Phase 1: Quick Wins (Week 1-2)
 
 Phase 2: Content Enhancement (Week 3-5)
 ├── Reference Image Curation
-└── Case DICOM Viewer
+├── Case DICOM Viewer
+└── R2 Migration and Viewer Upgrade
 
 Phase 3: Core Features (Week 6-9)
 ├── TNM Calculator
@@ -372,6 +406,7 @@ Phase 4: AI Transformation (Week 10-20)
 | AI/RAG System | `.cursor/plans/ai_rag_knowledge_system_*.plan.md` | - |
 | Case DICOM Viewer | - | `docs/plans/CASE_DICOM_VIEWER_PLAN.md` |
 | DICOM/MPR Infrastructure | - | `docs/plans/DICOM_MPR_INFRASTRUCTURE_PLAN.md` |
+| R2 Migration and Viewer Upgrade | - | `docs/plans/R2_MIGRATION_AND_VIEWER_UPGRADE_PLAN.md` |
 
 ---
 
@@ -392,4 +427,5 @@ Phase 4: AI Transformation (Week 10-20)
 | 2026-01-29 | Initial master index created | AI Assistant |
 | 2026-01-31 | Added Case DICOM Viewer plan | AI Assistant |
 | 2026-02-02 | Case DICOM Viewer marked implemented; added DICOM/MPR Infrastructure plan | AI Assistant |
+| 2026-02-02 | Added R2 Migration and Viewer Upgrade plan (Plan 9); no migration script, admin UI only | AI Assistant |
 

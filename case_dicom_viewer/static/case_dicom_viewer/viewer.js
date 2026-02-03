@@ -1,7 +1,7 @@
 /**
  * Case DICOM Viewer - Cornerstone.js v4.x Integration
  * Features: Stack scroll (mouse wheel), zoom, pan, window/level, annotations
- * v10: Slider at ~2% loaded; global cache per plan; cache indicator on plan switch
+ * v11: Preload cancellation on plan switch; Cornerstone cache 2GB; global cache per plan
  */
 (function () {
   "use strict";
@@ -26,6 +26,7 @@
   var _annotations = {}; // { planName: { imageIndex: [annotations] } }
   var _annotationsVisible = true;
   var _preloadedImages = {};
+  var _preloadRunId = 0;
   var _panModeActive = false;
   var _keyboardListener = null;
   var _keyboardContainer = null;
@@ -88,6 +89,19 @@
       globalToolSyncEnabled: false,
     });
 
+    // Set Cornerstone image cache to 2GB for session-long retention of multiple plans
+    try {
+      if (cornerstone.imageLoader && cornerstone.imageLoader.imageCache) {
+        var cache = cornerstone.imageLoader.imageCache;
+        if (typeof cache.setMaximumSizeBytes === 'function') {
+          cache.setMaximumSizeBytes(2 * 1024 * 1024 * 1024);
+          console.log("[CaseDicomViewer] Image cache set to 2GB");
+        }
+      }
+    } catch (e) {
+      console.warn("[CaseDicomViewer] Could not set image cache size:", e);
+    }
+
     console.log("[CaseDicomViewer] External modules initialized");
     return true;
   }
@@ -117,9 +131,11 @@
   /**
    * Preload full stack in background and report progress (for cache indicator).
    * Skips images already in _preloadedImages (global cache per imageId).
+   * Ignores results if user switched plan (runId check).
    */
   function preloadFullStack() {
     if (!cornerstone || !_element || !_imageIds.length) return;
+    var runId = _preloadRunId;
     var total = _imageIds.length;
     var batchSize = 4;
     var index = 0;
@@ -127,6 +143,7 @@
     var readyThreshold = Math.max(1, Math.ceil(total * 0.02)); // ~2%
 
     function reportProgress() {
+      if (runId !== _preloadRunId) return;
       var cached = getCachedCount();
       if (_onCacheProgress) _onCacheProgress(cached, total);
       if (!sliderReadyFired && cached >= readyThreshold && _onSliderReady) {
@@ -139,6 +156,7 @@
     reportProgress();
 
     function loadNextBatch() {
+      if (runId !== _preloadRunId) return;
       var end = Math.min(index + batchSize, total);
       var pending = 0;
       for (var i = index; i < end; i++) {
@@ -148,12 +166,14 @@
         (function (id) {
           cornerstone.loadImage(id).then(
             function () {
+              if (runId !== _preloadRunId) return;
               _preloadedImages[id] = true;
               reportProgress();
               pending--;
               if (pending === 0) scheduleNext();
             },
             function () {
+              if (runId !== _preloadRunId) return;
               pending--;
               if (pending === 0) scheduleNext();
             }
@@ -166,6 +186,7 @@
     }
 
     function scheduleNext() {
+      if (runId !== _preloadRunId) return;
       if (index < total) setTimeout(loadNextBatch, 150);
       else reportProgress();
     }
@@ -174,24 +195,28 @@
   }
 
   /**
-   * Preload images in background for smooth scrolling
+   * Preload images in background for smooth scrolling.
+   * Ignores results if user switched plan (runId check).
    */
   function preloadImages(imageIds, priority) {
     if (!cornerstone || !imageIds || !imageIds.length) return;
-    
+    var runId = _preloadRunId;
+
     var loadBatch = function (startIdx, batchSize) {
+      if (runId !== _preloadRunId) return;
       for (var i = startIdx; i < Math.min(startIdx + batchSize, imageIds.length); i++) {
         var imageId = imageIds[i];
         if (!_preloadedImages[imageId]) {
           cornerstone.loadImage(imageId).then(
             function (image) {
+              if (runId !== _preloadRunId) return;
               _preloadedImages[image.imageId] = true;
             },
             function () { /* Ignore preload errors */ }
           );
         }
       }
-      // Continue loading in batches
+      if (runId !== _preloadRunId) return;
       if (startIdx + batchSize < imageIds.length) {
         setTimeout(function () {
           loadBatch(startIdx + batchSize, batchSize);
@@ -199,7 +224,6 @@
       }
     };
 
-    // Start preloading in batches of 5
     loadBatch(0, priority ? 10 : 5);
   }
 
@@ -253,6 +277,8 @@
    */
   function setupStack(imageUrls) {
     if (!_element || !cornerstone) return;
+
+    _preloadRunId += 1;
 
     // Convert URLs to absolute paths with webImage: prefix
     var raw = Array.isArray(imageUrls) ? imageUrls.slice() : [];
@@ -1095,6 +1121,7 @@
       _onSliderReady = null;
       _annotations = {};
       _preloadedImages = {};
+      _preloadRunId = 0;
     },
 
     /**
@@ -1112,5 +1139,5 @@
     },
   };
 
-  console.log("[CaseDicomViewer] viewer.js v10 loaded (slider at 2%%, global cache, cache indicator per plan)");
+  console.log("[CaseDicomViewer] viewer.js v11 loaded (preload cancel on plan switch, 2GB cache)");
 })();
