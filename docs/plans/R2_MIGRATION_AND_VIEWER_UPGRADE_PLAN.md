@@ -149,6 +149,17 @@ When user switches plan (e.g. Axial -> Sagittal), stop loading images for the pr
 - Only clear on `disable()` (viewer teardown)
 - Returned-to plans use cached images when available
 
+### B.4 Reduce Plan-Switch Delay
+
+- Reduce or remove the 100ms delay before `preloadFullStack()` on plan switch (currently in `loadStack` setTimeout)
+- Consider 0ms or 50ms to make plan switching feel more responsive
+
+### B.5 Center-First Preload Order (Black Slice Heuristic)
+
+- Preload from center outward: center slice first, then center±1, center±2, etc.
+- Slices with actual anatomy (typically toward center) load before black/empty edge slices
+- Improves perceived smoothness when scrolling through the stack
+
 ---
 
 ## Part C: OneDrive Repurposing
@@ -174,6 +185,42 @@ When user switches plan (e.g. Axial -> Sagittal), stop loading images for the pr
 
 ---
 
+## Part F: Bug Fixes and UX Improvements
+
+### F.1 Image Stack Link Two-Attempt Save
+
+**Issue:** Linking image stack sometimes requires two attempts; first attempt appears saved but nothing persists when case is saved.
+
+**Cause:** For new cases, the flow redirects to view-case after case save. User leaves the edit page before they can link the stack. Stack linking only works on edit-case with a valid case ID.
+
+**Fixes:**
+
+- After creating a new case, redirect to `edit-case?id={newId}` instead of `view-case`, so the user can link the stack in the same session
+- Or show a clear message after case creation: "Case saved. You can now link an Image Stack"
+
+**Files:** `static/edit-case-modal.js` (redirect logic after case create)
+
+### F.2 Plan Switching Delay
+
+**Issue:** Noticeable delay when switching plans; downloads do not shift quickly to the new plan.
+
+**Cause:** 100ms delay before preloadFullStack; first image of new plan must load before view updates; conservative batching (4 images, 150ms).
+
+**Fixes:**
+
+- Reduce or remove the 100ms delay before `preloadFullStack()` on plan switch (see B.4)
+- Prioritize visible slice and nearby slices in preload order
+
+### F.3 Center-First Preload (Black Slice Heuristic)
+
+**Issue:** Black/empty slices (outside patient body) load with same priority as slices with actual anatomy.
+
+**Fix:** Preload from center outward – center slice first, then center±1, center±2, etc. Slices with content load sooner (see B.5).
+
+**Future (R2 migration):** Server-side analysis during upload to detect non-black slices; store metadata in `r2_config_json` for prioritized loading.
+
+---
+
 ## Part D: Storage Strategy
 
 | Storage | Purpose |
@@ -190,7 +237,8 @@ When user switches plan (e.g. Axial -> Sagittal), stop loading images for the pr
 
 | Phase | Tasks | Est. |
 |-------|-------|------|
-| 1. Viewer upgrades | Preload runId, Cornerstone cache 2 GB | 1-2 days |
+| 1. Viewer upgrades | Preload runId, Cornerstone cache 2 GB, reduce plan-switch delay, center-first preload | 1-2 days |
+| 1b. Bug fix | Image stack two-attempt save: redirect to edit-case after new case create | 0.5 day |
 | 2. R2 infra | Bucket, CORS, credentials, boto3/R2 client | 0.5 day |
 | 3. Backend R2 upload | Endpoint: parse OneDrive folder -> download -> upload to R2 -> save CaseImageStack | 2-3 days |
 | 4. Admin UI | "Upload from OneDrive to R2" flow in edit_case (use Vue modals if modal needed, not Bootstrap) | 1-2 days |
@@ -208,7 +256,8 @@ When user switches plan (e.g. Axial -> Sagittal), stop loading images for the pr
 | `case_dicom_viewer/routes.py` | Remove proxy_image; add R2 upload endpoint; get_case_stack returns R2 URLs |
 | `case_dicom_viewer/r2_service.py` | New: R2 client, upload, presigned URL generation |
 | `case_dicom_viewer/onedrive_service.py` | Keep; used for folder list + download during upload flow |
-| `case_dicom_viewer/static/case_dicom_viewer/viewer.js` | Preload runId, cache config |
+| `case_dicom_viewer/static/case_dicom_viewer/viewer.js` | Preload runId, cache config, plan-switch delay, center-first preload |
+| `static/edit-case-modal.js` | Redirect to edit-case after new case create (fix two-attempt save) |
 | `models.py` | CaseImageStack: storage_backend, r2_config_json |
 | `templates/edit_case.html` | Replace OneDrive link modal with "Upload from OneDrive to R2" flow; use Vue modals where modals needed |
 | `templates/view_case.html` | Remove imageStackProxyUrl; use direct R2 URLs from API |
@@ -223,6 +272,8 @@ When user switches plan (e.g. Axial -> Sagittal), stop loading images for the pr
 - Smooth plan switching (no wasted downloads for inactive plan)
 - Session cache retains loaded images across plan switches
 - OneDrive OAuth and folder browse retained for future AI context feature
+- Image stack links on first attempt (redirect to edit-case after new case create)
+- Responsive plan switching with center-first preload
 
 ---
 
@@ -233,3 +284,4 @@ When user switches plan (e.g. Axial -> Sagittal), stop loading images for the pr
 | 2026-02-02 | Initial plan; no migration script; admin UI only for OneDrive -> R2 upload |
 | 2026-02-02 | Added style/branding requirements, color palette, fonts, Vue modals, no-alteration rule for image viewer |
 | 2026-02-02 | Added branch/version control: work in feature branch, reasonable commits, preserve main unless confirmed |
+| 2026-02-03 | Added Part F: Bug fixes (two-attempt save, plan-switch delay, center-first preload); B.4, B.5; Phase 1b |

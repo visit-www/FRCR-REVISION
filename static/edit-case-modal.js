@@ -1305,6 +1305,8 @@ function saveEditedCase(event) {
             if (!shouldWaitForImages) {
                 if (isStagingCase) {
                     alert('Case reviewed and promoted to production successfully!');
+                } else if (isNew) {
+                    alert('Case saved successfully! You can now link an Image Stack if needed.');
                 } else {
                     alert('Case saved successfully!');
                 }
@@ -1330,7 +1332,7 @@ function saveEditedCase(event) {
             } else if (isNew) {
                 const newId = data.id || data.case_id;
                 if (newId) {
-                    redirectUrl = `/view-case/${newId}`;
+                    redirectUrl = `/edit-case?id=${newId}`;
             } else {
                     redirectUrl = '/cases';
                 }

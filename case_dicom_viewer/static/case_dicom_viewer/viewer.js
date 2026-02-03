@@ -1,7 +1,7 @@
 /**
  * Case DICOM Viewer - Cornerstone.js v4.x Integration
  * Features: Stack scroll (mouse wheel), zoom, pan, window/level, annotations
- * v11: Preload cancellation on plan switch; Cornerstone cache 2GB; global cache per plan
+ * v12: Center-first preload; plan-switch delay 50ms; preload cancel, 2GB cache
  */
 (function () {
   "use strict";
@@ -129,7 +129,23 @@
   }
 
   /**
+   * Build center-first index order: center slice first, then center±1, center±2, etc.
+   * Slices with anatomy (typically toward center) load before black/empty edge slices.
+   */
+  function centerFirstOrder(total) {
+    var order = [];
+    var center = Math.floor((total - 1) / 2);
+    order.push(center);
+    for (var d = 1; d <= Math.max(center, total - 1 - center); d++) {
+      if (center - d >= 0) order.push(center - d);
+      if (center + d < total) order.push(center + d);
+    }
+    return order;
+  }
+
+  /**
    * Preload full stack in background and report progress (for cache indicator).
+   * Uses center-first order so slices with anatomy load before black edge slices.
    * Skips images already in _preloadedImages (global cache per imageId).
    * Ignores results if user switched plan (runId check).
    */
@@ -137,8 +153,9 @@
     if (!cornerstone || !_element || !_imageIds.length) return;
     var runId = _preloadRunId;
     var total = _imageIds.length;
+    var order = centerFirstOrder(total);
     var batchSize = 4;
-    var index = 0;
+    var orderIndex = 0;
     var sliderReadyFired = false;
     var readyThreshold = Math.max(1, Math.ceil(total * 0.02)); // ~2%
 
@@ -157,9 +174,10 @@
 
     function loadNextBatch() {
       if (runId !== _preloadRunId) return;
-      var end = Math.min(index + batchSize, total);
+      var end = Math.min(orderIndex + batchSize, order.length);
       var pending = 0;
-      for (var i = index; i < end; i++) {
+      for (var j = orderIndex; j < end; j++) {
+        var i = order[j];
         var imageId = _imageIds[i];
         if (_preloadedImages[imageId]) continue;
         pending++;
@@ -180,14 +198,14 @@
           );
         })(imageId);
       }
-      if (pending === 0 && end < total) scheduleNext();
-      else if (end >= total) reportProgress();
-      index = end;
+      if (pending === 0 && end < order.length) scheduleNext();
+      else if (end >= order.length) reportProgress();
+      orderIndex = end;
     }
 
     function scheduleNext() {
       if (runId !== _preloadRunId) return;
-      if (index < total) setTimeout(loadNextBatch, 150);
+      if (orderIndex < order.length) setTimeout(loadNextBatch, 150);
       else reportProgress();
     }
 
@@ -889,8 +907,8 @@
       if (!_element || !cornerstone) return;
       _currentPlan = planName;
       setupStack(imageUrls || _stackConfig[planName] || []);
-      // Report cache progress for current plan and preload remaining images
-      setTimeout(function () { preloadFullStack(); }, 100);
+      // Report cache progress for current plan and preload remaining images (minimal delay for responsive plan switch)
+      setTimeout(function () { preloadFullStack(); }, 50);
     },
 
     /**
@@ -1139,5 +1157,5 @@
     },
   };
 
-  console.log("[CaseDicomViewer] viewer.js v11 loaded (preload cancel on plan switch, 2GB cache)");
+  console.log("[CaseDicomViewer] viewer.js v12 loaded (center-first preload, 50ms plan-switch)");
 })();
