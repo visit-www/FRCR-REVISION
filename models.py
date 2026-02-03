@@ -528,9 +528,11 @@ class CaseImageStack(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     case_id = db.Column(db.Integer, db.ForeignKey('case.id'), nullable=False, unique=True)
-    onedrive_share_id = db.Column(db.String(500), nullable=False)
+    onedrive_share_id = db.Column(db.String(500), nullable=True)  # nullable for R2-only stacks
     onedrive_folder_path = db.Column(db.String(500), nullable=True)
     config_json = db.Column(db.Text, nullable=False)  # JSON: { "axial": [url1, url2], "sagittal": [...] }
+    storage_backend = db.Column(db.String(20), default="onedrive", nullable=True)  # 'onedrive' | 'r2'
+    r2_config_json = db.Column(db.Text, nullable=True)  # JSON: { "axial": ["key1", "key2"], ... }
     # Encrypted refresh token for server-side URL refresh (all viewers get fresh URLs)
     onedrive_refresh_token_encrypted = db.Column(db.Text, nullable=True)
     # Rich-text case description (TinyMCE HTML) for image stack
@@ -553,6 +555,20 @@ class CaseImageStack(db.Model):
     def set_config(self, config: dict):
         import json
         self.config_json = json.dumps(config, ensure_ascii=False) if config else "{}"
+
+    def get_r2_config(self) -> dict:
+        """Return R2 object keys per plan: { 'axial': ['key1', 'key2'], ... }."""
+        import json
+        if self.r2_config_json:
+            try:
+                return json.loads(self.r2_config_json)
+            except (json.JSONDecodeError, TypeError):
+                return {}
+        return {}
+
+    def set_r2_config(self, config: dict):
+        import json
+        self.r2_config_json = json.dumps(config, ensure_ascii=False) if config else None
 
 
 class CaseImageAnnotation(db.Model):
