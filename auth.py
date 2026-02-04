@@ -39,7 +39,7 @@ def send_recovery_email(email, token):
     resend.api_key = resend_key
     
     # Use verified domain or Resend's test domain
-    from_email = os.getenv('EMAIL_FROM', "RadInsights <no-reply@radinsights.com>")
+    from_email = os.getenv('EMAIL_FROM', "RadInsights <no-reply@radinsights.xyz>")
     
     try:
         params = {
@@ -103,7 +103,7 @@ def send_admin_approval_email(requesting_admin_email, requesting_admin_name, tar
         return {'success': False, 'error': error_msg, 'email_id': None}
     
     resend.api_key = resend_key
-    from_email = os.getenv('EMAIL_FROM', "RadInsights <no-reply@radinsights.com>")
+    from_email = os.getenv('EMAIL_FROM', "RadInsights <no-reply@radinsights.xyz>")
     
     # Build details section
     details_html = ""
@@ -651,7 +651,7 @@ def test_email():
             'resend_key_length': len(resend_key) if resend_key else 0,
             'requests_available': True,
             'app_url': os.getenv('APP_URL', 'https://www.radinsights.xyz'),
-            'email_from': os.getenv('EMAIL_FROM', 'RadInsights <no-reply@radinsights.com>')
+            'email_from': os.getenv('EMAIL_FROM', 'RadInsights <no-reply@radinsights.xyz>')
         }
         
         return jsonify(result), 200
@@ -671,7 +671,7 @@ def test_send_email():
         if not resend_key:
             return jsonify({'error': 'RESEND_API_KEY not set'}), 500
         
-        from_email = os.getenv('EMAIL_FROM', "RadInsights <no-reply@radinsights.com>")
+        from_email = os.getenv('EMAIL_FROM', "RadInsights <no-reply@radinsights.xyz>")
         test_to = 'test@example.com'  # Use a test email
         
         response = requests.post(
@@ -775,7 +775,7 @@ def send_recovery_code_email(email, code, request_metadata=None):
         return False
     
     resend.api_key = resend_key
-    from_email = os.getenv('EMAIL_FROM', "RadInsights <no-reply@radinsights.com>")
+    from_email = os.getenv('EMAIL_FROM', "RadInsights <no-reply@radinsights.xyz>")
     
     metadata_html = ""
     if request_metadata:
