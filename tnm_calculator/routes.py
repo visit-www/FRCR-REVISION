@@ -8,6 +8,7 @@ Supports both v2 (API-based) and v3 (HTML calculator) approaches.
 from flask import Blueprint, render_template, request, jsonify, redirect, url_for
 import logging
 import os
+import json
 from pathlib import Path
 
 from .engine import TNMCalculator
@@ -26,6 +27,27 @@ tnm_calc_bp = Blueprint(
 # Global calculator instance
 _calculator = None
 
+# Body section icons mapping
+SECTION_ICONS = {
+    'Head and Neck': 'fas fa-head-side',
+    'Upper Gastrointestinal Tract': 'fas fa-stomach',
+    'Lower Gastrointestinal Tract': 'fas fa-intestines',
+    'Hepatobiliary System': 'fas fa-liver',
+    'Neuroendocrine Tumors': 'fas fa-dna',
+    'Thorax': 'fas fa-lungs',
+    'Bone': 'fas fa-bone',
+    'Soft Tissue Sarcoma': 'fas fa-hand-holding-medical',
+    'Skin': 'fas fa-user',
+    'Breast': 'fas fa-ribbon',
+    'Female Reproductive Organs': 'fas fa-venus',
+    'Male Genital Organs': 'fas fa-mars',
+    'Urinary Tract': 'fas fa-kidneys',
+    'Ophthalmic Sites': 'fas fa-eye',
+    'Central Nervous System': 'fas fa-brain',
+    'Endocrine System': 'fas fa-disease',
+    'Hematologic Malignancies': 'fas fa-tint',
+}
+
 
 def get_calculator() -> TNMCalculator:
     """Get or create the calculator instance."""
@@ -35,150 +57,110 @@ def get_calculator() -> TNMCalculator:
     return _calculator
 
 
-# ==================== V3 CALCULATOR DEFINITIONS ====================
+# ==================== V3 DATABASE-DRIVEN SECTIONS ====================
 
-# Define available calculators with metadata
-V3_CALCULATORS = {
-    'head_and_neck': {
-        'name': 'Head and Neck',
-        'icon': 'fas fa-head-side',
-        'calculators': [
-            {
-                'name': 'Oropharynx',
-                'slug': 'oropharynx',
-                'description': 'HPV+ and HPV- staging with detailed criteria',
-                'special_features': ['HPV+ Staging', 'HPV- Staging'],
-                'staging_system': 'AJCC 9th Edition',
-                'available': True
-            },
-            {
-                'name': 'Larynx',
-                'slug': 'larynx',
-                'description': 'Glottic, supraglottic, and subglottic subsites',
-                'special_features': ['Subsites'],
-                'staging_system': 'AJCC 9th Edition',
-                'available': False
-            },
-            {
-                'name': 'Oral Cavity',
-                'slug': 'oral_cavity',
-                'description': 'Lip, tongue, floor of mouth, buccal mucosa',
-                'special_features': ['Depth of Invasion'],
-                'staging_system': 'AJCC 9th Edition',
-                'available': False
-            },
-            {
-                'name': 'Nasopharynx',
-                'slug': 'nasopharynx',
-                'description': 'EBV-associated staging',
-                'special_features': ['EBV Status'],
-                'staging_system': 'AJCC 9th Edition',
-                'available': False
-            },
-            {
-                'name': 'Hypopharynx',
-                'slug': 'hypopharynx',
-                'description': 'Pyriform sinus, posterior pharyngeal wall',
-                'special_features': [],
-                'staging_system': 'AJCC 9th Edition',
-                'available': False
-            },
-            {
-                'name': 'Thyroid',
-                'slug': 'thyroid',
-                'description': 'Differentiated, medullary, and anaplastic',
-                'special_features': ['Age Factor', 'Histology'],
-                'staging_system': 'AJCC 9th Edition',
-                'available': False
-            },
-        ]
-    },
-    'thorax': {
-        'name': 'Thorax',
-        'icon': 'fas fa-lungs',
-        'calculators': [
-            {
-                'name': 'Lung (NSCLC)',
-                'slug': 'lung',
-                'description': 'Non-small cell lung cancer staging',
-                'special_features': ['SCLC Option'],
-                'staging_system': 'AJCC 9th Edition',
-                'available': False
-            },
-            {
-                'name': 'Esophagus',
-                'slug': 'esophagus',
-                'description': 'SCC and adenocarcinoma staging',
-                'special_features': ['Histology', 'Location'],
-                'staging_system': 'AJCC 9th Edition',
-                'available': False
-            },
-        ]
-    },
-    'breast': {
-        'name': 'Breast',
-        'icon': 'fas fa-ribbon',
-        'calculators': [
-            {
-                'name': 'Breast Cancer',
-                'slug': 'breast',
-                'description': 'Anatomic and prognostic staging with biomarkers',
-                'special_features': ['ER/PR', 'HER2', 'Grade', 'Prognostic'],
-                'staging_system': 'AJCC 9th Edition',
-                'available': False
-            },
-        ]
-    },
-    'gynecological': {
-        'name': 'Gynecological',
-        'icon': 'fas fa-venus',
-        'calculators': [
-            {
-                'name': 'Cervix',
-                'slug': 'cervix',
-                'description': 'FIGO 2018 staging for cervical cancer',
-                'special_features': ['Imaging-based'],
-                'staging_system': 'FIGO 2018',
-                'available': False
-            },
-            {
-                'name': 'Endometrium',
-                'slug': 'endometrium',
-                'description': 'FIGO 2023 staging for endometrial cancer',
-                'special_features': ['Molecular'],
-                'staging_system': 'FIGO 2023',
-                'available': False
-            },
-            {
-                'name': 'Ovary',
-                'slug': 'ovary',
-                'description': 'FIGO staging for ovarian cancer',
-                'special_features': [],
-                'staging_system': 'FIGO 2014',
-                'available': False
-            },
-        ]
-    },
-}
+def load_disease_catalog():
+    """Load all disease sites from AJCC ontology JSON."""
+    try:
+        catalog_path = Path(__file__).parent.parent / 'ajcc_tnm' / 'data' / 'ajcc_frcr_full_ontology.json'
+        with open(catalog_path, 'r') as f:
+            data = json.load(f)
+        return data.get('sections', [])
+    except Exception as e:
+        logger.error(f"[TNM Calculator] Failed to load disease catalog: {e}")
+        return []
+
+
+def get_available_calculators_from_db():
+    """Query database for all generated calculators."""
+    try:
+        from models import TNMCalculatorContent
+        calculators = TNMCalculatorContent.query.filter_by(is_available=True).all()
+        return {calc.slug: calc for calc in calculators}
+    except Exception as e:
+        logger.warning(f"[TNM Calculator] Failed to query DB: {e}")
+        return {}
+
+
+def generate_slug(disease_name: str) -> str:
+    """Generate URL-friendly slug from disease name."""
+    return disease_name.lower().replace(' ', '-').replace('(', '').replace(')', '').replace(',', '').replace('/', '-')
 
 
 def get_v3_sections():
-    """Get calculator sections for index page."""
+    """
+    Get calculator sections for index page.
+    Database-driven: loads all diseases from catalog, marks available based on DB.
+    """
+    # Load disease catalog (all 72 diseases)
+    catalog = load_disease_catalog()
+    if not catalog:
+        logger.warning("[TNM Calculator] Disease catalog empty, using fallback")
+        return []
+
+    # Get available calculators from database
+    available_calculators = get_available_calculators_from_db()
+
+    # Also check for HTML files that exist (for manually added calculators)
+    calc_dir = Path(__file__).parent / 'calculators'
+
     sections = []
-    for section_id, section_data in V3_CALCULATORS.items():
+    for section in catalog:
+        section_name = section.get('ajcc_section', '')
+        disease_sites = section.get('disease_sites', [])
+
+        calculators = []
+        for disease_name in disease_sites:
+            slug = generate_slug(disease_name)
+
+            # Check if calculator is available (in DB or HTML file exists)
+            db_calc = available_calculators.get(slug)
+            html_exists = (calc_dir / f'{slug}_calc.html').exists()
+            is_available = db_calc is not None or html_exists
+
+            # Get metadata from DB if available
+            if db_calc:
+                description = db_calc.description or f'{disease_name} cancer staging'
+                special_features = db_calc.get_special_features() if hasattr(db_calc, 'get_special_features') else []
+                staging_system = db_calc.staging_system or 'AJCC 9th Edition'
+            else:
+                description = f'{disease_name} cancer staging'
+                special_features = []
+                staging_system = 'AJCC 9th Edition'
+
+            calculators.append({
+                'name': disease_name,
+                'slug': slug,
+                'description': description,
+                'special_features': special_features,
+                'staging_system': staging_system,
+                'available': is_available
+            })
+
         sections.append({
-            'name': section_data['name'],
-            'icon': section_data['icon'],
-            'calculators': section_data['calculators']
+            'name': section_name,
+            'icon': SECTION_ICONS.get(section_name, 'fas fa-stethoscope'),
+            'calculators': calculators
         })
+
     return sections
 
 
 def calculator_exists(disease: str) -> bool:
-    """Check if a calculator HTML file exists."""
+    """Check if a calculator exists (HTML file or in database)."""
+    # Check HTML file
     calc_dir = Path(__file__).parent / 'calculators'
     calc_file = calc_dir / f'{disease}_calc.html'
-    return calc_file.exists()
+    if calc_file.exists():
+        return True
+
+    # Check database
+    try:
+        from models import TNMCalculatorContent
+        db_calc = TNMCalculatorContent.query.filter_by(slug=disease, is_available=True).first()
+        return db_calc is not None
+    except Exception:
+        return False
 
 
 # ==================== V3 PAGE ROUTES ====================
@@ -213,35 +195,38 @@ def calculator(disease: str):
         logger.warning(f"[TNM Calculator] Calculator not found: {disease}")
         return redirect(url_for('tnm_calculator.index'))
 
-    # Find calculator metadata
-    calc_meta = None
-    for section in V3_CALCULATORS.values():
-        for calc in section['calculators']:
-            if calc['slug'] == disease:
-                calc_meta = calc
-                break
-        if calc_meta:
-            break
-
-    disease_name = calc_meta['name'] if calc_meta else disease.replace('_', ' ').title()
-
-    # Read and render the calculator HTML
-    calc_dir = Path(__file__).parent / 'calculators'
-    calc_file = calc_dir / f'{disease}_calc.html'
+    # Try to get calculator metadata from database first
+    disease_name = disease.replace('-', ' ').replace('_', ' ').title()
+    calculator_html = None
 
     try:
-        with open(calc_file, 'r', encoding='utf-8') as f:
-            calculator_html = f.read()
-
-        return render_template(
-            'tnm_calculator_v3/calculator_wrapper.html',
-            disease_name=disease_name,
-            calculator_html=calculator_html,
-            embed_mode=False
-        )
+        from models import TNMCalculatorContent
+        db_calc = TNMCalculatorContent.query.filter_by(slug=disease).first()
+        if db_calc:
+            disease_name = db_calc.cancer_name
+            # Use HTML from database if available
+            if db_calc.calculator_html:
+                calculator_html = db_calc.calculator_html
     except Exception as e:
-        logger.error(f"[TNM Calculator] Error loading calculator {disease}: {e}")
-        return redirect(url_for('tnm_calculator.index'))
+        logger.warning(f"[TNM Calculator] DB lookup failed for {disease}: {e}")
+
+    # If not in DB, try to read from file
+    if not calculator_html:
+        calc_dir = Path(__file__).parent / 'calculators'
+        calc_file = calc_dir / f'{disease}_calc.html'
+        try:
+            with open(calc_file, 'r', encoding='utf-8') as f:
+                calculator_html = f.read()
+        except Exception as e:
+            logger.error(f"[TNM Calculator] Error loading calculator {disease}: {e}")
+            return redirect(url_for('tnm_calculator.index'))
+
+    return render_template(
+        'tnm_calculator_v3/calculator_wrapper.html',
+        disease_name=disease_name,
+        calculator_html=calculator_html,
+        embed_mode=False
+    )
 
 
 @tnm_calc_bp.route('/embed/<disease>')
@@ -250,22 +235,37 @@ def embed(disease: str):
     if not calculator_exists(disease):
         return "Calculator not found", 404
 
-    calc_dir = Path(__file__).parent / 'calculators'
-    calc_file = calc_dir / f'{disease}_calc.html'
+    # Try to get from database first
+    disease_name = disease.replace('-', ' ').replace('_', ' ').title()
+    calculator_html = None
 
     try:
-        with open(calc_file, 'r', encoding='utf-8') as f:
-            calculator_html = f.read()
+        from models import TNMCalculatorContent
+        db_calc = TNMCalculatorContent.query.filter_by(slug=disease).first()
+        if db_calc:
+            disease_name = db_calc.cancer_name
+            if db_calc.calculator_html:
+                calculator_html = db_calc.calculator_html
+    except Exception:
+        pass
 
-        return render_template(
-            'tnm_calculator_v3/calculator_wrapper.html',
-            disease_name=disease.replace('_', ' ').title(),
-            calculator_html=calculator_html,
-            embed_mode=True
-        )
-    except Exception as e:
-        logger.error(f"[TNM Calculator] Error loading embed calculator {disease}: {e}")
-        return "Calculator error", 500
+    # Fallback to file
+    if not calculator_html:
+        calc_dir = Path(__file__).parent / 'calculators'
+        calc_file = calc_dir / f'{disease}_calc.html'
+        try:
+            with open(calc_file, 'r', encoding='utf-8') as f:
+                calculator_html = f.read()
+        except Exception as e:
+            logger.error(f"[TNM Calculator] Error loading embed calculator {disease}: {e}")
+            return "Calculator error", 500
+
+    return render_template(
+        'tnm_calculator_v3/calculator_wrapper.html',
+        disease_name=disease_name,
+        calculator_html=calculator_html,
+        embed_mode=True
+    )
 
 
 # ==================== API ROUTES ====================

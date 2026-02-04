@@ -11,6 +11,7 @@ from datetime import datetime
 from sqlalchemy import or_, and_
 import logging
 import os
+import json
 import markdown
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/api/admin')
@@ -1593,6 +1594,74 @@ def r2_delete_objects():
     except Exception as e:
         logger.exception("R2 delete error: %s", e)
         return jsonify({'error': str(e)[:500]}), 500
+
+
+# ============================================================================
+# AJCC DATA ENDPOINT (for TNM Generator auto-fill)
+# ============================================================================
+
+@admin_bp.route('/tnm/ajcc-data', methods=['GET'])
+@require_admin
+def get_ajcc_data():
+    """
+    Get AJCC staging data for TNM Generator auto-fill.
+
+    Returns:
+    - sections: List of body sections with disease sites
+    - staging_data: Complete T/N/M definitions for diseases with data (currently Larynx)
+    """
+    try:
+        base_path = os.path.join(os.path.dirname(__file__), 'ajcc_tnm', 'data')
+
+        # Load ontology (sections and disease sites)
+        ontology_path = os.path.join(base_path, 'ajcc_frcr_full_ontology.json')
+        with open(ontology_path, 'r') as f:
+            ontology = json.load(f)
+
+        # Load structured TNM data (currently only Larynx has complete data)
+        structured_path = os.path.join(base_path, 'ajcc_tnm_structured.json')
+        staging_data = {}
+        try:
+            with open(structured_path, 'r') as f:
+                larynx_data = json.load(f)
+                # Create slug from disease name
+                slug = larynx_data['disease_name'].lower().replace(' ', '-').replace('(', '').replace(')', '')
+                staging_data[slug] = larynx_data
+        except Exception as e:
+            logger.warning(f"Could not load structured TNM data: {e}")
+
+        # Build response with sections and diseases
+        sections = []
+        for section in ontology.get('sections', []):
+            section_name = section.get('ajcc_section', '')
+            diseases = []
+            for disease in section.get('disease_sites', []):
+                # Generate slug from disease name
+                slug = disease.lower().replace(' ', '-').replace('(', '').replace(')', '').replace(',', '')
+                diseases.append({
+                    'name': disease,
+                    'slug': slug,
+                    'has_staging_data': slug in staging_data
+                })
+            sections.append({
+                'name': section_name,
+                'slug': section_name.lower().replace(' ', '-'),
+                'diseases': diseases
+            })
+
+        return jsonify({
+            'success': True,
+            'source': ontology.get('source', 'AJCC Cancer Staging Manual'),
+            'sections': sections,
+            'staging_data': staging_data
+        }), 200
+
+    except FileNotFoundError as e:
+        logger.error(f"AJCC data file not found: {e}")
+        return jsonify({'success': False, 'error': 'AJCC data files not found'}), 500
+    except Exception as e:
+        logger.exception(f"Error loading AJCC data: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 
 # ============================================================================

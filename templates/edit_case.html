@@ -1024,6 +1024,104 @@ console.log('[TinyMCE Loader] Script URL was:', "{{ url_for('static', filename='
                     border-radius: 8px;
                 }
             }
+            /* TNM Generator Select Dropdowns */
+            .tnm-gen-select {
+                width: 100%;
+                padding: 0.6rem 0.85rem;
+                border: 1px solid #c5cad1;
+                border-radius: 6px;
+                font-size: 0.9rem;
+                color: #2c3e50;
+                background: #fdfdfb url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e") no-repeat right 0.75rem center/12px 12px;
+                appearance: none;
+                cursor: pointer;
+                transition: border-color 0.2s, box-shadow 0.2s;
+            }
+            .tnm-gen-select:focus {
+                outline: none;
+                border-color: #e96304;
+                box-shadow: 0 0 0 3px rgba(233, 99, 4, 0.12);
+            }
+            .tnm-gen-select option {
+                padding: 0.5rem;
+            }
+            .tnm-gen-select optgroup {
+                font-weight: 600;
+                color: #2c3e50;
+            }
+            /* AJCC Preview Section */
+            .tnm-gen-preview {
+                margin-top: 1rem;
+                padding: 1rem;
+                background: linear-gradient(135deg, #f0f7f4 0%, #e8f4f8 100%);
+                border: 1px solid #b8d4e3;
+                border-left: 4px solid #5E899E;
+                border-radius: 8px;
+                max-height: 200px;
+                overflow-y: auto;
+            }
+            .tnm-gen-preview-header {
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+                margin-bottom: 0.75rem;
+                color: #2c5e73;
+                font-weight: 600;
+                font-size: 0.9rem;
+            }
+            .tnm-gen-preview-header i {
+                color: #5E899E;
+            }
+            .tnm-gen-preview-badge {
+                display: inline-flex;
+                align-items: center;
+                gap: 0.35rem;
+                padding: 0.2rem 0.5rem;
+                background: #5E899E;
+                color: white;
+                border-radius: 4px;
+                font-size: 0.7rem;
+                font-weight: 600;
+                margin-left: auto;
+            }
+            .tnm-gen-preview-content {
+                font-size: 0.8rem;
+                color: #3a5a6a;
+                line-height: 1.5;
+            }
+            .tnm-gen-preview-section {
+                margin-bottom: 0.6rem;
+            }
+            .tnm-gen-preview-section-title {
+                font-weight: 600;
+                color: #2c5e73;
+                margin-bottom: 0.25rem;
+            }
+            .tnm-gen-preview-item {
+                display: flex;
+                gap: 0.5rem;
+                padding: 0.15rem 0;
+            }
+            .tnm-gen-preview-item strong {
+                color: #e96304;
+                min-width: 35px;
+            }
+            /* Subsite tag */
+            .tnm-gen-subsite-tag {
+                display: inline-block;
+                background: #e9ecef;
+                color: #495057;
+                padding: 0.15rem 0.5rem;
+                border-radius: 4px;
+                font-size: 0.75rem;
+                margin-left: 0.35rem;
+            }
+            /* Has data indicator */
+            .tnm-gen-has-data {
+                color: #28a745;
+                font-size: 0.7rem;
+                margin-left: 0.35rem;
+            }
             </style>
 
             <!-- Action Buttons -->
@@ -5178,8 +5276,88 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
+// AJCC Data cache for TNM Generator (used for dropdowns only)
+let ajccDataCache = null;
+
+// Load AJCC data for TNM Generator (disease catalog for dropdowns)
+async function loadAjccData() {
+    if (ajccDataCache) return ajccDataCache;
+    try {
+        const response = await fetch('/api/admin/tnm/ajcc-data');
+        const data = await response.json();
+        if (data.success) {
+            ajccDataCache = data;
+            return data;
+        }
+    } catch (error) {
+        console.error('Failed to load AJCC data:', error);
+    }
+    return null;
+}
+
+// Populate body section dropdown
+function populateSectionDropdown(sections, selectedSection = '') {
+    const select = document.getElementById('genBodySection');
+    if (!select) return;
+    select.innerHTML = '<option value="">Select Body Section...</option>';
+    sections.forEach(section => {
+        const option = document.createElement('option');
+        option.value = section.name;
+        option.textContent = section.name;
+        if (section.name === selectedSection) option.selected = true;
+        select.appendChild(option);
+    });
+}
+
+// Populate disease dropdown based on selected section
+function populateDiseaseDropdown(sections, selectedSection, selectedDisease = '') {
+    const select = document.getElementById('genDiseaseSite');
+    if (!select) return;
+    select.innerHTML = '<option value="">Select Disease Site...</option>';
+
+    const section = sections.find(s => s.name === selectedSection);
+    if (!section) return;
+
+    section.diseases.forEach(disease => {
+        const option = document.createElement('option');
+        option.value = disease.slug;
+        option.textContent = disease.name;
+        option.dataset.name = disease.name;
+        if (disease.slug === selectedDisease || disease.name === selectedDisease) option.selected = true;
+        select.appendChild(option);
+    });
+}
+
+// Handle section change
+function onSectionChange() {
+    const section = document.getElementById('genBodySection').value;
+    if (ajccDataCache) {
+        populateDiseaseDropdown(ajccDataCache.sections, section);
+    }
+    // Clear disease-specific fields
+    document.getElementById('genSlug').value = '';
+    document.getElementById('genCancerName').value = '';
+}
+
+// Handle disease change - auto-fill slug and cancer name only
+function onDiseaseChange() {
+    const select = document.getElementById('genDiseaseSite');
+    const selectedOption = select.options[select.selectedIndex];
+    if (!selectedOption || !selectedOption.value) {
+        document.getElementById('genSlug').value = '';
+        document.getElementById('genCancerName').value = '';
+        return;
+    }
+
+    const slug = selectedOption.value;
+    const diseaseName = selectedOption.dataset.name;
+
+    document.getElementById('genSlug').value = slug;
+    document.getElementById('genCancerName').value = diseaseName;
+}
+
 // Show TNM Generator modal
-function showTnmGeneratorModal() {
+async function showTnmGeneratorModal() {
     const calculatorSelect = document.getElementById('editCaseCalculator');
     const diagnosis = document.getElementById('editCaseDiagnosis')?.value.trim() || '';
 
@@ -5191,11 +5369,8 @@ function showTnmGeneratorModal() {
 
     // If no calculator selected, use diagnosis and TNM candidates
     if (!selectedSlug && diagnosis) {
-        // Generate slug from diagnosis (lowercase, replace spaces with hyphens)
         selectedSlug = diagnosis.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
         cancerName = diagnosis;
-
-        // Try to get body section from selected primary site (if TNM Intelligence was used)
         if (selectedPrimarySite) {
             cancerName = selectedPrimarySite.disease_name || diagnosis;
             bodySection = selectedPrimarySite.body_section || '';
@@ -5223,29 +5398,37 @@ function showTnmGeneratorModal() {
                     <div class="tnm-gen-info-icon"><i class="fas fa-magic"></i></div>
                     <div class="tnm-gen-info-content">
                         <strong>AI-Powered Generation</strong>
-                        <p>Claude AI will create an interactive staging calculator and step-by-step algorithm discussion for radiologists.</p>
+                        <p>Claude AI uses its medical training knowledge (including AJCC staging manuals) to generate accurate calculators and algorithms.</p>
                     </div>
                 </div>
 
                 <div class="tnm-gen-grid">
                     <div class="tnm-gen-field">
-                        <label class="tnm-gen-label">Calculator Slug</label>
-                        <input type="text" class="tnm-gen-input" id="genSlug" value="${selectedSlug}" placeholder="e.g., oropharynx" required>
-                        <span class="tnm-gen-hint">URL-friendly identifier</span>
-                    </div>
-                    <div class="tnm-gen-field">
-                        <label class="tnm-gen-label">Cancer Name</label>
-                        <input type="text" class="tnm-gen-input" id="genCancerName" value="${cancerName}" placeholder="e.g., Oropharynx" required>
-                    </div>
-                    <div class="tnm-gen-field">
                         <label class="tnm-gen-label">Body Section</label>
-                        <input type="text" class="tnm-gen-input" id="genBodySection" value="${bodySection}" placeholder="e.g., Head and Neck" required>
+                        <select class="tnm-gen-select" id="genBodySection" onchange="onSectionChange()">
+                            <option value="">Loading...</option>
+                        </select>
+                    </div>
+                    <div class="tnm-gen-field">
+                        <label class="tnm-gen-label">Disease Site</label>
+                        <select class="tnm-gen-select" id="genDiseaseSite" onchange="onDiseaseChange()">
+                            <option value="">Select Body Section first...</option>
+                        </select>
                     </div>
                     <div class="tnm-gen-field">
                         <label class="tnm-gen-label">Staging System</label>
                         <input type="text" class="tnm-gen-input" id="genStagingSystem" value="AJCC 9th Edition">
                     </div>
-                    <div class="tnm-gen-field tnm-gen-field-full">
+                    <div class="tnm-gen-field">
+                        <label class="tnm-gen-label">Calculator Slug</label>
+                        <input type="text" class="tnm-gen-input" id="genSlug" value="${selectedSlug}" placeholder="Auto-generated from selection">
+                        <span class="tnm-gen-hint">URL-friendly identifier</span>
+                    </div>
+                    <div class="tnm-gen-field">
+                        <label class="tnm-gen-label">Cancer Name</label>
+                        <input type="text" class="tnm-gen-input" id="genCancerName" value="${cancerName}" placeholder="Auto-filled from selection">
+                    </div>
+                    <div class="tnm-gen-field">
                         <label class="tnm-gen-label">Description</label>
                         <input type="text" class="tnm-gen-input" id="genDescription" placeholder="Brief description for index page">
                     </div>
@@ -5254,8 +5437,8 @@ function showTnmGeneratorModal() {
                         <input type="text" class="tnm-gen-input" id="genSpecialFeatures" placeholder="e.g., HPV+ Staging, HPV- Staging (comma-separated)">
                     </div>
                     <div class="tnm-gen-field tnm-gen-field-full">
-                        <label class="tnm-gen-label">Special Notes for AI</label>
-                        <textarea class="tnm-gen-textarea" id="genSpecialNotes" rows="2" placeholder="Additional instructions for Claude..."></textarea>
+                        <label class="tnm-gen-label">Special Notes for AI <span class="tnm-gen-hint" style="display: inline;">(optional)</span></label>
+                        <textarea class="tnm-gen-textarea" id="genSpecialNotes" rows="3" placeholder="Add any special instructions or considerations for Claude..."></textarea>
                     </div>
                 </div>
 
@@ -5277,6 +5460,19 @@ function showTnmGeneratorModal() {
     `;
 
     document.body.appendChild(overlay);
+
+    // Load AJCC data and populate dropdowns
+    const ajccData = await loadAjccData();
+    if (ajccData) {
+        populateSectionDropdown(ajccData.sections, bodySection);
+        if (bodySection) {
+            populateDiseaseDropdown(ajccData.sections, bodySection, cancerName);
+            // Trigger disease change if we have a pre-selected disease
+            if (cancerName) {
+                onDiseaseChange();
+            }
+        }
+    }
 }
 
 function closeTnmGeneratorModal() {
@@ -5298,7 +5494,7 @@ async function generateTnmContent() {
     const insertAlgorithm = document.getElementById('genInsertAlgorithm').checked;
 
     if (!slug || !cancerName || !bodySection) {
-        showFlash('Please fill in Slug, Cancer Name, and Body Section', 'warning');
+        showFlash('Please select Body Section and Disease Site', 'warning');
         return;
     }
 
@@ -5309,19 +5505,22 @@ async function generateTnmContent() {
     generateBtn.disabled = true;
     generateBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Generating...';
 
+    // Build request payload - Claude uses its training knowledge for AJCC staging
+    const payload = {
+        slug,
+        cancer_name: cancerName,
+        body_section: bodySection,
+        staging_system: stagingSystem,
+        description,
+        special_features: specialFeatures,
+        special_notes: specialNotes
+    };
+
     try {
         const response = await fetch('/api/admin/tnm/generate', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                slug,
-                cancer_name: cancerName,
-                body_section: bodySection,
-                staging_system: stagingSystem,
-                description,
-                special_features: specialFeatures,
-                special_notes: specialNotes
-            })
+            body: JSON.stringify(payload)
         });
 
         const result = await response.json();
