@@ -5104,6 +5104,51 @@ function submitManualReference() {
 // TNM CALCULATOR & ALGORITHM GENERATOR
 // ============================================================================
 
+// Simple toast notification function
+function showFlash(message, type = 'info') {
+    // Remove existing flash
+    const existing = document.getElementById('flashToast');
+    if (existing) existing.remove();
+
+    const colors = {
+        success: { bg: '#e8f5e9', border: '#4caf50', text: '#2e7d32', icon: 'check-circle' },
+        danger: { bg: '#ffebee', border: '#ef5350', text: '#c62828', icon: 'exclamation-circle' },
+        warning: { bg: '#fff3e0', border: '#ff9800', text: '#e65100', icon: 'exclamation-triangle' },
+        info: { bg: '#e3f2fd', border: '#2196f3', text: '#1565c0', icon: 'info-circle' }
+    };
+    const style = colors[type] || colors.info;
+
+    const toast = document.createElement('div');
+    toast.id = 'flashToast';
+    toast.style.cssText = `
+        position: fixed; top: 20px; right: 20px; z-index: 10001;
+        background: ${style.bg}; border: 1px solid ${style.border}; border-left: 4px solid ${style.border};
+        color: ${style.text}; padding: 1rem 1.25rem; border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15); max-width: 400px;
+        animation: flashSlideIn 0.3s ease; font-size: 0.9rem;
+    `;
+    toast.innerHTML = `<i class="fas fa-${style.icon} me-2"></i>${message}`;
+
+    // Add animation keyframes if not exists
+    if (!document.getElementById('flashToastStyles')) {
+        const styleEl = document.createElement('style');
+        styleEl.id = 'flashToastStyles';
+        styleEl.textContent = `
+            @keyframes flashSlideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+            @keyframes flashSlideOut { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(20px); } }
+        `;
+        document.head.appendChild(styleEl);
+    }
+
+    document.body.appendChild(toast);
+
+    // Auto-remove after 4 seconds
+    setTimeout(() => {
+        toast.style.animation = 'flashSlideOut 0.3s ease forwards';
+        setTimeout(() => toast.remove(), 300);
+    }, 4000);
+}
+
 // Show/hide generator button based on calculator selection
 function updateTnmGeneratorVisibility() {
     const calculatorSelect = document.getElementById('editCaseCalculator');
