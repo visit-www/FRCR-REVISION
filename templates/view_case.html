@@ -722,6 +722,7 @@
                                     </div>
                                     <div id="imageStackViewer" style="display: none;" tabindex="0">
                                         <div id="imageStackDescription" class="image-stack-description mb-3 p-3 rounded border bg-light" style="display: none;"></div>
+                                        <div id="imageStackStackSelector" class="d-flex align-items-center mb-2" style="display: none;"><select class="form-select form-select-sm" style="max-width: 280px; border-color: #5E899E;"></select></div>
                                         <div class="btn-group btn-group-sm mb-2" id="imageStackPlanTabs" role="group"></div>
                                         <!-- Annotation Toolbar (Admin Only) -->
                                         {% if current_user.is_authenticated and current_user.role and (current_user.role.value == 'admin' or current_user.role.value == 'content_manager') %}
@@ -942,6 +943,7 @@
                         <div id="imageStackEmpty" class="text-center py-4" style="display: none;"><i class="fas fa-layer-group text-muted" style="font-size: 2rem; opacity: 0.5;"></i><p class="text-muted small mt-2 mb-0">No image stack available for this study.</p></div>
                         <div id="imageStackViewer" style="display: none;" tabindex="0">
                             <div id="imageStackDescription" class="image-stack-description mb-3 p-3 rounded border bg-light" style="display: none;"></div>
+                            <div id="imageStackStackSelector" class="d-flex align-items-center mb-2" style="display: none;"><select class="form-select form-select-sm" style="max-width: 280px; border-color: #5E899E;"></select></div>
                             <div class="btn-group btn-group-sm mb-2" id="imageStackPlanTabs" role="group"></div>
                             <div id="imageStackAnnotationToolbar" class="mb-2 p-2 rounded" style="background: rgba(102,126,234,0.1); display: none;">
                                 <div class="d-flex flex-wrap align-items-center gap-2">
@@ -8528,8 +8530,10 @@
     let _imageStackData = null;
     let _imageStackCurrentPlan = null;
     let _imageStackCurrentIndex = 0;
+    let _imageStackSelectedId = null;
     function imageStackProxyUrl(originalUrl) {
         if (!originalUrl) return '';
+        // Proxy all external URLs to avoid CORS and service-worker 503 on R2
         return '/case-dicom-viewer/api/image?url=' + encodeURIComponent(originalUrl);
     }
     async function loadImageStack() {
@@ -8552,9 +8556,10 @@
         empty.style.display = 'none';
         viewer.style.display = 'none';
         try {
-            // Fetch stack and annotations in parallel
-            const stackUrl = `/case-dicom-viewer/api/case/${caseId}/stack`;
-            const annotationsUrl = `/case-dicom-viewer/api/case/${caseId}/annotations`;
+            // Fetch stack and annotations in parallel (annotations per-study via stack_id)
+            const stackIdParam = typeof _imageStackSelectedId !== 'undefined' && _imageStackSelectedId ? '?stack_id=' + _imageStackSelectedId : '';
+            const stackUrl = `/case-dicom-viewer/api/case/${caseId}/stack${stackIdParam}`;
+            const annotationsUrl = `/case-dicom-viewer/api/case/${caseId}/annotations${stackIdParam}`;
             console.log('[ImageStack] Fetching', stackUrl);
             
             const [stackResponse, annotationsResponse] = await Promise.all([
@@ -8597,6 +8602,30 @@
             } else if (descEl) {
                 descEl.innerHTML = '';
                 descEl.style.display = 'none';
+            }
+            var stacks = data.stacks || [];
+            var stackSelectorEl = document.getElementById('imageStackStackSelector');
+            var currentStackId = null;
+            if (stacks.length > 0) {
+                var firstId = stacks[0] && stacks[0].id;
+                currentStackId = _imageStackSelectedId || firstId;
+                _imageStackSelectedId = currentStackId;
+            }
+            if (stackSelectorEl && stacks.length > 1) {
+                var currentId = currentStackId;
+                stackSelectorEl.innerHTML = '<label class="me-2 small" style="color:#5E899E;">Study:</label><select class="form-select form-select-sm" style="max-width: 280px; border-color: #5E899E;">' +
+                    stacks.map(function(s) {
+                        var label = (s.study_label || 'Study #' + s.id) + ' (' + (s.plans || []).join(', ') + ')';
+                        var sel = (currentId && s.id === currentId) ? ' selected' : '';
+                        return '<option value="' + s.id + '"' + sel + '>' + label + '</option>';
+                    }).join('') + '</select>';
+                stackSelectorEl.style.display = 'flex';
+                stackSelectorEl.querySelector('select').onchange = function() {
+                    _imageStackSelectedId = this.value ? parseInt(this.value, 10) : null;
+                    loadImageStack();
+                };
+            } else if (stackSelectorEl) {
+                stackSelectorEl.style.display = 'none';
             }
             // Store annotations for viewer initialization
             var _imageStackAnnotations = annotationsData.annotations || {};
@@ -8961,17 +8990,21 @@
             });
         }
         
-        // Save annotations button
+        // Save annotations button (per-study when stack_id selected)
         const saveBtn = document.getElementById('imageStackSaveAnnotations');
         if (saveBtn) {
             saveBtn.addEventListener('click', async function() {
                 const annotations = window.CaseDicomViewer.getAnnotations();
+                const payload = { annotations: annotations };
+                if (typeof _imageStackSelectedId !== 'undefined' && _imageStackSelectedId) {
+                    payload.stack_id = _imageStackSelectedId;
+                }
                 try {
                     const response = await fetch(`/case-dicom-viewer/api/case/${caseId}/annotations`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         credentials: 'include',
-                        body: JSON.stringify({ annotations: annotations })
+                        body: JSON.stringify(payload)
                     });
                     const data = await response.json();
                     if (response.ok) {

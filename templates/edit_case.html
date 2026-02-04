@@ -309,21 +309,19 @@ console.log('[TinyMCE Loader] Script URL was:', "{{ url_for('static', filename='
                         </div>
                     </div>
 
-                    <!-- Image Stack (OneDrive: axial, sagittal, coronal) -->
+                    <!-- Image Stack (R2: direct upload) -->
                     <div class="border-top pt-4 mt-4">
                         <label class="form-label fw-bold text-secondary mb-2">
-                            <i class="fas fa-layer-group me-1" style="color: #17a2b8;"></i>Image Stack (OneDrive)
+                            <i class="fas fa-layer-group me-1" style="color: #17a2b8;"></i>Image Stack
                         </label>
-                        <p class="small text-muted mb-2">Link a OneDrive folder with image stacks (axial, sagittal, etc.) for DICOM-like slice scrolling in the case view.</p>
-                        <button type="button" class="btn btn-outline-info" id="linkImageStackBtn" onclick="openCaseDicomLinkModal()">
-                            <i class="fas fa-cloud me-1"></i>Link Image Stack
+                        <p class="small text-muted mb-2">Upload image stacks (axial, sagittal, etc.) for DICOM-like slice scrolling in the case view.</p>
+                        <button type="button" class="btn btn-outline-info" id="addImageStackBtn" onclick="openCaseDicomR2UploadModal()">
+                            <i class="fas fa-cloud-upload-alt me-1"></i>Add Image Stack
                         </button>
-                        <button type="button" class="btn btn-outline-danger btn-sm ms-2" id="removeImageStackBtn" style="display: none;" onclick="removeCaseImageStack()" title="Remove image stack link">
-                            <i class="fas fa-unlink me-1"></i>Remove image stack
-                        </button>
-                        <a href="#" id="viewCaseAsStudentLink" class="btn btn-outline-secondary btn-sm ms-2" style="display: none;" target="_blank" rel="noopener" title="Open case view as students see it (image stack and all tabs)">
+                        <a href="#" id="viewCaseAsStudentLink" class="btn btn-outline-secondary btn-sm ms-2" style="display: none;" target="_blank" rel="noopener" title="Open case view as students see it">
                             <i class="fas fa-external-link-alt me-1"></i>View case (as student)
                         </a>
+                        <div id="imageStackList" class="mt-3"></div>
                         <div id="imageStackStatus" class="mt-2 small text-muted"></div>
                         <div id="imageStackDescriptionSection" class="mt-3" style="display: none;">
                             <label class="form-label fw-bold text-secondary mb-2">
@@ -716,6 +714,7 @@ console.log('[TinyMCE Loader] Script URL was:', "{{ url_for('static', filename='
         </form>
 
         {% include 'case_dicom_viewer/admin_link_modal.html' %}
+        {% include 'case_dicom_viewer/admin_r2_upload_modal.html' %}
     </div>
 </div>
 
@@ -974,39 +973,88 @@ function openCaseDicomLinkModal() {
 function setLinkImageStackButtonConnected(connected) {
     const btn = document.getElementById('linkImageStackBtn');
     if (!btn) return;
-    if (connected) {
-        btn.classList.remove('btn-outline-info');
-        btn.classList.add('btn-success-outline');
-    } else {
-        btn.classList.remove('btn-success-outline');
-        btn.classList.add('btn-outline-info');
-    }
+    if (connected) { btn.classList.remove('btn-outline-info'); btn.classList.add('btn-success-outline'); }
+    else { btn.classList.remove('btn-success-outline'); btn.classList.add('btn-outline-info'); }
 }
-var _imageStackDescriptionEditorInited = false;
-function updateImageStackStatus(caseId) {
-    const statusEl = document.getElementById('imageStackStatus');
-    const removeBtn = document.getElementById('removeImageStackBtn');
-    const descSection = document.getElementById('imageStackDescriptionSection');
-    if (!statusEl || !caseId) return;
+
+var _caseDicomR2FolderSeries = {};
+var _caseDicomR2Stacks = [];
+function openCaseDicomR2UploadModal() {
+    const caseId = document.getElementById('editCaseId')?.value;
+    if (!caseId || caseId === 'new' || String(caseId).startsWith('staging-')) {
+        alert('Save the case first before adding a study.');
+        return;
+    }
+    var prog = document.getElementById('caseDicomR2Progress');
+    if (prog) prog.style.display = 'none';
+    document.getElementById('caseDicomR2Error').style.display = 'none';
+    document.getElementById('caseDicomR2Success').style.display = 'none';
+    document.getElementById('caseDicomR2DuplicateWarning').style.display = 'none';
+    document.querySelectorAll('#caseDicomR2PlansContainer input[type="file"]').forEach(i => { i.value = ''; });
+    _caseDicomR2FolderSeries = {};
+    document.querySelectorAll('#caseDicomR2PlansContainer .series-upload-row[data-folder="1"]').forEach(function(r) { r.remove(); });
+    document.getElementById('caseDicomR2StudyNew').checked = true;
+    document.getElementById('caseDicomR2StudyLabel').value = '';
+    document.getElementById('caseDicomR2StudySelect').disabled = true;
     fetch('/case-dicom-viewer/api/case/' + caseId + '/stack', { credentials: 'include' })
         .then(r => r.json())
         .then(data => {
-            if (data.has_stack && data.plans && Object.keys(data.plans).length > 0) {
-                statusEl.innerHTML = '<i class="fas fa-check text-success me-1"></i>Image stack linked (' + Object.keys(data.plans).length + ' plans)';
-                if (removeBtn) removeBtn.style.display = 'inline-block';
+            _caseDicomR2Stacks = data.stacks || [];
+            const sel = document.getElementById('caseDicomR2StudySelect');
+            sel.innerHTML = '<option value="">-- Select study --</option>';
+            _caseDicomR2Stacks.forEach(function(s) {
+                const opt = document.createElement('option');
+                opt.value = s.id;
+                opt.textContent = (s.study_label || 'Study #' + s.id) + ' (' + (s.plans || []).join(', ') + ')';
+                sel.appendChild(opt);
+            });
+        })
+        .catch(function() { _caseDicomR2Stacks = []; });
+    const modal = new bootstrap.Modal(document.getElementById('caseDicomR2UploadModal'));
+    modal.show();
+}
+
+var _imageStackDescriptionEditorInited = false;
+function updateImageStackStatus(caseId) {
+    const statusEl = document.getElementById('imageStackStatus');
+    const listEl = document.getElementById('imageStackList');
+    const descSection = document.getElementById('imageStackDescriptionSection');
+    if (!caseId) return;
+    fetch('/case-dicom-viewer/api/case/' + caseId + '/stack', { credentials: 'include' })
+        .then(r => r.json())
+        .then(data => {
+            const stacks = data.stacks || [];
+            if (data.has_stack && (stacks.length > 0 || (data.plans && Object.keys(data.plans).length > 0))) {
+                if (listEl) {
+                    listEl.innerHTML = '';
+                    if (stacks.length > 0) {
+                        const ul = document.createElement('ul');
+                        ul.className = 'list-group list-group-flush';
+                        stacks.forEach(function(s) {
+                            const li = document.createElement('li');
+                            li.className = 'list-group-item d-flex justify-content-between align-items-center py-2';
+                            const label = s.study_label || ('Study #' + s.id);
+                            li.innerHTML = '<span><i class="fas fa-layer-group text-info me-2"></i>' + label + ' (' + (s.plans || []).join(', ') + ')</span>' +
+                                '<button type="button" class="btn btn-outline-danger btn-sm" onclick="removeCaseImageStack(' + s.id + ')" title="Remove study (DB only; use R2 Bucket Manager to free storage)"><i class="fas fa-trash-alt"></i></button>';
+                            ul.appendChild(li);
+                        });
+                        listEl.appendChild(ul);
+                    }
+                }
+                if (statusEl) statusEl.innerHTML = '<i class="fas fa-check text-success me-1"></i>' + stacks.length + ' image stack(s)';
                 if (descSection) {
                     descSection.style.display = 'block';
                     initImageStackDescriptionEditor(data.description_html || '');
                 }
             } else {
-                statusEl.textContent = '';
-                if (removeBtn) removeBtn.style.display = 'none';
+                if (listEl) listEl.innerHTML = '';
+                if (statusEl) statusEl.textContent = '';
                 if (descSection) descSection.style.display = 'none';
             }
         })
-        .catch(() => {
-            statusEl.textContent = '';
-            if (removeBtn) removeBtn.style.display = 'none';
+        .catch(function() {
+            if (listEl) listEl.innerHTML = '';
+            if (statusEl) statusEl.textContent = '';
             if (descSection) descSection.style.display = 'none';
         });
 }
@@ -1078,26 +1126,18 @@ function saveImageStackDescription() {
         if (statusEl) statusEl.textContent = 'Failed: ' + (err.message || 'Unknown error');
     });
 }
-function removeCaseImageStack() {
+function removeCaseImageStack(stackId) {
     const caseId = document.getElementById('editCaseId')?.value;
     if (!caseId) return;
-    if (!confirm('Remove the image stack link for this case? The OneDrive folder will not be changed.')) return;
-    const removeBtn = document.getElementById('removeImageStackBtn');
-    if (removeBtn) removeBtn.disabled = true;
-    fetch('/case-dicom-viewer/api/case/' + caseId + '/stack', { method: 'DELETE', credentials: 'include' })
+    if (!confirm('This removes the image stack link from the case (database only). Files remain in R2.\n\nTo delete files from R2, use Admin Dashboard \u2192 R2 Bucket Manager.')) return;
+    const url = stackId ? '/case-dicom-viewer/api/case/' + caseId + '/stack?stack_id=' + stackId : '/case-dicom-viewer/api/case/' + caseId + '/stack';
+    fetch(url, { method: 'DELETE', credentials: 'include' })
         .then(r => r.json())
         .then(data => {
-            if (data.error) {
-                alert('Error: ' + data.error);
-            } else {
-                document.getElementById('imageStackStatus').textContent = '';
-                if (removeBtn) { removeBtn.style.display = 'none'; removeBtn.disabled = false; }
-            }
+            if (data.error) alert('Error: ' + data.error);
+            else if (typeof updateImageStackStatus === 'function') updateImageStackStatus(caseId);
         })
-        .catch(err => {
-            alert('Failed to remove: ' + (err.message || 'Unknown error'));
-            if (removeBtn) removeBtn.disabled = false;
-        });
+        .catch(err => alert('Failed to remove: ' + (err.message || 'Unknown error')));
 }
 document.addEventListener('DOMContentLoaded', function() {
     fetch('/case-dicom-viewer/api/status', { credentials: 'include' }).then(r => r.json()).then(data => {
@@ -1222,6 +1262,220 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     const saveDescBtn = document.getElementById('saveImageStackDescriptionBtn');
     if (saveDescBtn) saveDescBtn.addEventListener('click', function() { saveImageStackDescription(); });
+
+    // R2 Upload modal
+    function _naturalSortKey(s) {
+        return (s || '').split(/(\d+)/).map(function(p) { var n = parseInt(p, 10); return isNaN(n) ? p.toLowerCase() : n; });
+    }
+    function _sanitizeSeriesName(folderName) {
+        var s = (folderName || '').replace(/[^a-zA-Z0-9 _-]/g, '_').replace(/\s+/g, ' ').trim();
+        if (!/^[a-zA-Z0-9]/.test(s)) s = 's_' + s;
+        return s || 'folder';
+    }
+    document.getElementById('caseDicomR2StudyNew')?.addEventListener('change', function() {
+        document.getElementById('caseDicomR2StudySelect').disabled = true;
+        document.getElementById('caseDicomR2StudyLabel').disabled = false;
+        document.getElementById('caseDicomR2DuplicateWarning').style.display = 'none';
+    });
+    document.getElementById('caseDicomR2StudyExisting')?.addEventListener('change', function() {
+        document.getElementById('caseDicomR2StudySelect').disabled = _caseDicomR2Stacks.length === 0;
+        document.getElementById('caseDicomR2StudyLabel').disabled = true;
+        document.getElementById('caseDicomR2DuplicateWarning').style.display = 'none';
+    });
+    document.getElementById('caseDicomR2StudyLabel')?.addEventListener('input', function() {
+        var label = (this.value || '').trim();
+        var dup = _caseDicomR2Stacks.some(function(s) { return (s.study_label || '').toLowerCase() === label.toLowerCase(); });
+        document.getElementById('caseDicomR2DuplicateWarning').style.display = dup && label ? 'block' : 'none';
+    });
+    const addPlanBtn = document.getElementById('caseDicomR2AddPlanBtn');
+    if (addPlanBtn) {
+        addPlanBtn.addEventListener('click', function() {
+            const name = (prompt('Series name (e.g. T1 axial, axial contrast, sagittal):') || '').trim();
+            if (!name || !/^[a-zA-Z0-9][a-zA-Z0-9 _-]*$/.test(name)) {
+                if (name) alert('Series name must start with a letter or number. Use letters, numbers, spaces, underscore, hyphen (e.g. T1 axial, axial contrast).');
+                return;
+            }
+            const container = document.getElementById('caseDicomR2PlansContainer');
+            if (container.querySelector('[data-plan="' + name.replace(/"/g, '\\"') + '"]')) {
+                alert('Series "' + name + '" already exists.');
+                return;
+            }
+            const div = document.createElement('div');
+            div.className = 'case-dicom-field series-upload-row';
+            div.setAttribute('data-plan', name);
+            div.innerHTML = '<label class="form-label">Series: ' + name + '</label><input type="file" class="form-control" accept="image/*" multiple name="' + name.replace(/"/g, '&quot;') + '">';
+            container.appendChild(div);
+        });
+    }
+    const folderBtn = document.getElementById('caseDicomR2FolderBtn');
+    const folderInput = document.getElementById('caseDicomR2FolderInput');
+    if (folderBtn && folderInput) {
+        folderBtn.addEventListener('click', function() { folderInput.click(); });
+        folderInput.addEventListener('change', function() {
+            var files = this.files;
+            if (!files || files.length === 0) return;
+            var first = files[0];
+            var folderName = (first.webkitRelativePath || first.name || '').split('/')[0] || 'folder';
+            var seriesName = _sanitizeSeriesName(folderName);
+            var container = document.getElementById('caseDicomR2PlansContainer');
+            if (container.querySelector('[data-plan="' + seriesName.replace(/"/g, '\\"') + '"]')) {
+                seriesName = seriesName + '_' + Date.now().toString(36);
+            }
+            var arr = [];
+            for (var i = 0; i < files.length; i++) {
+                var fn = files[i].name || '';
+                if (/\.(jpe?g|png|gif|bmp|webp|tiff?)$/i.test(fn)) arr.push(files[i]);
+            }
+            arr.sort(function(a, b) {
+                var ka = _naturalSortKey(a.name), kb = _naturalSortKey(b.name);
+                for (var i = 0; i < Math.max(ka.length, kb.length); i++) {
+                    var x = ka[i], y = kb[i];
+                    if (typeof x === 'number' && typeof y === 'number') { if (x !== y) return x - y; }
+                    else { var c = String(x).localeCompare(String(y)); if (c !== 0) return c; }
+                }
+                return 0;
+            });
+            _caseDicomR2FolderSeries[seriesName] = arr;
+            var div = document.createElement('div');
+            div.className = 'case-dicom-field series-upload-row';
+            div.setAttribute('data-plan', seriesName);
+            div.setAttribute('data-folder', '1');
+            div.innerHTML = '<label class="form-label">Series: ' + seriesName + ' <span class="text-muted">(' + arr.length + ' files from folder)</span></label> <button type="button" class="folder-remove-btn">Remove</button>';
+            div.querySelector('.folder-remove-btn').addEventListener('click', function() {
+                delete _caseDicomR2FolderSeries[seriesName];
+                div.remove();
+            });
+            container.appendChild(div);
+            folderInput.value = '';
+        });
+    }
+    const r2UploadBtn = document.getElementById('caseDicomR2UploadBtn');
+    if (r2UploadBtn) {
+        r2UploadBtn.addEventListener('click', function() {
+            const caseId = document.getElementById('editCaseId')?.value;
+            if (!caseId) return;
+            const rows = document.querySelectorAll('#caseDicomR2PlansContainer .series-upload-row');
+            const fd = new FormData();
+            let hasFiles = false;
+            rows.forEach(function(row) {
+                const plan = row.getAttribute('data-plan');
+                if (row.getAttribute('data-folder') === '1') {
+                    var folderFiles = _caseDicomR2FolderSeries[plan];
+                    if (folderFiles) {
+                        for (var i = 0; i < folderFiles.length; i++) {
+                            fd.append(plan, folderFiles[i]);
+                            hasFiles = true;
+                        }
+                    }
+                } else {
+                    const input = row.querySelector('input[type="file"]');
+                    if (!input || !input.files) return;
+                    for (let i = 0; i < input.files.length; i++) {
+                        fd.append(plan, input.files[i]);
+                        hasFiles = true;
+                    }
+                }
+            });
+            if (!hasFiles) {
+                document.getElementById('caseDicomR2Error').textContent = 'Select at least one image file.';
+                document.getElementById('caseDicomR2Error').style.display = 'block';
+                return;
+            }
+            var studyMode = document.querySelector('input[name="caseDicomR2StudyMode"]:checked')?.value;
+            var stackId = null;
+            var studyLabel = '';
+            if (studyMode === 'existing') {
+                stackId = document.getElementById('caseDicomR2StudySelect')?.value;
+                if (!stackId) {
+                    document.getElementById('caseDicomR2Error').textContent = 'Select an existing study.';
+                    document.getElementById('caseDicomR2Error').style.display = 'block';
+                    return;
+                }
+            } else {
+                studyLabel = (document.getElementById('caseDicomR2StudyLabel')?.value || '').trim();
+                if (!studyLabel) {
+                    document.getElementById('caseDicomR2Error').textContent = 'Enter a study label for new study.';
+                    document.getElementById('caseDicomR2Error').style.display = 'block';
+                    return;
+                }
+            }
+            fd.append('study_label', studyLabel);
+            if (stackId) fd.append('stack_id', stackId);
+            r2UploadBtn.disabled = true;
+            r2UploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Uploading...';
+            document.getElementById('caseDicomR2Error').style.display = 'none';
+            document.getElementById('caseDicomR2Success').style.display = 'none';
+            var progressEl = document.getElementById('caseDicomR2Progress');
+            var progressBar = document.getElementById('caseDicomR2ProgressBar');
+            var progressText = document.getElementById('caseDicomR2ProgressText');
+            var progressBytes = document.getElementById('caseDicomR2ProgressBytes');
+            progressEl.style.display = 'block';
+            progressBar.style.width = '0%';
+            progressBar.setAttribute('aria-valuenow', 0);
+            progressText.textContent = 'Preparing…';
+            progressBytes.textContent = 'Starting upload';
+            var progInterval = setInterval(function() {
+                if (progressText.textContent === 'Preparing…') {
+                    progressText.textContent = 'Sending to server…';
+                    progressBytes.textContent = 'Upload in progress';
+                }
+            }, 200);
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', '/case-dicom-viewer/api/case/' + caseId + '/stack/upload');
+            xhr.withCredentials = true;
+            xhr.upload.addEventListener('progress', function(e) {
+                if (e.lengthComputable) {
+                    var pct = Math.round((e.loaded / e.total) * 100);
+                    progressBar.style.width = pct + '%';
+                    progressBar.setAttribute('aria-valuenow', pct);
+                    progressText.textContent = 'Sending to server… ' + pct + '%';
+                    var loadedMB = (e.loaded / (1024 * 1024)).toFixed(1);
+                    var totalMB = (e.total / (1024 * 1024)).toFixed(1);
+                    progressBytes.textContent = loadedMB + ' / ' + totalMB + ' MB';
+                } else {
+                    var loadedMB = (e.loaded / (1024 * 1024)).toFixed(1);
+                    progressText.textContent = 'Sending to server…';
+                    progressBytes.textContent = loadedMB + ' MB sent';
+                }
+            });
+            xhr.addEventListener('load', function() {
+                clearInterval(progInterval);
+                progressEl.style.display = 'none';
+                r2UploadBtn.disabled = false;
+                r2UploadBtn.innerHTML = '<i class="fas fa-upload me-1"></i>Upload';
+                var data = {};
+                try { data = JSON.parse(xhr.responseText || '{}'); } catch (e) {}
+                if (xhr.status >= 200 && xhr.status < 300 && data.stack_id) {
+                    document.getElementById('caseDicomR2Success').textContent = (data.message || 'Study uploaded') + '. Series: ' + (data.plans || []).join(', ');
+                    document.getElementById('caseDicomR2Success').style.display = 'block';
+                    if (typeof updateImageStackStatus === 'function') updateImageStackStatus(caseId);
+                    setTimeout(function() {
+                        if (typeof updateImageStackStatus === 'function') updateImageStackStatus(caseId);
+                        bootstrap.Modal.getInstance(document.getElementById('caseDicomR2UploadModal')).hide();
+                    }, 1500);
+                } else {
+                    var errMsg = (data.error) || (xhr.status >= 500 ? 'Server error (' + xhr.status + '). Check terminal.' : 'Upload failed');
+                    document.getElementById('caseDicomR2Error').textContent = errMsg;
+                    document.getElementById('caseDicomR2Error').style.display = 'block';
+                }
+            });
+            xhr.addEventListener('error', function() {
+                clearInterval(progInterval);
+                progressEl.style.display = 'none';
+                r2UploadBtn.disabled = false;
+                r2UploadBtn.innerHTML = '<i class="fas fa-upload me-1"></i>Upload';
+                document.getElementById('caseDicomR2Error').textContent = 'Upload failed—connection may have timed out. Try fewer files or one series at a time.';
+                document.getElementById('caseDicomR2Error').style.display = 'block';
+            });
+            xhr.addEventListener('abort', function() {
+                clearInterval(progInterval);
+                progressEl.style.display = 'none';
+                r2UploadBtn.disabled = false;
+                r2UploadBtn.innerHTML = '<i class="fas fa-upload me-1"></i>Upload';
+            });
+            xhr.send(fd);
+        });
+    }
 });
 </script>
 <script>
@@ -1458,7 +1712,7 @@ function initializeDiscussionEditor() {
         autoresize_bottom_margin: 50,
         menubar: 'edit view insert format tools',
         toolbar: 'undo redo | blocks | bold italic underline strikethrough | numlist bullist indent outdent | table link image code removeformat cleanuphtml',
-        plugins: 'table link image code autoresize paste',
+        plugins: 'table link image code autoresize',
         // Use CDN for assets (themes, skins, etc.) since we only have the minified JS locally
         base_url: 'https://cdn.jsdelivr.net/npm/tinymce@6',
         // CRITICAL: Prevent TinyMCE from converting absolute URLs to relative
@@ -1470,12 +1724,7 @@ function initializeDiscussionEditor() {
         remove_trailing_brs: true,
         remove_linebreaks: false,
         apply_source_formatting: false,
-        // Use TinyMCE's built-in paste handling
-        paste_as_text: false,
-        paste_word_valid_elements: 'p,br,strong,em,u,ol,ul,li,a[href],table,tr,td,th',
-        paste_auto_cleanup_on_paste: true,
-        paste_remove_styles: false, // Keep styles, CSS will handle link styling
-        paste_remove_styles_if_webkit: false,
+        // TinyMCE 6: paste is core; deprecated options (paste_word_valid_elements etc) removed
         table_advtab: false,
         table_cell_advtab: false,
         table_default_attributes: {
@@ -1832,10 +2081,10 @@ function initializeNewStandaloneCase() {
     // Mark as new case
     document.getElementById('editCaseId').value = 'new';
     var statusEl = document.getElementById('imageStackStatus');
-    var removeBtn = document.getElementById('removeImageStackBtn');
+    var listEl = document.getElementById('imageStackList');
     var descSection = document.getElementById('imageStackDescriptionSection');
     if (statusEl) statusEl.textContent = '';
-    if (removeBtn) removeBtn.style.display = 'none';
+    if (listEl) listEl.innerHTML = '';
     if (descSection) descSection.style.display = 'none';
 
     // Update page title and subtitle

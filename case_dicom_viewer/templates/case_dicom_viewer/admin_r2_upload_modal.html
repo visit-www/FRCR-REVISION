@@ -1,0 +1,244 @@
+{# Case DICOM Viewer - R2 direct upload modal (admin) - App style aligned with admin_link_modal #}
+<style>
+  #caseDicomR2UploadModal .modal-content {
+    background: var(--brand-bg-offwhite, #fdfdfb) !important;
+    border: 2px solid var(--brand-success, #a8d5ba) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12) !important;
+    overflow: hidden !important;
+  }
+  #caseDicomR2UploadModal .modal-header {
+    background: linear-gradient(135deg, #5E899E 0%, #4a7285 100%) !important;
+    color: #fff !important;
+    border: none !important;
+    padding: 1rem 1.25rem !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+  }
+  #caseDicomR2UploadModal .modal-header .modal-title {
+    font-weight: 600 !important;
+    font-size: 1.15rem !important;
+    color: #fff !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
+  }
+  #caseDicomR2UploadModal .modal-header .btn-close {
+    filter: brightness(0) invert(1) !important;
+    opacity: 0.9 !important;
+  }
+  #caseDicomR2UploadModal .modal-header .btn-close:hover {
+    opacity: 1 !important;
+  }
+  #caseDicomR2UploadModal .modal-body {
+    background: var(--brand-bg-offwhite, #fdfdfb) !important;
+    padding: 1.5rem 1.25rem !important;
+    color: var(--brand-text-primary, #2c3e50) !important;
+    display: block !important;
+    align-items: unset !important;
+    justify-content: unset !important;
+    min-height: unset !important;
+  }
+  #caseDicomR2UploadModal .modal-body .case-dicom-desc {
+    color: var(--brand-text-secondary, #5a6270);
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+  }
+  #caseDicomR2UploadModal .case-dicom-step {
+    background: rgba(94, 137, 158, 0.08);
+    border-left: 4px solid #5E899E;
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+    margin-bottom: 1rem;
+    border-radius: 0 8px 8px 0;
+    color: var(--brand-text-primary, #2c3e50);
+  }
+  #caseDicomR2UploadModal .case-dicom-step strong { color: #5E899E; }
+  #caseDicomR2UploadModal .case-dicom-field {
+    margin-bottom: 1.25rem;
+  }
+  #caseDicomR2UploadModal .series-upload-row {
+    background: #fff;
+    border: 2px solid #c5cad1;
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1rem;
+  }
+  #caseDicomR2UploadModal .series-upload-row label {
+    font-weight: 500;
+    color: var(--brand-text-primary, #2c3e50);
+  }
+  #caseDicomR2UploadModal .form-label {
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    color: var(--brand-text-primary, #2c3e50);
+  }
+  #caseDicomR2UploadModal .form-control {
+    border: 2px solid #c5cad1;
+    border-radius: 8px;
+    padding: 0.625rem 0.875rem;
+    font-size: 0.9rem;
+  }
+  #caseDicomR2UploadModal .form-control:focus {
+    border-color: var(--brand-success, #a8d5ba);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(168, 213, 186, 0.25);
+  }
+  #caseDicomR2UploadModal .add-series-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    font-weight: 600;
+    font-size: 0.9rem;
+    border-radius: 0.5rem;
+    border: 2px solid #5E899E;
+    color: #5E899E;
+    background: transparent;
+    transition: background 0.2s, color 0.2s;
+    margin-top: 0.5rem;
+  }
+  #caseDicomR2UploadModal .add-series-btn:hover {
+    background: #5E899E;
+    color: #fff;
+  }
+  #caseDicomR2UploadModal .series-upload-row .folder-remove-btn {
+    margin-left: 0.5rem;
+    padding: 0.2rem 0.5rem;
+    font-size: 0.75rem;
+    color: #c75002;
+    border: 1px solid rgba(233, 99, 4, 0.35);
+    border-radius: 4px;
+    background: transparent;
+    cursor: pointer;
+  }
+  #caseDicomR2UploadModal .series-upload-row .folder-remove-btn:hover {
+    background: rgba(233, 99, 4, 0.1);
+  }
+  #caseDicomR2UploadModal .case-dicom-msg {
+    padding: 0.6rem 0.875rem;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    margin-bottom: 1rem;
+  }
+  #caseDicomR2UploadModal .case-dicom-msg.info {
+    background: rgba(94, 137, 158, 0.12);
+    border: 1px solid rgba(94, 137, 158, 0.3);
+    color: var(--brand-text-primary, #2c3e50);
+  }
+  #caseDicomR2UploadModal .case-dicom-msg.error {
+    background: rgba(233, 99, 4, 0.08);
+    border: 1px solid rgba(233, 99, 4, 0.35);
+    color: #c75002;
+  }
+  #caseDicomR2UploadModal .case-dicom-msg.success {
+    background: rgba(168, 213, 186, 0.3);
+    border: 1px solid #a8d5ba;
+    color: var(--brand-text-primary, #2c3e50);
+  }
+  #caseDicomR2UploadModal .modal-footer {
+    background: #f5f5f3 !important;
+    border-top: 1px solid #c5cad1 !important;
+    padding: 1rem 1.25rem !important;
+    border-radius: 0 0 12px 12px !important;
+    display: flex !important;
+    gap: 0.75rem !important;
+    flex-wrap: wrap !important;
+  }
+  #caseDicomR2UploadModal .modal-footer .btn {
+    font-weight: 600 !important;
+    border-radius: 0.5rem !important;
+    padding: 0.5rem 1rem !important;
+  }
+  #caseDicomR2UploadModal .modal-footer .btn-secondary {
+    background: #8b94a3 !important;
+    color: #fff !important;
+    border: none !important;
+  }
+  #caseDicomR2UploadModal .modal-footer .btn-secondary:hover {
+    background: #7a8391 !important;
+    color: #fff !important;
+  }
+  #caseDicomR2UploadModal .modal-footer .btn-primary {
+    background: var(--brand-success, #a8d5ba) !important;
+    color: var(--brand-text-primary, #2c3e50) !important;
+    border: none !important;
+  }
+  #caseDicomR2UploadModal .modal-footer .btn-primary:hover {
+    background: #8bc9a3 !important;
+    color: var(--brand-text-primary, #2c3e50) !important;
+  }
+</style>
+
+<div class="modal fade" id="caseDicomR2UploadModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="fas fa-cloud-upload-alt" aria-hidden="true"></i>Add Study / Upload Images to R2</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p class="case-dicom-desc">Each <strong>Study</strong> has a label and one or more <strong>Series</strong> (e.g. axial, coronal). Upload all series for one study in one go. You can add more series later.</p>
+        <div class="case-dicom-field mb-3">
+          <label class="form-label">Study</label>
+          <div class="d-flex gap-2 flex-wrap align-items-center">
+            <input type="radio" name="caseDicomR2StudyMode" id="caseDicomR2StudyNew" value="new" checked>
+            <label for="caseDicomR2StudyNew" class="mb-0 me-2">New study</label>
+            <input type="text" id="caseDicomR2StudyLabel" class="form-control" style="max-width:220px" placeholder="e.g. CT temporal bone">
+            <span class="text-muted small">or</span>
+            <input type="radio" name="caseDicomR2StudyMode" id="caseDicomR2StudyExisting" value="existing">
+            <label for="caseDicomR2StudyExisting" class="mb-0 me-2">Add to existing:</label>
+            <select id="caseDicomR2StudySelect" class="form-select" style="max-width:200px" disabled>
+              <option value="">-- Select study --</option>
+            </select>
+          </div>
+          <div id="caseDicomR2DuplicateWarning" class="case-dicom-msg mt-2" style="display:none; background: rgba(255, 193, 7, 0.2); border: 1px solid #ffc107; color: #856404;">
+            <i class="fas fa-exclamation-triangle me-1"></i>A study with this name already exists for this case.
+          </div>
+        </div>
+        <div class="case-dicom-step">
+          <strong>Series:</strong> Add custom names (T1 axial, axial contrast, sagittal). Pick files or <strong>select a whole folder</strong>. Files are stored in filename order. <strong>For 500+ images:</strong> upload one series at a time.
+        </div>
+        <input type="file" id="caseDicomR2FolderInput" webkitdirectory directory multiple accept="image/*" style="display:none">
+        <div id="caseDicomR2PlansContainer">
+          <div class="case-dicom-field series-upload-row" data-plan="T1 axial">
+            <label class="form-label">Series: T1 axial</label>
+            <input type="file" class="form-control" accept="image/*" multiple name="T1 axial">
+          </div>
+          <div class="case-dicom-field series-upload-row" data-plan="axial contrast">
+            <label class="form-label">Series: axial contrast</label>
+            <input type="file" class="form-control" accept="image/*" multiple name="axial contrast">
+          </div>
+          <div class="case-dicom-field series-upload-row" data-plan="sagittal">
+            <label class="form-label">Series: sagittal</label>
+            <input type="file" class="form-control" accept="image/*" multiple name="sagittal">
+          </div>
+        </div>
+        <button type="button" class="btn add-series-btn" id="caseDicomR2AddPlanBtn">
+          <i class="fas fa-plus" aria-hidden="true"></i>Add another series
+        </button>
+        <button type="button" class="btn add-series-btn" id="caseDicomR2FolderBtn" style="margin-left:0.5rem;">
+          <i class="fas fa-folder-open" aria-hidden="true"></i>Add series from folder
+        </button>
+        <div id="caseDicomR2Progress" class="mt-3" style="display: none;">
+          <div class="d-flex justify-content-between small text-muted mb-1">
+            <span id="caseDicomR2ProgressText">Sending to server… 0%</span>
+            <span id="caseDicomR2ProgressBytes">0 / 0 MB</span>
+          </div>
+          <div class="progress" style="height: 8px;">
+            <div id="caseDicomR2ProgressBar" class="progress-bar bg-primary" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+          </div>
+        </div>
+        <div id="caseDicomR2Error" class="case-dicom-msg error" style="display: none;"></div>
+        <div id="caseDicomR2Success" class="case-dicom-msg success" style="display: none;"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="caseDicomR2UploadBtn">
+          <i class="fas fa-upload" aria-hidden="true"></i>Upload
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1531,6 +1531,71 @@ def clear_tnm_references(disease_site_id):
 
 
 # ============================================================================
+# R2 BUCKET MANAGEMENT (Admin only)
+# ============================================================================
+
+@admin_bp.route('/r2/list', methods=['GET'])
+@require_admin
+def r2_list_objects():
+    """List objects and folders in R2 bucket. Query: prefix, delimiter, max_keys, continuation_token."""
+    try:
+        from case_dicom_viewer.r2_service import list_objects as r2_list, is_configured
+        if not is_configured():
+            return jsonify({'error': 'R2 not configured'}), 503
+        prefix = request.args.get('prefix', '')
+        delimiter = request.args.get('delimiter', '/')
+        max_keys = min(int(request.args.get('max_keys', 1000)), 1000)
+        token = request.args.get('continuation_token') or None
+        result = r2_list(prefix=prefix, delimiter=delimiter, max_keys=max_keys, continuation_token=token)
+        return jsonify(result), 200
+    except Exception as e:
+        logger.exception("R2 list error: %s", e)
+        return jsonify({'error': str(e)[:500]}), 500
+
+
+@admin_bp.route('/r2/delete', methods=['POST'])
+@require_admin
+def r2_delete_objects():
+    """
+    Delete objects from R2. Body: { "prefix": "cases/123/abc/" } OR { "keys": ["key1", "key2"] }.
+    Use prefix to delete a folder and all contents.
+    """
+    try:
+        from case_dicom_viewer.r2_service import delete_prefix, delete_objects, is_configured
+        if not is_configured():
+            return jsonify({'error': 'R2 not configured'}), 503
+        data = request.get_json() or {}
+        prefix = data.get('prefix')
+        keys = data.get('keys', [])
+        delete_all = data.get('delete_all', False)
+
+        if delete_all:
+            deleted_count, errors = delete_prefix("")
+            return jsonify({
+                'deleted': deleted_count,
+                'errors': errors[:20],
+                'message': f'Deleted {deleted_count} object(s). Bucket emptied.'
+            }), 200
+        if prefix is not None:
+            deleted_count, errors = delete_prefix(prefix)
+            msg = f'Deleted {deleted_count} object(s)' + (f' under {prefix}' if prefix else '. Bucket emptied.')
+            return jsonify({'deleted': deleted_count, 'errors': errors[:20], 'message': msg}), 200
+        elif keys:
+            deleted, errors = delete_objects(keys)
+            return jsonify({
+                'deleted': deleted,
+                'deleted_keys': deleted,
+                'errors': errors[:20],
+                'message': f'Deleted {len(deleted)} object(s)'
+            }), 200
+        else:
+            return jsonify({'error': 'Provide prefix or keys in JSON body'}), 400
+    except Exception as e:
+        logger.exception("R2 delete error: %s", e)
+        return jsonify({'error': str(e)[:500]}), 500
+
+
+# ============================================================================
 # ERROR HANDLERS
 # ============================================================================
 

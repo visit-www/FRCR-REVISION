@@ -1,0 +1,1916 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Oropharyngeal Cancer Staging - Interactive Algorithm</title>
+    <style>
+        :root {
+            --brand-primary: #e96304;
+            --brand-secondary: #ffc107;
+            --brand-success: #a8d5ba;
+            --brand-neutral: #5E899E;
+            --brand-text-primary: #2c3e50;
+            --brand-text-secondary: #5a6270;
+            --brand-text-light: #8b94a3;
+            --brand-bg-white: #ffffff;
+            --brand-bg-offwhite: #fdfdfb;
+            --brand-border: #c5cad1;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: var(--brand-bg-offwhite);
+            color: var(--brand-text-primary);
+            line-height: 1.6;
+            padding: 20px;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #5E899E 0%, #4a7285 100%);
+            color: white;
+            padding: 30px 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1rem;
+            opacity: 0.95;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .intro-card {
+            background: var(--brand-bg-white);
+            border: 1px solid var(--brand-border);
+            border-radius: 8px;
+            padding: 25px;
+            margin-bottom: 25px;
+        }
+
+        .intro-card h2 {
+            font-size: 1.5rem;
+            color: var(--brand-text-primary);
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        .hpv-selector {
+            background: var(--brand-bg-offwhite);
+            border-left: 3px solid var(--brand-primary);
+            padding: 20px;
+            border-radius: 4px;
+            margin-bottom: 25px;
+        }
+
+        .hpv-selector h3 {
+            font-size: 1.25rem;
+            margin-bottom: 15px;
+            color: var(--brand-text-primary);
+        }
+
+        .hpv-buttons {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-primary {
+            background: var(--brand-primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #d15804;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(233, 99, 4, 0.3);
+        }
+
+        .btn-success {
+            background: var(--brand-success);
+            color: var(--brand-text-primary);
+        }
+
+        .btn-success:hover {
+            background: #93c4a8;
+            transform: translateY(-2px);
+        }
+
+        .btn-neutral {
+            background: var(--brand-neutral);
+            color: white;
+        }
+
+        .btn-neutral:hover {
+            background: #4a7285;
+            transform: translateY(-2px);
+        }
+
+        .btn-outline {
+            background: transparent;
+            color: var(--brand-text-secondary);
+            border: 2px solid var(--brand-border);
+        }
+
+        .btn-outline:hover {
+            border-color: var(--brand-neutral);
+            color: var(--brand-neutral);
+        }
+
+        .btn.active {
+            box-shadow: 0 0 0 3px rgba(233, 99, 4, 0.3);
+        }
+
+        .staging-section {
+            margin-bottom: 30px;
+        }
+
+        .stage-card {
+            background: var(--brand-bg-white);
+            border: 1px solid var(--brand-border);
+            border-radius: 8px;
+            margin-bottom: 20px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .stage-card.completed {
+            opacity: 0.6;
+            border-left: 4px solid var(--brand-success);
+        }
+
+        .stage-card.active {
+            border-left: 4px solid var(--brand-primary);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .stage-header {
+            background: var(--brand-bg-offwhite);
+            padding: 15px 20px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--brand-border);
+        }
+
+        .stage-header:hover {
+            background: #f5f5f3;
+        }
+
+        .stage-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--brand-text-primary);
+        }
+
+        .stage-badge {
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 0.75em;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .badge-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .badge-warning {
+            background: var(--brand-secondary);
+            color: var(--brand-text-primary);
+        }
+
+        .badge-info {
+            background: var(--brand-neutral);
+            color: white;
+        }
+
+        .badge-success {
+            background: var(--brand-success);
+            color: var(--brand-text-primary);
+        }
+
+        .stage-content {
+            padding: 20px;
+            display: none;
+        }
+
+        .stage-content.show {
+            display: block;
+        }
+
+        .teaching-point {
+            background: #fff3cd;
+            border-left: 3px solid var(--brand-secondary);
+            padding: 12px 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+            font-size: 0.95em;
+        }
+
+        .teaching-point strong {
+            color: var(--brand-primary);
+        }
+
+        .checklist {
+            list-style: none;
+            margin: 15px 0;
+        }
+
+        .checklist-item {
+            padding: 12px;
+            margin: 8px 0;
+            background: var(--brand-bg-offwhite);
+            border: 1px solid var(--brand-border);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .checklist-item:hover {
+            border-color: var(--brand-neutral);
+            background: #f5f5f3;
+        }
+
+        .checklist-item.checked {
+            background: #e8f5e9;
+            border-color: var(--brand-success);
+        }
+
+        .checklist-item.checked-positive {
+            background: #ffebee;
+            border-color: #dc3545;
+        }
+
+        .checkbox {
+            width: 24px;
+            height: 24px;
+            border: 2px solid var(--brand-border);
+            border-radius: 4px;
+            margin-right: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            font-size: 16px;
+            transition: all 0.2s ease;
+        }
+
+        .checklist-item.checked .checkbox {
+            background: var(--brand-success);
+            border-color: var(--brand-success);
+            color: white;
+        }
+
+        .checklist-item.checked-positive .checkbox {
+            background: #dc3545;
+            border-color: #dc3545;
+            color: white;
+        }
+
+        .decision-buttons {
+            display: flex;
+            gap: 15px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+
+        .imaging-tips {
+            background: var(--brand-bg-offwhite);
+            border-left: 3px solid var(--brand-neutral);
+            padding: 15px;
+            border-radius: 4px;
+            margin: 15px 0;
+        }
+
+        .imaging-tips h4 {
+            color: var(--brand-neutral);
+            margin-bottom: 10px;
+            font-size: 1rem;
+        }
+
+        .result-card {
+            background: linear-gradient(135deg, var(--brand-neutral) 0%, #4a7285 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 8px;
+            margin-top: 30px;
+            display: none;
+        }
+
+        .result-card.show {
+            display: block;
+        }
+
+        .result-card h2 {
+            font-size: 1.75rem;
+            margin-bottom: 15px;
+        }
+
+        .result-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .result-item {
+            background: rgba(255,255,255,0.15);
+            padding: 15px;
+            border-radius: 6px;
+        }
+
+        .result-item strong {
+            display: block;
+            font-size: 0.85em;
+            opacity: 0.9;
+            margin-bottom: 5px;
+        }
+
+        .result-value {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .pitfall-box {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 15px 0;
+        }
+
+        .pitfall-box h4 {
+            color: var(--brand-primary);
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .mnemonic {
+            background: var(--brand-bg-white);
+            border: 2px solid var(--brand-primary);
+            padding: 15px;
+            border-radius: 6px;
+            margin: 15px 0;
+            text-align: center;
+        }
+
+        .mnemonic h4 {
+            color: var(--brand-primary);
+            margin-bottom: 10px;
+        }
+
+        .mnemonic-letters {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--brand-neutral);
+            margin: 10px 0;
+        }
+
+        .progress-bar {
+            background: var(--brand-border);
+            height: 8px;
+            border-radius: 4px;
+            margin: 20px 0;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            background: linear-gradient(90deg, var(--brand-primary) 0%, var(--brand-success) 100%);
+            height: 100%;
+            transition: width 0.3s ease;
+            border-radius: 4px;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.5rem;
+            }
+            
+            .btn {
+                padding: 10px 16px;
+                font-size: 13px;
+            }
+            
+            .result-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .measurement-input {
+            margin: 15px 0;
+        }
+
+        .measurement-input label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: var(--brand-text-primary);
+        }
+
+        .measurement-input input {
+            width: 100%;
+            max-width: 200px;
+            padding: 10px;
+            border: 2px solid var(--brand-border);
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .measurement-input input:focus {
+            outline: none;
+            border-color: var(--brand-neutral);
+        }
+
+        .calculator-form {
+            background: var(--brand-bg-white);
+            border: 1px solid var(--brand-border);
+            border-radius: 8px;
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+
+        .form-section {
+            margin-bottom: 35px;
+            padding-bottom: 25px;
+            border-bottom: 2px solid var(--brand-bg-offwhite);
+        }
+
+        .form-section:last-child {
+            border-bottom: none;
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            color: var(--brand-text-primary);
+            margin-bottom: 20px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 12px;
+            font-size: 1rem;
+        }
+
+        .form-label strong {
+            color: var(--brand-text-primary);
+            font-size: 1.05rem;
+        }
+
+        .help-text {
+            display: block;
+            font-size: 0.85em;
+            color: var(--brand-text-light);
+            font-weight: 400;
+            margin-top: 3px;
+        }
+
+        .radio-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .radio-option {
+            display: flex;
+            align-items: center;
+            padding: 12px 15px;
+            background: var(--brand-bg-offwhite);
+            border: 2px solid var(--brand-border);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .radio-option:hover {
+            border-color: var(--brand-neutral);
+            background: #f5f5f3;
+        }
+
+        .radio-option input[type="radio"] {
+            margin-right: 12px;
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        .radio-option input[type="radio"]:checked {
+            accent-color: var(--brand-primary);
+        }
+
+        .radio-option:has(input:checked) {
+            border-color: var(--brand-primary);
+            background: rgba(233, 99, 4, 0.05);
+        }
+
+        .checkbox-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .checkbox-option {
+            display: flex;
+            align-items: flex-start;
+            padding: 10px 12px;
+            background: var(--brand-bg-offwhite);
+            border: 1px solid var(--brand-border);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .checkbox-option:hover {
+            border-color: var(--brand-neutral);
+            background: #f5f5f3;
+        }
+
+        .checkbox-option input[type="checkbox"] {
+            margin-right: 10px;
+            margin-top: 3px;
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .checkbox-option input[type="checkbox"]:checked {
+            accent-color: var(--brand-primary);
+        }
+
+        .checkbox-option:has(input:checked) {
+            border-color: var(--brand-primary);
+            background: rgba(233, 99, 4, 0.05);
+        }
+
+        .input-with-unit {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .input-with-unit input {
+            flex: 0 0 150px;
+            padding: 12px;
+            border: 2px solid var(--brand-border);
+            border-radius: 6px;
+            font-size: 16px;
+        }
+
+        .input-with-unit input:focus {
+            outline: none;
+            border-color: var(--brand-neutral);
+        }
+
+        .input-with-unit .unit {
+            font-weight: 600;
+            color: var(--brand-text-secondary);
+        }
+
+        .node-counter {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .counter-item {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .counter-item label {
+            font-weight: 500;
+            color: var(--brand-text-secondary);
+            font-size: 0.95em;
+        }
+
+        .counter-item input {
+            padding: 10px;
+            border: 2px solid var(--brand-border);
+            border-radius: 6px;
+            font-size: 16px;
+            width: 100px;
+        }
+
+        .counter-item input:focus {
+            outline: none;
+            border-color: var(--brand-neutral);
+        }
+
+        .calculate-section {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 30px;
+            padding-top: 25px;
+            border-top: 2px solid var(--brand-bg-offwhite);
+        }
+
+        .btn-large {
+            padding: 16px 40px;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Oropharyngeal Cancer Staging Calculator</h1>
+            <p>Quick TNM Stage Calculator for CT/MRI - MDT Ready</p>
+        </div>
+
+        <div class="intro-card">
+            <h2>Fast Track Staging</h2>
+            <p style="margin-bottom: 15px;">Fill in your imaging findings below and get instant TNM staging. Perfect for MDT prep or quick reference during reporting.</p>
+            <p style="color: var(--brand-text-secondary); font-size: 0.95em;">
+                <strong>How it works:</strong> Answer the key questions, hit Calculate, and get your complete stage with reasoning. Based on AJCC 8th Edition.
+            </p>
+        </div>
+
+        <!-- CALCULATOR FORM -->
+        <div class="calculator-form">
+            <!-- HPV Status -->
+            <div class="form-section">
+                <h3 class="section-title">1. HPV Status</h3>
+                <div class="form-group">
+                    <label class="form-label">
+                        <strong>HPV/p16 Status:</strong>
+                        <span class="help-text">Critical - different staging systems!</span>
+                    </label>
+                    <div class="radio-group">
+                        <label class="radio-option">
+                            <input type="radio" name="hpvStatus" value="positive" onchange="updateCalculator()">
+                            <span>HPV-Positive (p16+)</span>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="hpvStatus" value="negative" onchange="updateCalculator()">
+                            <span>HPV-Negative (p16-)</span>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="hpvStatus" value="unknown" onchange="updateCalculator()">
+                            <span>Unknown (will use HPV-)</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- T STAGING -->
+            <div class="form-section">
+                <h3 class="section-title">2. T Stage: Primary Tumor</h3>
+                
+                <div class="form-group">
+                    <label class="form-label">
+                        <strong>T4b Features (Unresectable):</strong>
+                        <span class="help-text">If ANY present → Automatic T4b</span>
+                    </label>
+                    <div class="checkbox-group">
+                        <label class="checkbox-option">
+                            <input type="checkbox" id="t4b_prevertebral" onchange="updateCalculator()">
+                            <span>Prevertebral fascia invasion</span>
+                        </label>
+                        <label class="checkbox-option">
+                            <input type="checkbox" id="t4b_carotid" onchange="updateCalculator()">
+                            <span>Carotid artery encasement >270°</span>
+                        </label>
+                        <label class="checkbox-option">
+                            <input type="checkbox" id="t4b_skull" onchange="updateCalculator()">
+                            <span>Skull base invasion (clivus, pterygoid plates)</span>
+                        </label>
+                        <label class="checkbox-option">
+                            <input type="checkbox" id="t4b_mediastinum" onchange="updateCalculator()">
+                            <span>Mediastinal extension</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group" id="t4aGroup">
+                    <label class="form-label">
+                        <strong>T4a Features (Resectable but advanced):</strong>
+                        <span class="help-text">If ANY present → T4a</span>
+                    </label>
+                    <div class="checkbox-group">
+                        <label class="checkbox-option">
+                            <input type="checkbox" id="t4a_larynx" onchange="updateCalculator()">
+                            <span>Larynx invasion (epiglottis, arytenoids, cartilage)</span>
+                        </label>
+                        <label class="checkbox-option">
+                            <input type="checkbox" id="t4a_extrinsic" onchange="updateCalculator()">
+                            <span>Extrinsic tongue muscles (genioglossus, hyoglossus, etc.)</span>
+                        </label>
+                        <label class="checkbox-option">
+                            <input type="checkbox" id="t4a_pterygoid" onchange="updateCalculator()">
+                            <span>Medial pterygoid muscle</span>
+                        </label>
+                        <label class="checkbox-option">
+                            <input type="checkbox" id="t4a_hardpalate" onchange="updateCalculator()">
+                            <span>Hard palate</span>
+                        </label>
+                        <label class="checkbox-option">
+                            <input type="checkbox" id="t4a_mandible" onchange="updateCalculator()">
+                            <span>Mandible</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group" id="sizeGroup">
+                    <label class="form-label">
+                        <strong>Tumor Size (maximum dimension):</strong>
+                        <span class="help-text">Measure on any plane, soft tissue only</span>
+                    </label>
+                    <div class="input-with-unit">
+                        <input type="number" id="tumorSize" step="0.1" min="0" placeholder="e.g., 3.5" onchange="updateCalculator()">
+                        <span class="unit">cm</span>
+                    </div>
+                </div>
+
+                <div class="form-group" id="lingualGroup" style="display: none;">
+                    <label class="checkbox-option">
+                        <input type="checkbox" id="lingualEpiglottis" onchange="updateCalculator()">
+                        <span><strong>Lingual surface of epiglottis involved?</strong> (HPV- only: automatic T3)</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- N STAGING -->
+            <div class="form-section">
+                <h3 class="section-title">3. N Stage: Lymph Nodes</h3>
+                
+                <div class="form-group">
+                    <label class="form-label">
+                        <strong>Largest Node (short axis):</strong>
+                        <span class="help-text">Perpendicular to long axis</span>
+                    </label>
+                    <div class="input-with-unit">
+                        <input type="number" id="largestNode" step="0.1" min="0" placeholder="e.g., 2.5" onchange="updateCalculator()">
+                        <span class="unit">cm</span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">
+                        <strong>Node Distribution:</strong>
+                    </label>
+                    <div class="node-counter">
+                        <div class="counter-item">
+                            <label>Ipsilateral nodes:</label>
+                            <input type="number" id="ipsiNodes" min="0" value="0" onchange="updateCalculator()">
+                        </div>
+                        <div class="counter-item">
+                            <label>Contralateral nodes:</label>
+                            <input type="number" id="contraNodes" min="0" value="0" onchange="updateCalculator()">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group" id="eneGroup">
+                    <label class="checkbox-option">
+                        <input type="checkbox" id="ene" onchange="updateCalculator()">
+                        <span><strong>Extranodal Extension (ENE) present?</strong> 
+                        <span class="help-text" id="eneHelp">(irregular margins, fat infiltration)</span></span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- M STAGING -->
+            <div class="form-section">
+                <h3 class="section-title">4. M Stage: Distant Metastases</h3>
+                
+                <div class="form-group">
+                    <label class="form-label">
+                        <strong>Any distant metastases visible?</strong>
+                        <span class="help-text">Lungs, liver, bone, etc.</span>
+                    </label>
+                    <div class="radio-group">
+                        <label class="radio-option">
+                            <input type="radio" name="distantMets" value="yes" onchange="updateCalculator()">
+                            <span>Yes - M1</span>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="distantMets" value="no" onchange="updateCalculator()" checked>
+                            <span>No - M0</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CALCULATE BUTTON -->
+            <div class="calculate-section">
+                <button class="btn btn-primary btn-large" onclick="calculateStage()">
+                    Calculate Final Stage
+                </button>
+                <button class="btn btn-outline" onclick="resetCalculator()">
+                    Reset All
+                </button>
+            </div>
+        </div>
+
+        <!-- FINAL RESULT -->
+        <div class="result-card" id="finalResult">
+            <h2>Final Staging Result</h2>
+            <div class="result-grid">
+                <div class="result-item">
+                    <strong>HPV Status</strong>
+                    <div class="result-value" id="resultHPV">-</div>
+                </div>
+                <div class="result-item">
+                    <strong>T Stage</strong>
+                    <div class="result-value" id="resultT">-</div>
+                </div>
+                <div class="result-item">
+                    <strong>N Stage</strong>
+                    <div class="result-value" id="resultN">-</div>
+                </div>
+                <div class="result-item">
+                    <strong>M Stage</strong>
+                    <div class="result-value" id="resultM">-</div>
+                </div>
+            </div>
+            <div style="margin-top: 25px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.3);">
+                <h3 style="margin-bottom: 15px;">Overall Stage Group: <span id="resultStage" style="font-size: 2rem;">-</span></h3>
+                <div id="resultReasoning" style="margin-top: 15px; padding: 15px; background: rgba(255,255,255,0.1); border-radius: 6px;">
+                </div>
+            </div>
+            <div style="margin-top: 20px;">
+                <button class="btn" style="background: white; color: var(--brand-neutral);" onclick="resetAlgorithm()">
+                    Start New Case
+                </button>
+            </div>
+        </div>
+
+        <!-- REFERENCE SECTION -->
+        <div class="reference-section">
+            <h2 class="reference-title">Quick Reference Guide</h2>
+
+            <!-- Mnemonics -->
+            <div class="reference-card">
+                <h3 class="reference-subtitle">Mnemonics to Remember</h3>
+                <div class="mnemonic-grid">
+                    <div class="mnemonic-box">
+                        <h4 style="color: var(--brand-primary); margin-bottom: 10px;">T4b - "PACE"</h4>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">P</div>
+                            <div>revertebral fascia</div>
+                        </div>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">A</div>
+                            <div>rtery (carotid encasement >270°)</div>
+                        </div>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">C</div>
+                            <div>ranium (skull base)</div>
+                        </div>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">E</div>
+                            <div>xtension (mediastinal)</div>
+                        </div>
+                    </div>
+
+                    <div class="mnemonic-box">
+                        <h4 style="color: var(--brand-primary); margin-bottom: 10px;">T4a - "HELP"</h4>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">H</div>
+                            <div>ard palate</div>
+                        </div>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">E</div>
+                            <div>xtrinsic tongue muscles</div>
+                        </div>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">L</div>
+                            <div>arynx</div>
+                        </div>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">P</div>
+                            <div>terygoid (medial)</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Size Cutoffs -->
+            <div class="reference-card">
+                <h3 class="reference-subtitle">Size-Based T Staging Quick Reference</h3>
+                <div class="size-table">
+                    <div class="size-row size-header">
+                        <div>Size</div>
+                        <div>HPV-Positive</div>
+                        <div>HPV-Negative</div>
+                    </div>
+                    <div class="size-row">
+                        <div><strong>≤2 cm</strong></div>
+                        <div>T1</div>
+                        <div>T1</div>
+                    </div>
+                    <div class="size-row">
+                        <div><strong>>2 to ≤4 cm</strong></div>
+                        <div>T2</div>
+                        <div>T2</div>
+                    </div>
+                    <div class="size-row">
+                        <div><strong>>4 cm</strong></div>
+                        <div>T3</div>
+                        <div>T3</div>
+                    </div>
+                    <div class="size-row">
+                        <div><strong>Lingual epiglottis</strong></div>
+                        <div>—</div>
+                        <div>T3 (regardless of size)</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- N Staging Comparison -->
+            <div class="reference-card">
+                <h3 class="reference-subtitle">N Staging: HPV+ vs HPV- Comparison</h3>
+                <div class="comparison-grid">
+                    <div class="comparison-column">
+                        <h4 style="background: var(--brand-success); color: white; padding: 10px; border-radius: 6px; margin-bottom: 15px;">
+                            HPV-Positive (Simpler)
+                        </h4>
+                        <div class="n-stage-item">
+                            <strong>N0:</strong> No nodes
+                        </div>
+                        <div class="n-stage-item">
+                            <strong>N1:</strong> One or more ipsilateral nodes, all ≤6 cm
+                        </div>
+                        <div class="n-stage-item">
+                            <strong>N2:</strong> Bilateral or contralateral nodes, any >3 cm but all <6 cm
+                        </div>
+                        <div class="n-stage-item">
+                            <strong>N3:</strong> Any node >6 cm
+                        </div>
+                        <div class="note-box">
+                            <strong>Note:</strong> ENE doesn't change imaging N stage for HPV+
+                        </div>
+                    </div>
+
+                    <div class="comparison-column">
+                        <h4 style="background: var(--brand-primary); color: white; padding: 10px; border-radius: 6px; margin-bottom: 15px;">
+                            HPV-Negative (Complex)
+                        </h4>
+                        <div class="n-stage-item">
+                            <strong>N0:</strong> No nodes
+                        </div>
+                        <div class="n-stage-item">
+                            <strong>N1:</strong> Single ipsilateral ≤3 cm, no ENE
+                        </div>
+                        <div class="n-stage-item">
+                            <strong>N2a:</strong> Single ipsilateral >3 to 6 cm, no ENE
+                        </div>
+                        <div class="n-stage-item">
+                            <strong>N2b:</strong> Multiple ipsilateral, all <6 cm, no ENE
+                        </div>
+                        <div class="n-stage-item">
+                            <strong>N2c:</strong> Bilateral or contralateral, all <6 cm, no ENE
+                        </div>
+                        <div class="n-stage-item">
+                            <strong>N3a:</strong> Any node with clinical ENE
+                        </div>
+                        <div class="n-stage-item">
+                            <strong>N3b:</strong> Any node >6 cm
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Imaging Tips -->
+            <div class="reference-card">
+                <h3 class="reference-subtitle">Key Imaging Tips</h3>
+                <div class="tips-grid">
+                    <div class="tip-card">
+                        <h4>Carotid Encasement</h4>
+                        <p><strong><180°:</strong> Contact only<br>
+                        <strong>180-270°:</strong> Abutment<br>
+                        <strong>>270°:</strong> Encasement (T4b)</p>
+                        <div class="tip-detail">Only >270° counts as T4b!</div>
+                    </div>
+
+                    <div class="tip-card">
+                        <h4>Node Measurement</h4>
+                        <p>Always measure <strong>SHORT AXIS</strong> (perpendicular to long axis)</p>
+                        <div class="tip-detail">
+                            • Standard threshold: >1 cm<br>
+                            • Level II: >1.5 cm acceptable
+                        </div>
+                    </div>
+
+                    <div class="tip-card">
+                        <h4>Skull Base Assessment</h4>
+                        <p>Use <strong>bone windows</strong> to check:</p>
+                        <div class="tip-detail">
+                            • Clivus<br>
+                            • Petrous apex<br>
+                            • Pterygoid plates<br>
+                            • Foramen ovale/spinosum
+                        </div>
+                    </div>
+
+                    <div class="tip-card">
+                        <h4>Tongue Muscles</h4>
+                        <p><strong>Extrinsic = T4a:</strong></p>
+                        <div class="tip-detail">
+                            • Genioglossus<br>
+                            • Hyoglossus<br>
+                            • Styloglossus<br>
+                            • Palatoglossus
+                        </div>
+                        <p style="margin-top: 8px;"><strong>Intrinsic ≠ T4a</strong></p>
+                    </div>
+
+                    <div class="tip-card">
+                        <h4>ENE Recognition</h4>
+                        <p>Look for:</p>
+                        <div class="tip-detail">
+                            • Irregular/spiculated margins<br>
+                            • Fat infiltration<br>
+                            • Matted nodes<br>
+                            • IJ thrombosis
+                        </div>
+                    </div>
+
+                    <div class="tip-card">
+                        <h4>Retropharyngeal Nodes</h4>
+                        <p><strong>Don't forget these!</strong></p>
+                        <div class="tip-detail">
+                            They count as regional nodes for oropharynx. Check the retropharyngeal space on every case.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Common Pitfalls -->
+            <div class="reference-card pitfall-card">
+                <h3 class="reference-subtitle">Common Pitfalls to Avoid</h3>
+                <div class="pitfall-list">
+                    <div class="pitfall-item">
+                        <div class="pitfall-number">1</div>
+                        <div>
+                            <strong>Not confirming HPV status</strong>
+                            <p>The staging systems are completely different. Always check pathology.</p>
+                        </div>
+                    </div>
+                    <div class="pitfall-item">
+                        <div class="pitfall-number">2</div>
+                        <div>
+                            <strong>Measuring nodes on long axis</strong>
+                            <p>Use SHORT axis only. This is the standard for nodal measurements.</p>
+                        </div>
+                    </div>
+                    <div class="pitfall-item">
+                        <div class="pitfall-number">3</div>
+                        <div>
+                            <strong>Overcalling carotid encasement</strong>
+                            <p>Contact or abutment (≤270°) is NOT T4b. Must be >270° circumferential.</p>
+                        </div>
+                    </div>
+                    <div class="pitfall-item">
+                        <div class="pitfall-number">4</div>
+                        <div>
+                            <strong>Confusing intrinsic vs extrinsic tongue muscles</strong>
+                            <p>Only EXTRINSIC muscles = T4a (genioglossus, hyoglossus, styloglossus, palatoglossus).</p>
+                        </div>
+                    </div>
+                    <div class="pitfall-item">
+                        <div class="pitfall-number">5</div>
+                        <div>
+                            <strong>Missing retropharyngeal nodes</strong>
+                            <p>These count! Systematically check the retropharyngeal space.</p>
+                        </div>
+                    </div>
+                    <div class="pitfall-item">
+                        <div class="pitfall-number">6</div>
+                        <div>
+                            <strong>Not evaluating ENE in HPV-negative</strong>
+                            <p>ENE upstages to N3a in HPV-negative disease (clinical ENE).</p>
+                        </div>
+                    </div>
+                    <div class="pitfall-item">
+                        <div class="pitfall-number">7</div>
+                        <div>
+                            <strong>Forgetting contralateral assessment</strong>
+                            <p>Bilateral/contralateral nodes significantly affect N staging.</p>
+                        </div>
+                    </div>
+                    <div class="pitfall-item">
+                        <div class="pitfall-number">8</div>
+                        <div>
+                            <strong>Including edema in tumor size</strong>
+                            <p>Measure only the enhancing soft tissue component, not surrounding edema.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Systematic Approach -->
+            <div class="reference-card">
+                <h3 class="reference-subtitle">Systematic Reading Approach</h3>
+                <div class="systematic-steps">
+                    <div class="step-item">
+                        <div class="step-number">1</div>
+                        <div>
+                            <strong>Check HPV Status First</strong>
+                            <p>Look at pathology report before starting imaging review</p>
+                        </div>
+                    </div>
+                    <div class="step-item">
+                        <div class="step-number">2</div>
+                        <div>
+                            <strong>Rule Out T4b</strong>
+                            <p>Check skull base (bone windows), carotid encasement, prevertebral fascia, mediastinum</p>
+                        </div>
+                    </div>
+                    <div class="step-item">
+                        <div class="step-number">3</div>
+                        <div>
+                            <strong>Rule Out T4a</strong>
+                            <p>Check larynx, extrinsic tongue muscles, medial pterygoid, hard palate, mandible</p>
+                        </div>
+                    </div>
+                    <div class="step-item">
+                        <div class="step-number">4</div>
+                        <div>
+                            <strong>Measure Tumor Size</strong>
+                            <p>Maximum dimension in any plane on post-contrast images</p>
+                        </div>
+                    </div>
+                    <div class="step-item">
+                        <div class="step-number">5</div>
+                        <div>
+                            <strong>Systematic Nodal Survey</strong>
+                            <p>Levels I-VII + retropharyngeal. Measure short axis, count nodes, assess laterality</p>
+                        </div>
+                    </div>
+                    <div class="step-item">
+                        <div class="step-number">6</div>
+                        <div>
+                            <strong>Look for ENE</strong>
+                            <p>Irregular margins, fat infiltration, matted nodes (matters for HPV-)</p>
+                        </div>
+                    </div>
+                    <div class="step-item">
+                        <div class="step-number">7</div>
+                        <div>
+                            <strong>Check for Distant Mets</strong>
+                            <p>Visible lungs, liver, bones on current study</p>
+                        </div>
+                    </div>
+                    <div class="step-item">
+                        <div class="step-number">8</div>
+                        <div>
+                            <strong>Calculate Final Stage</strong>
+                            <p>Use this calculator or reference tables</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="reference-footer">
+                <p style="color: var(--brand-text-secondary); text-align: center; font-size: 0.9em;">
+                    Based on AJCC 8th Edition Staging Manual for Oropharyngeal Squamous Cell Carcinoma<br>
+                    <strong>Always correlate with clinical findings and discuss complex cases at MDT</strong>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global state
+        let calculatorData = {
+            hpvStatus: null,
+            t4bFeatures: [],
+            t4aFeatures: [],
+            tumorSize: null,
+            lingualEpiglottis: false,
+            largestNode: null,
+            ipsiNodes: 0,
+            contraNodes: 0,
+            ene: false,
+            distantMets: false
+        };
+
+        function updateCalculator() {
+            // Get HPV status
+            const hpvRadios = document.querySelectorAll('input[name="hpvStatus"]');
+            hpvRadios.forEach(radio => {
+                if (radio.checked) {
+                    calculatorData.hpvStatus = radio.value;
+                }
+            });
+
+            // Show/hide lingual epiglottis based on HPV status
+            if (calculatorData.hpvStatus === 'negative' || calculatorData.hpvStatus === 'unknown') {
+                document.getElementById('lingualGroup').style.display = 'block';
+            } else {
+                document.getElementById('lingualGroup').style.display = 'none';
+            }
+
+            // Update ENE help text
+            const eneHelp = document.getElementById('eneHelp');
+            if (calculatorData.hpvStatus === 'negative' || calculatorData.hpvStatus === 'unknown') {
+                eneHelp.textContent = '(Only matters for clinical ENE in HPV-)';
+            } else {
+                eneHelp.textContent = '(ENE doesn\'t change imaging N stage for HPV+)';
+            }
+
+            // Collect T4b features
+            calculatorData.t4bFeatures = [];
+            if (document.getElementById('t4b_prevertebral').checked) calculatorData.t4bFeatures.push('prevertebral');
+            if (document.getElementById('t4b_carotid').checked) calculatorData.t4bFeatures.push('carotid');
+            if (document.getElementById('t4b_skull').checked) calculatorData.t4bFeatures.push('skull');
+            if (document.getElementById('t4b_mediastinum').checked) calculatorData.t4bFeatures.push('mediastinum');
+
+            // Collect T4a features
+            calculatorData.t4aFeatures = [];
+            if (document.getElementById('t4a_larynx').checked) calculatorData.t4aFeatures.push('larynx');
+            if (document.getElementById('t4a_extrinsic').checked) calculatorData.t4aFeatures.push('extrinsic');
+            if (document.getElementById('t4a_pterygoid').checked) calculatorData.t4aFeatures.push('pterygoid');
+            if (document.getElementById('t4a_hardpalate').checked) calculatorData.t4aFeatures.push('hardpalate');
+            if (document.getElementById('t4a_mandible').checked) calculatorData.t4aFeatures.push('mandible');
+
+            // Get tumor size
+            calculatorData.tumorSize = parseFloat(document.getElementById('tumorSize').value) || null;
+
+            // Get lingual epiglottis
+            calculatorData.lingualEpiglottis = document.getElementById('lingualEpiglottis').checked;
+
+            // Get node data
+            calculatorData.largestNode = parseFloat(document.getElementById('largestNode').value) || null;
+            calculatorData.ipsiNodes = parseInt(document.getElementById('ipsiNodes').value) || 0;
+            calculatorData.contraNodes = parseInt(document.getElementById('contraNodes').value) || 0;
+            calculatorData.ene = document.getElementById('ene').checked;
+
+            // Get distant mets
+            const metsRadios = document.querySelectorAll('input[name="distantMets"]');
+            metsRadios.forEach(radio => {
+                if (radio.checked) {
+                    calculatorData.distantMets = radio.value === 'yes';
+                }
+            });
+        }
+
+        function calculateStage() {
+            updateCalculator();
+
+            // Validation
+            if (!calculatorData.hpvStatus) {
+                alert('Please select HPV status!');
+                return;
+            }
+
+            if (!calculatorData.tumorSize) {
+                alert('Please enter tumor size!');
+                return;
+            }
+
+            // Calculate T stage
+            const tStage = calculateTStage();
+            const nStage = calculateNStage();
+            const mStage = calculatorData.distantMets ? 'M1' : 'M0';
+            const overallStage = calculateOverallStage(tStage, nStage, mStage);
+
+            // Display results
+            displayResults(tStage, nStage, mStage, overallStage);
+        }
+
+        function calculateTStage() {
+            // Check T4b
+            if (calculatorData.t4bFeatures.length > 0) {
+                return {
+                    stage: 'T4b',
+                    reason: 'Unresectable features: ' + formatFeatures(calculatorData.t4bFeatures)
+                };
+            }
+
+            // Check T4a
+            if (calculatorData.t4aFeatures.length > 0) {
+                return {
+                    stage: 'T4a',
+                    reason: 'Advanced local invasion: ' + formatFeatures(calculatorData.t4aFeatures)
+                };
+            }
+
+            // Size-based staging
+            const size = calculatorData.tumorSize;
+            const hpv = calculatorData.hpvStatus;
+
+            if (hpv === 'negative' || hpv === 'unknown') {
+                if (calculatorData.lingualEpiglottis) {
+                    return {
+                        stage: 'T3',
+                        reason: 'Lingual surface of epiglottis involved (automatic T3 for HPV-)'
+                    };
+                }
+                if (size > 4) {
+                    return {
+                        stage: 'T3',
+                        reason: `Tumor >4 cm (${size} cm)`
+                    };
+                }
+                if (size > 2) {
+                    return {
+                        stage: 'T2',
+                        reason: `Tumor >2 cm but ≤4 cm (${size} cm)`
+                    };
+                }
+                return {
+                    stage: 'T1',
+                    reason: `Tumor ≤2 cm (${size} cm)`
+                };
+            } else {
+                // HPV-positive
+                if (size > 4) {
+                    return {
+                        stage: 'T3',
+                        reason: `Tumor >4 cm (${size} cm)`
+                    };
+                }
+                if (size > 2) {
+                    return {
+                        stage: 'T2',
+                        reason: `Tumor >2 cm but ≤4 cm (${size} cm)`
+                    };
+                }
+                return {
+                    stage: 'T1',
+                    reason: `Tumor ≤2 cm (${size} cm)`
+                };
+            }
+        }
+
+        function calculateNStage() {
+            const nodeSize = calculatorData.largestNode || 0;
+            const ipsi = calculatorData.ipsiNodes;
+            const contra = calculatorData.contraNodes;
+            const ene = calculatorData.ene;
+            const hpv = calculatorData.hpvStatus;
+
+            // No nodes
+            if (nodeSize === 0 && ipsi === 0 && contra === 0) {
+                return {
+                    stage: 'N0',
+                    reason: 'No pathologic lymph nodes identified'
+                };
+            }
+
+            // N3 criteria
+            if (nodeSize > 6) {
+                return {
+                    stage: 'N3',
+                    reason: `Largest node >6 cm (${nodeSize} cm)`
+                };
+            }
+
+            if (hpv === 'negative' || hpv === 'unknown') {
+                // HPV-negative N staging
+                if (ene) {
+                    return {
+                        stage: 'N3a',
+                        reason: 'Extranodal extension (ENE) present'
+                    };
+                }
+
+                // N2c: Bilateral or contralateral
+                if (contra > 0 && ipsi > 0) {
+                    return {
+                        stage: 'N2c',
+                        reason: `Bilateral nodes (${ipsi} ipsilateral, ${contra} contralateral)`
+                    };
+                }
+                if (contra > 0) {
+                    return {
+                        stage: 'N2c',
+                        reason: `Contralateral nodes only (${contra} nodes)`
+                    };
+                }
+
+                // N2b: Multiple ipsilateral
+                if (ipsi > 1) {
+                    return {
+                        stage: 'N2b',
+                        reason: `Multiple ipsilateral nodes (${ipsi} nodes)`
+                    };
+                }
+
+                // N2a: Single ipsilateral >3cm but <6cm
+                if (nodeSize > 3 && nodeSize <= 6) {
+                    return {
+                        stage: 'N2a',
+                        reason: `Single ipsilateral node >3 cm but ≤6 cm (${nodeSize} cm)`
+                    };
+                }
+
+                // N1: Single ipsilateral ≤3cm
+                if (ipsi === 1 && nodeSize <= 3) {
+                    return {
+                        stage: 'N1',
+                        reason: `Single ipsilateral node ≤3 cm (${nodeSize} cm)`
+                    };
+                }
+
+                // If nodes present but don't meet criteria
+                if (ipsi > 0 || nodeSize > 0) {
+                    return {
+                        stage: 'N1',
+                        reason: `Small ipsilateral nodal disease (${nodeSize} cm)`
+                    };
+                }
+
+            } else {
+                // HPV-positive N staging (simpler)
+                
+                // N2: Bilateral or contralateral, any >3cm but all <6cm
+                if (contra > 0) {
+                    if (nodeSize > 3) {
+                        return {
+                            stage: 'N2',
+                            reason: `Bilateral/contralateral nodes >3 cm (${nodeSize} cm)`
+                        };
+                    }
+                }
+
+                // N1: One or more ipsilateral, all ≤6cm
+                if (ipsi > 0 || nodeSize > 0) {
+                    if (nodeSize <= 6) {
+                        return {
+                            stage: 'N1',
+                            reason: `Ipsilateral nodal disease ≤6 cm (${nodeSize} cm, ${ipsi} nodes)`
+                        };
+                    }
+                }
+            }
+
+            return {
+                stage: 'N0',
+                reason: 'No pathologic nodes'
+            };
+        }
+
+        function calculateOverallStage(tStage, nStage, mStage) {
+            const t = tStage.stage;
+            const n = nStage.stage;
+            const m = mStage;
+            const hpv = calculatorData.hpvStatus;
+
+            // M1 = Stage IVC
+            if (m === 'M1') {
+                return 'IVC';
+            }
+
+            // T4b or N3 = Stage IVB
+            if (t === 'T4b' || n === 'N3' || n === 'N3a' || n === 'N3b') {
+                return 'IVB';
+            }
+
+            // T4a = Stage IVA (generally)
+            if (t === 'T4a') {
+                return 'IVA';
+            }
+
+            // Simplified staging (full AJCC is more complex)
+            if (hpv === 'positive') {
+                // HPV-positive staging
+                if (n === 'N2' || t === 'T3') {
+                    return 'II';
+                }
+                if (n === 'N1' || t === 'T2') {
+                    return 'I';
+                }
+                if (t === 'T1' && n === 'N0') {
+                    return 'I';
+                }
+                return 'II';
+            } else {
+                // HPV-negative staging
+                if (n === 'N2c') {
+                    return 'IVA';
+                }
+                if (t === 'T3' || n === 'N2a' || n === 'N2b') {
+                    return 'III';
+                }
+                if (t === 'T2' || n === 'N1') {
+                    return 'II';
+                }
+                if (t === 'T1' && n === 'N0') {
+                    return 'I';
+                }
+                return 'II';
+            }
+        }
+
+        function displayResults(tStage, nStage, mStage, overallStage) {
+            document.getElementById('resultHPV').textContent = 
+                calculatorData.hpvStatus === 'positive' ? 'HPV-Positive' : 
+                calculatorData.hpvStatus === 'negative' ? 'HPV-Negative' : 
+                'Unknown (treated as HPV-)';
+            
+            document.getElementById('resultT').textContent = tStage.stage;
+            document.getElementById('resultN').textContent = nStage.stage;
+            document.getElementById('resultM').textContent = mStage;
+            document.getElementById('resultStage').textContent = 'Stage ' + overallStage;
+
+            // Generate detailed reasoning
+            let reasoning = '<strong>Staging Rationale:</strong><ul style="margin-top: 10px; margin-left: 20px; line-height: 1.8;">';
+            reasoning += `<li><strong>T Stage (${tStage.stage}):</strong> ${tStage.reason}</li>`;
+            reasoning += `<li><strong>N Stage (${nStage.stage}):</strong> ${nStage.reason}</li>`;
+            reasoning += `<li><strong>M Stage (${mStage}):</strong> ${mStage === 'M1' ? 'Distant metastases present' : 'No distant metastases on this study'}</li>`;
+            
+            // Add clinical context
+            reasoning += '</ul><div style="margin-top: 20px; padding: 15px; background: rgba(255,255,255,0.1); border-radius: 6px;">';
+            reasoning += '<strong>Clinical Implications:</strong><br>';
+            
+            if (overallStage === 'IVC') {
+                reasoning += 'Stage IVC (M1) - Palliative management. Consider systemic therapy.';
+            } else if (overallStage === 'IVB') {
+                reasoning += 'Stage IVB - Very advanced disease. May not be surgical candidate. Consider chemoradiation.';
+            } else if (overallStage === 'IVA') {
+                reasoning += 'Stage IVA - Advanced but potentially resectable. Multimodal therapy typically needed.';
+            } else if (overallStage === 'III') {
+                reasoning += 'Stage III - Locally advanced. Usually requires combination therapy (surgery + radiation or chemoradiation).';
+            } else if (overallStage === 'II') {
+                reasoning += 'Stage II - Moderate disease. Treatment depends on specific T and N characteristics.';
+            } else {
+                reasoning += 'Stage I - Early disease. May be amenable to single modality treatment.';
+            }
+            
+            reasoning += '</div>';
+
+            document.getElementById('resultReasoning').innerHTML = reasoning;
+            document.getElementById('finalResult').classList.add('show');
+            
+            setTimeout(() => {
+                document.getElementById('finalResult').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 300);
+        }
+
+        function formatFeatures(features) {
+            const featureMap = {
+                'prevertebral': 'prevertebral fascia',
+                'carotid': 'carotid encasement >270°',
+                'skull': 'skull base',
+                'mediastinum': 'mediastinal extension',
+                'larynx': 'larynx',
+                'extrinsic': 'extrinsic tongue muscles',
+                'pterygoid': 'medial pterygoid',
+                'hardpalate': 'hard palate',
+                'mandible': 'mandible'
+            };
+            
+            return features.map(f => featureMap[f] || f).join(', ');
+        }
+
+        function resetCalculator() {
+            // Reset all form inputs
+            document.querySelectorAll('input[type="radio"]').forEach(input => input.checked = false);
+            document.querySelectorAll('input[type="checkbox"]').forEach(input => input.checked = false);
+            document.querySelectorAll('input[type="number"]').forEach(input => input.value = '');
+            
+            // Reset calculator data
+            calculatorData = {
+                hpvStatus: null,
+                t4bFeatures: [],
+                t4aFeatures: [],
+                tumorSize: null,
+                lingualEpiglottis: false,
+                largestNode: null,
+                ipsiNodes: 0,
+                contraNodes: 0,
+                ene: false,
+                distantMets: false
+            };
+
+            // Hide results
+            document.getElementById('finalResult').classList.remove('show');
+            
+            // Scroll to top
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    </script>
+
+    <!-- Reference Section CSS -->
+    <style>
+        .reference-section {
+            margin-top: 50px;
+            padding-top: 40px;
+            border-top: 3px solid var(--brand-border);
+        }
+
+        .reference-title {
+            font-size: 2rem;
+            color: var(--brand-text-primary);
+            margin-bottom: 30px;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .reference-subtitle {
+            font-size: 1.5rem;
+            color: var(--brand-neutral);
+            margin-bottom: 20px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .reference-card {
+            background: var(--brand-bg-white);
+            border: 1px solid var(--brand-border);
+            border-radius: 8px;
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+
+        .mnemonic-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .mnemonic-box {
+            background: var(--brand-bg-offwhite);
+            border: 2px solid var(--brand-primary);
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .mnemonic-detail {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 8px 0;
+            color: var(--brand-text-secondary);
+        }
+
+        .mnemonic-letter {
+            background: var(--brand-primary);
+            color: white;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 1.1rem;
+            flex-shrink: 0;
+        }
+
+        .size-table {
+            border: 1px solid var(--brand-border);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .size-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            border-bottom: 1px solid var(--brand-border);
+        }
+
+        .size-row:last-child {
+            border-bottom: none;
+        }
+
+        .size-row.size-header {
+            background: var(--brand-neutral);
+            color: white;
+            font-weight: 600;
+        }
+
+        .size-row > div {
+            padding: 12px 15px;
+            border-right: 1px solid var(--brand-border);
+        }
+
+        .size-row > div:last-child {
+            border-right: none;
+        }
+
+        .size-row:not(.size-header):nth-child(even) {
+            background: var(--brand-bg-offwhite);
+        }
+
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+        }
+
+        .comparison-column {
+            background: var(--brand-bg-offwhite);
+            padding: 20px;
+            border-radius: 8px;
+        }
+
+        .n-stage-item {
+            background: white;
+            padding: 12px;
+            margin: 10px 0;
+            border-radius: 6px;
+            border-left: 3px solid var(--brand-neutral);
+        }
+
+        .note-box {
+            background: #fff3cd;
+            border: 1px solid var(--brand-secondary);
+            padding: 12px;
+            border-radius: 6px;
+            margin-top: 15px;
+            font-size: 0.9em;
+        }
+
+        .tips-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+        }
+
+        .tip-card {
+            background: var(--brand-bg-offwhite);
+            padding: 20px;
+            border-radius: 8px;
+            border-top: 4px solid var(--brand-primary);
+        }
+
+        .tip-card h4 {
+            color: var(--brand-text-primary);
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+        }
+
+        .tip-card p {
+            color: var(--brand-text-secondary);
+            font-size: 0.95em;
+            line-height: 1.6;
+        }
+
+        .tip-detail {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid var(--brand-border);
+            font-size: 0.85em;
+            color: var(--brand-text-light);
+        }
+
+        .pitfall-card {
+            border-left: 4px solid var(--brand-secondary);
+        }
+
+        .pitfall-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .pitfall-item {
+            display: flex;
+            gap: 15px;
+            background: var(--brand-bg-offwhite);
+            padding: 15px;
+            border-radius: 6px;
+        }
+
+        .pitfall-number {
+            background: var(--brand-secondary);
+            color: var(--brand-text-primary);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 1.1rem;
+            flex-shrink: 0;
+        }
+
+        .pitfall-item strong {
+            color: var(--brand-text-primary);
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .pitfall-item p {
+            color: var(--brand-text-secondary);
+            font-size: 0.9em;
+            margin: 0;
+        }
+
+        .systematic-steps {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .step-item {
+            display: flex;
+            gap: 15px;
+            background: var(--brand-bg-offwhite);
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 4px solid var(--brand-neutral);
+        }
+
+        .step-number {
+            background: var(--brand-neutral);
+            color: white;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 1.1rem;
+            flex-shrink: 0;
+        }
+
+        .step-item strong {
+            color: var(--brand-text-primary);
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .step-item p {
+            color: var(--brand-text-secondary);
+            font-size: 0.9em;
+            margin: 0;
+        }
+
+        .reference-footer {
+            margin-top: 40px;
+            padding: 25px;
+            background: var(--brand-bg-offwhite);
+            border-radius: 8px;
+        }
+
+        @media (max-width: 768px) {
+            .size-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .size-row > div {
+                border-right: none;
+                border-bottom: 1px solid var(--brand-border);
+            }
+            
+            .tips-grid,
+            .comparison-grid,
+            .mnemonic-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</body>
+</html>

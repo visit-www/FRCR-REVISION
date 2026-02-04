@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 _env_dir = Path(__file__).resolve().parent
-load_dotenv(_env_dir / '.env')
+load_dotenv(_env_dir / '.env', override=True)  # .env overrides shell (avoids stale R2_* etc)
 load_dotenv(_env_dir / '.env.local', override=True)  # Local overrides (e.g. USE_LOCAL_DB=1)
 if os.getenv('ENV') == 'production' or os.getenv('FLASK_ENV') == 'production':
     load_dotenv(_env_dir / '.env.production', override=True)
@@ -157,6 +157,8 @@ else:
     app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(instance_path, "frcr_examiner.db")}'
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-secret-key-change-in-production')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+# R2 stack upload: allow large multipart (1000+ images × ~1MB ≈ 1GB)
+app.config['MAX_CONTENT_LENGTH'] = int(os.getenv('MAX_UPLOAD_MB', '1024')) * 1024 * 1024
 
 # Session configuration
 # Check if SECRET_KEY is set
@@ -165,11 +167,13 @@ if not os.getenv('SECRET_KEY'):
 else:
     print("[OK] SECRET_KEY is set")
 
-# Only set SECURE in production (HTTPS)
-is_production = os.getenv('VERCEL_ENV') == 'production' or 'vercel.app' in os.getenv('VERCEL_URL', '')
+# Only set SECURE in production (HTTPS). For localhost/HTTP, must be False or cookies won't be sent.
+app_url = os.getenv('APP_URL', '') or os.getenv('VERCEL_URL', '')
+is_local_http = 'localhost' in app_url or '127.0.0.1' in app_url or app_url.startswith('http://')
+is_production = not is_local_http and (os.getenv('VERCEL_ENV') == 'production' or 'vercel.app' in app_url)
 
 # Session cookie configuration (for regular sessions)
-app.config['SESSION_COOKIE_SECURE'] = is_production  # HTTPS only in production
+app.config['SESSION_COOKIE_SECURE'] = is_production  # HTTPS only in production; False for localhost
 app.config['SESSION_COOKIE_HTTPONLY'] = True  # No JavaScript access
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # CSRF protection
 app.config['SESSION_COOKIE_NAME'] = 'frcr_session'  # Explicit name
@@ -179,12 +183,12 @@ app.config['PERMANENT_SESSION_LIFETIME'] = 1800  # 30 minutes session timeout
 # These settings control persistent login when user checks "Remember Me"
 from datetime import timedelta
 app.config['REMEMBER_COOKIE_DURATION'] = timedelta(days=7)  # 7 days if "Remember Me" checked
-app.config['REMEMBER_COOKIE_SECURE'] = is_production  # HTTPS only in production
+app.config['REMEMBER_COOKIE_SECURE'] = is_production  # HTTPS only in production; False for localhost
 app.config['REMEMBER_COOKIE_HTTPONLY'] = True  # No JavaScript access
 app.config['REMEMBER_COOKIE_SAMESITE'] = 'Lax'  # CSRF protection
 app.config['REMEMBER_COOKIE_NAME'] = 'frcr_remember'  # Explicit name
 
-print(f"[SESSION] SECURE={app.config['SESSION_COOKIE_SECURE']}, REMEMBER_DAYS={app.config['REMEMBER_COOKIE_DURATION'].days}")
+print(f"[SESSION] SECURE={app.config['SESSION_COOKIE_SECURE']} (local_http={is_local_http}), REMEMBER_DAYS={app.config['REMEMBER_COOKIE_DURATION'].days}")
 
 # Initialize database
 db.init_app(app)
@@ -3638,6 +3642,16 @@ def migrate_db():
         return jsonify({'success': True, 'message': 'Database tables created'}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+@app.errorhandler(413)
+def request_entity_too_large(e):
+    """Return JSON for 413 so upload UI can show a helpful message."""
+    return jsonify({
+        'error': 'Upload too large. Limit is {}MB. Try fewer images per series or upload in batches.'.format(
+            app.config.get('MAX_CONTENT_LENGTH', 0) // (1024 * 1024)
+        )
+    }), 413
 
 
 if __name__ == '__main__':

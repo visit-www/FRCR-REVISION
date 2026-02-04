@@ -4,7 +4,7 @@
  * SAFE: Only caches static files, never interferes with database operations
  */
 
-const CACHE_VERSION = 'v2';
+const CACHE_VERSION = 'v3';
 const CACHE_NAME = `frcr-revision-${CACHE_VERSION}`;
 const STATIC_CACHE = `frcr-static-${CACHE_VERSION}`;
 const PAGES_CACHE = `frcr-pages-${CACHE_VERSION}`;
@@ -103,15 +103,20 @@ self.addEventListener('fetch', (event) => {
       request.method !== 'GET' ||
       url.pathname.includes('/setup/') ||
       url.pathname.includes('/exam/') ||
-      url.pathname.includes('/admin/')) {
+      url.pathname.includes('/admin/') ||
+      url.pathname.includes('/stack/upload')) {
     
     // Network-only for all dynamic content and API calls
     event.respondWith(
-      fetch(request).catch(() => {
-        // If offline, return a proper error response
+      fetch(request).catch((err) => {
+        // Fetch failed: offline, timeout, or connection reset (e.g. large upload)
+        const isUpload = request.method === 'POST' && url.pathname.includes('/stack/upload');
+        const errorMsg = isUpload
+          ? 'Upload failed—connection may have timed out. Try fewer files or one series at a time.'
+          : 'Internet connection required for this operation';
         return new Response(
           JSON.stringify({ 
-            error: 'Internet connection required for this operation',
+            error: errorMsg,
             offline: true 
           }),
           {

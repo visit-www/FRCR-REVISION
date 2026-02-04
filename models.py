@@ -523,11 +523,13 @@ class CaseReferenceImage(db.Model):
 
 
 class CaseImageStack(db.Model):
-    """OneDrive-linked image stack for a case. Plans (axial, sagittal, etc.) with image URLs."""
+    """Image stack (Study in UI) for a case. R2 or legacy OneDrive. Series (axial, sagittal, etc.) with image URLs/keys. Multiple studies per case allowed."""
     __tablename__ = 'case_image_stack'
 
     id = db.Column(db.Integer, primary_key=True)
-    case_id = db.Column(db.Integer, db.ForeignKey('case.id'), nullable=False, unique=True)
+    case_id = db.Column(db.Integer, db.ForeignKey('case.id'), nullable=False, index=True)
+    study_label = db.Column(db.String(200), nullable=True)  # Admin-defined label (e.g. "CT temporal bone"); required for new R2 stacks
+    display_order = db.Column(db.Integer, default=0, nullable=False)
     onedrive_share_id = db.Column(db.String(500), nullable=True)  # nullable for R2-only stacks
     onedrive_folder_path = db.Column(db.String(500), nullable=True)
     config_json = db.Column(db.Text, nullable=False)  # JSON: { "axial": [url1, url2], "sagittal": [...] }
@@ -540,7 +542,7 @@ class CaseImageStack(db.Model):
     created_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    case = db.relationship('Case', backref=db.backref('image_stack', uselist=False, lazy=True, cascade='all, delete-orphan'))
+    case = db.relationship('Case', backref=db.backref('image_stacks', lazy=True, order_by='CaseImageStack.display_order', cascade='all, delete-orphan'))
     created_by = db.relationship('User', backref='created_image_stacks')
 
     def get_config(self):
@@ -572,17 +574,19 @@ class CaseImageStack(db.Model):
 
 
 class CaseImageAnnotation(db.Model):
-    """Annotations for case image stacks (admin-created arrows, text, measurements)."""
+    """Annotations for a study (admin-created arrows, text, measurements). One record per study (stack_id). Legacy: case_id for backward compat."""
     __tablename__ = 'case_image_annotation'
 
     id = db.Column(db.Integer, primary_key=True)
-    case_id = db.Column(db.Integer, db.ForeignKey('case.id'), nullable=False, unique=True, index=True)
-    annotations_json = db.Column(db.Text, nullable=False, default='{}')  # { planName: { imageIndex: [annotations] } }
+    case_id = db.Column(db.Integer, db.ForeignKey('case.id'), nullable=True, index=True)  # Legacy; prefer stack_id
+    stack_id = db.Column(db.Integer, db.ForeignKey('case_image_stack.id'), nullable=True, unique=True, index=True)  # Per-study annotations
+    annotations_json = db.Column(db.Text, nullable=False, default='{}')  # { seriesName: { imageIndex: [annotations] } }
     created_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    case = db.relationship('Case', backref=db.backref('image_annotations', uselist=False, lazy=True, cascade='all, delete-orphan'))
+    case = db.relationship('Case', backref=db.backref('image_annotations', lazy=True, uselist=True, cascade='all, delete-orphan'))
+    stack = db.relationship('CaseImageStack', backref=db.backref('image_annotations', uselist=False, lazy=True, cascade='all, delete-orphan'))
     created_by = db.relationship('User', backref='created_image_annotations')
 
     def get_annotations(self):

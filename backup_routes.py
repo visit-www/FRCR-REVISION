@@ -486,24 +486,30 @@ def download_backup():
                 'updated_at': img.updated_at.isoformat() if img.updated_at else None,
             })
         
-        # Export Case Image Stacks (OneDrive linked image folders)
-        for stack in CaseImageStack.query.all():
+        # Export Case Image Stacks (R2 + legacy OneDrive)
+        for stack in CaseImageStack.query.order_by(CaseImageStack.display_order, CaseImageStack.id).all():
             backup_data['case_image_stacks'].append({
                 'id': stack.id,
                 'case_id': stack.case_id,
+                'study_label': getattr(stack, 'study_label', None),
                 'onedrive_share_id': stack.onedrive_share_id,
                 'onedrive_folder_path': stack.onedrive_folder_path,
                 'config_json': stack.config_json,
+                'storage_backend': getattr(stack, 'storage_backend', None),
+                'r2_config_json': getattr(stack, 'r2_config_json', None),
+                'display_order': getattr(stack, 'display_order', 0),
                 'onedrive_refresh_token_encrypted': getattr(stack, 'onedrive_refresh_token_encrypted', None),
+                'description_html': getattr(stack, 'description_html', None),
                 'created_by_user_id': stack.created_by_user_id,
                 'created_at': stack.created_at.isoformat() if stack.created_at else None,
             })
         
-        # Export Case Image Annotations (Cornerstone.js annotations)
+        # Export Case Image Annotations (Cornerstone.js annotations; per-study via stack_id)
         for ann in CaseImageAnnotation.query.all():
             backup_data['case_image_annotations'].append({
                 'id': ann.id,
                 'case_id': ann.case_id,
+                'stack_id': getattr(ann, 'stack_id', None),
                 'annotations_json': ann.annotations_json,
                 'created_by_user_id': ann.created_by_user_id,
                 'created_at': ann.created_at.isoformat() if ann.created_at else None,
@@ -2393,8 +2399,9 @@ def restore_backup():
                 db.session.add(img)
                 stats['tnm_images']['added'] += 1
         
-        # Import Case Image Stacks (OneDrive linked image folders)
+        # Import Case Image Stacks (OneDrive linked image folders + R2)
         stats['case_image_stacks'] = {'added': 0, 'updated': 0, 'skipped': 0}
+        stack_id_map = {}  # old_stack_id -> new_stack_id
         for stack_data in backup_data.get('case_image_stacks', []):
             if not isinstance(stack_data, dict):
                 continue
@@ -2404,30 +2411,27 @@ def restore_backup():
                 stats['case_image_stacks']['skipped'] += 1
                 continue
             new_user_id = user_id_map.get(stack_data.get('created_by_user_id')) if stack_data.get('created_by_user_id') else None
-            existing = CaseImageStack.query.filter_by(case_id=new_case_id).first()
-            if existing and not overwrite_existing:
-                stats['case_image_stacks']['skipped'] += 1
-                continue
-            if existing and overwrite_existing:
-                existing.onedrive_share_id = stack_data.get('onedrive_share_id', '')
-                existing.onedrive_folder_path = stack_data.get('onedrive_folder_path')
-                existing.config_json = stack_data.get('config_json', '{}')
-                existing.onedrive_refresh_token_encrypted = stack_data.get('onedrive_refresh_token_encrypted')
-                existing.created_by_user_id = new_user_id
-                stats['case_image_stacks']['updated'] += 1
-            else:
-                stack = CaseImageStack(
-                    case_id=new_case_id,
-                    onedrive_share_id=stack_data.get('onedrive_share_id', ''),
-                    onedrive_folder_path=stack_data.get('onedrive_folder_path'),
-                    config_json=stack_data.get('config_json', '{}'),
-                    onedrive_refresh_token_encrypted=stack_data.get('onedrive_refresh_token_encrypted'),
-                    created_by_user_id=new_user_id,
-                )
-                db.session.add(stack)
-                stats['case_image_stacks']['added'] += 1
+            old_stack_id = stack_data.get('id')
+            stack = CaseImageStack(
+                case_id=new_case_id,
+                study_label=stack_data.get('study_label'),
+                onedrive_share_id=stack_data.get('onedrive_share_id') or None,
+                onedrive_folder_path=stack_data.get('onedrive_folder_path'),
+                config_json=stack_data.get('config_json', '{}'),
+                storage_backend=stack_data.get('storage_backend') or 'onedrive',
+                r2_config_json=stack_data.get('r2_config_json'),
+                display_order=stack_data.get('display_order', 0),
+                onedrive_refresh_token_encrypted=stack_data.get('onedrive_refresh_token_encrypted'),
+                description_html=stack_data.get('description_html'),
+                created_by_user_id=new_user_id,
+            )
+            db.session.add(stack)
+            db.session.flush()
+            if old_stack_id is not None:
+                stack_id_map[old_stack_id] = stack.id
+            stats['case_image_stacks']['added'] += 1
         
-        # Import Case Image Annotations (Cornerstone.js annotations)
+        # Import Case Image Annotations (Cornerstone.js annotations; per-study via stack_id)
         stats['case_image_annotations'] = {'added': 0, 'updated': 0, 'skipped': 0}
         for ann_data in backup_data.get('case_image_annotations', []):
             if not isinstance(ann_data, dict):
@@ -2437,8 +2441,13 @@ def restore_backup():
             if not new_case_id:
                 stats['case_image_annotations']['skipped'] += 1
                 continue
+            old_stack_id = ann_data.get('stack_id')
+            new_stack_id = stack_id_map.get(old_stack_id) if old_stack_id is not None else None
             new_user_id = user_id_map.get(ann_data.get('created_by_user_id')) if ann_data.get('created_by_user_id') else None
-            existing = CaseImageAnnotation.query.filter_by(case_id=new_case_id).first()
+            if new_stack_id:
+                existing = CaseImageAnnotation.query.filter_by(stack_id=new_stack_id).first()
+            else:
+                existing = CaseImageAnnotation.query.filter_by(case_id=new_case_id).first()
             if existing and not overwrite_existing:
                 stats['case_image_annotations']['skipped'] += 1
                 continue
@@ -2449,6 +2458,7 @@ def restore_backup():
             else:
                 ann = CaseImageAnnotation(
                     case_id=new_case_id,
+                    stack_id=new_stack_id,
                     annotations_json=ann_data.get('annotations_json', '{}'),
                     created_by_user_id=new_user_id,
                 )

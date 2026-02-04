@@ -155,15 +155,10 @@ function initializeTinyMCE(elementId, retryCount = 0) {
         height: 300,
         menubar: false,
         toolbar: 'undo redo | blocks | bold italic underline strikethrough | numlist bullist indent outdent | table link image code removeformat',
-        plugins: 'table link image code paste',
+        plugins: 'table link image code',
         // Use CDN for assets (themes, skins, etc.) since we only have the minified JS locally
         base_url: 'https://cdn.jsdelivr.net/npm/tinymce@6',
-        // Use TinyMCE's built-in paste handling
-        paste_as_text: false,
-        paste_word_valid_elements: 'p,br,strong,em,u,ol,ul,li,a[href],table,tr,td,th',
-        paste_auto_cleanup_on_paste: true,
-        paste_remove_styles: false, // Keep styles, CSS will handle link styling
-        paste_remove_styles_if_webkit: false,
+        // TinyMCE 6: paste is core; deprecated options removed
         table_advtab: false,
         table_cell_advtab: false,
         table_default_attributes: {
@@ -402,14 +397,10 @@ function editImageDescription(imageId) {
                                 height: 400,
                                 menubar: false,
                                 toolbar: 'undo redo | bold italic underline | numlist bullist | table link code removeformat',
-                                plugins: 'table link code paste',
+                                plugins: 'table link code',
                                 base_url: 'https://cdn.jsdelivr.net/npm/tinymce@6',
                                 // Use TinyMCE's built-in paste handling
-                                paste_as_text: false,
-                                paste_word_valid_elements: 'p,br,strong,em,u,ol,ul,li,a[href],table,tr,td,th',
-                                paste_auto_cleanup_on_paste: true,
-                                paste_remove_styles: false,
-                                paste_remove_styles_if_webkit: false,
+                                // TinyMCE 6: paste is core; deprecated options removed
                                 content_style: `
                                     body {
                                         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
@@ -534,15 +525,11 @@ function editImageDescription(imageId) {
                 height: 250,
                 menubar: false,
                 toolbar: 'undo redo | bold italic underline | numlist bullist | table link code removeformat',
-                plugins: 'table link code paste',
+                plugins: 'table link code',
                         // Use CDN for assets (themes, skins, etc.) since we only have the minified JS locally
                         base_url: 'https://cdn.jsdelivr.net/npm/tinymce@6',
                 // Use TinyMCE's built-in paste handling
-                paste_as_text: false,
-                paste_word_valid_elements: 'p,br,strong,em,u,ol,ul,li,a[href],table,tr,td,th',
-                paste_auto_cleanup_on_paste: true,
-                paste_remove_styles: false,
-                paste_remove_styles_if_webkit: false,
+                // TinyMCE 6: paste is core; deprecated options removed
                 content_css: 'default',
                 content_style: `
                     a {
