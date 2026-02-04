@@ -87,6 +87,19 @@ def generate_slug(disease_name: str) -> str:
     return disease_name.lower().replace(' ', '-').replace('(', '').replace(')', '').replace(',', '').replace('/', '-')
 
 
+# Slug aliases: map multiple catalog entries to single calculator
+# This allows one calculator to serve multiple related disease variants
+SLUG_ALIASES = {
+    'oropharynx-hpv-mediated': 'oropharynx',
+    'oropharynx-non-hpv': 'oropharynx',
+}
+
+
+def resolve_slug(slug: str) -> str:
+    """Resolve slug aliases to actual calculator slug."""
+    return SLUG_ALIASES.get(slug, slug)
+
+
 def get_v3_sections():
     """
     Get calculator sections for index page.
@@ -112,10 +125,12 @@ def get_v3_sections():
         calculators = []
         for disease_name in disease_sites:
             slug = generate_slug(disease_name)
+            resolved_slug = resolve_slug(slug)  # Check for aliases
 
             # Check if calculator is available (in DB or HTML file exists)
-            db_calc = available_calculators.get(slug)
-            html_exists = (calc_dir / f'{slug}_calc.html').exists()
+            # Use resolved_slug for lookup, but keep original slug for URL if no alias
+            db_calc = available_calculators.get(resolved_slug) or available_calculators.get(slug)
+            html_exists = (calc_dir / f'{resolved_slug}_calc.html').exists() or (calc_dir / f'{slug}_calc.html').exists()
             is_available = db_calc is not None or html_exists
 
             # Get metadata from DB if available
@@ -130,7 +145,7 @@ def get_v3_sections():
 
             calculators.append({
                 'name': disease_name,
-                'slug': slug,
+                'slug': resolved_slug if is_available else slug,  # Use resolved slug for links
                 'description': description,
                 'special_features': special_features,
                 'staging_system': staging_system,
