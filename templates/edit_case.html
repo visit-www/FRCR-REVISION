@@ -774,6 +774,256 @@ console.log('[TinyMCE Loader] Script URL was:', "{{ url_for('static', filename='
                 background: #5E899E;
                 color: white;
             }
+
+            /* TNM Generator Modal - App-styled */
+            .tnm-gen-overlay {
+                position: fixed;
+                top: 0; left: 0; right: 0; bottom: 0;
+                background: rgba(44, 62, 80, 0.6);
+                z-index: 9999;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 1rem;
+                animation: tnmGenFadeIn 0.2s ease;
+            }
+            @keyframes tnmGenFadeIn {
+                from { opacity: 0; } to { opacity: 1; }
+            }
+            .tnm-gen-panel {
+                background: #ffffff;
+                border: 1px solid #c5cad1;
+                border-radius: 12px;
+                box-shadow: 0 12px 40px rgba(44, 62, 80, 0.25);
+                max-width: 640px;
+                width: 100%;
+                max-height: 90vh;
+                overflow: hidden;
+                display: flex;
+                flex-direction: column;
+                animation: tnmGenSlideIn 0.25s ease;
+            }
+            @keyframes tnmGenSlideIn {
+                from { opacity: 0; transform: translateY(-16px) scale(0.98); }
+                to { opacity: 1; transform: translateY(0) scale(1); }
+            }
+            .tnm-gen-header {
+                background: linear-gradient(135deg, #e96304 0%, #f07b1c 100%);
+                color: white;
+                padding: 1rem 1.25rem;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                flex-shrink: 0;
+            }
+            .tnm-gen-title {
+                margin: 0;
+                font-size: 1.1rem;
+                font-weight: 600;
+                color: white;
+            }
+            .tnm-gen-close-btn {
+                background: rgba(255,255,255,0.2);
+                border: none;
+                color: white;
+                width: 36px;
+                height: 36px;
+                border-radius: 8px;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                transition: background 0.2s;
+            }
+            .tnm-gen-close-btn:hover {
+                background: rgba(255,255,255,0.35);
+            }
+            .tnm-gen-body {
+                padding: 1.25rem;
+                overflow-y: auto;
+                flex: 1;
+            }
+            .tnm-gen-info-box {
+                display: flex;
+                gap: 1rem;
+                background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+                border: 1px solid #dee2e6;
+                border-left: 4px solid #e96304;
+                border-radius: 8px;
+                padding: 1rem;
+                margin-bottom: 1.25rem;
+            }
+            .tnm-gen-info-icon {
+                color: #e96304;
+                font-size: 1.5rem;
+                flex-shrink: 0;
+            }
+            .tnm-gen-info-content strong {
+                color: #2c3e50;
+                font-size: 0.95rem;
+            }
+            .tnm-gen-info-content p {
+                margin: 0.35rem 0 0;
+                font-size: 0.85rem;
+                color: #5a6a7a;
+                line-height: 1.4;
+            }
+            .tnm-gen-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 1rem;
+            }
+            .tnm-gen-field-full {
+                grid-column: 1 / -1;
+            }
+            .tnm-gen-label {
+                display: block;
+                font-size: 0.85rem;
+                font-weight: 600;
+                color: #2c3e50;
+                margin-bottom: 0.35rem;
+            }
+            .tnm-gen-input, .tnm-gen-textarea {
+                width: 100%;
+                padding: 0.6rem 0.85rem;
+                border: 1px solid #c5cad1;
+                border-radius: 6px;
+                font-size: 0.9rem;
+                color: #2c3e50;
+                background: #fdfdfb;
+                transition: border-color 0.2s, box-shadow 0.2s;
+            }
+            .tnm-gen-input:focus, .tnm-gen-textarea:focus {
+                outline: none;
+                border-color: #e96304;
+                box-shadow: 0 0 0 3px rgba(233, 99, 4, 0.12);
+            }
+            .tnm-gen-input::placeholder, .tnm-gen-textarea::placeholder {
+                color: #a0aab5;
+            }
+            .tnm-gen-hint {
+                display: block;
+                font-size: 0.75rem;
+                color: #8b94a3;
+                margin-top: 0.25rem;
+            }
+            .tnm-gen-checkbox {
+                display: flex;
+                align-items: center;
+                gap: 0.6rem;
+                margin-top: 1.25rem;
+                cursor: pointer;
+                user-select: none;
+            }
+            .tnm-gen-checkbox input {
+                position: absolute;
+                opacity: 0;
+                width: 0;
+                height: 0;
+            }
+            .tnm-gen-checkbox-mark {
+                width: 20px;
+                height: 20px;
+                border: 2px solid #c5cad1;
+                border-radius: 4px;
+                background: #fff;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                transition: all 0.2s;
+                flex-shrink: 0;
+            }
+            .tnm-gen-checkbox input:checked + .tnm-gen-checkbox-mark {
+                background: #e96304;
+                border-color: #e96304;
+            }
+            .tnm-gen-checkbox input:checked + .tnm-gen-checkbox-mark::after {
+                content: '✓';
+                color: white;
+                font-size: 0.75rem;
+                font-weight: bold;
+            }
+            .tnm-gen-checkbox-label {
+                font-size: 0.9rem;
+                color: #2c3e50;
+            }
+            .tnm-gen-status {
+                margin-top: 1rem;
+                padding: 0.85rem 1rem;
+                border-radius: 8px;
+                font-size: 0.9rem;
+            }
+            .tnm-gen-status.status-loading {
+                background: #e3f2fd;
+                border: 1px solid #90caf9;
+                color: #1565c0;
+            }
+            .tnm-gen-status.status-success {
+                background: #e8f5e9;
+                border: 1px solid #a5d6a7;
+                color: #2e7d32;
+            }
+            .tnm-gen-status.status-error {
+                background: #ffebee;
+                border: 1px solid #ef9a9a;
+                color: #c62828;
+            }
+            .tnm-gen-footer {
+                padding: 1rem 1.25rem;
+                background: #f8f9fa;
+                border-top: 1px solid #e9ecef;
+                display: flex;
+                justify-content: flex-end;
+                gap: 0.75rem;
+                flex-shrink: 0;
+            }
+            .tnm-gen-btn-secondary {
+                background: transparent;
+                color: #5a6a7a;
+                border: 1px solid #c5cad1;
+                padding: 0.6rem 1.25rem;
+                border-radius: 6px;
+                font-weight: 500;
+                font-size: 0.9rem;
+                cursor: pointer;
+                transition: all 0.2s;
+            }
+            .tnm-gen-btn-secondary:hover {
+                background: #f0f2f4;
+                border-color: #a0aab5;
+            }
+            .tnm-gen-btn-primary {
+                background: linear-gradient(135deg, #e96304 0%, #f07b1c 100%);
+                color: white;
+                border: none;
+                padding: 0.6rem 1.5rem;
+                border-radius: 6px;
+                font-weight: 600;
+                font-size: 0.9rem;
+                cursor: pointer;
+                transition: all 0.2s;
+                box-shadow: 0 2px 8px rgba(233, 99, 4, 0.25);
+            }
+            .tnm-gen-btn-primary:hover {
+                background: linear-gradient(135deg, #d45703 0%, #e06a12 100%);
+                box-shadow: 0 4px 12px rgba(233, 99, 4, 0.35);
+                transform: translateY(-1px);
+            }
+            .tnm-gen-btn-primary:disabled {
+                background: #c5cad1;
+                box-shadow: none;
+                cursor: not-allowed;
+                transform: none;
+            }
+            @media (max-width: 576px) {
+                .tnm-gen-grid {
+                    grid-template-columns: 1fr;
+                }
+                .tnm-gen-panel {
+                    max-height: 95vh;
+                    border-radius: 8px;
+                }
+            }
             </style>
 
             <!-- Action Buttons -->
@@ -4908,86 +5158,85 @@ function showTnmGeneratorModal() {
     }
 
     // Remove existing modal
-    const existing = document.getElementById('tnmGeneratorModal');
+    const existing = document.getElementById('tnmGeneratorOverlay');
     if (existing) existing.remove();
 
-    const modal = document.createElement('div');
-    modal.id = 'tnmGeneratorModal';
-    modal.className = 'modal fade show';
-    modal.style.cssText = 'display: block; background: rgba(0,0,0,0.5);';
-    modal.innerHTML = `
-        <div class="modal-dialog modal-lg modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header" style="background: linear-gradient(135deg, #e96304 0%, #f07b1c 100%); color: white;">
-                    <h5 class="modal-title"><i class="fas fa-sitemap me-2"></i>TNM Calculator & Algorithm Generator</h5>
-                    <button type="button" class="btn-close btn-close-white" onclick="closeTnmGeneratorModal()"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="alert alert-info">
-                        <i class="fas fa-info-circle me-2"></i>
-                        This will use Claude AI to generate:
-                        <ul class="mb-0 mt-2">
-                            <li><strong>Interactive Calculator HTML</strong> - Decision tree-based staging calculator</li>
-                            <li><strong>Algorithm Discussion</strong> - Step-by-step staging algorithm for radiologists</li>
-                        </ul>
+    const overlay = document.createElement('div');
+    overlay.id = 'tnmGeneratorOverlay';
+    overlay.className = 'tnm-gen-overlay';
+    overlay.onclick = (e) => { if (e.target === overlay) closeTnmGeneratorModal(); };
+    overlay.innerHTML = `
+        <div class="tnm-gen-panel" onclick="event.stopPropagation()">
+            <div class="tnm-gen-header">
+                <h5 class="tnm-gen-title"><i class="fas fa-sitemap me-2"></i>TNM Calculator & Algorithm Generator</h5>
+                <button type="button" class="tnm-gen-close-btn" onclick="closeTnmGeneratorModal()" aria-label="Close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="tnm-gen-body">
+                <div class="tnm-gen-info-box">
+                    <div class="tnm-gen-info-icon"><i class="fas fa-magic"></i></div>
+                    <div class="tnm-gen-info-content">
+                        <strong>AI-Powered Generation</strong>
+                        <p>Claude AI will create an interactive staging calculator and step-by-step algorithm discussion for radiologists.</p>
                     </div>
-
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold">Calculator Slug</label>
-                            <input type="text" class="form-control" id="genSlug" value="${selectedSlug}" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold">Cancer Name</label>
-                            <input type="text" class="form-control" id="genCancerName" value="${cancerName}" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold">Body Section</label>
-                            <input type="text" class="form-control" id="genBodySection" value="${bodySection}" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-bold">Staging System</label>
-                            <input type="text" class="form-control" id="genStagingSystem" value="AJCC 9th Edition">
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label fw-bold">Description</label>
-                            <input type="text" class="form-control" id="genDescription" placeholder="Brief description for index page">
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label fw-bold">Special Features (comma-separated)</label>
-                            <input type="text" class="form-control" id="genSpecialFeatures" placeholder="e.g., HPV+ Staging, HPV- Staging">
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label fw-bold">Special Notes for AI</label>
-                            <textarea class="form-control" id="genSpecialNotes" rows="2" placeholder="Additional instructions for Claude..."></textarea>
-                        </div>
-                    </div>
-
-                    <div class="form-check mt-3">
-                        <input class="form-check-input" type="checkbox" id="genInsertAlgorithm" checked>
-                        <label class="form-check-label" for="genInsertAlgorithm">
-                            Insert algorithm into discussion field after generation
-                        </label>
-                    </div>
-
-                    <div id="genStatus" class="mt-3" style="display: none;"></div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" onclick="closeTnmGeneratorModal()">Cancel</button>
-                    <button type="button" class="btn btn-warning" id="genGenerateBtn" onclick="generateTnmContent()">
-                        <i class="fas fa-magic me-1"></i>Generate with AI
-                    </button>
+
+                <div class="tnm-gen-grid">
+                    <div class="tnm-gen-field">
+                        <label class="tnm-gen-label">Calculator Slug</label>
+                        <input type="text" class="tnm-gen-input" id="genSlug" value="${selectedSlug}" placeholder="e.g., oropharynx" required>
+                        <span class="tnm-gen-hint">URL-friendly identifier</span>
+                    </div>
+                    <div class="tnm-gen-field">
+                        <label class="tnm-gen-label">Cancer Name</label>
+                        <input type="text" class="tnm-gen-input" id="genCancerName" value="${cancerName}" placeholder="e.g., Oropharynx" required>
+                    </div>
+                    <div class="tnm-gen-field">
+                        <label class="tnm-gen-label">Body Section</label>
+                        <input type="text" class="tnm-gen-input" id="genBodySection" value="${bodySection}" placeholder="e.g., Head and Neck" required>
+                    </div>
+                    <div class="tnm-gen-field">
+                        <label class="tnm-gen-label">Staging System</label>
+                        <input type="text" class="tnm-gen-input" id="genStagingSystem" value="AJCC 9th Edition">
+                    </div>
+                    <div class="tnm-gen-field tnm-gen-field-full">
+                        <label class="tnm-gen-label">Description</label>
+                        <input type="text" class="tnm-gen-input" id="genDescription" placeholder="Brief description for index page">
+                    </div>
+                    <div class="tnm-gen-field tnm-gen-field-full">
+                        <label class="tnm-gen-label">Special Features</label>
+                        <input type="text" class="tnm-gen-input" id="genSpecialFeatures" placeholder="e.g., HPV+ Staging, HPV- Staging (comma-separated)">
+                    </div>
+                    <div class="tnm-gen-field tnm-gen-field-full">
+                        <label class="tnm-gen-label">Special Notes for AI</label>
+                        <textarea class="tnm-gen-textarea" id="genSpecialNotes" rows="2" placeholder="Additional instructions for Claude..."></textarea>
+                    </div>
                 </div>
+
+                <label class="tnm-gen-checkbox">
+                    <input type="checkbox" id="genInsertAlgorithm" checked>
+                    <span class="tnm-gen-checkbox-mark"></span>
+                    <span class="tnm-gen-checkbox-label">Insert algorithm into discussion field after generation</span>
+                </label>
+
+                <div id="genStatus" class="tnm-gen-status" style="display: none;"></div>
+            </div>
+            <div class="tnm-gen-footer">
+                <button type="button" class="tnm-gen-btn-secondary" onclick="closeTnmGeneratorModal()">Cancel</button>
+                <button type="button" class="tnm-gen-btn-primary" id="genGenerateBtn" onclick="generateTnmContent()">
+                    <i class="fas fa-magic me-1"></i>Generate with AI
+                </button>
             </div>
         </div>
     `;
 
-    document.body.appendChild(modal);
+    document.body.appendChild(overlay);
 }
 
 function closeTnmGeneratorModal() {
-    const modal = document.getElementById('tnmGeneratorModal');
-    if (modal) modal.remove();
+    const overlay = document.getElementById('tnmGeneratorOverlay');
+    if (overlay) overlay.remove();
 }
 
 async function generateTnmContent() {
@@ -5010,7 +5259,8 @@ async function generateTnmContent() {
 
     // Show loading state
     statusDiv.style.display = 'block';
-    statusDiv.innerHTML = '<div class="alert alert-info"><i class="fas fa-spinner fa-spin me-2"></i>Generating with Claude AI... This may take 30-60 seconds.</div>';
+    statusDiv.className = 'tnm-gen-status status-loading';
+    statusDiv.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Generating with Claude AI... This may take 30-60 seconds.';
     generateBtn.disabled = true;
     generateBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Generating...';
 
@@ -5032,14 +5282,12 @@ async function generateTnmContent() {
         const result = await response.json();
 
         if (result.success) {
+            statusDiv.className = 'tnm-gen-status status-success';
             statusDiv.innerHTML = `
-                <div class="alert alert-success">
-                    <i class="fas fa-check-circle me-2"></i>${result.message}
-                    <ul class="mb-0 mt-2">
-                        <li>Calculator HTML: ${result.data?.calculator_html_length || 0} chars</li>
-                        <li>Algorithm HTML: ${result.data?.algorithm_html_length || 0} chars</li>
-                        <li>File saved: ${result.data?.file_path || 'N/A'}</li>
-                    </ul>
+                <i class="fas fa-check-circle me-2"></i><strong>${result.message}</strong>
+                <div style="margin-top: 0.5rem; font-size: 0.85rem; opacity: 0.9;">
+                    Calculator: ${result.data?.calculator_html_length || 0} chars &nbsp;•&nbsp;
+                    Algorithm: ${result.data?.algorithm_html_length || 0} chars
                 </div>
             `;
 
@@ -5053,12 +5301,14 @@ async function generateTnmContent() {
 
             showFlash('TNM Calculator and Algorithm generated successfully!', 'success');
         } else {
-            statusDiv.innerHTML = `<div class="alert alert-danger"><i class="fas fa-exclamation-circle me-2"></i>${result.error}</div>`;
+            statusDiv.className = 'tnm-gen-status status-error';
+            statusDiv.innerHTML = `<i class="fas fa-exclamation-circle me-2"></i>${result.error}`;
             showFlash(result.error || 'Generation failed', 'danger');
         }
     } catch (error) {
         console.error('TNM Generation error:', error);
-        statusDiv.innerHTML = `<div class="alert alert-danger"><i class="fas fa-exclamation-circle me-2"></i>Error: ${error.message}</div>`;
+        statusDiv.className = 'tnm-gen-status status-error';
+        statusDiv.innerHTML = `<i class="fas fa-exclamation-circle me-2"></i>Error: ${error.message}`;
         showFlash('Error generating TNM content', 'danger');
     } finally {
         generateBtn.disabled = false;
