@@ -39,7 +39,7 @@ def send_recovery_email(email, token):
     resend.api_key = resend_key
     
     # Use verified domain or Resend's test domain
-    from_email = os.getenv('EMAIL_FROM', 'RadInsights <onboarding@resend.dev>')
+    from_email = os.getenv('EMAIL_FROM', "RadInsights <no-reply@radinsights.com>")
     
     try:
         params = {
@@ -103,7 +103,7 @@ def send_admin_approval_email(requesting_admin_email, requesting_admin_name, tar
         return {'success': False, 'error': error_msg, 'email_id': None}
     
     resend.api_key = resend_key
-    from_email = os.getenv('EMAIL_FROM', 'RadInsights <onboarding@resend.dev>')
+    from_email = os.getenv('EMAIL_FROM', "RadInsights <no-reply@radinsights.com>")
     
     # Build details section
     details_html = ""
@@ -671,7 +671,7 @@ def test_send_email():
         if not resend_key:
             return jsonify({'error': 'RESEND_API_KEY not set'}), 500
         
-        from_email = os.getenv('EMAIL_FROM', 'onboarding@resend.dev')
+        from_email = os.getenv('EMAIL_FROM', "RadInsights <no-reply@radinsights.com>")
         test_to = 'test@example.com'  # Use a test email
         
         response = requests.post(
@@ -775,7 +775,7 @@ def send_recovery_code_email(email, code, request_metadata=None):
         return False
     
     resend.api_key = resend_key
-    from_email = os.getenv('EMAIL_FROM', 'RadInsights <onboarding@resend.dev>')
+    from_email = os.getenv('EMAIL_FROM', "RadInsights <no-reply@radinsights.com>")
     
     metadata_html = ""
     if request_metadata:
@@ -1043,6 +1043,54 @@ def debug_auth():
         'session_id': session.get('_id', 'No session'),
         'session_keys': list(session.keys())
     }), 200
+
+
+@auth_bp.route('/debug/test-login', methods=['POST'])
+def debug_test_login():
+    """Debug endpoint to test login directly (TEMPORARY - REMOVE AFTER DEBUGGING)"""
+    try:
+        data = request.get_json() if request.is_json else request.form
+        email = data.get('email', '').strip().lower()
+        password = data.get('password', '')
+
+        debug_info = {
+            'email_received': email,
+            'password_length': len(password) if password else 0,
+        }
+
+        user = User.query.filter_by(email=email).first()
+
+        if not user:
+            debug_info['user_found'] = False
+            return jsonify(debug_info), 404
+
+        debug_info['user_found'] = True
+        debug_info['user_id'] = user.id
+        debug_info['password_hash_exists'] = bool(user.password_hash)
+        debug_info['password_hash_length'] = len(user.password_hash) if user.password_hash else 0
+        debug_info['password_hash_preview'] = user.password_hash[:50] + '...' if user.password_hash else None
+        debug_info['is_active'] = user.is_active
+        debug_info['is_deleted'] = user.is_deleted if hasattr(user, 'is_deleted') else 'N/A'
+
+        # Test password directly
+        try:
+            from werkzeug.security import check_password_hash
+            raw_check = check_password_hash(user.password_hash, password)
+            debug_info['raw_password_check'] = raw_check
+        except Exception as e:
+            debug_info['raw_password_check_error'] = str(e)
+
+        # Test via model method
+        try:
+            model_check = user.check_password(password)
+            debug_info['model_password_check'] = model_check
+        except Exception as e:
+            debug_info['model_password_check_error'] = str(e)
+
+        return jsonify(debug_info), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e), 'type': type(e).__name__}), 500
 
 
 @auth_bp.route('/debug/verify-db-users', methods=['GET'])
