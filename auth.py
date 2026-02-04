@@ -1045,6 +1045,30 @@ def debug_auth():
     }), 200
 
 
+@auth_bp.route('/debug/db-info', methods=['GET'])
+def debug_db_info():
+    """Debug endpoint to check database connection (TEMPORARY)"""
+    import os
+    try:
+        # Count users in database
+        user_count = User.query.count()
+
+        # Get a few user emails
+        users = User.query.limit(5).all()
+        user_emails = [u.email for u in users]
+
+        return jsonify({
+            'db_url_partial': os.getenv('DATABASE_URL', 'NOT SET')[:50] + '...' if os.getenv('DATABASE_URL') else 'NOT SET',
+            'postgres_url_partial': os.getenv('POSTGRES_URL', 'NOT SET')[:50] + '...' if os.getenv('POSTGRES_URL') else 'NOT SET',
+            'use_local_db': os.getenv('USE_LOCAL_DB', 'NOT SET'),
+            'db_type': str(db.engine.url.drivername),
+            'user_count': user_count,
+            'sample_users': user_emails
+        }), 200
+    except Exception as e:
+        return jsonify({'error': str(e), 'type': type(e).__name__}), 500
+
+
 @auth_bp.route('/debug/test-login', methods=['POST'])
 def debug_test_login():
     """Debug endpoint to test login directly (TEMPORARY - REMOVE AFTER DEBUGGING)"""
