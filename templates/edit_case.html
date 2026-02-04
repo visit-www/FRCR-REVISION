@@ -4887,6 +4887,11 @@ function initRelatedCasesSearch() {
 }
 
 async function addRelatedCase(relatedCaseId, caseNumber, diagnosis) {
+    // Get case ID from getCurrentCaseId if not already set
+    if (!currentCaseIdForRelated) {
+        currentCaseIdForRelated = getCurrentCaseId();
+    }
+
     if (!currentCaseIdForRelated) {
         showFlash('Please save the case first before adding related cases', 'warning');
         return;
@@ -5001,13 +5006,15 @@ async function loadRelatedCases(caseId) {
 document.addEventListener('DOMContentLoaded', function() {
     initRelatedCasesSearch();
 
-    // Get case ID from URL
-    const urlParams = new URLSearchParams(window.location.search);
-    const caseId = urlParams.get('case_id');
-    if (caseId) {
-        currentCaseIdForRelated = parseInt(caseId);
-        loadRelatedCases(currentCaseIdForRelated);
-    }
+    // Get case ID from editCaseId field (set after case data loads)
+    // Use a small delay to ensure case data is loaded first
+    setTimeout(() => {
+        const caseId = getCurrentCaseId();
+        if (caseId) {
+            currentCaseIdForRelated = caseId;
+            loadRelatedCases(currentCaseIdForRelated);
+        }
+    }, 500);
 });
 
 // Make related cases functions globally accessible
