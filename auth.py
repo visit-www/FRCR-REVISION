@@ -651,7 +651,7 @@ def test_email():
             'resend_key_length': len(resend_key) if resend_key else 0,
             'requests_available': True,
             'app_url': os.getenv('APP_URL', 'https://www.radinsights.xyz'),
-            'email_from': os.getenv('EMAIL_FROM', 'onboarding@resend.dev')
+            'email_from': os.getenv('EMAIL_FROM', 'RadInsights <no-reply@radinsights.com>')
         }
         
         return jsonify(result), 200

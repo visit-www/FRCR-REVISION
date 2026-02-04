@@ -36,3 +36,6 @@ SCOPES = ["User.Read", "Files.Read"]
 
 # Authority for personal Microsoft accounts (supports both personal and work/school)
 AUTHORITY = "https://login.microsoftonline.com/common"
+
+class Config:
+    MAIL_FROM = "RadInsights <no-reply@radinsights.com>"
