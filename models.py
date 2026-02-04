@@ -779,6 +779,7 @@ class TNMGeneratorJob(db.Model):
     description = db.Column(db.String(500), nullable=True)
     special_features = db.Column(db.Text, nullable=True)  # JSON array
     special_notes = db.Column(db.Text, nullable=True)
+    overwrite = db.Column(db.Boolean, default=False)  # Overwrite existing calculator
 
     # Status: pending, running, completed, failed
     status = db.Column(db.String(20), default='pending', nullable=False, index=True)

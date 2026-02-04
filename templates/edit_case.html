@@ -5716,6 +5716,12 @@ async function showTnmGeneratorModal() {
                     <span class="tnm-gen-checkbox-label">Insert algorithm into discussion field after generation</span>
                 </label>
 
+                <label class="tnm-gen-checkbox">
+                    <input type="checkbox" id="genOverwrite">
+                    <span class="tnm-gen-checkbox-mark"></span>
+                    <span class="tnm-gen-checkbox-label">Overwrite existing calculator if it already exists</span>
+                </label>
+
                 <div id="genStatus" class="tnm-gen-status" style="display: none;"></div>
             </div>
             <div class="tnm-gen-footer">
@@ -5760,6 +5766,7 @@ async function generateTnmContent() {
     const specialFeatures = document.getElementById('genSpecialFeatures').value.trim().split(',').map(s => s.trim()).filter(s => s);
     const specialNotes = document.getElementById('genSpecialNotes').value.trim();
     const insertAlgorithm = document.getElementById('genInsertAlgorithm').checked;
+    const overwrite = document.getElementById('genOverwrite').checked;
 
     if (!slug || !cancerName || !bodySection) {
         showFlash('Please select Body Section and Disease Site', 'warning');
@@ -5781,7 +5788,8 @@ async function generateTnmContent() {
         staging_system: stagingSystem,
         description,
         special_features: specialFeatures,
-        special_notes: specialNotes
+        special_notes: specialNotes,
+        overwrite
     };
 
     try {

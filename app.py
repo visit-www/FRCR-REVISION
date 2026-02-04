@@ -662,7 +662,8 @@ def process_tnm_generator_jobs():
             special_features=special_features,
             description=job.description or '',
             special_notes=job.special_notes or '',
-            user_id=job.created_by_user_id
+            user_id=job.created_by_user_id,
+            overwrite=getattr(job, 'overwrite', False)  # Pass overwrite flag
         )
 
         if success:

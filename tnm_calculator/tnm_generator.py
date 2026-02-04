@@ -279,7 +279,8 @@ def generate_and_save_tnm_content(
     special_features: list = None,
     description: str = "",
     special_notes: str = "",
-    user_id: int = None
+    user_id: int = None,
+    overwrite: bool = False
 ) -> Tuple[bool, str, Dict[str, Any]]:
     """
     Generate calculator and algorithm content, save to DB and file.
@@ -294,6 +295,7 @@ def generate_and_save_tnm_content(
         description: Short description
         special_notes: Notes for Claude
         user_id: Creating user ID
+        overwrite: If True, overwrite existing calculator
 
     Returns:
         Tuple of (success, message, result_data)
@@ -303,8 +305,14 @@ def generate_and_save_tnm_content(
     try:
         # Check if already exists
         existing = TNMCalculatorContent.query.filter_by(slug=slug).first()
-        if existing:
-            return False, f"Calculator for '{slug}' already exists", {}
+        if existing and not overwrite:
+            return False, f"Calculator for '{slug}' already exists. Use overwrite option to replace.", {}
+
+        # If overwrite is True and existing record found, delete it first
+        if existing and overwrite:
+            logger.info(f"[TNM Generator] Overwriting existing calculator for {slug}")
+            db.session.delete(existing)
+            db.session.commit()
 
         # Generate calculator HTML
         logger.info(f"[TNM Generator] Starting generation for {cancer_name}")

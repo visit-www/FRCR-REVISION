@@ -1815,18 +1815,21 @@ def queue_tnm_generation():
                 'error': f'Missing required fields: {", ".join(missing)}'
             }), 400
 
-        # Check if job already pending for this slug
-        existing = TNMGeneratorJob.query.filter_by(
-            slug=data['slug'],
-            status='pending'
-        ).first()
-        if existing:
-            return jsonify({
-                'success': True,
-                'job_id': existing.job_id,
-                'message': 'Job already queued',
-                'status': 'pending'
-            }), 200
+        overwrite = data.get('overwrite', False)
+
+        # Check if job already pending for this slug (unless overwrite mode)
+        if not overwrite:
+            existing = TNMGeneratorJob.query.filter_by(
+                slug=data['slug'],
+                status='pending'
+            ).first()
+            if existing:
+                return jsonify({
+                    'success': True,
+                    'job_id': existing.job_id,
+                    'message': 'Job already queued',
+                    'status': 'pending'
+                }), 200
 
         # Create job
         job = TNMGeneratorJob(
@@ -1838,6 +1841,7 @@ def queue_tnm_generation():
             description=data.get('description', ''),
             special_features=json.dumps(data.get('special_features', [])),
             special_notes=data.get('special_notes', ''),
+            overwrite=overwrite,
             created_by_user_id=current_user.id
         )
         db.session.add(job)
