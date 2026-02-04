@@ -3,6 +3,11 @@ venv
 __pycache__
 *.pyc
 .DS_Store
+.env
+.env.local
+.env.production
+.env.prod
+.env*.local
 backups
 instance
 node_modules
