@@ -199,6 +199,29 @@
                         <div id="diagnosisText" class="detail-content diagnosis-text highlightable-text" data-field="diagnosis" style="line-height: 1.8; font-size: 1.05rem; color: #2c3e50; text-align: left; {% if current_user.is_authenticated and current_user.role and current_user.role.value == 'student' %}user-select: text; cursor: text;{% endif %}">{{ case.diagnosis }}</div>
                     </div>
 
+                    <!-- Related Cases Section -->
+                    {% if case.related_cases_list.count() > 0 %}
+                    <div class="detail-section related-cases-section mb-4 p-3 rounded-3" style="background: linear-gradient(135deg, #f0f5f8 0%, #f5f9fb 100%); border-left: 4px solid #5E899E;">
+                        <label class="detail-label fw-bold text-secondary mb-2 d-block">
+                            <i class="fas fa-link me-2" style="color: #5E899E;"></i>Related Cases & Articles
+                        </label>
+                        <div class="d-flex flex-wrap gap-2">
+                            {% for related in case.related_cases_list.all() %}
+                            <a href="{{ url_for('view_case', case_id=related.id) }}"
+                               class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-2"
+                               style="border-color: #5E899E; color: #5E899E;">
+                                {% if related.calculator_slug %}
+                                <i class="fas fa-calculator" style="color: #e96304;"></i>
+                                {% else %}
+                                <i class="fas fa-file-medical"></i>
+                                {% endif %}
+                                <span>{{ related.case_number or related.diagnosis[:40] }}{% if related.diagnosis|length > 40 %}...{% endif %}</span>
+                            </a>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+
                     <!-- Question & Answer Section - Separate Pairs -->
                     <div class="detail-section qa-section mb-5 p-4 rounded-3" style="background: #f8f9fa;">
                         <div class="d-flex justify-content-between align-items-center mb-4">

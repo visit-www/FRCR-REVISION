@@ -23,6 +23,15 @@ class CaseFlag(db.Model):
     def __repr__(self):
         return f'<CaseFlag user={self.user_id} case={self.case_id}>'
 
+# ==================== RELATED CASES ASSOCIATION TABLE ====================
+# Many-to-many self-referential relationship for linking related cases
+related_cases = db.Table('related_cases',
+    db.Column('case_id', db.Integer, db.ForeignKey('case.id', ondelete='CASCADE'), primary_key=True),
+    db.Column('related_case_id', db.Integer, db.ForeignKey('case.id', ondelete='CASCADE'), primary_key=True),
+    db.Column('relation_type', db.String(50), default='related'),  # 'algorithm', 'similar', 'reference'
+    db.Column('created_at', db.DateTime, default=datetime.utcnow)
+)
+
 # ==================== ENUMS ====================
 
 # User Role Enum
@@ -278,6 +287,17 @@ class Case(db.Model):
 
     # === CALCULATOR INTEGRATION ===
     calculator_slug = db.Column(db.String(50), nullable=True)  # e.g., 'oropharynx', 'lung', None
+
+    # === RELATED CASES ===
+    # Self-referential many-to-many for linking related cases (e.g., algorithm → specific cases)
+    related_cases_list = db.relationship(
+        'Case',
+        secondary='related_cases',
+        primaryjoin='Case.id == related_cases.c.case_id',
+        secondaryjoin='Case.id == related_cases.c.related_case_id',
+        backref=db.backref('referenced_by', lazy='dynamic'),
+        lazy='dynamic'
+    )
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

@@ -2378,6 +2378,139 @@ def update_case_qa_pairs(case_id):
         return jsonify({'error': str(e)}), 500
 
 
+# ==================== RELATED CASES API ====================
+
+@app.route('/api/case/<int:case_id>/related', methods=['GET'])
+@login_required
+def get_related_cases(case_id):
+    """Get all related cases for a case"""
+    case = Case.query.get_or_404(case_id)
+
+    # Get related cases with their basic info
+    related = []
+    for related_case in case.related_cases_list.all():
+        related.append({
+            'id': related_case.id,
+            'case_number': related_case.case_number,
+            'diagnosis': related_case.diagnosis,
+            'body_part': related_case.body_part.value if related_case.body_part else None,
+            'calculator_slug': related_case.calculator_slug
+        })
+
+    return jsonify(related)
+
+
+@app.route('/api/case/<int:case_id>/related', methods=['POST'])
+@login_required
+def add_related_case(case_id):
+    """Add a related case to a case"""
+    from models import related_cases
+
+    # Admin/Content Manager only
+    if current_user.role not in [UserRole.ADMIN, UserRole.CONTENT_MANAGER]:
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    case = Case.query.get_or_404(case_id)
+    data = request.get_json()
+    related_case_id = data.get('related_case_id')
+    relation_type = data.get('relation_type', 'related')  # 'algorithm', 'similar', 'reference'
+
+    if not related_case_id:
+        return jsonify({'error': 'related_case_id required'}), 400
+
+    if related_case_id == case_id:
+        return jsonify({'error': 'Cannot relate a case to itself'}), 400
+
+    related_case = Case.query.get(related_case_id)
+    if not related_case:
+        return jsonify({'error': 'Related case not found'}), 404
+
+    # Check if already related
+    existing = db.session.execute(
+        db.select(related_cases).where(
+            related_cases.c.case_id == case_id,
+            related_cases.c.related_case_id == related_case_id
+        )
+    ).first()
+
+    if existing:
+        return jsonify({'error': 'Cases are already related'}), 400
+
+    # Add the relationship
+    db.session.execute(
+        related_cases.insert().values(
+            case_id=case_id,
+            related_case_id=related_case_id,
+            relation_type=relation_type
+        )
+    )
+    db.session.commit()
+
+    return jsonify({
+        'success': True,
+        'message': 'Related case added',
+        'related_case': {
+            'id': related_case.id,
+            'case_number': related_case.case_number,
+            'diagnosis': related_case.diagnosis
+        }
+    })
+
+
+@app.route('/api/case/<int:case_id>/related/<int:related_case_id>', methods=['DELETE'])
+@login_required
+def remove_related_case(case_id, related_case_id):
+    """Remove a related case from a case"""
+    from models import related_cases
+
+    # Admin/Content Manager only
+    if current_user.role not in [UserRole.ADMIN, UserRole.CONTENT_MANAGER]:
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    # Delete the relationship
+    db.session.execute(
+        related_cases.delete().where(
+            related_cases.c.case_id == case_id,
+            related_cases.c.related_case_id == related_case_id
+        )
+    )
+    db.session.commit()
+
+    return jsonify({'success': True, 'message': 'Related case removed'})
+
+
+@app.route('/api/cases/search', methods=['GET'])
+@login_required
+def search_cases_for_linking():
+    """Search cases for the related cases selector"""
+    query = request.args.get('q', '').strip()
+    exclude_id = request.args.get('exclude', type=int)
+    limit = request.args.get('limit', 20, type=int)
+
+    if len(query) < 2:
+        return jsonify([])
+
+    # Search in diagnosis and case_number
+    cases_query = Case.query.filter(
+        db.or_(
+            Case.diagnosis.ilike(f'%{query}%'),
+            Case.case_number.ilike(f'%{query}%')
+        )
+    )
+
+    if exclude_id:
+        cases_query = cases_query.filter(Case.id != exclude_id)
+
+    cases = cases_query.limit(limit).all()
+
+    return jsonify([{
+        'id': c.id,
+        'case_number': c.case_number,
+        'diagnosis': c.diagnosis[:100] + '...' if len(c.diagnosis or '') > 100 else c.diagnosis,
+        'body_part': c.body_part.value if c.body_part else None
+    } for c in cases])
+
+
 # ==================== CANDIDATE NOTES API ====================
 
 @app.route('/api/case/<int:case_id>/note', methods=['GET'])
