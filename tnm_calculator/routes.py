@@ -15,11 +15,11 @@ from .models import TNMInput, StagingType
 
 logger = logging.getLogger(__name__)
 
-# Create blueprint with template folder pointing to module templates
+# Create blueprint - using main app templates folder for v3 templates
 tnm_calc_bp = Blueprint(
     'tnm_calculator',
     __name__,
-    template_folder='templates',
+    template_folder='../templates',  # Use main app templates
     url_prefix='/tnm-calculator'
 )
 
@@ -188,7 +188,7 @@ def index():
     """Render the TNM Calculator v3 index page."""
     sections = get_v3_sections()
     return render_template(
-        'tnm_calculator/index.html',
+        'tnm_calculator_v3/index.html',
         sections=sections
     )
 
@@ -234,7 +234,7 @@ def calculator(disease: str):
             calculator_html = f.read()
 
         return render_template(
-            'tnm_calculator/calculator_wrapper.html',
+            'tnm_calculator_v3/calculator_wrapper.html',
             disease_name=disease_name,
             calculator_html=calculator_html,
             embed_mode=False
@@ -258,7 +258,7 @@ def embed(disease: str):
             calculator_html = f.read()
 
         return render_template(
-            'tnm_calculator/calculator_wrapper.html',
+            'tnm_calculator_v3/calculator_wrapper.html',
             disease_name=disease.replace('_', ' ').title(),
             calculator_html=calculator_html,
             embed_mode=True

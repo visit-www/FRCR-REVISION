@@ -275,7 +275,10 @@ class Case(db.Model):
     
     # === AI CONTENT VERIFICATION ===
     # REMOVED: ai_content_verified field - watermarks are now removed based on publish/public status only
-    
+
+    # === CALCULATOR INTEGRATION ===
+    calculator_slug = db.Column(db.String(50), nullable=True)  # e.g., 'oropharynx', 'lung', None
+
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     

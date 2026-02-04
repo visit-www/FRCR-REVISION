@@ -1475,6 +1475,7 @@ def create_case():
             discussion=discussion,
             module=module_enum,
             body_part=body_part_enum,
+            calculator_slug=data.get('calculator_slug') or None,
             is_public=data.get('is_public', False),
             created_by_user_id=current_user.id
         )
@@ -2464,6 +2465,8 @@ def get_case(case_id):
             'discussion': case.discussion,
             'module': case.module.name if case.module else None,
             'body_part': case.body_part.name if case.body_part else None,
+            'age_group': case.age_group.name if case.age_group else None,
+            'calculator_slug': case.calculator_slug,
             'is_public': case.is_public,
             'status': case.status.name if case.status else 'DRAFT'
         })
@@ -2496,6 +2499,8 @@ def get_case(case_id):
                 case.age_group = AgeGroup[data['age_group']] if data['age_group'] else None
             except Exception:
                 pass
+        if 'calculator_slug' in data:
+            case.calculator_slug = data['calculator_slug'] if data['calculator_slug'] else None
         if 'is_public' in data:
             val = data['is_public']
             if isinstance(val, bool):

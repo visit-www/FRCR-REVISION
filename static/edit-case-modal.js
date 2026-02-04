@@ -885,6 +885,7 @@ function saveEditedCase(event) {
     const module = document.getElementById('editCaseModule')?.value || null;
     const bodyPart = document.getElementById('editCaseBodyPart')?.value || null;
     const ageGroup = document.getElementById('editCaseAgeGroup')?.value || null;
+    const calculatorSlug = document.getElementById('editCaseCalculator')?.value || null;
     const status = document.getElementById('editCaseStatus')?.value || 'DRAFT';
     // Automatically set is_public based on status: PUBLISHED = true, all others = false
     const isPublic = status === 'PUBLISHED';
@@ -966,6 +967,7 @@ function saveEditedCase(event) {
         module: module,
         body_part: bodyPart,
         age_group: ageGroup,
+        calculator_slug: calculatorSlug,
         status: status,
         is_public: isPublic,  // Syncs with status: PUBLISHED = true
         pairs: pairs

@@ -223,6 +223,51 @@ console.log('[TinyMCE Loader] Script URL was:', "{{ url_for('static', filename='
                             </div>
                         </div>
                     </div>
+
+                    <!-- Calculator Integration Row -->
+                    <div class="row mt-4 pt-4 border-top">
+                        <div class="col-md-6">
+                            <div class="mb-4">
+                                <label class="form-label fw-bold text-secondary">
+                                    <i class="fas fa-calculator me-1" style="color: #e96304;"></i>TNM Calculator
+                                </label>
+                                <select class="form-select form-select-lg" id="editCaseCalculator">
+                                    <option value="">None (no calculator)</option>
+                                    <optgroup label="Head and Neck">
+                                        <option value="oropharynx">Oropharynx (HPV+/-)</option>
+                                        <option value="larynx">Larynx</option>
+                                        <option value="oral_cavity">Oral Cavity</option>
+                                        <option value="nasopharynx">Nasopharynx</option>
+                                        <option value="hypopharynx">Hypopharynx</option>
+                                        <option value="thyroid">Thyroid</option>
+                                    </optgroup>
+                                    <optgroup label="Thorax">
+                                        <option value="lung">Lung (NSCLC)</option>
+                                        <option value="esophagus">Esophagus</option>
+                                    </optgroup>
+                                    <optgroup label="Breast">
+                                        <option value="breast">Breast Cancer</option>
+                                    </optgroup>
+                                    <optgroup label="Gynecological">
+                                        <option value="cervix">Cervix (FIGO)</option>
+                                        <option value="endometrium">Endometrium (FIGO)</option>
+                                        <option value="ovary">Ovary (FIGO)</option>
+                                    </optgroup>
+                                </select>
+                                <small class="text-muted d-block mt-2">
+                                    Optional: Embed a TNM calculator in the case view for this disease type
+                                </small>
+                            </div>
+                        </div>
+                        <div class="col-md-6 d-flex align-items-center">
+                            <div class="alert alert-info mb-0 w-100" style="background: rgba(94, 137, 158, 0.1); border-color: #5E899E;">
+                                <small>
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    When a calculator is selected, it will be embedded in the case view page for students to use while reviewing the case.
+                                </small>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -2194,7 +2239,10 @@ function loadCaseForEdit(caseId) {
         if (document.getElementById('editCaseAgeGroup')) {
             document.getElementById('editCaseAgeGroup').value = caseData.age_group || '';
         }
-        
+        if (document.getElementById('editCaseCalculator')) {
+            document.getElementById('editCaseCalculator').value = caseData.calculator_slug || '';
+        }
+
         // AI watermark preservation: watermarks preserved unless case is published/public
         
         // Populate Q&A pairs directly using addQAPairRow
