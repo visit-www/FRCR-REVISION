@@ -2,7 +2,7 @@
 
 > **Last Updated:** February 5, 2026
 > **Status:** Active Development
-> **Total Plans:** 10 Feature Areas
+> **Total Plans:** 11 Feature Areas
 
 ---
 
@@ -26,6 +26,7 @@ This document serves as the master index for all planned features and enhancemen
 | 8 | DICOM/MPR Infrastructure | Very High | High | Future (Documented) |
 | 9 | R2 Migration and Viewer Upgrade | Medium-High | High | Planned |
 | 10 | Railway Migration | Low | High | Ready (Documented) |
+| 11 | AI Reporting Assistant | Medium-High | Very High | Planned |
 
 ---
 
@@ -386,6 +387,59 @@ Migrate hosting from Vercel (Hobby Plan) to Railway to overcome Vercel limitatio
 
 ---
 
+## Plan 11: AI Reporting Assistant
+
+**Priority:** 11 (Teaching Tool)
+**Complexity:** Medium-High
+**Estimated Effort:** 2-3 weeks
+**Dependencies:** Claude API (already integrated)
+**Status:** Planned
+
+### Summary
+Build an AI-powered "Algorithmic Reporting Pathway Generator" that creates structured, diagnosis-agnostic decision trees for radiology case interpretation. This teaching tool helps FRCR trainees develop systematic approaches to image interpretation, ensuring no critical findings are missed.
+
+### Core Principles
+1. **WORST FIRST** - Life-threatening diagnoses first
+2. **SYSTEMATIC BEFORE SPECIFIC** - Complete review before pattern matching
+3. **BINARY DECISION LOGIC** - Yes/No branching narrows differential
+4. **DIAGNOSIS-AGNOSTIC** - Works for ANY final diagnosis
+5. **ACTIONABLE OUTPUT** - Clear impression with confidence levels
+
+### Key Features
+- **Standalone Generator** - Input modality/region/indication, get complete decision tree
+- **Case Integration** - Generate pathways linked to existing cases
+- **Refinement Mode** - Add lab values/clinical data to narrow differential
+- **Visual Teaching Cards** - Printable, structured output with Teaching Pearls and Pitfalls
+
+### Supports All Modalities
+CT, MRI, X-ray, Ultrasound, Nuclear Medicine, CBCT, PET
+
+### Output Structure (6 Steps)
+1. Technical Adequacy & Orientation
+2. Red Flags: Critical & Time-Sensitive Findings
+3. Systematic Anatomical Review
+4. Dominant Abnormality Characterisation (with staging/grading)
+5. Differential Diagnosis (ranked)
+6. Sample Structured Report
+
+### Key Deliverables
+- Database: `AlgorithmicPathway`, `PathwayRefinement` models
+- AI Module: `ai_reporting_assistant/` with prompts, generator, routes
+- UI: Generator page, pathway viewer, my pathways list
+- Case integration button in view_case.html
+
+### Files Affected
+- `ai_reporting_assistant/` (new module)
+- `models.py` (new models)
+- `app.py` (blueprint registration)
+- `templates/ai_reporting_assistant/` (new templates)
+- `templates/view_case.html` (integration button)
+
+### Plan Document
+📄 **Location:** [docs/plans/AI_REPORTING_ASSISTANT_PLAN.md](AI_REPORTING_ASSISTANT_PLAN.md)
+
+---
+
 ## Implementation Roadmap
 
 ```
@@ -451,6 +505,7 @@ Phase 4: AI Transformation (Week 10-20)
 | DICOM/MPR Infrastructure | - | `docs/plans/DICOM_MPR_INFRASTRUCTURE_PLAN.md` |
 | R2 Migration and Viewer Upgrade | - | `docs/plans/R2_MIGRATION_AND_VIEWER_UPGRADE_PLAN.md` |
 | Railway Migration | - | `docs/plans/RAILWAY_MIGRATION_PLAN.md` |
+| AI Reporting Assistant | - | `docs/plans/AI_REPORTING_ASSISTANT_PLAN.md` |
 
 ---
 
@@ -473,4 +528,5 @@ Phase 4: AI Transformation (Week 10-20)
 | 2026-02-02 | Case DICOM Viewer marked implemented; added DICOM/MPR Infrastructure plan | AI Assistant |
 | 2026-02-02 | Added R2 Migration and Viewer Upgrade plan (Plan 9); no migration script, admin UI only | AI Assistant |
 | 2026-02-05 | Added Railway Migration plan (Plan 10); migrate from Vercel to Railway for better timeouts/cron | AI Assistant |
+| 2026-02-05 | Added AI Reporting Assistant plan (Plan 11); diagnosis-agnostic algorithmic pathway generator | AI Assistant |
 
