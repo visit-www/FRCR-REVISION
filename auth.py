@@ -1049,6 +1049,7 @@ def debug_auth():
 def debug_db_info():
     """Debug endpoint to check database connection (TEMPORARY)"""
     import os
+    from pathlib import Path
     try:
         # Count users in database
         user_count = User.query.count()
@@ -1057,16 +1058,33 @@ def debug_db_info():
         users = User.query.limit(5).all()
         user_emails = [u.email for u in users]
 
+        # Check for .env files
+        base_dir = Path(__file__).parent
+        env_files = {
+            '.env': (base_dir / '.env').exists(),
+            '.env.local': (base_dir / '.env.local').exists(),
+            '.env.production': (base_dir / '.env.production').exists(),
+        }
+
         return jsonify({
             'db_url_partial': os.getenv('DATABASE_URL', 'NOT SET')[:50] + '...' if os.getenv('DATABASE_URL') else 'NOT SET',
             'postgres_url_partial': os.getenv('POSTGRES_URL', 'NOT SET')[:50] + '...' if os.getenv('POSTGRES_URL') else 'NOT SET',
+            'frcr_postgres_url': os.getenv('frcr_revision_db_POSTGRES_URL', 'NOT SET')[:50] + '...' if os.getenv('frcr_revision_db_POSTGRES_URL') else 'NOT SET',
             'use_local_db': os.getenv('USE_LOCAL_DB', 'NOT SET'),
+            'use_local_db_raw': repr(os.environ.get('USE_LOCAL_DB')),
+            'env': os.getenv('ENV', 'NOT SET'),
+            'flask_env': os.getenv('FLASK_ENV', 'NOT SET'),
+            'vercel_env': os.getenv('VERCEL_ENV', 'NOT SET'),
             'db_type': str(db.engine.url.drivername),
+            'db_url_full': str(db.engine.url)[:80] + '...',
             'user_count': user_count,
-            'sample_users': user_emails
+            'sample_users': user_emails,
+            'env_files_exist': env_files,
+            'base_dir': str(base_dir),
         }), 200
     except Exception as e:
-        return jsonify({'error': str(e), 'type': type(e).__name__}), 500
+        import traceback
+        return jsonify({'error': str(e), 'type': type(e).__name__, 'traceback': traceback.format_exc()}), 500
 
 
 @auth_bp.route('/debug/test-login', methods=['POST'])
