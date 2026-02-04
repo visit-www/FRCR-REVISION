@@ -450,6 +450,7 @@ def insert_algorithm_to_case_discussion(
 ) -> Tuple[bool, str]:
     """
     Insert algorithm discussion HTML into a case's discussion field.
+    Wraps in identifiable container for later extraction/sync.
 
     Args:
         db: SQLAlchemy database instance
@@ -477,16 +478,24 @@ def insert_algorithm_to_case_discussion(
         existing = case.discussion or ""
         separator = "\n\n<hr style='border-top: 2px solid #e96304; margin: 2rem 0;'>\n\n" if existing.strip() else ""
 
-        algorithm_header = f"""
+        # Wrap algorithm in identifiable container for extraction/sync
+        algorithm_wrapper = f"""
+<!-- TNM-ALGORITHM-START:{calculator_slug} -->
+<div class="tnm-algorithm-container" data-algorithm-slug="{calculator_slug}" data-algorithm-version="{content.id}">
 <div style="background: linear-gradient(135deg, #5E899E 0%, #4a7285 100%); color: white; padding: 15px 20px; border-radius: 8px 8px 0 0; margin-bottom: 0;">
     <h3 style="margin: 0; font-size: 1.25rem;">
         <i class="fas fa-sitemap" style="margin-right: 10px;"></i>{content.cancer_name} Staging Algorithm
     </h3>
     <small style="opacity: 0.9;">{content.staging_system}</small>
 </div>
+<div class="tnm-algorithm-content" data-editable="true">
+{content.algorithm_discussion_html}
+</div>
+</div>
+<!-- TNM-ALGORITHM-END:{calculator_slug} -->
 """
 
-        case.discussion = existing + separator + algorithm_header + content.algorithm_discussion_html
+        case.discussion = existing + separator + algorithm_wrapper
         case.calculator_slug = calculator_slug
         db.session.commit()
 
@@ -494,5 +503,80 @@ def insert_algorithm_to_case_discussion(
 
     except Exception as e:
         logger.error(f"[TNM Generator] Error inserting algorithm: {e}")
+        db.session.rollback()
+        return False, f"Error: {str(e)}"
+
+
+def extract_algorithm_from_discussion(discussion_html: str, calculator_slug: str) -> Optional[str]:
+    """
+    Extract algorithm content from case discussion HTML.
+
+    Args:
+        discussion_html: Full discussion HTML
+        calculator_slug: Slug of algorithm to extract
+
+    Returns:
+        Extracted algorithm HTML or None if not found
+    """
+    import re
+
+    # Pattern to match algorithm container
+    pattern = rf'<!-- TNM-ALGORITHM-START:{re.escape(calculator_slug)} -->.*?<div class="tnm-algorithm-content"[^>]*>(.*?)</div>\s*</div>\s*<!-- TNM-ALGORITHM-END:{re.escape(calculator_slug)} -->'
+
+    match = re.search(pattern, discussion_html, re.DOTALL)
+    if match:
+        return match.group(1).strip()
+
+    return None
+
+
+def update_algorithm_template_from_case(
+    db,
+    case_id: int,
+    calculator_slug: str
+) -> Tuple[bool, str]:
+    """
+    Update algorithm template from edited case discussion.
+    Extracts algorithm content and saves to TNMCalculatorContent.
+
+    Args:
+        db: SQLAlchemy database instance
+        case_id: Case ID containing edited algorithm
+        calculator_slug: Calculator slug to update
+
+    Returns:
+        Tuple of (success, message)
+    """
+    from models import Case, TNMCalculatorContent
+
+    try:
+        case = Case.query.get(case_id)
+        if not case:
+            return False, "Case not found"
+
+        if not case.discussion:
+            return False, "Case has no discussion content"
+
+        content = TNMCalculatorContent.query.filter_by(slug=calculator_slug).first()
+        if not content:
+            return False, f"Calculator '{calculator_slug}' not found"
+
+        # Extract algorithm from discussion
+        extracted = extract_algorithm_from_discussion(case.discussion, calculator_slug)
+        if not extracted:
+            return False, f"Could not find algorithm for '{calculator_slug}' in discussion"
+
+        # Update template
+        old_length = len(content.algorithm_discussion_html or '')
+        content.algorithm_discussion_html = extracted
+        content.updated_at = datetime.utcnow()
+        db.session.commit()
+
+        logger.info(f"[TNM Generator] Updated algorithm template '{calculator_slug}' from case {case_id}: {old_length} -> {len(extracted)} chars")
+
+        return True, f"Algorithm template updated ({len(extracted)} chars)"
+
+    except Exception as e:
+        logger.error(f"[TNM Generator] Error updating algorithm template: {e}")
         db.session.rollback()
         return False, f"Error: {str(e)}"

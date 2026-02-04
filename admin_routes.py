@@ -1882,6 +1882,52 @@ def get_tnm_job_status(job_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@admin_bp.route('/tnm/update-template/<int:case_id>', methods=['POST'])
+@require_admin
+def update_algorithm_template(case_id):
+    """
+    Update algorithm template from edited case discussion.
+    Extracts algorithm content and saves back to TNMCalculatorContent.
+
+    Body:
+    {
+        "calculator_slug": "larynx"  // optional, uses case.calculator_slug if not provided
+    }
+
+    Returns: { success: true, message: "..." }
+    """
+    from tnm_calculator.tnm_generator import update_algorithm_template_from_case
+    from models import Case
+
+    try:
+        data = request.get_json() or {}
+        calculator_slug = data.get('calculator_slug')
+
+        # Get slug from case if not provided
+        if not calculator_slug:
+            case = Case.query.get(case_id)
+            if not case:
+                return jsonify({'success': False, 'error': 'Case not found'}), 404
+            calculator_slug = case.calculator_slug
+            if not calculator_slug:
+                return jsonify({'success': False, 'error': 'No calculator_slug on case'}), 400
+
+        success, message = update_algorithm_template_from_case(
+            db=db,
+            case_id=case_id,
+            calculator_slug=calculator_slug
+        )
+
+        if success:
+            return jsonify({'success': True, 'message': message}), 200
+        else:
+            return jsonify({'success': False, 'error': message}), 400
+
+    except Exception as e:
+        logger.exception(f"Update algorithm template error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @admin_bp.route('/tnm/available', methods=['GET'])
 @require_admin
 def list_available_cancers():

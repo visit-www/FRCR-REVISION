@@ -352,12 +352,20 @@ console.log('[TinyMCE Loader] Script URL was:', "{{ url_for('static', filename='
                     <textarea class="form-control form-control-lg rich-editor" id="editCaseDiscussion" rows="8" placeholder="Add any discussion, clinical findings, differential diagnosis, teaching points, or additional comments about this case..."></textarea>
                     <small class="text-muted d-block mt-2">Optional field for comprehensive case discussion</small>
                 </div>
-                <!-- RadiologyInsights Footer -->
+                <!-- Algorithm Sync Footer -->
                 <div class="card-footer bg-light">
-                    <div class="d-flex align-items-center justify-content-end gap-2">
-                        <img src="https://res.cloudinary.com/dx7b7chvn/image/upload/v1769503548/frcr-rev-logo-transp_o2hmrq.png" 
-                             alt="RadiologyInsights Logo" style="width: 24px; height: 24px; object-fit: contain;">
-                        <span class="small text-muted">&copy; RadiologyInsights. All rights reserved.</span>
+                    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                        <div id="algorithmSyncControls" style="display: none;">
+                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="syncAlgorithmToTemplate()">
+                                <i class="fas fa-sync-alt me-1"></i>Update Algorithm Template
+                            </button>
+                            <small class="text-muted ms-2">Save edits back to <span id="algorithmSlugDisplay"></span> template</small>
+                        </div>
+                        <div class="d-flex align-items-center gap-2 ms-auto">
+                            <img src="https://res.cloudinary.com/dx7b7chvn/image/upload/v1769503548/frcr-rev-logo-transp_o2hmrq.png"
+                                 alt="RadiologyInsights Logo" style="width: 24px; height: 24px; object-fit: contain;">
+                            <span class="small text-muted">&copy; RadiologyInsights. All rights reserved.</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -2645,6 +2653,16 @@ function loadCaseForEdit(caseId) {
         }
         if (document.getElementById('editCaseCalculator')) {
             document.getElementById('editCaseCalculator').value = caseData.calculator_slug || '';
+        }
+
+        // Show algorithm sync controls if case has a calculator_slug
+        if (caseData.calculator_slug) {
+            const syncControls = document.getElementById('algorithmSyncControls');
+            const slugDisplay = document.getElementById('algorithmSlugDisplay');
+            if (syncControls) {
+                syncControls.style.display = 'block';
+                if (slugDisplay) slugDisplay.textContent = caseData.calculator_slug;
+            }
         }
 
         // AI watermark preservation: watermarks preserved unless case is published/public
@@ -5884,6 +5902,50 @@ async function insertAlgorithmToDiscussion(caseId, calculatorSlug) {
     } catch (error) {
         console.error('Insert algorithm error:', error);
         showFlash('Error inserting algorithm', 'danger');
+    }
+}
+
+async function syncAlgorithmToTemplate() {
+    const caseId = document.getElementById('editCaseId')?.value;
+    const calculatorSlug = document.getElementById('editCaseCalculator')?.value;
+
+    if (!caseId || caseId.startsWith('new') || caseId.startsWith('staging-')) {
+        showFlash('Please save the case first', 'warning');
+        return;
+    }
+
+    if (!calculatorSlug) {
+        showFlash('No algorithm calculator linked to this case', 'warning');
+        return;
+    }
+
+    // Confirm with user - remind to save first
+    const confirmed = confirm(
+        `Update the "${calculatorSlug}" algorithm template with changes from this case's discussion?\n\n` +
+        `⚠️ IMPORTANT: Make sure you've SAVED the case first!\n\n` +
+        `This will update the master template used for all future cases.`
+    );
+
+    if (!confirmed) return;
+
+    try {
+        showFlash('Syncing algorithm to template...', 'info');
+
+        const response = await fetch(`/api/admin/tnm/update-template/${caseId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ calculator_slug: calculatorSlug })
+        });
+
+        const result = await response.json();
+        if (result.success) {
+            showFlash(`Algorithm template updated: ${result.message}`, 'success');
+        } else {
+            showFlash(result.error || 'Failed to update template', 'danger');
+        }
+    } catch (error) {
+        console.error('Sync algorithm error:', error);
+        showFlash('Error syncing algorithm to template', 'danger');
     }
 }
 
