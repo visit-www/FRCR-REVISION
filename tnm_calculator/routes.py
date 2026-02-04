@@ -2,21 +2,24 @@
 TNM Calculator Flask Routes
 
 API endpoints and page routes for the TNM Calculator.
+Supports both v2 (API-based) and v3 (HTML calculator) approaches.
 """
 
-from flask import Blueprint, render_template, request, jsonify
+from flask import Blueprint, render_template, request, jsonify, redirect, url_for
 import logging
+import os
+from pathlib import Path
 
 from .engine import TNMCalculator
 from .models import TNMInput, StagingType
 
 logger = logging.getLogger(__name__)
 
-# Create blueprint
+# Create blueprint with template folder pointing to module templates
 tnm_calc_bp = Blueprint(
     'tnm_calculator',
     __name__,
-    template_folder='../templates',
+    template_folder='templates',
     url_prefix='/tnm-calculator'
 )
 
@@ -32,18 +35,237 @@ def get_calculator() -> TNMCalculator:
     return _calculator
 
 
-# ==================== PAGE ROUTES ====================
+# ==================== V3 CALCULATOR DEFINITIONS ====================
+
+# Define available calculators with metadata
+V3_CALCULATORS = {
+    'head_and_neck': {
+        'name': 'Head and Neck',
+        'icon': 'fas fa-head-side',
+        'calculators': [
+            {
+                'name': 'Oropharynx',
+                'slug': 'oropharynx',
+                'description': 'HPV+ and HPV- staging with detailed criteria',
+                'special_features': ['HPV+ Staging', 'HPV- Staging'],
+                'staging_system': 'AJCC 9th Edition',
+                'available': True
+            },
+            {
+                'name': 'Larynx',
+                'slug': 'larynx',
+                'description': 'Glottic, supraglottic, and subglottic subsites',
+                'special_features': ['Subsites'],
+                'staging_system': 'AJCC 9th Edition',
+                'available': False
+            },
+            {
+                'name': 'Oral Cavity',
+                'slug': 'oral_cavity',
+                'description': 'Lip, tongue, floor of mouth, buccal mucosa',
+                'special_features': ['Depth of Invasion'],
+                'staging_system': 'AJCC 9th Edition',
+                'available': False
+            },
+            {
+                'name': 'Nasopharynx',
+                'slug': 'nasopharynx',
+                'description': 'EBV-associated staging',
+                'special_features': ['EBV Status'],
+                'staging_system': 'AJCC 9th Edition',
+                'available': False
+            },
+            {
+                'name': 'Hypopharynx',
+                'slug': 'hypopharynx',
+                'description': 'Pyriform sinus, posterior pharyngeal wall',
+                'special_features': [],
+                'staging_system': 'AJCC 9th Edition',
+                'available': False
+            },
+            {
+                'name': 'Thyroid',
+                'slug': 'thyroid',
+                'description': 'Differentiated, medullary, and anaplastic',
+                'special_features': ['Age Factor', 'Histology'],
+                'staging_system': 'AJCC 9th Edition',
+                'available': False
+            },
+        ]
+    },
+    'thorax': {
+        'name': 'Thorax',
+        'icon': 'fas fa-lungs',
+        'calculators': [
+            {
+                'name': 'Lung (NSCLC)',
+                'slug': 'lung',
+                'description': 'Non-small cell lung cancer staging',
+                'special_features': ['SCLC Option'],
+                'staging_system': 'AJCC 9th Edition',
+                'available': False
+            },
+            {
+                'name': 'Esophagus',
+                'slug': 'esophagus',
+                'description': 'SCC and adenocarcinoma staging',
+                'special_features': ['Histology', 'Location'],
+                'staging_system': 'AJCC 9th Edition',
+                'available': False
+            },
+        ]
+    },
+    'breast': {
+        'name': 'Breast',
+        'icon': 'fas fa-ribbon',
+        'calculators': [
+            {
+                'name': 'Breast Cancer',
+                'slug': 'breast',
+                'description': 'Anatomic and prognostic staging with biomarkers',
+                'special_features': ['ER/PR', 'HER2', 'Grade', 'Prognostic'],
+                'staging_system': 'AJCC 9th Edition',
+                'available': False
+            },
+        ]
+    },
+    'gynecological': {
+        'name': 'Gynecological',
+        'icon': 'fas fa-venus',
+        'calculators': [
+            {
+                'name': 'Cervix',
+                'slug': 'cervix',
+                'description': 'FIGO 2018 staging for cervical cancer',
+                'special_features': ['Imaging-based'],
+                'staging_system': 'FIGO 2018',
+                'available': False
+            },
+            {
+                'name': 'Endometrium',
+                'slug': 'endometrium',
+                'description': 'FIGO 2023 staging for endometrial cancer',
+                'special_features': ['Molecular'],
+                'staging_system': 'FIGO 2023',
+                'available': False
+            },
+            {
+                'name': 'Ovary',
+                'slug': 'ovary',
+                'description': 'FIGO staging for ovarian cancer',
+                'special_features': [],
+                'staging_system': 'FIGO 2014',
+                'available': False
+            },
+        ]
+    },
+}
+
+
+def get_v3_sections():
+    """Get calculator sections for index page."""
+    sections = []
+    for section_id, section_data in V3_CALCULATORS.items():
+        sections.append({
+            'name': section_data['name'],
+            'icon': section_data['icon'],
+            'calculators': section_data['calculators']
+        })
+    return sections
+
+
+def calculator_exists(disease: str) -> bool:
+    """Check if a calculator HTML file exists."""
+    calc_dir = Path(__file__).parent / 'calculators'
+    calc_file = calc_dir / f'{disease}_calc.html'
+    return calc_file.exists()
+
+
+# ==================== V3 PAGE ROUTES ====================
 
 @tnm_calc_bp.route('/')
-def calculator_page():
-    """Render the TNM Calculator page."""
+def index():
+    """Render the TNM Calculator v3 index page."""
+    sections = get_v3_sections()
+    return render_template(
+        'tnm_calculator/index.html',
+        sections=sections
+    )
+
+
+@tnm_calc_bp.route('/v2')
+def calculator_page_v2():
+    """Render the legacy v2 TNM Calculator page (API-based)."""
     calculator = get_calculator()
     cancers = calculator.get_available_cancers()
-    
+
     return render_template(
         'tnm_calculator.html',
         cancers=cancers
     )
+
+
+@tnm_calc_bp.route('/<disease>')
+def calculator(disease: str):
+    """Render a disease-specific v3 calculator."""
+    # Check if calculator exists
+    if not calculator_exists(disease):
+        logger.warning(f"[TNM Calculator] Calculator not found: {disease}")
+        return redirect(url_for('tnm_calculator.index'))
+
+    # Find calculator metadata
+    calc_meta = None
+    for section in V3_CALCULATORS.values():
+        for calc in section['calculators']:
+            if calc['slug'] == disease:
+                calc_meta = calc
+                break
+        if calc_meta:
+            break
+
+    disease_name = calc_meta['name'] if calc_meta else disease.replace('_', ' ').title()
+
+    # Read and render the calculator HTML
+    calc_dir = Path(__file__).parent / 'calculators'
+    calc_file = calc_dir / f'{disease}_calc.html'
+
+    try:
+        with open(calc_file, 'r', encoding='utf-8') as f:
+            calculator_html = f.read()
+
+        return render_template(
+            'tnm_calculator/calculator_wrapper.html',
+            disease_name=disease_name,
+            calculator_html=calculator_html,
+            embed_mode=False
+        )
+    except Exception as e:
+        logger.error(f"[TNM Calculator] Error loading calculator {disease}: {e}")
+        return redirect(url_for('tnm_calculator.index'))
+
+
+@tnm_calc_bp.route('/embed/<disease>')
+def embed(disease: str):
+    """Render a calculator in embed mode (for case discussion)."""
+    if not calculator_exists(disease):
+        return "Calculator not found", 404
+
+    calc_dir = Path(__file__).parent / 'calculators'
+    calc_file = calc_dir / f'{disease}_calc.html'
+
+    try:
+        with open(calc_file, 'r', encoding='utf-8') as f:
+            calculator_html = f.read()
+
+        return render_template(
+            'tnm_calculator/calculator_wrapper.html',
+            disease_name=disease.replace('_', ' ').title(),
+            calculator_html=calculator_html,
+            embed_mode=True
+        )
+    except Exception as e:
+        logger.error(f"[TNM Calculator] Error loading embed calculator {disease}: {e}")
+        return "Calculator error", 500
 
 
 # ==================== API ROUTES ====================
