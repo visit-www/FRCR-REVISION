@@ -27,9 +27,9 @@ CALCULATORS_DIR = Path(__file__).parent / 'calculators'
 
 def get_claude_client():
     """Get Anthropic client instance."""
-    api_key = os.environ.get('ANTHROPIC_API_KEY')
+    api_key = os.environ.get('CLAUDE_API_KEY')
     if not api_key:
-        raise ValueError("ANTHROPIC_API_KEY environment variable is not set")
+        raise ValueError("CLAUDE_API_KEY environment variable is not set")
     return anthropic.Anthropic(api_key=api_key)
 
 
