@@ -142,6 +142,7 @@ def download_backup():
                 'age_group': case.age_group.value if case.age_group else None,
                 'is_public': case.is_public,
                 'status': case.status.value if hasattr(case, 'status') and case.status else None,
+                'calculator_slug': getattr(case, 'calculator_slug', None),
                 'created_by_user_id': case.created_by_user_id,
                 'approved_by_user_id': case.approved_by_user_id if hasattr(case, 'approved_by_user_id') else None,
                 'approved_at': case.approved_at.isoformat() if hasattr(case, 'approved_at') and case.approved_at else None,
@@ -817,7 +818,7 @@ def restore_backup():
         
         for case_idx, case_data in enumerate(cases_list):
             # Filter out unknown fields - only keep fields that exist in Case model
-            valid_case_keys = ['case_number', 'diagnosis', 'discussion', 'module', 'body_part', 'age_group', 'is_public', 'created_by_user_id', 'created_at']
+            valid_case_keys = ['case_number', 'diagnosis', 'discussion', 'module', 'body_part', 'age_group', 'is_public', 'calculator_slug', 'created_by_user_id', 'created_at']
             filtered_data = {k: v for k, v in case_data.items() if k in valid_case_keys}
             
             old_case_id = case_data.get('id')  # Store old ID for mapping
@@ -1138,6 +1139,7 @@ def restore_backup():
                     diagnosis=filtered_data.get('diagnosis', ''),
                     discussion=filtered_data.get('discussion', ''),
                     is_public=filtered_data.get('is_public', True),
+                    calculator_slug=filtered_data.get('calculator_slug'),
                 )
                 
                 # Set enums - try by value first (export format), then by name
