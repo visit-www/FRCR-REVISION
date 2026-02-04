@@ -178,7 +178,16 @@ def calculator_exists(disease: str) -> bool:
     """Check if a calculator HTML file exists."""
     calc_dir = Path(__file__).parent / 'calculators'
     calc_file = calc_dir / f'{disease}_calc.html'
-    return calc_file.exists()
+    exists = calc_file.exists()
+    logger.info(f"[TNM Calculator] Checking: {calc_file} - exists: {exists}")
+    if not exists:
+        # List what's in the calculators directory
+        if calc_dir.exists():
+            files = list(calc_dir.glob('*'))
+            logger.info(f"[TNM Calculator] Files in {calc_dir}: {files}")
+        else:
+            logger.warning(f"[TNM Calculator] Directory does not exist: {calc_dir}")
+    return exists
 
 
 # ==================== V3 PAGE ROUTES ====================
