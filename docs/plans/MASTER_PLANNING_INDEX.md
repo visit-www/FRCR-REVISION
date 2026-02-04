@@ -1,8 +1,8 @@
 # FRCR Revision App - Master Planning Index
 
-> **Last Updated:** February 2, 2026  
-> **Status:** Active Development  
-> **Total Plans:** 9 Feature Areas
+> **Last Updated:** February 5, 2026
+> **Status:** Active Development
+> **Total Plans:** 10 Feature Areas
 
 ---
 
@@ -25,6 +25,7 @@ This document serves as the master index for all planned features and enhancemen
 | 7 | Case DICOM Viewer | Medium-High | High | **Implemented** |
 | 8 | DICOM/MPR Infrastructure | Very High | High | Future (Documented) |
 | 9 | R2 Migration and Viewer Upgrade | Medium-High | High | Planned |
+| 10 | Railway Migration | Low | High | Ready (Documented) |
 
 ---
 
@@ -343,6 +344,48 @@ Migrate case image stacks from OneDrive to Cloudflare R2, upgrade the DICOM view
 
 ---
 
+## Plan 10: Railway Migration (Infrastructure)
+
+**Priority:** 10 (Infrastructure)
+**Complexity:** Low
+**Estimated Effort:** ~1 hour
+**Dependencies:** None
+**Status:** Ready to Execute
+
+### Summary
+Migrate hosting from Vercel (Hobby Plan) to Railway to overcome Vercel limitations: 10-second function timeout, daily-only cron jobs. Railway offers persistent services with no timeout limits and configurable cron jobs. All external services (Neon DB, Cloudflare R2, Resend, OneDrive) remain unchanged.
+
+### Why Migrate?
+| Issue | Vercel Hobby | Railway |
+|-------|-------------|---------|
+| Function timeout | 10 seconds | No limit |
+| Cron jobs | Daily only | Any frequency |
+| Cold starts | Yes | No |
+
+### Key Deliverables
+- Create `Procfile` and `runtime.txt`
+- Copy environment variables to Railway dashboard
+- Update DNS in Namecheap (CNAME to Railway)
+- Update Azure App redirect URIs for OneDrive OAuth
+
+### What Stays The Same (No Changes)
+- Neon PostgreSQL database
+- Cloudflare R2 storage
+- Resend email service
+- Claude API integration
+- Cloudinary for forum images
+- All application code
+
+### Files Affected
+- `Procfile` (new)
+- `runtime.txt` (new)
+- `railway.json` (new, optional)
+
+### Plan Document
+📄 **Location:** [docs/plans/RAILWAY_MIGRATION_PLAN.md](RAILWAY_MIGRATION_PLAN.md)
+
+---
+
 ## Implementation Roadmap
 
 ```
@@ -407,6 +450,7 @@ Phase 4: AI Transformation (Week 10-20)
 | Case DICOM Viewer | - | `docs/plans/CASE_DICOM_VIEWER_PLAN.md` |
 | DICOM/MPR Infrastructure | - | `docs/plans/DICOM_MPR_INFRASTRUCTURE_PLAN.md` |
 | R2 Migration and Viewer Upgrade | - | `docs/plans/R2_MIGRATION_AND_VIEWER_UPGRADE_PLAN.md` |
+| Railway Migration | - | `docs/plans/RAILWAY_MIGRATION_PLAN.md` |
 
 ---
 
@@ -428,4 +472,5 @@ Phase 4: AI Transformation (Week 10-20)
 | 2026-01-31 | Added Case DICOM Viewer plan | AI Assistant |
 | 2026-02-02 | Case DICOM Viewer marked implemented; added DICOM/MPR Infrastructure plan | AI Assistant |
 | 2026-02-02 | Added R2 Migration and Viewer Upgrade plan (Plan 9); no migration script, admin UI only | AI Assistant |
+| 2026-02-05 | Added Railway Migration plan (Plan 10); migrate from Vercel to Railway for better timeouts/cron | AI Assistant |
 
