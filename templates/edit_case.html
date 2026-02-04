@@ -4832,6 +4832,8 @@ function submitManualReference() {
 
 let relatedCasesData = [];
 let currentCaseIdForRelated = null;
+// Check if user can remove related cases (admin/content_manager only)
+const canRemoveRelatedCases = {% if current_user.is_authenticated and current_user.role and current_user.role.value in ['admin', 'content_manager'] %}true{% else %}false{% endif %};
 
 // Initialize related cases search
 function initRelatedCasesSearch() {
@@ -4969,6 +4971,11 @@ function renderRelatedCases() {
 
     container.innerHTML = relatedCasesData.map(c => {
         const type = typeLabels[c.relation_type] || typeLabels.related;
+        const removeBtn = canRemoveRelatedCases ? `
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeRelatedCase(${c.id})" title="Remove link">
+                    <i class="fas fa-times"></i>
+                </button>
+            ` : '';
         return `
             <div class="d-flex align-items-center justify-content-between p-2 mb-2 border rounded" style="background: #fdfdfb;">
                 <div class="d-flex align-items-center gap-2">
@@ -4978,9 +4985,7 @@ function renderRelatedCases() {
                         <small class="text-muted d-block text-truncate" style="max-width: 300px;">${c.diagnosis}</small>
                     </div>
                 </div>
-                <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeRelatedCase(${c.id})">
-                    <i class="fas fa-times"></i>
-                </button>
+                ${removeBtn}
             </div>
         `;
     }).join('');

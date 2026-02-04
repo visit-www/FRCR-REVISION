@@ -2403,12 +2403,11 @@ def get_related_cases(case_id):
 @app.route('/api/case/<int:case_id>/related', methods=['POST'])
 @login_required
 def add_related_case(case_id):
-    """Add a related case to a case"""
+    """Add a related case to a case - all authenticated users can add"""
     from models import related_cases
 
-    # Admin/Content Manager only
-    if current_user.role not in [UserRole.ADMIN, UserRole.CONTENT_MANAGER]:
-        return jsonify({'error': 'Unauthorized'}), 403
+    # All authenticated users can add related cases (students, content managers, admins)
+    # No role restriction for adding
 
     case = Case.query.get_or_404(case_id)
     data = request.get_json()
