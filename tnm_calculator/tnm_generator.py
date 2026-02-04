@@ -169,7 +169,7 @@ def generate_calculator_html(
     logger.info(f"[TNM Generator] Generating calculator HTML for {cancer_name}")
 
     response = client.messages.create(
-        model="claude-sonnet-4-20250514",
+        model="claude-3-5-sonnet-20241022",
         max_tokens=16000,
         messages=[
             {
@@ -222,7 +222,7 @@ def generate_algorithm_discussion(
     logger.info(f"[TNM Generator] Generating algorithm discussion for {cancer_name}")
 
     response = client.messages.create(
-        model="claude-sonnet-4-20250514",
+        model="claude-3-5-sonnet-20241022",
         max_tokens=12000,
         messages=[
             {
@@ -331,7 +331,7 @@ def generate_and_save_tnm_content(
             staging_system=staging_system,
             description=description,
             is_available=True,
-            generation_model="claude-sonnet-4-20250514",
+            generation_model="claude-3-5-sonnet-20241022",
             generated_at=datetime.utcnow(),
             created_by_user_id=user_id
         )

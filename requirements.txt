@@ -20,6 +20,7 @@ lxml==4.9.3
 # biopython==1.81  # Optional: for enhanced PubMed integration
 # playwright>=1.40.0  # Local only: for AJCC data extraction
 resend==2.21.0
+anthropic>=0.39.0
 msal>=1.24.0
 cryptography>=41.0.0
 boto3>=1.34.0
