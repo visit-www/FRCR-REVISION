@@ -33,6 +33,11 @@ def get_claude_client():
     return anthropic.Anthropic(api_key=api_key)
 
 
+def get_claude_model():
+    """Get Claude model name from env or use default (same as ai_tnm.py, ai_prelim.py)."""
+    return os.environ.get('CLAUDE_MODEL', 'claude-sonnet-4-20250514')
+
+
 # ==================== PROMPTS ====================
 
 CALCULATOR_HTML_PROMPT = """You are an expert radiologist and oncologist specializing in cancer staging.
@@ -169,7 +174,7 @@ def generate_calculator_html(
     logger.info(f"[TNM Generator] Generating calculator HTML for {cancer_name}")
 
     response = client.messages.create(
-        model="claude-3-5-sonnet-20241022",
+        model=get_claude_model(),
         max_tokens=16000,
         messages=[
             {
@@ -222,7 +227,7 @@ def generate_algorithm_discussion(
     logger.info(f"[TNM Generator] Generating algorithm discussion for {cancer_name}")
 
     response = client.messages.create(
-        model="claude-3-5-sonnet-20241022",
+        model=get_claude_model(),
         max_tokens=12000,
         messages=[
             {
@@ -331,7 +336,7 @@ def generate_and_save_tnm_content(
             staging_system=staging_system,
             description=description,
             is_available=True,
-            generation_model="claude-3-5-sonnet-20241022",
+            generation_model=get_claude_model(),
             generated_at=datetime.utcnow(),
             created_by_user_id=user_id
         )
