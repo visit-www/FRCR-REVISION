@@ -1,5 +1,11 @@
 {
   "version": 2,
+  "crons": [
+    {
+      "path": "/api/cron/process-tnm-jobs",
+      "schedule": "* * * * *"
+    }
+  ],
   "functions": {
     "api/index.py": {
       "maxDuration": 60

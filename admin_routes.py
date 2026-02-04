@@ -1783,6 +1783,105 @@ def list_tnm_calculators():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+# ============================================================================
+# TNM GENERATOR JOB QUEUE (for Vercel Hobby - avoids 10s timeout)
+# ============================================================================
+
+@admin_bp.route('/tnm/queue', methods=['POST'])
+@require_admin
+def queue_tnm_generation():
+    """
+    Queue a TNM calculator generation job.
+    Returns immediately with job_id for polling.
+    Job is processed by cron endpoint (60s timeout).
+
+    Body: same as /tnm/generate
+    Returns: { success: true, job_id: "uuid", message: "Job queued" }
+    """
+    import uuid
+    from models import TNMGeneratorJob
+    import json
+
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'error': 'No data provided'}), 400
+
+        required = ['slug', 'cancer_name', 'body_section']
+        missing = [f for f in required if not data.get(f)]
+        if missing:
+            return jsonify({
+                'success': False,
+                'error': f'Missing required fields: {", ".join(missing)}'
+            }), 400
+
+        # Check if job already pending for this slug
+        existing = TNMGeneratorJob.query.filter_by(
+            slug=data['slug'],
+            status='pending'
+        ).first()
+        if existing:
+            return jsonify({
+                'success': True,
+                'job_id': existing.job_id,
+                'message': 'Job already queued',
+                'status': 'pending'
+            }), 200
+
+        # Create job
+        job = TNMGeneratorJob(
+            job_id=str(uuid.uuid4()),
+            slug=data['slug'],
+            cancer_name=data['cancer_name'],
+            body_section=data['body_section'],
+            staging_system=data.get('staging_system', 'AJCC 9th Edition'),
+            description=data.get('description', ''),
+            special_features=json.dumps(data.get('special_features', [])),
+            special_notes=data.get('special_notes', ''),
+            created_by_user_id=current_user.id
+        )
+        db.session.add(job)
+        db.session.commit()
+
+        logger.info(f"[TNM Queue] Job queued: {job.job_id} for {job.slug}")
+
+        return jsonify({
+            'success': True,
+            'job_id': job.job_id,
+            'message': 'Job queued for processing',
+            'status': 'pending'
+        }), 202
+
+    except Exception as e:
+        logger.exception(f"TNM Queue error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/tnm/status/<job_id>', methods=['GET'])
+@require_admin
+def get_tnm_job_status(job_id):
+    """
+    Check status of a queued generation job.
+
+    Returns: { success: true, job: {...} }
+    """
+    from models import TNMGeneratorJob
+
+    try:
+        job = TNMGeneratorJob.query.filter_by(job_id=job_id).first()
+        if not job:
+            return jsonify({'success': False, 'error': 'Job not found'}), 404
+
+        return jsonify({
+            'success': True,
+            'job': job.to_dict()
+        }), 200
+
+    except Exception as e:
+        logger.exception(f"TNM Status error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @admin_bp.route('/tnm/available', methods=['GET'])
 @require_admin
 def list_available_cancers():

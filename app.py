@@ -602,6 +602,101 @@ init_case_dicom(app)
 app.register_blueprint(get_case_dicom_bp())  # Case DICOM Viewer - OneDrive image stacks
 
 
+# ============================================================================
+# CRON ENDPOINTS (Vercel Cron - 60s timeout even on Hobby plan)
+# ============================================================================
+
+@app.route('/api/cron/process-tnm-jobs', methods=['GET', 'POST'])
+def process_tnm_generator_jobs():
+    """
+    Cron endpoint to process pending TNM generator jobs.
+    Called by Vercel Cron every minute. Has 60s timeout (vs 10s for regular endpoints).
+
+    Security: Vercel cron jobs include CRON_SECRET header.
+    """
+    import os
+    from datetime import datetime
+    from models import TNMGeneratorJob
+
+    # Verify cron secret (Vercel sets this automatically)
+    cron_secret = os.environ.get('CRON_SECRET')
+    auth_header = request.headers.get('Authorization', '')
+
+    # Allow in development or with valid secret
+    if cron_secret and not auth_header.endswith(cron_secret):
+        # In production, require secret; in dev, allow without
+        if not app.debug:
+            return jsonify({'error': 'Unauthorized'}), 401
+
+    # Get oldest pending job
+    job = TNMGeneratorJob.query.filter_by(status='pending').order_by(TNMGeneratorJob.created_at).first()
+
+    if not job:
+        return jsonify({'message': 'No pending jobs'}), 200
+
+    try:
+        # Mark as running
+        job.status = 'running'
+        job.started_at = datetime.utcnow()
+        db.session.commit()
+
+        logger.info(f"[TNM Cron] Processing job {job.job_id} for {job.slug}")
+
+        # Generate the calculator
+        from tnm_calculator.tnm_generator import generate_and_save_tnm_content
+        import json
+
+        special_features = []
+        if job.special_features:
+            try:
+                special_features = json.loads(job.special_features)
+            except:
+                pass
+
+        success, message, result_data = generate_and_save_tnm_content(
+            db=db,
+            slug=job.slug,
+            cancer_name=job.cancer_name,
+            body_section=job.body_section,
+            staging_system=job.staging_system,
+            special_features=special_features,
+            description=job.description or '',
+            special_notes=job.special_notes or '',
+            user_id=job.created_by_user_id
+        )
+
+        if success:
+            job.status = 'completed'
+            job.completed_at = datetime.utcnow()
+            logger.info(f"[TNM Cron] Job {job.job_id} completed successfully")
+        else:
+            job.status = 'failed'
+            job.error_message = message
+            job.completed_at = datetime.utcnow()
+            logger.error(f"[TNM Cron] Job {job.job_id} failed: {message}")
+
+        db.session.commit()
+
+        return jsonify({
+            'job_id': job.job_id,
+            'status': job.status,
+            'message': message
+        }), 200
+
+    except Exception as e:
+        logger.exception(f"[TNM Cron] Job {job.job_id} error: {e}")
+        job.status = 'failed'
+        job.error_message = str(e)
+        job.completed_at = datetime.utcnow()
+        db.session.commit()
+
+        return jsonify({
+            'job_id': job.job_id,
+            'status': 'failed',
+            'error': str(e)
+        }), 500
+
+
 @app.route('/')
 def index():
     """Smart dashboard - students see student dashboard, admins can access admin features"""

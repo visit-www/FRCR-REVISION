@@ -5751,11 +5751,11 @@ async function generateTnmContent() {
     // Show loading state
     statusDiv.style.display = 'block';
     statusDiv.className = 'tnm-gen-status status-loading';
-    statusDiv.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Generating with Claude AI... This may take 30-60 seconds.';
+    statusDiv.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Queueing job...';
     generateBtn.disabled = true;
     generateBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Generating...';
 
-    // Build request payload - Claude uses its training knowledge for AJCC staging
+    // Build request payload
     const payload = {
         slug,
         cancer_name: cancerName,
@@ -5767,44 +5767,96 @@ async function generateTnmContent() {
     };
 
     try {
-        const response = await fetch('/api/admin/tnm/generate', {
+        // Step 1: Queue the job
+        const queueResponse = await fetch('/api/admin/tnm/queue', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
 
-        const result = await response.json();
+        const queueResult = await queueResponse.json();
 
-        if (result.success) {
-            statusDiv.className = 'tnm-gen-status status-success';
-            statusDiv.innerHTML = `
-                <i class="fas fa-check-circle me-2"></i><strong>${result.message}</strong>
-                <div style="margin-top: 0.5rem; font-size: 0.85rem; opacity: 0.9;">
-                    Calculator: ${result.data?.calculator_html_length || 0} chars &nbsp;•&nbsp;
-                    Algorithm: ${result.data?.algorithm_html_length || 0} chars
-                </div>
-            `;
-
-            // Insert algorithm into discussion if checked
-            if (insertAlgorithm) {
-                const caseId = document.getElementById('editCaseId')?.value;
-                if (caseId && !caseId.startsWith('new')) {
-                    await insertAlgorithmToDiscussion(parseInt(caseId), slug);
-                }
-            }
-
-            showFlash('TNM Calculator and Algorithm generated successfully!', 'success');
-        } else {
-            statusDiv.className = 'tnm-gen-status status-error';
-            statusDiv.innerHTML = `<i class="fas fa-exclamation-circle me-2"></i>${result.error}`;
-            showFlash(result.error || 'Generation failed', 'danger');
+        if (!queueResult.success) {
+            throw new Error(queueResult.error || 'Failed to queue job');
         }
+
+        const jobId = queueResult.job_id;
+        statusDiv.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Job queued. Waiting for processing (cron runs every minute)...';
+
+        // Step 2: Poll for status
+        let attempts = 0;
+        const maxAttempts = 120; // 2 minutes max
+        const pollInterval = 2000; // 2 seconds
+
+        const pollStatus = async () => {
+            attempts++;
+            try {
+                const statusResponse = await fetch(`/api/admin/tnm/status/${jobId}`);
+                const statusResult = await statusResponse.json();
+
+                if (!statusResult.success) {
+                    throw new Error(statusResult.error || 'Failed to check status');
+                }
+
+                const job = statusResult.job;
+
+                if (job.status === 'completed') {
+                    statusDiv.className = 'tnm-gen-status status-success';
+                    statusDiv.innerHTML = `
+                        <i class="fas fa-check-circle me-2"></i><strong>Calculator generated successfully!</strong>
+                        <div style="margin-top: 0.5rem; font-size: 0.85rem; opacity: 0.9;">
+                            ${cancerName} calculator is now available.
+                        </div>
+                    `;
+
+                    // Insert algorithm into discussion if checked
+                    if (insertAlgorithm) {
+                        const caseId = document.getElementById('editCaseId')?.value;
+                        if (caseId && !caseId.startsWith('new')) {
+                            await insertAlgorithmToDiscussion(parseInt(caseId), slug);
+                        }
+                    }
+
+                    showFlash('TNM Calculator and Algorithm generated successfully!', 'success');
+                    generateBtn.disabled = false;
+                    generateBtn.innerHTML = '<i class="fas fa-magic me-1"></i>Generate with AI';
+                    return;
+                }
+
+                if (job.status === 'failed') {
+                    throw new Error(job.error_message || 'Generation failed');
+                }
+
+                if (job.status === 'running') {
+                    statusDiv.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Generating with Claude AI... This takes 30-60 seconds.';
+                } else if (job.status === 'pending') {
+                    const waitTime = Math.floor(attempts * pollInterval / 1000);
+                    statusDiv.innerHTML = `<i class="fas fa-clock me-2"></i>Queued for processing... (${waitTime}s) Cron runs every minute.`;
+                }
+
+                if (attempts < maxAttempts) {
+                    setTimeout(pollStatus, pollInterval);
+                } else {
+                    throw new Error('Timeout waiting for job completion. Check back later.');
+                }
+
+            } catch (error) {
+                statusDiv.className = 'tnm-gen-status status-error';
+                statusDiv.innerHTML = `<i class="fas fa-exclamation-circle me-2"></i>${error.message}`;
+                showFlash(error.message, 'danger');
+                generateBtn.disabled = false;
+                generateBtn.innerHTML = '<i class="fas fa-magic me-1"></i>Generate with AI';
+            }
+        };
+
+        // Start polling
+        setTimeout(pollStatus, pollInterval);
+
     } catch (error) {
         console.error('TNM Generation error:', error);
         statusDiv.className = 'tnm-gen-status status-error';
         statusDiv.innerHTML = `<i class="fas fa-exclamation-circle me-2"></i>Error: ${error.message}`;
         showFlash('Error generating TNM content', 'danger');
-    } finally {
         generateBtn.disabled = false;
         generateBtn.innerHTML = '<i class="fas fa-magic me-1"></i>Generate with AI';
     }

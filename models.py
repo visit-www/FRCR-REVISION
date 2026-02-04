@@ -761,6 +761,54 @@ class TNMCalculatorContent(db.Model):
         return f'<TNMCalculatorContent {self.slug} ({self.cancer_name})>'
 
 
+class TNMGeneratorJob(db.Model):
+    """
+    Job queue for TNM calculator generation.
+    Allows async generation with cron processing (works around Vercel 10s timeout).
+    """
+    __tablename__ = 'tnm_generator_job'
+
+    id = db.Column(db.Integer, primary_key=True)
+    job_id = db.Column(db.String(36), unique=True, nullable=False, index=True)  # UUID
+
+    # Job parameters
+    slug = db.Column(db.String(100), nullable=False)
+    cancer_name = db.Column(db.String(200), nullable=False)
+    body_section = db.Column(db.String(100), nullable=False)
+    staging_system = db.Column(db.String(50), default='AJCC 9th Edition')
+    description = db.Column(db.String(500), nullable=True)
+    special_features = db.Column(db.Text, nullable=True)  # JSON array
+    special_notes = db.Column(db.Text, nullable=True)
+
+    # Status: pending, running, completed, failed
+    status = db.Column(db.String(20), default='pending', nullable=False, index=True)
+    error_message = db.Column(db.Text, nullable=True)
+
+    # Timing
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    started_at = db.Column(db.DateTime, nullable=True)
+    completed_at = db.Column(db.DateTime, nullable=True)
+
+    # User who requested
+    created_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    created_by = db.relationship('User', backref='tnm_generator_jobs')
+
+    def to_dict(self):
+        return {
+            'job_id': self.job_id,
+            'slug': self.slug,
+            'cancer_name': self.cancer_name,
+            'status': self.status,
+            'error_message': self.error_message,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'started_at': self.started_at.isoformat() if self.started_at else None,
+            'completed_at': self.completed_at.isoformat() if self.completed_at else None
+        }
+
+    def __repr__(self):
+        return f'<TNMGeneratorJob {self.job_id} ({self.slug}): {self.status}>'
+
+
 # ==================== AUDIT & TRACKING MODELS ====================
 
 class CaseAuditLog(db.Model):
