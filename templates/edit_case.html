@@ -976,6 +976,11 @@ console.log('[TinyMCE Loader] Script URL was:', "{{ url_for('static', filename='
                 border: 1px solid #ef9a9a;
                 color: #c62828;
             }
+            .tnm-gen-status.status-warning {
+                background: #fff8e1;
+                border: 1px solid #ffcc80;
+                color: #e65100;
+            }
             .tnm-gen-footer {
                 padding: 1rem 1.25rem;
                 background: #f8f9fa;
@@ -5766,12 +5771,83 @@ async function generateTnmContent() {
     const specialFeatures = document.getElementById('genSpecialFeatures').value.trim().split(',').map(s => s.trim()).filter(s => s);
     const specialNotes = document.getElementById('genSpecialNotes').value.trim();
     const insertAlgorithm = document.getElementById('genInsertAlgorithm').checked;
-    const overwrite = document.getElementById('genOverwrite').checked;
+    let overwrite = document.getElementById('genOverwrite').checked;
 
     if (!slug || !cancerName || !bodySection) {
         showFlash('Please select Body Section and Disease Site', 'warning');
         return;
     }
+
+    // Check if calculator already exists
+    statusDiv.style.display = 'block';
+    statusDiv.className = 'tnm-gen-status status-loading';
+    statusDiv.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Checking existing data...';
+
+    try {
+        const checkResponse = await fetch(`/api/admin/tnm/${slug}`);
+        const checkResult = await checkResponse.json();
+
+        if (checkResult.success && !overwrite) {
+            // Calculator exists - ask user what to do
+            statusDiv.className = 'tnm-gen-status status-warning';
+            statusDiv.innerHTML = `
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                <strong>Calculator for "${cancerName}" already exists!</strong>
+                <div style="margin-top: 0.75rem;">
+                    <button type="button" class="btn btn-sm btn-outline-primary me-2" onclick="useExistingCalculator('${slug}')">
+                        <i class="fas fa-check me-1"></i>Use Existing
+                    </button>
+                    <button type="button" class="btn btn-sm btn-warning" onclick="regenerateCalculator()">
+                        <i class="fas fa-sync me-1"></i>Regenerate (Overwrite)
+                    </button>
+                </div>
+                <div style="margin-top: 0.5rem; font-size: 0.8rem; opacity: 0.8;">
+                    "Use Existing" will insert the current algorithm into discussion.<br>
+                    "Regenerate" will create fresh content with AI (takes ~60 seconds).
+                </div>
+            `;
+            return;
+        }
+    } catch (e) {
+        // Calculator doesn't exist or error checking - proceed with generation
+        console.log('Calculator check:', e.message);
+    }
+
+    // Proceed with generation
+    await proceedWithGeneration(slug, cancerName, bodySection, stagingSystem, description, specialFeatures, specialNotes, insertAlgorithm, overwrite);
+}
+
+// Use existing calculator - just insert algorithm
+async function useExistingCalculator(slug) {
+    const statusDiv = document.getElementById('genStatus');
+    const insertAlgorithm = document.getElementById('genInsertAlgorithm').checked;
+    const caseId = document.getElementById('editCaseId')?.value;
+
+    if (insertAlgorithm && caseId && !caseId.startsWith('new')) {
+        statusDiv.className = 'tnm-gen-status status-loading';
+        statusDiv.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Inserting algorithm into discussion...';
+
+        await insertAlgorithmToDiscussion(parseInt(caseId), slug);
+
+        statusDiv.className = 'tnm-gen-status status-success';
+        statusDiv.innerHTML = '<i class="fas fa-check-circle me-2"></i>Algorithm inserted from existing calculator!';
+        showFlash('Algorithm inserted successfully!', 'success');
+    } else {
+        statusDiv.className = 'tnm-gen-status status-success';
+        statusDiv.innerHTML = '<i class="fas fa-check-circle me-2"></i>Using existing calculator. No changes made.';
+    }
+}
+
+// Regenerate with overwrite
+function regenerateCalculator() {
+    document.getElementById('genOverwrite').checked = true;
+    generateTnmContent();
+}
+
+// Actual generation logic
+async function proceedWithGeneration(slug, cancerName, bodySection, stagingSystem, description, specialFeatures, specialNotes, insertAlgorithm, overwrite) {
+    const statusDiv = document.getElementById('genStatus');
+    const generateBtn = document.getElementById('genGenerateBtn');
 
     // Show loading state
     statusDiv.style.display = 'block';
@@ -5807,7 +5883,14 @@ async function generateTnmContent() {
         }
 
         const jobId = queueResult.job_id;
-        statusDiv.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Job queued. Waiting for processing (cron runs every minute)...';
+        statusDiv.innerHTML = `
+            <i class="fas fa-spinner fa-spin me-2"></i>
+            <strong>Job queued for processing</strong>
+            <div style="margin-top: 0.5rem; font-size: 0.85rem;">
+                <i class="fas fa-info-circle me-1"></i>You can safely close this window and navigate away.
+                <br>Generation takes ~60 seconds. Check the TNM Calculator index to see when it's ready.
+            </div>
+        `;
 
         // Step 2: Poll for status
         let attempts = 0;
@@ -5854,10 +5937,22 @@ async function generateTnmContent() {
                 }
 
                 if (job.status === 'running') {
-                    statusDiv.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Generating with Claude AI... This takes 30-60 seconds.';
+                    statusDiv.innerHTML = `
+                        <i class="fas fa-spinner fa-spin me-2"></i>
+                        <strong>Generating with Claude AI...</strong>
+                        <div style="margin-top: 0.5rem; font-size: 0.85rem; opacity: 0.8;">
+                            This takes 30-60 seconds. You can close this window - check TNM Calculator index when done.
+                        </div>
+                    `;
                 } else if (job.status === 'pending') {
                     const waitTime = Math.floor(attempts * pollInterval / 1000);
-                    statusDiv.innerHTML = `<i class="fas fa-clock me-2"></i>Queued for processing... (${waitTime}s) Cron runs every minute.`;
+                    statusDiv.innerHTML = `
+                        <i class="fas fa-clock me-2"></i>
+                        <strong>Queued for processing...</strong> (${waitTime}s)
+                        <div style="margin-top: 0.5rem; font-size: 0.85rem; opacity: 0.8;">
+                            Cron runs daily on free tier. You can safely navigate away.
+                        </div>
+                    `;
                 }
 
                 if (attempts < maxAttempts) {
