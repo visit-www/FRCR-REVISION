@@ -681,6 +681,86 @@ class TextHighlight(db.Model):
         return f'<TextHighlight Case:{self.case_id} User:{self.user_id} Color:{self.highlight_color}>'
 
 
+# ==================== TNM CALCULATOR CONTENT MODEL ====================
+
+class TNMCalculatorContent(db.Model):
+    """
+    Stores AI-generated TNM calculator HTML and algorithm content.
+    Each record represents a calculator for a specific cancer type.
+    The HTML is also saved as a file in tnm_calculator/calculators/
+    """
+    __tablename__ = 'tnm_calculator_content'
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    # Cancer identification
+    slug = db.Column(db.String(100), unique=True, nullable=False, index=True)  # e.g. 'oropharynx', 'lung'
+    cancer_name = db.Column(db.String(200), nullable=False)  # Display name: 'Oropharynx', 'Lung (NSCLC)'
+    body_section = db.Column(db.String(100), nullable=False)  # e.g. 'Head and Neck', 'Thorax'
+
+    # Generated content
+    calculator_html = db.Column(db.Text, nullable=True)  # The full calculator HTML for decision tree UI
+    algorithm_discussion_html = db.Column(db.Text, nullable=True)  # Algorithm content for case discussion
+    staging_system = db.Column(db.String(50), default='AJCC 9th Edition')  # e.g. 'AJCC 9th Edition', 'FIGO 2023'
+
+    # Metadata
+    special_features = db.Column(db.Text, nullable=True)  # JSON array: ['HPV+ Staging', 'HPV- Staging']
+    description = db.Column(db.String(500), nullable=True)  # Short description
+    is_available = db.Column(db.Boolean, default=False, nullable=False)  # Whether calculator is ready for use
+
+    # AI generation tracking
+    generation_prompt = db.Column(db.Text, nullable=True)  # The prompt used to generate this content
+    generation_model = db.Column(db.String(100), nullable=True)  # e.g. 'claude-3-opus-20240229'
+    generated_at = db.Column(db.DateTime, nullable=True)  # When AI generation completed
+
+    # Associated case (if linked to an algorithm case document)
+    algorithm_case_id = db.Column(db.Integer, db.ForeignKey('case.id'), nullable=True, index=True)
+
+    # Audit
+    created_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    algorithm_case = db.relationship('Case', backref=db.backref('tnm_calculator_content', uselist=False, lazy=True))
+    created_by = db.relationship('User', backref='created_tnm_calculators')
+
+    def get_special_features(self):
+        """Return special features as list"""
+        import json
+        if self.special_features:
+            try:
+                return json.loads(self.special_features)
+            except (json.JSONDecodeError, TypeError):
+                return []
+        return []
+
+    def set_special_features(self, features: list):
+        """Set special features from list"""
+        import json
+        self.special_features = json.dumps(features, ensure_ascii=False) if features else None
+
+    def to_dict(self):
+        """Return model as dictionary for API responses"""
+        return {
+            'id': self.id,
+            'slug': self.slug,
+            'cancer_name': self.cancer_name,
+            'body_section': self.body_section,
+            'staging_system': self.staging_system,
+            'description': self.description,
+            'special_features': self.get_special_features(),
+            'is_available': self.is_available,
+            'algorithm_case_id': self.algorithm_case_id,
+            'generated_at': self.generated_at.isoformat() if self.generated_at else None,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+        }
+
+    def __repr__(self):
+        return f'<TNMCalculatorContent {self.slug} ({self.cancer_name})>'
+
+
 # ==================== AUDIT & TRACKING MODELS ====================
 
 class CaseAuditLog(db.Model):

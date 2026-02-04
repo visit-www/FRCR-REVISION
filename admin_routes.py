@@ -1596,6 +1596,236 @@ def r2_delete_objects():
 
 
 # ============================================================================
+# TNM CALCULATOR GENERATOR ENDPOINTS
+# ============================================================================
+
+@admin_bp.route('/tnm/generate', methods=['POST'])
+@require_admin
+def generate_tnm_calculator():
+    """
+    Generate TNM calculator and algorithm content using AI.
+
+    Body:
+    {
+        "slug": "lung",
+        "cancer_name": "Lung (NSCLC)",
+        "body_section": "Thorax",
+        "staging_system": "AJCC 9th Edition",  // optional
+        "special_features": ["SCLC Option"],   // optional
+        "description": "Non-small cell lung cancer staging",  // optional
+        "special_notes": ""  // optional, notes for AI generation
+    }
+
+    Returns: { success: bool, message: str, data: {...} }
+    """
+    try:
+        from tnm_calculator.tnm_generator import generate_and_save_tnm_content
+
+        data = request.get_json()
+        if not data:
+            return jsonify({'success': False, 'error': 'No data provided'}), 400
+
+        required = ['slug', 'cancer_name', 'body_section']
+        missing = [f for f in required if not data.get(f)]
+        if missing:
+            return jsonify({
+                'success': False,
+                'error': f'Missing required fields: {", ".join(missing)}'
+            }), 400
+
+        success, message, result_data = generate_and_save_tnm_content(
+            db=db,
+            slug=data['slug'],
+            cancer_name=data['cancer_name'],
+            body_section=data['body_section'],
+            staging_system=data.get('staging_system', 'AJCC 9th Edition'),
+            special_features=data.get('special_features', []),
+            description=data.get('description', ''),
+            special_notes=data.get('special_notes', ''),
+            user_id=current_user.id
+        )
+
+        if success:
+            return jsonify({'success': True, 'message': message, 'data': result_data}), 200
+        else:
+            return jsonify({'success': False, 'error': message}), 400
+
+    except Exception as e:
+        logger.exception(f"TNM Generator error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/tnm/regenerate/<slug>', methods=['POST'])
+@require_admin
+def regenerate_tnm_calculator(slug):
+    """
+    Regenerate content for existing TNM calculator.
+
+    Body:
+    {
+        "regenerate_calculator": true,  // optional, default true
+        "regenerate_algorithm": true,   // optional, default true
+        "special_notes": ""             // optional
+    }
+    """
+    try:
+        from tnm_calculator.tnm_generator import regenerate_calculator
+
+        data = request.get_json() or {}
+
+        success, message, result_data = regenerate_calculator(
+            db=db,
+            slug=slug,
+            regenerate_calculator=data.get('regenerate_calculator', True),
+            regenerate_algorithm=data.get('regenerate_algorithm', True),
+            special_notes=data.get('special_notes', '')
+        )
+
+        if success:
+            return jsonify({'success': True, 'message': message, 'data': result_data}), 200
+        else:
+            return jsonify({'success': False, 'error': message}), 404
+
+    except Exception as e:
+        logger.exception(f"TNM Regenerate error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/tnm/list', methods=['GET'])
+@require_admin
+def list_tnm_calculators():
+    """
+    List all TNM calculators in database.
+
+    Returns: { calculators: [...] }
+    """
+    try:
+        from models import TNMCalculatorContent
+
+        calculators = TNMCalculatorContent.query.order_by(TNMCalculatorContent.body_section, TNMCalculatorContent.cancer_name).all()
+
+        return jsonify({
+            'success': True,
+            'calculators': [c.to_dict() for c in calculators]
+        }), 200
+
+    except Exception as e:
+        logger.exception(f"TNM List error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/tnm/available', methods=['GET'])
+@require_admin
+def list_available_cancers():
+    """
+    List available cancer types from V3_CALCULATORS config.
+
+    Returns: { cancers: [...] }
+    """
+    try:
+        from tnm_calculator.tnm_generator import get_available_calculators
+
+        calculators = get_available_calculators()
+
+        return jsonify({
+            'success': True,
+            'cancers': calculators
+        }), 200
+
+    except Exception as e:
+        logger.exception(f"TNM Available error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/tnm/insert-algorithm/<int:case_id>', methods=['POST'])
+@require_admin
+def insert_algorithm_to_case(case_id):
+    """
+    Insert algorithm discussion into a case's discussion field.
+
+    Body:
+    {
+        "calculator_slug": "oropharynx"
+    }
+    """
+    try:
+        from tnm_calculator.tnm_generator import insert_algorithm_to_case_discussion
+
+        data = request.get_json()
+        if not data or not data.get('calculator_slug'):
+            return jsonify({'success': False, 'error': 'calculator_slug is required'}), 400
+
+        success, message = insert_algorithm_to_case_discussion(
+            db=db,
+            case_id=case_id,
+            calculator_slug=data['calculator_slug']
+        )
+
+        if success:
+            return jsonify({'success': True, 'message': message}), 200
+        else:
+            return jsonify({'success': False, 'error': message}), 400
+
+    except Exception as e:
+        logger.exception(f"TNM Insert Algorithm error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/tnm/<slug>', methods=['GET'])
+@require_admin
+def get_tnm_calculator(slug):
+    """
+    Get TNM calculator content by slug.
+    """
+    try:
+        from models import TNMCalculatorContent
+
+        content = TNMCalculatorContent.query.filter_by(slug=slug).first()
+        if not content:
+            return jsonify({'success': False, 'error': 'Calculator not found'}), 404
+
+        return jsonify({
+            'success': True,
+            'calculator': content.to_dict(),
+            'calculator_html': content.calculator_html,
+            'algorithm_html': content.algorithm_discussion_html
+        }), 200
+
+    except Exception as e:
+        logger.exception(f"TNM Get error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/tnm/<slug>', methods=['DELETE'])
+@require_admin
+def delete_tnm_calculator(slug):
+    """
+    Delete TNM calculator from database (keeps HTML file).
+    """
+    try:
+        from models import TNMCalculatorContent
+
+        content = TNMCalculatorContent.query.filter_by(slug=slug).first()
+        if not content:
+            return jsonify({'success': False, 'error': 'Calculator not found'}), 404
+
+        db.session.delete(content)
+        db.session.commit()
+
+        logger.info(f"Admin {current_user.email} deleted TNM calculator: {slug}")
+
+        return jsonify({
+            'success': True,
+            'message': f'Calculator {slug} deleted from database'
+        }), 200
+
+    except Exception as e:
+        db.session.rollback()
+        logger.exception(f"TNM Delete error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================================================
 # ERROR HANDLERS
 # ============================================================================
 

@@ -16,7 +16,9 @@ from models import (
     AJCCStagingData, AJCCDiseaseMapping, AJCCStagingTimePrefix,
     IntelligentTNMData,
     # Case DICOM Viewer Models
-    CaseImageStack, CaseImageAnnotation
+    CaseImageStack, CaseImageAnnotation,
+    # TNM Calculator Content (AI-generated calculators and algorithms)
+    TNMCalculatorContent
 )
 from datetime import datetime, timedelta
 from sqlalchemy import inspect
@@ -71,7 +73,7 @@ def download_backup():
             'metadata': {
                 'backup_date': datetime.utcnow().isoformat(),
                 'database_type': 'postgresql' if os.getenv('DATABASE_URL') or os.getenv('DATABASE_POSTGRES_URL_NON_POOLING') else 'sqlite',
-                'version': '2.5',  # Bumped for case_reference_images
+                'version': '2.6',  # Bumped for tnm_calculator_content
                 'app_name': 'RadInsights'
             },
             'users': [],
@@ -105,6 +107,8 @@ def download_backup():
             # Case DICOM Viewer (OneDrive image stacks and annotations)
             'case_image_stacks': [],
             'case_image_annotations': [],
+            # TNM Calculator Content (AI-generated calculators and algorithms)
+            'tnm_calculator_content': [],
         }
         
         # Export users (with passwords for sync purposes)
@@ -516,7 +520,29 @@ def download_backup():
                 'created_at': ann.created_at.isoformat() if ann.created_at else None,
                 'updated_at': ann.updated_at.isoformat() if ann.updated_at else None,
             })
-        
+
+        # Export TNM Calculator Content (AI-generated calculators and algorithms)
+        for content in TNMCalculatorContent.query.all():
+            backup_data['tnm_calculator_content'].append({
+                'id': content.id,
+                'slug': content.slug,
+                'cancer_name': content.cancer_name,
+                'body_section': content.body_section,
+                'calculator_html': content.calculator_html,
+                'algorithm_discussion_html': content.algorithm_discussion_html,
+                'staging_system': content.staging_system,
+                'special_features': content.special_features,
+                'description': content.description,
+                'is_available': content.is_available,
+                'generation_prompt': content.generation_prompt,
+                'generation_model': content.generation_model,
+                'generated_at': content.generated_at.isoformat() if content.generated_at else None,
+                'algorithm_case_id': content.algorithm_case_id,
+                'created_by_user_id': content.created_by_user_id,
+                'created_at': content.created_at.isoformat() if content.created_at else None,
+                'updated_at': content.updated_at.isoformat() if content.updated_at else None,
+            })
+
         # Create JSON file in memory
         json_data = json.dumps(backup_data, indent=2)
         json_bytes = io.BytesIO(json_data.encode('utf-8'))
@@ -2466,11 +2492,66 @@ def restore_backup():
                 )
                 db.session.add(ann)
                 stats['case_image_annotations']['added'] += 1
-        
+
+        # Import TNM Calculator Content
+        stats['tnm_calculator_content'] = {'added': 0, 'updated': 0, 'skipped': 0}
+        for content_data in backup_data.get('tnm_calculator_content', []):
+            slug = content_data.get('slug')
+            if not slug:
+                stats['tnm_calculator_content']['skipped'] += 1
+                continue
+
+            # Check if already exists by slug
+            existing = TNMCalculatorContent.query.filter_by(slug=slug).first()
+
+            # Map algorithm_case_id to new case ID if exists
+            old_case_id = content_data.get('algorithm_case_id')
+            new_case_id = case_id_map.get(old_case_id) if old_case_id else None
+
+            # Map created_by_user_id
+            old_user_id = content_data.get('created_by_user_id')
+            new_user_id = user_id_map.get(old_user_id) if old_user_id else None
+
+            if existing:
+                # Update existing content
+                existing.cancer_name = content_data.get('cancer_name', existing.cancer_name)
+                existing.body_section = content_data.get('body_section', existing.body_section)
+                existing.calculator_html = content_data.get('calculator_html', existing.calculator_html)
+                existing.algorithm_discussion_html = content_data.get('algorithm_discussion_html', existing.algorithm_discussion_html)
+                existing.staging_system = content_data.get('staging_system', existing.staging_system)
+                existing.special_features = content_data.get('special_features', existing.special_features)
+                existing.description = content_data.get('description', existing.description)
+                existing.is_available = content_data.get('is_available', existing.is_available)
+                existing.generation_model = content_data.get('generation_model', existing.generation_model)
+                existing.algorithm_case_id = new_case_id
+                existing.updated_at = _parse_datetime_for_sqlite(content_data.get('updated_at')) or datetime.utcnow()
+                stats['tnm_calculator_content']['updated'] += 1
+            else:
+                # Create new content
+                content = TNMCalculatorContent(
+                    slug=slug,
+                    cancer_name=content_data.get('cancer_name', ''),
+                    body_section=content_data.get('body_section', ''),
+                    calculator_html=content_data.get('calculator_html'),
+                    algorithm_discussion_html=content_data.get('algorithm_discussion_html'),
+                    staging_system=content_data.get('staging_system', 'AJCC 9th Edition'),
+                    special_features=content_data.get('special_features'),
+                    description=content_data.get('description'),
+                    is_available=content_data.get('is_available', False),
+                    generation_prompt=content_data.get('generation_prompt'),
+                    generation_model=content_data.get('generation_model'),
+                    generated_at=_parse_datetime_for_sqlite(content_data.get('generated_at')),
+                    algorithm_case_id=new_case_id,
+                    created_by_user_id=new_user_id,
+                    created_at=_parse_datetime_for_sqlite(content_data.get('created_at')),
+                )
+                db.session.add(content)
+                stats['tnm_calculator_content']['added'] += 1
+
         # Commit AJCC data
         try:
             db.session.commit()
-            print(f"[IMPORT] AJCC data imported: {stats['ajcc_body_sections']['added']} sections, {stats['ajcc_disease_sites']['added']} diseases, {stats['ajcc_staging_data']['added']} staging entries, {stats['intelligent_tnm_data']['added']} intelligent TNM records, {stats.get('case_references', {}).get('added', 0)} case refs, {stats.get('case_reference_images', {}).get('added', 0)} case ref images, {stats.get('tnm_references', {}).get('added', 0)} TNM refs, {stats.get('anatomy_figures', {}).get('added', 0)} anatomy figs, {stats.get('tnm_images', {}).get('added', 0)} TNM images, {stats.get('case_image_stacks', {}).get('added', 0)} image stacks, {stats.get('case_image_annotations', {}).get('added', 0)} annotations")
+            print(f"[IMPORT] AJCC data imported: {stats['ajcc_body_sections']['added']} sections, {stats['ajcc_disease_sites']['added']} diseases, {stats['ajcc_staging_data']['added']} staging entries, {stats['intelligent_tnm_data']['added']} intelligent TNM records, {stats.get('case_references', {}).get('added', 0)} case refs, {stats.get('case_reference_images', {}).get('added', 0)} case ref images, {stats.get('tnm_references', {}).get('added', 0)} TNM refs, {stats.get('anatomy_figures', {}).get('added', 0)} anatomy figs, {stats.get('tnm_images', {}).get('added', 0)} TNM images, {stats.get('case_image_stacks', {}).get('added', 0)} image stacks, {stats.get('case_image_annotations', {}).get('added', 0)} annotations, {stats.get('tnm_calculator_content', {}).get('added', 0)} TNM calculators")
         except Exception as ajcc_error:
             db.session.rollback()
             print(f"[IMPORT] ERROR during AJCC commit: {ajcc_error}")
