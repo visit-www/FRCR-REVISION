@@ -5337,23 +5337,271 @@ function onSectionChange() {
     // Clear disease-specific fields
     document.getElementById('genSlug').value = '';
     document.getElementById('genCancerName').value = '';
+    document.getElementById('genDescription').value = '';
+    document.getElementById('genSpecialFeatures').value = '';
+    document.getElementById('genSpecialNotes').value = '';
 }
 
-// Handle disease change - auto-fill slug and cancer name only
+// Disease-specific defaults for Special Features and Special Notes
+// These are editable suggestions based on key staging considerations
+const DISEASE_DEFAULTS = {
+    // Head and Neck
+    'oropharynx': {
+        features: 'HPV+ Staging, HPV- Staging, ENE Criteria',
+        notes: 'Include both HPV-positive (p16+) and HPV-negative staging pathways. HPV+ has different N staging with better prognosis. Emphasize base of tongue vs tonsil differences.',
+        description: 'HPV+ and HPV- staging with detailed criteria'
+    },
+    'larynx': {
+        features: 'Subsites, Voice Preservation, Cartilage Invasion',
+        notes: 'Cover all subsites: Glottis, Supraglottis, Subglottis. Emphasize cartilage invasion criteria (T3 vs T4). Include voice preservation considerations.',
+        description: 'Glottic, supraglottic, and subglottic subsites'
+    },
+    'oral-cavity': {
+        features: 'Depth of Invasion, Bone Invasion',
+        notes: 'Include Depth of Invasion (DOI) measurement criteria for T staging. Cover lip, tongue, floor of mouth, buccal mucosa. Emphasize mandible/maxilla invasion.',
+        description: 'Depth of invasion criteria for T staging'
+    },
+    'nasopharynx': {
+        features: 'EBV Status, Skull Base, Cranial Nerves',
+        notes: 'EBV-associated staging considerations. Emphasize skull base invasion and cranial nerve involvement. Parapharyngeal space extension criteria.',
+        description: 'EBV-associated staging with skull base criteria'
+    },
+    'hypopharynx': {
+        features: 'Subsites, Larynx Fixation',
+        notes: 'Cover pyriform sinus, posterior pharyngeal wall, postcricoid. Emphasize hemilarynx fixation and esophageal extension criteria.',
+        description: 'Pyriform sinus, posterior pharyngeal wall staging'
+    },
+    'thyroid': {
+        features: 'Age Factor, Histology Variants, Anaplastic',
+        notes: 'Differentiated (papillary/follicular): age <55 has only Stage I/II. Anaplastic: all cases are Stage IVA-C (always T4). Medullary: separate staging.',
+        description: 'Age-based staging with histology variants'
+    },
+    'salivary-glands': {
+        features: 'Facial Nerve, Histologic Grade',
+        notes: 'Include facial nerve involvement criteria. Emphasize high-grade vs low-grade histology impact. Parotid vs submandibular differences.',
+        description: 'Facial nerve and histologic grade criteria'
+    },
+    'nasal-cavity-and-paranasal-sinuses': {
+        features: 'Orbit Invasion, Skull Base, Dura',
+        notes: 'Cover maxillary sinus, ethmoid, frontal, sphenoid. Emphasize orbital invasion criteria. Skull base and dural involvement for T4.',
+        description: 'Paranasal sinus staging with orbit/skull base criteria'
+    },
+    // Thorax
+    'lung': {
+        features: 'Size Cutoffs, Pleural Invasion, Separate Nodules',
+        notes: 'Emphasize T size cutoffs: ≤1cm, >1-2cm, >2-3cm, >3-4cm, >4-5cm, >5-7cm, >7cm. Include visceral pleura invasion (PL1-3). Separate tumor nodules in same lobe vs different lobe.',
+        description: 'NSCLC staging with detailed size criteria'
+    },
+    'pleural-mesothelioma': {
+        features: 'Resectability, Chest Wall',
+        notes: 'Emphasize resectable vs unresectable criteria. Chest wall, diaphragm, mediastinal invasion. Contralateral involvement.',
+        description: 'Mesothelioma staging with resectability criteria'
+    },
+    'thymus': {
+        features: 'Masaoka-Koga, Capsule Invasion',
+        notes: 'Include both TNM and Masaoka-Koga staging systems. Capsule invasion criteria. Great vessel and pericardial involvement.',
+        description: 'Thymoma staging with Masaoka-Koga correlation'
+    },
+    // Breast
+    'breast': {
+        features: 'Prognostic Staging, Biomarkers, Oncotype DX',
+        notes: 'Include BOTH anatomic staging AND prognostic staging. Prognostic staging requires Grade, ER, PR, HER2, and optionally Oncotype DX score. Cover inflammatory breast cancer (T4d) criteria.',
+        description: 'Anatomic and prognostic staging with biomarkers'
+    },
+    // GI Tract
+    'esophagus-and-esophagogastric-junction': {
+        features: 'Location, Histology, Siewert Classification',
+        notes: 'Separate squamous cell carcinoma vs adenocarcinoma staging. Include Siewert classification for GEJ tumors. Emphasize depth of invasion criteria.',
+        description: 'SCC vs adenocarcinoma with Siewert classification'
+    },
+    'stomach': {
+        features: 'Depth of Invasion, Linitis Plastica',
+        notes: 'Emphasize depth of invasion: mucosa, submucosa, muscularis propria, serosa. Include diffuse type (linitis plastica) considerations.',
+        description: 'Gastric staging with depth of invasion criteria'
+    },
+    'colon-and-rectum': {
+        features: 'CEA Levels, MSI Status, Circumferential Margin',
+        notes: 'Include tumor deposits concept. Emphasize circumferential resection margin for rectal cancer. MSI/MMR status for prognosis. CEA as prognostic marker.',
+        description: 'Colorectal staging with tumor deposits criteria'
+    },
+    'appendix': {
+        features: 'Mucinous, PMP, Grade',
+        notes: 'Separate carcinoma vs mucinous neoplasm staging. Include pseudomyxoma peritonei (PMP) considerations. Grade classification (G1-G3).',
+        description: 'Appendiceal tumors including mucinous neoplasms'
+    },
+    'anal-canal': {
+        features: 'Sphincter Involvement, Inguinal Nodes',
+        notes: 'Include sphincter involvement criteria. Inguinal lymph node staging. Emphasize size thresholds for T staging.',
+        description: 'Anal canal staging with sphincter criteria'
+    },
+    // Hepatobiliary
+    'liver': {
+        features: 'Vascular Invasion, Fibrosis Score, BCLC',
+        notes: 'Include both TNM and BCLC staging. Emphasize major vascular invasion criteria. Fibrosis score impact. Multiple tumors criteria.',
+        description: 'HCC staging with BCLC correlation'
+    },
+    'intrahepatic-bile-ducts': {
+        features: 'Vascular Invasion, Multiple Tumors',
+        notes: 'Cholangiocarcinoma staging. Emphasize periductal vs mass-forming. Vascular invasion criteria. Multiple tumor considerations.',
+        description: 'Intrahepatic cholangiocarcinoma staging'
+    },
+    'gallbladder': {
+        features: 'Liver Invasion, Serosa',
+        notes: 'Include liver bed invasion criteria. Serosa vs adventitia (hepatic side). Cystic duct margin considerations.',
+        description: 'Gallbladder cancer with liver invasion criteria'
+    },
+    'pancreas': {
+        features: 'Vascular Involvement, Resectability',
+        notes: 'Emphasize SMA, celiac axis, SMV/portal vein involvement criteria. Borderline resectable vs unresectable definitions. Head vs body/tail differences.',
+        description: 'Pancreatic staging with vascular criteria'
+    },
+    // GYN
+    'cervix-uteri': {
+        features: 'FIGO 2018, Nodal Staging, Parametrium',
+        notes: 'FIGO 2018 staging now includes imaging and pathology findings. Lymph node status incorporated (IIIC1 pelvic, IIIC2 para-aortic). Parametrial invasion distinguishes IB3 from IIB.',
+        description: 'FIGO 2018 staging with nodal incorporation'
+    },
+    'corpus-uteri': {
+        features: 'Myometrial Invasion, Molecular Classification',
+        notes: 'Include myometrial invasion depth (<50% vs ≥50%). FIGO 2023 molecular classification integration. Cervical stromal invasion criteria.',
+        description: 'Endometrial cancer with molecular classification'
+    },
+    'ovary-fallopian-tube-and-primary-peritoneal': {
+        features: 'FIGO, Peritoneal Spread, Optimal Debulking',
+        notes: 'Combined ovary/fallopian tube/peritoneal staging. Emphasize peritoneal spread criteria. Optimal vs suboptimal debulking implications.',
+        description: 'Ovarian staging with peritoneal criteria'
+    },
+    'vulva': {
+        features: 'Depth of Invasion, Inguinal Nodes',
+        notes: 'Include depth of invasion measurement. Inguinal-femoral lymph node criteria. Distance from tumor to midline.',
+        description: 'Vulvar staging with depth of invasion'
+    },
+    'vagina': {
+        features: 'Location, Pelvic Wall',
+        notes: 'Upper 2/3 vs lower 1/3 vagina considerations. Pelvic wall extension criteria. Bladder/rectal involvement.',
+        description: 'Vaginal cancer staging by location'
+    },
+    // GU - Male
+    'prostate': {
+        features: 'PSA, Gleason Score, Grade Groups, ISUP',
+        notes: 'Include PSA levels in staging considerations. Gleason score and ISUP Grade Groups (1-5). Extraprostatic extension, seminal vesicle invasion criteria.',
+        description: 'Prostate staging with Grade Groups'
+    },
+    'testis': {
+        features: 'Serum Markers, S Classification, IGCCCG',
+        notes: 'Include serum tumor markers (AFP, hCG, LDH) for S classification. IGCCCG risk stratification. Seminoma vs non-seminoma considerations.',
+        description: 'Testicular staging with serum markers'
+    },
+    'penis': {
+        features: 'Corpus Invasion, Inguinal Nodes',
+        notes: 'Include corpora cavernosa vs corpus spongiosum invasion. Inguinal lymph node criteria. HPV association.',
+        description: 'Penile staging with corpus invasion criteria'
+    },
+    // Urinary Tract
+    'kidney': {
+        features: 'Size, Renal Vein, IVC Thrombus',
+        notes: 'Emphasize size cutoffs: ≤4cm (T1a), >4-7cm (T1b), >7-10cm (T2a), >10cm (T2b). Renal vein and IVC thrombus levels. Gerota fascia invasion.',
+        description: 'RCC staging with vascular invasion levels'
+    },
+    'urinary-bladder': {
+        features: 'Muscle Invasion, TURBT, Perivesical Fat',
+        notes: 'Critical distinction: NMIBC (Ta, Tis, T1) vs MIBC (T2+). Muscularis propria invasion. Perivesical fat and adjacent organ involvement.',
+        description: 'Bladder staging with muscle invasion criteria'
+    },
+    'ureter-and-renal-pelvis': {
+        features: 'Upper Tract, Depth of Invasion',
+        notes: 'Upper tract urothelial carcinoma staging. Renal parenchyma invasion criteria. Multifocality considerations.',
+        description: 'Upper tract urothelial carcinoma staging'
+    },
+    // Skin
+    'melanoma': {
+        features: 'Breslow Depth, Ulceration, Mitotic Rate',
+        notes: 'Include Breslow depth thresholds. Ulceration as adverse feature. Mitotic rate considerations. Satellite/in-transit metastases.',
+        description: 'Melanoma staging with Breslow depth'
+    },
+    'merkel-cell-carcinoma': {
+        features: 'Size, Nodal Status, Immunosuppression',
+        notes: 'Include tumor size cutoffs. Clinical vs pathological N staging differences. Immunosuppression impact on prognosis.',
+        description: 'Merkel cell staging with size criteria'
+    },
+    'cutaneous-squamous-cell-carcinoma': {
+        features: 'High-Risk Features, Perineural Invasion',
+        notes: 'Include high-risk features: size >2cm, depth >6mm, perineural invasion, poor differentiation. Ear/lip location considerations.',
+        description: 'Cutaneous SCC with high-risk features'
+    },
+    // Bone and Soft Tissue
+    'bone': {
+        features: 'Skip Metastases, Soft Tissue Extension',
+        notes: 'Include skip metastases concept. Soft tissue extension criteria. Appendicular vs axial skeleton considerations.',
+        description: 'Primary bone tumors with skip metastases'
+    },
+    'soft-tissue-sarcoma': {
+        features: 'FNCLCC Grade, Size, Depth',
+        notes: 'Include FNCLCC grading system. Size cutoffs: ≤5cm, >5-10cm, >10-15cm, >15cm. Superficial vs deep to fascia. Site-specific considerations.',
+        description: 'STS staging with FNCLCC grade'
+    },
+    // Neuroendocrine
+    'neuroendocrine-tumors-gi': {
+        features: 'Ki-67, Grade, Functional Status',
+        notes: 'Include Ki-67 index for grading: G1 (<3%), G2 (3-20%), G3 (>20%). NET vs NEC distinction. Site-specific staging (stomach, small intestine, appendix, colon/rectum).',
+        description: 'GI NET staging with Ki-67 grading'
+    },
+    'neuroendocrine-tumors-pancreas': {
+        features: 'Ki-67, Grade, Functional Status',
+        notes: 'Include Ki-67 grading. Functional vs non-functional tumors. Well-differentiated vs poorly differentiated criteria.',
+        description: 'Pancreatic NET staging with grade'
+    },
+    // CNS
+    'brain-and-spinal-cord': {
+        features: 'WHO Grade, Molecular Markers, IDH',
+        notes: 'Include WHO CNS5 grading (1-4). Molecular markers: IDH mutation, 1p/19q codeletion, MGMT methylation. Glioma vs other tumor types.',
+        description: 'CNS tumors with molecular markers'
+    },
+    // Ophthalmic
+    'uveal-melanoma': {
+        features: 'Tumor Base, Thickness, Ciliary Body',
+        notes: 'Include tumor base diameter and thickness measurements. Ciliary body involvement. Extraocular extension criteria.',
+        description: 'Uveal melanoma with size criteria'
+    },
+    'conjunctival-melanoma': {
+        features: 'Quadrant Involvement, Caruncle',
+        notes: 'Include quadrant involvement for T staging. Caruncle and fornix involvement. Orbit and eyelid extension.',
+        description: 'Conjunctival melanoma by location'
+    },
+    'retinoblastoma': {
+        features: 'International Classification, Optic Nerve',
+        notes: 'Include International Intraocular Retinoblastoma Classification (Groups A-E). Optic nerve invasion levels. Choroidal invasion.',
+        description: 'Retinoblastoma with IIRC classification'
+    }
+};
+
+// Handle disease change - auto-fill all relevant fields with editable defaults
 function onDiseaseChange() {
     const select = document.getElementById('genDiseaseSite');
     const selectedOption = select.options[select.selectedIndex];
     if (!selectedOption || !selectedOption.value) {
         document.getElementById('genSlug').value = '';
         document.getElementById('genCancerName').value = '';
+        document.getElementById('genDescription').value = '';
+        document.getElementById('genSpecialFeatures').value = '';
+        document.getElementById('genSpecialNotes').value = '';
         return;
     }
 
     const slug = selectedOption.value;
     const diseaseName = selectedOption.dataset.name;
 
+    // Auto-fill slug and cancer name
     document.getElementById('genSlug').value = slug;
     document.getElementById('genCancerName').value = diseaseName;
+
+    // Get disease-specific defaults (if available)
+    const defaults = DISEASE_DEFAULTS[slug] || {};
+
+    // Auto-fill with defaults (admin can edit these)
+    document.getElementById('genDescription').value = defaults.description || `${diseaseName} cancer staging`;
+    document.getElementById('genSpecialFeatures').value = defaults.features || '';
+    document.getElementById('genSpecialNotes').value = defaults.notes || '';
 }
 
 // Show TNM Generator modal
@@ -5429,16 +5677,18 @@ async function showTnmGeneratorModal() {
                         <input type="text" class="tnm-gen-input" id="genCancerName" value="${cancerName}" placeholder="Auto-filled from selection">
                     </div>
                     <div class="tnm-gen-field">
-                        <label class="tnm-gen-label">Description</label>
+                        <label class="tnm-gen-label">Description <span class="tnm-gen-hint" style="display: inline;">(auto-filled)</span></label>
                         <input type="text" class="tnm-gen-input" id="genDescription" placeholder="Brief description for index page">
                     </div>
                     <div class="tnm-gen-field tnm-gen-field-full">
-                        <label class="tnm-gen-label">Special Features</label>
+                        <label class="tnm-gen-label">Special Features <span class="tnm-gen-hint" style="display: inline;">(auto-filled, editable)</span></label>
                         <input type="text" class="tnm-gen-input" id="genSpecialFeatures" placeholder="e.g., HPV+ Staging, HPV- Staging (comma-separated)">
+                        <span class="tnm-gen-hint">Tags displayed on index page - comma-separated, 1-3 words each</span>
                     </div>
                     <div class="tnm-gen-field tnm-gen-field-full">
-                        <label class="tnm-gen-label">Special Notes for AI <span class="tnm-gen-hint" style="display: inline;">(optional)</span></label>
-                        <textarea class="tnm-gen-textarea" id="genSpecialNotes" rows="3" placeholder="Add any special instructions or considerations for Claude..."></textarea>
+                        <label class="tnm-gen-label">Special Notes for AI <span class="tnm-gen-hint" style="display: inline;">(auto-filled, editable)</span></label>
+                        <textarea class="tnm-gen-textarea" id="genSpecialNotes" rows="4" placeholder="Add any special instructions or considerations for Claude..."></textarea>
+                        <span class="tnm-gen-hint">Guide Claude: variant pathways, biomarkers, subsites, imaging focus, common pitfalls</span>
                     </div>
                 </div>
 
