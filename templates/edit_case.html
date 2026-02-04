@@ -2691,24 +2691,33 @@ function checkTnmAvailability() {
         .then(data => {
             if (data.is_oncologic && data.candidates && data.candidates.length > 0) {
                 tnmCandidates = data.candidates;
-                
-                // Show button group
+
+                // Show TNM Intelligence button group
                 const btnGroup = document.getElementById('tnmIntelBtnGroup');
                 if (btnGroup) btnGroup.style.display = 'inline-flex';
-                
+
+                // Show TNM Generator button group (for admins)
+                const generatorBtnGroup = document.getElementById('tnmGeneratorBtnGroup');
+                if (generatorBtnGroup) generatorBtnGroup.style.display = 'inline-flex';
+
                 tnmBtn.disabled = false;
                 tnmBtn.style.opacity = '1';
-                
+
                 // Show neutral button - user must select primary site
                 tnmBtn.innerHTML = `<i class="fas fa-dna me-1"></i>TNM`;
                 tnmBtn.title = `Select primary cancer site (${data.candidates.length} detected)`;
                 selectedPrimarySite = null;
-                
+
             } else if (data.is_oncologic) {
                 // Oncologic but no candidates - allow manual entry
                 tnmCandidates = [];
                 const btnGroup = document.getElementById('tnmIntelBtnGroup');
                 if (btnGroup) btnGroup.style.display = 'inline-flex';
+
+                // Show TNM Generator button group (for admins)
+                const generatorBtnGroup = document.getElementById('tnmGeneratorBtnGroup');
+                if (generatorBtnGroup) generatorBtnGroup.style.display = 'inline-flex';
+
                 tnmBtn.disabled = false;
                 tnmBtn.style.opacity = '1';
                 tnmBtn.innerHTML = `<i class="fas fa-dna me-1"></i>TNM`;
@@ -2716,12 +2725,20 @@ function checkTnmAvailability() {
             } else {
                 const btnGroup = document.getElementById('tnmIntelBtnGroup');
                 if (btnGroup) btnGroup.style.display = 'none';
+
+                // Hide TNM Generator button group
+                const generatorBtnGroup = document.getElementById('tnmGeneratorBtnGroup');
+                if (generatorBtnGroup) generatorBtnGroup.style.display = 'none';
             }
         })
         .catch(err => {
             console.error('[TNM Check] Error:', err);
             const btnGroup = document.getElementById('tnmIntelBtnGroup');
             if (btnGroup) btnGroup.style.display = 'none';
+
+            // Hide TNM Generator button group on error
+            const generatorBtnGroup = document.getElementById('tnmGeneratorBtnGroup');
+            if (generatorBtnGroup) generatorBtnGroup.style.display = 'none';
         });
 }
 
@@ -4869,10 +4886,26 @@ document.addEventListener('DOMContentLoaded', function() {
 // Show TNM Generator modal
 function showTnmGeneratorModal() {
     const calculatorSelect = document.getElementById('editCaseCalculator');
-    const selectedSlug = calculatorSelect?.value || '';
-    const selectedOption = calculatorSelect?.options[calculatorSelect.selectedIndex];
-    const cancerName = selectedOption?.text || '';
-    const bodySection = selectedOption?.parentElement?.label || '';
+    const diagnosis = document.getElementById('editCaseDiagnosis')?.value.trim() || '';
+
+    // Try to get values from calculator dropdown first
+    let selectedSlug = calculatorSelect?.value || '';
+    let selectedOption = calculatorSelect?.options[calculatorSelect.selectedIndex];
+    let cancerName = selectedOption?.text || '';
+    let bodySection = selectedOption?.parentElement?.label || '';
+
+    // If no calculator selected, use diagnosis and TNM candidates
+    if (!selectedSlug && diagnosis) {
+        // Generate slug from diagnosis (lowercase, replace spaces with hyphens)
+        selectedSlug = diagnosis.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+        cancerName = diagnosis;
+
+        // Try to get body section from selected primary site (if TNM Intelligence was used)
+        if (selectedPrimarySite) {
+            cancerName = selectedPrimarySite.disease_name || diagnosis;
+            bodySection = selectedPrimarySite.body_section || '';
+        }
+    }
 
     // Remove existing modal
     const existing = document.getElementById('tnmGeneratorModal');
