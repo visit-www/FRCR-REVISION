@@ -636,6 +636,12 @@ def essential_tnm_concepts():
     return render_template('essential_tnm_concepts.html')
 
 
+@app.route('/cv')
+def cv():
+    """Curriculum Vitae page - black background, gold serif style"""
+    return render_template('cv.html')
+
+
 @app.route('/manifest.json')
 def manifest():
     """Serve manifest.json with correct MIME type for PWA installation."""

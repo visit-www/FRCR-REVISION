@@ -86,3 +86,4 @@ cache/tcia/*.json
 # Extracted figures (stored in Cloudinary, not git)
 scripts/iarc_figures/
 scripts/openstax_figures/
+.env.prod

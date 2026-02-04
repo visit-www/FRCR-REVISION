@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GAURAV S.P GUPTA - Curriculum Vitae</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --cv-bg: #000000;
+            --cv-gold: #c9a227;
+            --cv-gold-light: #e0c04a;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Libre Baskerville', Georgia, 'Times New Roman', serif;
+            background: var(--cv-bg);
+            color: var(--cv-gold);
+            line-height: 1.6;
+            min-height: 100vh;
+            padding: 2rem 1.5rem;
+        }
+        .cv-container {
+            max-width: 700px;
+            margin: 0 auto;
+        }
+        .cv-back-link {
+            position: fixed;
+            top: 1rem;
+            left: 1rem;
+            color: var(--cv-gold);
+            text-decoration: none;
+            font-size: 0.875rem;
+            opacity: 0.8;
+            transition: opacity 0.2s;
+        }
+        .cv-back-link:hover {
+            opacity: 1;
+            color: var(--cv-gold-light);
+        }
+        .cv-name {
+            text-align: center;
+            font-size: clamp(1.75rem, 5vw, 2.5rem);
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            margin-bottom: 3rem;
+        }
+        .cv-section {
+            margin-bottom: 2.5rem;
+        }
+        .cv-section-title {
+            font-size: 1rem;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+        }
+        .cv-section-content {
+            font-size: 0.95rem;
+            color: rgba(201, 162, 39, 0.95);
+        }
+        .cv-section-content p {
+            margin-bottom: 0.75rem;
+        }
+        @media print {
+            body { padding: 0; }
+            .cv-back-link { display: none; }
+            .cv-container { max-width: 100%; }
+        }
+    </style>
+</head>
+<body>
+    <a href="/" class="cv-back-link">← Back to RadInsights</a>
+    <div class="cv-container">
+        <h1 class="cv-name">Gaurav S.P Gupta</h1>
+
+        <section class="cv-section">
+            <h2 class="cv-section-title">Professional Summary</h2>
+            <div class="cv-section-content">
+                <p>[Add your professional summary here. Describe your background, expertise, and key achievements.]</p>
+            </div>
+        </section>
+
+        <section class="cv-section">
+            <h2 class="cv-section-title">Registrations and Affiliations</h2>
+            <div class="cv-section-content">
+                <p>[Add your registrations and professional affiliations here.]</p>
+            </div>
+        </section>
+
+        <section class="cv-section">
+            <h2 class="cv-section-title">Education</h2>
+            <div class="cv-section-content">
+                <p>[Add education details.]</p>
+            </div>
+        </section>
+
+        <section class="cv-section">
+            <h2 class="cv-section-title">Experience</h2>
+            <div class="cv-section-content">
+                <p>[Add work experience.]</p>
+            </div>
+        </section>
+    </div>
+</body>
+</html>
