@@ -517,7 +517,7 @@ def generate_and_sync(slug, cancer_name, body_section, special_notes=None, speci
     print("[1/4] Generating calculator with Claude AI...")
 
     from app import app, db
-    from tnm_calculator.tnm_generator import generate_calculator_html, generate_algorithm_discussion, save_calculator_html_file
+    from tnm_calculator.tnm_generator import generate_calculator_html, extract_algorithm_from_calculator, save_calculator_html_file
     from models import TNMCalculatorContent
 
     with app.app_context():
@@ -538,13 +538,9 @@ def generate_and_sync(slug, cancer_name, body_section, special_notes=None, speci
         )
         print(f"  ✓ Calculator HTML: {len(calculator_html):,} chars")
 
-        # Generate algorithm discussion
-        print("  Generating algorithm discussion...")
-        algorithm_html = generate_algorithm_discussion(
-            cancer_name=cancer_name,
-            body_section=body_section,
-            special_notes=special_notes
-        )
+        # Extract algorithm from calculator (no second API call)
+        print("  Extracting algorithm from calculator...")
+        algorithm_html = extract_algorithm_from_calculator(calculator_html, cancer_name)
         print(f"  ✓ Algorithm HTML: {len(algorithm_html):,} chars")
 
         # Save HTML file

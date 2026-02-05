@@ -511,19 +511,51 @@ def generate_calculator_html(
 
     logger.info(f"[TNM Generator] Generating calculator HTML for {cancer_name}")
 
-    response = client.messages.create(
-        model=get_claude_model(),
-        max_tokens=20000,
-        temperature=0.3,
-        messages=[
-            {
-                "role": "user",
-                "content": prompt
-            }
-        ]
-    )
+    model = get_claude_model()
+    max_retries = 3
+    retry_delay = 10  # seconds
 
-    html_content = response.content[0].text
+    for attempt in range(max_retries):
+        try:
+            # Opus requires streaming for long operations (SDK requirement for >10min potential)
+            if 'opus' in model.lower():
+                logger.info(f"[TNM Generator] Using streaming for Opus model (attempt {attempt + 1})")
+                html_content = ""
+                with client.messages.stream(
+                    model=model,
+                    max_tokens=20000,
+                    temperature=0.3,
+                    messages=[
+                        {
+                            "role": "user",
+                            "content": prompt
+                        }
+                    ]
+                ) as stream:
+                    for text in stream.text_stream:
+                        html_content += text
+            else:
+                response = client.messages.create(
+                    model=model,
+                    max_tokens=20000,
+                    temperature=0.3,
+                    messages=[
+                        {
+                            "role": "user",
+                            "content": prompt
+                        }
+                    ]
+                )
+                html_content = response.content[0].text
+            break  # Success, exit retry loop
+        except Exception as e:
+            if 'overloaded' in str(e).lower() and attempt < max_retries - 1:
+                import time
+                logger.warning(f"[TNM Generator] API overloaded, retrying in {retry_delay}s (attempt {attempt + 1}/{max_retries})")
+                time.sleep(retry_delay)
+                retry_delay *= 2  # Exponential backoff
+            else:
+                raise
 
     # Clean up if wrapped in markdown code blocks
     if html_content.startswith("```html"):
