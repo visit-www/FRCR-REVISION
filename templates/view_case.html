@@ -7871,7 +7871,7 @@
                         'Front': front,
                         'Back': back
                     },
-                    tags: ['FRCR', 'Radiology', 'Case-' + caseId],
+                    tags: ['RadInsights', 'Radiology', 'Case-' + caseId],
                     options: {
                         allowDuplicate: true
                     }
@@ -7934,7 +7934,7 @@
         
         try {
             const deckName = 'RadInsights';
-            const tags = ['FRCR', 'Radiology', 'Case-' + caseId, 'Bulk'];
+            const tags = ['RadInsights', 'Radiology', 'Case-' + caseId, 'Bulk'];
             
             // Ensure deck exists
             await ankiRequestHybrid('createDeck', { deck: deckName });

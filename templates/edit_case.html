@@ -172,7 +172,7 @@ console.log('[TinyMCE Loader] Script URL was:', "{{ url_for('static', filename='
                         </div>
                     </div>
 
-                    <!-- FRCR Module, Body Part, and Age Group Selection -->
+                    <!-- Module (specialty), Body Part, and Age Group Selection -->
                     <div class="row mt-3">
                         <div class="col-md-4">
                             <div class="mb-4">
@@ -188,7 +188,7 @@ console.log('[TinyMCE Loader] Script URL was:', "{{ url_for('static', filename='
                                     <option value="PAEDIATRIC">Paediatric</option>
                                     <option value="CNS_HEAD_NECK">CNS and Head & Neck (incl. spine, eyes, ENT, salivary, dental)</option>
                                 </select>
-                                <small class="text-muted d-block mt-2">FRCR examination module</small>
+                                <small class="text-muted d-block mt-2">Specialty / training module (body system)</small>
                             </div>
                         </div>
                         <div class="col-md-4">
@@ -1140,9 +1140,9 @@ console.log('[TinyMCE Loader] Script URL was:', "{{ url_for('static', filename='
             <!-- Action Buttons -->
             <div class="sticky-bottom bg-white border-top p-3 mb-5 shadow-sm ">
                 <div class="d-flex gap-2 justify-content-end align-items-start flex-wrap p-3">
-                    <select id="aiProviderSelect" class="form-select form-select-sm w-auto m-2">
-                        <option value="claude" selected>Claude</option>
-                        <option value="consensus" disabled>Consensus (soon)</option>
+                    <select id="aiModelSelect" class="form-select form-select-sm w-auto m-2" title="Select AI model for case data generation">
+                        <option value="claude-sonnet-4-20250514" selected>Sonnet (~$0.40)</option>
+                        <option value="claude-opus-4-5-20251101">Opus (~$2.50)</option>
                     </select>
                     <button type="button" class="btn btn-lg btn-brand-primary m-2" id="aiPrelimBtn" onclick="createPrelimCaseData()">
                         <i class="fas fa-wand-magic-sparkles me-1"></i>Create Preliminary Case Data
@@ -1152,13 +1152,19 @@ console.log('[TinyMCE Loader] Script URL was:', "{{ url_for('static', filename='
                     </button>
                     
                     <!-- TNM Intelligence Button Group (conditionally shown for oncologic cases) -->
-                    <div class="btn-group m-2" id="tnmIntelBtnGroup" style="display: none;">
-                        <button type="button" class="btn btn-lg" id="tnmIntelBtn" style="background: linear-gradient(135deg, #6b46c1 0%, #9f7aea 100%); border: none; color: white;" onclick="generateTnmIntelligence(event)">
-                            <i class="fas fa-dna me-1"></i>TNM
-                        </button>
-                        <button type="button" class="btn btn-lg" id="tnmDropdownToggle" style="background: linear-gradient(135deg, #5a3ca8 0%, #8a6ad4 100%); border: none; border-left: 1px solid rgba(255,255,255,0.3); color: white;" onclick="showTnmSiteDropdown(event)" title="Change primary site">
-                            <i class="fas fa-caret-down"></i>
-                        </button>
+                    <div class="d-flex align-items-center m-2" id="tnmIntelContainer" style="display: none;">
+                        <select id="tnmIntelModelSelect" class="form-select form-select-sm me-2" style="width: auto; font-size: 0.8rem;" title="Select AI model">
+                            <option value="claude-sonnet-4-20250514" selected>Sonnet (~$0.40)</option>
+                            <option value="claude-opus-4-5-20251101">Opus (~$2.50)</option>
+                        </select>
+                        <div class="btn-group" id="tnmIntelBtnGroup">
+                            <button type="button" class="btn btn-lg" id="tnmIntelBtn" style="background: linear-gradient(135deg, #6b46c1 0%, #9f7aea 100%); border: none; color: white;" onclick="generateTnmIntelligence(event)">
+                                <i class="fas fa-dna me-1"></i>TNM
+                            </button>
+                            <button type="button" class="btn btn-lg" id="tnmDropdownToggle" style="background: linear-gradient(135deg, #5a3ca8 0%, #8a6ad4 100%); border: none; border-left: 1px solid rgba(255,255,255,0.3); color: white;" onclick="showTnmSiteDropdown(event)" title="Change primary site">
+                                <i class="fas fa-caret-down"></i>
+                            </button>
+                        </div>
                     </div>
 
                     <!-- TNM Calculator Generator Button (Admin only - generates calculator HTML and algorithm) -->
@@ -3063,9 +3069,9 @@ function checkTnmAvailability() {
             if (data.is_oncologic && data.candidates && data.candidates.length > 0) {
                 tnmCandidates = data.candidates;
 
-                // Show TNM Intelligence button group
-                const btnGroup = document.getElementById('tnmIntelBtnGroup');
-                if (btnGroup) btnGroup.style.display = 'inline-flex';
+                // Show TNM Intelligence container (includes model selector and button group)
+                const tnmContainer = document.getElementById('tnmIntelContainer');
+                if (tnmContainer) tnmContainer.style.display = 'flex';
 
                 // Show TNM Generator button group (for admins)
                 const generatorBtnGroup = document.getElementById('tnmGeneratorBtnGroup');
@@ -3082,8 +3088,8 @@ function checkTnmAvailability() {
             } else if (data.is_oncologic) {
                 // Oncologic but no candidates - allow manual entry
                 tnmCandidates = [];
-                const btnGroup = document.getElementById('tnmIntelBtnGroup');
-                if (btnGroup) btnGroup.style.display = 'inline-flex';
+                const tnmContainer = document.getElementById('tnmIntelContainer');
+                if (tnmContainer) tnmContainer.style.display = 'flex';
 
                 // Show TNM Generator button group (for admins)
                 const generatorBtnGroup = document.getElementById('tnmGeneratorBtnGroup');
@@ -3094,8 +3100,8 @@ function checkTnmAvailability() {
                 tnmBtn.innerHTML = `<i class="fas fa-dna me-1"></i>TNM`;
                 tnmBtn.title = 'Click to enter cancer site manually';
             } else {
-                const btnGroup = document.getElementById('tnmIntelBtnGroup');
-                if (btnGroup) btnGroup.style.display = 'none';
+                const tnmContainer = document.getElementById('tnmIntelContainer');
+                if (tnmContainer) tnmContainer.style.display = 'none';
 
                 // Hide TNM Generator button group
                 const generatorBtnGroup = document.getElementById('tnmGeneratorBtnGroup');
@@ -3104,8 +3110,8 @@ function checkTnmAvailability() {
         })
         .catch(err => {
             console.error('[TNM Check] Error:', err);
-            const btnGroup = document.getElementById('tnmIntelBtnGroup');
-            if (btnGroup) btnGroup.style.display = 'none';
+            const tnmContainer = document.getElementById('tnmIntelContainer');
+            if (tnmContainer) tnmContainer.style.display = 'none';
 
             // Hide TNM Generator button group on error
             const generatorBtnGroup = document.getElementById('tnmGeneratorBtnGroup');
@@ -3622,11 +3628,15 @@ async function generateTnmIntelligenceForSite(primarySiteName, forceRegenerate =
         }
     }
     
+    // Get selected model
+    const model = document.getElementById('tnmIntelModelSelect')?.value || 'claude-sonnet-4-20250514';
+    const isOpus = model.includes('opus');
+
     // Disable button and show loading
     const originalHtml = tnmBtn.innerHTML;
     tnmBtn.disabled = true;
-    tnmBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Generating...';
-    
+    tnmBtn.innerHTML = `<i class="fas fa-spinner fa-spin me-1"></i>${isOpus ? 'Opus...' : 'Generating...'}`;
+
     try {
         // Use the explicit primary site in the diagnosis for the API call
         // This overrides any auto-detection
@@ -3641,7 +3651,8 @@ async function generateTnmIntelligenceForSite(primarySiteName, forceRegenerate =
                 module: module,
                 body_part: bodyPart,
                 case_id: caseId,
-                primary_site_override: primarySiteName  // Explicit override
+                primary_site_override: primarySiteName, // Explicit override
+                model: model  // Model selection
             })
         });
         
@@ -5625,9 +5636,23 @@ function onDiseaseChange() {
     document.getElementById('genDescription').value = defaults.description || `${diseaseName} cancer staging`;
     document.getElementById('genSpecialFeatures').value = defaults.features || '';
     document.getElementById('genSpecialNotes').value = defaults.notes || '';
+}
 
-    // Update local command display
-    updateLocalCommand();
+// Model costs for display (approximate per generation)
+const MODEL_COSTS = {
+    'claude-sonnet-4-20250514': { name: 'Sonnet 4', cost: 0.40 },
+    'claude-opus-4-5-20251101': { name: 'Opus 4.5', cost: 2.50 }
+};
+
+// Update cost display when model changes
+function updateModelCostDisplay(selectId, costId) {
+    const select = document.getElementById(selectId);
+    const costEl = document.getElementById(costId);
+    if (!select || !costEl) return;
+
+    const model = select.value;
+    const modelInfo = MODEL_COSTS[model] || { name: 'Unknown', cost: 0 };
+    costEl.textContent = `Estimated cost: ~$${modelInfo.cost.toFixed(2)} per generation`;
 }
 
 // Show TNM Generator modal
@@ -5730,23 +5755,20 @@ async function showTnmGeneratorModal() {
                     <span class="tnm-gen-checkbox-label">Overwrite existing calculator if it already exists</span>
                 </label>
 
-                <div id="genStatus" class="tnm-gen-status" style="display: none;"></div>
-
-                <div id="genLocalCommand" class="tnm-gen-local-cmd" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1);">
+                <div class="tnm-gen-model-selector" style="margin-top: 1rem; padding: 1rem; background: rgba(255,255,255,0.05); border-radius: 8px;">
                     <label style="display: block; font-size: 0.85rem; color: rgba(255,255,255,0.7); margin-bottom: 0.5rem;">
-                        <i class="fas fa-terminal me-1"></i> Or run locally (no timeout):
+                        <i class="fas fa-robot me-1"></i> Model Selection
                     </label>
-                    <div style="display: flex; gap: 0.5rem;">
-                        <input type="text" id="localCommandInput" readonly
-                               style="flex: 1; font-family: monospace; font-size: 0.8rem; padding: 0.5rem; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; color: #fff;">
-                        <button type="button" class="btn btn-sm btn-outline-light" onclick="copyLocalCommand()">
-                            <i class="fas fa-copy"></i>
-                        </button>
-                    </div>
-                    <small style="display: block; margin-top: 0.25rem; color: rgba(255,255,255,0.5); font-size: 0.75rem;">
-                        Run in local terminal: generates HTML + syncs to Neon
+                    <select id="genModelSelect" class="tnm-gen-select" style="width: 100%;" onchange="updateModelCostDisplay('genModelSelect', 'genModelCost')">
+                        <option value="claude-sonnet-4-20250514" selected>Sonnet 4 (~$0.40) - Recommended</option>
+                        <option value="claude-opus-4-5-20251101">Opus 4.5 (~$2.50) - Higher quality, slower</option>
+                    </select>
+                    <small id="genModelCost" style="display: block; margin-top: 0.25rem; color: rgba(255,255,255,0.6); font-size: 0.75rem;">
+                        Estimated cost: ~$0.40 per generation
                     </small>
                 </div>
+
+                <div id="genStatus" class="tnm-gen-status" style="display: none;"></div>
             </div>
             <div class="tnm-gen-footer">
                 <button type="button" class="tnm-gen-btn-secondary" onclick="closeTnmGeneratorModal()">Cancel</button>
@@ -5772,36 +5794,11 @@ async function showTnmGeneratorModal() {
         }
     }
 
-    // Initialize local command display
-    updateLocalCommand();
 }
 
 function closeTnmGeneratorModal() {
     const overlay = document.getElementById('tnmGeneratorOverlay');
     if (overlay) overlay.remove();
-}
-
-// Update the local command display based on form values
-function updateLocalCommand() {
-    const slug = document.getElementById('genSlug')?.value?.trim() || 'slug';
-    const cancerName = document.getElementById('genCancerName')?.value?.trim() || 'Cancer Name';
-    const bodySection = document.getElementById('genBodySection')?.value?.trim() || 'Body Section';
-
-    const command = `python scripts/generate_tnm_calculator.py ${slug} "${cancerName}" "${bodySection}"`;
-    const input = document.getElementById('localCommandInput');
-    if (input) {
-        input.value = command;
-    }
-}
-
-// Copy local command to clipboard
-function copyLocalCommand() {
-    const input = document.getElementById('localCommandInput');
-    if (input) {
-        navigator.clipboard.writeText(input.value).then(() => {
-            showFlash('Command copied to clipboard!', 'success');
-        });
-    }
 }
 
 async function generateTnmContent() {
@@ -5817,6 +5814,7 @@ async function generateTnmContent() {
     const specialNotes = document.getElementById('genSpecialNotes').value.trim();
     const insertAlgorithm = document.getElementById('genInsertAlgorithm').checked;
     let overwrite = document.getElementById('genOverwrite').checked;
+    const model = document.getElementById('genModelSelect')?.value || 'claude-sonnet-4-20250514';
 
     if (!slug || !cancerName || !bodySection) {
         showFlash('Please select Body Section and Disease Site', 'warning');
@@ -5859,7 +5857,7 @@ async function generateTnmContent() {
     }
 
     // Proceed with generation
-    await proceedWithGeneration(slug, cancerName, bodySection, stagingSystem, description, specialFeatures, specialNotes, insertAlgorithm, overwrite);
+    await proceedWithGeneration(slug, cancerName, bodySection, stagingSystem, description, specialFeatures, specialNotes, insertAlgorithm, overwrite, model);
 }
 
 // Use existing calculator - just insert algorithm
@@ -5890,9 +5888,14 @@ function regenerateCalculator() {
 }
 
 // Actual generation logic - uses direct endpoint (with 60s maxDuration on Vercel)
-async function proceedWithGeneration(slug, cancerName, bodySection, stagingSystem, description, specialFeatures, specialNotes, insertAlgorithm, overwrite) {
+async function proceedWithGeneration(slug, cancerName, bodySection, stagingSystem, description, specialFeatures, specialNotes, insertAlgorithm, overwrite, model = 'claude-sonnet-4-20250514') {
     const statusDiv = document.getElementById('genStatus');
     const generateBtn = document.getElementById('genGenerateBtn');
+
+    // Determine timing based on model
+    const isOpus = model.includes('opus');
+    const timeEstimate = isOpus ? '2-3 minutes' : '30-60 seconds';
+    const clientTimeout = isOpus ? 300000 : 70000; // 5 min for Opus, 70s for Sonnet
 
     // Show loading state with timer
     statusDiv.style.display = 'block';
@@ -5909,11 +5912,12 @@ async function proceedWithGeneration(slug, cancerName, bodySection, stagingSyste
     };
     const timerInterval = setInterval(updateTimer, 1000);
 
+    const modelName = isOpus ? 'Opus 4.5' : 'Sonnet 4';
     statusDiv.innerHTML = `
         <i class="fas fa-spinner fa-spin me-2"></i>
-        <strong>Generating with Claude AI...</strong> <span id="genElapsedTime">0</span>s
+        <strong>Generating with ${modelName}...</strong> <span id="genElapsedTime">0</span>s
         <div style="margin-top: 0.5rem; font-size: 0.85rem; opacity: 0.8;">
-            Typically takes 30-60 seconds. Max timeout: 60s.
+            Typically takes ${timeEstimate}.${isOpus ? ' Opus generates higher quality but takes longer.' : ''}
         </div>
     `;
 
@@ -5926,12 +5930,13 @@ async function proceedWithGeneration(slug, cancerName, bodySection, stagingSyste
         description,
         special_features: specialFeatures,
         special_notes: specialNotes,
-        overwrite
+        overwrite,
+        model
     };
 
     // Create AbortController for client-side timeout (70s to allow server 60s + network)
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 70000);
+    const timeoutId = setTimeout(() => controller.abort(), clientTimeout);
 
     try {
         // Call direct generation endpoint

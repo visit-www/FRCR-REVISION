@@ -1,5 +1,5 @@
 /**
- * FRCR Revision Service Worker
+ * RadInsights Service Worker
  * Provides offline capabilities and PWA installation
  * SAFE: Only caches static files, never interferes with database operations
  */
@@ -157,7 +157,7 @@ self.addEventListener('fetch', (event) => {
               <!DOCTYPE html>
               <html>
               <head>
-                <title>Offline - FRCR Revision</title>
+                <title>Offline - RadInsights</title>
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
                 <style>
                   body { 
@@ -199,7 +199,7 @@ self.addEventListener('fetch', (event) => {
                 <div class="offline-message">
                   <div class="offline-icon">📡</div>
                   <h1>You're Offline</h1>
-                  <p>FRCR Revision requires an internet connection for full functionality.</p>
+                  <p>RadInsights requires an internet connection for full functionality.</p>
                   <p>Some cached content may be available.</p>
                   <button class="retry-btn" onclick="window.location.reload()">Retry</button>
                 </div>

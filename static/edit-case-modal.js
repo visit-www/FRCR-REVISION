@@ -1882,9 +1882,9 @@ function appendDiscussionHtml(html) {
 /**
  * Check AI cache and show warning dialog if cached
  */
-function checkAiCacheAndPrompt(caseId, provider, diagnosis, btn) {
+function checkAiCacheAndPrompt(caseId, model, diagnosis, btn) {
     // Check cache status
-    fetch(`/api/case/${caseId}/ai-prelim/check-cache?provider=${encodeURIComponent(provider)}`)
+    fetch(`/api/case/${caseId}/ai-prelim/check-cache?model=${encodeURIComponent(model)}`)
         .then(async r => {
             const text = await r.text();
             let cacheData;
@@ -1903,7 +1903,7 @@ function checkAiCacheAndPrompt(caseId, provider, diagnosis, btn) {
             if (!cacheData) return; // Already handled in previous then
             if (cacheData.cached && cacheData.cache_entry) {
                 // Show warning dialog
-                const modelName = cacheData.cache_entry.model_name || provider;
+                const modelName = cacheData.cache_entry.model_name || model;
                 const allModels = cacheData.all_used_models || [];
                 const allModelsUsed = allModels.length > 0;
                 
@@ -1995,7 +1995,9 @@ function checkAiCacheAndPrompt(caseId, provider, diagnosis, btn) {
 function createPrelimCaseData(forceRegenerate = false) {
     const caseIdField = document.getElementById('editCaseId')?.value;
     const diagnosis = document.getElementById('editCaseDiagnosis')?.value.trim();
-    const provider = document.getElementById('aiProviderSelect')?.value || 'claude';
+    // Model selection - default to Sonnet for cost efficiency
+    const model = document.getElementById('aiModelSelect')?.value || 'claude-sonnet-4-20250514';
+    const isOpus = model.includes('opus');
     const btn = document.getElementById('aiPrelimBtn');
     const cancelBtn = document.getElementById('aiCancelBtn');
 
@@ -2013,7 +2015,7 @@ function createPrelimCaseData(forceRegenerate = false) {
 
     // Check cache first (unless forcing regenerate)
     if (!forceRegenerate) {
-        checkAiCacheAndPrompt(caseIdField, provider, diagnosis, btn);
+        checkAiCacheAndPrompt(caseIdField, model, diagnosis, btn);
         return;
     }
 
@@ -2021,14 +2023,14 @@ function createPrelimCaseData(forceRegenerate = false) {
     // Create abort controller for cancellation
     let abortController = new AbortController();
     window.aiGenerationAbortController = abortController;
-    
+
     // Update button state
     if (btn) {
         btn.disabled = true;
         btn.dataset.originalText = btn.innerHTML;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Generating...';
+        btn.innerHTML = `<i class="fas fa-spinner fa-spin me-1"></i>${isOpus ? 'Opus...' : 'Generating...'}`;
     }
-    
+
     // Show and setup cancel button RIGHT BEFORE fetch starts
     if (cancelBtn) {
         cancelBtn.style.display = 'inline-block';
@@ -2050,7 +2052,7 @@ function createPrelimCaseData(forceRegenerate = false) {
     fetch(`/api/case/${caseIdField}/ai-prelim`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ provider, force_regenerate: true }),
+        body: JSON.stringify({ model, force_regenerate: true }),
         signal: abortController.signal
     })
     .then(async r => {

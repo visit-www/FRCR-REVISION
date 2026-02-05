@@ -3003,20 +3003,17 @@ def check_ai_prelim_cache(case_id):
                 'message': 'No diagnosis available'
             })
         
-        provider = request.args.get('provider', 'claude').strip()
+        # Support both model (new) and provider (legacy) parameters
         model_name = request.args.get('model', '').strip()
-        
+
         # If model not specified, get default from environment (same as ai_prelim.py)
         if not model_name:
             import os
-            if provider == 'claude':
-                model_name = os.getenv("CLAUDE_MODEL", "claude-sonnet-4-20250514")
-            else:
-                model_name = ''  # Unknown provider
-        
+            model_name = os.getenv("CLAUDE_MODEL", "claude-sonnet-4-20250514")
+
         # Try to check cache, but handle case where table doesn't exist yet
         try:
-            cache_entry = check_ai_diagnosis_cache(case.diagnosis, provider, model_name)
+            cache_entry = check_ai_diagnosis_cache(case.diagnosis, 'claude', model_name)
             all_models = get_all_models_for_diagnosis(case.diagnosis)
         except Exception as e:
             # Table might not exist yet (migration not run)
@@ -3025,10 +3022,9 @@ def check_ai_prelim_cache(case_id):
                 'cached': False,
                 'message': 'Cache check unavailable (migration may be pending)',
                 'all_used_models': [],
-                'requested_provider': provider,
                 'requested_model': model_name,
             })
-        
+
         return jsonify({
             'cached': cache_entry is not None,
             'cache_entry': {
@@ -3038,7 +3034,6 @@ def check_ai_prelim_cache(case_id):
                 'query_count': cache_entry.query_count if cache_entry else 0,
             } if cache_entry else None,
             'all_used_models': all_models,
-            'requested_provider': provider,
             'requested_model': model_name,
         })
     except Exception as e:
@@ -3065,20 +3060,17 @@ def generate_preliminary_case_data(case_id):
         return jsonify({'error': 'Access denied'}), 403
 
     data = request.get_json() or {}
-    provider = (data.get('provider') or 'claude').strip()
+    # Support both model (new) and provider (legacy) parameters
+    model = data.get('model', 'claude-sonnet-4-20250514')
     notes = (data.get('notes') or '').strip()
     force_regenerate = data.get('force_regenerate', False)  # User confirmed to regenerate
 
     if not case.diagnosis or not case.diagnosis.strip():
         return jsonify({'error': 'Diagnosis is required'}), 400
-    
-    # Get model name (will be determined by ai_prelim, but we need it for cache check)
-    import os
-    model_name = os.getenv("CLAUDE_MODEL", "claude-sonnet-4-20250514") if provider == 'claude' else ''
-    
+
     # Check cache (unless user explicitly chose to regenerate)
     if not force_regenerate:
-        cache_entry = check_ai_diagnosis_cache(case.diagnosis, provider, model_name)
+        cache_entry = check_ai_diagnosis_cache(case.diagnosis, 'claude', model)
         if cache_entry:
             # Return cache warning - frontend will show dialog
             all_models = get_all_models_for_diagnosis(case.diagnosis)
@@ -3092,8 +3084,7 @@ def generate_preliminary_case_data(case_id):
                     'query_count': cache_entry.query_count,
                 },
                 'all_used_models': all_models,
-                'requested_provider': provider,
-                'requested_model': model_name,
+                'requested_model': model,
             }), 200  # 200 because this is expected behavior, not an error
 
     sources = [
@@ -3114,7 +3105,7 @@ def generate_preliminary_case_data(case_id):
     }
 
     try:
-        result = generate_prelim_case_data(context, provider=provider)
+        result = generate_prelim_case_data(context, provider='claude', model=model)
     except AiPrelimError as exc:
         return jsonify({'error': str(exc)}), 400
     except Exception as exc:

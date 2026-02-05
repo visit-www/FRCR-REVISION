@@ -629,7 +629,8 @@ def generate_calculator_html(
     cancer_name: str,
     body_section: str,
     staging_system: str = "AJCC 9th Edition",
-    special_notes: str = ""
+    special_notes: str = "",
+    model: str = None
 ) -> str:
     """
     Generate interactive TNM calculator HTML using Claude.
@@ -639,6 +640,7 @@ def generate_calculator_html(
         body_section: Body section (e.g., "Head and Neck", "Thorax")
         staging_system: Staging system used (default: AJCC 9th Edition)
         special_notes: Additional notes for generation (e.g., HPV variants)
+        model: Claude model to use (defaults to env CLAUDE_MODEL or sonnet)
 
     Returns:
         Complete HTML string for the calculator
@@ -660,7 +662,9 @@ def generate_calculator_html(
 
     logger.info(f"[TNM Generator] Generating calculator HTML for {cancer_name}")
 
-    model = get_claude_model()
+    # Use provided model or fall back to environment/default
+    if model is None:
+        model = get_claude_model()
     max_retries = 3
     retry_delay = 10  # seconds
 
@@ -801,7 +805,8 @@ def generate_and_save_tnm_content(
     description: str = "",
     special_notes: str = "",
     user_id: int = None,
-    overwrite: bool = False
+    overwrite: bool = False,
+    model: str = None
 ) -> Tuple[bool, str, Dict[str, Any]]:
     """
     Generate calculator and algorithm content, save to DB and file.
@@ -817,6 +822,7 @@ def generate_and_save_tnm_content(
         special_notes: Notes for Claude
         user_id: Creating user ID
         overwrite: If True, overwrite existing calculator
+        model: Claude model to use (defaults to env CLAUDE_MODEL or sonnet)
 
     Returns:
         Tuple of (success, message, result_data)
@@ -835,13 +841,17 @@ def generate_and_save_tnm_content(
             db.session.delete(existing)
             db.session.commit()
 
+        # Use provided model or fall back to environment/default
+        effective_model = model if model else get_claude_model()
+        logger.info(f"[TNM Generator] Starting generation for {cancer_name} with model {effective_model}")
+
         # Generate calculator HTML
-        logger.info(f"[TNM Generator] Starting generation for {cancer_name}")
         calculator_html = generate_calculator_html(
             cancer_name=cancer_name,
             body_section=body_section,
             staging_system=staging_system,
-            special_notes=special_notes
+            special_notes=special_notes,
+            model=effective_model
         )
 
         # Validate quality
@@ -872,7 +882,7 @@ def generate_and_save_tnm_content(
             staging_system=staging_system,
             description=description,
             is_available=True,
-            generation_model=get_claude_model(),
+            generation_model=effective_model,
             generated_at=datetime.utcnow(),
             created_by_user_id=user_id
         )

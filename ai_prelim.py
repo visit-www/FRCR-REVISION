@@ -360,10 +360,10 @@ def _build_prompt(case_context):
     return SYSTEM_PROMPT, _build_user_prompt(case_context)
 
 
-def generate_prelim_case_data(case_context, provider="claude"):
+def generate_prelim_case_data(case_context, provider="claude", model=None):
     """
     Generate preliminary case data using the specified AI provider.
-    
+
     Args:
         case_context: dict with keys:
             - diagnosis (required)
@@ -373,7 +373,8 @@ def generate_prelim_case_data(case_context, provider="claude"):
             - notes (optional)
             - existing_summary (optional)
         provider: str, currently only "claude" is supported
-        
+        model: str, Claude model to use (defaults to env CLAUDE_MODEL or sonnet)
+
     Returns:
         dict with keys:
             - provider
@@ -382,7 +383,7 @@ def generate_prelim_case_data(case_context, provider="claude"):
             - generated_at
             - output (the parsed JSON response)
             - raw_response
-            
+
     Raises:
         AiPrelimError: If generation fails
     """
@@ -394,7 +395,9 @@ def generate_prelim_case_data(case_context, provider="claude"):
         raise AiPrelimError("CLAUDE_API_KEY is not configured. Please set this environment variable.")
 
     system_prompt, user_prompt = _build_prompt(case_context)
-    model = os.getenv("CLAUDE_MODEL", "claude-sonnet-4-20250514")
+    # Use provided model or fall back to environment/default
+    if model is None:
+        model = os.getenv("CLAUDE_MODEL", "claude-sonnet-4-20250514")
 
     payload = {
         "model": model,

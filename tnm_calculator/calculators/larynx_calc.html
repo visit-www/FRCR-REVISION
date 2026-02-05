@@ -11,7 +11,11 @@
             --brand-success: #a8d5ba;
             --brand-neutral: #5E899E;
             --brand-text-primary: #2c3e50;
+            --brand-text-secondary: #5a6270;
+            --brand-text-light: #8b94a3;
+            --brand-bg-white: #ffffff;
             --brand-bg-offwhite: #fdfdfb;
+            --brand-border: #c5cad1;
         }
 
         * {
@@ -27,716 +31,1573 @@
             background-color: var(--brand-bg-offwhite);
         }
 
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
         .header {
-            background: linear-gradient(135deg, var(--brand-primary), var(--brand-neutral));
-            color: white;
-            padding: 2rem 1rem;
             text-align: center;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+            padding: 30px 20px;
+            background: linear-gradient(135deg, var(--brand-primary), #d55a04);
+            color: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(233, 99, 4, 0.3);
         }
 
         .header h1 {
             font-size: 2.5rem;
-            margin-bottom: 0.5rem;
+            margin-bottom: 10px;
             font-weight: 700;
         }
 
-        .header .subtitle {
-            font-size: 1.2rem;
-            opacity: 0.9;
-            margin-bottom: 1rem;
-        }
-
-        .header .intro {
-            max-width: 800px;
-            margin: 0 auto;
+        .header p {
             font-size: 1.1rem;
-            opacity: 0.95;
+            opacity: 0.9;
         }
 
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 2rem 1rem;
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 40px;
         }
 
-        .section {
-            background: white;
+        .calculator-section {
+            background: var(--brand-bg-white);
             border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            margin-bottom: 2rem;
-            overflow: hidden;
+            padding: 30px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            border: 1px solid var(--brand-border);
         }
 
-        .section-header {
-            background: linear-gradient(135deg, var(--brand-neutral), var(--brand-primary));
-            color: white;
-            padding: 1.5rem;
-            font-size: 1.5rem;
+        .calculator-title {
+            font-size: 1.8rem;
+            color: var(--brand-primary);
+            margin-bottom: 25px;
+            text-align: center;
             font-weight: 600;
         }
 
-        .section-content {
-            padding: 1.5rem;
-        }
-
-        .card {
-            border: 2px solid #e9ecef;
+        .form-section {
+            margin-bottom: 25px;
+            padding: 20px;
+            background: var(--brand-bg-offwhite);
             border-radius: 8px;
-            margin-bottom: 1rem;
-            transition: all 0.3s ease;
-        }
-
-        .card:hover {
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        }
-
-        .card-header {
-            padding: 1rem 1.5rem;
-            background: #f8f9fa;
-            cursor: pointer;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-weight: 600;
-            border-bottom: 1px solid #e9ecef;
-        }
-
-        .card-header:hover {
-            background: #e9ecef;
-        }
-
-        .card-content {
-            padding: 1.5rem;
-            display: none;
-            background: white;
-        }
-
-        .card-content.active {
-            display: block;
-        }
-
-        .expand-icon {
-            transition: transform 0.3s ease;
-            font-size: 1.2rem;
-        }
-
-        .expand-icon.rotated {
-            transform: rotate(180deg);
-        }
-
-        .t-category {
-            background: linear-gradient(135deg, #fff3e0, #ffebcd);
             border-left: 4px solid var(--brand-primary);
         }
 
-        .clinical-tip {
-            background: #e8f4fd;
-            border-left: 4px solid var(--brand-neutral);
-            padding: 1rem;
-            margin: 1rem 0;
-            border-radius: 4px;
+        .section-title {
+            font-size: 1.3rem;
+            color: var(--brand-text-primary);
+            margin-bottom: 15px;
+            font-weight: 600;
         }
 
-        .clinical-tip strong {
-            color: var(--brand-neutral);
+        .form-group {
+            margin-bottom: 20px;
         }
 
-        .pitfall {
-            background: #fff3cd;
-            border-left: 4px solid var(--brand-secondary);
-            padding: 1rem;
-            margin: 1rem 0;
-            border-radius: 4px;
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--brand-text-primary);
         }
 
-        .pitfall strong {
-            color: #856404;
+        .help-text {
+            font-size: 0.9rem;
+            color: var(--brand-text-light);
+            font-weight: 400;
+            display: block;
+            margin-top: 4px;
         }
 
-        .criteria-list {
-            list-style: none;
-            padding-left: 0;
-        }
-
-        .criteria-list li {
-            padding: 0.5rem 0;
-            border-bottom: 1px solid #eee;
-        }
-
-        .criteria-list li:last-child {
-            border-bottom: none;
-        }
-
-        .criteria-list li::before {
-            content: "✓";
-            color: var(--brand-success);
-            font-weight: bold;
-            margin-right: 0.5rem;
-        }
-
-        .stage-selector {
+        .checkbox-group {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 2rem;
+            gap: 8px;
+            margin-top: 10px;
         }
 
-        .selector-group {
-            background: white;
-            border-radius: 8px;
-            padding: 1.5rem;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        .checkbox-option {
+            display: flex;
+            align-items: center;
+            padding: 8px 12px;
+            background: var(--brand-bg-white);
+            border: 1px solid var(--brand-border);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
         }
 
-        .selector-group h3 {
-            margin-bottom: 1rem;
-            color: var(--brand-primary);
+        .checkbox-option:hover {
+            background: #f8f9fa;
+            border-color: var(--brand-primary);
+        }
+
+        .checkbox-option input[type="checkbox"] {
+            margin-right: 10px;
+            transform: scale(1.2);
+            accent-color: var(--brand-primary);
+        }
+
+        .input-with-unit {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .input-with-unit input {
+            flex: 1;
+            padding: 10px 12px;
+            border: 2px solid var(--brand-border);
+            border-radius: 6px;
+            font-size: 1rem;
+            transition: border-color 0.2s ease;
+        }
+
+        .input-with-unit input:focus {
+            outline: none;
+            border-color: var(--brand-primary);
+        }
+
+        .unit {
+            font-weight: 600;
+            color: var(--brand-text-secondary);
         }
 
         .radio-group {
             display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
+            gap: 15px;
+            margin-top: 10px;
         }
 
         .radio-option {
             display: flex;
             align-items: center;
-            padding: 0.5rem;
-            border-radius: 4px;
+            padding: 8px 15px;
+            background: var(--brand-bg-white);
+            border: 2px solid var(--brand-border);
+            border-radius: 6px;
             cursor: pointer;
-            transition: background-color 0.3s ease;
+            transition: all 0.2s ease;
         }
 
         .radio-option:hover {
-            background-color: #f8f9fa;
+            border-color: var(--brand-primary);
         }
 
-        .radio-option input {
-            margin-right: 0.5rem;
+        .radio-option input[type="radio"] {
+            margin-right: 8px;
+            accent-color: var(--brand-primary);
         }
 
-        .stage-result {
-            background: linear-gradient(135deg, var(--brand-success), #7fb069);
+        .radio-option.selected {
+            border-color: var(--brand-primary);
+            background: rgba(233, 99, 4, 0.1);
+        }
+
+        select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 2px solid var(--brand-border);
+            border-radius: 6px;
+            font-size: 1rem;
+            background: var(--brand-bg-white);
+            cursor: pointer;
+        }
+
+        select:focus {
+            outline: none;
+            border-color: var(--brand-primary);
+        }
+
+        .calculate-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, var(--brand-primary), #d55a04);
             color: white;
-            padding: 2rem;
-            border-radius: 12px;
-            text-align: center;
-            margin: 2rem 0;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-        }
-
-        .stage-result h2 {
-            font-size: 2.5rem;
-            margin-bottom: 0.5rem;
-        }
-
-        .stage-result .stage-detail {
-            font-size: 1.2rem;
-            opacity: 0.95;
-        }
-
-        .reset-button {
-            background: var(--brand-secondary);
-            color: var(--brand-text-primary);
             border: none;
-            padding: 1rem 2rem;
             border-radius: 8px;
             font-size: 1.1rem;
+            font-weight: 600;
             cursor: pointer;
             transition: all 0.3s ease;
+            margin: 20px 0;
+        }
+
+        .calculate-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(233, 99, 4, 0.4);
+        }
+
+        .reset-btn {
+            width: 100%;
+            padding: 12px;
+            background: var(--brand-neutral);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .reset-btn:hover {
+            background: #4a7489;
+        }
+
+        .result-card {
+            background: var(--brand-bg-white);
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            border: 1px solid var(--brand-border);
+            position: sticky;
+            top: 20px;
+        }
+
+        .result-card h2 {
+            color: var(--brand-primary);
+            margin-bottom: 20px;
+            text-align: center;
+            font-size: 1.6rem;
+        }
+
+        .result-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .result-item {
+            text-align: center;
+            padding: 15px;
+            background: var(--brand-bg-offwhite);
+            border-radius: 8px;
+            border: 1px solid var(--brand-border);
+        }
+
+        .result-item strong {
+            display: block;
+            color: var(--brand-text-secondary);
+            font-size: 0.9rem;
+            margin-bottom: 5px;
+        }
+
+        .result-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--brand-primary);
+        }
+
+        .overall-stage {
+            text-align: center;
+            padding: 20px;
+            background: linear-gradient(135deg, var(--brand-success), #8bc49a);
+            border-radius: 8px;
+            margin: 20px 0;
+            color: white;
+            font-size: 1.3rem;
             font-weight: 600;
         }
 
-        .reset-button:hover {
-            background: #ffb307;
-            transform: translateY(-2px);
-        }
-
-        .subsite-note {
-            background: #f0f8ff;
-            border: 1px solid var(--brand-neutral);
+        .reasoning-section {
+            margin-top: 20px;
+            padding: 20px;
+            background: var(--brand-bg-offwhite);
             border-radius: 8px;
-            padding: 1rem;
-            margin: 1rem 0;
+            border-left: 4px solid var(--brand-secondary);
         }
 
-        .subsite-note h4 {
-            color: var(--brand-neutral);
-            margin-bottom: 0.5rem;
+        .reasoning-section h3 {
+            color: var(--brand-text-primary);
+            margin-bottom: 15px;
+        }
+
+        .reasoning-item {
+            margin-bottom: 10px;
+            padding: 10px;
+            background: var(--brand-bg-white);
+            border-radius: 6px;
+            border: 1px solid var(--brand-border);
+        }
+
+        .clinical-implications {
+            margin-top: 20px;
+            padding: 20px;
+            background: rgba(233, 99, 4, 0.1);
+            border-radius: 8px;
+            border: 1px solid var(--brand-primary);
+        }
+
+        .clinical-implications h3 {
+            color: var(--brand-primary);
+            margin-bottom: 15px;
+        }
+
+        .reference-section {
+            margin-top: 40px;
+            padding: 30px;
+            background: var(--brand-bg-white);
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .reference-title {
+            font-size: 2rem;
+            color: var(--brand-primary);
+            text-align: center;
+            margin-bottom: 30px;
+            font-weight: 700;
+        }
+
+        .reference-card {
+            margin-bottom: 30px;
+            padding: 25px;
+            background: var(--brand-bg-offwhite);
+            border-radius: 10px;
+            border: 1px solid var(--brand-border);
+        }
+
+        .reference-subtitle {
+            font-size: 1.4rem;
+            color: var(--brand-text-primary);
+            margin-bottom: 20px;
+            font-weight: 600;
+            border-bottom: 2px solid var(--brand-primary);
+            padding-bottom: 10px;
+        }
+
+        .mnemonic-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .mnemonic-box {
+            background: var(--brand-bg-white);
+            padding: 20px;
+            border-radius: 8px;
+            border: 2px solid var(--brand-primary);
+        }
+
+        .mnemonic-box h4 {
+            color: var(--brand-primary);
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+        }
+
+        .mnemonic-detail {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            padding: 8px;
+            background: var(--brand-bg-offwhite);
+            border-radius: 6px;
+        }
+
+        .mnemonic-letter {
+            width: 30px;
+            height: 30px;
+            background: var(--brand-primary);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 12px;
+            flex-shrink: 0;
+        }
+
+        .staging-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: var(--brand-bg-white);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .staging-table th {
+            background: var(--brand-primary);
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        .staging-table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid var(--brand-border);
+        }
+
+        .staging-table tr:nth-child(even) {
+            background: var(--brand-bg-offwhite);
+        }
+
+        .tips-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .tip-card {
+            background: var(--brand-bg-white);
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid var(--brand-border);
+            transition: transform 0.2s ease;
+        }
+
+        .tip-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .tip-card h4 {
+            color: var(--brand-primary);
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+        }
+
+        .tip-detail {
+            margin-top: 10px;
+            padding: 10px;
+            background: var(--brand-bg-offwhite);
+            border-radius: 6px;
+            font-size: 0.9rem;
+            color: var(--brand-text-secondary);
+        }
+
+        .pitfall-card {
+            background: rgba(220, 53, 69, 0.05);
+            border: 1px solid rgba(220, 53, 69, 0.2);
+        }
+
+        .pitfall-list {
+            display: grid;
+            gap: 15px;
+        }
+
+        .pitfall-item {
+            display: flex;
+            align-items: flex-start;
+            padding: 15px;
+            background: var(--brand-bg-white);
+            border-radius: 8px;
+            border: 1px solid rgba(220, 53, 69, 0.2);
+        }
+
+        .pitfall-number {
+            width: 30px;
+            height: 30px;
+            background: #dc3545;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 15px;
+            flex-shrink: 0;
+        }
+
+        .systematic-steps {
+            display: grid;
+            gap: 15px;
+        }
+
+        .step-item {
+            display: flex;
+            align-items: flex-start;
+            padding: 15px;
+            background: var(--brand-bg-white);
+            border-radius: 8px;
+            border: 1px solid var(--brand-border);
+        }
+
+        .step-number {
+            width: 35px;
+            height: 35px;
+            background: var(--brand-neutral);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 15px;
+            flex-shrink: 0;
+        }
+
+        .warning-box {
+            background: rgba(255, 193, 7, 0.1);
+            border: 1px solid var(--brand-secondary);
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+
+        .warning-box h4 {
+            color: #856404;
+            margin-bottom: 8px;
         }
 
         @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+
+            .result-grid {
+                grid-template-columns: 1fr;
+            }
+
             .header h1 {
                 font-size: 2rem;
             }
-            
-            .container {
-                padding: 1rem;
+
+            .mnemonic-grid {
+                grid-template-columns: 1fr;
             }
-            
-            .card-header {
-                padding: 1rem;
+
+            .tips-grid {
+                grid-template-columns: 1fr;
             }
-            
-            .card-content {
-                padding: 1rem;
+
+            .radio-group {
+                flex-direction: column;
             }
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .subsite-specific {
+            margin-top: 15px;
+            padding: 15px;
+            background: rgba(233, 99, 4, 0.05);
+            border-radius: 6px;
+            border: 1px solid rgba(233, 99, 4, 0.2);
         }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>Larynx Cancer TNM Staging</h1>
-        <div class="subtitle">AJCC 9th Edition (2024)</div>
-        <div class="intro">
-            Interactive staging calculator for laryngeal carcinoma covering all subsites: glottis, supraglottis, and subglottis. 
-            Emphasizes cartilage invasion criteria and voice preservation considerations for optimal treatment planning.
-        </div>
-    </div>
-
     <div class="container">
-        <!-- T Category Decision Tree -->
-        <div class="section">
-            <div class="section-header">
-                Primary Tumor (T) Assessment
+        <div class="header">
+            <h1>Larynx Cancer TNM Staging Calculator</h1>
+            <p>AJCC 9th Edition | Interactive Tool for Radiology Registrars</p>
+        </div>
+
+        <div class="main-content">
+            <div class="calculator-section">
+                <h2 class="calculator-title">TNM Staging Calculator</h2>
+                
+                <!-- Subsite Selection -->
+                <div class="form-section">
+                    <h3 class="section-title">Larynx Subsite</h3>
+                    <div class="form-group">
+                        <label class="form-label">
+                            <strong>Primary Tumor Subsite:</strong>
+                            <span class="help-text">Critical for accurate T staging - different criteria apply</span>
+                        </label>
+                        <select id="subsite" onchange="updateSubsiteDisplay(); updateCalculator();">
+                            <option value="">Select subsite...</option>
+                            <option value="glottic">Glottic (True vocal cords)</option>
+                            <option value="supraglottic">Supraglottic (Above vocal cords)</option>
+                            <option value="subglottic">Subglottic (Below vocal cords)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- T Stage Section -->
+                <div class="form-section">
+                    <h3 class="section-title">T Stage: Primary Tumor</h3>
+
+                    <!-- T4b Features -->
+                    <div class="form-group">
+                        <label class="form-label">
+                            <strong>T4b Features (Unresectable):</strong>
+                            <span class="help-text">If ANY present = Automatic T4b</span>
+                        </label>
+                        <div class="checkbox-group">
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="t4b_prevertebral" onchange="updateCalculator()">
+                                <span>Prevertebral fascia invasion</span>
+                            </label>
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="t4b_carotid" onchange="updateCalculator()">
+                                <span>Carotid artery encasement (>270°)</span>
+                            </label>
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="t4b_mediastinal" onchange="updateCalculator()">
+                                <span>Mediastinal structure involvement</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- T4a Features -->
+                    <div class="form-group">
+                        <label class="form-label">
+                            <strong>T4a Features (Moderately Advanced):</strong>
+                            <span class="help-text">If ANY present = Automatic T4a</span>
+                        </label>
+                        <div class="checkbox-group">
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="t4a_thyroid_cartilage" onchange="updateCalculator()">
+                                <span>Through OUTER cortex of thyroid cartilage</span>
+                            </label>
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="t4a_trachea" onchange="updateCalculator()">
+                                <span>Trachea invasion</span>
+                            </label>
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="t4a_soft_tissues" onchange="updateCalculator()">
+                                <span>Soft tissues of neck (beyond strap muscles)</span>
+                            </label>
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="t4a_tongue_muscles" onchange="updateCalculator()">
+                                <span>Deep extrinsic tongue muscles</span>
+                            </label>
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="t4a_strap_muscles" onchange="updateCalculator()">
+                                <span>Strap muscles</span>
+                            </label>
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="t4a_thyroid_gland" onchange="updateCalculator()">
+                                <span>Thyroid gland invasion</span>
+                            </label>
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="t4a_esophagus" onchange="updateCalculator()">
+                                <span>Esophagus invasion</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Vocal Cord Mobility -->
+                    <div class="form-group">
+                        <label class="form-label">
+                            <strong>Vocal Cord Mobility:</strong>
+                            <span class="help-text">Critical distinction: Impaired ≠ Fixed</span>
+                        </label>
+                        <div class="radio-group">
+                            <label class="radio-option">
+                                <input type="radio" name="vocalCord" value="normal" onchange="updateCalculator()">
+                                <span>Normal</span>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="vocalCord" value="impaired" onchange="updateCalculator()">
+                                <span>Impaired</span>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="vocalCord" value="fixed" onchange="updateCalculator()">
+                                <span>Fixed</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- T3 Features -->
+                    <div class="form-group">
+                        <label class="form-label">
+                            <strong>T3 Features:</strong>
+                            <span class="help-text">Advanced local features</span>
+                        </label>
+                        <div class="checkbox-group">
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="feature_paraglottic" onchange="updateCalculator()">
+                                <span>Paraglottic space invasion</span>
+                            </label>
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="feature_inner_cortex" onchange="updateCalculator()">
+                                <span>Inner cortex thyroid cartilage erosion (not through outer)</span>
+                            </label>
+                            <label class="checkbox-option" id="preepiglottic_option">
+                                <input type="checkbox" id="feature_preepiglottic" onchange="updateCalculator()">
+                                <span>Pre-epiglottic space invasion</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Subsite-specific T1/T2 criteria -->
+                    <div id="glottic_specific" class="subsite-specific hidden">
+                        <h4>Glottic-Specific Features:</h4>
+                        <div class="form-group">
+                            <label class="form-label">
+                                <strong>Glottic Cord Involvement:</strong>
+                            </label>
+                            <div class="radio-group">
+                                <label class="radio-option">
+                                    <input type="radio" name="glotticCords" value="one" onchange="updateCalculator()">
+                                    <span>One cord (T1a)</span>
+                                </label>
+                                <label class="radio-option">
+                                    <input type="radio" name="glotticCords" value="both" onchange="updateCalculator()">
+                                    <span>Both cords (T1b)</span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="checkbox-group">
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="feature_supraglottis_extension" onchange="updateCalculator()">
+                                <span>Extension to supraglottis</span>
+                            </label>
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="feature_subglottis_extension" onchange="updateCalculator()">
+                                <span>Extension to subglottis</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div id="supraglottic_specific" class="subsite-specific hidden">
+                        <h4>Supraglottic-Specific Features:</h4>
+                        <div class="checkbox-group">
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="feature_multiple_subsites" onchange="updateCalculator()">
+                                <span>Multiple supraglottic subsites</span>
+                            </label>
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="feature_glottis_extension" onchange="updateCalculator()">
+                                <span>Extension to glottis</span>
+                            </label>
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="feature_outside_supraglottis" onchange="updateCalculator()">
+                                <span>Extension outside supraglottis</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div id="subglottic_specific" class="subsite-specific hidden">
+                        <h4>Subglottic-Specific Features:</h4>
+                        <div class="checkbox-group">
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="feature_subglottic_extension" onchange="updateCalculator()">
+                                <span>Extension to vocal cords</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- N Stage Section -->
+                <div class="form-section">
+                    <h3 class="section-title">N Stage: Regional Lymph Nodes</h3>
+                    
+                    <div class="form-group">
+                        <label class="form-label">
+                            <strong>Largest lymph node size:</strong>
+                            <span class="help-text">Measure maximum dimension</span>
+                        </label>
+                        <div class="input-with-unit">
+                            <input type="number" id="nodeSize" step="0.1" min="0" placeholder="e.g., 2.5" onchange="updateCalculator()">
+                            <span class="unit">cm</span>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">
+                            <strong>Node distribution:</strong>
+                        </label>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                            <div>
+                                <label>Ipsilateral nodes:</label>
+                                <input type="number" id="ipsilateralNodes" min="0" placeholder="0" onchange="updateCalculator()" style="width: 100%; padding: 8px; border: 1px solid var(--brand-border); border-radius: 4px;">
+                            </div>
+                            <div>
+                                <label>Contralateral nodes:</label>
+                                <input type="number" id="contralateralNodes" min="0" placeholder="0" onchange="updateCalculator()" style="width: 100%; padding: 8px; border: 1px solid var(--brand-border); border-radius: 4px;">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">
+                            <strong>Extranodal Extension (ENE):</strong>
+                        </label>
+                        <div class="radio-group">
+                            <label class="radio-option">
+                                <input type="radio" name="ene" value="no" onchange="updateCalculator()">
+                                <span>No ENE</span>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="ene" value="yes" onchange="updateCalculator()">
+                                <span>ENE present</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- M Stage Section -->
+                <div class="form-section">
+                    <h3 class="section-title">M Stage: Distant Metastases</h3>
+                    
+                    <div class="form-group">
+                        <label class="form-label">
+                            <strong>Distant metastases:</strong>
+                        </label>
+                        <div class="radio-group">
+                            <label class="radio-option">
+                                <input type="radio" name="metastases" value="no" onchange="updateCalculator()">
+                                <span>No distant metastases (M0)</span>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="metastases" value="yes" onchange="updateCalculator()">
+                                <span>Distant metastases present (M1)</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <button class="calculate-btn" onclick="updateCalculator()">Calculate TNM Stage</button>
+                <button class="reset-btn" onclick="resetCalculator()">Reset All Fields</button>
             </div>
-            <div class="section-content">
-                <p style="margin-bottom: 2rem;"><strong>Clinical Approach:</strong> Work through each category systematically, starting with the most advanced. Consider imaging findings (CT/MRI) and endoscopic assessment.</p>
 
-                <!-- T4b -->
-                <div class="card t-category">
-                    <div class="card-header" onclick="toggleCard('t4b')">
-                        <span><strong>T4b - Very Advanced Local Disease</strong></span>
-                        <span class="expand-icon" id="t4b-icon">▼</span>
+            <div class="result-card" id="finalResult">
+                <h2>Final Staging Result</h2>
+                <div class="result-grid">
+                    <div class="result-item">
+                        <strong>T Stage</strong>
+                        <div class="result-value" id="resultT">-</div>
                     </div>
-                    <div class="card-content" id="t4b-content">
-                        <h4>Tumor invades prevertebral fascia OR encases carotid artery OR involves mediastinal structures</h4>
-                        
-                        <div class="clinical-tip">
-                            <strong>🎯 Clinical Pearl:</strong> "PACE" mnemonic - <strong>P</strong>revertebral fascia, <strong>A</strong>rtery encasement (carotid), <strong>C</strong>entral compartment involvement, <strong>E</strong>xtensive mediastinal involvement
-                        </div>
+                    <div class="result-item">
+                        <strong>N Stage</strong>
+                        <div class="result-value" id="resultN">-</div>
+                    </div>
+                    <div class="result-item">
+                        <strong>M Stage</strong>
+                        <div class="result-value" id="resultM">-</div>
+                    </div>
+                </div>
+                
+                <div class="overall-stage">
+                    <strong>Overall Stage: <span id="resultStage">-</span></strong>
+                </div>
 
-                        <ul class="criteria-list">
-                            <li>Prevertebral fascia invasion (posterior boundary)</li>
-                            <li>Carotid artery encasement (>270° circumference)</li>
-                            <li>Mediastinal structure involvement (esophagus, great vessels)</li>
-                            <li>Extensive soft tissue invasion of neck</li>
-                        </ul>
-
-                        <div class="pitfall">
-                            <strong>⚠️ Common Pitfall:</strong> Don't confuse carotid contact/abutment with true encasement. Encasement requires >270° circumferential involvement on axial imaging.
-                        </div>
-
-                        <div class="subsite-note">
-                            <h4>Voice Preservation:</h4>
-                            <p>T4b tumors are generally not candidates for voice-preserving surgery. Total laryngectomy is typically required.</p>
-                        </div>
+                <div class="reasoning-section" id="resultReasoning">
+                    <h3>Staging Rationale</h3>
+                    <div id="reasoningContent">
+                        <p>Complete the form to see detailed staging rationale...</p>
                     </div>
                 </div>
 
-                <!-- T4a -->
-                <div class="card t-category">
-                    <div class="card-header" onclick="toggleCard('t4a')">
-                        <span><strong>T4a - Advanced Local Disease</strong></span>
-                        <span class="expand-icon" id="t4a-icon">▼</span>
-                    </div>
-                    <div class="card-content" id="t4a-content">
-                        <h4>Tumor invades through outer cortex of thyroid cartilage OR invades tissues beyond larynx</h4>
-                        
-                        <div class="clinical-tip">
-                            <strong>🔍 Imaging Key:</strong> Look for thyroid cartilage cortical breakthrough on CT. MRI better for soft tissue extension assessment.
-                        </div>
-
-                        <ul class="criteria-list">
-                            <li>Through outer cortex of thyroid cartilage</li>
-                            <li>Trachea invasion</li>
-                            <li>Soft tissues of neck</li>
-                            <li>Deep extrinsic muscle of tongue</li>
-                            <li>Strap muscles</li>
-                            <li>Thyroid gland</li>
-                            <li>Esophagus</li>
-                        </ul>
-
-                        <div class="subsite-note">
-                            <h4>Subsite Considerations:</h4>
-                            <p><strong>Supraglottis:</strong> Extension to tongue base, vallecula, or pyriform sinus apex<br>
-                            <strong>Glottis:</strong> Extension to supraglottis/subglottis with fixation<br>
-                            <strong>Subglottis:</strong> Extension to cricoid cartilage or trachea</p>
-                        </div>
-
-                        <div class="pitfall">
-                            <strong>⚠️ Clinical Note:</strong> Some T4a lesions may still be candidates for voice-preserving surgery depending on extent and location.
-                        </div>
-                    </div>
-                </div>
-
-                <!-- T3 -->
-                <div class="card t-category">
-                    <div class="card-header" onclick="toggleCard('t3')">
-                        <span><strong>T3 - Moderately Advanced Local Disease</strong></span>
-                        <span class="expand-icon" id="t3-icon">▼</span>
-                    </div>
-                    <div class="card-content" id="t3-content">
-                        <h4>Vocal cord fixation OR paraglottic space invasion OR inner cortex of thyroid cartilage</h4>
-                        
-                        <div class="clinical-tip">
-                            <strong>🎵 Voice Assessment:</strong> Vocal cord fixation is key - assess on direct laryngoscopy with patient phonation. Fixation indicates cricoarytenoid joint or posterior cricoarytenoid muscle involvement.
-                        </div>
-
-                        <div class="subsite-note">
-                            <h4>Subsite-Specific T3 Criteria:</h4>
-                            
-                            <p><strong>Supraglottis:</strong></p>
-                            <ul class="criteria-list">
-                                <li>Vocal cord fixation</li>
-                                <li>Invasion of postcricoid area</li>
-                                <li>Pre-epiglottic space</li>
-                                <li>Paraglottic space</li>
-                                <li>Minor thyroid cartilage erosion (inner cortex)</li>
-                            </ul>
-
-                            <p><strong>Glottis:</strong></p>
-                            <ul class="criteria-list">
-                                <li>Vocal cord fixation</li>
-                                <li>Paraglottic space invasion</li>
-                                <li>Minor thyroid cartilage erosion (inner cortex only)</li>
-                            </ul>
-
-                            <p><strong>Subglottis:</strong></p>
-                            <ul class="criteria-list">
-                                <li>Vocal cord fixation</li>
-                                <li>Paraglottic space invasion</li>
-                                <li>Minor thyroid cartilage erosion (inner cortex)</li>
-                            </ul>
-                        </div>
-
-                        <div class="pitfall">
-                            <strong>⚠️ Cartilage Invasion Key:</strong> T3 = inner cortex only. T4a = through outer cortex (complete breakthrough). This distinction is crucial for treatment planning.
-                        </div>
-                    </div>
-                </div>
-
-                <!-- T2 -->
-                <div class="card t-category">
-                    <div class="card-header" onclick="toggleCard('t2')">
-                        <span><strong>T2 - Intermediate Local Disease</strong></span>
-                        <span class="expand-icon" id="t2-icon">▼</span>
-                    </div>
-                    <div class="card-content" id="t2-content">
-                        <h4>Tumor extends to adjacent subsites within larynx with normal vocal cord mobility</h4>
-                        
-                        <div class="clinical-tip">
-                            <strong>🔑 Key Point:</strong> Normal vocal cord mobility is essential for T2. Any fixation upgrades to T3.
-                        </div>
-
-                        <div class="subsite-note">
-                            <h4>Subsite-Specific T2 Criteria:</h4>
-                            
-                            <p><strong>Supraglottis:</strong></p>
-                            <ul class="criteria-list">
-                                <li>Mucosa of more than one adjacent subsite of supraglottis</li>
-                                <li>Glottis extension with normal vocal cord mobility</li>
-                                <li>Region outside supraglottis (tongue base, vallecula, medial wall pyriform sinus)</li>
-                            </ul>
-
-                            <p><strong>Glottis:</strong></p>
-                            <ul class="criteria-list">
-                                <li>Extends to supraglottis and/or subglottis</li>
-                                <li>Normal or impaired vocal cord mobility (but NOT fixed)</li>
-                            </ul>
-
-                            <p><strong>Subglottis:</strong></p>
-                            <ul class="criteria-list">
-                                <li>Extends to vocal cord(s) with normal or impaired mobility</li>
-                            </ul>
-                        </div>
-
-                        <div class="pitfall">
-                            <strong>⚠️ Mobility Assessment:</strong> Distinguish between impaired mobility (still T2) and true fixation (T3). Impaired = reduced but present movement.
-                        </div>
-                    </div>
-                </div>
-
-                <!-- T1 -->
-                <div class="card t-category">
-                    <div class="card-header" onclick="toggleCard('t1')">
-                        <span><strong>T1 - Limited Local Disease</strong></span>
-                        <span class="expand-icon" id="t1-icon">▼</span>
-                    </div>
-                    <div class="card-content" id="t1-content">
-                        <h4>Tumor limited to subsite of origin with normal vocal cord mobility</h4>
-                        
-                        <div class="subsite-note">
-                            <h4>Subsite-Specific T1 Criteria:</h4>
-                            
-                            <p><strong>Supraglottis (T1):</strong></p>
-                            <ul class="criteria-list">
-                                <li>Limited to one subsite with normal vocal cord mobility</li>
-                            </ul>
-
-                            <p><strong>Glottis:</strong></p>
-                            <ul class="criteria-list">
-                                <li><strong>T1a:</strong> Limited to one vocal cord</li>
-                                <li><strong>T1b:</strong> Involves both vocal cords</li>
-                            </ul>
-
-                            <p><strong>Subglottis (T1):</strong></p>
-                            <ul class="criteria-list">
-                                <li>Limited to subglottis</li>
-                            </ul>
-                        </div>
-
-                        <div class="clinical-tip">
-                            <strong>🎯 Treatment Pearl:</strong> T1 glottic cancers are excellent candidates for voice-preserving treatment (radiation therapy or endoscopic resection).
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Tis -->
-                <div class="card t-category">
-                    <div class="card-header" onclick="toggleCard('tis')">
-                        <span><strong>Tis - Carcinoma in Situ</strong></span>
-                        <span class="expand-icon" id="tis-icon">▼</span>
-                    </div>
-                    <div class="card-content" id="tis-content">
-                        <h4>Carcinoma in situ</h4>
-                        
-                        <div class="clinical-tip">
-                            <strong>🔬 Histology:</strong> Requires pathologic confirmation. Full-thickness epithelial dysplasia without basement membrane invasion.
-                        </div>
-
-                        <div class="pitfall">
-                            <strong>⚠️ Clinical Note:</strong> Tis requires complete pathologic assessment. Cannot be determined by imaging alone.
-                        </div>
+                <div class="clinical-implications" id="clinicalImplications">
+                    <h3>Clinical Implications</h3>
+                    <div id="implicationsContent">
+                        <p>Staging results will provide treatment guidance...</p>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- N Category -->
-        <div class="section">
-            <div class="section-header">
-                Regional Lymph Nodes (N) Assessment
-            </div>
-            <div class="section-content">
-                <div class="clinical-tip">
-                    <strong>📏 Size Measurement:</strong> Measure largest dimension in short axis on cross-sectional imaging. Pathologic N staging uses largest dimension.
-                </div>
+        <!-- Reference Section -->
+        <div class="reference-section">
+            <h2 class="reference-title">Comprehensive Reference Guide</h2>
 
-                <h4>Clinical N Staging (cN):</h4>
-                <ul class="criteria-list">
-                    <li><strong>cN0:</strong> No regional lymph node metastasis</li>
-                    <li><strong>cN1:</strong> Single ipsilateral lymph node ≤3 cm</li>
-                    <li><strong>cN2a:</strong> Single ipsilateral lymph node >3 cm but ≤6 cm</li>
-                    <li><strong>cN2b:</strong> Multiple ipsilateral lymph nodes, none >6 cm</li>
-                    <li><strong>cN2c:</strong> Bilateral or contralateral lymph nodes, none >6 cm</li>
-                    <li><strong>cN3a:</strong> Lymph node >6 cm</li>
-                    <li><strong>cN3b:</strong> Clinical extranodal extension</li>
-                </ul>
-
-                <div class="pitfall">
-                    <strong>⚠️ Larynx-Specific:</strong> Laryngeal cancers have lower rates of nodal metastasis compared to other head and neck sites. Glottic cancers have the lowest nodal involvement rate.
-                </div>
-            </div>
-        </div>
-
-        <!-- M Category -->
-        <div class="section">
-            <div class="section-header">
-                Distant Metastasis (M) Assessment
-            </div>
-            <div class="section-content">
-                <ul class="criteria-list">
-                    <li><strong>M0:</strong> No distant metastasis</li>
-                    <li><strong>M1:</strong> Distant metastasis present</li>
-                </ul>
-
-                <div class="clinical-tip">
-                    <strong>🔍 Common Sites:</strong> Lung, bone, liver. Chest CT is standard staging imaging. Consider PET/CT for advanced disease.
-                </div>
-            </div>
-        </div>
-
-        <!-- Stage Calculator -->
-        <div class="section">
-            <div class="section-header">
-                TNM Stage Calculator
-            </div>
-            <div class="section-content">
-                <div class="stage-selector">
-                    <div class="selector-group">
-                        <h3>T Category</h3>
-                        <div class="radio-group">
-                            <label class="radio-option">
-                                <input type="radio" name="t-stage" value="Tis"> Tis - Carcinoma in situ
-                            </label>
-                            <label class="radio-option">
-                                <input type="radio" name="t-stage" value="T1"> T1 - Limited to subsite
-                            </label>
-                            <label class="radio-option">
-                                <input type="radio" name="t-stage" value="T2"> T2 - Adjacent subsites, mobile cords
-                            </label>
-                            <label class="radio-option">
-                                <input type="radio" name="t-stage" value="T3"> T3 - Cord fixation or paraglottic space
-                            </label>
-                            <label class="radio-option">
-                                <input type="radio" name="t-stage" value="T4a"> T4a - Through thyroid cartilage
-                            </label>
-                            <label class="radio-option">
-                                <input type="radio" name="t-stage" value="T4b"> T4b - Prevertebral/carotid/mediastinal
-                            </label>
+            <!-- Mnemonics -->
+            <div class="reference-card">
+                <h3 class="reference-subtitle">Mnemonics to Remember</h3>
+                <div class="mnemonic-grid">
+                    <div class="mnemonic-box">
+                        <h4>T4b Features - "PACE"</h4>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">P</div>
+                            <div><strong>Prevertebral</strong> fascia invasion</div>
+                        </div>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">A</div>
+                            <div><strong>Artery</strong> encasement (carotid >270°)</div>
+                        </div>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">C</div>
+                            <div><strong>Central</strong> mediastinal structures</div>
+                        </div>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">E</div>
+                            <div><strong>Extensive</strong> unresectable disease</div>
                         </div>
                     </div>
 
-                    <div class="selector-group">
-                        <h3>N Category</h3>
-                        <div class="radio-group">
-                            <label class="radio-option">
-                                <input type="radio" name="n-stage" value="N0"> N0 - No regional nodes
-                            </label>
-                            <label class="radio-option">
-                                <input type="radio" name="n-stage" value="N1"> N1 - Single ipsilateral ≤3cm
-                            </label>
-                            <label class="radio-option">
-                                <input type="radio" name="n-stage" value="N2a"> N2a - Single ipsilateral >3-6cm
-                            </label>
-                            <label class="radio-option">
-                                <input type="radio" name="n-stage" value="N2b"> N2b - Multiple ipsilateral ≤6cm
-                            </label>
-                            <label class="radio-option">
-                                <input type="radio" name="n-stage" value="N2c"> N2c - Bilateral/contralateral ≤6cm
-                            </label>
-                            <label class="radio-option">
-                                <input type="radio" name="n-stage" value="N3a"> N3a - >6cm
-                            </label>
-                            <label class="radio-option">
-                                <input type="radio" name="n-stage" value="N3b"> N3b - Extranodal extension
-                            </label>
+                    <div class="mnemonic-box">
+                        <h4>T4a Features - "TESTS-ET"</h4>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">T</div>
+                            <div><strong>Through</strong> outer thyroid cartilage</div>
                         </div>
-                    </div>
-
-                    <div class="selector-group">
-                        <h3>M Category</h3>
-                        <div class="radio-group">
-                            <label class="radio-option">
-                                <input type="radio" name="m-stage" value="M0" checked> M0 - No distant metastasis
-                            </label>
-                            <label class="radio-option">
-                                <input type="radio" name="m-stage" value="M1"> M1 - Distant metastasis
-                            </label>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">E</div>
+                            <div><strong>Esophagus</strong> invasion</div>
+                        </div>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">S</div>
+                            <div><strong>Soft tissues</strong> of neck</div>
+                        </div>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">T</div>
+                            <div><strong>Trachea</strong> invasion</div>
+                        </div>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">S</div>
+                            <div><strong>Strap</strong> muscles</div>
+                        </div>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">E</div>
+                            <div><strong>Extrinsic</strong> tongue muscles</div>
+                        </div>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">T</div>
+                            <div><strong>Thyroid</strong> gland</div>
                         </div>
                     </div>
                 </div>
+            </div>
 
-                <div class="stage-result" id="stage-result">
-                    <h2 id="final-stage">Select T and N categories</h2>
-                    <div class="stage-detail" id="stage-detail">Choose the appropriate T and N categories above to calculate the overall stage</div>
-                </div>
+            <!-- T Staging Reference Table -->
+            <div class="reference-card">
+                <h3 class="reference-subtitle">T Stage Reference by Subsite</h3>
+                <table class="staging-table">
+                    <thead>
+                        <tr>
+                            <th>T Stage</th>
+                            <th>Glottic</th>
+                            <th>Supraglottic</th>
+                            <th>Subglottic</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>T1</strong></td>
+                            <td>T1a: One cord<br>T1b: Both cords<br>Normal mobility</td>
+                            <td>Limited to one subsite<br>Normal mobility</td>
+                            <td>Limited to subglottis</td>
+                        </tr>
+                        <tr>
+                            <td><strong>T2</strong></td>
+                            <td>Extension to supra/subglottis<br>OR impaired mobility</td>
+                            <td>Multiple subsites or extends beyond<br>Normal/impaired mobility</td>
+                            <td>Extension to vocal cords<br>Normal/impaired mobility</td>
+                        </tr>
+                        <tr>
+                            <td><strong>T3</strong></td>
+                            <td>Vocal cord fixation<br>OR paraglottic space<br>OR inner cortex erosion</td>
+                            <td>Vocal cord fixation<br>OR pre-epiglottic space<br>OR paraglottic space<br>OR inner cortex</td>
+                            <td>Vocal cord fixation<br>OR paraglottic space<br>OR inner cortex</td>
+                        </tr>
+                        <tr>
+                            <td><strong>T4a</strong></td>
+                            <td colspan="3">Through outer thyroid cartilage, trachea, soft tissues, strap muscles, thyroid gland, esophagus</td>
+                        </tr>
+                        <tr>
+                            <td><strong>T4b</strong></td>
+                            <td colspan="3">Prevertebral fascia, carotid encasement, mediastinal structures</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
 
-                <div style="text-align: center;">
-                    <button class="reset-button" onclick="resetCalculator()">Reset Calculator</button>
+            <!-- N Staging Table -->
+            <div class="reference-card">
+                <h3 class="reference-subtitle">N Stage Reference</h3>
+                <table class="staging-table">
+                    <thead>
+                        <tr>
+                            <th>N Stage</th>
+                            <th>Criteria</th>
+                            <th>ENE Impact</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>N0</strong></td>
+                            <td>No regional lymph node metastasis</td>
+                            <td>N/A</td>
+                        </tr>
+                        <tr>
+                            <td><strong>N1</strong></td>
+                            <td>Single ipsilateral node ≤3cm</td>
+                            <td>No ENE</td>
+                        </tr>
+                        <tr>
+                            <td><strong>N2a</strong></td>
+                            <td>Single ipsilateral node >3cm but ≤6cm</td>
+                            <td>No ENE</td>
+                        </tr>
+                        <tr>
+                            <td><strong>N2b</strong></td>
+                            <td>Multiple ipsilateral nodes ≤6cm</td>
+                            <td>No ENE</td>
+                        </tr>
+                        <tr>
+                            <td><strong>N2c</strong></td>
+                            <td>Bilateral or contralateral nodes ≤6cm</td>
+                            <td>No ENE</td>
+                        </tr>
+                        <tr>
+                            <td><strong>N3a</strong></td>
+                            <td>Any node >6cm</td>
+                            <td>No ENE</td>
+                        </tr>
+                        <tr>
+                            <td><strong>N3b</strong></td>
+                            <td>Any node with ENE</td>
+                            <td>ENE present</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Key Imaging Tips -->
+            <div class="reference-card">
+                <h3 class="reference-subtitle">Key Imaging Tips</h3>
+                <div class="tips-grid">
+                    <div class="tip-card">
+                        <h4>Vocal Cord Assessment</h4>
+                        <p>Evaluate cord mobility on dynamic imaging if available</p>
+                        <div class="tip-detail">
+                            Fixed = complete loss of movement. Impaired = reduced but present movement. This distinction is critical for T2 vs T3.
+                        </div>
+                    </div>
+
+                    <div class="tip-card">
+                        <h4>Paraglottic Space</h4>
+                        <p>Look for fat stranding or mass effect in paraglottic fat</p>
+                        <div class="tip-detail">
+                            Paraglottic space invasion automatically makes it T3. Compare with normal side for subtle changes.
+                        </div>
+                    </div>
+
+                    <div class="tip-card">
+                        <h4>Cartilage Invasion Assessment</h4>
+                        <p>Distinguish inner cortex sclerosis from through-and-through invasion</p>
+                        <div class="tip-detail">
+                            Inner cortex erosion only = T3. Complete breakthrough of outer cortex = T4a. Use bone windows on CT.
+                        </div>
+                    </div>
+
+                    <div class="tip-card">
+                        <h4>Pre-epiglottic Space</h4>
+                        <p>Assess fat obliteration in pre-epiglottic space</p>
+                        <div class="tip-detail">
+                            Important for supraglottic tumors. Invasion makes it T3. Look for loss of normal fat signal/density.
+                        </div>
+                    </div>
+
+                    <div class="tip-card">
+                        <h4>Subglottic Extension</h4>
+                        <p>Measure extension >10mm below true vocal cords</p>
+                        <div class="tip-detail">
+                            >10mm below glottis suggests subglottic primary. Important for staging and treatment planning.
+                        </div>
+                    </div>
+
+                    <div class="tip-card">
+                        <h4>Carotid Encasement</h4>
+                        <p>Measure degree of carotid artery circumferential involvement</p>
+                        <div class="tip-detail">
+                            >270° encasement = T4b (unresectable). Use axial images to measure circumferential involvement accurately.
+                        </div>
+                    </div>
+
+                    <div class="tip-card">
+                        <h4>Nodal ENE Assessment</h4>
+                        <p>Look for irregular nodal borders and surrounding fat stranding</p>
+                        <div class="tip-detail">
+                            ENE upgrades any N stage to N3b. Look for spiculated margins, surrounding inflammatory changes.
+                        </div>
+                    </div>
+
+                    <div class="tip-card">
+                        <h4>Thyroid Cartilage Windows</h4>
+                        <p>Use appropriate CT windows for cartilage assessment</p>
+                        <div class="tip-detail">
+                            Bone windows (WW: 2000, WL: 400) best for detecting cartilage invasion. Soft tissue windows may miss subtle changes.
+                        </div>
+                    </div>
                 </div>
+            </div>
+
+            <!-- Common Pitfalls -->
+            <div class="reference-card pitfall-card">
+                <h3 class="reference-subtitle">Common Pitfalls to Avoid</h3>
+                <div class="pitfall-list">
+                    <div class="pitfall-item">
+                        <div class="pitfall-number">1</div>
+                        <div>
+                            <strong>Confusing Impaired vs Fixed Vocal Cords</strong>
+                            <p>Impaired mobility = T2, Fixed = T3. This is a critical distinction that changes staging significantly. Always assess dynamic function when possible.</p>
+                        </div>
+                    </div>
+
+                    <div class="pitfall-item">
+                        <div class="pitfall-number">2</div>
+                        <div>
+                            <strong>Missing T1a vs T1b for Glottic Tumors</strong>
+                            <p>T1a involves one vocal cord, T1b involves both. This subdivision is important for treatment planning and prognosis.</p>
+                        </div>
+                    </div>
+
+                    <div class="pitfall-item">
+                        <div class="pitfall-number">3</div>
+                        <div>
+                            <strong>Overcalling Cartilage Invasion</strong>
+                            <p>Cartilage sclerosis alone doesn't equal invasion. Need actual erosion/breakthrough. Inner cortex only = T3, through outer cortex = T4a.</p>
+                        </div>
+                    </div>
+
+                    <div class="pitfall-item">
+                        <div class="pitfall-number">4</div>
+                        <div>
+                            <strong>Missing Paraglottic Space Invasion</strong>
+                            <p>Subtle fat stranding can be easily missed. Always compare with the contralateral side and look for asymmetric fat obliteration.</p>
+                        </div>
+                    </div>
+
+                    <div class="pitfall-item">
+                        <div class="pitfall-number">5</div>
+                        <div>
+                            <strong>Not Specifying Larynx Subsite</strong>
+                            <p>Different T staging criteria apply to glottic, supraglottic, and subglottic tumors. Always identify the primary subsite first.</p>
+                        </div>
+                    </div>
+
+                    <div class="pitfall-item">
+                        <div class="pitfall-number">6</div>
+                        <div>
+                            <strong>Underestimating ENE Impact</strong>
+                            <p>Any extranodal extension automatically makes it N3b regardless of node size or number. Look carefully for irregular nodal margins.</p>
+                        </div>
+                    </div>
+
+                    <div class="pitfall-item">
+                        <div class="pitfall-number">7</div>
+                        <div>
+                            <strong>Confusing Arytenoid Fixation</strong>
+                            <p>Arytenoid cartilage fixation can mimic vocal cord fixation. Assess true vocal cord movement specifically, not just arytenoid position.</p>
+                        </div>
+                    </div>
+
+                    <div class="pitfall-item">
+                        <div class="pitfall-number">8</div>
+                        <div>
+                            <strong>Missing Subglottic Extension Measurement</strong>
+                            <p>Extension >10mm below the vocal cords suggests subglottic primary. Measure carefully on coronal images for accurate assessment.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Systematic Reading Approach -->
+            <div class="reference-card">
+                <h3 class="reference-subtitle">8-Step Systematic Reading Approach</h3>
+                <div class="systematic-steps">
+                    <div class="step-item">
+                        <div class="step-number">1</div>
+                        <div>
+                            <strong>Identify Primary Subsite</strong>
+                            <p>Determine if tumor is primarily glottic, supraglottic, or subglottic. This determines which T staging criteria to apply.</p>
+                        </div>
+                    </div>
+
+                    <div class="step-item">
+                        <div class="step-number">2</div>
+                        <div>
+                            <strong>Assess Vocal Cord Mobility</strong>
+                            <p>Evaluate cord movement on dynamic imaging or clinical correlation. Distinguish normal, impaired, or fixed mobility.</p>
+                        </div>
+                    </div>
+
+                    <div class="step-item">
+                        <div class="step-number">3</div>
+                        <div>
+                            <strong>Check for T4b Features First</strong>
+                            <p>Look for prevertebral fascia invasion, carotid encasement >270°, or mediastinal involvement. If present, automatically T4b.</p>
+                        </div>
+                    </div>
+
+                    <div class="step-item">
+                        <div class="step-number">4</div>
+                        <div>
+                            <strong>Evaluate T4a Features</strong>
+                            <p>Assess for through-and-through cartilage invasion, tracheal invasion, soft tissue extension, or organ invasion.</p>
+                        </div>
+                    </div>
+
+                    <div class="step-item">
+                        <div class="step-number">5</div>
+                        <div>
+                            <strong>Look for T3 Criteria</strong>
+                            <p>Check for vocal cord fixation, paraglottic space invasion, inner cortex cartilage erosion, or pre-epiglottic space involvement.</p>
+                        </div>
+                    </div>
+
+                    <div class="step-item">
+                        <div class="step-number">6</div>
+                        <div>
+                            <strong>Apply Subsite-Specific T1/T2 Criteria</strong>
+                            <p>Use appropriate criteria based on primary subsite. Consider extent of disease and cord involvement patterns.</p>
+                        </div>
+                    </div>
+
+                    <div class="step-item">
+                        <div class="step-number">7</div>
+                        <div>
+                            <strong>Systematic Nodal Assessment</strong>
+                            <p>Measure largest node, count bilateral nodes, assess for ENE. Remember ENE makes any node N3b.</p>
+                        </div>
+                    </div>
+
+                    <div class="step-item">
+                        <div class="step-number">8</div>
+                        <div>
+                            <strong>Search for Distant Metastases</strong>
+                            <p>Evaluate lungs, liver, bones for metastatic disease. Consider PET/CT correlation if available.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Treatment Implications -->
+            <div class="reference-card">
+                <h3 class="reference-subtitle">Treatment Implications by Stage</h3>
+                <div class="warning-box">
+                    <h4>Voice Preservation Considerations</h4>
+                    <p>Early stage disease (T1-T2) often amenable to voice-preserving treatments. Advanced disease may require total laryngectomy.</p>
+                </div>
+                
+                <table class="staging-table">
+                    <thead>
+                        <tr>
+                            <th>Stage</th>
+                            <th>Treatment Options</th>
+                            <th>Voice Preservation</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>T1-T2</strong></td>
+                            <td>Radiation therapy, laser resection, partial laryngectomy</td>
+                            <td>High likelihood</td>
+                        </tr>
+                        <tr>
+                            <td><strong>T3</strong></td>
+                            <td>Organ preservation protocols, chemoradiation</td>
+                            <td>Possible with protocols</td>
+                        </tr>
+                        <tr>
+                            <td><strong>T4a</strong></td>
+                            <td>Total laryngectomy ± adjuvant therapy</td>
+                            <td>Usually not possible</td>
+                        </tr>
+                        <tr>
+                            <td><strong>T4b</strong></td>
+                            <td>Palliative care, clinical trials</td>
+                            <td>Not applicable</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
 
     <script>
-        function toggleCard(cardId) {
-            const content = document.getElementById(cardId + '-content');
-            const icon = document.getElementById(cardId + '-icon');
+        function updateSubsiteDisplay() {
+            const subsite = document.getElementById('subsite').value;
             
-            if (content.classList.contains('active')) {
-                content.classList.remove('active');
-                icon.classList.remove('rotated');
-            } else {
-                content.classList.add('active');
-                icon.classList.add('rotated');
+            // Hide all subsite-specific sections
+            document.getElementById('glottic_specific').classList.add('hidden');
+            document.getElementById('supraglottic_specific').classList.add('hidden');
+            document.getElementById('subglottic_specific').classList.add('hidden');
+            
+            // Show relevant section
+            if (subsite === 'glottic') {
+                document.getElementById('glottic_specific').classList.remove('hidden');
+                document.getElementById('preepiglottic_option').style.display = 'none';
+            } else if (subsite === 'supraglottic') {
+                document.getElementById('supraglottic_specific').classList.remove('hidden');
+                document.getElementById('preepiglottic_option').style.display = 'block';
+            } else if (subsite === 'subglottic') {
+                document.getElementById('subglottic_specific').classList.remove('hidden');
+                document.getElementById('preepiglottic_option').style.display = 'none';
             }
         }
 
-        function calculateStage() {
-            const t = document.querySelector('input[name="t-stage"]:checked')?.value;
-            const n = document.querySelector('input[name="n-stage"]:checked')?.value;
-            const m = document.querySelector('input[name="m-stage"]:checked')?.value;
-
-            if (!t || !n) {
-                document.getElementById('final-stage').textContent = 'Select T and N categories';
-                document.getElementById('stage-detail').textContent = 'Choose the appropriate T and N categories above to calculate the overall stage';
-                return;
+        function calculateTStage() {
+            const subsite = document.getElementById('subsite').value;
+            const vocalCordMobility = document.querySelector('input[name="vocalCord"]:checked')?.value;
+            
+            // Check T4b features first
+            if (document.getElementById('t4b_prevertebral').checked ||
+                document.getElementById('t4b_carotid').checked ||
+                document.getElementById('t4b_mediastinal').checked) {
+                return { stage: 'T4b', reason: 'Very advanced local disease with invasion of prevertebral space, carotid encasement, or mediastinal structures' };
             }
 
-            let stage = '';
-            let detail = '';
+            // Check T4a features
+            if (document.getElementById('t4a_thyroid_cartilage').checked ||
+                document.getElementById('t4a_trachea').checked ||
+                document.getElementById('t4a_soft_tissues').checked ||
+                document.getElementById('t4a_tongue_muscles').checked ||
+                document.getElementById('t4a_strap_muscles').checked ||
+                document.getElementById('t4a_thyroid_gland').checked ||
+                document.getElementById('t4a_esophagus').checked) {
+                return { stage: 'T4a', reason: 'Moderately advanced local disease with invasion through cartilage or extralaryngeal tissues' };
+            }
 
-            // M1 is always Stage IV
-            if (m === 'M1') {
-                stage = 'Stage IV';
-                detail = `${t}${n}M1 - Any tumor with distant metastasis`;
-            } else {
-                // M0 staging
-                if (t === 'Tis' && n === 'N0') {
-                    stage = 'Stage 0';
-                    detail = `${t}${n}M0 - Carcinoma in situ`;
-                } else if (t === 'T1' && n === 'N0') {
-                    stage = 'Stage I';
-                    detail = `${t}${n}M0 - Small tumor, no nodes`;
-                } else if (t === 'T2' && n === 'N0') {
-                    stage = 'Stage II';
-                    detail = `${t}${n}M0 - Moderate tumor, no nodes`;
-                } else if ((t === 'T3' && n === 'N0') || 
-                          (t === 'T1' && n === 'N1') || 
-                          (t === 'T2' && n === 'N1') ||
-                          (t === 'T3' && n === 'N1')) {
-                    stage = 'Stage III';
-                    detail = `${t}${n}M0 - Advanced local disease or limited nodal involvement`;
-                } else if (t === 'T4a' || 
-                          n === 'N2a' || n === 'N2b' || n === 'N2c' ||
-                          (t === 'T4b' && (n === 'N0' || n === 'N1'))) {
-                    stage = 'Stage IVA';
-                    detail = `${t}${n}M0 - Advanced local or regional disease`;
-                } else if ((t === 'T4b' && (n === 'N2a' || n === 'N2b' || n === 'N2c')) ||
-                          n === 'N3a' || n === 'N3b') {
-                    stage = 'Stage IVB';
-                    detail = `${t}${n}M0 - Very advanced local or regional disease`;
-                } else {
-                    stage = 'Stage IVA';
-                    detail = `${t}${n}M0 - Advanced disease`;
+            // Subsite-specific staging
+            if (subsite === 'supraglottic') {
+                if (vocalCordMobility === 'fixed' || 
+                    document.getElementById('feature_preepiglottic')?.checked ||
+                    document.getElementById('feature_paraglottic')?.checked ||
+                    document.getElementById('feature_inner_cortex')?.checked) {
+                    return { stage: 'T3', reason: 'Tumor limited to larynx with vocal cord fixation and/or invasion of pre-epiglottic space, paraglottic space, or inner cortex of thyroid cartilage' };
                 }
+                
+                if (document.getElementById('feature_multiple_subsites')?.checked ||
+                    document.getElementById('feature_glottis_extension')?.checked ||
+                    document.getElementById('feature_outside_supraglottis')?.checked) {
+                    return { stage: 'T2', reason: 'Tumor invades mucosa of more than one adjacent subsite or extends beyond supraglottis without fixation' };
+                }
+                
+                return { stage: 'T1', reason: 'Tumor limited to one subsite of supraglottis with normal vocal cord mobility' };
+            }
+            
+            if (subsite === 'glottic') {
+                if (vocalCordMobility === 'fixed' ||
+                    document.getElementById('feature_paraglottic')?.checked ||
+                    document.getElementById('feature_inner_cortex')?.checked) {
+                    return { stage: 'T3', reason: 'Tumor limited to larynx with vocal cord fixation and/or invasion of paraglottic space or inner cortex of thyroid cartilage' };
+                }
+                
+                if (document.getElementById('feature_supraglottis_extension')?.checked ||
+                    document.getElementById('feature_subglottis_extension')?.checked ||
+                    vocalCordMobility === 'impaired') {
+                    return { stage: 'T2', reason: 'Tumor extends to supraglottis and/or subglottis, and/or with impaired vocal cord mobility' };
+                }
+                
+                const glotticCords = document.querySelector('input[name="glotticCords"]:checked')?.value;
+                if (glotticCords === 'both') {
+                    return { stage: 'T1b', reason: 'Tumor involves both vocal cords with normal mobility' };
+                } else if (glotticCords === 'one') {
+                    return { stage: 'T1a', reason: 'Tumor limited to one vocal cord with normal mobility' };
+                }
+                
+                return { stage: 'T1', reason: 'Tumor limited to vocal cord(s) with normal mobility' };
+            }
+            
+            if (subsite === 'subglottic') {
+                if (vocalCordMobility === 'fixed' ||
+                    document.getElementById('feature_paraglottic')?.checked ||
+                    document.getElementById('feature_inner_cortex')?.checked) {
+                    return { stage: 'T3', reason: 'Tumor limited to larynx with vocal cord fixation and/or invasion of paraglottic space or inner cortex of thyroid cartilage' };
+                }
+                
+                if (document.getElementById('feature_subglottic_extension')?.checked ||
+                    vocalCordMobility === 'impaired') {
+                    return { stage: 'T2', reason: 'Tumor extends to vocal cord(s) with normal or impaired mobility' };
+                }
+                
+                return { stage: 'T1', reason: 'Tumor limited to subglottis' };
             }
 
-            document.getElementById('final-stage').textContent = stage;
-            document.getElementById('stage-detail').textContent = detail;
+            return { stage: 'TX', reason: 'Please select primary tumor subsite to determine T stage' };
+        }
+
+        function calculateNStage() {
+            const nodeSize = parseFloat(document.getElementById('nodeSize').value) || 0;
+            const ipsilateralNodes = parseInt(document.getElementById('ipsilateralNodes').value) || 0;
+            const contralateralNodes = parseInt(document.getElementById('contralateralNodes').value) || 0;
+            const ene = document.querySelector('input[name="ene"]:checked')?.value;
+
+            if (ene === 'yes') {
+                return { stage: 'N3b', reason: 'Extranodal extension present - automatically N3b regardless of size or number' };
+            }
+
+            if (nodeSize === 0 && ipsilateralNodes === 0 && contralateralNodes === 0) {
+                return { stage: 'N0', reason: 'No regional lymph node metastasis' };
+            }
+
+            if (nodeSize > 6) {
+                return { stage: 'N3a', reason: 'Lymph node >6cm in greatest dimension without ENE' };
+            }
+
+            if (contralateralNodes > 0) {
+                return { stage: 'N2c', reason: 'Bilateral or contralateral lymph nodes, none >6cm without ENE' };
+            }
+
+            if (ipsilateralNodes > 1) {
+                return { stage: 'N2b', reason: 'Multiple ipsilateral lymph nodes, none >6cm without ENE' };
+            }
+
+            if (nodeSize > 3) {
+                return { stage: 'N2a', reason: 'Single ipsilateral lymph node >3cm but ≤6cm without ENE' };
+            }
+
+            if (nodeSize > 0 || ipsilateralNodes > 0) {
+                return { stage: 'N1', reason: 'Single ipsilateral lymph node ≤3cm without ENE' };
+            }
+
+            return { stage: 'N0', reason: 'No regional lymph node metastasis' };
+        }
+
+        function calculateMStage() {
+            const metastases = document.querySelector('input[name="metastases"]:checked')?.value;
+            
+            if (metastases === 'yes') {
+                return { stage: 'M1', reason: 'Distant metastases present' };
+            } else if (metastases === 'no') {
+                return { stage: 'M0', reason: 'No distant metastases' };
+            }
+            
+            return { stage: 'MX', reason: 'Distant metastases status not assessed' };
+        }
+
+        function calculateOverallStage(tStage, nStage, mStage) {
+            if (mStage === 'M1') return 'IVC';
+            if (tStage === 'T4b') return 'IVB';
+            if (tStage === 'T4a') return 'IVA';
+            if (nStage === 'N3a' || nStage === 'N3b') return 'IVA';
+            if (tStage === 'T3') {
+                if (nStage === 'N0' || nStage === 'N1') return 'III';
+                return 'IVA';
+            }
+            if (tStage === 'T2') {
+                if (nStage === 'N0') return 'II';
+                if (nStage === 'N1') return 'III';
+                return 'IVA';
+            }
+            if (tStage === 'T1' || tStage === 'T1a' || tStage === 'T1b') {
+                if (nStage === 'N0') return 'I';
+                if (nStage === 'N1') return 'III';
+                return 'IVA';
+            }
+            return 'Cannot determine';
+        }
+
+        function getClinicaImplications(tStage, nStage, mStage, overallStage) {
+            let implications = [];
+
+            // T stage implications
+            if (tStage === 'T1' || tStage === 'T1a' || tStage === 'T1b') {
+                implications.push('• Voice preservation highly likely with radiation therapy or laser resection');
+                implications.push('• Excellent prognosis with appropriate treatment');
+            } else if (tStage === 'T2') {
+                implications.push('• Voice preservation possible with radiation therapy or partial laryngectomy');
+                implications.push('• Good prognosis with multimodal treatment');
+            } else if (tStage === 'T3') {
+                implications.push('• Consider organ preservation protocols vs total laryngectomy');
+                implications.push('• Chemoradiation may preserve voice function');
+            } else if (tStage === 'T4a') {
+                implications.push('• Total laryngectomy typically required');
+                implications.push('• Voice preservation unlikely');
+                implications.push('• Adjuvant therapy usually indicated');
+            } else if (tStage === 'T4b') {
+                implications.push('• Unresectable disease - palliative care focus');
+                implications.push('• Consider clinical trials');
+                implications.push('• Multidisciplinary team essential');
+            }
+
+            // N stage implications
+            if (nStage === 'N0') {
+                implications.push('• No neck dissection may be needed for early T stage');
+            } else if (nStage === 'N1' || nStage === 'N2a' || nStage === 'N2b' || nStage === 'N2c') {
+                implications.push('• Neck dissection typically indicated');
+                implications.push('• Consider adjuvant radiation therapy');
+            } else if (nStage === 'N3a' || nStage === 'N3b') {
+                implications.push('• Advanced nodal disease - aggressive treatment needed');
+                implications.push('• High risk of treatment failure');
+            }
+
+            // M stage implications
+            if (mStage === 'M1') {
+                implications.push('• Palliative treatment approach');
+                implications.push('• Systemic therapy consideration');
+            }
+
+            return implications.join('\n');
+        }
+
+        function updateCalculator() {
+            const tResult = calculateTStage();
+            const nResult = calculateNStage();
+            const mResult = calculateMStage();
+            const overallStage = calculateOverallStage(tResult.stage, nResult.stage, mResult.stage);
+
+            // Update display
+            document.getElementById('resultT').textContent = tResult.stage;
+            document.getElementById('resultN').textContent = nResult.stage;
+            document.getElementById('resultM').textContent = mResult.stage;
+            document.getElementById('resultStage').textContent = overallStage;
+
+            // Update reasoning
+            const reasoningContent = document.getElementById('reasoningContent');
+            reasoningContent.innerHTML = `
+                <div class="reasoning-item">
+                    <strong>T Stage (${tResult.stage}):</strong> ${tResult.reason}
+                </div>
+                <div class="reasoning-item">
+                    <strong>N Stage (${nResult.stage}):</strong> ${nResult.reason}
+                </div>
+                <div class="reasoning-item">
+                    <strong>M Stage (${mResult.stage}):</strong> ${mResult.reason}
+                </div>
+                <div class="reasoning-item">
+                    <strong>Overall Stage (${overallStage}):</strong> Based on TNM combination per AJCC 9th edition staging tables
+                </div>
+            `;
+
+            // Update clinical implications
+            const implications = getClinicaImplications(tResult.stage, nResult.stage, mResult.stage, overallStage);
+            document.getElementById('implicationsContent').innerHTML = `<pre style="white-space: pre-wrap; font-family: inherit;">${implications}</pre>`;
+
+            // Update radio button styling
+            updateRadioStyling();
+        }
+
+        function updateRadioStyling() {
+            document.querySelectorAll('.radio-option').forEach(option => {
+                const radio = option.querySelector('input[type="radio"]');
+                if (radio.checked) {
+                    option.classList.add('selected');
+                } else {
+                    option.classList.remove('selected');
+                }
+            });
         }
 
         function resetCalculator() {
-            // Reset all radio buttons
-            document.querySelectorAll('input[type="radio"]').forEach(radio => {
-                radio.checked = false;
-            });
-            
-            // Check M0 by default
-            document.querySelector('input[value="M0"]').checked = true;
-            
-            // Reset stage display
-            document.getElementById('final-stage').textContent = 'Select T and N categories';
-            document.getElementById('stage-detail').textContent = 'Choose the appropriate T and N categories above to calculate the overall stage';
-            
-            // Close all expanded cards
-            document.querySelectorAll('.card-content').forEach(content => {
-                content.classList.remove('active');
-            });
-            document.querySelectorAll('.expand-icon').forEach(icon => {
-                icon.classList.remove('rotated');
+            // Reset all form inputs
+            document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+            document.querySelectorAll('input[type="radio"]').forEach(radio => radio.checked = false);
+            document.querySelectorAll('input[type="number"]').forEach(input => input.value = '');
+            document.querySelectorAll('select').forEach(select => select.selectedIndex = 0);
+
+            // Hide subsite-specific sections
+            document.getElementById('glottic_specific').classList.add('hidden');
+            document.getElementById('supraglottic_specific').classList.add('hidden');
+            document.getElementById('subglottic_specific').classList.add('hidden');
+
+            // Reset results
+            document.getElementById('resultT').textContent = '-';
+            document.getElementById('resultN').textContent = '-';
+            document.getElementById('resultM').textContent = '-';
+            document.getElementById('resultStage').textContent = '-';
+            document.getElementById('reasoningContent').innerHTML = '<p>Complete the form to see detailed staging rationale...</p>';
+            document.getElementById('implicationsContent').innerHTML = '<p>Staging results will provide treatment guidance...</p>';
+
+            // Remove radio styling
+            document.querySelectorAll('.radio-option').forEach(option => {
+                option.classList.remove('selected');
             });
         }
 
-        // Add event listeners for real-time calculation
+        // Initialize
         document.addEventListener('DOMContentLoaded', function() {
-            document.querySelectorAll('input[type="radio"]').forEach(radio => {
-                radio.addEventListener('change', calculateStage);
-            });
+            updateSubsiteDisplay();
+            updateCalculator();
         });
     </script>
 </body>

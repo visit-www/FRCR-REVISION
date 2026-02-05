@@ -1175,18 +1175,25 @@ Start directly with "### TNM Imaging Intelligence"."""
 # CLAUDE API CALL
 # ============================================================================
 
-def _call_claude_tnm(system_prompt: str, user_prompt: str) -> str:
+def _call_claude_tnm(system_prompt: str, user_prompt: str, model: str = None) -> str:
     """
     Make Claude API call for TNM intelligence.
-    
+
     Returns Markdown content directly (not JSON).
     Uses lower temperature for more deterministic output.
+
+    Args:
+        system_prompt: System prompt for Claude
+        user_prompt: User prompt for Claude
+        model: Claude model to use (defaults to env CLAUDE_MODEL or sonnet)
     """
     api_key = os.getenv("CLAUDE_API_KEY")
     if not api_key:
         raise AiTnmError("CLAUDE_API_KEY is not configured.")
-    
-    model = os.getenv("CLAUDE_MODEL", "claude-sonnet-4-20250514")
+
+    # Use provided model or fall back to environment/default
+    if model is None:
+        model = os.getenv("CLAUDE_MODEL", "claude-sonnet-4-20250514")
     
     payload = {
         "model": model,
@@ -1431,20 +1438,22 @@ def generate_tnm_intelligence(
     module: str = None,
     body_part: str = None,
     from_case_id: int = None,
-    provider: str = "claude"
+    provider: str = "claude",
+    model: str = None
 ) -> Dict:
     """
     Generate TNM staging intelligence for oncologic diagnoses.
-    
+
     This is the main entry point for TNM AI analysis.
-    
+
     Args:
         diagnosis: Cancer diagnosis text (required)
         module: FRCR module (optional, improves matching)
         body_part: Body part hint (optional, improves matching)
         from_case_id: Source case ID for back navigation
         provider: AI provider (currently only "claude")
-        
+        model: Claude model to use (defaults to env CLAUDE_MODEL or sonnet)
+
     Returns:
         Dict with keys:
             - ajcc_match: AJCC disease site mapping
@@ -1459,7 +1468,7 @@ def generate_tnm_intelligence(
             - warnings: Any caveats or uncertainties
             - generated_at: Timestamp
             - provider: AI provider used
-            
+
     Raises:
         AiTnmError: If generation fails
     """
@@ -1491,9 +1500,9 @@ def generate_tnm_intelligence(
     
     # Build prompts
     user_prompt = _build_tnm_user_prompt(ajcc_match, staging_data)
-    
+
     # Call Claude - returns Markdown directly
-    markdown_content = _call_claude_tnm(TNM_SYSTEM_PROMPT, user_prompt)
+    markdown_content = _call_claude_tnm(TNM_SYSTEM_PROMPT, user_prompt, model=model)
     
     # Parse Markdown to extract structured fields for database storage
     parsed_data = _parse_tnm_markdown(markdown_content)

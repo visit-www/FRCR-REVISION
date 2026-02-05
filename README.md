@@ -1,6 +1,6 @@
-# FRCR Revision
+# RadInsights
 
-A comprehensive exam preparation platform for FRCR (Fellowship of the Royal College of Radiologists) candidates. Practice with real cases, generate AI-powered content, explore TNM staging, and build confidence for exam success.
+A case-based radiology platform for trainees and consultants: learning, daily reporting support, TNM staging, and exam preparation — including the FRCR.
 
 ## 🌐 Live Application
 

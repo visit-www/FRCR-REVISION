@@ -1,7 +1,7 @@
 {
   "name": "RadInsights",
   "short_name": "RadInsights",
-  "description": "Your companion app for radiology exam preparation - practice cases, take notes, and build confidence for success.",
+  "description": "Your companion for radiology learning, reporting, and exam preparation - practice cases, take notes, and build confidence.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
@@ -48,7 +48,7 @@
       "purpose": "any"
     }
   ],
-  "categories": ["medical", "education", "FRCR", "examination", "FRCR Viva"],
+  "categories": ["medical", "education", "radiology", "examination"],
   "screenshots": [],
   "shortcuts": [
     {

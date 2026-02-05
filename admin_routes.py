@@ -1702,6 +1702,9 @@ def generate_tnm_calculator():
                 'error': f'Missing required fields: {", ".join(missing)}'
             }), 400
 
+        # Get model parameter (default to Sonnet for cost efficiency)
+        model = data.get('model', 'claude-sonnet-4-20250514')
+
         success, message, result_data = generate_and_save_tnm_content(
             db=db,
             slug=data['slug'],
@@ -1712,7 +1715,8 @@ def generate_tnm_calculator():
             description=data.get('description', ''),
             special_notes=data.get('special_notes', ''),
             user_id=current_user.id,
-            overwrite=data.get('overwrite', False)
+            overwrite=data.get('overwrite', False),
+            model=model
         )
 
         if success:

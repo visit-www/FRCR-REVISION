@@ -570,22 +570,24 @@ def generate_tnm_intelligence_api():
     module = data.get('module', '').strip() or None
     body_part = data.get('body_part', '').strip() or None
     case_id = data.get('case_id')
-    
+    model = data.get('model', 'claude-sonnet-4-20250514')  # Default to Sonnet for cost efficiency
+
     try:
         from ai_tnm import generate_tnm_intelligence, _map_to_ajcc_site
-        
+
         # If user specified a primary site, use that for lookup
         effective_diagnosis = diagnosis
         if primary_site_override:
             # Use the override for AJCC matching
             effective_diagnosis = f"{primary_site_override} cancer"
-        
+
         result = generate_tnm_intelligence(
             diagnosis=effective_diagnosis,
             module=module,
             body_part=body_part,
             from_case_id=case_id,
-            provider="claude"
+            provider="claude",
+            model=model
         )
         
         # Store original diagnosis in result for reference
