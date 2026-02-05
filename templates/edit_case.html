@@ -5625,6 +5625,9 @@ function onDiseaseChange() {
     document.getElementById('genDescription').value = defaults.description || `${diseaseName} cancer staging`;
     document.getElementById('genSpecialFeatures').value = defaults.features || '';
     document.getElementById('genSpecialNotes').value = defaults.notes || '';
+
+    // Update local command display
+    updateLocalCommand();
 }
 
 // Show TNM Generator modal
@@ -5728,6 +5731,22 @@ async function showTnmGeneratorModal() {
                 </label>
 
                 <div id="genStatus" class="tnm-gen-status" style="display: none;"></div>
+
+                <div id="genLocalCommand" class="tnm-gen-local-cmd" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1);">
+                    <label style="display: block; font-size: 0.85rem; color: rgba(255,255,255,0.7); margin-bottom: 0.5rem;">
+                        <i class="fas fa-terminal me-1"></i> Or run locally (no timeout):
+                    </label>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <input type="text" id="localCommandInput" readonly
+                               style="flex: 1; font-family: monospace; font-size: 0.8rem; padding: 0.5rem; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; color: #fff;">
+                        <button type="button" class="btn btn-sm btn-outline-light" onclick="copyLocalCommand()">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>
+                    <small style="display: block; margin-top: 0.25rem; color: rgba(255,255,255,0.5); font-size: 0.75rem;">
+                        Run in local terminal: generates HTML + syncs to Neon
+                    </small>
+                </div>
             </div>
             <div class="tnm-gen-footer">
                 <button type="button" class="tnm-gen-btn-secondary" onclick="closeTnmGeneratorModal()">Cancel</button>
@@ -5752,11 +5771,37 @@ async function showTnmGeneratorModal() {
             }
         }
     }
+
+    // Initialize local command display
+    updateLocalCommand();
 }
 
 function closeTnmGeneratorModal() {
     const overlay = document.getElementById('tnmGeneratorOverlay');
     if (overlay) overlay.remove();
+}
+
+// Update the local command display based on form values
+function updateLocalCommand() {
+    const slug = document.getElementById('genSlug')?.value?.trim() || 'slug';
+    const cancerName = document.getElementById('genCancerName')?.value?.trim() || 'Cancer Name';
+    const bodySection = document.getElementById('genBodySection')?.value?.trim() || 'Body Section';
+
+    const command = `python scripts/generate_tnm_calculator.py ${slug} "${cancerName}" "${bodySection}"`;
+    const input = document.getElementById('localCommandInput');
+    if (input) {
+        input.value = command;
+    }
+}
+
+// Copy local command to clipboard
+function copyLocalCommand() {
+    const input = document.getElementById('localCommandInput');
+    if (input) {
+        navigator.clipboard.writeText(input.value).then(() => {
+            showFlash('Command copied to clipboard!', 'success');
+        });
+    }
 }
 
 async function generateTnmContent() {
@@ -5844,7 +5889,7 @@ function regenerateCalculator() {
     generateTnmContent();
 }
 
-// Actual generation logic
+// Actual generation logic - uses direct endpoint (with 60s maxDuration on Vercel)
 async function proceedWithGeneration(slug, cancerName, bodySection, stagingSystem, description, specialFeatures, specialNotes, insertAlgorithm, overwrite) {
     const statusDiv = document.getElementById('genStatus');
     const generateBtn = document.getElementById('genGenerateBtn');
@@ -5852,7 +5897,13 @@ async function proceedWithGeneration(slug, cancerName, bodySection, stagingSyste
     // Show loading state
     statusDiv.style.display = 'block';
     statusDiv.className = 'tnm-gen-status status-loading';
-    statusDiv.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Queueing job...';
+    statusDiv.innerHTML = `
+        <i class="fas fa-spinner fa-spin me-2"></i>
+        <strong>Generating with Claude AI...</strong>
+        <div style="margin-top: 0.5rem; font-size: 0.85rem; opacity: 0.8;">
+            This takes 30-60 seconds. Please wait...
+        </div>
+    `;
     generateBtn.disabled = true;
     generateBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Generating...';
 
@@ -5869,114 +5920,53 @@ async function proceedWithGeneration(slug, cancerName, bodySection, stagingSyste
     };
 
     try {
-        // Step 1: Queue the job
-        const queueResponse = await fetch('/api/admin/tnm/queue', {
+        // Call direct generation endpoint (60s timeout configured in vercel.json)
+        const response = await fetch('/api/admin/tnm/generate', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
 
-        const queueResult = await queueResponse.json();
+        const result = await response.json();
 
-        if (!queueResult.success) {
-            throw new Error(queueResult.error || 'Failed to queue job');
+        if (!result.success) {
+            throw new Error(result.error || 'Generation failed');
         }
 
-        const jobId = queueResult.job_id;
+        // Success
+        statusDiv.className = 'tnm-gen-status status-success';
         statusDiv.innerHTML = `
-            <i class="fas fa-spinner fa-spin me-2"></i>
-            <strong>Job queued for processing</strong>
-            <div style="margin-top: 0.5rem; font-size: 0.85rem;">
-                <i class="fas fa-info-circle me-1"></i>You can safely close this window and navigate away.
-                <br>Generation takes ~60 seconds. Check the TNM Calculator index to see when it's ready.
+            <i class="fas fa-check-circle me-2"></i><strong>Calculator generated successfully!</strong>
+            <div style="margin-top: 0.5rem; font-size: 0.85rem; opacity: 0.9;">
+                ${cancerName} calculator is now available.
             </div>
         `;
 
-        // Step 2: Poll for status
-        let attempts = 0;
-        const maxAttempts = 120; // 2 minutes max
-        const pollInterval = 2000; // 2 seconds
-
-        const pollStatus = async () => {
-            attempts++;
-            try {
-                const statusResponse = await fetch(`/api/admin/tnm/status/${jobId}`);
-                const statusResult = await statusResponse.json();
-
-                if (!statusResult.success) {
-                    throw new Error(statusResult.error || 'Failed to check status');
-                }
-
-                const job = statusResult.job;
-
-                if (job.status === 'completed') {
-                    statusDiv.className = 'tnm-gen-status status-success';
-                    statusDiv.innerHTML = `
-                        <i class="fas fa-check-circle me-2"></i><strong>Calculator generated successfully!</strong>
-                        <div style="margin-top: 0.5rem; font-size: 0.85rem; opacity: 0.9;">
-                            ${cancerName} calculator is now available.
-                        </div>
-                    `;
-
-                    // Insert algorithm into discussion if checked
-                    if (insertAlgorithm) {
-                        const caseId = document.getElementById('editCaseId')?.value;
-                        if (caseId && !caseId.startsWith('new')) {
-                            await insertAlgorithmToDiscussion(parseInt(caseId), slug);
-                        }
-                    }
-
-                    showFlash('TNM Calculator and Algorithm generated successfully!', 'success');
-                    generateBtn.disabled = false;
-                    generateBtn.innerHTML = '<i class="fas fa-magic me-1"></i>Generate with AI';
-                    return;
-                }
-
-                if (job.status === 'failed') {
-                    throw new Error(job.error_message || 'Generation failed');
-                }
-
-                if (job.status === 'running') {
-                    statusDiv.innerHTML = `
-                        <i class="fas fa-spinner fa-spin me-2"></i>
-                        <strong>Generating with Claude AI...</strong>
-                        <div style="margin-top: 0.5rem; font-size: 0.85rem; opacity: 0.8;">
-                            This takes 30-60 seconds. You can close this window - check TNM Calculator index when done.
-                        </div>
-                    `;
-                } else if (job.status === 'pending') {
-                    const waitTime = Math.floor(attempts * pollInterval / 1000);
-                    statusDiv.innerHTML = `
-                        <i class="fas fa-clock me-2"></i>
-                        <strong>Queued for processing...</strong> (${waitTime}s)
-                        <div style="margin-top: 0.5rem; font-size: 0.85rem; opacity: 0.8;">
-                            Cron runs daily on free tier. You can safely navigate away.
-                        </div>
-                    `;
-                }
-
-                if (attempts < maxAttempts) {
-                    setTimeout(pollStatus, pollInterval);
-                } else {
-                    throw new Error('Timeout waiting for job completion. Check back later.');
-                }
-
-            } catch (error) {
-                statusDiv.className = 'tnm-gen-status status-error';
-                statusDiv.innerHTML = `<i class="fas fa-exclamation-circle me-2"></i>${error.message}`;
-                showFlash(error.message, 'danger');
-                generateBtn.disabled = false;
-                generateBtn.innerHTML = '<i class="fas fa-magic me-1"></i>Generate with AI';
+        // Insert algorithm into discussion if checked
+        if (insertAlgorithm) {
+            const caseId = document.getElementById('editCaseId')?.value;
+            if (caseId && !caseId.startsWith('new')) {
+                await insertAlgorithmToDiscussion(parseInt(caseId), slug);
             }
-        };
+        }
 
-        // Start polling
-        setTimeout(pollStatus, pollInterval);
+        showFlash('TNM Calculator and Algorithm generated successfully!', 'success');
+        generateBtn.disabled = false;
+        generateBtn.innerHTML = '<i class="fas fa-magic me-1"></i>Generate with AI';
 
     } catch (error) {
         console.error('TNM Generation error:', error);
         statusDiv.className = 'tnm-gen-status status-error';
-        statusDiv.innerHTML = `<i class="fas fa-exclamation-circle me-2"></i>Error: ${error.message}`;
+        statusDiv.innerHTML = `
+            <i class="fas fa-exclamation-circle me-2"></i><strong>Error:</strong> ${error.message}
+            <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid rgba(255,255,255,0.2);">
+                <strong>Timeout?</strong> Try running locally:
+                <div style="margin-top: 0.5rem; font-family: monospace; font-size: 0.8rem; background: rgba(0,0,0,0.2); padding: 0.5rem; border-radius: 4px; word-break: break-all;">
+                    python scripts/generate_tnm_calculator.py ${slug} "${cancerName}" "${bodySection}"
+                </div>
+                <small style="opacity: 0.8;">Run in local terminal - generates HTML + syncs to Neon</small>
+            </div>
+        `;
         showFlash('Error generating TNM content', 'danger');
         generateBtn.disabled = false;
         generateBtn.innerHTML = '<i class="fas fa-magic me-1"></i>Generate with AI';
