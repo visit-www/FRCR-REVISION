@@ -196,9 +196,152 @@ def extract_algorithm_from_calculator(calculator_html: str, cancer_name: str) ->
     return result
 
 
+# ==================== STAGING NUANCES ====================
+
+def load_staging_nuances():
+    """Load disease-specific staging nuances from JSON file."""
+    nuances_file = Path(__file__).parent / 'staging_nuances.json'
+    if nuances_file.exists():
+        with open(nuances_file, 'r') as f:
+            return json.load(f)
+    return {}
+
+
+def get_disease_nuances(cancer_name: str, body_section: str) -> str:
+    """Get disease-specific nuances for the given cancer type."""
+    nuances = load_staging_nuances()
+
+    # Map body sections to nuances keys
+    section_map = {
+        'head and neck': 'head_and_neck',
+        'thorax': 'thorax',
+        'breast': 'breast',
+        'gastrointestinal': 'gastrointestinal',
+        'hepatobiliary': 'gastrointestinal',
+        'genitourinary': 'genitourinary',
+        'gynecologic': 'gynecologic',
+        'musculoskeletal': 'musculoskeletal',
+        'skin': 'skin',
+        'neuroendocrine': 'neuroendocrine',
+        'hematologic': 'hematologic',
+        'central nervous system': 'central_nervous_system',
+        'bone': 'musculoskeletal',
+        'soft tissue': 'musculoskeletal',
+        'endocrine': 'head_and_neck',  # thyroid etc
+    }
+
+    # Map cancer names to nuances keys
+    cancer_map = {
+        'larynx': 'larynx',
+        'oropharynx': 'oropharynx_hpv_positive',  # default to HPV+
+        'oropharynx (hpv-associated)': 'oropharynx_hpv_positive',
+        'oropharynx (hpv-independent)': 'oropharynx_hpv_negative',
+        'hypopharynx': 'oropharynx_hpv_negative',
+        'nasopharynx': 'nasopharynx',
+        'oral cavity': 'oral_cavity',
+        'nasal cavity': 'nasal_cavity_paranasal_sinuses',
+        'paranasal sinuses': 'nasal_cavity_paranasal_sinuses',
+        'salivary': 'salivary_glands',
+        'thyroid': 'thyroid_differentiated',
+        'lung': 'lung',
+        'mesothelioma': 'pleural_mesothelioma',
+        'thymus': 'thymus',
+        'breast': 'breast',
+        'esophagus': 'esophagus',
+        'stomach': 'stomach',
+        'colon': 'colon_rectum',
+        'rectum': 'colon_rectum',
+        'liver': 'liver_hcc',
+        'pancreas': 'pancreas',
+        'kidney': 'kidney',
+        'bladder': 'bladder',
+        'prostate': 'prostate',
+        'testis': 'testis',
+        'cervix': 'cervix',
+        'ovary': 'ovary',
+        'endometrium': 'endometrium',
+        'melanoma': 'melanoma',
+        'merkel': 'merkel_cell',
+        'bone': 'bone_sarcoma',
+        'sarcoma': 'soft_tissue_sarcoma',
+    }
+
+    # Find matching section
+    section_key = None
+    body_section_lower = body_section.lower()
+    for key, value in section_map.items():
+        if key in body_section_lower:
+            section_key = value
+            break
+
+    # Find matching cancer
+    cancer_key = None
+    cancer_lower = cancer_name.lower()
+    for key, value in cancer_map.items():
+        if key in cancer_lower:
+            cancer_key = value
+            break
+
+    # Build nuances text
+    result_parts = []
+
+    if section_key and section_key in nuances:
+        section_nuances = nuances[section_key]
+        if cancer_key and cancer_key in section_nuances:
+            disease_nuances = section_nuances[cancer_key]
+            result_parts.append(f"## DISEASE-SPECIFIC STAGING NUANCES FOR {cancer_name.upper()}\n")
+            result_parts.append("Use these nuances to ensure accurate staging:\n")
+            result_parts.append(json.dumps(disease_nuances, indent=2))
+
+    if not result_parts:
+        # Generic guidance
+        result_parts.append(f"## NOTE: Ensure staging is specific to {cancer_name}\n")
+        result_parts.append("If this cancer has subsites, staging should adapt to the specific subsite selected.")
+
+    return '\n'.join(result_parts)
+
+
+def get_opus_example_excerpt() -> str:
+    """Get excerpt from Opus-generated calculator as quality reference."""
+    example_file = Path(__file__).parent / 'calculators' / 'larynx-opus_calc.html'
+    if not example_file.exists():
+        return ""
+
+    # Read the file and extract key sections
+    with open(example_file, 'r') as f:
+        content = f.read()
+
+    # Extract the calculateTStage function as an example of good subsite-specific logic
+    import re
+    match = re.search(r'(function calculateTStage\(\).*?^        \})', content, re.MULTILINE | re.DOTALL)
+    if match:
+        excerpt = match.group(1)
+        return f"""
+## REFERENCE: EXAMPLE OF HIGH-QUALITY SUBSITE-SPECIFIC STAGING LOGIC
+
+The following is an example of excellent staging logic that adapts to subsites.
+Your calculator should follow this pattern of subsite-aware staging:
+
+```javascript
+{excerpt[:3000]}...
+```
+
+KEY QUALITIES TO EMULATE:
+1. Separate staging logic for each subsite (supraglottic, glottic, subglottic)
+2. T1a/T1b distinctions where medically appropriate
+3. Clear reasoning returned with each stage determination
+4. Modular function structure (calculateTStage, calculateNStage, etc.)
+"""
+    return ""
+
+
 # ==================== PROMPTS ====================
 
 CALCULATOR_HTML_PROMPT = """You are an experienced oncology radiologist creating a practical TNM staging calculator. Your role is to guide radiology registrars through staging scans as they encounter them in daily clinical practice - think of yourself as a senior consultant helping a registrar report a staging scan step-by-step. This should also serve FRCR exam preparation.
+
+{disease_nuances}
+
+{opus_example}
 
 Generate a COMPLETE, SELF-CONTAINED HTML file with TWO MAIN SECTIONS for {cancer_name} cancer staging.
 
@@ -502,11 +645,17 @@ def generate_calculator_html(
     """
     client = get_claude_client()
 
+    # Get disease-specific nuances and Opus example for enhanced quality
+    disease_nuances = get_disease_nuances(cancer_name, body_section)
+    opus_example = get_opus_example_excerpt()
+
     prompt = CALCULATOR_HTML_PROMPT.format(
         cancer_name=cancer_name,
         body_section=body_section,
         staging_system=staging_system,
-        special_notes=f"Special considerations: {special_notes}" if special_notes else ""
+        special_notes=f"Special considerations: {special_notes}" if special_notes else "",
+        disease_nuances=disease_nuances,
+        opus_example=opus_example
     )
 
     logger.info(f"[TNM Generator] Generating calculator HTML for {cancer_name}")

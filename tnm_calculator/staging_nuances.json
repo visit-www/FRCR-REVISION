@@ -1,0 +1,515 @@
+{
+  "_metadata": {
+    "description": "Disease-specific TNM staging nuances for guiding AI calculator generation",
+    "version": "1.0",
+    "generated_by": "Claude Opus 4.5",
+    "purpose": "Feed to Sonnet along with Opus example to achieve Opus-quality output at Sonnet cost"
+  },
+
+  "head_and_neck": {
+    "larynx": {
+      "subsites": ["supraglottic", "glottic", "subglottic"],
+      "subsite_specific_staging": true,
+      "t_stage_nuances": {
+        "T1": "Subsite-specific: Glottic T1a (one cord) vs T1b (both cords). Supraglottic: limited to one subsite with normal cord mobility",
+        "T2": "Extension beyond subsite without fixation. Glottic: extension to supraglottis/subglottis OR impaired mobility",
+        "T3": "Vocal cord fixation OR paraglottic space invasion OR inner cortex thyroid cartilage erosion OR pre-epiglottic space",
+        "T4a": "Through thyroid cartilage (outer cortex), cricoid, hyoid, thyroid gland, esophagus, central compartment soft tissue",
+        "T4b": "Prevertebral space, carotid encasement, mediastinal structures - UNRESECTABLE"
+      },
+      "key_imaging_features": [
+        "Assess vocal cord mobility on phonation if possible",
+        "Paraglottic fat stranding indicates invasion",
+        "Thyroid cartilage: distinguish inner cortex sclerosis (T3) from through-and-through (T4a)",
+        "Pre-epiglottic space fat obliteration"
+      ],
+      "critical_pitfalls": [
+        "Confusing T1a vs T1b for glottic tumors",
+        "Missing paraglottic space invasion",
+        "Overcalling cartilage invasion based on sclerosis alone",
+        "Not checking for subglottic extension (>10mm below glottis = subglottic primary)"
+      ]
+    },
+
+    "oropharynx_hpv_positive": {
+      "special_considerations": ["HPV status changes staging completely - separate system"],
+      "t_stage_nuances": {
+        "T0": "HPV+ with unknown primary but cervical node mets",
+        "T1": "≤2cm",
+        "T2": ">2cm to ≤4cm",
+        "T3": ">4cm OR extension to lingual surface of epiglottis",
+        "T4": "Invasion of larynx, deep/extrinsic tongue muscles, pterygoid, hard palate, mandible"
+      },
+      "n_stage_nuances": {
+        "note": "HPV+ uses CLINICAL N staging based on number and size, NOT laterality",
+        "N1": "Ipsilateral nodes ≤6cm",
+        "N2": "Contralateral or bilateral nodes ≤6cm",
+        "N3": "Any node >6cm"
+      },
+      "key_differences_from_hpv_negative": [
+        "Better prognosis stage-for-stage",
+        "N staging ignores ENE clinically",
+        "Cystic nodes are common and don't indicate worse prognosis"
+      ]
+    },
+
+    "oropharynx_hpv_negative": {
+      "special_considerations": ["Use traditional H&N staging", "ENE upstages N category"],
+      "t_stage_nuances": {
+        "T1": "≤2cm",
+        "T2": ">2cm to ≤4cm",
+        "T3": ">4cm OR extension to lingual surface of epiglottis",
+        "T4a": "Larynx, deep/extrinsic tongue muscles, medial pterygoid, hard palate, mandible",
+        "T4b": "Lateral pterygoid, pterygoid plates, lateral nasopharynx, skull base, carotid encasement"
+      },
+      "n_stage_nuances": {
+        "ENE_critical": true,
+        "N1": "Single ipsilateral ≤3cm, ENE-",
+        "N2a": "Single ipsilateral >3cm to ≤6cm, ENE-",
+        "N2b": "Multiple ipsilateral ≤6cm, ENE-",
+        "N2c": "Bilateral/contralateral ≤6cm, ENE-",
+        "N3a": "Any node >6cm, ENE-",
+        "N3b": "ANY ENE+ (clinical or radiological)"
+      }
+    },
+
+    "nasopharynx": {
+      "unique_staging": true,
+      "t_stage_nuances": {
+        "T1": "Confined to nasopharynx, OR extension to oropharynx/nasal cavity without parapharyngeal involvement",
+        "T2": "Parapharyngeal extension AND/OR adjacent soft tissue (medial pterygoid, lateral pterygoid, prevertebral muscles)",
+        "T3": "Skull base bony structures AND/OR paranasal sinuses",
+        "T4": "Intracranial extension, cranial nerve involvement, hypopharynx, orbit, extensive soft tissue beyond lateral pterygoid"
+      },
+      "key_imaging_features": [
+        "Parapharyngeal fat plane obliteration",
+        "Skull base erosion vs permeation (both count)",
+        "Cavernous sinus involvement",
+        "Cranial nerve enhancement (V, VI most common)"
+      ],
+      "critical_pitfalls": [
+        "Missing retropharyngeal node involvement (important for prognosis)",
+        "Subtle skull base permeation without gross erosion",
+        "Bilateral parapharyngeal involvement"
+      ]
+    },
+
+    "oral_cavity": {
+      "includes": ["lip", "tongue (anterior 2/3)", "floor of mouth", "buccal mucosa", "gingiva", "hard palate", "retromolar trigone"],
+      "t_stage_nuances": {
+        "size_and_depth": "BOTH size AND depth of invasion (DOI) matter",
+        "T1": "≤2cm AND DOI ≤5mm",
+        "T2": ">2cm to ≤4cm AND DOI ≤10mm, OR ≤2cm with DOI >5mm to ≤10mm",
+        "T3": ">4cm OR DOI >10mm",
+        "T4a": "Through cortical bone (mandible/maxilla), maxillary sinus, skin of face",
+        "T4b": "Masticator space, pterygoid plates, skull base, internal carotid artery encasement"
+      },
+      "depth_of_invasion_key": "DOI is measured from basement membrane of closest normal mucosa, NOT from tumor surface"
+    },
+
+    "nasal_cavity_paranasal_sinuses": {
+      "subsites": ["maxillary sinus", "ethmoid sinus", "frontal sinus", "sphenoid sinus", "nasal cavity"],
+      "t_stage_nuances": {
+        "T1": "Limited to mucosa without bone erosion",
+        "T2": "Bone erosion/destruction including hard palate/middle meatus, EXCEPT posterior wall maxilla and pterygoid plates",
+        "T3": "Posterior wall maxillary sinus, subcutaneous tissues, floor/medial wall orbit, pterygoid fossa, ethmoid sinuses",
+        "T4a": "Anterior orbit, skin, pterygoid plates, cribriform plate, sphenoid/frontal sinuses, minimal dura",
+        "T4b": "Orbital apex, dura (extensive), brain, middle cranial fossa, CN (other than V2), nasopharynx, clivus"
+      }
+    },
+
+    "salivary_glands": {
+      "includes": ["parotid", "submandibular", "sublingual", "minor salivary glands"],
+      "t_stage_nuances": {
+        "T1": "≤2cm without extraparenchymal extension",
+        "T2": ">2cm to ≤4cm without extraparenchymal extension",
+        "T3": ">4cm AND/OR extraparenchymal extension",
+        "T4a": "Skin, mandible, ear canal, facial nerve",
+        "T4b": "Skull base, pterygoid plates, carotid encasement"
+      },
+      "special_considerations": [
+        "Facial nerve involvement = T4a minimum",
+        "Histologic grade matters greatly for prognosis",
+        "Perineural invasion common in adenoid cystic"
+      ]
+    },
+
+    "thyroid_differentiated": {
+      "histology_matters": ["papillary", "follicular", "Hurthle cell"],
+      "age_cutoff": "55 years changes staging dramatically",
+      "t_stage_nuances": {
+        "T1": "≤2cm limited to thyroid. T1a ≤1cm, T1b >1-2cm",
+        "T2": ">2cm to ≤4cm limited to thyroid",
+        "T3a": ">4cm limited to thyroid",
+        "T3b": "Gross extrathyroidal extension into strap muscles only",
+        "T4a": "Gross extension to subcutaneous soft tissue, larynx, trachea, esophagus, RLN",
+        "T4b": "Prevertebral fascia, carotid artery, mediastinal vessels"
+      },
+      "age_based_staging": {
+        "under_55": "Stage I = any T, any N, M0; Stage II = any T, any N, M1",
+        "55_and_over": "Traditional staging applies"
+      }
+    }
+  },
+
+  "thorax": {
+    "lung": {
+      "t_stage_nuances": {
+        "size_critical": "Measure solid component on CT for part-solid nodules",
+        "T1": "T1a ≤1cm, T1b >1-2cm, T1c >2-3cm. All: surrounded by lung/visceral pleura, not more proximal than lobar bronchus",
+        "T2": "T2a >3-4cm, T2b >4-5cm. OR involves main bronchus (not carina), OR visceral pleura, OR atelectasis to hilum",
+        "T3": ">5-7cm, OR chest wall/phrenic nerve/parietal pericardium, OR separate nodule same lobe",
+        "T4": ">7cm, OR diaphragm/mediastinum/heart/great vessels/trachea/carina/RLN/esophagus/spine, OR separate nodule different ipsilateral lobe"
+      },
+      "n_stage_nuances": {
+        "N1": "Ipsilateral peribronchial and/or hilar nodes",
+        "N2": "Ipsilateral mediastinal and/or subcarinal",
+        "N3": "Contralateral mediastinal/hilar, scalene, supraclavicular"
+      },
+      "key_imaging_features": [
+        "Measure solid component only for part-solid nodules",
+        "Short axis for lymph nodes (>1cm suspicious)",
+        "Chest wall invasion: rib destruction, soft tissue mass",
+        "Mediastinal invasion: >3cm contact, loss of fat plane, >90° aortic contact"
+      ]
+    },
+
+    "pleural_mesothelioma": {
+      "unique_staging": true,
+      "t_stage_nuances": {
+        "T1": "Ipsilateral parietal pleura only (± visceral, ± mediastinal, ± diaphragmatic pleura)",
+        "T2": "Involves diaphragm muscle OR lung parenchyma",
+        "T3": "Locally advanced but potentially resectable: endothoracic fascia, mediastinal fat, single chest wall focus, pericardium (not transmural)",
+        "T4": "Unresectable: diffuse chest wall, transdiaphragmatic peritoneum, contralateral pleura, spine, internal surface pericardium, myocardium, brachial plexus, multifocal chest wall"
+      }
+    },
+
+    "thymus": {
+      "t_stage_nuances": {
+        "T1": "T1a: encapsulated or unencapsulated with/without mediastinal fat extension, T1b: pericardium",
+        "T2": "Lung",
+        "T3a": "Brachiocephalic vein, SVC, chest wall, phrenic nerve, hilar vessels (extrapericardial)",
+        "T3b": "Aorta, aortic arch vessels, intrapericardial pulmonary artery, myocardium, trachea, esophagus",
+        "T4": "Pleura/pericardial nodules"
+      }
+    }
+  },
+
+  "breast": {
+    "breast": {
+      "special_factors": {
+        "biomarkers": ["ER", "PR", "HER2", "Ki-67"],
+        "grade": "Nottingham grade 1-3 impacts prognosis more than T stage",
+        "genomic_testing": "Oncotype DX, MammaPrint influence treatment"
+      },
+      "t_stage_nuances": {
+        "Tis": "DCIS or Paget without invasive component",
+        "T1": "T1mi ≤1mm, T1a >1mm-5mm, T1b >5mm-10mm, T1c >10mm-20mm",
+        "T2": ">20mm to ≤50mm",
+        "T3": ">50mm",
+        "T4": "T4a: chest wall (not pectoral muscle alone), T4b: skin ulceration/satellite nodules/edema (including peau d'orange), T4c: both 4a+4b, T4d: inflammatory carcinoma"
+      },
+      "n_stage_nuances": {
+        "micrometastasis": "pN1mi: >0.2mm to ≤2mm",
+        "N1": "1-3 axillary nodes (metastasis >2mm) OR internal mammary (sentinel node only, not clinically detected)",
+        "N2": "4-9 axillary nodes OR clinically detected internal mammary without axillary",
+        "N3": "≥10 axillary, OR infraclavicular, OR clinically detected internal mammary with axillary, OR supraclavicular"
+      },
+      "key_imaging_features": [
+        "Measure invasive component only (not DCIS extent)",
+        "Multifocal: use largest focus for T, note multifocality",
+        "Skin thickening: distinguish reactive vs tumor involvement",
+        "Internal mammary nodes: significant if >5mm short axis"
+      ],
+      "critical_pitfalls": [
+        "Measuring DCIS component in size",
+        "Missing internal mammary adenopathy",
+        "Confusing reactive skin thickening with inflammatory carcinoma"
+      ]
+    }
+  },
+
+  "gastrointestinal": {
+    "esophagus": {
+      "histology_matters": ["squamous cell carcinoma", "adenocarcinoma"],
+      "location_matters": ["cervical", "upper thoracic", "middle thoracic", "lower thoracic", "EGJ"],
+      "t_stage_nuances": {
+        "T1": "T1a: lamina propria/muscularis mucosae, T1b: submucosa",
+        "T2": "Muscularis propria",
+        "T3": "Adventitia",
+        "T4": "T4a: pleura/pericardium/azygos/diaphragm/peritoneum (resectable), T4b: aorta/vertebra/trachea (unresectable)"
+      },
+      "n_stage_nuances": {
+        "number_based": true,
+        "N1": "1-2 regional nodes",
+        "N2": "3-6 regional nodes",
+        "N3": "≥7 regional nodes"
+      }
+    },
+
+    "stomach": {
+      "t_stage_nuances": {
+        "T1": "T1a: lamina propria/muscularis mucosae, T1b: submucosa",
+        "T2": "Muscularis propria",
+        "T3": "Subserosal connective tissue (not visceral peritoneum or adjacent structures)",
+        "T4": "T4a: serosa (visceral peritoneum), T4b: adjacent structures"
+      },
+      "n_stage_nuances": {
+        "N1": "1-2 regional nodes",
+        "N2": "3-6 regional nodes",
+        "N3": "N3a: 7-15 nodes, N3b: ≥16 nodes"
+      }
+    },
+
+    "colon_rectum": {
+      "t_stage_nuances": {
+        "T1": "Submucosa",
+        "T2": "Muscularis propria",
+        "T3": "Through muscularis propria into pericolorectal tissues",
+        "T4": "T4a: visceral peritoneum, T4b: directly invades other organs/structures"
+      },
+      "n_stage_nuances": {
+        "N1": "N1a: 1 node, N1b: 2-3 nodes, N1c: tumor deposits without nodes",
+        "N2": "N2a: 4-6 nodes, N2b: ≥7 nodes"
+      },
+      "special_considerations": [
+        "Tumor deposits (N1c) are discrete nodules in pericolorectal fat without residual lymph node tissue",
+        "CRM (circumferential resection margin) critical for rectum",
+        "EMVI (extramural vascular invasion) is prognostic"
+      ]
+    },
+
+    "liver_hcc": {
+      "t_stage_nuances": {
+        "T1": "T1a: solitary ≤2cm, T1b: solitary >2cm without vascular invasion",
+        "T2": "Solitary with vascular invasion >2cm, OR multiple ≤5cm",
+        "T3": "Multiple, at least one >5cm",
+        "T4": "Single or multiple with major portal/hepatic vein involvement"
+      },
+      "special_considerations": [
+        "Fibrosis/cirrhosis stage impacts prognosis independently",
+        "AFP level matters",
+        "Barcelona Clinic Liver Cancer (BCLC) often used alongside TNM"
+      ]
+    },
+
+    "pancreas": {
+      "t_stage_nuances": {
+        "T1": "T1a: ≤0.5cm, T1b: >0.5-1cm, T1c: >1-2cm",
+        "T2": ">2-4cm",
+        "T3": ">4cm",
+        "T4": "Involves celiac axis, SMA, and/or common hepatic artery"
+      },
+      "resectability_criteria": {
+        "resectable": "No arterial contact, ≤180° SMV/portal vein contact without contour irregularity",
+        "borderline": ">180° SMV/portal vein contact or vein contour irregularity, gastroduodenal artery encasement up to hepatic artery, SMA contact ≤180°",
+        "unresectable": "Solid tumor contact >180° SMA, celiac axis involvement, unreconstructable SMV/portal vein"
+      }
+    }
+  },
+
+  "genitourinary": {
+    "kidney": {
+      "t_stage_nuances": {
+        "T1": "T1a: ≤4cm, T1b: >4-7cm, confined to kidney",
+        "T2": "T2a: >7-10cm, T2b: >10cm, confined to kidney",
+        "T3": "T3a: renal vein or segmental branches, perinephric/renal sinus fat (not beyond Gerota's fascia), T3b: IVC below diaphragm, T3c: IVC above diaphragm or IVC wall",
+        "T4": "Beyond Gerota's fascia including ipsilateral adrenal (contiguous)"
+      },
+      "special_considerations": [
+        "Renal vein tumor thrombus level matters",
+        "IVC thrombus: measure level relative to hepatic veins and diaphragm",
+        "Adrenal involvement: contiguous = T4, discontinuous = M1"
+      ]
+    },
+
+    "bladder": {
+      "t_stage_nuances": {
+        "Ta": "Non-invasive papillary carcinoma",
+        "Tis": "Carcinoma in situ",
+        "T1": "Lamina propria",
+        "T2": "T2a: inner half muscularis propria, T2b: outer half muscularis propria",
+        "T3": "T3a: microscopic perivesical fat, T3b: macroscopic perivesical fat",
+        "T4": "T4a: prostate stroma/seminal vesicles/uterus/vagina, T4b: pelvic wall/abdominal wall"
+      },
+      "key_imaging_features": [
+        "Loss of muscle layer hypointensity on T2 MRI",
+        "Perivesical fat stranding vs nodular enhancement",
+        "Ureters: evaluate for obstruction"
+      ]
+    },
+
+    "prostate": {
+      "clinical_vs_pathological": "Imaging staging differs from surgical pathology staging",
+      "t_stage_nuances": {
+        "T1": "Clinically inapparent (not palpable, not visible on imaging): T1a <5% of TURP tissue, T1b ≥5% TURP tissue, T1c: needle biopsy (elevated PSA)",
+        "T2": "Confined to prostate: T2a ≤half one lobe, T2b >half one lobe, T2c: both lobes",
+        "T3": "Extraprostatic extension: T3a: extracapsular (unilateral or bilateral), T3b: seminal vesicle invasion",
+        "T4": "Bladder neck, external sphincter, rectum, levator muscles, pelvic wall"
+      },
+      "special_considerations": [
+        "PSA level and Gleason score more important than T stage",
+        "MRI: look for capsular bulge, irregular margin, seminal vesicle invasion",
+        "PI-RADS scoring for lesion characterization"
+      ]
+    },
+
+    "testis": {
+      "t_stage_nuances": {
+        "pT1": "Limited to testis (including rete testis) ± epididymis, no LVI: pT1a: <3cm, pT1b: ≥3cm",
+        "pT2": "Limited to testis with LVI, OR involvement of hilar soft tissue, OR penetration of mesothelial tunica vaginalis",
+        "pT3": "Spermatic cord invasion",
+        "pT4": "Scrotum invasion"
+      },
+      "s_stage": "Serum tumor markers (AFP, hCG, LDH) create unique S stage used with TNM"
+    }
+  },
+
+  "gynecologic": {
+    "cervix": {
+      "t_stage_nuances": {
+        "T1a": "Microscopic only: T1a1 ≤3mm depth, <7mm horizontal, T1a2 >3-5mm depth, <7mm horizontal",
+        "T1b": "Clinically visible: T1b1 ≤2cm, T1b2 >2-4cm, T1b3 >4cm",
+        "T2": "Beyond uterus but not pelvic wall/lower third vagina: T2a: no parametrial invasion (T2a1 ≤4cm, T2a2 >4cm), T2b: parametrial invasion",
+        "T3": "T3a: lower third vagina, T3b: pelvic wall and/or hydronephrosis",
+        "T4": "Bladder/rectal mucosa (not just bullous edema)"
+      },
+      "special_considerations": [
+        "FIGO staging now incorporates imaging and nodes",
+        "Parametrial invasion: loss of periureteral hypointense rim on MRI",
+        "Hydroureter/hydronephrosis = T3b"
+      ]
+    },
+
+    "ovary": {
+      "t_stage_nuances": {
+        "T1": "T1a: one ovary, capsule intact, no surface tumor, negative washings; T1b: both ovaries (same criteria); T1c: with capsule rupture/surface tumor/positive cytology",
+        "T2": "Pelvic extension: T2a: uterus/fallopian tube; T2b: other pelvic tissue",
+        "T3": "T3a: microscopic peritoneal metastasis beyond pelvis (including liver capsule); T3b: macroscopic peritoneal metastasis ≤2cm; T3c: macroscopic peritoneal metastasis >2cm and/or regional nodes"
+      }
+    },
+
+    "endometrium": {
+      "t_stage_nuances": {
+        "T1": "T1a: <50% myometrial invasion, T1b: ≥50% myometrial invasion",
+        "T2": "Cervical stromal invasion (not just endocervical glandular involvement)",
+        "T3": "T3a: serosa and/or adnexa, T3b: vaginal and/or parametrial involvement",
+        "T4": "Bladder and/or bowel mucosa"
+      },
+      "special_considerations": [
+        "Grade (1-3) important for treatment decisions",
+        "Histologic type matters: endometrioid vs serous vs clear cell",
+        "LVSI (lymphovascular space invasion) is prognostic"
+      ]
+    }
+  },
+
+  "musculoskeletal": {
+    "bone_sarcoma": {
+      "t_stage_nuances": {
+        "T1": "≤8cm greatest dimension",
+        "T2": ">8cm greatest dimension",
+        "T3": "Discontinuous tumors in primary bone site (skip metastases)"
+      },
+      "special_considerations": [
+        "Grade (low vs high) critical for staging",
+        "Spine tumors have separate staging",
+        "Pelvis tumors: assess sacral nerve involvement"
+      ]
+    },
+
+    "soft_tissue_sarcoma": {
+      "location_specific": ["trunk/extremities", "retroperitoneum", "head and neck", "abdominal/thoracic visceral"],
+      "t_stage_nuances_trunk_extremity": {
+        "T1": "≤5cm",
+        "T2": ">5-10cm",
+        "T3": ">10-15cm",
+        "T4": ">15cm"
+      },
+      "grade_critical": "FNCLCC grade (1-3) determines stage grouping - grade 1 cannot be stage III even if T4"
+    }
+  },
+
+  "skin": {
+    "melanoma": {
+      "t_stage_nuances": {
+        "thickness_based": "Breslow thickness is primary determinant",
+        "T1": "≤1mm: T1a ≤0.8mm without ulceration, T1b ≤0.8mm with ulceration OR 0.8-1mm with/without ulceration",
+        "T2": ">1-2mm: T2a without ulceration, T2b with ulceration",
+        "T3": ">2-4mm: T3a without ulceration, T3b with ulceration",
+        "T4": ">4mm: T4a without ulceration, T4b with ulceration"
+      },
+      "n_stage_nuances": {
+        "microsatellites_in_transit": "N1c, N2c, N3c denote in-transit/satellite mets without nodes",
+        "N1": "1 node or in-transit without node",
+        "N2": "2-3 nodes or 1 node + in-transit",
+        "N3": "≥4 nodes or any matted nodes or ≥2 nodes + in-transit"
+      }
+    },
+
+    "merkel_cell": {
+      "t_stage_nuances": {
+        "T1": "≤2cm",
+        "T2": ">2-5cm",
+        "T3": ">5cm",
+        "T4": "Deep fascia, muscle, cartilage, bone"
+      }
+    }
+  },
+
+  "neuroendocrine": {
+    "gi_neuroendocrine": {
+      "grade_definition": {
+        "G1": "Ki-67 ≤2%, mitotic rate <2/10 HPF",
+        "G2": "Ki-67 3-20%, mitotic rate 2-20/10 HPF",
+        "G3": "Ki-67 >20%, mitotic rate >20/10 HPF"
+      },
+      "site_specific_t_staging": {
+        "stomach": "T1 ≤1cm (T1a: mucosa, T1b: submucosa), T2 >1cm or muscularis, T3 subserosa, T4 serosa or adjacent",
+        "small_intestine": "T1 mucosa/submucosa ≤1cm, T2 muscularis or >1cm, T3 subserosa, T4 peritoneum or adjacent",
+        "appendix": "T1 ≤2cm and ≤3mm into subserosa, T2 ≤2cm and >3mm into subserosa or muscularis, T3 >2cm or >3mm into subserosa, T4 peritoneum/adjacent organs",
+        "colorectal": "Similar to adenocarcinoma staging"
+      }
+    },
+
+    "pancreatic_neuroendocrine": {
+      "t_stage_nuances": {
+        "T1": "≤2cm, confined to pancreas",
+        "T2": ">2-4cm, confined to pancreas",
+        "T3": ">4cm OR duodenum/bile duct invasion",
+        "T4": "Adjacent organs (stomach, spleen, colon, adrenal) OR large vessels (celiac axis, SMA)"
+      }
+    }
+  },
+
+  "hematologic": {
+    "lymphoma": {
+      "ann_arbor_staging": {
+        "I": "Single lymph node region",
+        "II": "Two or more lymph node regions, same side of diaphragm",
+        "III": "Lymph nodes on both sides of diaphragm",
+        "IV": "Extranodal disease beyond E designation (liver, bone marrow, lung nodules)"
+      },
+      "modifiers": {
+        "A_B": "A = no B symptoms, B = fever/night sweats/weight loss >10%",
+        "E": "Single extranodal site contiguous with nodal disease",
+        "S": "Spleen involvement",
+        "X": "Bulky disease (varies by type: Hodgkin >10cm, NHL often >7cm)"
+      }
+    }
+  },
+
+  "central_nervous_system": {
+    "brain": {
+      "no_tnm": true,
+      "who_grading": "WHO grade I-IV is used instead of TNM",
+      "location_important": "Eloquent cortex, deep structures, resectability",
+      "key_features": [
+        "Enhancement pattern",
+        "Edema/mass effect",
+        "Crossing midline",
+        "Leptomeningeal spread"
+      ]
+    }
+  }
+}
