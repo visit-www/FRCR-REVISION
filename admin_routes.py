@@ -1711,7 +1711,8 @@ def generate_tnm_calculator():
             special_features=data.get('special_features', []),
             description=data.get('description', ''),
             special_notes=data.get('special_notes', ''),
-            user_id=current_user.id
+            user_id=current_user.id,
+            overwrite=data.get('overwrite', False)
         )
 
         if success:
