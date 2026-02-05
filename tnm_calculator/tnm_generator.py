@@ -24,6 +24,63 @@ logger = logging.getLogger(__name__)
 # Calculator templates directory
 CALCULATORS_DIR = Path(__file__).parent / 'calculators'
 
+# Quality validation requirements
+QUALITY_REQUIREMENTS = [
+    ('calculator-form|form-section', 'Calculator form section'),
+    ('reference-section', 'Reference section'),
+    (r'type=["\']checkbox["\']', 'Checkbox inputs for T4 features'),
+    (r'type=["\']number["\']', 'Number inputs for measurements'),
+    ('mnemonic', 'Mnemonics'),
+    ('tip-card|tip-box|tips-grid', 'Imaging tips'),
+    ('pitfall', 'Common pitfalls'),
+    ('systematic|step-number|step-item', 'Systematic approach'),
+    ('resultReasoning|reasoning|Reasoning', 'Reasoning output'),
+    ('clinical[- ]?implication|Clinical Implication', 'Clinical implications'),
+]
+
+
+def validate_calculator_quality(html_content: str) -> tuple:
+    """
+    Validate that generated calculator HTML meets quality criteria.
+
+    Args:
+        html_content: The generated HTML string
+
+    Returns:
+        Tuple of (passed: bool, issues: list of str)
+    """
+    import re
+    issues = []
+
+    # Check minimum length (~1500 lines, avg 80 chars = 120000 chars)
+    if len(html_content) < 80000:
+        issues.append(f"Content too short: {len(html_content):,} chars (expected 80,000+)")
+
+    # Check for required elements
+    for pattern, description in QUALITY_REQUIREMENTS:
+        if not re.search(pattern, html_content, re.IGNORECASE):
+            issues.append(f"Missing: {description}")
+
+    # Count specific elements
+    checkbox_count = len(re.findall(r'type=["\']checkbox["\']', html_content))
+    if checkbox_count < 4:
+        issues.append(f"Too few checkboxes: {checkbox_count} (expected 4+)")
+
+    pitfall_count = len(re.findall(r'pitfall-number|pitfall-item|class="pitfall', html_content, re.IGNORECASE))
+    if pitfall_count < 4:
+        issues.append(f"Too few pitfalls: {pitfall_count} (expected 4+)")
+
+    tip_count = len(re.findall(r'tip-card|tip-box|class="tip', html_content, re.IGNORECASE))
+    if tip_count < 4:
+        issues.append(f"Too few imaging tips: {tip_count} (expected 4+)")
+
+    mnemonic_count = len(re.findall(r'mnemonic-box|mnemonic-letter|class="mnemonic', html_content, re.IGNORECASE))
+    if mnemonic_count < 2:
+        issues.append(f"Too few mnemonics: {mnemonic_count} (expected 2+)")
+
+    passed = len(issues) == 0
+    return passed, issues
+
 
 def get_claude_client():
     """Get Anthropic client instance."""
@@ -40,39 +97,191 @@ def get_claude_model():
 
 # ==================== PROMPTS ====================
 
-CALCULATOR_HTML_PROMPT = """You are an expert radiologist and oncologist specializing in cancer staging.
+CALCULATOR_HTML_PROMPT = """You are an expert radiologist and oncologist creating an educational TNM staging calculator for FRCR radiology trainees preparing for their exams.
 
-Generate a COMPLETE, SELF-CONTAINED HTML file for an interactive TNM staging calculator for {cancer_name} cancer.
+Generate a COMPLETE, SELF-CONTAINED HTML file with TWO MAIN SECTIONS for {cancer_name} cancer staging.
 
-The calculator should follow this exact structure and style (based on the oropharynx calculator):
+## CRITICAL ARCHITECTURE REQUIREMENTS
 
-1. **Header Section**:
-   - Gradient header with cancer name and AJCC edition
-   - Brief intro text
+The HTML must have EXACTLY this two-part structure:
 
-2. **Step-by-Step Decision Tree**:
-   - Each T category question presented as expandable cards
-   - Start with worst case (T4b) then work down (T4a → T3 → T2 → T1 → Tis)
-   - Use clinical mnemonics where helpful (e.g., "PACE" for pharynx T4b)
-   - Include imaging tips and common pitfalls
+### SECTION A: INTERACTIVE CALCULATOR (Form-Based)
 
-3. **N Staging Section**:
-   - Include both clinical (cN) and pathological (pN) when relevant
-   - Special staging rules if applicable (e.g., HPV+ vs HPV-)
+The calculator uses FORM INPUTS to AUTOMATICALLY determine staging. Users input their imaging findings; the system calculates T, N, M stages.
 
-4. **M Staging Section**:
-   - M0/M1 selection
+Required elements:
 
-5. **Stage Calculator**:
-   - Real-time stage calculation based on selections
-   - Stage group display with explanation
+1. **Disease-Specific Parameters** (if applicable)
+   - Example: Subsite selector for larynx, HPV status for oropharynx
 
-6. **Interactive Features**:
-   - JavaScript for expanding/collapsing sections
-   - Stage calculation logic
-   - Reset functionality
+2. **T-Stage via Checkboxes** (hierarchical - check worst first):
+   - T4b features group: If ANY checkbox checked = automatic T4b
+   - T4a features group: If ANY checkbox checked = automatic T4a
+   - Size/extent input for T1-T3 determination
 
-Use these CSS variables for consistent styling:
+3. **N-Stage via Inputs**:
+   - Largest node size (cm) - number input with step="0.1"
+   - Node distribution counters (ipsilateral count, contralateral count)
+   - ENE (extranodal extension) checkbox
+
+4. **M-Stage via Radio**:
+   - Yes/No for distant metastases
+
+5. **Calculate Button + Results Display**:
+   - Shows T stage, N stage, M stage, Overall Stage
+   - CRITICAL: Must include REASONING explaining WHY each stage was assigned
+   - Include CLINICAL IMPLICATIONS section
+
+### SECTION B: COMPREHENSIVE REFERENCE GUIDE
+
+A separate scrollable section BELOW the calculator containing:
+
+1. **Mnemonics Section** (create 2 memorable ones):
+   - T4b mnemonic (e.g., "PACE" = Prevertebral, Artery encasement, Cranium, Extension)
+   - T4a mnemonic (e.g., "HELP" for specific criteria)
+
+2. **Size-Based T Staging Table** showing cutoffs
+
+3. **N Staging Table** (if variants exist, show comparison)
+
+4. **6+ Imaging Tips** in card format with:
+   - Title
+   - Description
+   - Tip detail
+
+5. **6+ Common Pitfalls** numbered with:
+   - Pitfall title
+   - Explanation of why it's wrong and how to avoid
+
+6. **8-Step Systematic Reading Approach**
+
+## EXAMPLE HTML STRUCTURES TO FOLLOW
+
+### Calculator Form Pattern:
+```html
+<div class="calculator-form">
+    <div class="form-section">
+        <h3 class="section-title">T Stage: Primary Tumor</h3>
+
+        <!-- T4b Features -->
+        <div class="form-group">
+            <label class="form-label">
+                <strong>T4b Features (Unresectable):</strong>
+                <span class="help-text">If ANY present = Automatic T4b</span>
+            </label>
+            <div class="checkbox-group">
+                <label class="checkbox-option">
+                    <input type="checkbox" id="t4b_feature1" onchange="updateCalculator()">
+                    <span>Feature description here</span>
+                </label>
+                <!-- More checkboxes -->
+            </div>
+        </div>
+
+        <!-- Tumor Size -->
+        <div class="form-group">
+            <label class="form-label">
+                <strong>Tumor Size (maximum dimension):</strong>
+                <span class="help-text">Measure on any plane</span>
+            </label>
+            <div class="input-with-unit">
+                <input type="number" id="tumorSize" step="0.1" min="0" placeholder="e.g., 3.5" onchange="updateCalculator()">
+                <span class="unit">cm</span>
+            </div>
+        </div>
+    </div>
+</div>
+```
+
+### Results Display Pattern:
+```html
+<div class="result-card" id="finalResult">
+    <h2>Final Staging Result</h2>
+    <div class="result-grid">
+        <div class="result-item">
+            <strong>T Stage</strong>
+            <div class="result-value" id="resultT">-</div>
+        </div>
+        <div class="result-item">
+            <strong>N Stage</strong>
+            <div class="result-value" id="resultN">-</div>
+        </div>
+        <div class="result-item">
+            <strong>M Stage</strong>
+            <div class="result-value" id="resultM">-</div>
+        </div>
+    </div>
+    <h3>Overall Stage: <span id="resultStage">-</span></h3>
+    <div id="resultReasoning">
+        <!-- JavaScript populates: T Stage (T2): Reason why... N Stage (N1): Reason why... -->
+    </div>
+</div>
+```
+
+### Reference Section Pattern:
+```html
+<div class="reference-section">
+    <!-- Mnemonics -->
+    <div class="reference-card">
+        <h3 class="reference-subtitle">Mnemonics to Remember</h3>
+        <div class="mnemonic-grid">
+            <div class="mnemonic-box">
+                <h4>T4b - "MNEMONIC"</h4>
+                <div class="mnemonic-detail">
+                    <div class="mnemonic-letter">M</div>
+                    <div>What M stands for</div>
+                </div>
+                <!-- More letters -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Imaging Tips -->
+    <div class="reference-card">
+        <h3 class="reference-subtitle">Key Imaging Tips</h3>
+        <div class="tips-grid">
+            <div class="tip-card">
+                <h4>Tip Title</h4>
+                <p>Description of the tip</p>
+                <div class="tip-detail">Additional details...</div>
+            </div>
+            <!-- 5+ more tip cards -->
+        </div>
+    </div>
+
+    <!-- Common Pitfalls -->
+    <div class="reference-card pitfall-card">
+        <h3 class="reference-subtitle">Common Pitfalls to Avoid</h3>
+        <div class="pitfall-list">
+            <div class="pitfall-item">
+                <div class="pitfall-number">1</div>
+                <div>
+                    <strong>Pitfall title</strong>
+                    <p>Why this is wrong and how to avoid it</p>
+                </div>
+            </div>
+            <!-- 5+ more pitfalls -->
+        </div>
+    </div>
+
+    <!-- Systematic Approach -->
+    <div class="reference-card">
+        <h3 class="reference-subtitle">Systematic Reading Approach</h3>
+        <div class="systematic-steps">
+            <div class="step-item">
+                <div class="step-number">1</div>
+                <div>
+                    <strong>Step title</strong>
+                    <p>What to do in this step</p>
+                </div>
+            </div>
+            <!-- 7 more steps -->
+        </div>
+    </div>
+</div>
+```
+
+## CSS VARIABLES (Use Consistently)
 ```css
 :root {{
     --brand-primary: #e96304;
@@ -80,18 +289,46 @@ Use these CSS variables for consistent styling:
     --brand-success: #a8d5ba;
     --brand-neutral: #5E899E;
     --brand-text-primary: #2c3e50;
+    --brand-text-secondary: #5a6270;
+    --brand-text-light: #8b94a3;
+    --brand-bg-white: #ffffff;
     --brand-bg-offwhite: #fdfdfb;
+    --brand-border: #c5cad1;
 }}
 ```
 
-CRITICAL: Generate the COMPLETE HTML file including all CSS and JavaScript. Do not use placeholders.
+## QUALITY CRITERIA CHECKLIST
+Your output MUST satisfy ALL of these:
+
+- [ ] Form-based calculator with checkboxes for T4b/T4a features
+- [ ] Number inputs for tumor size and node measurements
+- [ ] Automatic stage calculation (user inputs findings, system determines T/N)
+- [ ] Results include detailed REASONING for each stage
+- [ ] Clinical implications section in results
+- [ ] Separate Reference Section (not mixed with calculator)
+- [ ] At least 2 mnemonics for staging criteria
+- [ ] Size cutoff reference table
+- [ ] At least 6 imaging tips in card format
+- [ ] At least 6 numbered common pitfalls with explanations
+- [ ] 8-step systematic reading approach
+- [ ] Reset functionality
+- [ ] Calculate button
+- [ ] Mobile-responsive design
+- [ ] Complete CSS included (no external stylesheets)
+- [ ] Complete JavaScript included (no external scripts)
+- [ ] HTML file should be 1500+ lines to ensure comprehensive coverage
+
+## CANCER-SPECIFIC INFORMATION
 
 Cancer: {cancer_name}
 Body Section: {body_section}
 Staging System: {staging_system}
 {special_notes}
 
-Generate the complete HTML now:"""
+## OUTPUT
+
+Generate the COMPLETE HTML file now. Do not use placeholders. Include ALL CSS and JavaScript inline.
+The file must be comprehensive (1500+ lines) with form-based calculator AND reference section."""
 
 
 ALGORITHM_DISCUSSION_PROMPT = """You are an expert radiologist creating educational content for FRCR radiology trainees.
@@ -175,7 +412,8 @@ def generate_calculator_html(
 
     response = client.messages.create(
         model=get_claude_model(),
-        max_tokens=16000,
+        max_tokens=20000,
+        temperature=0.3,
         messages=[
             {
                 "role": "user",
@@ -228,7 +466,8 @@ def generate_algorithm_discussion(
 
     response = client.messages.create(
         model=get_claude_model(),
-        max_tokens=12000,
+        max_tokens=15000,
+        temperature=0.3,
         messages=[
             {
                 "role": "user",
@@ -322,6 +561,16 @@ def generate_and_save_tnm_content(
             staging_system=staging_system,
             special_notes=special_notes
         )
+
+        # Validate quality
+        passed, issues = validate_calculator_quality(calculator_html)
+        if not passed:
+            logger.warning(f"[TNM Generator] Quality validation issues for {cancer_name}:")
+            for issue in issues:
+                logger.warning(f"  - {issue}")
+            # Continue anyway but log warnings - could add flag to fail on validation issues
+        else:
+            logger.info(f"[TNM Generator] Quality validation passed for {cancer_name}")
 
         # Generate algorithm discussion
         algorithm_html = generate_algorithm_discussion(

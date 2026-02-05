@@ -2,7 +2,7 @@
 
 > **Last Updated:** February 5, 2026
 > **Status:** Active Development
-> **Total Plans:** 11 Feature Areas
+> **Total Plans:** 12 Feature Areas
 
 ---
 
@@ -27,6 +27,7 @@ This document serves as the master index for all planned features and enhancemen
 | 9 | R2 Migration and Viewer Upgrade | Medium-High | High | Planned |
 | 10 | Railway Migration | Low | High | Ready (Documented) |
 | 11 | AI Reporting Assistant | Medium-High | Very High | Planned |
+| 12 | TNM Prompt Engineering | Medium | High | Ready to Implement |
 
 ---
 
@@ -440,6 +441,47 @@ CT, MRI, X-ray, Ultrasound, Nuclear Medicine, CBCT, PET
 
 ---
 
+## Plan 12: TNM Prompt Engineering (Quality Improvement)
+
+**Priority:** 12 (Quality Improvement)
+**Complexity:** Medium
+**Estimated Effort:** 1-2 days
+**Dependencies:** None
+**Status:** Ready to Implement
+
+### Summary
+Fix the TNM calculator AI generation workflow to consistently produce oropharyngeal-quality calculators. The current prompt produces inferior results (larynx: 741 lines) compared to the gold standard (oropharynx: 1916 lines) because it lacks concrete examples, describes the wrong architecture, and has no quality criteria.
+
+### Root Cause
+- Prompt says "based on oropharynx" but provides NO actual example
+- Describes "expandable cards" instead of form-based calculator + reference guide
+- No automatic stage calculation (user manually selects T/N/M)
+- No reasoning output explaining WHY each stage
+- No quality criteria checklist
+
+### Key Deliverables
+- Replace `CALCULATOR_HTML_PROMPT` with comprehensive prompt including HTML excerpts
+- Add `temperature=0.3` and increase `max_tokens` to 20000
+- Add `validate_calculator_quality()` function
+- Expand `DISEASE_DEFAULTS` with detailed guidance for each cancer
+
+### Quality Criteria for Generated Calculators
+- Form-based inputs (checkboxes, number inputs)
+- Automatic stage calculation from findings
+- Detailed reasoning in results
+- 2+ mnemonics, 6+ imaging tips, 6+ pitfalls
+- 8-step systematic reading approach
+- 1500+ lines of HTML
+
+### Files Affected
+- `tnm_calculator/tnm_generator.py` (prompt, API params, validation)
+- `scripts/generate_tnm_calculator.py` (disease defaults)
+
+### Plan Document
+📄 **Location:** [docs/plans/TNM_PROMPT_ENGINEERING_PLAN.md](TNM_PROMPT_ENGINEERING_PLAN.md)
+
+---
+
 ## Implementation Roadmap
 
 ```
@@ -506,6 +548,7 @@ Phase 4: AI Transformation (Week 10-20)
 | R2 Migration and Viewer Upgrade | - | `docs/plans/R2_MIGRATION_AND_VIEWER_UPGRADE_PLAN.md` |
 | Railway Migration | - | `docs/plans/RAILWAY_MIGRATION_PLAN.md` |
 | AI Reporting Assistant | - | `docs/plans/AI_REPORTING_ASSISTANT_PLAN.md` |
+| TNM Prompt Engineering | - | `docs/plans/TNM_PROMPT_ENGINEERING_PLAN.md` |
 
 ---
 
@@ -529,4 +572,5 @@ Phase 4: AI Transformation (Week 10-20)
 | 2026-02-02 | Added R2 Migration and Viewer Upgrade plan (Plan 9); no migration script, admin UI only | AI Assistant |
 | 2026-02-05 | Added Railway Migration plan (Plan 10); migrate from Vercel to Railway for better timeouts/cron | AI Assistant |
 | 2026-02-05 | Added AI Reporting Assistant plan (Plan 11); diagnosis-agnostic algorithmic pathway generator | AI Assistant |
+| 2026-02-05 | Added TNM Prompt Engineering plan (Plan 12); fix AI workflow to produce oropharynx-quality calculators | AI Assistant |
 

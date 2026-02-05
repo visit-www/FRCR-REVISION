@@ -31,56 +31,448 @@ load_dotenv(project_root / '.env')
 # Neon connection string (production DB)
 NEON_URL = "postgresql://neondb_owner:npg_DsKL8RFtw2zI@ep-frosty-sound-ahg70oqy-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require"
 
-# Disease-specific defaults (same as in edit_case.html)
+# Disease-specific defaults with comprehensive prompt guidance
+# Each disease needs detailed notes specifying T4b/T4a criteria, mnemonics, and disease-specific features
 DISEASE_DEFAULTS = {
     'oropharynx': {
         'features': ['HPV+ Staging', 'HPV- Staging', 'ENE Criteria'],
-        'notes': 'Include both HPV-positive (p16+) and HPV-negative staging pathways. HPV+ has different N staging with better prognosis.',
+        'notes': '''CRITICAL OROPHARYNX-SPECIFIC REQUIREMENTS:
+
+1. HPV STATUS SELECTOR: First input must be HPV status (Positive/Negative/Unknown)
+   - HPV+ and HPV- have COMPLETELY DIFFERENT N staging systems
+   - Show/hide relevant fields based on HPV status selection
+
+2. T4b FEATURES (use checkboxes, any = T4b):
+   - Prevertebral fascia invasion
+   - Carotid artery encasement (>270 degrees)
+   - Skull base invasion (clivus, pterygoid plates)
+   - Mediastinal extension
+   Mnemonic suggestion: "PACE" (Prevertebral, Artery, Cranium/skull base, Extension to mediastinum)
+
+3. T4a FEATURES (use checkboxes, any = T4a):
+   - Larynx invasion (epiglottis, arytenoids, cartilage)
+   - Extrinsic tongue muscles (genioglossus, hyoglossus, styloglossus, palatoglossus)
+   - Medial pterygoid muscle
+   - Hard palate
+   - Mandible
+   Mnemonic suggestion: "HELP-M" (Hard palate, Extrinsic tongue, Larynx, Pterygoid medial, Mandible)
+
+4. SIZE CUTOFFS:
+   - T1: ≤2 cm
+   - T2: >2 cm to ≤4 cm
+   - T3: >4 cm OR lingual surface of epiglottis (HPV- only)
+
+5. N STAGING - HPV-POSITIVE (simpler):
+   - N0: No nodes
+   - N1: Ipsilateral nodes, all ≤6 cm
+   - N2: Bilateral or contralateral nodes, any >3cm but all <6 cm
+   - N3: Any node >6 cm
+   Note: ENE does NOT change imaging N stage for HPV+
+
+6. N STAGING - HPV-NEGATIVE (complex):
+   - N1: Single ipsilateral ≤3 cm, no ENE
+   - N2a: Single ipsilateral >3 to 6 cm, no ENE
+   - N2b: Multiple ipsilateral, all <6 cm, no ENE
+   - N2c: Bilateral or contralateral, all <6 cm, no ENE
+   - N3a: Any node with clinical ENE
+   - N3b: Any node >6 cm
+
+7. Inputs needed: tumor size (cm), largest node size (cm), ipsilateral node count, contralateral node count, ENE checkbox
+
+8. PITFALLS to include:
+   - Overcalling carotid encasement (≤270° is NOT T4b)
+   - Confusing intrinsic vs extrinsic tongue muscles (only extrinsic = T4a)
+   - Missing retropharyngeal nodes
+   - Not confirming HPV status before staging''',
         'description': 'HPV+ and HPV- staging with detailed criteria'
     },
     'larynx': {
         'features': ['Subsites', 'Cartilage Invasion', 'Voice Preservation'],
-        'notes': 'Cover all subsites: Glottis, Supraglottis, Subglottis. Emphasize cartilage invasion criteria (T3 vs T4).',
-        'description': 'Glottic, supraglottic, and subglottic subsites'
+        'notes': '''CRITICAL LARYNX-SPECIFIC REQUIREMENTS:
+
+1. SUBSITE SELECTOR: First input should be subsite (Glottis/Supraglottis/Subglottis)
+   - Different T staging criteria for each subsite
+   - Show/hide relevant criteria based on subsite
+
+2. T4b FEATURES (use checkboxes, any = T4b):
+   - Prevertebral fascia invasion
+   - Carotid artery encasement (>270 degrees)
+   - Mediastinal structure involvement
+   Mnemonic suggestion: "PACE" (Prevertebral, Artery encasement, Central mediastinal, Extensive soft tissue)
+
+3. T4a FEATURES (use checkboxes, any = T4a):
+   - Through OUTER cortex of thyroid cartilage (complete breakthrough)
+   - Trachea invasion
+   - Soft tissues of neck (beyond strap muscles)
+   - Deep extrinsic tongue muscles
+   - Strap muscles
+   - Thyroid gland invasion
+   - Esophagus invasion
+   Mnemonic suggestion: "TESTS-ET" (Through cartilage, Esophagus, Soft tissues, Trachea, Strap muscles, Extrinsic Tongue, Thyroid)
+
+4. T3 KEY CRITERIA (critical distinction from T2):
+   - Vocal cord FIXATION (not just impaired mobility!)
+   - Paraglottic space invasion
+   - Inner cortex of thyroid cartilage ONLY (not through outer)
+   - For Supraglottis: Pre-epiglottic space invasion
+
+5. T2 vs T3 CRITICAL DISTINCTION:
+   - T2 = Extension to adjacent subsites WITH normal OR impaired mobility
+   - T3 = Vocal cord FIXATION (complete loss of movement)
+   - IMPAIRED ≠ FIXED - This is a common pitfall
+
+6. T1 GLOTTIC SUBCATEGORIES:
+   - T1a: Limited to ONE vocal cord (may include anterior/posterior commissure with normal mobility)
+   - T1b: Involves BOTH vocal cords
+
+7. Size cutoffs for supraglottic/subglottic (not glottic):
+   - T1: Limited to one subsite with normal mobility
+   - T2: Extends to adjacent subsites with normal/impaired mobility
+   - T3: Fixation or paraglottic space or inner cortex
+
+8. CARTILAGE INVASION DECISION TREE:
+   - Inner cortex erosion only = T3
+   - Through outer cortex (complete breakthrough) = T4a
+   - Include imaging tip: CT bone windows vs MRI for cartilage assessment
+
+9. N STAGING (same as other head and neck):
+   - Include size thresholds and laterality
+   - ENE criteria
+
+10. VOICE PRESERVATION notes in clinical implications:
+    - T1-T2: Voice-preserving options (radiation, laser resection)
+    - T3: Consider organ preservation protocols
+    - T4: Likely requires total laryngectomy
+
+11. PITFALLS to include:
+    - Confusing impaired mobility with fixation (T2 vs T3)
+    - Inner cortex vs outer cortex cartilage invasion (T3 vs T4a)
+    - Missing paraglottic space invasion
+    - Not specifying subsite''',
+        'description': 'Glottic, supraglottic, and subglottic subsites with cartilage invasion criteria'
     },
     'breast': {
         'features': ['Prognostic Staging', 'Biomarkers', 'Oncotype DX'],
-        'notes': 'Include BOTH anatomic staging AND prognostic staging. Prognostic staging requires Grade, ER, PR, HER2.',
+        'notes': '''CRITICAL BREAST-SPECIFIC REQUIREMENTS:
+
+1. INCLUDE BOTH STAGING SYSTEMS:
+   - Anatomic staging (T, N, M only)
+   - Prognostic staging (requires biomarkers)
+
+2. T STAGING BY SIZE (use number input):
+   - Tis: Carcinoma in situ
+   - T1mi: ≤1 mm
+   - T1a: >1 mm to ≤5 mm
+   - T1b: >5 mm to ≤10 mm
+   - T1c: >10 mm to ≤20 mm
+   - T2: >20 mm to ≤50 mm
+   - T3: >50 mm
+
+3. T4 FEATURES (use checkboxes):
+   - T4a: Chest wall invasion (not pectoralis muscle alone)
+   - T4b: Skin involvement (ulceration, satellite nodules, edema/peau d'orange)
+   - T4c: Both T4a and T4b
+   - T4d: Inflammatory breast cancer
+
+4. N STAGING:
+   - N1: 1-3 axillary nodes
+   - N2: 4-9 axillary nodes OR internal mammary without axillary
+   - N3: ≥10 axillary OR infraclavicular OR supraclavicular OR internal mammary with axillary
+
+5. PROGNOSTIC STAGING requires:
+   - Tumor grade (1-3) selector
+   - ER status (Positive/Negative)
+   - PR status (Positive/Negative)
+   - HER2 status (Positive/Negative)
+   Note: These change the final stage group!
+
+6. Include note about Oncotype DX for ER+/HER2- tumors
+
+7. IMAGING TIPS:
+   - Chest wall = ribs and intercostal muscles (NOT pectoralis alone)
+   - Peau d'orange vs inflammatory cancer
+   - Axillary node morphology criteria''',
         'description': 'Anatomic and prognostic staging with biomarkers'
     },
     'lung': {
         'features': ['Size Cutoffs', 'Pleural Invasion', 'Separate Nodules'],
-        'notes': 'Emphasize T size cutoffs: ≤1cm, >1-2cm, >2-3cm, etc. Include visceral pleura invasion.',
+        'notes': '''CRITICAL LUNG (NSCLC)-SPECIFIC REQUIREMENTS:
+
+1. T STAGING - SIZE IS CRITICAL (use number input):
+   - T1a: ≤1 cm
+   - T1b: >1 cm to ≤2 cm
+   - T1c: >2 cm to ≤3 cm
+   - T2a: >3 cm to ≤4 cm
+   - T2b: >4 cm to ≤5 cm
+   - T3: >5 cm to ≤7 cm
+   - T4: >7 cm
+
+2. T2 FEATURES (any of these, regardless of size up to 5cm):
+   - Main bronchus involvement (regardless of distance from carina)
+   - Visceral pleura invasion
+   - Atelectasis/obstructive pneumonitis extending to hilum
+
+3. T3 FEATURES (checkboxes):
+   - Chest wall invasion (including superior sulcus)
+   - Phrenic nerve involvement
+   - Parietal pericardium invasion
+   - Separate nodule in same lobe
+
+4. T4 FEATURES (checkboxes):
+   - Mediastinum invasion
+   - Heart/great vessels invasion
+   - Trachea/carina invasion
+   - Recurrent laryngeal nerve
+   - Esophagus
+   - Vertebral body
+   - Separate nodule in DIFFERENT ipsilateral lobe
+
+5. N STAGING:
+   - N1: Ipsilateral peribronchial and/or hilar nodes
+   - N2: Ipsilateral mediastinal and/or subcarinal nodes
+   - N3: Contralateral mediastinal/hilar, scalene, supraclavicular
+
+6. M1 subcategories:
+   - M1a: Separate tumor in contralateral lung, pleural nodules, malignant effusion
+   - M1b: Single extrathoracic metastasis
+   - M1c: Multiple extrathoracic metastases
+
+7. IMAGING TIPS:
+   - Visceral pleura invasion signs on CT
+   - Chest wall invasion assessment
+   - Mediastinal fat plane preservation
+
+8. PITFALLS:
+   - Not measuring longest dimension
+   - Missing pleural invasion (look for pleural tag sign)
+   - Confusing atelectasis with tumor''',
         'description': 'NSCLC staging with detailed size criteria'
     },
     'cervix-uteri': {
         'features': ['FIGO 2018', 'Nodal Staging', 'Parametrium'],
-        'notes': 'FIGO 2018 staging includes imaging and pathology. Lymph node status incorporated (IIIC1/IIIC2).',
+        'notes': '''CRITICAL CERVIX-SPECIFIC REQUIREMENTS:
+
+1. USE FIGO 2018 STAGING (not pure AJCC):
+   - Lymph node status is now incorporated
+   - Imaging findings matter for staging
+
+2. STAGE I: Confined to cervix
+   - IA: Microscopic only (depth ≤5mm)
+   - IB1: ≥5mm depth or ≥2cm, <2cm greatest dimension
+   - IB2: ≥2cm to <4cm
+   - IB3: ≥4cm
+
+3. STAGE II: Beyond cervix, not to pelvic wall
+   - IIA: Upper 2/3 vagina, no parametrium
+   - IIB: Parametrial invasion
+
+4. STAGE III: Extension to pelvic wall or lower vagina OR hydronephrosis OR nodes
+   - IIIA: Lower 1/3 vagina
+   - IIIB: Pelvic wall extension or hydronephrosis
+   - IIIC1: Pelvic lymph node metastasis
+   - IIIC2: Para-aortic lymph node metastasis
+
+5. STAGE IV:
+   - IVA: Bladder/rectal mucosa invasion
+   - IVB: Distant metastasis
+
+6. KEY INPUTS:
+   - Tumor size (cm)
+   - Parametrial invasion checkbox
+   - Vaginal extension (upper 2/3 vs lower 1/3)
+   - Pelvic sidewall extension checkbox
+   - Hydronephrosis checkbox
+   - Pelvic node involvement checkbox
+   - Para-aortic node involvement checkbox
+   - Bladder/rectal invasion checkbox
+
+7. IMAGING TIPS:
+   - Parametrial invasion assessment on MRI
+   - Look for ureteral obstruction
+   - T2W for tumor visualization''',
         'description': 'FIGO 2018 staging with nodal incorporation'
     },
     'prostate': {
         'features': ['PSA', 'Gleason Score', 'Grade Groups'],
-        'notes': 'Include PSA levels, Gleason score and ISUP Grade Groups (1-5). Extraprostatic extension criteria.',
+        'notes': '''CRITICAL PROSTATE-SPECIFIC REQUIREMENTS:
+
+1. T STAGING:
+   - T1: Clinically inapparent (incidental)
+   - T2a: ≤50% of one lobe
+   - T2b: >50% of one lobe
+   - T2c: Both lobes
+   - T3a: Extraprostatic extension
+   - T3b: Seminal vesicle invasion
+   - T4: Bladder, rectum, pelvic wall, levator muscles
+
+2. INCLUDE GRADE GROUP SELECTOR (ISUP):
+   - Grade Group 1: Gleason ≤6
+   - Grade Group 2: Gleason 3+4=7
+   - Grade Group 3: Gleason 4+3=7
+   - Grade Group 4: Gleason 8
+   - Grade Group 5: Gleason 9-10
+
+3. PSA LEVELS affect risk stratification:
+   - <10 ng/mL
+   - 10-20 ng/mL
+   - >20 ng/mL
+
+4. N STAGING:
+   - N0: No regional nodes
+   - N1: Regional node metastasis
+
+5. IMAGING TIPS:
+   - Extraprostatic extension on MRI
+   - Seminal vesicle invasion signs
+   - Bone scan for M staging''',
         'description': 'Prostate staging with Grade Groups'
     },
     'colon-and-rectum': {
         'features': ['Tumor Deposits', 'Circumferential Margin', 'MSI Status'],
-        'notes': 'Include tumor deposits concept. Emphasize circumferential resection margin for rectal cancer.',
+        'notes': '''CRITICAL COLORECTAL-SPECIFIC REQUIREMENTS:
+
+1. T STAGING:
+   - Tis: Carcinoma in situ
+   - T1: Submucosa invasion
+   - T2: Muscularis propria invasion
+   - T3: Through muscularis propria into pericolorectal tissues
+   - T4a: Visceral peritoneum invasion
+   - T4b: Adjacent organ/structure invasion
+
+2. N STAGING (includes tumor deposits):
+   - N1a: 1 regional node
+   - N1b: 2-3 regional nodes
+   - N1c: Tumor deposits WITHOUT nodal metastasis
+   - N2a: 4-6 regional nodes
+   - N2b: ≥7 regional nodes
+
+3. TUMOR DEPOSITS DEFINITION:
+   - Discrete tumor foci in pericolic/perirectal fat
+   - No residual lymph node tissue
+   - If identifiable node present = nodal metastasis
+
+4. FOR RECTAL CANCER:
+   - Circumferential resection margin (CRM) assessment
+   - Distance from mesorectal fascia on MRI
+   - Extramural vascular invasion (EMVI)
+
+5. IMAGING TIPS:
+   - T3 substaging by depth of invasion
+   - Peritoneal reflection location
+   - EMVI detection on MRI''',
         'description': 'Colorectal staging with tumor deposits criteria'
     },
     'kidney': {
         'features': ['Size', 'Renal Vein', 'IVC Thrombus'],
-        'notes': 'Size cutoffs: ≤4cm (T1a), >4-7cm (T1b), etc. Renal vein and IVC thrombus levels.',
+        'notes': '''CRITICAL RENAL CELL CARCINOMA-SPECIFIC REQUIREMENTS:
+
+1. T STAGING BY SIZE:
+   - T1a: ≤4 cm, limited to kidney
+   - T1b: >4 cm to ≤7 cm, limited to kidney
+   - T2a: >7 cm to ≤10 cm, limited to kidney
+   - T2b: >10 cm, limited to kidney
+
+2. T3 (VASCULAR/FAT INVASION):
+   - T3a: Renal vein or perinephric fat (not beyond Gerota's fascia)
+   - T3b: Tumor thrombus extending into IVC below diaphragm
+   - T3c: Tumor thrombus extending into IVC above diaphragm or IVC wall invasion
+
+3. T4 FEATURES:
+   - Beyond Gerota's fascia
+   - Adrenal gland involvement (direct extension)
+
+4. IVC THROMBUS LEVELS:
+   - Level 0: Renal vein only
+   - Level I: IVC <2cm above renal vein
+   - Level II: IVC below hepatic veins
+   - Level III: IVC within hepatic veins (intrahepatic)
+   - Level IV: IVC above diaphragm
+
+5. N STAGING:
+   - N0: No regional nodes
+   - N1: Regional node metastasis
+
+6. IMAGING TIPS:
+   - Renal vein thrombus vs bland thrombus
+   - IVC thrombus extent on coronal imaging
+   - Gerota's fascia assessment''',
         'description': 'RCC staging with vascular invasion levels'
     },
     'melanoma': {
         'features': ['Breslow Depth', 'Ulceration', 'Mitotic Rate'],
-        'notes': 'Include Breslow depth thresholds. Ulceration as adverse feature. Satellite/in-transit metastases.',
+        'notes': '''CRITICAL MELANOMA-SPECIFIC REQUIREMENTS:
+
+1. T STAGING BY BRESLOW DEPTH:
+   - T1: ≤1.0 mm
+     - T1a: <0.8 mm without ulceration
+     - T1b: <0.8 mm with ulceration OR 0.8-1.0 mm
+   - T2: >1.0 to ≤2.0 mm
+     - T2a: Without ulceration
+     - T2b: With ulceration
+   - T3: >2.0 to ≤4.0 mm
+     - T3a/T3b: Based on ulceration
+   - T4: >4.0 mm
+     - T4a/T4b: Based on ulceration
+
+2. INCLUDE ULCERATION CHECKBOX:
+   - Ulceration upstages within each T category
+
+3. N STAGING:
+   - N1: 1 node
+   - N2: 2-3 nodes OR in-transit/satellite metastases
+   - N3: ≥4 nodes OR in-transit with nodal metastases
+
+4. Satellite metastases: Within 2cm of primary
+   In-transit metastases: >2cm from primary but before regional nodes
+
+5. M STAGING:
+   - M1a: Distant skin, soft tissue, or distant lymph nodes
+   - M1b: Lung
+   - M1c: Non-CNS visceral sites
+   - M1d: CNS
+
+6. Note about LDH elevation as prognostic factor''',
         'description': 'Melanoma staging with Breslow depth'
     },
     'thyroid': {
         'features': ['Age Factor', 'Histology Variants', 'Anaplastic'],
-        'notes': 'Differentiated (papillary/follicular): age <55 has only Stage I/II. Anaplastic: all T4.',
+        'notes': '''CRITICAL THYROID-SPECIFIC REQUIREMENTS:
+
+1. AGE-DEPENDENT STAGING (for differentiated thyroid cancer):
+   - Age <55: Only Stage I and Stage II exist
+     - Stage I: Any T, any N, M0
+     - Stage II: Any T, any N, M1
+   - Age ≥55: Full staging system applies
+
+2. T STAGING:
+   - T1: ≤2 cm, limited to thyroid
+     - T1a: ≤1 cm
+     - T1b: >1 cm to ≤2 cm
+   - T2: >2 cm to ≤4 cm, limited to thyroid
+   - T3a: >4 cm, limited to thyroid
+   - T3b: Any size with gross extrathyroidal extension into strap muscles
+   - T4a: Gross extension into subcutaneous soft tissues, larynx, trachea, esophagus, or recurrent laryngeal nerve
+   - T4b: Gross extension into prevertebral fascia, encasing carotid artery, or mediastinal vessels
+
+3. FOR ANAPLASTIC CARCINOMA:
+   - All anaplastic = T4
+   - T4a: Intrathyroidal
+   - T4b: Gross extrathyroidal extension
+
+4. INCLUDE:
+   - Age input (critical!)
+   - Histology selector (Differentiated vs Anaplastic)
+   - Size input
+   - Extrathyroidal extension checkboxes
+
+5. N STAGING:
+   - N1a: Level VI nodes (pretracheal, paratracheal, prelaryngeal)
+   - N1b: Other cervical or retropharyngeal nodes
+
+6. IMAGING TIPS:
+   - Strap muscle invasion vs abutment
+   - Tracheal invasion assessment
+   - Central vs lateral neck nodes''',
         'description': 'Age-based staging with histology variants'
     },
 }
