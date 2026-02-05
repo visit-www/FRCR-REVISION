@@ -2,22 +2,14 @@
   "version": 2,
   "functions": {
     "api/index.py": {
-      "maxDuration": 60
+      "maxDuration": 60,
+      "memory": 1024
     }
   },
   "crons": [
     {
       "path": "/api/cron/process-tnm-jobs",
       "schedule": "0 0 * * *"
-    }
-  ],
-  "builds": [
-    {
-      "src": "api/index.py",
-      "use": "@vercel/python",
-      "config": {
-        "maxLambdaSize": "50mb"
-      }
     }
   ],
   "rewrites": [
