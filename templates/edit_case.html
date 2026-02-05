@@ -5894,18 +5894,28 @@ async function proceedWithGeneration(slug, cancerName, bodySection, stagingSyste
     const statusDiv = document.getElementById('genStatus');
     const generateBtn = document.getElementById('genGenerateBtn');
 
-    // Show loading state
+    // Show loading state with timer
     statusDiv.style.display = 'block';
     statusDiv.className = 'tnm-gen-status status-loading';
-    statusDiv.innerHTML = `
-        <i class="fas fa-spinner fa-spin me-2"></i>
-        <strong>Generating with Claude AI...</strong>
-        <div style="margin-top: 0.5rem; font-size: 0.85rem; opacity: 0.8;">
-            This takes 30-60 seconds. Please wait...
-        </div>
-    `;
     generateBtn.disabled = true;
     generateBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Generating...';
+
+    // Start elapsed time counter
+    let elapsedSeconds = 0;
+    const updateTimer = () => {
+        elapsedSeconds++;
+        const timerSpan = document.getElementById('genElapsedTime');
+        if (timerSpan) timerSpan.textContent = elapsedSeconds;
+    };
+    const timerInterval = setInterval(updateTimer, 1000);
+
+    statusDiv.innerHTML = `
+        <i class="fas fa-spinner fa-spin me-2"></i>
+        <strong>Generating with Claude AI...</strong> <span id="genElapsedTime">0</span>s
+        <div style="margin-top: 0.5rem; font-size: 0.85rem; opacity: 0.8;">
+            Typically takes 30-60 seconds. Max timeout: 60s.
+        </div>
+    `;
 
     // Build request payload
     const payload = {
@@ -5919,13 +5929,21 @@ async function proceedWithGeneration(slug, cancerName, bodySection, stagingSyste
         overwrite
     };
 
+    // Create AbortController for client-side timeout (70s to allow server 60s + network)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 70000);
+
     try {
-        // Call direct generation endpoint (60s timeout configured in vercel.json)
+        // Call direct generation endpoint
         const response = await fetch('/api/admin/tnm/generate', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
+            body: JSON.stringify(payload),
+            signal: controller.signal
         });
+
+        clearTimeout(timeoutId);
+        clearInterval(timerInterval);
 
         const result = await response.json();
 
@@ -5955,19 +5973,25 @@ async function proceedWithGeneration(slug, cancerName, bodySection, stagingSyste
         generateBtn.innerHTML = '<i class="fas fa-magic me-1"></i>Generate with AI';
 
     } catch (error) {
+        clearTimeout(timeoutId);
+        clearInterval(timerInterval);
         console.error('TNM Generation error:', error);
+
+        const isTimeout = error.name === 'AbortError' || error.message.includes('timeout');
+        const errorMsg = isTimeout ? 'Request timed out (>60s)' : error.message;
+
         statusDiv.className = 'tnm-gen-status status-error';
         statusDiv.innerHTML = `
-            <i class="fas fa-exclamation-circle me-2"></i><strong>Error:</strong> ${error.message}
+            <i class="fas fa-exclamation-circle me-2"></i><strong>Error:</strong> ${errorMsg}
             <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid rgba(255,255,255,0.2);">
-                <strong>Timeout?</strong> Try running locally:
+                <strong>${isTimeout ? 'Server timeout.' : 'Failed?'}</strong> Run locally instead:
                 <div style="margin-top: 0.5rem; font-family: monospace; font-size: 0.8rem; background: rgba(0,0,0,0.2); padding: 0.5rem; border-radius: 4px; word-break: break-all;">
                     python scripts/generate_tnm_calculator.py ${slug} "${cancerName}" "${bodySection}"
                 </div>
                 <small style="opacity: 0.8;">Run in local terminal - generates HTML + syncs to Neon</small>
             </div>
         `;
-        showFlash('Error generating TNM content', 'danger');
+        showFlash(isTimeout ? 'Generation timed out - try running locally' : 'Error generating TNM content', 'danger');
         generateBtn.disabled = false;
         generateBtn.innerHTML = '<i class="fas fa-magic me-1"></i>Generate with AI';
     }
