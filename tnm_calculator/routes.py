@@ -9,12 +9,38 @@ from flask import Blueprint, render_template, request, jsonify, redirect, url_fo
 import logging
 import os
 import json
+import re
 from pathlib import Path
 
 from .engine import TNMCalculator
 from .models import TNMInput, StagingType
 
 logger = logging.getLogger(__name__)
+
+
+def extract_calculator_content(full_html: str) -> dict:
+    """
+    Extract the body content and styles from a full HTML calculator document.
+
+    When embedding a self-contained calculator HTML into the app's base template,
+    we need to extract just the styles and body content, not the full HTML structure.
+
+    Returns:
+        dict with 'styles' and 'body' keys
+    """
+    result = {'styles': '', 'body': full_html}
+
+    # Extract <style> content
+    style_match = re.search(r'<style[^>]*>(.*?)</style>', full_html, re.DOTALL | re.IGNORECASE)
+    if style_match:
+        result['styles'] = style_match.group(1)
+
+    # Extract <body> content
+    body_match = re.search(r'<body[^>]*>(.*?)</body>', full_html, re.DOTALL | re.IGNORECASE)
+    if body_match:
+        result['body'] = body_match.group(1)
+
+    return result
 
 # Create blueprint - using main app templates folder for v3 templates
 tnm_calc_bp = Blueprint(
@@ -236,10 +262,14 @@ def calculator(disease: str):
             logger.error(f"[TNM Calculator] Error loading calculator {disease}: {e}")
             return redirect(url_for('tnm_calculator.index'))
 
+    # Extract styles and body content from full HTML (removes DOCTYPE, html, head, body tags)
+    content = extract_calculator_content(calculator_html)
+
     return render_template(
         'tnm_calculator_v3/calculator_wrapper.html',
         disease_name=disease_name,
-        calculator_html=calculator_html,
+        calculator_styles=content['styles'],
+        calculator_body=content['body'],
         embed_mode=False
     )
 
@@ -275,6 +305,8 @@ def embed(disease: str):
             logger.error(f"[TNM Calculator] Error loading embed calculator {disease}: {e}")
             return "Calculator error", 500
 
+    # For embed mode, we render the full HTML as a standalone document
+    # No need to extract - just pass the full HTML
     return render_template(
         'tnm_calculator_v3/calculator_wrapper.html',
         disease_name=disease_name,

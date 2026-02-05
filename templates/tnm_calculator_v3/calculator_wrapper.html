@@ -1,31 +1,6 @@
 {% if embed_mode %}
-{# Embed mode: minimal wrapper for iframe embedding in case discussion #}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ disease_name }} - TNM Calculator</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        body {
-            background: #fdfdfb;
-            padding: 0;
-            margin: 0;
-        }
-        .embed-container {
-            padding: 15px;
-        }
-    </style>
-</head>
-<body>
-    <div class="embed-container">
-        {{ calculator_html | safe }}
-    </div>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
+{# Embed mode: render full HTML as standalone document for iframe #}
+{{ calculator_html | safe }}
 
 {% else %}
 {# Full mode: integrated with app base template #}
@@ -58,33 +33,21 @@
     </div>
 </div>
 
-<div class="calculator-integrated-wrapper">
-    {# Extract and render the calculator content #}
-    {{ calculator_html | safe }}
-</div>
-
+{# Inject calculator styles extracted from the HTML document #}
 <style>
-    /* Override calculator styles for app integration */
-    .calculator-integrated-wrapper {
-        /* Remove body padding from standalone calculator */
-    }
+    {{ calculator_styles | safe }}
 
-    .calculator-integrated-wrapper body {
-        padding: 0;
-        background: transparent;
-    }
-
-    /* Ensure calculator container uses app container */
+    /* Additional overrides for app integration */
     .calculator-integrated-wrapper .container {
         max-width: 1200px;
         margin: 0 auto;
         padding: 20px;
     }
-
-    /* Adjust header to match app style */
-    .calculator-integrated-wrapper .header {
-        margin-top: 0;
-    }
 </style>
+
+<div class="calculator-integrated-wrapper">
+    {# Render just the body content, not the full HTML document #}
+    {{ calculator_body | safe }}
+</div>
 {% endblock %}
 {% endif %}
