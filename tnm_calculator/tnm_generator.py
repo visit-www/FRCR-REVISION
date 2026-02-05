@@ -100,99 +100,188 @@ def extract_algorithm_from_calculator(calculator_html: str, cancer_name: str) ->
     Extract algorithm discussion HTML from calculator HTML.
 
     The calculator already contains mnemonics, imaging tips, pitfalls, and
-    systematic approach - we extract and reformat these sections instead of
-    making a second Claude API call.
+    systematic approach - we extract and reformat these sections with INLINE
+    STYLES so they look good when inserted into case discussion fields.
 
     Args:
         calculator_html: Complete calculator HTML content
         cancer_name: Name of the cancer for header
 
     Returns:
-        Formatted algorithm discussion HTML
+        Formatted algorithm discussion HTML with inline styles
     """
     import re
     from bs4 import BeautifulSoup
 
     soup = BeautifulSoup(calculator_html, 'html.parser')
 
-    sections = []
+    # Brand colors (inline - can't use CSS variables in discussion field)
+    PRIMARY = '#5E899E'
+    PRIMARY_DARK = '#4a7285'
+    BG_OFFWHITE = '#f8f9fa'
+    BORDER = '#e9ecef'
+    DANGER = '#dc3545'
 
-    # Extract mnemonics section
-    mnemonic_section = soup.find('div', class_='mnemonic-grid')
-    if not mnemonic_section:
-        mnemonic_section = soup.find(class_=re.compile(r'mnemonic'))
-    if mnemonic_section:
-        # Find parent reference-card if exists
-        parent = mnemonic_section.find_parent(class_='reference-card')
-        if parent:
-            sections.append(('Mnemonics', str(parent)))
-        else:
-            sections.append(('Mnemonics', f'<div class="algorithm-section">{mnemonic_section}</div>'))
+    # Card base style
+    card_style = f"margin-bottom: 1.5rem; padding: 1.25rem; background: {BG_OFFWHITE}; border-radius: 10px; border: 1px solid {BORDER};"
+    subtitle_style = f"font-size: 1.1rem; color: #2c3e50; margin-bottom: 1rem; font-weight: 600; border-bottom: 2px solid {PRIMARY}; padding-bottom: 0.5rem;"
+    grid_style = "display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem;"
 
-    # Extract imaging tips section
-    tips_section = soup.find('div', class_='tips-grid')
-    if tips_section:
-        parent = tips_section.find_parent(class_='reference-card')
-        if parent:
-            sections.append(('Imaging Tips', str(parent)))
-        else:
-            sections.append(('Imaging Tips', f'<div class="algorithm-section">{tips_section}</div>'))
+    sections_html = []
 
-    # Extract pitfalls section
-    pitfall_section = soup.find('div', class_='pitfall-list')
-    if pitfall_section:
-        parent = pitfall_section.find_parent(class_='reference-card')
-        if parent:
-            sections.append(('Common Pitfalls', str(parent)))
-        else:
-            sections.append(('Common Pitfalls', f'<div class="algorithm-section">{pitfall_section}</div>'))
+    # Extract and style mnemonics
+    mnemonic_grid = soup.find('div', class_='mnemonic-grid')
+    if mnemonic_grid:
+        mnemonic_boxes = mnemonic_grid.find_all('div', class_='mnemonic-box')
+        if mnemonic_boxes:
+            boxes_html = []
+            for box in mnemonic_boxes:
+                h4 = box.find('h4')
+                title = h4.get_text(strip=True) if h4 else 'Mnemonic'
+                details = box.find_all('div', class_='mnemonic-detail')
+                details_html = []
+                for detail in details:
+                    letter_el = detail.find('div', class_='mnemonic-letter')
+                    letter = letter_el.get_text(strip=True) if letter_el else ''
+                    # Get text after the letter
+                    text = detail.get_text(strip=True).replace(letter, '', 1).strip()
+                    details_html.append(f'''
+                        <div style="display: flex; align-items: center; margin-bottom: 0.5rem; padding: 0.5rem; background: white; border-radius: 6px;">
+                            <div style="width: 28px; height: 28px; background: {PRIMARY}; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-right: 0.75rem; flex-shrink: 0; font-size: 0.9rem;">{letter}</div>
+                            <span style="color: #2c3e50;">{text}</span>
+                        </div>
+                    ''')
+                boxes_html.append(f'''
+                    <div style="background: white; padding: 1rem; border-radius: 8px; border: 2px solid {PRIMARY};">
+                        <h4 style="color: {PRIMARY}; margin: 0 0 0.75rem 0; font-size: 1rem; font-weight: 600;">{title}</h4>
+                        {''.join(details_html)}
+                    </div>
+                ''')
+            sections_html.append(f'''
+                <div style="{card_style}">
+                    <h4 style="{subtitle_style}"><i class="fas fa-brain" style="margin-right: 0.5rem; color: {PRIMARY};"></i>Memory Aids</h4>
+                    <div style="{grid_style}">{''.join(boxes_html)}</div>
+                </div>
+            ''')
 
-    # Extract systematic approach section
-    systematic_section = soup.find('div', class_='systematic-steps')
-    if systematic_section:
-        parent = systematic_section.find_parent(class_='reference-card')
-        if parent:
-            sections.append(('Systematic Approach', str(parent)))
-        else:
-            sections.append(('Systematic Approach', f'<div class="algorithm-section">{systematic_section}</div>'))
+    # Extract and style imaging tips
+    tips_grid = soup.find('div', class_='tips-grid')
+    if tips_grid:
+        tip_cards = tips_grid.find_all('div', class_='tip-card')
+        if tip_cards:
+            tips_html = []
+            for card in tip_cards:
+                h4 = card.find('h4')
+                title = h4.get_text(strip=True) if h4 else 'Tip'
+                # Get paragraph or tip-detail content
+                detail = card.find('div', class_='tip-detail') or card.find('p')
+                text = detail.get_text(strip=True) if detail else ''
+                tips_html.append(f'''
+                    <div style="background: white; padding: 1rem; border-radius: 8px; border: 1px solid {BORDER};">
+                        <h4 style="color: {PRIMARY}; margin: 0 0 0.5rem 0; font-size: 0.95rem; font-weight: 600;">{title}</h4>
+                        <p style="margin: 0; color: #495057; font-size: 0.9rem; line-height: 1.5;">{text}</p>
+                    </div>
+                ''')
+            sections_html.append(f'''
+                <div style="{card_style}">
+                    <h4 style="{subtitle_style}"><i class="fas fa-lightbulb" style="margin-right: 0.5rem; color: {PRIMARY};"></i>Imaging Tips</h4>
+                    <div style="{grid_style}">{''.join(tips_html)}</div>
+                </div>
+            ''')
 
-    # If we couldn't extract structured sections, try to get the entire reference section
-    if not sections:
-        reference_section = soup.find('div', class_='reference-section')
-        if reference_section:
-            sections.append(('Reference Guide', str(reference_section)))
+    # Extract and style pitfalls
+    pitfall_list = soup.find('div', class_='pitfall-list')
+    if pitfall_list:
+        pitfall_items = pitfall_list.find_all('div', class_='pitfall-item')
+        if pitfall_items:
+            pitfalls_html = []
+            for i, item in enumerate(pitfall_items, 1):
+                # Get text content, excluding the number
+                number_el = item.find('div', class_='pitfall-number')
+                text = item.get_text(strip=True)
+                if number_el:
+                    text = text.replace(number_el.get_text(strip=True), '', 1).strip()
+                pitfalls_html.append(f'''
+                    <div style="display: flex; align-items: flex-start; padding: 0.75rem; background: white; border-radius: 8px; border: 1px solid rgba(220, 53, 69, 0.2); margin-bottom: 0.5rem;">
+                        <div style="width: 26px; height: 26px; background: {DANGER}; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-right: 0.75rem; flex-shrink: 0; font-size: 0.85rem;">{i}</div>
+                        <span style="color: #2c3e50; line-height: 1.5;">{text}</span>
+                    </div>
+                ''')
+            sections_html.append(f'''
+                <div style="{card_style} background: rgba(220, 53, 69, 0.03); border-color: rgba(220, 53, 69, 0.15);">
+                    <h4 style="{subtitle_style} border-color: {DANGER};"><i class="fas fa-exclamation-triangle" style="margin-right: 0.5rem; color: {DANGER};"></i>Common Pitfalls</h4>
+                    {''.join(pitfalls_html)}
+                </div>
+            ''')
 
-    # Build the algorithm discussion HTML
-    if not sections:
+    # Extract and style systematic approach
+    systematic_steps = soup.find('div', class_='systematic-steps')
+    if systematic_steps:
+        step_items = systematic_steps.find_all('div', class_='step-item')
+        if step_items:
+            steps_html = []
+            for i, item in enumerate(step_items, 1):
+                h4 = item.find('h4')
+                title = h4.get_text(strip=True) if h4 else f'Step {i}'
+                # Get content after h4
+                content_parts = []
+                for child in item.children:
+                    if child.name and child.name != 'h4':
+                        content_parts.append(child.get_text(strip=True))
+                text = ' '.join(content_parts)
+                steps_html.append(f'''
+                    <div style="display: flex; align-items: flex-start; padding: 0.75rem; background: white; border-radius: 8px; border: 1px solid {BORDER}; margin-bottom: 0.5rem;">
+                        <div style="width: 26px; height: 26px; background: {PRIMARY}; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-right: 0.75rem; flex-shrink: 0; font-size: 0.85rem;">{i}</div>
+                        <div>
+                            <strong style="color: {PRIMARY};">{title}</strong>
+                            <p style="margin: 0.25rem 0 0 0; color: #495057; font-size: 0.9rem;">{text}</p>
+                        </div>
+                    </div>
+                ''')
+            sections_html.append(f'''
+                <div style="{card_style}">
+                    <h4 style="{subtitle_style}"><i class="fas fa-list-ol" style="margin-right: 0.5rem; color: {PRIMARY};"></i>Systematic Approach</h4>
+                    {''.join(steps_html)}
+                </div>
+            ''')
+
+    # Build the final HTML
+    slug = cancer_name.lower().replace(' ', '-').replace('(', '').replace(')', '')
+
+    if not sections_html:
         logger.warning(f"[TNM Generator] Could not extract algorithm sections from calculator for {cancer_name}")
-        # Return a minimal fallback
-        return f"""
-        <div class="tnm-algorithm-discussion">
-            <h3 style="color: #5E899E; margin-bottom: 1rem;">
-                <i class="fas fa-sitemap"></i> {cancer_name} Staging Algorithm
-            </h3>
-            <p>See the <a href="/tnm-calculator/{cancer_name.lower().replace(' ', '-')}" target="_blank">interactive TNM calculator</a> for detailed staging criteria, mnemonics, and imaging tips.</p>
+        # Return a styled fallback
+        return f'''
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 1rem 0;">
+            <div style="background: linear-gradient(135deg, {PRIMARY} 0%, {PRIMARY_DARK} 100%); color: white; padding: 1rem 1.25rem; border-radius: 8px;">
+                <h3 style="margin: 0; font-size: 1.1rem; font-weight: 600;">
+                    <i class="fas fa-sitemap" style="margin-right: 0.5rem;"></i>{cancer_name} Staging Algorithm
+                </h3>
+                <p style="margin: 0.75rem 0 0 0; opacity: 0.9;">See the <a href="/tnm-calculator/{slug}" target="_blank" style="color: white; text-decoration: underline;">interactive TNM calculator</a> for detailed staging criteria, mnemonics, and imaging tips.</p>
+            </div>
         </div>
-        """
+        '''
 
-    # Build formatted output
-    html_parts = [
-        f'''<div class="tnm-algorithm-discussion" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-        <div style="background: linear-gradient(135deg, #5E899E 0%, #4a7285 100%); color: white; padding: 1rem 1.25rem; border-radius: 8px 8px 0 0; margin: -1rem -1rem 1rem -1rem;">
-            <h3 style="margin: 0; font-size: 1.1rem; font-weight: 600;">
+    # Header + sections + footer link
+    result = f'''
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 1rem 0;">
+        <div style="background: linear-gradient(135deg, {PRIMARY} 0%, {PRIMARY_DARK} 100%); color: white; padding: 1rem 1.25rem; border-radius: 8px 8px 0 0;">
+            <h3 style="margin: 0; font-size: 1.15rem; font-weight: 600;">
                 <i class="fas fa-sitemap" style="margin-right: 0.5rem;"></i>{cancer_name} Staging Algorithm
             </h3>
-        </div>'''
-    ]
+        </div>
+        <div style="background: white; border: 1px solid {BORDER}; border-top: none; border-radius: 0 0 8px 8px; padding: 1.25rem;">
+            {''.join(sections_html)}
+            <div style="text-align: center; padding-top: 0.5rem; border-top: 1px solid {BORDER}; margin-top: 0.5rem;">
+                <a href="/tnm-calculator/{slug}" target="_blank" style="color: {PRIMARY}; text-decoration: none; font-weight: 500; font-size: 0.9rem;">
+                    <i class="fas fa-calculator" style="margin-right: 0.5rem;"></i>Open Interactive Calculator
+                </a>
+            </div>
+        </div>
+    </div>
+    '''
 
-    for section_name, section_html in sections:
-        html_parts.append(section_html)
-
-    html_parts.append('</div>')
-
-    result = '\n'.join(html_parts)
     logger.info(f"[TNM Generator] Extracted algorithm from calculator for {cancer_name} ({len(result):,} chars)")
-
     return result
 
 
