@@ -198,7 +198,7 @@ def extract_algorithm_from_calculator(calculator_html: str, cancer_name: str) ->
 
 # ==================== PROMPTS ====================
 
-CALCULATOR_HTML_PROMPT = """You are an expert radiologist and oncologist creating an educational TNM staging calculator for FRCR radiology trainees preparing for their exams.
+CALCULATOR_HTML_PROMPT = """You are an experienced oncology radiologist creating a practical TNM staging calculator. Your role is to guide radiology registrars through staging scans as they encounter them in daily clinical practice - think of yourself as a senior consultant helping a registrar report a staging scan step-by-step. This should also serve FRCR exam preparation.
 
 Generate a COMPLETE, SELF-CONTAINED HTML file with TWO MAIN SECTIONS for {cancer_name} cancer staging.
 
