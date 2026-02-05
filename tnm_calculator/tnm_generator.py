@@ -95,6 +95,107 @@ def get_claude_model():
     return os.environ.get('CLAUDE_MODEL', 'claude-sonnet-4-20250514')
 
 
+def extract_algorithm_from_calculator(calculator_html: str, cancer_name: str) -> str:
+    """
+    Extract algorithm discussion HTML from calculator HTML.
+
+    The calculator already contains mnemonics, imaging tips, pitfalls, and
+    systematic approach - we extract and reformat these sections instead of
+    making a second Claude API call.
+
+    Args:
+        calculator_html: Complete calculator HTML content
+        cancer_name: Name of the cancer for header
+
+    Returns:
+        Formatted algorithm discussion HTML
+    """
+    import re
+    from bs4 import BeautifulSoup
+
+    soup = BeautifulSoup(calculator_html, 'html.parser')
+
+    sections = []
+
+    # Extract mnemonics section
+    mnemonic_section = soup.find('div', class_='mnemonic-grid')
+    if not mnemonic_section:
+        mnemonic_section = soup.find(class_=re.compile(r'mnemonic'))
+    if mnemonic_section:
+        # Find parent reference-card if exists
+        parent = mnemonic_section.find_parent(class_='reference-card')
+        if parent:
+            sections.append(('Mnemonics', str(parent)))
+        else:
+            sections.append(('Mnemonics', f'<div class="algorithm-section">{mnemonic_section}</div>'))
+
+    # Extract imaging tips section
+    tips_section = soup.find('div', class_='tips-grid')
+    if tips_section:
+        parent = tips_section.find_parent(class_='reference-card')
+        if parent:
+            sections.append(('Imaging Tips', str(parent)))
+        else:
+            sections.append(('Imaging Tips', f'<div class="algorithm-section">{tips_section}</div>'))
+
+    # Extract pitfalls section
+    pitfall_section = soup.find('div', class_='pitfall-list')
+    if pitfall_section:
+        parent = pitfall_section.find_parent(class_='reference-card')
+        if parent:
+            sections.append(('Common Pitfalls', str(parent)))
+        else:
+            sections.append(('Common Pitfalls', f'<div class="algorithm-section">{pitfall_section}</div>'))
+
+    # Extract systematic approach section
+    systematic_section = soup.find('div', class_='systematic-steps')
+    if systematic_section:
+        parent = systematic_section.find_parent(class_='reference-card')
+        if parent:
+            sections.append(('Systematic Approach', str(parent)))
+        else:
+            sections.append(('Systematic Approach', f'<div class="algorithm-section">{systematic_section}</div>'))
+
+    # If we couldn't extract structured sections, try to get the entire reference section
+    if not sections:
+        reference_section = soup.find('div', class_='reference-section')
+        if reference_section:
+            sections.append(('Reference Guide', str(reference_section)))
+
+    # Build the algorithm discussion HTML
+    if not sections:
+        logger.warning(f"[TNM Generator] Could not extract algorithm sections from calculator for {cancer_name}")
+        # Return a minimal fallback
+        return f"""
+        <div class="tnm-algorithm-discussion">
+            <h3 style="color: #5E899E; margin-bottom: 1rem;">
+                <i class="fas fa-sitemap"></i> {cancer_name} Staging Algorithm
+            </h3>
+            <p>See the <a href="/tnm-calculator/{cancer_name.lower().replace(' ', '-')}" target="_blank">interactive TNM calculator</a> for detailed staging criteria, mnemonics, and imaging tips.</p>
+        </div>
+        """
+
+    # Build formatted output
+    html_parts = [
+        f'''<div class="tnm-algorithm-discussion" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+        <div style="background: linear-gradient(135deg, #5E899E 0%, #4a7285 100%); color: white; padding: 1rem 1.25rem; border-radius: 8px 8px 0 0; margin: -1rem -1rem 1rem -1rem;">
+            <h3 style="margin: 0; font-size: 1.1rem; font-weight: 600;">
+                <i class="fas fa-sitemap" style="margin-right: 0.5rem;"></i>{cancer_name} Staging Algorithm
+            </h3>
+        </div>'''
+    ]
+
+    for section_name, section_html in sections:
+        html_parts.append(section_html)
+
+    html_parts.append('</div>')
+
+    result = '\n'.join(html_parts)
+    logger.info(f"[TNM Generator] Extracted algorithm from calculator for {cancer_name} ({len(result):,} chars)")
+
+    return result
+
+
 # ==================== PROMPTS ====================
 
 CALCULATOR_HTML_PROMPT = """You are an expert radiologist and oncologist creating an educational TNM staging calculator for FRCR radiology trainees preparing for their exams.
@@ -572,13 +673,10 @@ def generate_and_save_tnm_content(
         else:
             logger.info(f"[TNM Generator] Quality validation passed for {cancer_name}")
 
-        # Generate algorithm discussion
-        algorithm_html = generate_algorithm_discussion(
-            cancer_name=cancer_name,
-            body_section=body_section,
-            staging_system=staging_system,
-            special_notes=special_notes
-        )
+        # Extract algorithm discussion from calculator HTML (no second API call!)
+        # The calculator already contains mnemonics, tips, pitfalls, systematic approach
+        algorithm_html = extract_algorithm_from_calculator(calculator_html, cancer_name)
+        logger.info(f"[TNM Generator] Algorithm extracted from calculator (no additional API call)")
 
         # Save HTML file
         file_path = save_calculator_html_file(slug, calculator_html)
