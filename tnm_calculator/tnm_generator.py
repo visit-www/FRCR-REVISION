@@ -1114,18 +1114,11 @@ def insert_algorithm_to_case_discussion(
         separator = "\n\n<hr style='border-top: 2px solid #e96304; margin: 2rem 0;'>\n\n" if existing.strip() else ""
 
         # Wrap algorithm in identifiable container for extraction/sync
+        # Note: algorithm_discussion_html already includes styled header, so we just wrap it
         algorithm_wrapper = f"""
 <!-- TNM-ALGORITHM-START:{calculator_slug} -->
-<div class="tnm-algorithm-container" data-algorithm-slug="{calculator_slug}" data-algorithm-version="{content.id}">
-<div style="background: linear-gradient(135deg, #5E899E 0%, #4a7285 100%); color: white; padding: 15px 20px; border-radius: 8px 8px 0 0; margin-bottom: 0;">
-    <h3 style="margin: 0; font-size: 1.25rem;">
-        <i class="fas fa-sitemap" style="margin-right: 10px;"></i>{content.cancer_name} Staging Algorithm
-    </h3>
-    <small style="opacity: 0.9;">{content.staging_system}</small>
-</div>
-<div class="tnm-algorithm-content" data-editable="true">
+<div class="tnm-algorithm-container" data-algorithm-slug="{calculator_slug}" data-algorithm-version="{content.id}" data-editable="true">
 {content.algorithm_discussion_html}
-</div>
 </div>
 <!-- TNM-ALGORITHM-END:{calculator_slug} -->
 """
