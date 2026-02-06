@@ -775,9 +775,10 @@ def generate_calculator_html(
                 "Content-Type": "application/json",
                 "x-api-key": api_key,
                 "anthropic-version": "2023-06-01",
+                "anthropic-beta": "prompt-caching-2024-07-31",
             },
             json=payload,
-            timeout=55,  # Vercel hard-kills at 60s, fail gracefully before
+            timeout=240,  # Vercel maxDuration=300, leave headroom
         )
     except http_requests.exceptions.Timeout:
         raise ValueError(f"Claude API timed out generating {cancer_name} calculator. Try running locally.")

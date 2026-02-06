@@ -5912,8 +5912,8 @@ async function proceedWithGeneration(slug, cancerName, bodySection, stagingSyste
 
     // Determine timing based on model
     const isOpus = model.includes('opus');
-    const timeEstimate = isOpus ? '2-3 minutes' : '30-60 seconds';
-    const clientTimeout = isOpus ? 300000 : 70000; // 5 min for Opus, 70s for Sonnet
+    const timeEstimate = isOpus ? '2-3 minutes' : '1-3 minutes';
+    const clientTimeout = isOpus ? 300000 : 260000; // 5 min for Opus, 260s for Sonnet (Vercel maxDuration=300)
 
     // Show loading state with timer
     statusDiv.style.display = 'block';
