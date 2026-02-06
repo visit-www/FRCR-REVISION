@@ -22,6 +22,10 @@
 {% endblock %}
 
 {% block content %}
+{% if is_admin %}
+<!-- TinyMCE for admin inline editing -->
+<script src="{{ url_for('static', filename='tinymce.min.js') }}"></script>
+{% endif %}
 <div class="row">
     <div class="col-12 px-2 px-md-4">
         
@@ -100,9 +104,17 @@
                         <label class="detail-label fw-bold text-secondary mb-0">
                             <i class="fas fa-table me-2" style="color: #5E899E;"></i>Quick Reference - TNM Classification
                         </label>
-                        <a href="{{ url_for('tnm_calculator.index') }}" target="_blank" class="btn btn-success btn-sm" title="Open TNM Stage Calculator">
-                            <i class="fas fa-calculator me-1"></i>Calculator
-                        </a>
+                        <div class="d-flex gap-2">
+                            {% if is_admin %}
+                            <a href="{{ url_for('admin_tnm.curate_tnm_page', disease_site_id=disease.id, year=year_used or 2026) }}{% if from_case_id %}?from_case_id={{ from_case_id }}{% endif %}"
+                               class="btn btn-sm btn-outline-primary" title="Edit quick reference data">
+                                <i class="fas fa-edit me-1"></i>Edit
+                            </a>
+                            {% endif %}
+                            <a href="{{ url_for('tnm_calculator.index') }}" target="_blank" class="btn btn-success btn-sm" title="Open TNM Stage Calculator">
+                                <i class="fas fa-calculator me-1"></i>Calculator
+                            </a>
+                        </div>
                     </div>
                     
                     <!-- Curated Quick Reference Notes (if admin has added) -->
@@ -342,37 +354,81 @@
                 {% endif %}
 
                 <!-- ==================== SECTION 3: Cancers Staged / Not Staged ==================== -->
-                {% if cancers_staged or cancers_not_staged %}
+                {% if cancers_staged or cancers_not_staged or is_admin %}
                 <div class="row mb-5">
-                    {% if cancers_staged %}
                     <div class="col-md-6 mb-3 mb-md-0">
                         <div class="detail-section h-100 p-4 rounded-3" style="background: linear-gradient(135deg, #e8f5e9 0%, #f1f8e9 100%); border-left: 5px solid #28a745;">
-                            <label class="detail-label fw-bold text-secondary mb-3">
-                                <i class="fas fa-check-circle me-2" style="color: #28a745;"></i>Cancers Staged
-                            </label>
-                            <ul class="mb-0">
-                                {% for cancer in cancers_staged %}
-                                <li>{{ cancer }}</li>
-                                {% endfor %}
-                            </ul>
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <label class="detail-label fw-bold text-secondary mb-0">
+                                    <i class="fas fa-check-circle me-2" style="color: #28a745;"></i>Cancers Staged
+                                </label>
+                                {% if is_admin %}
+                                <button class="btn btn-sm btn-outline-primary" onclick="toggleSectionEditor(2)" title="Edit raw HTML">
+                                    <i class="fas fa-edit me-1"></i>Edit
+                                </button>
+                                {% endif %}
+                            </div>
+                            {% if cancers_staged %}
+                            <div id="sectionView2">
+                                <ul class="mb-0">
+                                    {% for cancer in cancers_staged %}
+                                    <li>{{ cancer }}</li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                            {% else %}
+                            <div id="sectionView2">
+                                <p class="text-muted mb-0"><i class="fas fa-info-circle me-1"></i>No data available.</p>
+                            </div>
+                            {% endif %}
+                            {% if is_admin %}
+                            <div id="sectionEditor2" style="display:none;" class="mt-3">
+                                <textarea id="sectionTextarea2" class="form-control" rows="8">{{ staging_data.section_2_cancers_staged_html if staging_data else '' }}</textarea>
+                                <div class="mt-2 d-flex gap-2">
+                                    <button class="btn btn-sm btn-primary" onclick="saveSectionHtml(2)"><i class="fas fa-save me-1"></i>Save</button>
+                                    <button class="btn btn-sm btn-outline-secondary" onclick="toggleSectionEditor(2)">Cancel</button>
+                                </div>
+                            </div>
+                            {% endif %}
                         </div>
                     </div>
-                    {% endif %}
-                    
-                    {% if cancers_not_staged %}
+
                     <div class="col-md-6">
                         <div class="detail-section h-100 p-4 rounded-3" style="background: linear-gradient(135deg, #fff3e0 0%, #fff8e1 100%); border-left: 5px solid #ff9800;">
-                            <label class="detail-label fw-bold text-secondary mb-3">
-                                <i class="fas fa-times-circle me-2" style="color: #ff9800;"></i>Cancers NOT Staged
-                            </label>
-                            <ul class="mb-0">
-                                {% for cancer in cancers_not_staged %}
-                                <li>{{ cancer }}</li>
-                                {% endfor %}
-                            </ul>
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <label class="detail-label fw-bold text-secondary mb-0">
+                                    <i class="fas fa-times-circle me-2" style="color: #ff9800;"></i>Cancers NOT Staged
+                                </label>
+                                {% if is_admin %}
+                                <button class="btn btn-sm btn-outline-primary" onclick="toggleSectionEditor(3)" title="Edit raw HTML">
+                                    <i class="fas fa-edit me-1"></i>Edit
+                                </button>
+                                {% endif %}
+                            </div>
+                            {% if cancers_not_staged %}
+                            <div id="sectionView3">
+                                <ul class="mb-0">
+                                    {% for cancer in cancers_not_staged %}
+                                    <li>{{ cancer }}</li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                            {% else %}
+                            <div id="sectionView3">
+                                <p class="text-muted mb-0"><i class="fas fa-info-circle me-1"></i>No data available.</p>
+                            </div>
+                            {% endif %}
+                            {% if is_admin %}
+                            <div id="sectionEditor3" style="display:none;" class="mt-3">
+                                <textarea id="sectionTextarea3" class="form-control" rows="8">{{ staging_data.section_3_cancers_not_staged_html if staging_data else '' }}</textarea>
+                                <div class="mt-2 d-flex gap-2">
+                                    <button class="btn btn-sm btn-primary" onclick="saveSectionHtml(3)"><i class="fas fa-save me-1"></i>Save</button>
+                                    <button class="btn btn-sm btn-outline-secondary" onclick="toggleSectionEditor(3)">Cancel</button>
+                                </div>
+                            </div>
+                            {% endif %}
                         </div>
                     </div>
-                    {% endif %}
                 </div>
                 {% endif %}
 
@@ -1242,6 +1298,76 @@ const fromCaseId = {{ from_case_id or 'null' }};
 const isStudent = {% if current_user.is_authenticated and current_user.role and current_user.role.value == 'student' %}true{% else %}false{% endif %};
 const isAdmin = {% if is_admin %}true{% else %}false{% endif %};
 const currentUserId = {% if current_user.is_authenticated %}{{ current_user.id }}{% else %}null{% endif %};
+
+// ==================== INLINE SECTION EDITING (Admin) ====================
+function toggleSectionEditor(sectionNum) {
+    const editorDiv = document.getElementById('sectionEditor' + sectionNum);
+    const viewDiv = document.getElementById('sectionView' + sectionNum);
+    if (!editorDiv) return;
+
+    const isVisible = editorDiv.style.display !== 'none';
+    editorDiv.style.display = isVisible ? 'none' : 'block';
+    if (viewDiv) viewDiv.style.display = isVisible ? 'block' : 'none';
+
+    // Initialize TinyMCE on first open
+    if (!isVisible && typeof tinymce !== 'undefined') {
+        const textareaId = 'sectionTextarea' + sectionNum;
+        if (!tinymce.get(textareaId)) {
+            tinymce.init({
+                selector: '#' + textareaId,
+                height: 300,
+                menubar: false,
+                plugins: 'lists link code table',
+                toolbar: 'undo redo | bold italic | bullist numlist | table link | code removeformat',
+                base_url: 'https://cdn.jsdelivr.net/npm/tinymce@6',
+                content_style: 'body { font-family: -apple-system, sans-serif; font-size: 14px; }',
+                setup: function(editor) {
+                    editor.on('change', function() { tinymce.triggerSave(); });
+                }
+            });
+        }
+    }
+}
+
+function saveSectionHtml(sectionNum) {
+    if (typeof tinymce !== 'undefined') tinymce.triggerSave();
+
+    const textarea = document.getElementById('sectionTextarea' + sectionNum);
+    if (!textarea) return;
+
+    const btn = event.currentTarget;
+    const origText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Saving...';
+    btn.disabled = true;
+
+    fetch(`/api/admin/tnm/edit/${diseaseId}/${yearUsed}/${sectionNum}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ html_content: textarea.value })
+    })
+    .then(r => r.json())
+    .then(result => {
+        if (result.success) {
+            // Show success and reload to reflect parsed data
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'alert alert-success alert-dismissible fade show position-fixed';
+            alertDiv.style.cssText = 'top: 80px; right: 20px; z-index: 9999; max-width: 350px;';
+            alertDiv.innerHTML = '<i class="fas fa-check-circle me-2"></i>Section saved! Reloading...<button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
+            document.body.appendChild(alertDiv);
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            alert('Error: ' + (result.error || 'Unknown'));
+            btn.innerHTML = origText;
+            btn.disabled = false;
+        }
+    })
+    .catch(err => {
+        alert('Save failed: ' + err.message);
+        btn.innerHTML = origText;
+        btn.disabled = false;
+    });
+}
 
 // ==================== TNM CATEGORY CLEANUP ====================
 /**
