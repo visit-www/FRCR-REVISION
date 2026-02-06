@@ -1331,35 +1331,51 @@ function toggleSectionEditor(sectionNum) {
 
 function saveSectionHtml(sectionNum, btnElement) {
     if (!yearUsed) {
-        alert('Error: No staging year found. Cannot save without a valid year.');
+        alert('Error: No staging year found (yearUsed=' + yearUsed + '). Cannot save.');
         return;
     }
 
-    // Get content from TinyMCE editor (not textarea .value — TinyMCE replaces textarea with iframe)
+    // Get content - try TinyMCE first, then fall back to raw textarea
     const textareaId = 'sectionTextarea' + sectionNum;
     let htmlContent;
+    let contentSource;
     if (typeof tinymce !== 'undefined' && tinymce.get(textareaId)) {
         htmlContent = tinymce.get(textareaId).getContent();
+        contentSource = 'tinymce';
     } else {
+        // TinyMCE not available — also try triggerSave as fallback
+        if (typeof tinymce !== 'undefined') tinymce.triggerSave();
         const textarea = document.getElementById(textareaId);
-        if (!textarea) return;
+        if (!textarea) {
+            alert('Error: textarea #' + textareaId + ' not found in DOM');
+            return;
+        }
         htmlContent = textarea.value;
+        contentSource = 'textarea.value';
     }
+
+    const apiUrl = `/api/admin/tnm/edit/${diseaseId}/${yearUsed}/${sectionNum}`;
+    console.log('[SaveSection] URL:', apiUrl, '| source:', contentSource, '| content length:', htmlContent.length);
 
     const origText = btnElement.innerHTML;
     btnElement.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Saving...';
     btnElement.disabled = true;
 
-    fetch(`/api/admin/tnm/edit/${diseaseId}/${yearUsed}/${sectionNum}`, {
+    fetch(apiUrl, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ html_content: htmlContent })
     })
-    .then(r => r.json())
+    .then(r => {
+        console.log('[SaveSection] Response status:', r.status, r.statusText);
+        if (!r.ok) {
+            return r.text().then(t => { throw new Error(`HTTP ${r.status}: ${t.substring(0, 200)}`); });
+        }
+        return r.json();
+    })
     .then(result => {
         if (result.success) {
-            // Show success and reload to reflect parsed data
             const alertDiv = document.createElement('div');
             alertDiv.className = 'alert alert-success alert-dismissible fade show position-fixed';
             alertDiv.style.cssText = 'top: 80px; right: 20px; z-index: 9999; max-width: 350px;';
@@ -1367,12 +1383,13 @@ function saveSectionHtml(sectionNum, btnElement) {
             document.body.appendChild(alertDiv);
             setTimeout(() => location.reload(), 1000);
         } else {
-            alert('Error: ' + (result.error || 'Unknown'));
+            alert('API error: ' + (result.error || JSON.stringify(result)));
             btnElement.innerHTML = origText;
             btnElement.disabled = false;
         }
     })
     .catch(err => {
+        console.error('[SaveSection] Error:', err);
         alert('Save failed: ' + err.message);
         btnElement.innerHTML = origText;
         btnElement.disabled = false;

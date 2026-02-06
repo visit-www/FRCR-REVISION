@@ -504,10 +504,29 @@ def update_section(disease_site_id, year, section_number):
         if not staging_data:
             return jsonify({'success': False, 'error': 'Staging data not found'}), 404
         
-        # Update the section
+        # Update the HTML section
         staging_data.set_section_html(section_number, html_content)
         staging_data.last_updated_at = datetime.utcnow()
-        
+
+        # For sections 2 and 3, also update the JSON columns that the view template reads from.
+        # The view_tnm template reads cancers_staged/not_staged from JSON columns, not HTML columns.
+        if section_number in (2, 3) and html_content:
+            import re
+            # Parse <li> items from HTML into a list
+            li_items = re.findall(r'<li[^>]*>(.*?)</li>', html_content, re.DOTALL | re.IGNORECASE)
+            if li_items:
+                # Strip HTML tags from each item to get clean text
+                items = [re.sub(r'<[^>]+>', '', item).strip() for item in li_items if item.strip()]
+            else:
+                # No list items found — store the whole text as a single item
+                plain_text = re.sub(r'<[^>]+>', '', html_content).strip()
+                items = [plain_text] if plain_text else []
+
+            if section_number == 2:
+                staging_data.cancers_staged_json = json.dumps(items)
+            else:
+                staging_data.cancers_not_staged_json = json.dumps(items)
+
         db.session.commit()
         
         return jsonify({

@@ -766,20 +766,27 @@ function saveTnmData() {
 
 // Save raw AJCC quick reference (section 1) via existing API
 function saveRawQuickReference() {
-    // Get content from TinyMCE editor (not textarea .value — TinyMCE replaces textarea with iframe)
+    // Get content - try TinyMCE first, then fall back to raw textarea
     let htmlContent;
+    let contentSource;
     if (typeof tinymce !== 'undefined' && tinymce.get('rawQuickReference')) {
         htmlContent = tinymce.get('rawQuickReference').getContent();
+        contentSource = 'tinymce';
     } else {
+        if (typeof tinymce !== 'undefined') tinymce.triggerSave();
         htmlContent = document.getElementById('rawQuickReference').value;
+        contentSource = 'textarea.value';
     }
+
+    const apiUrl = `/api/admin/tnm/edit/${diseaseSiteId}/${currentYear}/1`;
+    console.log('[SaveRawQR] URL:', apiUrl, '| source:', contentSource, '| content length:', htmlContent.length);
 
     const btn = document.querySelector('[onclick="saveRawQuickReference()"]');
     const originalText = btn.innerHTML;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Saving...';
     btn.disabled = true;
 
-    fetch(`/api/admin/tnm/edit/${diseaseSiteId}/${currentYear}/1`, {
+    fetch(apiUrl, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -787,7 +794,13 @@ function saveRawQuickReference() {
             html_content: htmlContent
         })
     })
-    .then(response => response.json())
+    .then(response => {
+        console.log('[SaveRawQR] Response status:', response.status, response.statusText);
+        if (!response.ok) {
+            return response.text().then(t => { throw new Error(`HTTP ${response.status}: ${t.substring(0, 200)}`); });
+        }
+        return response.json();
+    })
     .then(result => {
         if (result.success) {
             showAlert('success', 'Raw quick reference saved successfully!');
@@ -796,8 +809,8 @@ function saveRawQuickReference() {
         }
     })
     .catch(err => {
-        console.error('Save error:', err);
-        showAlert('danger', 'Error saving raw data: ' + err.message);
+        console.error('[SaveRawQR] Error:', err);
+        showAlert('danger', 'Save error: ' + err.message);
     })
     .finally(() => {
         btn.innerHTML = originalText;
