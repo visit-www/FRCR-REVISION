@@ -143,8 +143,12 @@ def extract_algorithm_from_calculator(calculator_html: str, cancer_name: str) ->
                 for detail in details:
                     letter_el = detail.find('div', class_='mnemonic-letter')
                     letter = letter_el.get_text(strip=True) if letter_el else ''
-                    # Get text after the letter
-                    text = detail.get_text(strip=True).replace(letter, '', 1).strip()
+                    # Get text from the sibling div (not the letter div)
+                    text_parts = []
+                    for child in detail.children:
+                        if child.name and child != letter_el:
+                            text_parts.append(child.get_text(separator=' ', strip=True))
+                    text = ' '.join(text_parts) if text_parts else detail.get_text(separator=' ', strip=True).replace(letter, '', 1).strip()
                     details_html.append(f'''
                         <div style="display: flex; align-items: center; margin-bottom: 0.5rem; padding: 0.5rem; background: white; border-radius: 6px;">
                             <div style="width: 28px; height: 28px; background: {PRIMARY}; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-right: 0.75rem; flex-shrink: 0; font-size: 0.9rem;">{letter}</div>
@@ -173,9 +177,15 @@ def extract_algorithm_from_calculator(calculator_html: str, cancer_name: str) ->
             for card in tip_cards:
                 h4 = card.find('h4')
                 title = h4.get_text(strip=True) if h4 else 'Tip'
-                # Get paragraph or tip-detail content
-                detail = card.find('div', class_='tip-detail') or card.find('p')
-                text = detail.get_text(strip=True) if detail else ''
+                # Combine both <p> summary and <div class="tip-detail"> if present
+                text_parts = []
+                p_el = card.find('p')
+                if p_el:
+                    text_parts.append(p_el.get_text(separator=' ', strip=True))
+                detail_el = card.find('div', class_='tip-detail')
+                if detail_el:
+                    text_parts.append(detail_el.get_text(separator=' ', strip=True))
+                text = ' '.join(text_parts)
                 tips_html.append(f'''
                     <div style="background: white; padding: 1rem; border-radius: 8px; border: 1px solid {BORDER};">
                         <h4 style="color: {PRIMARY}; margin: 0 0 0.5rem 0; font-size: 0.95rem; font-weight: 600;">{title}</h4>
@@ -196,15 +206,26 @@ def extract_algorithm_from_calculator(calculator_html: str, cancer_name: str) ->
         if pitfall_items:
             pitfalls_html = []
             for i, item in enumerate(pitfall_items, 1):
-                # Get text content, excluding the number
+                # Extract title (<strong>) and body (<p>) separately
                 number_el = item.find('div', class_='pitfall-number')
-                text = item.get_text(strip=True)
-                if number_el:
-                    text = text.replace(number_el.get_text(strip=True), '', 1).strip()
+                strong = item.find('strong')
+                title = strong.get_text(strip=True) if strong else ''
+                # Body is the <p> or remaining text after <strong>
+                body_el = item.find('p')
+                body = body_el.get_text(separator=' ', strip=True) if body_el else ''
+                if not body and not title:
+                    # Fallback: get all text with separator
+                    text = item.get_text(separator=' ', strip=True)
+                    if number_el:
+                        text = text.replace(number_el.get_text(strip=True), '', 1).strip()
+                    title = text
                 pitfalls_html.append(f'''
                     <div style="display: flex; align-items: flex-start; padding: 0.75rem; background: white; border-radius: 8px; border: 1px solid rgba(220, 53, 69, 0.2); margin-bottom: 0.5rem;">
                         <div style="width: 26px; height: 26px; background: {DANGER}; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-right: 0.75rem; flex-shrink: 0; font-size: 0.85rem;">{i}</div>
-                        <span style="color: #2c3e50; line-height: 1.5;">{text}</span>
+                        <div style="color: #2c3e50; line-height: 1.5;">
+                            {'<strong>' + title + '</strong><br>' if title and body else ''}
+                            {body if body else title}
+                        </div>
                     </div>
                 ''')
             sections_html.append(f'''
@@ -221,14 +242,13 @@ def extract_algorithm_from_calculator(calculator_html: str, cancer_name: str) ->
         if step_items:
             steps_html = []
             for i, item in enumerate(step_items, 1):
+                # Title may be in <h4> or <strong> inside a wrapper div
                 h4 = item.find('h4')
-                title = h4.get_text(strip=True) if h4 else f'Step {i}'
-                # Get content after h4
-                content_parts = []
-                for child in item.children:
-                    if child.name and child.name != 'h4':
-                        content_parts.append(child.get_text(strip=True))
-                text = ' '.join(content_parts)
+                strong = item.find('strong')
+                title = h4.get_text(strip=True) if h4 else (strong.get_text(strip=True) if strong else f'Step {i}')
+                # Body is in <p> (skip step-number and title elements)
+                body_el = item.find('p')
+                text = body_el.get_text(separator=' ', strip=True) if body_el else ''
                 steps_html.append(f'''
                     <div style="display: flex; align-items: flex-start; padding: 0.75rem; background: white; border-radius: 8px; border: 1px solid {BORDER}; margin-bottom: 0.5rem;">
                         <div style="width: 26px; height: 26px; background: {PRIMARY}; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-right: 0.75rem; flex-shrink: 0; font-size: 0.85rem;">{i}</div>
