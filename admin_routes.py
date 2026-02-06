@@ -940,20 +940,33 @@ def get_case(case_id):
 # ============================================================================
 # APP DOCUMENTATION ENDPOINTS
 # ============================================================================
+# Docs in this list are visible and openable by any admin; others are superadmin-only.
+ADMIN_ACCESSIBLE_DOCS = ['USER_ROLES_WORKFLOWS.md', 'CUSTOM_CSS_CLASSES_REFERENCE.md']
+
 
 @admin_bp.route('/docs', methods=['GET'])
 @require_admin
 def list_docs():
     """
-    List all markdown documentation files in the docs/ folder
-    Returns: { docs: [{ name, path, title }] }
-    
-    NOTE: Only superadmin can access the full docs list.
+    List markdown documentation files in the docs/ folder.
+    Superadmin: full recursive list. Other admins: only ADMIN_ACCESSIBLE_DOCS.
+    Returns: { docs: [{ name, path, title, is_folder?, children? }] }
     """
-    # Restrict to superadmin only
-    if not current_user.is_superadmin:
-        return jsonify({'success': False, 'error': 'Access denied. Superadmin only.'}), 403
     docs_dir = os.path.join(os.path.dirname(__file__), 'docs')
+    
+    if not current_user.is_superadmin:
+        # Return flat list of admin-accessible docs only
+        docs = []
+        for name in sorted(ADMIN_ACCESSIBLE_DOCS):
+            title = name.replace('.md', '').replace('_', ' ').replace('-', ' ')
+            docs.append({
+                'name': name,
+                'path': name,
+                'title': title,
+                'is_folder': False
+            })
+        return jsonify({'success': True, 'docs': docs})
+    
     docs = []
     
     def scan_dir(directory, prefix=''):
@@ -997,14 +1010,8 @@ def get_doc(doc_path):
     """
     Get a specific markdown document rendered as HTML
     Returns: { title, content_html, raw_content }
-    
-    NOTE: Only superadmin can access most docs.
-    Admins can only access USER_ROLES_WORKFLOWS.md
+    Admins can access ADMIN_ACCESSIBLE_DOCS; superadmin can access all.
     """
-    # List of docs accessible to all admins (not just superadmin)
-    ADMIN_ACCESSIBLE_DOCS = ['USER_ROLES_WORKFLOWS.md']
-    
-    # Check access permissions
     doc_filename = os.path.basename(doc_path)
     if not current_user.is_superadmin and doc_filename not in ADMIN_ACCESSIBLE_DOCS:
         return jsonify({'success': False, 'error': 'Access denied. Superadmin only.'}), 403
@@ -1071,10 +1078,6 @@ def get_doc_content():
     if not doc_path:
         return jsonify({'success': False, 'error': 'Path parameter required'}), 400
     
-    # List of docs accessible to all admins (not just superadmin)
-    ADMIN_ACCESSIBLE_DOCS = ['USER_ROLES_WORKFLOWS.md']
-    
-    # Check access permissions
     doc_filename = os.path.basename(doc_path)
     if not current_user.is_superadmin and doc_filename not in ADMIN_ACCESSIBLE_DOCS:
         return jsonify({'success': False, 'error': 'Access denied. Superadmin only.'}), 403

@@ -51,13 +51,11 @@
                 <i class="fas fa-stethoscope"></i> AJCC TNM Management
             </a>
         </li>
-        {% if current_user.is_superadmin %}
         <li class="nav-item" role="presentation">
             <button class="nav-link" id="docs-tab" data-bs-toggle="tab" data-bs-target="#docs-content" type="button" role="tab" aria-controls="docs-content" aria-selected="false">
                 <i class="fas fa-book"></i> App Documents
             </button>
         </li>
-        {% endif %}
     </ul>
 
     <!-- Tab Content -->
@@ -341,8 +339,7 @@
         </div>
         <!-- End R2 Bucket Manager Tab -->
 
-        <!-- App Documents Tab (Superadmin Only) -->
-        {% if current_user.is_superadmin %}
+        <!-- App Documents Tab (all admins; superadmin sees full list, others see limited list) -->
         <div class="tab-pane fade" id="docs-content" role="tabpanel" aria-labelledby="docs-tab">
             <h2 class="mb-4 admin-section-title"><i class="fas fa-book"></i> App Documents</h2>
             
@@ -386,7 +383,6 @@
             </div>
         </div>
         <!-- End App Documents Tab -->
-        {% endif %}
     </div>
 </div>
 
