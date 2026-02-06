@@ -150,6 +150,27 @@ console.log('[TinyMCE Loader] TNM Edit - checking if TinyMCE loaded...');
                 </div>
             </div>
 
+            <!-- Raw AJCC Quick Reference (Editable) -->
+            <div class="card shadow-sm mb-5 border-0">
+                <div class="card-header bg-gradient text-white d-flex justify-content-between align-items-center"
+                     style="background: linear-gradient(135deg, #dc3545 0%, #fd7e14 100%);">
+                    <h5 class="mb-0">
+                        <i class="fas fa-database me-2"></i>Raw AJCC Quick Reference
+                    </h5>
+                    <button type="button" class="btn btn-sm btn-outline-light" onclick="saveRawQuickReference()">
+                        <i class="fas fa-save me-1"></i>Save Raw Data
+                    </button>
+                </div>
+                <div class="card-body p-4">
+                    <div class="alert alert-warning mb-3">
+                        <i class="fas fa-exclamation-triangle me-1"></i>
+                        <strong>Caution:</strong> This is the raw AJCC data from extraction.
+                        Editing here changes the source data used by AI generators.
+                    </div>
+                    <textarea class="form-control rich-editor" id="rawQuickReference" rows="15">{{ staging_data.section_1_quick_reference_html if staging_data else '' }}</textarea>
+                </div>
+            </div>
+
             <!-- Section 2: Curated Quick Reference (Editable) -->
             <div class="card shadow-sm mb-5 border-0">
                 <div class="card-header bg-gradient text-white" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%);">
@@ -740,6 +761,44 @@ function saveTnmData() {
         showAlert('danger', 'Error saving changes: ' + err.message);
         saveBtn.innerHTML = originalText;
         saveBtn.disabled = false;
+    });
+}
+
+// Save raw AJCC quick reference (section 1) via existing API
+function saveRawQuickReference() {
+    // Trigger TinyMCE save to update textareas
+    if (typeof tinymce !== 'undefined') {
+        tinymce.triggerSave();
+    }
+
+    const btn = document.querySelector('[onclick="saveRawQuickReference()"]');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Saving...';
+    btn.disabled = true;
+
+    fetch(`/api/admin/tnm/edit/${diseaseSiteId}/${currentYear}/1`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+            html_content: document.getElementById('rawQuickReference').value
+        })
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            showAlert('success', 'Raw quick reference saved successfully!');
+        } else {
+            showAlert('danger', 'Error saving: ' + (result.error || 'Unknown error'));
+        }
+    })
+    .catch(err => {
+        console.error('Save error:', err);
+        showAlert('danger', 'Error saving raw data: ' + err.message);
+    })
+    .finally(() => {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
     });
 }
 

@@ -1,0 +1,370 @@
+{% extends "base.html" %}
+
+{% block mobile_breadcrumb %}
+    <li class="breadcrumb-item active text-white" aria-current="page">
+        <i class="fas fa-clipboard-check me-1"></i>AJCC Data Audit
+    </li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4 mb-5 px-3 px-md-5">
+    <!-- Breadcrumb Navigation -->
+    <nav aria-label="breadcrumb" class="mb-4 d-none d-md-block">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="/"><i class="fas fa-home"></i> Home</a></li>
+            <li class="breadcrumb-item"><a href="/admin"><i class="fas fa-cog"></i> Admin</a></li>
+            <li class="breadcrumb-item"><a href="/api/admin/tnm/management"><i class="fas fa-stethoscope"></i> TNM Management</a></li>
+            <li class="breadcrumb-item active" aria-current="page"><i class="fas fa-clipboard-check"></i> Data Audit</li>
+        </ol>
+    </nav>
+
+    <h1 class="mb-4"><i class="fas fa-clipboard-check me-2"></i>AJCC Data Audit</h1>
+
+    <!-- Summary Bar -->
+    <div class="row g-3 mb-4" id="summaryBar">
+        <div class="col-6 col-md-3">
+            <div class="card border-0 shadow-sm text-center">
+                <div class="card-body py-3">
+                    <div class="fs-3 fw-bold text-primary" id="summaryTotal">-</div>
+                    <small class="text-muted">Total Diseases</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card border-0 shadow-sm text-center">
+                <div class="card-body py-3">
+                    <div class="fs-3 fw-bold text-danger" id="summaryIssues">-</div>
+                    <small class="text-muted">With Issues</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card border-0 shadow-sm text-center">
+                <div class="card-body py-3">
+                    <div class="fs-3 fw-bold text-warning" id="summaryMissing">-</div>
+                    <small class="text-muted">Missing Data</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card border-0 shadow-sm text-center">
+                <div class="card-body py-3">
+                    <div class="fs-3 fw-bold text-success" id="summaryCurated">-</div>
+                    <small class="text-muted">Curated</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body py-2">
+            <div class="d-flex gap-3 align-items-center flex-wrap">
+                <div>
+                    <select id="filterSection" class="form-select form-select-sm" onchange="applyFilters()" aria-label="Filter by section">
+                        <option value="">All Sections</option>
+                    </select>
+                </div>
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="filterIssuesOnly" onchange="applyFilters()">
+                    <label class="form-check-label small" for="filterIssuesOnly">Issues only</label>
+                </div>
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="filterUncurated" onchange="applyFilters()">
+                    <label class="form-check-label small" for="filterUncurated">Uncurated only</label>
+                </div>
+                <div class="ms-auto">
+                    <button class="btn btn-sm btn-outline-primary" onclick="loadAuditData()">
+                        <i class="fas fa-sync me-1"></i>Refresh
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Audit Table -->
+    <div class="card border-0 shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0" id="auditTable">
+                <thead class="table-light">
+                    <tr>
+                        <th style="min-width:180px;">Disease</th>
+                        <th>Section</th>
+                        <th class="text-center" title="T definitions">T</th>
+                        <th class="text-center" title="N definitions">N</th>
+                        <th class="text-center" title="M definitions">M</th>
+                        <th class="text-center" title="Stage groups">Stages</th>
+                        <th class="text-center" title="Quick Reference">QR</th>
+                        <th class="text-center" title="Explanatory Notes">Notes</th>
+                        <th>Issues</th>
+                        <th style="min-width:160px;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="auditTableBody">
+                    <tr>
+                        <td colspan="10" class="text-center py-4">
+                            <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                            <span class="ms-2 text-muted">Loading audit data...</span>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- AI Review Modal -->
+<div class="modal fade" id="aiReviewModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header" style="background: linear-gradient(135deg, #e96304 0%, #ff8c42 100%); color: white;">
+                <h5 class="modal-title"><i class="fas fa-brain me-2"></i>AI Review: <span id="aiReviewDiseaseName"></span></h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="aiReviewBody">
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <p class="text-muted mt-2">Analyzing with Claude... (~$0.01)</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.badge-ok { background-color: #28a745; color: white; }
+.badge-warn { background-color: #ffc107; color: #212529; }
+.badge-bad { background-color: #dc3545; color: white; }
+.badge-na { background-color: #6c757d; color: white; }
+.count-badge {
+    display: inline-block;
+    min-width: 28px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-align: center;
+}
+.issue-tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 0.75rem;
+    margin: 1px 2px;
+    background: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffc107;
+}
+.issue-tag.contamination {
+    background: #f8d7da;
+    color: #721c24;
+    border-color: #f5c6cb;
+}
+.issue-tag.missing {
+    background: #e2e3e5;
+    color: #383d41;
+    border-color: #d6d8db;
+}
+</style>
+
+<script>
+let allAuditData = [];
+
+async function loadAuditData() {
+    const tbody = document.getElementById('auditTableBody');
+    tbody.innerHTML = '<tr><td colspan="10" class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary"></div><span class="ms-2 text-muted">Loading...</span></td></tr>';
+
+    try {
+        const response = await fetch('/api/admin/tnm/audit/data', { credentials: 'include' });
+        const data = await response.json();
+
+        if (!data.success) {
+            throw new Error(data.error || 'Failed to load audit data');
+        }
+
+        allAuditData = data.results;
+
+        // Update summary
+        document.getElementById('summaryTotal').textContent = data.summary.total;
+        document.getElementById('summaryIssues').textContent = data.summary.with_issues;
+        document.getElementById('summaryMissing').textContent = data.summary.missing_data;
+        document.getElementById('summaryCurated').textContent = data.summary.curated;
+
+        // Populate section filter
+        const sections = [...new Set(allAuditData.map(r => r.section_name))].sort();
+        const filterSelect = document.getElementById('filterSection');
+        filterSelect.innerHTML = '<option value="">All Sections</option>';
+        sections.forEach(s => {
+            filterSelect.innerHTML += `<option value="${s}">${s}</option>`;
+        });
+
+        applyFilters();
+
+    } catch (err) {
+        console.error('Audit load error:', err);
+        tbody.innerHTML = `<tr><td colspan="10" class="text-center py-4 text-danger"><i class="fas fa-exclamation-circle me-2"></i>${err.message}</td></tr>`;
+    }
+}
+
+function applyFilters() {
+    const sectionFilter = document.getElementById('filterSection').value;
+    const issuesOnly = document.getElementById('filterIssuesOnly').checked;
+    const uncuratedOnly = document.getElementById('filterUncurated').checked;
+
+    let filtered = allAuditData;
+
+    if (sectionFilter) {
+        filtered = filtered.filter(r => r.section_name === sectionFilter);
+    }
+    if (issuesOnly) {
+        filtered = filtered.filter(r => r.issue_count > 0);
+    }
+    if (uncuratedOnly) {
+        filtered = filtered.filter(r => !r.is_curated);
+    }
+
+    renderTable(filtered);
+}
+
+function renderTable(data) {
+    const tbody = document.getElementById('auditTableBody');
+
+    if (data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="10" class="text-center py-4 text-muted">No results match your filters</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = data.map(r => {
+        const countBadge = (val, ok = 1) => {
+            if (!r.has_data) return '<span class="count-badge badge-na">-</span>';
+            if (val >= ok) return `<span class="count-badge badge-ok">${val}</span>`;
+            return `<span class="count-badge badge-bad">${val}</span>`;
+        };
+
+        const boolBadge = (val) => {
+            if (!r.has_data) return '<span class="count-badge badge-na">-</span>';
+            return val ? '<span class="count-badge badge-ok"><i class="fas fa-check"></i></span>' : '<span class="count-badge badge-bad"><i class="fas fa-times"></i></span>';
+        };
+
+        const issueHtml = r.issues.map(issue => {
+            let cls = 'issue-tag';
+            if (issue.includes('contamination')) cls += ' contamination';
+            else if (issue.includes('Missing') || issue.includes('No ')) cls += ' missing';
+            return `<span class="${cls}">${escapeHtml(issue)}</span>`;
+        }).join('');
+
+        const curatedBadge = r.is_curated
+            ? '<span class="badge bg-success ms-1" title="Curated"><i class="fas fa-check"></i></span>'
+            : '';
+
+        const editUrl = r.has_data && r.year
+            ? `/api/admin/tnm/curate/${r.disease_site_id}/${r.year}`
+            : '#';
+
+        return `<tr>
+            <td><strong>${escapeHtml(r.disease_name)}</strong>${curatedBadge}</td>
+            <td><small class="text-muted">${escapeHtml(r.section_name)}</small></td>
+            <td class="text-center">${countBadge(r.t_count, 3)}</td>
+            <td class="text-center">${countBadge(r.n_count, 2)}</td>
+            <td class="text-center">${countBadge(r.m_count, 2)}</td>
+            <td class="text-center">${countBadge(r.stage_groups_count, 3)}</td>
+            <td class="text-center">${boolBadge(r.has_qr)}</td>
+            <td class="text-center">${boolBadge(r.has_notes)}</td>
+            <td>${issueHtml || '<span class="text-success small"><i class="fas fa-check-circle"></i> OK</span>'}</td>
+            <td>
+                <div class="btn-group btn-group-sm">
+                    ${r.has_data && r.year ? `<a href="${editUrl}" class="btn btn-outline-primary" title="Edit"><i class="fas fa-edit"></i></a>` : ''}
+                    ${r.has_data && r.year ? `<button class="btn btn-outline-warning" onclick="runAiReview(${r.disease_site_id}, ${r.year}, '${escapeHtml(r.disease_name)}')" title="AI Review"><i class="fas fa-brain"></i></button>` : ''}
+                </div>
+            </td>
+        </tr>`;
+    }).join('');
+}
+
+async function runAiReview(diseaseSiteId, year, diseaseName) {
+    document.getElementById('aiReviewDiseaseName').textContent = diseaseName;
+    document.getElementById('aiReviewBody').innerHTML = `
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="text-muted mt-2">Analyzing with Claude... (~$0.01)</p>
+        </div>
+    `;
+
+    const modal = new bootstrap.Modal(document.getElementById('aiReviewModal'));
+    modal.show();
+
+    try {
+        const response = await fetch('/api/admin/tnm/audit/ai-review', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ disease_site_id: diseaseSiteId, year: year })
+        });
+
+        const data = await response.json();
+
+        if (!data.success) {
+            throw new Error(data.error || 'AI review failed');
+        }
+
+        renderAiReview(data.review);
+
+    } catch (err) {
+        document.getElementById('aiReviewBody').innerHTML = `
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-circle me-2"></i>${escapeHtml(err.message)}
+            </div>
+        `;
+    }
+}
+
+function renderAiReview(review) {
+    const body = document.getElementById('aiReviewBody');
+
+    const assessmentColors = {
+        'clean': 'success',
+        'minor_issues': 'warning',
+        'major_issues': 'danger',
+    };
+    const color = assessmentColors[review.overall_assessment] || 'secondary';
+
+    let issuesHtml = '';
+    if (review.issues_found && review.issues_found.length > 0) {
+        issuesHtml = '<div class="mt-3">';
+        review.issues_found.forEach(issue => {
+            const sevColors = { 'high': 'danger', 'medium': 'warning', 'low': 'info' };
+            const sevColor = sevColors[issue.severity] || 'secondary';
+            issuesHtml += `
+                <div class="alert alert-${sevColor} py-2 mb-2">
+                    <span class="badge bg-${sevColor} me-2">${escapeHtml(issue.severity || 'unknown')}</span>
+                    <span class="badge bg-light text-dark me-2">${escapeHtml(issue.category || '')}</span>
+                    ${escapeHtml(issue.description || '')}
+                </div>
+            `;
+        });
+        issuesHtml += '</div>';
+    } else {
+        issuesHtml = '<p class="text-success mt-3"><i class="fas fa-check-circle me-2"></i>No issues found by AI review.</p>';
+    }
+
+    body.innerHTML = `
+        <div class="d-flex align-items-center gap-3 mb-3">
+            <span class="badge bg-${color} fs-6 px-3 py-2">${escapeHtml(review.overall_assessment || 'unknown')}</span>
+            <span class="badge bg-secondary">Confidence: ${escapeHtml(review.confidence || 'unknown')}</span>
+        </div>
+        <p class="mb-0">${escapeHtml(review.summary || '')}</p>
+        ${issuesHtml}
+    `;
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    const div = document.createElement('div');
+    div.textContent = String(str);
+    return div.innerHTML;
+}
+
+// Load on page ready
+document.addEventListener('DOMContentLoaded', loadAuditData);
+</script>
+{% endblock %}

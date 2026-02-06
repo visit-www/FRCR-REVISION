@@ -390,6 +390,123 @@ def get_disease_nuances(cancer_name: str, body_section: str) -> str:
     return '\n'.join(result_parts)
 
 
+def get_ajcc_staging_for_calculator(cancer_name: str, body_section: str) -> Tuple[str, dict]:
+    """
+    Load authoritative AJCC staging data for calculator generation.
+
+    Imports _map_to_ajcc_site and _get_staging_data from ai_tnm.py to fetch
+    T/N/M definitions, stage groups, quick reference, and explanatory notes
+    from the AJCCStagingData database table.
+
+    Args:
+        cancer_name: Display name (e.g., "Larynx", "Lung (NSCLC)")
+        body_section: Body section (e.g., "Head and Neck", "Thorax")
+
+    Returns:
+        Tuple of (formatted_text_for_prompt, metadata_dict).
+        On failure returns ("", {}).
+    """
+    import re as _re
+
+    try:
+        from ai_tnm import _map_to_ajcc_site, _get_staging_data
+
+        ajcc_match = _map_to_ajcc_site(cancer_name, body_part=body_section)
+        if not ajcc_match:
+            logger.info(f"[TNM Generator] No AJCC match for '{cancer_name}' / '{body_section}'")
+            return ("", {})
+
+        staging = _get_staging_data(ajcc_match["disease_site_id"])
+        if not staging:
+            logger.info(f"[TNM Generator] No staging data for disease_site_id={ajcc_match['disease_site_id']}")
+            return ("", {})
+
+        # ---- Format T definitions ----
+        t_defs = staging.get("t_definitions", [])
+        t_text = ""
+        if t_defs:
+            t_text = "### T STAGE DEFINITIONS\n"
+            for t in t_defs:
+                if isinstance(t, dict):
+                    if 'subsite' in t and 'categories' in t:
+                        t_text += f"\n  [{t.get('subsite', 'Unknown')}]:\n"
+                        for cat in t.get('categories', []):
+                            if isinstance(cat, dict):
+                                t_text += f"    {cat.get('category', 'T?')}: {cat.get('criteria', cat.get('definition', ''))}\n"
+                    elif 'category' in t:
+                        t_text += f"  {t.get('category', 'T?')}: {t.get('definition', t.get('criteria', ''))}\n"
+
+        # ---- Format N definitions ----
+        n_defs = staging.get("n_definitions", {})
+        n_text = ""
+        if n_defs:
+            n_text = "### N STAGE DEFINITIONS\n"
+            if isinstance(n_defs, dict):
+                for variant in ("clinical", "pathological"):
+                    items = n_defs.get(variant, [])
+                    if items:
+                        label = "Clinical (cN)" if variant == "clinical" else "Pathological (pN)"
+                        n_text += f"  {label}:\n"
+                        for n in items:
+                            if isinstance(n, dict):
+                                n_text += f"    {n.get('category', 'N?')}: {n.get('definition', n.get('criteria', ''))}\n"
+            elif isinstance(n_defs, list):
+                for n in n_defs:
+                    if isinstance(n, dict):
+                        n_text += f"  {n.get('category', 'N?')}: {n.get('definition', n.get('criteria', ''))}\n"
+
+        # ---- Format M definitions ----
+        m_defs = staging.get("m_definitions", [])
+        m_text = ""
+        if m_defs:
+            m_text = "### M STAGE DEFINITIONS\n"
+            for m in m_defs:
+                if isinstance(m, dict):
+                    m_text += f"  {m.get('category', 'M?')}: {m.get('definition', m.get('criteria', ''))}\n"
+
+        # ---- Format stage groups (compact) ----
+        stage_groups = staging.get("stage_groups", [])
+        sg_text = ""
+        if stage_groups:
+            sg_text = "### PROGNOSTIC STAGE GROUPS\n"
+            for sg in stage_groups:
+                if isinstance(sg, dict):
+                    sg_text += f"  Stage {sg.get('stage', '?')}: T{sg.get('T', '?')} N{sg.get('N', '?')} M{sg.get('M', '?')}\n"
+
+        # ---- Extract explanatory notes as plain text ----
+        notes_html = staging.get("explanatory_notes_html", "") or ""
+        notes_text = ""
+        if notes_html:
+            notes_text = _re.sub(r'<[^>]+>', ' ', notes_html)
+            notes_text = _re.sub(r'\s+', ' ', notes_text).strip()
+            if len(notes_text) > 6000:
+                notes_text = notes_text[:6000] + "... [truncated]"
+
+        # ---- Build combined text ----
+        parts = [p for p in [t_text, n_text, m_text, sg_text] if p]
+        if notes_text:
+            parts.append(f"### EXPLANATORY NOTES (clinical pearls, imaging criteria, staging nuances)\n{notes_text}")
+
+        formatted = "\n".join(parts) if parts else ""
+
+        meta = {
+            "disease_site_id": ajcc_match.get("disease_site_id"),
+            "disease_name": ajcc_match.get("disease_name"),
+            "t_count": len(t_defs),
+            "n_count": len(n_defs) if isinstance(n_defs, list) else sum(len(v) for v in n_defs.values() if isinstance(v, list)),
+            "m_count": len(m_defs),
+            "stage_groups_count": len(stage_groups),
+            "has_notes": bool(notes_text),
+        }
+
+        logger.info(f"[TNM Generator] Loaded AJCC data for '{cancer_name}': T={meta['t_count']}, N={meta['n_count']}, M={meta['m_count']}, stages={meta['stage_groups_count']}")
+        return (formatted, meta)
+
+    except Exception as exc:
+        logger.warning(f"[TNM Generator] Failed to load AJCC data for '{cancer_name}': {exc}")
+        return ("", {})
+
+
 def get_opus_example_excerpt() -> str:
     """Deprecated — opus example removed to reduce prompt size for faster generation."""
     return ""
@@ -400,6 +517,15 @@ def get_opus_example_excerpt() -> str:
 CALCULATOR_HTML_PROMPT = """You are an experienced oncology radiologist creating a practical TNM staging calculator. Your role is to guide radiology registrars through staging scans as they encounter them in daily clinical practice - think of yourself as a senior consultant helping a registrar report a staging scan step-by-step. This should also serve FRCR exam preparation.
 
 {disease_nuances}
+
+## AUTHORITATIVE AJCC STAGING DEFINITIONS (from AJCC database)
+{ajcc_staging_data}
+
+CRITICAL: Use ONLY these definitions for T, N, M staging logic in the calculator.
+Do NOT modify, simplify, or substitute these criteria.
+Every checkbox, dropdown, and calculation MUST map exactly to these definitions.
+If a definition references size thresholds (e.g., >6cm), ENE, or specific anatomical
+criteria, the calculator MUST use those exact criteria — not approximations.
 
 Generate a COMPLETE, SELF-CONTAINED HTML file with TWO MAIN SECTIONS for {cancer_name} cancer staging.
 
@@ -724,12 +850,21 @@ def generate_calculator_html(
     # Get disease-specific nuances for accurate staging
     disease_nuances = get_disease_nuances(cancer_name, body_section)
 
+    # Get authoritative AJCC staging data from database
+    ajcc_staging_data, ajcc_meta = get_ajcc_staging_for_calculator(cancer_name, body_section)
+    if ajcc_staging_data:
+        logger.info(f"[TNM Generator] AJCC data loaded for prompt: {ajcc_meta}")
+    else:
+        logger.info(f"[TNM Generator] No AJCC data available — using nuances + AI knowledge")
+        ajcc_staging_data = "(No AJCC data available in database. Use staging nuances above and your training knowledge.)"
+
     prompt = CALCULATOR_HTML_PROMPT.format(
         cancer_name=cancer_name,
         body_section=body_section,
         staging_system=staging_system,
         special_notes=f"Special considerations: {special_notes}" if special_notes else "",
         disease_nuances=disease_nuances,
+        ajcc_staging_data=ajcc_staging_data,
     )
 
     logger.info(f"[TNM Generator] Generating calculator HTML for {cancer_name}")
@@ -752,7 +887,8 @@ def generate_calculator_html(
             "You are an experienced oncology radiologist creating practical TNM staging calculators. "
             "Generate complete, self-contained HTML files with interactive calculator forms and comprehensive reference guides. "
             "Use separate staging functions per subsite. Return reasoning strings explaining each stage determination. "
-            "Follow AJCC 9th Edition staging criteria unless otherwise specified."
+            "Follow the AJCC staging definitions provided in the user prompt exactly. Do not substitute "
+            "criteria from general knowledge if authoritative definitions are provided."
         ),
         "messages": [
             {"role": "user", "content": prompt}

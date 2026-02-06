@@ -7,6 +7,7 @@ Provides endpoints for TNM data extraction, management, and editing.
 from flask import Blueprint, request, jsonify, render_template, redirect, url_for
 from flask_login import login_required, current_user
 from datetime import datetime
+import json
 import logging
 
 # Import from main app's models (kept in main app for shared use)
@@ -983,6 +984,359 @@ def trigger_playwright_auth():
 # ============================================================================
 # TNM Data Curation Routes (Admin Only)
 # ============================================================================
+
+# ============================================================================
+# AJCC Data Audit Routes
+# ============================================================================
+
+@admin_tnm_bp.route('/audit', methods=['GET'])
+@require_admin
+def audit_page():
+    """Render the AJCC data audit dashboard."""
+    return render_template('admin_tnm_audit.html')
+
+
+@admin_tnm_bp.route('/audit/data', methods=['GET'])
+@require_admin
+def audit_data():
+    """
+    Algorithmic audit of ALL AJCC staging data.
+    Runs free checks: missing data, definition counts, cross-contamination.
+    Returns JSON sorted by issue count (most problems first).
+    """
+    import re
+
+    try:
+        # Get all disease sites with staging data
+        all_diseases = AJCCDiseaseSite.query.order_by(AJCCDiseaseSite.disease_name).all()
+
+        # Build set of all disease names for cross-contamination check
+        disease_names = {}
+        for d in all_diseases:
+            # Store lowercase name and id for lookup
+            disease_names[d.id] = d.disease_name.lower()
+
+        # False-positive phrases: anatomical terms that contain disease names
+        # but don't indicate cross-contamination
+        false_positive_patterns = {
+            'cervix': ['cervical lymph', 'cervical node', 'cervical chain',
+                       'cervical spine', 'cervical vertebr', 'cervical cord',
+                       'cervical myelopathy', 'cervical fascia', 'cervical level'],
+            'thyroid': ['thyroid cartilage', 'thyroid notch', 'thyroid shield',
+                        'thyrohyoid', 'thyroarytenoid'],
+            'oral': ['oral commissure', 'oral mucosa', 'oral cavity'],
+            'bone': ['bone marrow', 'bone scan'],
+        }
+
+        results = []
+
+        for disease in all_diseases:
+            section = disease.body_section
+
+            # Find staging data for this disease (any year)
+            staging_records = AJCCStagingData.query.filter_by(
+                disease_site_id=disease.id
+            ).all()
+
+            if not staging_records:
+                # Disease with no staging data at all
+                results.append({
+                    'disease_site_id': disease.id,
+                    'disease_name': disease.disease_name,
+                    'disease_slug': disease.slug,
+                    'section_name': section.section_name if section else 'Unknown',
+                    'section_slug': section.slug if section else '',
+                    'has_data': False,
+                    'is_curated': False,
+                    't_count': 0,
+                    'n_count': 0,
+                    'm_count': 0,
+                    'stage_groups_count': 0,
+                    'has_qr': False,
+                    'has_notes': False,
+                    'qr_length': 0,
+                    'notes_length': 0,
+                    'issues': ['No staging data extracted'],
+                    'issue_count': 1,
+                    'year': None,
+                    'contamination': [],
+                })
+                continue
+
+            for staging in staging_records:
+                year_obj = staging.diagnosis_year
+                year = year_obj.year if year_obj else None
+                issues = []
+                contamination = []
+
+                # Check 1: Has JSON data
+                has_json = staging.tnm_data_json is not None
+                if not has_json:
+                    issues.append('Missing tnm_data_json')
+
+                # Check 2-5: Definition counts
+                t_defs = staging.get_t_definitions()
+                n_defs = staging.get_n_definitions()
+                m_defs = staging.get_m_definitions()
+                stage_groups = staging.get_stage_groups()
+
+                t_count = len(t_defs) if isinstance(t_defs, list) else 0
+                # Handle subsite-organized T definitions
+                if t_defs and isinstance(t_defs, list) and len(t_defs) > 0:
+                    if isinstance(t_defs[0], dict) and 'categories' in t_defs[0]:
+                        t_count = sum(len(t.get('categories', [])) for t in t_defs if isinstance(t, dict))
+
+                if isinstance(n_defs, dict):
+                    n_count = sum(len(v) for v in n_defs.values() if isinstance(v, list))
+                elif isinstance(n_defs, list):
+                    n_count = len(n_defs)
+                else:
+                    n_count = 0
+
+                m_count = len(m_defs) if isinstance(m_defs, list) else 0
+                sg_count = len(stage_groups) if isinstance(stage_groups, list) else 0
+
+                if t_count == 0:
+                    issues.append('No T definitions')
+                if n_count == 0:
+                    issues.append('No N definitions')
+                if m_count == 0:
+                    issues.append('No M definitions')
+                if sg_count == 0:
+                    issues.append('No stage groups')
+
+                # Check 6-7: HTML sections
+                qr_html = staging.section_1_quick_reference_html or ''
+                notes_html = staging.section_10_explanatory_notes_html or ''
+                has_qr = len(qr_html.strip()) > 0
+                has_notes = len(notes_html.strip()) > 0
+
+                if not has_qr:
+                    issues.append('Missing quick reference HTML')
+                if not has_notes:
+                    issues.append('Missing explanatory notes HTML')
+
+                # Check 8: Cross-contamination
+                search_text = re.sub(r'<[^>]+>', ' ', qr_html + ' ' + notes_html).lower()
+                current_name = disease.disease_name.lower()
+
+                for other_id, other_name in disease_names.items():
+                    if other_id == disease.id:
+                        continue
+                    # Skip very short names (< 4 chars) to avoid false positives
+                    if len(other_name) < 4:
+                        continue
+                    # Skip if other name is a substring of current name
+                    if other_name in current_name or current_name in other_name:
+                        continue
+
+                    if other_name in search_text:
+                        # Check false positives
+                        is_false_positive = False
+                        for fp_key, fp_phrases in false_positive_patterns.items():
+                            if fp_key in other_name:
+                                # Check if ALL occurrences are within false positive phrases
+                                remaining = search_text
+                                for phrase in fp_phrases:
+                                    remaining = remaining.replace(phrase, '')
+                                if other_name not in remaining:
+                                    is_false_positive = True
+                                    break
+
+                        if not is_false_positive:
+                            contamination.append(other_name)
+
+                if contamination:
+                    issues.append(f'Possible cross-contamination: {", ".join(contamination[:3])}')
+
+                results.append({
+                    'disease_site_id': disease.id,
+                    'disease_name': disease.disease_name,
+                    'disease_slug': disease.slug,
+                    'section_name': section.section_name if section else 'Unknown',
+                    'section_slug': section.slug if section else '',
+                    'has_data': True,
+                    'is_curated': staging.is_curated,
+                    't_count': t_count,
+                    'n_count': n_count,
+                    'm_count': m_count,
+                    'stage_groups_count': sg_count,
+                    'has_qr': has_qr,
+                    'has_notes': has_notes,
+                    'qr_length': len(qr_html),
+                    'notes_length': len(notes_html),
+                    'issues': issues,
+                    'issue_count': len(issues),
+                    'year': year,
+                    'contamination': contamination,
+                })
+
+        # Sort by issue count (most problems first)
+        results.sort(key=lambda x: (-x['issue_count'], x['disease_name']))
+
+        # Build summary
+        total = len(results)
+        with_issues = sum(1 for r in results if r['issue_count'] > 0)
+        missing_data = sum(1 for r in results if not r['has_data'])
+        curated = sum(1 for r in results if r['is_curated'])
+
+        return jsonify({
+            'success': True,
+            'summary': {
+                'total': total,
+                'with_issues': with_issues,
+                'missing_data': missing_data,
+                'curated': curated,
+            },
+            'results': results,
+        })
+
+    except Exception as e:
+        logger.error(f"Error running audit: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_tnm_bp.route('/audit/ai-review', methods=['POST'])
+@require_admin
+def audit_ai_review():
+    """
+    Manual AI review of a single disease's AJCC data.
+    Sends T/N/M definitions + quick reference + explanatory notes to Claude
+    for medical accuracy validation. Cost ~$0.01 per call.
+    """
+    import os
+    import requests as http_requests
+
+    try:
+        data = request.get_json()
+        disease_site_id = data.get('disease_site_id')
+        year = data.get('year', 2026)
+
+        if not disease_site_id:
+            return jsonify({'success': False, 'error': 'disease_site_id required'}), 400
+
+        disease = AJCCDiseaseSite.query.get(disease_site_id)
+        if not disease:
+            return jsonify({'success': False, 'error': 'Disease site not found'}), 404
+
+        diagnosis_year = AJCCDiagnosisYear.query.filter_by(year=year).first()
+        if not diagnosis_year:
+            return jsonify({'success': False, 'error': f'Year {year} not found'}), 404
+
+        staging = AJCCStagingData.query.filter_by(
+            disease_site_id=disease_site_id,
+            diagnosis_year_id=diagnosis_year.id
+        ).first()
+
+        if not staging:
+            return jsonify({'success': False, 'error': 'No staging data found'}), 404
+
+        # Build review content
+        import re
+        t_defs = staging.get_t_definitions()
+        n_defs = staging.get_n_definitions()
+        m_defs = staging.get_m_definitions()
+        stage_groups = staging.get_stage_groups()
+        qr_html = staging.section_1_quick_reference_html or ''
+        notes_html = staging.section_10_explanatory_notes_html or ''
+
+        # Strip HTML for review
+        qr_text = re.sub(r'<[^>]+>', ' ', qr_html)
+        qr_text = re.sub(r'\s+', ' ', qr_text).strip()[:4000]
+        notes_text = re.sub(r'<[^>]+>', ' ', notes_html)
+        notes_text = re.sub(r'\s+', ' ', notes_text).strip()[:4000]
+
+        review_prompt = f"""Review these AJCC staging definitions for {disease.disease_name} ({disease.body_section.section_name if disease.body_section else 'Unknown'}).
+
+T DEFINITIONS: {json.dumps(t_defs, indent=1)[:3000] if t_defs else 'NONE'}
+
+N DEFINITIONS: {json.dumps(n_defs, indent=1)[:3000] if n_defs else 'NONE'}
+
+M DEFINITIONS: {json.dumps(m_defs, indent=1)[:2000] if m_defs else 'NONE'}
+
+STAGE GROUPS: {json.dumps(stage_groups, indent=1)[:2000] if stage_groups else 'NONE'}
+
+QUICK REFERENCE TEXT: {qr_text[:3000] if qr_text else 'NONE'}
+
+EXPLANATORY NOTES TEXT: {notes_text[:3000] if notes_text else 'NONE'}
+
+Check for:
+1. Wrong disease data (data that belongs to a different cancer type)
+2. Incorrect staging criteria (wrong T/N/M cutoffs or definitions)
+3. Missing categories (e.g. T1 exists but T2 is missing)
+4. Inconsistencies between definitions and stage groups
+5. Any text that clearly references a different anatomical site
+
+Return your analysis as JSON with this exact structure:
+{{
+  "issues_found": [
+    {{"severity": "high|medium|low", "category": "wrong_disease|incorrect_criteria|missing_category|inconsistency|other", "description": "..."}}
+  ],
+  "overall_assessment": "clean|minor_issues|major_issues",
+  "confidence": "high|medium|low",
+  "summary": "Brief 1-2 sentence summary"
+}}"""
+
+        api_key = os.getenv("CLAUDE_API_KEY")
+        if not api_key:
+            return jsonify({'success': False, 'error': 'CLAUDE_API_KEY not configured'}), 500
+
+        model = os.getenv("CLAUDE_MODEL", "claude-sonnet-4-20250514")
+
+        response = http_requests.post(
+            "https://api.anthropic.com/v1/messages",
+            headers={
+                "Content-Type": "application/json",
+                "x-api-key": api_key,
+                "anthropic-version": "2023-06-01",
+            },
+            json={
+                "model": model,
+                "max_tokens": 2000,
+                "temperature": 0.1,
+                "system": "You are a medical data auditor specializing in AJCC TNM staging. Return ONLY valid JSON.",
+                "messages": [{"role": "user", "content": review_prompt}],
+            },
+            timeout=60,
+        )
+
+        if response.status_code >= 300:
+            return jsonify({'success': False, 'error': f'Claude API error: {response.status_code}'}), 500
+
+        ai_text = response.json()["content"][0]["text"].strip()
+
+        # Try to parse JSON from response
+        # Handle markdown code blocks
+        if ai_text.startswith("```"):
+            ai_text = ai_text.split("\n", 1)[1] if "\n" in ai_text else ai_text[3:]
+            if ai_text.endswith("```"):
+                ai_text = ai_text[:-3]
+            ai_text = ai_text.strip()
+
+        try:
+            review_result = json.loads(ai_text)
+        except json.JSONDecodeError:
+            review_result = {
+                "issues_found": [],
+                "overall_assessment": "unknown",
+                "confidence": "low",
+                "summary": ai_text[:500],
+            }
+
+        return jsonify({
+            'success': True,
+            'review': review_result,
+            'disease_name': disease.disease_name,
+        })
+
+    except Exception as e:
+        logger.error(f"Error in AI review: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 
 @admin_tnm_bp.route('/curate/<int:disease_site_id>/<int:year>', methods=['GET'])
 @require_admin
