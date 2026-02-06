@@ -742,27 +742,18 @@ def generate_calculator_html(
     if not api_key:
         raise ValueError("CLAUDE_API_KEY environment variable is not set")
 
-    # Static system prompt — cacheable across all cancer types
-    system_text = (
-        "You are an experienced oncology radiologist creating practical TNM staging calculators. "
-        "Generate complete, self-contained HTML files with interactive calculator forms and comprehensive reference guides. "
-        "Use separate staging functions per subsite. Return reasoning strings explaining each stage determination. "
-        "Follow AJCC 9th Edition staging criteria unless otherwise specified."
-    )
-
     # Use requests.post with explicit timeout (matches ai_prelim.py / ai_tnm.py pattern)
     # No retry loop — on Vercel, retries with sleep guarantee timeout
     payload = {
         "model": model,
         "max_tokens": 20000,
         "temperature": 0.3,
-        "system": [
-            {
-                "type": "text",
-                "text": system_text,
-                "cache_control": {"type": "ephemeral"}
-            }
-        ],
+        "system": (
+            "You are an experienced oncology radiologist creating practical TNM staging calculators. "
+            "Generate complete, self-contained HTML files with interactive calculator forms and comprehensive reference guides. "
+            "Use separate staging functions per subsite. Return reasoning strings explaining each stage determination. "
+            "Follow AJCC 9th Edition staging criteria unless otherwise specified."
+        ),
         "messages": [
             {"role": "user", "content": prompt}
         ],
@@ -775,7 +766,6 @@ def generate_calculator_html(
                 "Content-Type": "application/json",
                 "x-api-key": api_key,
                 "anthropic-version": "2023-06-01",
-                "anthropic-beta": "prompt-caching-2024-07-31",
             },
             json=payload,
             timeout=240,  # Vercel maxDuration=300, leave headroom

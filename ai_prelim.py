@@ -403,13 +403,7 @@ def generate_prelim_case_data(case_context, provider="claude", model=None):
         "model": model,
         "max_tokens": 4000,  # Increased for more comprehensive output
         "temperature": 0.3,  # Slightly higher for more natural language
-        "system": [
-            {
-                "type": "text",
-                "text": system_prompt,
-                "cache_control": {"type": "ephemeral"}
-            }
-        ],
+        "system": system_prompt,
         "messages": [
             {"role": "user", "content": user_prompt}
         ],
@@ -422,7 +416,6 @@ def generate_prelim_case_data(case_context, provider="claude", model=None):
                 "Content-Type": "application/json",
                 "x-api-key": api_key,
                 "anthropic-version": "2023-06-01",
-                "anthropic-beta": "prompt-caching-2024-07-31",
             },
             data=json.dumps(payload),
             timeout=90,  # Increased timeout for longer responses
