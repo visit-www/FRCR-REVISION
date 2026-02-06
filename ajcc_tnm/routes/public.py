@@ -293,6 +293,7 @@ def tnm_view(section_slug, disease_slug):
     m_definitions = []
     stage_groups = []
     clinical_prognostic_stage_groups = []
+    tnm_notes = []
     explanatory_notes_html = None
     quick_reference_html = None
     curated_quick_reference = None  # Admin's additional notes for quick reference
@@ -337,6 +338,7 @@ def tnm_view(section_slug, disease_slug):
             if isinstance(tnm_data, str):
                 tnm_data = json.loads(tnm_data)
             clinical_prognostic_stage_groups = tnm_data.get('clinical_prognostic_stage_groups', [])
+            tnm_notes = tnm_data.get('notes', [])
         
         # Get cancers staged and not staged (handle nested JSON structure)
         cancers_staged_data = staging_data.get_json_section('cancers_staged') or {}
@@ -435,6 +437,7 @@ def tnm_view(section_slug, disease_slug):
             m_definitions=m_definitions,
             stage_groups=stage_groups,
             clinical_prognostic_stage_groups=clinical_prognostic_stage_groups,
+            tnm_notes=tnm_notes,
             cancers_staged=cancers_staged,
             cancers_not_staged=cancers_not_staged,
             quick_reference_html=quick_reference_html,

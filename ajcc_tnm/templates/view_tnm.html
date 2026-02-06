@@ -162,92 +162,93 @@
                     {% endif %}
 
                     <div class="tnm-content highlightable-text" data-field="quick-reference">
-                        {% if t_definitions or n_definitions or m_definitions %}
-                        
+                        {# Check for actual content in each TNM component #}
+                        {% set has_t = t_definitions and t_definitions|length > 0 %}
+                        {% set has_n = n_definitions and (n_definitions.clinical|default([])|length > 0 or n_definitions.pathological|default([])|length > 0) %}
+                        {% set has_m = m_definitions and m_definitions|length > 0 %}
+
+                        {% if has_t or has_n or has_m %}
+
                         <!-- T Stage -->
+                        {% if has_t %}
                         <div class="mb-4">
                             <h6 class="border-bottom pb-2" style="color: #5E899E;">
                                 <i class="fas fa-tumor me-2"></i><strong>T - Primary Tumor</strong>
                             </h6>
-                            {% if t_definitions %}
-                                {% for subsite in t_definitions %}
-                                    {% if subsite.subsite and subsite.subsite != 'Default' %}
-                                    <p class="text-muted small mb-1"><em>{{ subsite.subsite }}</em></p>
-                                    {% endif %}
-                                    <div class="table-responsive mb-3">
-                                        <table class="table table-sm table-bordered tnm-table">
-                                            <thead class="table-light">
-                                                <tr><th style="width: 100px;">Stage</th><th>Criteria</th></tr>
-                                            </thead>
-                                            <tbody id="t-definitions-table">
-                                                {% for cat in subsite.categories %}
-                                                <tr class="tnm-row" data-category="{{ cat.category }}">
-                                                    <td><span class="badge bg-primary tnm-badge">{{ cat.category }}</span></td>
-                                                    <td class="tnm-criteria">{{ cat.criteria }}</td>
-                                                </tr>
-                                                {% endfor %}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                {% endfor %}
-                            {% else %}
-                            <p class="text-muted">T-stage definitions not available</p>
-                            {% endif %}
+                            {% for subsite in t_definitions %}
+                                {% if subsite.subsite and subsite.subsite != 'Default' %}
+                                <p class="text-muted small mb-1"><em>{{ subsite.subsite }}</em></p>
+                                {% endif %}
+                                <div class="table-responsive mb-3">
+                                    <table class="table table-sm table-bordered tnm-table">
+                                        <thead class="table-light">
+                                            <tr><th style="width: 100px;">Stage</th><th>Criteria</th></tr>
+                                        </thead>
+                                        <tbody id="t-definitions-table">
+                                            {% for cat in subsite.categories %}
+                                            <tr class="tnm-row" data-category="{{ cat.category }}">
+                                                <td><span class="badge bg-primary tnm-badge">{{ cat.category }}</span></td>
+                                                <td class="tnm-criteria">{{ cat.criteria }}</td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            {% endfor %}
                         </div>
+                        {% endif %}
 
                         <!-- N Stage -->
+                        {% if has_n %}
                         <div class="mb-4">
                             <h6 class="border-bottom pb-2" style="color: #28a745;">
                                 <i class="fas fa-project-diagram me-2"></i><strong>N - Regional Lymph Nodes</strong>
                             </h6>
-                            {% if n_definitions %}
-                                {% if n_definitions.clinical %}
-                                <p class="small text-muted mb-1">Clinical (cN):</p>
-                                <div class="table-responsive mb-2">
-                                    <table class="table table-sm table-bordered tnm-table">
-                                        <thead class="table-light">
-                                            <tr><th style="width: 100px;">Stage</th><th>Criteria</th></tr>
-                                        </thead>
-                                        <tbody id="n-clinical-table">
-                                            {% for n in n_definitions.clinical %}
-                                            <tr class="tnm-row" data-category="{{ n.category }}">
-                                                <td><span class="badge bg-success tnm-badge">{{ n.category }}</span></td>
-                                                <td class="tnm-criteria">{{ n.criteria }}</td>
-                                            </tr>
-                                            {% endfor %}
-                                        </tbody>
-                                    </table>
-                                </div>
-                                {% endif %}
-                                {% if n_definitions.pathological %}
-                                <p class="small text-muted mb-1">Pathological (pN):</p>
-                                <div class="table-responsive mb-2">
-                                    <table class="table table-sm table-bordered tnm-table">
-                                        <thead class="table-light">
-                                            <tr><th style="width: 100px;">Stage</th><th>Criteria</th></tr>
-                                        </thead>
-                                        <tbody id="n-path-table">
-                                            {% for n in n_definitions.pathological %}
-                                            <tr class="tnm-row" data-category="{{ n.category }}">
-                                                <td><span class="badge bg-success tnm-badge">{{ n.category }}</span></td>
-                                                <td class="tnm-criteria">{{ n.criteria }}</td>
-                                            </tr>
-                                            {% endfor %}
-                                        </tbody>
-                                    </table>
-                                </div>
-                                {% endif %}
-                            {% else %}
-                            <p class="text-muted">N-stage definitions not available</p>
+                            {% if n_definitions.clinical %}
+                            <p class="small text-muted mb-1">Clinical (cN):</p>
+                            <div class="table-responsive mb-2">
+                                <table class="table table-sm table-bordered tnm-table">
+                                    <thead class="table-light">
+                                        <tr><th style="width: 100px;">Stage</th><th>Criteria</th></tr>
+                                    </thead>
+                                    <tbody id="n-clinical-table">
+                                        {% for n in n_definitions.clinical %}
+                                        <tr class="tnm-row" data-category="{{ n.category }}">
+                                            <td><span class="badge bg-success tnm-badge">{{ n.category }}</span></td>
+                                            <td class="tnm-criteria">{{ n.criteria }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% endif %}
+                            {% if n_definitions.pathological %}
+                            <p class="small text-muted mb-1">Pathological (pN):</p>
+                            <div class="table-responsive mb-2">
+                                <table class="table table-sm table-bordered tnm-table">
+                                    <thead class="table-light">
+                                        <tr><th style="width: 100px;">Stage</th><th>Criteria</th></tr>
+                                    </thead>
+                                    <tbody id="n-path-table">
+                                        {% for n in n_definitions.pathological %}
+                                        <tr class="tnm-row" data-category="{{ n.category }}">
+                                            <td><span class="badge bg-success tnm-badge">{{ n.category }}</span></td>
+                                            <td class="tnm-criteria">{{ n.criteria }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
                             {% endif %}
                         </div>
+                        {% endif %}
 
                         <!-- M Stage -->
+                        {% if has_m %}
                         <div class="mb-4">
                             <h6 class="border-bottom pb-2" style="color: #dc3545;">
                                 <i class="fas fa-globe me-2"></i><strong>M - Distant Metastasis</strong>
                             </h6>
-                            {% if m_definitions %}
                             <div class="table-responsive">
                                 <table class="table table-sm table-bordered tnm-table">
                                     <thead class="table-light">
@@ -263,9 +264,19 @@
                                     </tbody>
                                 </table>
                             </div>
-                            {% else %}
-                            <p class="text-muted">M-stage definitions not available</p>
-                            {% endif %}
+                        </div>
+                        {% endif %}
+
+                        {% elif tnm_notes %}
+                        <!-- Non-TNM disease: show info banner with notes -->
+                        <div class="alert alert-info d-flex align-items-start mb-0" role="alert">
+                            <i class="fas fa-info-circle me-3 mt-1" style="font-size: 1.2rem;"></i>
+                            <div>
+                                <strong>This disease does not use traditional TNM staging.</strong>
+                                {% for note in tnm_notes %}
+                                <p class="mb-1 mt-2">{{ note }}</p>
+                                {% endfor %}
+                            </div>
                         </div>
 
                         {% else %}
