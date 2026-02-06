@@ -736,6 +736,9 @@ class TNMCalculatorContent(db.Model):
     # Associated case (if linked to an algorithm case document)
     algorithm_case_id = db.Column(db.Integer, db.ForeignKey('case.id'), nullable=True, index=True)
 
+    # Editing
+    last_edit_note = db.Column(db.String(500), nullable=True)  # What was changed in last manual edit
+
     # Audit
     created_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)

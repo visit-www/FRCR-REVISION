@@ -1,0 +1,345 @@
+{% extends 'base.html' %}
+
+{% block mobile_breadcrumb %}
+<li class="breadcrumb-item">
+    <a href="{{ url_for('admin.list_tnm_calculators') }}" class="text-white text-decoration-none">TNM Calculators</a>
+</li>
+<li class="breadcrumb-item active text-white-50">Edit: {{ cancer_name }}</li>
+{% endblock %}
+
+{% block content %}
+<style>
+    .editor-container {
+        display: flex;
+        height: calc(100vh - 180px);
+        min-height: 500px;
+        gap: 0;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+    .editor-panel {
+        flex: 0 0 60%;
+        display: flex;
+        flex-direction: column;
+        border-right: 2px solid #dee2e6;
+    }
+    .preview-panel {
+        flex: 0 0 40%;
+        display: flex;
+        flex-direction: column;
+        background: #fff;
+    }
+    .panel-header {
+        padding: 8px 16px;
+        background: #f8f9fa;
+        border-bottom: 1px solid #dee2e6;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #495057;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    #monaco-editor {
+        flex: 1;
+    }
+    #preview-frame {
+        flex: 1;
+        border: none;
+        width: 100%;
+        height: 100%;
+        background: #fff;
+    }
+    .toolbar {
+        padding: 12px 16px;
+        background: #fff;
+        border-bottom: 1px solid #dee2e6;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+    .status-badge {
+        font-size: 0.8rem;
+        padding: 4px 10px;
+        border-radius: 12px;
+    }
+    .status-saved {
+        background: #d1fae5;
+        color: #065f46;
+    }
+    .status-unsaved {
+        background: #fef3c7;
+        color: #92400e;
+    }
+    .status-saving {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+    .editor-fullscreen .editor-panel { flex: 0 0 100%; }
+    .editor-fullscreen .preview-panel { display: none; }
+    .preview-fullscreen .editor-panel { display: none; }
+    .preview-fullscreen .preview-panel { flex: 0 0 100%; }
+    .cursor-info {
+        font-size: 0.8rem;
+        color: #6b7280;
+        font-family: monospace;
+    }
+</style>
+
+<div class="container-fluid py-3">
+    <div class="row justify-content-center">
+        <div class="col-12 col-xl-11">
+
+            <!-- Navigation -->
+            <div class="d-flex flex-wrap gap-2 mb-3 align-items-center">
+                <a href="{{ url_for('tnm_calculator.calculator', disease=slug) }}" class="btn btn-outline-secondary btn-sm" target="_blank">
+                    <i class="fas fa-external-link-alt me-1"></i>View Live
+                </a>
+                <a href="{{ url_for('admin.list_tnm_calculators') }}" class="btn btn-outline-secondary btn-sm">
+                    <i class="fas fa-list me-1"></i>All Calculators
+                </a>
+                <div class="ms-auto d-flex align-items-center gap-2">
+                    <span id="saveStatus" class="status-badge status-saved">Saved</span>
+                    <span id="cursorInfo" class="cursor-info">Ln 1, Col 1</span>
+                </div>
+            </div>
+
+            <!-- Header -->
+            <div class="mb-3">
+                <h4 class="mb-1">
+                    <i class="fas fa-code me-2" style="color: #667eea;"></i>
+                    Edit: {{ cancer_name }}
+                </h4>
+            </div>
+
+            <!-- Toolbar -->
+            <div class="toolbar rounded-top">
+                <button id="btnSave" class="btn btn-primary btn-sm" onclick="saveCalculator()">
+                    <i class="fas fa-save me-1"></i>Save <small class="opacity-75">(Ctrl+S)</small>
+                </button>
+                <button id="btnRevert" class="btn btn-outline-warning btn-sm" onclick="revertChanges()" disabled>
+                    <i class="fas fa-undo me-1"></i>Revert
+                </button>
+                <div class="vr"></div>
+                <button class="btn btn-outline-secondary btn-sm" onclick="toggleFullscreen('editor')" title="Expand editor">
+                    <i class="fas fa-expand me-1"></i>Editor
+                </button>
+                <button class="btn btn-outline-secondary btn-sm" onclick="toggleFullscreen('preview')" title="Expand preview">
+                    <i class="fas fa-expand me-1"></i>Preview
+                </button>
+                <button class="btn btn-outline-secondary btn-sm" onclick="toggleTheme()" title="Toggle dark/light">
+                    <i class="fas fa-moon me-1"></i>Theme
+                </button>
+                <div class="vr"></div>
+                <input type="text" id="editNote" class="form-control form-control-sm"
+                       style="max-width: 350px;" placeholder="Edit note (e.g. Added EBV status, fixed HPV+ T0)"
+                       value="{{ last_edit_note }}">
+            </div>
+
+            <!-- Editor + Preview -->
+            <div id="editorContainer" class="editor-container">
+                <!-- Monaco Editor Panel -->
+                <div class="editor-panel">
+                    <div class="panel-header">
+                        <span><i class="fas fa-code me-1"></i> HTML / CSS / JavaScript</span>
+                        <span id="lineCount" style="font-weight: normal; color: #9ca3af;"></span>
+                    </div>
+                    <div id="monaco-editor"></div>
+                </div>
+
+                <!-- Live Preview Panel -->
+                <div class="preview-panel">
+                    <div class="panel-header">
+                        <span><i class="fas fa-eye me-1"></i> Live Preview</span>
+                        <button class="btn btn-outline-secondary btn-sm py-0 px-2" onclick="refreshPreview()" title="Force refresh">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                    </div>
+                    <iframe id="preview-frame" sandbox="allow-scripts allow-forms"></iframe>
+                </div>
+            </div>
+
+            {% if updated_at %}
+            <div class="mt-2 text-muted" style="font-size: 0.8rem;">
+                Last updated: {{ updated_at }}
+                {% if last_edit_note %} &mdash; {{ last_edit_note }}{% endif %}
+            </div>
+            {% endif %}
+
+        </div>
+    </div>
+</div>
+
+<!-- Monaco Editor AMD Loader -->
+<script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.min.js"></script>
+<script>
+    // === State ===
+    const SLUG = {{ slug | tojson }};
+    const ORIGINAL_HTML = {{ calculator_html | tojson }};
+    let editor = null;
+    let isDirty = false;
+    let isDark = false;
+    let previewTimeout = null;
+
+    // === Monaco Setup ===
+    require.config({
+        paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs' }
+    });
+
+    require(['vs/editor/editor.main'], function () {
+        editor = monaco.editor.create(document.getElementById('monaco-editor'), {
+            value: ORIGINAL_HTML,
+            language: 'html',
+            theme: 'vs',
+            fontSize: 13,
+            minimap: { enabled: true },
+            wordWrap: 'on',
+            automaticLayout: true,
+            scrollBeyondLastLine: false,
+            bracketPairColorization: { enabled: true },
+            renderWhitespace: 'selection',
+            tabSize: 2,
+        });
+
+        // Live preview on change
+        editor.onDidChangeModelContent(() => {
+            markDirty();
+            clearTimeout(previewTimeout);
+            previewTimeout = setTimeout(refreshPreview, 500);
+        });
+
+        // Cursor position
+        editor.onDidChangeCursorPosition((e) => {
+            document.getElementById('cursorInfo').textContent =
+                `Ln ${e.position.lineNumber}, Col ${e.position.column}`;
+        });
+
+        // Ctrl+S
+        editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
+            saveCalculator();
+        });
+
+        // Line count
+        updateLineCount();
+        editor.onDidChangeModelContent(updateLineCount);
+
+        // Initial preview
+        refreshPreview();
+    });
+
+    function updateLineCount() {
+        if (!editor) return;
+        const count = editor.getModel().getLineCount();
+        document.getElementById('lineCount').textContent = `${count} lines`;
+    }
+
+    // === Preview ===
+    function refreshPreview() {
+        if (!editor) return;
+        const frame = document.getElementById('preview-frame');
+        frame.srcdoc = editor.getValue();
+    }
+
+    // === Dirty State ===
+    function markDirty() {
+        if (!isDirty) {
+            isDirty = true;
+            document.getElementById('saveStatus').className = 'status-badge status-unsaved';
+            document.getElementById('saveStatus').textContent = 'Unsaved changes';
+            document.getElementById('btnRevert').disabled = false;
+        }
+    }
+
+    function markSaved() {
+        isDirty = false;
+        document.getElementById('saveStatus').className = 'status-badge status-saved';
+        document.getElementById('saveStatus').textContent = 'Saved';
+        document.getElementById('btnRevert').disabled = true;
+    }
+
+    // === Save ===
+    async function saveCalculator() {
+        if (!editor) return;
+
+        const statusEl = document.getElementById('saveStatus');
+        const btnSave = document.getElementById('btnSave');
+
+        statusEl.className = 'status-badge status-saving';
+        statusEl.textContent = 'Saving...';
+        btnSave.disabled = true;
+
+        try {
+            const response = await fetch(`/api/admin/tnm/${SLUG}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    calculator_html: editor.getValue(),
+                    edit_note: document.getElementById('editNote').value.trim()
+                })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                markSaved();
+            } else {
+                statusEl.className = 'status-badge status-unsaved';
+                statusEl.textContent = 'Save failed';
+                alert('Save failed: ' + (result.error || 'Unknown error'));
+            }
+        } catch (err) {
+            statusEl.className = 'status-badge status-unsaved';
+            statusEl.textContent = 'Save failed';
+            alert('Network error: ' + err.message);
+        } finally {
+            btnSave.disabled = false;
+        }
+    }
+
+    // === Revert ===
+    function revertChanges() {
+        if (!editor) return;
+        if (!confirm('Revert all changes to last saved version?')) return;
+        editor.setValue(ORIGINAL_HTML);
+        markSaved();
+        refreshPreview();
+    }
+
+    // === Fullscreen Toggle ===
+    let currentFullscreen = null;
+
+    function toggleFullscreen(panel) {
+        const container = document.getElementById('editorContainer');
+
+        if (currentFullscreen === panel) {
+            container.classList.remove('editor-fullscreen', 'preview-fullscreen');
+            currentFullscreen = null;
+        } else {
+            container.classList.remove('editor-fullscreen', 'preview-fullscreen');
+            container.classList.add(panel === 'editor' ? 'editor-fullscreen' : 'preview-fullscreen');
+            currentFullscreen = panel;
+        }
+
+        // Trigger Monaco resize
+        if (editor) setTimeout(() => editor.layout(), 100);
+    }
+
+    // === Theme Toggle ===
+    function toggleTheme() {
+        isDark = !isDark;
+        if (editor) {
+            monaco.editor.setTheme(isDark ? 'vs-dark' : 'vs');
+        }
+    }
+
+    // === Warn on leave with unsaved changes ===
+    window.addEventListener('beforeunload', (e) => {
+        if (isDirty) {
+            e.preventDefault();
+            e.returnValue = '';
+        }
+    });
+</script>
+{% endblock %}

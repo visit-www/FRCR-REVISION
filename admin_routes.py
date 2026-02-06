@@ -3,7 +3,7 @@ Admin Routes - User Management & Case Management API Endpoints
 Provides CRUD operations for user management and case management with role-based access control
 """
 
-from flask import Blueprint, request, jsonify, render_template_string
+from flask import Blueprint, request, jsonify, render_template_string, render_template
 from flask_login import login_required, current_user
 from models import db, User, UserRole, SubscriptionStatus, CaseAuditLog, Case
 from access_control import require_admin, require_role, delete_user_completely, can_delete_user, upgrade_to_paid, downgrade_to_free
@@ -2033,6 +2033,76 @@ def get_tnm_calculator(slug):
     except Exception as e:
         logger.exception(f"TNM Get error: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/tnm/<slug>', methods=['PATCH'])
+@require_admin
+def update_tnm_calculator(slug):
+    """
+    Update TNM calculator HTML content (for manual edits).
+    Also re-extracts algorithm discussion from the updated HTML.
+    """
+    try:
+        from models import TNMCalculatorContent
+        from tnm_calculator.tnm_generator import extract_algorithm_from_calculator
+
+        content = TNMCalculatorContent.query.filter_by(slug=slug).first()
+        if not content:
+            return jsonify({'success': False, 'error': 'Calculator not found'}), 404
+
+        data = request.get_json()
+        if not data or 'calculator_html' not in data:
+            return jsonify({'success': False, 'error': 'calculator_html is required'}), 400
+
+        content.calculator_html = data['calculator_html']
+
+        if data.get('edit_note'):
+            content.last_edit_note = data['edit_note'][:500]
+
+        # Re-extract algorithm from updated HTML
+        try:
+            algorithm_html = extract_algorithm_from_calculator(
+                data['calculator_html'], content.cancer_name
+            )
+            content.algorithm_discussion_html = algorithm_html
+        except Exception as alg_err:
+            logger.warning(f"Algorithm re-extraction failed for {slug}: {alg_err}")
+
+        db.session.commit()
+        logger.info(f"Admin {current_user.email} edited TNM calculator: {slug}")
+
+        return jsonify({
+            'success': True,
+            'message': f'Calculator {slug} updated',
+            'updated_at': content.updated_at.isoformat() if content.updated_at else None
+        }), 200
+
+    except Exception as e:
+        db.session.rollback()
+        logger.exception(f"TNM Update error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_bp.route('/tnm-editor/<slug>')
+@require_admin
+def tnm_calculator_editor(slug):
+    """
+    Admin page: Monaco Editor + live preview for editing calculator HTML.
+    """
+    from models import TNMCalculatorContent
+
+    content = TNMCalculatorContent.query.filter_by(slug=slug).first()
+    if not content:
+        return f"Calculator '{slug}' not found", 404
+
+    return render_template(
+        'admin_tnm_editor.html',
+        slug=slug,
+        cancer_name=content.cancer_name,
+        calculator_html=content.calculator_html or '',
+        last_edit_note=content.last_edit_note or '',
+        updated_at=content.updated_at.isoformat() if content.updated_at else ''
+    )
 
 
 @admin_bp.route('/tnm/<slug>', methods=['DELETE'])
