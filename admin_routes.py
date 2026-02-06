@@ -929,6 +929,7 @@ def get_case(case_id):
         'module': case.module.name if case.module else None,
         'body_part': case.body_part.name if case.body_part else None,
         'age_group': case.age_group.name if case.age_group else None,
+        'calculator_slug': case.calculator_slug,
         'status': case.status.name if case.status else 'DRAFT',
         'is_public': case.is_public,
         'created_by_user_id': case.created_by_user_id,

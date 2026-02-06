@@ -6315,7 +6315,7 @@ function renderRelatedCases() {
             icon = '<i class="fas fa-calculator" style="color: #198754;"></i>';
             label = c.cancer_name || c.slug || 'Calculator';
             sublabel = c.body_section || '';
-            clickUrl = c.url || `/tnm-calculator/embed/${c.slug}`;
+            clickUrl = c.url || `/tnm-calculator/${c.slug}`;
             target = '_blank';
         } else if (lt === 'reference') {
             badge = '<span class="badge bg-secondary">Reference</span>';
@@ -6330,8 +6330,8 @@ function renderRelatedCases() {
             const labels = { 'related': 'Related', 'similar': 'Similar', 'algorithm': 'Algorithm', 'reference': 'Reference' };
             badge = `<span class="badge bg-${colors[relType] || 'primary'}">${labels[relType] || 'Related'}</span>`;
             icon = '<i class="fas fa-file-medical" style="color: #5E899E;"></i>';
-            label = c.case_number || 'Case';
-            sublabel = c.diagnosis || '';
+            label = c.diagnosis || c.case_number || 'Case';
+            sublabel = c.case_number || '';
             clickUrl = c.url || `/view-case/${c.id}`;
             target = '_self';
         }

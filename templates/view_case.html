@@ -10244,7 +10244,7 @@
             container.innerHTML = items.map(item => {
                 if (item.link_type === 'calculator') {
                     return `
-                        <a href="${item.url || '/tnm-calculator/embed/' + item.slug}" target="_blank"
+                        <a href="${item.url || '/tnm-calculator/' + item.slug}" target="_blank"
                            class="btn btn-sm btn-outline-success d-flex align-items-center gap-2 related-case-badge">
                             <i class="fas fa-calculator"></i>
                             <span>${item.cancer_name} <small class="opacity-75">(${item.body_section})</small></span>
@@ -10267,7 +10267,7 @@
                            class="btn btn-sm btn-outline-primary d-flex align-items-center gap-2 related-case-badge"
                            style="border-color: #5E899E; color: #5E899E;">
                             <i class="fas ${iconClass}"></i>
-                            <span>${item.case_number || (item.diagnosis || '').substring(0, 40)}</span>
+                            <span>${(item.diagnosis || item.case_number || 'Case').substring(0, 50)}</span>
                         </a>
                     `;
                 }

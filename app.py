@@ -2521,7 +2521,7 @@ def get_related_cases(case_id):
                 'slug': calc.slug,
                 'cancer_name': calc.cancer_name,
                 'body_section': calc.body_section,
-                'url': f'/tnm-calculator/embed/{calc.slug}'
+                'url': f'/tnm-calculator/{calc.slug}'
             })
 
     # 3) Case-to-reference links
@@ -2582,7 +2582,7 @@ def add_related_case(case_id):
         return jsonify({'success': True, 'message': 'Calculator linked', 'item': {
             'id': calc.id, 'link_type': 'calculator', 'slug': calc.slug,
             'cancer_name': calc.cancer_name, 'body_section': calc.body_section,
-            'url': f'/tnm-calculator/embed/{calc.slug}'
+            'url': f'/tnm-calculator/{calc.slug}'
         }})
 
     elif link_type == 'reference':
@@ -2722,7 +2722,7 @@ def search_cases_for_linking():
                 'slug': calc.slug,
                 'cancer_name': calc.cancer_name,
                 'body_section': calc.body_section,
-                'url': f'/tnm-calculator/embed/{calc.slug}',
+                'url': f'/tnm-calculator/{calc.slug}',
                 'link_type': 'calculator',
             })
         return jsonify(results)
