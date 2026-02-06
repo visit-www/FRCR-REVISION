@@ -2663,7 +2663,16 @@ function loadCaseForEdit(caseId) {
             document.getElementById('editCaseAgeGroup').value = caseData.age_group || '';
         }
         if (document.getElementById('editCaseCalculator')) {
-            document.getElementById('editCaseCalculator').value = caseData.calculator_slug || '';
+            const calcSelect = document.getElementById('editCaseCalculator');
+            const slug = caseData.calculator_slug || '';
+            // If the slug isn't in the dropdown options, add it dynamically so value isn't silently lost
+            if (slug && !calcSelect.querySelector(`option[value="${slug}"]`)) {
+                const opt = document.createElement('option');
+                opt.value = slug;
+                opt.textContent = slug.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) + ' (custom)';
+                calcSelect.appendChild(opt);
+            }
+            calcSelect.value = slug;
             // Trigger visibility update after programmatic value change
             if (typeof updateTnmGeneratorVisibility === 'function') {
                 updateTnmGeneratorVisibility();
@@ -6306,7 +6315,7 @@ function renderRelatedCases() {
             icon = '<i class="fas fa-calculator" style="color: #198754;"></i>';
             label = c.cancer_name || c.slug || 'Calculator';
             sublabel = c.body_section || '';
-            clickUrl = c.url || `/tnm-calculator/${c.slug}`;
+            clickUrl = c.url || `/tnm-calculator/embed/${c.slug}`;
             target = '_blank';
         } else if (lt === 'reference') {
             badge = '<span class="badge bg-secondary">Reference</span>';
@@ -6323,7 +6332,7 @@ function renderRelatedCases() {
             icon = '<i class="fas fa-file-medical" style="color: #5E899E;"></i>';
             label = c.case_number || 'Case';
             sublabel = c.diagnosis || '';
-            clickUrl = c.url || `/case/${c.id}`;
+            clickUrl = c.url || `/view-case/${c.id}`;
             target = '_self';
         }
 
