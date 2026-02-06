@@ -766,9 +766,12 @@ function saveTnmData() {
 
 // Save raw AJCC quick reference (section 1) via existing API
 function saveRawQuickReference() {
-    // Trigger TinyMCE save to update textareas
-    if (typeof tinymce !== 'undefined') {
-        tinymce.triggerSave();
+    // Get content from TinyMCE editor (not textarea .value — TinyMCE replaces textarea with iframe)
+    let htmlContent;
+    if (typeof tinymce !== 'undefined' && tinymce.get('rawQuickReference')) {
+        htmlContent = tinymce.get('rawQuickReference').getContent();
+    } else {
+        htmlContent = document.getElementById('rawQuickReference').value;
     }
 
     const btn = document.querySelector('[onclick="saveRawQuickReference()"]');
@@ -781,7 +784,7 @@ function saveRawQuickReference() {
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
-            html_content: document.getElementById('rawQuickReference').value
+            html_content: htmlContent
         })
     })
     .then(response => response.json())

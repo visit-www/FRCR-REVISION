@@ -385,7 +385,7 @@
                             <div id="sectionEditor2" style="display:none;" class="mt-3">
                                 <textarea id="sectionTextarea2" class="form-control" rows="8">{{ staging_data.section_2_cancers_staged_html if staging_data else '' }}</textarea>
                                 <div class="mt-2 d-flex gap-2">
-                                    <button class="btn btn-sm btn-primary" onclick="saveSectionHtml(2)"><i class="fas fa-save me-1"></i>Save</button>
+                                    <button class="btn btn-sm btn-primary" onclick="saveSectionHtml(2, this)"><i class="fas fa-save me-1"></i>Save</button>
                                     <button class="btn btn-sm btn-outline-secondary" onclick="toggleSectionEditor(2)">Cancel</button>
                                 </div>
                             </div>
@@ -422,7 +422,7 @@
                             <div id="sectionEditor3" style="display:none;" class="mt-3">
                                 <textarea id="sectionTextarea3" class="form-control" rows="8">{{ staging_data.section_3_cancers_not_staged_html if staging_data else '' }}</textarea>
                                 <div class="mt-2 d-flex gap-2">
-                                    <button class="btn btn-sm btn-primary" onclick="saveSectionHtml(3)"><i class="fas fa-save me-1"></i>Save</button>
+                                    <button class="btn btn-sm btn-primary" onclick="saveSectionHtml(3, this)"><i class="fas fa-save me-1"></i>Save</button>
                                     <button class="btn btn-sm btn-outline-secondary" onclick="toggleSectionEditor(3)">Cancel</button>
                                 </div>
                             </div>
@@ -1329,22 +1329,32 @@ function toggleSectionEditor(sectionNum) {
     }
 }
 
-function saveSectionHtml(sectionNum) {
-    if (typeof tinymce !== 'undefined') tinymce.triggerSave();
+function saveSectionHtml(sectionNum, btnElement) {
+    if (!yearUsed) {
+        alert('Error: No staging year found. Cannot save without a valid year.');
+        return;
+    }
 
-    const textarea = document.getElementById('sectionTextarea' + sectionNum);
-    if (!textarea) return;
+    // Get content from TinyMCE editor (not textarea .value — TinyMCE replaces textarea with iframe)
+    const textareaId = 'sectionTextarea' + sectionNum;
+    let htmlContent;
+    if (typeof tinymce !== 'undefined' && tinymce.get(textareaId)) {
+        htmlContent = tinymce.get(textareaId).getContent();
+    } else {
+        const textarea = document.getElementById(textareaId);
+        if (!textarea) return;
+        htmlContent = textarea.value;
+    }
 
-    const btn = event.currentTarget;
-    const origText = btn.innerHTML;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Saving...';
-    btn.disabled = true;
+    const origText = btnElement.innerHTML;
+    btnElement.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Saving...';
+    btnElement.disabled = true;
 
     fetch(`/api/admin/tnm/edit/${diseaseId}/${yearUsed}/${sectionNum}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ html_content: textarea.value })
+        body: JSON.stringify({ html_content: htmlContent })
     })
     .then(r => r.json())
     .then(result => {
@@ -1358,14 +1368,14 @@ function saveSectionHtml(sectionNum) {
             setTimeout(() => location.reload(), 1000);
         } else {
             alert('Error: ' + (result.error || 'Unknown'));
-            btn.innerHTML = origText;
-            btn.disabled = false;
+            btnElement.innerHTML = origText;
+            btnElement.disabled = false;
         }
     })
     .catch(err => {
         alert('Save failed: ' + err.message);
-        btn.innerHTML = origText;
-        btn.disabled = false;
+        btnElement.innerHTML = origText;
+        btnElement.disabled = false;
     });
 }
 
