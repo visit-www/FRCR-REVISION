@@ -847,24 +847,27 @@ def generate_algorithm_discussion(
     return html_content.strip()
 
 
-def save_calculator_html_file(slug: str, html_content: str) -> Path:
+def save_calculator_html_file(slug: str, html_content: str) -> Optional[Path]:
     """
     Save calculator HTML to file in calculators directory.
+    Non-fatal on read-only filesystems (e.g. Vercel) — HTML is also stored in DB.
 
     Args:
         slug: Calculator slug (e.g., 'oropharynx', 'lung')
         html_content: Complete HTML content
 
     Returns:
-        Path to saved file
+        Path to saved file, or None if filesystem is read-only
     """
-    CALCULATORS_DIR.mkdir(parents=True, exist_ok=True)
-
-    file_path = CALCULATORS_DIR / f"{slug}_calc.html"
-    file_path.write_text(html_content, encoding='utf-8')
-
-    logger.info(f"[TNM Generator] Saved calculator HTML to {file_path}")
-    return file_path
+    try:
+        CALCULATORS_DIR.mkdir(parents=True, exist_ok=True)
+        file_path = CALCULATORS_DIR / f"{slug}_calc.html"
+        file_path.write_text(html_content, encoding='utf-8')
+        logger.info(f"[TNM Generator] Saved calculator HTML to {file_path}")
+        return file_path
+    except OSError as e:
+        logger.warning(f"[TNM Generator] Could not save file (read-only FS?): {e}")
+        return None
 
 
 def generate_and_save_tnm_content(
