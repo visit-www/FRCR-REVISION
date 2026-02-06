@@ -391,36 +391,7 @@ def get_disease_nuances(cancer_name: str, body_section: str) -> str:
 
 
 def get_opus_example_excerpt() -> str:
-    """Get excerpt from Opus-generated calculator as quality reference."""
-    example_file = Path(__file__).parent / 'calculators' / 'larynx-opus_calc.html'
-    if not example_file.exists():
-        return ""
-
-    # Read the file and extract key sections
-    with open(example_file, 'r') as f:
-        content = f.read()
-
-    # Extract the calculateTStage function as an example of good subsite-specific logic
-    import re
-    match = re.search(r'(function calculateTStage\(\).*?^        \})', content, re.MULTILINE | re.DOTALL)
-    if match:
-        excerpt = match.group(1)
-        return f"""
-## REFERENCE: EXAMPLE OF HIGH-QUALITY SUBSITE-SPECIFIC STAGING LOGIC
-
-The following is an example of excellent staging logic that adapts to subsites.
-Your calculator should follow this pattern of subsite-aware staging:
-
-```javascript
-{excerpt[:3000]}...
-```
-
-KEY QUALITIES TO EMULATE:
-1. Separate staging logic for each subsite (supraglottic, glottic, subglottic)
-2. T1a/T1b distinctions where medically appropriate
-3. Clear reasoning returned with each stage determination
-4. Modular function structure (calculateTStage, calculateNStage, etc.)
-"""
+    """Deprecated — opus example removed to reduce prompt size for faster generation."""
     return ""
 
 
@@ -430,9 +401,9 @@ CALCULATOR_HTML_PROMPT = """You are an experienced oncology radiologist creating
 
 {disease_nuances}
 
-{opus_example}
-
 Generate a COMPLETE, SELF-CONTAINED HTML file with TWO MAIN SECTIONS for {cancer_name} cancer staging.
+
+Use separate staging functions per subsite (e.g., calculateTStage, calculateNStage). Return reasoning strings explaining each stage determination.
 
 ## CRITICAL ARCHITECTURE REQUIREMENTS
 
@@ -748,11 +719,10 @@ def generate_calculator_html(
     Returns:
         Complete HTML string for the calculator
     """
-    client = get_claude_client()
+    import requests as http_requests
 
-    # Get disease-specific nuances and Opus example for enhanced quality
+    # Get disease-specific nuances for accurate staging
     disease_nuances = get_disease_nuances(cancer_name, body_section)
-    opus_example = get_opus_example_excerpt()
 
     prompt = CALCULATOR_HTML_PROMPT.format(
         cancer_name=cancer_name,
@@ -760,7 +730,6 @@ def generate_calculator_html(
         staging_system=staging_system,
         special_notes=f"Special considerations: {special_notes}" if special_notes else "",
         disease_nuances=disease_nuances,
-        opus_example=opus_example
     )
 
     logger.info(f"[TNM Generator] Generating calculator HTML for {cancer_name}")
@@ -768,50 +737,59 @@ def generate_calculator_html(
     # Use provided model or fall back to environment/default
     if model is None:
         model = get_claude_model()
-    max_retries = 3
-    retry_delay = 10  # seconds
 
-    for attempt in range(max_retries):
-        try:
-            # Opus requires streaming for long operations (SDK requirement for >10min potential)
-            if 'opus' in model.lower():
-                logger.info(f"[TNM Generator] Using streaming for Opus model (attempt {attempt + 1})")
-                html_content = ""
-                with client.messages.stream(
-                    model=model,
-                    max_tokens=20000,
-                    temperature=0.3,
-                    messages=[
-                        {
-                            "role": "user",
-                            "content": prompt
-                        }
-                    ]
-                ) as stream:
-                    for text in stream.text_stream:
-                        html_content += text
-            else:
-                response = client.messages.create(
-                    model=model,
-                    max_tokens=20000,
-                    temperature=0.3,
-                    messages=[
-                        {
-                            "role": "user",
-                            "content": prompt
-                        }
-                    ]
-                )
-                html_content = response.content[0].text
-            break  # Success, exit retry loop
-        except Exception as e:
-            if 'overloaded' in str(e).lower() and attempt < max_retries - 1:
-                import time
-                logger.warning(f"[TNM Generator] API overloaded, retrying in {retry_delay}s (attempt {attempt + 1}/{max_retries})")
-                time.sleep(retry_delay)
-                retry_delay *= 2  # Exponential backoff
-            else:
-                raise
+    api_key = os.environ.get('CLAUDE_API_KEY')
+    if not api_key:
+        raise ValueError("CLAUDE_API_KEY environment variable is not set")
+
+    # Static system prompt — cacheable across all cancer types
+    system_text = (
+        "You are an experienced oncology radiologist creating practical TNM staging calculators. "
+        "Generate complete, self-contained HTML files with interactive calculator forms and comprehensive reference guides. "
+        "Use separate staging functions per subsite. Return reasoning strings explaining each stage determination. "
+        "Follow AJCC 9th Edition staging criteria unless otherwise specified."
+    )
+
+    # Use requests.post with explicit timeout (matches ai_prelim.py / ai_tnm.py pattern)
+    # No retry loop — on Vercel, retries with sleep guarantee timeout
+    payload = {
+        "model": model,
+        "max_tokens": 20000,
+        "temperature": 0.3,
+        "system": [
+            {
+                "type": "text",
+                "text": system_text,
+                "cache_control": {"type": "ephemeral"}
+            }
+        ],
+        "messages": [
+            {"role": "user", "content": prompt}
+        ],
+    }
+
+    try:
+        response = http_requests.post(
+            "https://api.anthropic.com/v1/messages",
+            headers={
+                "Content-Type": "application/json",
+                "x-api-key": api_key,
+                "anthropic-version": "2023-06-01",
+            },
+            json=payload,
+            timeout=55,  # Vercel hard-kills at 60s, fail gracefully before
+        )
+    except http_requests.exceptions.Timeout:
+        raise ValueError(f"Claude API timed out generating {cancer_name} calculator. Try running locally.")
+    except http_requests.exceptions.RequestException as exc:
+        raise ValueError(f"Failed to connect to Claude API: {exc}")
+
+    if response.status_code >= 300:
+        error_detail = response.text[:300] if response.text else "No details"
+        raise ValueError(f"Claude API error (HTTP {response.status_code}): {error_detail}")
+
+    data = response.json()
+    html_content = data["content"][0]["text"]
 
     # Clean up if wrapped in markdown code blocks
     if html_content.startswith("```html"):

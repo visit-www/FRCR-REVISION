@@ -403,7 +403,13 @@ def generate_prelim_case_data(case_context, provider="claude", model=None):
         "model": model,
         "max_tokens": 4000,  # Increased for more comprehensive output
         "temperature": 0.3,  # Slightly higher for more natural language
-        "system": system_prompt,
+        "system": [
+            {
+                "type": "text",
+                "text": system_prompt,
+                "cache_control": {"type": "ephemeral"}
+            }
+        ],
         "messages": [
             {"role": "user", "content": user_prompt}
         ],
