@@ -1077,10 +1077,11 @@ def generate_and_save_tnm_content(
         # Save HTML file (non-fatal on read-only FS like Vercel)
         file_path = save_calculator_html_file(slug, calculator_html)
 
-        # Delete existing record in same transaction as insert (prevents data loss on crash)
+        # Delete existing record and flush so the unique constraint is free for the insert
         if existing and overwrite:
             logger.info(f"[TNM Generator] Overwriting existing calculator for {slug}")
             db.session.delete(existing)
+            db.session.flush()
 
         # Create database record
         content = TNMCalculatorContent(
