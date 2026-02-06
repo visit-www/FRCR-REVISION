@@ -3309,7 +3309,7 @@ def generate_preliminary_case_data(case_id):
             next_a_number += 1
         added_pairs.append({'question': question_text, 'answer': answer_text})
 
-    discussion_html = _build_ai_discussion_html(output, result.get('provider', provider), result.get('model', ''))
+    discussion_html = _build_ai_discussion_html(output, result.get('provider', 'claude'), result.get('model', ''))
     if discussion_html:
         existing_discussion = case.discussion or ''
         separator = '\n' if existing_discussion else ''
@@ -3327,7 +3327,7 @@ def generate_preliminary_case_data(case_id):
     audit = AiPrelimCaseData(
         case_id=case.id,
         created_by_user_id=current_user.id,
-        provider=result.get('provider', provider),
+        provider=result.get('provider', 'claude'),
         model_name=result.get('model', ''),
         prompt_version=result.get('prompt_version', 'v1'),
         request_payload=json.dumps(context),
@@ -3339,8 +3339,8 @@ def generate_preliminary_case_data(case_id):
     try:
         update_ai_diagnosis_cache(
             diagnosis=case.diagnosis,
-            provider=result.get('provider', provider),
-            model_name=result.get('model', model_name),
+            provider=result.get('provider', 'claude'),
+            model_name=result.get('model', model),
             case_id=case.id,
             user_id=current_user.id
         )
@@ -3360,7 +3360,7 @@ def generate_preliminary_case_data(case_id):
         'discussion_html': discussion_html,
         'discussion_appended': bool(discussion_html),
         'warnings': output.get('warnings', []),
-        'provider': result.get('provider', provider),
+        'provider': result.get('provider', 'claude'),
         'model': result.get('model', ''),
     })
 
