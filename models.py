@@ -32,6 +32,26 @@ related_cases = db.Table('related_cases',
     db.Column('created_at', db.DateTime, default=datetime.utcnow)
 )
 
+# ==================== CASE-CALCULATOR LINK TABLE ====================
+case_calculator_links = db.Table('case_calculator_links',
+    db.Column('id', db.Integer, primary_key=True),
+    db.Column('case_id', db.Integer, db.ForeignKey('case.id', ondelete='CASCADE'), nullable=False),
+    db.Column('calculator_id', db.Integer, db.ForeignKey('tnm_calculator_content.id', ondelete='CASCADE'), nullable=False),
+    db.Column('created_by_user_id', db.Integer, db.ForeignKey('user.id'), nullable=True),
+    db.Column('created_at', db.DateTime, default=datetime.utcnow),
+    db.UniqueConstraint('case_id', 'calculator_id')
+)
+
+# ==================== CASE-REFERENCE LINK TABLE ====================
+case_reference_links = db.Table('case_reference_links',
+    db.Column('id', db.Integer, primary_key=True),
+    db.Column('case_id', db.Integer, db.ForeignKey('case.id', ondelete='CASCADE'), nullable=False),
+    db.Column('reference_id', db.Integer, db.ForeignKey('case_reference.id', ondelete='CASCADE'), nullable=False),
+    db.Column('created_by_user_id', db.Integer, db.ForeignKey('user.id'), nullable=True),
+    db.Column('created_at', db.DateTime, default=datetime.utcnow),
+    db.UniqueConstraint('case_id', 'reference_id')
+)
+
 # ==================== ENUMS ====================
 
 # User Role Enum

@@ -199,76 +199,43 @@
                         <div id="diagnosisText" class="detail-content diagnosis-text highlightable-text" data-field="diagnosis" style="line-height: 1.8; font-size: 1.05rem; color: #2c3e50; text-align: left; {% if current_user.is_authenticated and current_user.role and current_user.role.value == 'student' %}user-select: text; cursor: text;{% endif %}">{{ case.diagnosis }}</div>
                     </div>
 
-                    <!-- Related Cases Section - Always visible for students -->
-                    {% if current_user.is_authenticated and current_user.role and current_user.role.value == 'student' %}
+                    <!-- Linked Content Section - JS-rendered for all 3 types -->
                     <div class="detail-section related-cases-section mb-4 p-3 rounded-3" style="background: linear-gradient(135deg, #f0f5f8 0%, #f5f9fb 100%); border-left: 4px solid #5E899E;">
                         <label class="detail-label fw-bold text-secondary mb-2 d-block">
-                            <i class="fas fa-link me-2" style="color: #5E899E;"></i>Related Cases & Articles
+                            <i class="fas fa-link me-2" style="color: #5E899E;"></i>Related Content
                         </label>
 
-                        <!-- Existing Related Cases -->
+                        <!-- Linked items rendered by JS -->
                         <div id="relatedCasesListStudent" class="d-flex flex-wrap gap-2 mb-3">
-                            {% for related in case.related_cases_list.all() %}
-                            <a href="{{ url_for('view_case', case_id=related.id) }}"
-                               class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-2 related-case-badge"
-                               style="border-color: #5E899E; color: #5E899E;"
-                               data-related-id="{{ related.id }}">
-                                {% if related.calculator_slug %}
-                                <i class="fas fa-calculator" style="color: #e96304;"></i>
-                                {% else %}
-                                <i class="fas fa-file-medical"></i>
-                                {% endif %}
-                                <span>{{ related.case_number or related.diagnosis[:40] }}{% if related.diagnosis|length > 40 %}...{% endif %}</span>
-                            </a>
-                            {% endfor %}
+                            <small class="text-muted">Loading linked content...</small>
                         </div>
 
-                        <!-- Search to Add Related Cases -->
+                        {% if current_user.is_authenticated %}
+                        <!-- Search to Add Linked Content -->
                         <div class="related-cases-search-section">
                             <div class="input-group input-group-sm">
+                                <select id="relatedCaseTypeStudent" class="form-select" style="max-width: 140px; border-color: #5E899E;">
+                                    <option value="related">Related</option>
+                                    <option value="similar">Similar</option>
+                                    <option value="algorithm">Algorithm</option>
+                                    <option value="reference">Reference</option>
+                                </select>
                                 <span class="input-group-text bg-white" style="border-color: #5E899E;">
                                     <i class="fas fa-search text-muted"></i>
                                 </span>
                                 <input type="text"
                                        id="relatedCaseSearchStudent"
                                        class="form-control"
-                                       placeholder="Search to link related cases..."
+                                       placeholder="Search to link content..."
                                        style="border-color: #5E899E;">
-                                <select id="relatedCaseTypeStudent" class="form-select" style="max-width: 120px; border-color: #5E899E;">
-                                    <option value="related">Related</option>
-                                    <option value="algorithm">Algorithm</option>
-                                    <option value="similar">Similar</option>
-                                    <option value="reference">Reference</option>
-                                </select>
                             </div>
                             <div id="relatedCaseSearchResultsStudent" class="list-group mt-1 shadow-sm" style="display: none; position: absolute; z-index: 1000; max-height: 200px; overflow-y: auto; width: calc(100% - 2rem);"></div>
                             <small class="text-muted mt-1 d-block">
-                                <i class="fas fa-info-circle me-1"></i>Link related cases for cross-referencing. Admins can remove links.
+                                <i class="fas fa-info-circle me-1"></i>Any user can link content. Admins can remove links.
                             </small>
                         </div>
+                        {% endif %}
                     </div>
-                    {% elif case.related_cases_list.count() > 0 %}
-                    <!-- Non-student view: only show if there are related cases -->
-                    <div class="detail-section related-cases-section mb-4 p-3 rounded-3" style="background: linear-gradient(135deg, #f0f5f8 0%, #f5f9fb 100%); border-left: 4px solid #5E899E;">
-                        <label class="detail-label fw-bold text-secondary mb-2 d-block">
-                            <i class="fas fa-link me-2" style="color: #5E899E;"></i>Related Cases & Articles
-                        </label>
-                        <div class="d-flex flex-wrap gap-2">
-                            {% for related in case.related_cases_list.all() %}
-                            <a href="{{ url_for('view_case', case_id=related.id) }}"
-                               class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-2"
-                               style="border-color: #5E899E; color: #5E899E;">
-                                {% if related.calculator_slug %}
-                                <i class="fas fa-calculator" style="color: #e96304;"></i>
-                                {% else %}
-                                <i class="fas fa-file-medical"></i>
-                                {% endif %}
-                                <span>{{ related.case_number or related.diagnosis[:40] }}{% if related.diagnosis|length > 40 %}...{% endif %}</span>
-                            </a>
-                            {% endfor %}
-                        </div>
-                    </div>
-                    {% endif %}
 
                     <!-- Question & Answer Section - Separate Pairs -->
                     <div class="detail-section qa-section mb-5 p-4 rounded-3" style="background: #f8f9fa;">
@@ -10255,16 +10222,83 @@
     
     // ==================== END NOTION + ANKI INTEGRATION ====================
 
-    // ==================== RELATED CASES SEARCH (STUDENT VIEW) ====================
-    // Allow students to search and link related cases
+    // ==================== LINKED CONTENT (UNIVERSAL CONTENT LINKER) ====================
 
     const currentCaseIdForRelatedStudent = {{ case.id }};
 
+    // Load and render all linked content via API
+    async function loadLinkedContentStudent() {
+        const container = document.getElementById('relatedCasesListStudent');
+        if (!container) return;
+
+        try {
+            const response = await fetch(`/api/case/${currentCaseIdForRelatedStudent}/related`);
+            if (!response.ok) { container.innerHTML = ''; return; }
+            const items = await response.json();
+
+            if (items.length === 0) {
+                container.innerHTML = '<small class="text-muted">No linked content yet.</small>';
+                return;
+            }
+
+            container.innerHTML = items.map(item => {
+                if (item.link_type === 'calculator') {
+                    return `
+                        <a href="${item.url || '/tnm-calculator/' + item.slug}" target="_blank"
+                           class="btn btn-sm btn-outline-success d-flex align-items-center gap-2 related-case-badge">
+                            <i class="fas fa-calculator"></i>
+                            <span>${item.cancer_name} <small class="opacity-75">(${item.body_section})</small></span>
+                        </a>
+                    `;
+                } else if (item.link_type === 'reference') {
+                    const journal = item.journal ? ` — ${item.journal}` : '';
+                    return `
+                        <a href="${item.ref_url || '#'}" target="_blank"
+                           class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-2 related-case-badge">
+                            <i class="fas fa-bookmark"></i>
+                            <span class="text-truncate" style="max-width:250px;">${item.title}${journal}</span>
+                        </a>
+                    `;
+                } else {
+                    const relType = item.relation_type || 'related';
+                    const iconClass = relType === 'similar' ? 'fa-clone' : 'fa-file-medical';
+                    return `
+                        <a href="/case/${item.id}"
+                           class="btn btn-sm btn-outline-primary d-flex align-items-center gap-2 related-case-badge"
+                           style="border-color: #5E899E; color: #5E899E;">
+                            <i class="fas ${iconClass}"></i>
+                            <span>${item.case_number || (item.diagnosis || '').substring(0, 40)}</span>
+                        </a>
+                    `;
+                }
+            }).join('');
+        } catch (error) {
+            console.error('Error loading linked content:', error);
+            container.innerHTML = '';
+        }
+    }
+
+    // Initialize search for linking content
     function initRelatedCasesSearchStudent() {
         const searchInput = document.getElementById('relatedCaseSearchStudent');
         const resultsContainer = document.getElementById('relatedCaseSearchResultsStudent');
+        const typeSelect = document.getElementById('relatedCaseTypeStudent');
 
         if (!searchInput || !resultsContainer) return;
+
+        const placeholders = {
+            related: 'Search by diagnosis or case number...',
+            similar: 'Search by diagnosis or case number...',
+            algorithm: 'Search by cancer type, body section...',
+            reference: 'Search by reference title or journal...'
+        };
+        if (typeSelect) {
+            typeSelect.addEventListener('change', function() {
+                searchInput.placeholder = placeholders[this.value] || placeholders.related;
+                searchInput.value = '';
+                resultsContainer.style.display = 'none';
+            });
+        }
 
         let debounceTimer;
         searchInput.addEventListener('input', function() {
@@ -10278,36 +10312,55 @@
 
             debounceTimer = setTimeout(async () => {
                 try {
-                    const response = await fetch(`/api/cases/search?q=${encodeURIComponent(query)}&exclude=${currentCaseIdForRelatedStudent}`);
-                    const cases = await response.json();
+                    const searchType = typeSelect ? typeSelect.value : 'related';
+                    const response = await fetch(`/api/cases/search?q=${encodeURIComponent(query)}&exclude=${currentCaseIdForRelatedStudent}&type=${encodeURIComponent(searchType)}`);
+                    const items = await response.json();
 
-                    if (cases.length === 0) {
-                        resultsContainer.innerHTML = '<div class="list-group-item text-muted">No cases found</div>';
+                    if (items.length === 0) {
+                        resultsContainer.innerHTML = '<div class="list-group-item text-muted">No results found</div>';
                     } else {
-                        resultsContainer.innerHTML = cases.map(c => `
-                            <button type="button" class="list-group-item list-group-item-action"
-                                    onclick="addRelatedCaseStudent(${c.id}, '${(c.case_number || '').replace(/'/g, "\\'")}', '${(c.diagnosis || '').replace(/'/g, "\\'").substring(0, 80)}')">
-                                <div class="d-flex justify-content-between align-items-start">
-                                    <div>
-                                        <strong>${c.case_number || 'No number'}</strong>
-                                        <small class="text-muted ms-2">${c.body_part || ''}</small>
-                                        ${c.calculator_slug ? '<i class="fas fa-calculator ms-1" style="color: #e96304;" title="Has TNM Calculator"></i>' : ''}
-                                    </div>
-                                </div>
-                                <small class="text-truncate d-block">${c.diagnosis}</small>
-                            </button>
-                        `).join('');
+                        resultsContainer.innerHTML = items.map(item => {
+                            if (item.link_type === 'calculator') {
+                                return `
+                                    <button type="button" class="list-group-item list-group-item-action"
+                                            onclick="addLinkStudent('calculator', ${item.id})">
+                                        <i class="fas fa-calculator text-success me-2"></i>
+                                        <strong>${item.cancer_name}</strong>
+                                        <small class="text-muted ms-1">${item.body_section}</small>
+                                    </button>
+                                `;
+                            } else if (item.link_type === 'reference') {
+                                const journal = item.journal ? ` — ${item.journal}` : '';
+                                return `
+                                    <button type="button" class="list-group-item list-group-item-action"
+                                            onclick="addLinkStudent('reference', ${item.id})">
+                                        <i class="fas fa-bookmark text-secondary me-2"></i>
+                                        <strong class="text-truncate" style="max-width:300px;">${item.title}</strong>
+                                        <small class="text-muted">${journal}</small>
+                                    </button>
+                                `;
+                            } else {
+                                return `
+                                    <button type="button" class="list-group-item list-group-item-action"
+                                            onclick="addLinkStudent('case', ${item.id})">
+                                        <i class="fas fa-file-medical me-2" style="color:#5E899E;"></i>
+                                        <strong>${item.case_number || 'No number'}</strong>
+                                        <small class="text-muted ms-2">${item.body_part || ''}</small>
+                                        <small class="text-truncate d-block">${item.diagnosis || ''}</small>
+                                    </button>
+                                `;
+                            }
+                        }).join('');
                     }
                     resultsContainer.style.display = 'block';
                 } catch (error) {
-                    console.error('Error searching cases:', error);
-                    resultsContainer.innerHTML = '<div class="list-group-item text-danger">Error searching cases</div>';
+                    console.error('Error searching:', error);
+                    resultsContainer.innerHTML = '<div class="list-group-item text-danger">Error searching</div>';
                     resultsContainer.style.display = 'block';
                 }
             }, 300);
         });
 
-        // Hide results when clicking outside
         document.addEventListener('click', function(e) {
             if (!searchInput.contains(e.target) && !resultsContainer.contains(e.target)) {
                 resultsContainer.style.display = 'none';
@@ -10315,68 +10368,57 @@
         });
     }
 
-    async function addRelatedCaseStudent(relatedCaseId, caseNumber, diagnosis) {
+    async function addLinkStudent(linkType, linkedId) {
         const relationType = document.getElementById('relatedCaseTypeStudent')?.value || 'related';
+        let body = { link_type: linkType };
+
+        if (linkType === 'calculator') {
+            body.calculator_id = linkedId;
+        } else if (linkType === 'reference') {
+            body.reference_id = linkedId;
+        } else {
+            body.related_case_id = linkedId;
+            body.relation_type = relationType;
+        }
 
         try {
             const response = await fetch(`/api/case/${currentCaseIdForRelatedStudent}/related`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    related_case_id: relatedCaseId,
-                    relation_type: relationType
-                })
+                body: JSON.stringify(body)
             });
-
             const result = await response.json();
 
             if (response.ok) {
-                // Add to UI
-                const container = document.getElementById('relatedCasesListStudent');
-                if (container) {
-                    const typeIcons = {
-                        'algorithm': 'fa-code-branch',
-                        'similar': 'fa-clone',
-                        'reference': 'fa-bookmark',
-                        'related': 'fa-link'
-                    };
-                    const icon = typeIcons[relationType] || 'fa-file-medical';
-
-                    const newBadge = document.createElement('a');
-                    newBadge.href = `/case/${relatedCaseId}`;
-                    newBadge.className = 'btn btn-sm btn-outline-secondary d-flex align-items-center gap-2 related-case-badge';
-                    newBadge.style.cssText = 'border-color: #5E899E; color: #5E899E;';
-                    newBadge.dataset.relatedId = relatedCaseId;
-                    newBadge.innerHTML = `
-                        <i class="fas ${icon}" style="color: #e96304;"></i>
-                        <span>${caseNumber || diagnosis.substring(0, 40)}${diagnosis.length > 40 ? '...' : ''}</span>
-                    `;
-                    container.appendChild(newBadge);
-                }
-
-                // Clear search
+                // Reload all linked content to show the new item
+                await loadLinkedContentStudent();
                 document.getElementById('relatedCaseSearchStudent').value = '';
                 document.getElementById('relatedCaseSearchResultsStudent').style.display = 'none';
-
-                showFlash('Related case linked!', 'success');
+                showFlash('Content linked!', 'success');
             } else {
-                showFlash(result.error || 'Failed to link case', 'warning');
+                showFlash(result.error || 'Failed to link content', 'warning');
             }
         } catch (error) {
-            console.error('Error adding related case:', error);
-            showFlash('Error linking case', 'danger');
+            console.error('Error linking content:', error);
+            showFlash('Error linking content', 'danger');
         }
     }
 
-    // Make function globally accessible
-    window.addRelatedCaseStudent = addRelatedCaseStudent;
-
-    // Initialize on page load
-    if (isStudent) {
-        initRelatedCasesSearchStudent();
+    // Backward compat
+    async function addRelatedCaseStudent(relatedCaseId, caseNumber, diagnosis) {
+        addLinkStudent('case', relatedCaseId);
     }
 
-    // ==================== END RELATED CASES SEARCH ====================
+    window.addRelatedCaseStudent = addRelatedCaseStudent;
+    window.addLinkStudent = addLinkStudent;
+
+    // Initialize on page load - load linked content for everyone, search for authenticated users
+    loadLinkedContentStudent();
+    {% if current_user.is_authenticated %}
+    initRelatedCasesSearchStudent();
+    {% endif %}
+
+    // ==================== END LINKED CONTENT ====================
 
 </script>
 <script src="/static/edit-case-modal.js"></script>

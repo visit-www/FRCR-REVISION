@@ -2479,131 +2479,299 @@ def update_case_qa_pairs(case_id):
 @app.route('/api/case/<int:case_id>/related', methods=['GET'])
 @login_required
 def get_related_cases(case_id):
-    """Get all related cases for a case"""
-    case = Case.query.get_or_404(case_id)
+    """Get all linked content for a case: cases, calculators, and references"""
+    from models import related_cases as related_cases_table, case_calculator_links, case_reference_links, TNMCalculatorContent, CaseReference
+    Case.query.get_or_404(case_id)
 
-    # Get related cases with their basic info
-    related = []
-    for related_case in case.related_cases_list.all():
-        related.append({
-            'id': related_case.id,
-            'case_number': related_case.case_number,
-            'diagnosis': related_case.diagnosis,
-            'body_part': related_case.body_part.value if related_case.body_part else None,
-            'calculator_slug': related_case.calculator_slug
-        })
+    items = []
 
-    return jsonify(related)
+    # 1) Case-to-case links
+    rows = db.session.execute(
+        db.select(
+            related_cases_table.c.related_case_id,
+            related_cases_table.c.relation_type
+        ).where(related_cases_table.c.case_id == case_id)
+    ).all()
+    for row in rows:
+        rc = Case.query.get(row.related_case_id)
+        if rc:
+            items.append({
+                'id': rc.id,
+                'link_type': 'case',
+                'case_number': rc.case_number,
+                'diagnosis': rc.diagnosis,
+                'body_part': rc.body_part.value if rc.body_part else None,
+                'calculator_slug': rc.calculator_slug,
+                'relation_type': row.relation_type or 'related',
+                'url': f'/case/{rc.id}'
+            })
+
+    # 2) Case-to-calculator links
+    calc_rows = db.session.execute(
+        db.select(case_calculator_links.c.calculator_id).where(
+            case_calculator_links.c.case_id == case_id
+        )
+    ).all()
+    for crow in calc_rows:
+        calc = TNMCalculatorContent.query.get(crow.calculator_id)
+        if calc:
+            items.append({
+                'id': calc.id,
+                'link_type': 'calculator',
+                'slug': calc.slug,
+                'cancer_name': calc.cancer_name,
+                'body_section': calc.body_section,
+                'url': f'/tnm-calculator/{calc.slug}'
+            })
+
+    # 3) Case-to-reference links
+    ref_rows = db.session.execute(
+        db.select(case_reference_links.c.reference_id).where(
+            case_reference_links.c.case_id == case_id
+        )
+    ).all()
+    for rrow in ref_rows:
+        ref = CaseReference.query.get(rrow.reference_id)
+        if ref:
+            items.append({
+                'id': ref.id,
+                'link_type': 'reference',
+                'title': ref.title,
+                'ref_url': ref.url,
+                'journal': ref.journal,
+                'year': ref.year,
+                'source_case_number': None
+            })
+            # Try to get source case number for display
+            source_case = Case.query.get(ref.case_id)
+            if source_case:
+                items[-1]['source_case_number'] = source_case.case_number
+
+    return jsonify(items)
 
 
 @app.route('/api/case/<int:case_id>/related', methods=['POST'])
 @login_required
 def add_related_case(case_id):
-    """Add a related case to a case - all authenticated users can add"""
-    from models import related_cases
-
-    # All authenticated users can add related cases (students, content managers, admins)
-    # No role restriction for adding
+    """Add a linked item (case, calculator, or reference) to a case - all authenticated users can add"""
+    from models import related_cases, case_calculator_links, case_reference_links, TNMCalculatorContent, CaseReference
 
     case = Case.query.get_or_404(case_id)
     data = request.get_json()
-    related_case_id = data.get('related_case_id')
-    relation_type = data.get('relation_type', 'related')  # 'algorithm', 'similar', 'reference'
+    link_type = data.get('link_type', 'case')  # 'case', 'calculator', 'reference'
 
-    if not related_case_id:
-        return jsonify({'error': 'related_case_id required'}), 400
+    if link_type == 'calculator':
+        calculator_id = data.get('calculator_id')
+        if not calculator_id:
+            return jsonify({'error': 'calculator_id required'}), 400
+        calc = TNMCalculatorContent.query.get(calculator_id)
+        if not calc:
+            return jsonify({'error': 'Calculator not found'}), 404
+        existing = db.session.execute(
+            db.select(case_calculator_links).where(
+                case_calculator_links.c.case_id == case_id,
+                case_calculator_links.c.calculator_id == calculator_id
+            )
+        ).first()
+        if existing:
+            return jsonify({'error': 'Calculator already linked'}), 400
+        db.session.execute(case_calculator_links.insert().values(
+            case_id=case_id, calculator_id=calculator_id, created_by_user_id=current_user.id
+        ))
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'Calculator linked', 'item': {
+            'id': calc.id, 'link_type': 'calculator', 'slug': calc.slug,
+            'cancer_name': calc.cancer_name, 'body_section': calc.body_section,
+            'url': f'/tnm-calculator/{calc.slug}'
+        }})
 
-    if related_case_id == case_id:
-        return jsonify({'error': 'Cannot relate a case to itself'}), 400
+    elif link_type == 'reference':
+        reference_id = data.get('reference_id')
+        if not reference_id:
+            return jsonify({'error': 'reference_id required'}), 400
+        ref = CaseReference.query.get(reference_id)
+        if not ref:
+            return jsonify({'error': 'Reference not found'}), 404
+        existing = db.session.execute(
+            db.select(case_reference_links).where(
+                case_reference_links.c.case_id == case_id,
+                case_reference_links.c.reference_id == reference_id
+            )
+        ).first()
+        if existing:
+            return jsonify({'error': 'Reference already linked'}), 400
+        db.session.execute(case_reference_links.insert().values(
+            case_id=case_id, reference_id=reference_id, created_by_user_id=current_user.id
+        ))
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'Reference linked', 'item': {
+            'id': ref.id, 'link_type': 'reference', 'title': ref.title,
+            'ref_url': ref.url, 'journal': ref.journal, 'year': ref.year
+        }})
 
-    related_case = Case.query.get(related_case_id)
-    if not related_case:
-        return jsonify({'error': 'Related case not found'}), 404
-
-    # Check if already related
-    existing = db.session.execute(
-        db.select(related_cases).where(
-            related_cases.c.case_id == case_id,
-            related_cases.c.related_case_id == related_case_id
-        )
-    ).first()
-
-    if existing:
-        return jsonify({'error': 'Cases are already related'}), 400
-
-    # Add the relationship
-    db.session.execute(
-        related_cases.insert().values(
-            case_id=case_id,
-            related_case_id=related_case_id,
-            relation_type=relation_type
-        )
-    )
-    db.session.commit()
-
-    return jsonify({
-        'success': True,
-        'message': 'Related case added',
-        'related_case': {
-            'id': related_case.id,
-            'case_number': related_case.case_number,
-            'diagnosis': related_case.diagnosis
-        }
-    })
+    else:
+        # Default: case-to-case link
+        related_case_id = data.get('related_case_id')
+        relation_type = data.get('relation_type', 'related')
+        if not related_case_id:
+            return jsonify({'error': 'related_case_id required'}), 400
+        if related_case_id == case_id:
+            return jsonify({'error': 'Cannot relate a case to itself'}), 400
+        related_case = Case.query.get(related_case_id)
+        if not related_case:
+            return jsonify({'error': 'Related case not found'}), 404
+        existing = db.session.execute(
+            db.select(related_cases).where(
+                related_cases.c.case_id == case_id,
+                related_cases.c.related_case_id == related_case_id
+            )
+        ).first()
+        if existing:
+            return jsonify({'error': 'Cases are already related'}), 400
+        db.session.execute(related_cases.insert().values(
+            case_id=case_id, related_case_id=related_case_id, relation_type=relation_type
+        ))
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'Related case added', 'item': {
+            'id': related_case.id, 'link_type': 'case', 'case_number': related_case.case_number,
+            'diagnosis': related_case.diagnosis, 'relation_type': relation_type,
+            'url': f'/case/{related_case.id}'
+        }})
 
 
-@app.route('/api/case/<int:case_id>/related/<int:related_case_id>', methods=['DELETE'])
+@app.route('/api/case/<int:case_id>/related/<int:linked_id>', methods=['DELETE'])
 @login_required
-def remove_related_case(case_id, related_case_id):
-    """Remove a related case from a case"""
-    from models import related_cases
+def remove_related_case(case_id, linked_id):
+    """Remove a linked item (case, calculator, or reference) from a case"""
+    from models import related_cases, case_calculator_links, case_reference_links
 
     # Admin/Content Manager only
     if current_user.role not in [UserRole.ADMIN, UserRole.CONTENT_MANAGER]:
         return jsonify({'error': 'Unauthorized'}), 403
 
-    # Delete the relationship
-    db.session.execute(
-        related_cases.delete().where(
-            related_cases.c.case_id == case_id,
-            related_cases.c.related_case_id == related_case_id
-        )
-    )
-    db.session.commit()
+    link_type = request.args.get('link_type', 'case')
 
-    return jsonify({'success': True, 'message': 'Related case removed'})
+    if link_type == 'calculator':
+        db.session.execute(
+            case_calculator_links.delete().where(
+                case_calculator_links.c.case_id == case_id,
+                case_calculator_links.c.calculator_id == linked_id
+            )
+        )
+    elif link_type == 'reference':
+        db.session.execute(
+            case_reference_links.delete().where(
+                case_reference_links.c.case_id == case_id,
+                case_reference_links.c.reference_id == linked_id
+            )
+        )
+    else:
+        # Default: case-to-case
+        db.session.execute(
+            related_cases.delete().where(
+                db.or_(
+                    db.and_(
+                        related_cases.c.case_id == case_id,
+                        related_cases.c.related_case_id == linked_id
+                    ),
+                    db.and_(
+                        related_cases.c.case_id == linked_id,
+                        related_cases.c.related_case_id == case_id
+                    )
+                )
+            )
+        )
+
+    db.session.commit()
+    return jsonify({'success': True, 'message': 'Link removed'})
 
 
 @app.route('/api/cases/search', methods=['GET'])
 @login_required
 def search_cases_for_linking():
-    """Search cases for the related cases selector"""
+    """Search content for the universal content linker.
+
+    Accepts ?type= to branch search by content type:
+      related/similar  — searches Cases directly, returns case objects
+      algorithm        — searches TNMCalculatorContent, returns calculator objects
+      reference        — searches CaseReference, returns reference objects
+    """
     query = request.args.get('q', '').strip()
     exclude_id = request.args.get('exclude', type=int)
     limit = request.args.get('limit', 20, type=int)
+    search_type = request.args.get('type', 'related').strip()
 
     if len(query) < 2:
         return jsonify([])
 
-    # Search in diagnosis and case_number
-    cases_query = Case.query.filter(
-        db.or_(
-            Case.diagnosis.ilike(f'%{query}%'),
-            Case.case_number.ilike(f'%{query}%')
+    if search_type == 'algorithm':
+        from models import TNMCalculatorContent
+        calcs = TNMCalculatorContent.query.filter(
+            db.or_(
+                TNMCalculatorContent.cancer_name.ilike(f'%{query}%'),
+                TNMCalculatorContent.slug.ilike(f'%{query}%'),
+                TNMCalculatorContent.body_section.ilike(f'%{query}%'),
+                TNMCalculatorContent.description.ilike(f'%{query}%'),
+            )
+        ).limit(limit).all()
+
+        results = []
+        for calc in calcs:
+            results.append({
+                'id': calc.id,
+                'slug': calc.slug,
+                'cancer_name': calc.cancer_name,
+                'body_section': calc.body_section,
+                'url': f'/tnm-calculator/{calc.slug}',
+                'link_type': 'calculator',
+            })
+        return jsonify(results)
+
+    elif search_type == 'reference':
+        from models import CaseReference
+        refs = CaseReference.query.filter(
+            db.or_(
+                CaseReference.title.ilike(f'%{query}%'),
+                CaseReference.journal.ilike(f'%{query}%'),
+            )
+        ).limit(limit).all()
+
+        results = []
+        seen_ids = set()
+        for ref in refs:
+            if ref.id in seen_ids:
+                continue
+            seen_ids.add(ref.id)
+            source_case = Case.query.get(ref.case_id)
+            results.append({
+                'id': ref.id,
+                'title': ref.title[:120] + '...' if len(ref.title or '') > 120 else ref.title,
+                'ref_url': ref.url,
+                'journal': ref.journal,
+                'year': ref.year,
+                'source_case_number': source_case.case_number if source_case else None,
+                'link_type': 'reference',
+            })
+        return jsonify(results)
+
+    else:
+        # Default: related / similar — search Case directly
+        cases_query = Case.query.filter(
+            db.or_(
+                Case.diagnosis.ilike(f'%{query}%'),
+                Case.case_number.ilike(f'%{query}%')
+            )
         )
-    )
-
-    if exclude_id:
-        cases_query = cases_query.filter(Case.id != exclude_id)
-
-    cases = cases_query.limit(limit).all()
-
-    return jsonify([{
-        'id': c.id,
-        'case_number': c.case_number,
-        'diagnosis': c.diagnosis[:100] + '...' if len(c.diagnosis or '') > 100 else c.diagnosis,
-        'body_part': c.body_part.value if c.body_part else None
-    } for c in cases])
+        if exclude_id:
+            cases_query = cases_query.filter(Case.id != exclude_id)
+        cases = cases_query.limit(limit).all()
+        return jsonify([{
+            'id': c.id,
+            'case_number': c.case_number,
+            'diagnosis': c.diagnosis[:100] + '...' if len(c.diagnosis or '') > 100 else c.diagnosis,
+            'body_part': c.body_part.value if c.body_part else None,
+            'link_type': 'case',
+        } for c in cases])
 
 
 # ==================== CANDIDATE NOTES API ====================

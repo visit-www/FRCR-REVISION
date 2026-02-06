@@ -269,20 +269,28 @@ console.log('[TinyMCE Loader] Script URL was:', "{{ url_for('static', filename='
                         </div>
                     </div>
 
-                    <!-- Related Cases Row -->
+                    <!-- Linked Content Row -->
                     <div class="row mt-4 pt-4 border-top">
                         <div class="col-12">
                             <div class="mb-3">
                                 <label class="form-label fw-bold text-secondary">
-                                    <i class="fas fa-link me-1" style="color: #5E899E;"></i>Related Cases
+                                    <i class="fas fa-link me-1" style="color: #5E899E;"></i>Linked Content
                                 </label>
                                 <small class="text-muted d-block mb-2">
-                                    Link related cases (e.g., algorithm guides, similar diagnoses, reference cases)
+                                    Link related cases, algorithm calculators, and reference articles to this case
                                 </small>
                             </div>
 
-                            <!-- Search for cases to link -->
+                            <!-- Search for content to link -->
                             <div class="row mb-3">
+                                <div class="col-md-4 mb-2 mb-md-0">
+                                    <select class="form-select" id="relatedCaseType">
+                                        <option value="related">Related Case</option>
+                                        <option value="similar">Similar Case</option>
+                                        <option value="algorithm">Algorithm Guide</option>
+                                        <option value="reference">Reference Article</option>
+                                    </select>
+                                </div>
                                 <div class="col-md-8">
                                     <div class="input-group">
                                         <span class="input-group-text bg-white">
@@ -294,17 +302,9 @@ console.log('[TinyMCE Loader] Script URL was:', "{{ url_for('static', filename='
                                     <div id="relatedCaseSearchResults" class="list-group position-absolute w-100 shadow-lg"
                                          style="z-index: 1000; display: none; max-height: 300px; overflow-y: auto;"></div>
                                 </div>
-                                <div class="col-md-4">
-                                    <select class="form-select" id="relatedCaseType">
-                                        <option value="related">Related</option>
-                                        <option value="algorithm">Algorithm Guide</option>
-                                        <option value="similar">Similar Case</option>
-                                        <option value="reference">Reference</option>
-                                    </select>
-                                </div>
                             </div>
 
-                            <!-- List of linked related cases -->
+                            <!-- List of linked content -->
                             <div id="relatedCasesList" class="mb-3">
                                 <!-- Populated dynamically -->
                             </div>
@@ -312,7 +312,7 @@ console.log('[TinyMCE Loader] Script URL was:', "{{ url_for('static', filename='
                             <div class="alert alert-light border mb-0">
                                 <small class="text-muted">
                                     <i class="fas fa-info-circle me-1"></i>
-                                    Related cases appear in the case header for students to easily navigate between connected content.
+                                    Any user can link content. Admins can remove irrelevant links.
                                 </small>
                             </div>
                         </div>
@@ -2664,6 +2664,10 @@ function loadCaseForEdit(caseId) {
         }
         if (document.getElementById('editCaseCalculator')) {
             document.getElementById('editCaseCalculator').value = caseData.calculator_slug || '';
+            // Trigger visibility update after programmatic value change
+            if (typeof updateTnmGeneratorVisibility === 'function') {
+                updateTnmGeneratorVisibility();
+            }
         }
 
         // Show algorithm sync controls if case has a calculator_slug
@@ -2676,8 +2680,13 @@ function loadCaseForEdit(caseId) {
             }
         }
 
+        // Load related cases now that we have the case ID
+        if (typeof loadRelatedCases === 'function') {
+            loadRelatedCases(caseData.id);
+        }
+
         // AI watermark preservation: watermarks preserved unless case is published/public
-        
+
         // Populate Q&A pairs directly using addQAPairRow
         // Wait for functions to be available, then populate Q&A
         function populateQADataWithRetry(retries = 0) {
@@ -6089,20 +6098,33 @@ async function syncAlgorithmToTemplate() {
 }
 
 // ============================================================================
-// RELATED CASES - Linking related cases together
+// LINKED CONTENT - Universal content linker (cases, calculators, references)
 // ============================================================================
 
 let relatedCasesData = [];
 let currentCaseIdForRelated = null;
-// Check if user can remove related cases (admin/content_manager only)
 const canRemoveRelatedCases = {% if current_user.is_authenticated and current_user.role and current_user.role.value in ['admin', 'content_manager'] %}true{% else %}false{% endif %};
 
-// Initialize related cases search
 function initRelatedCasesSearch() {
     const searchInput = document.getElementById('relatedCaseSearch');
     const resultsContainer = document.getElementById('relatedCaseSearchResults');
+    const typeSelect = document.getElementById('relatedCaseType');
 
     if (!searchInput || !resultsContainer) return;
+
+    const placeholders = {
+        related: 'Search by diagnosis or case number...',
+        similar: 'Search by diagnosis or case number...',
+        algorithm: 'Search by cancer type, body section...',
+        reference: 'Search by reference title or journal...'
+    };
+    if (typeSelect) {
+        typeSelect.addEventListener('change', function() {
+            searchInput.placeholder = placeholders[this.value] || placeholders.related;
+            searchInput.value = '';
+            resultsContainer.style.display = 'none';
+        });
+    }
 
     let debounceTimer;
     searchInput.addEventListener('input', function() {
@@ -6116,33 +6138,67 @@ function initRelatedCasesSearch() {
 
         debounceTimer = setTimeout(async () => {
             try {
-                const response = await fetch(`/api/cases/search?q=${encodeURIComponent(query)}&exclude=${currentCaseIdForRelated || ''}`);
-                const cases = await response.json();
+                const searchType = typeSelect ? typeSelect.value : 'related';
+                const response = await fetch(`/api/cases/search?q=${encodeURIComponent(query)}&exclude=${currentCaseIdForRelated || ''}&type=${encodeURIComponent(searchType)}`);
+                const items = await response.json();
 
-                if (cases.length === 0) {
-                    resultsContainer.innerHTML = '<div class="list-group-item text-muted">No cases found</div>';
+                if (items.length === 0) {
+                    resultsContainer.innerHTML = '<div class="list-group-item text-muted">No results found</div>';
                 } else {
-                    resultsContainer.innerHTML = cases.map(c => `
-                        <button type="button" class="list-group-item list-group-item-action"
-                                onclick="addRelatedCase(${c.id}, '${(c.case_number || '').replace(/'/g, "\\'")}', '${(c.diagnosis || '').replace(/'/g, "\\'").substring(0, 80)}')">
-                            <div class="d-flex justify-content-between align-items-start">
-                                <div>
-                                    <strong>${c.case_number || 'No number'}</strong>
-                                    <small class="text-muted ms-2">${c.body_part || ''}</small>
-                                </div>
-                            </div>
-                            <small class="text-truncate d-block">${c.diagnosis}</small>
-                        </button>
-                    `).join('');
+                    resultsContainer.innerHTML = items.map(item => {
+                        if (item.link_type === 'calculator') {
+                            return `
+                                <button type="button" class="list-group-item list-group-item-action"
+                                        onclick="addLink('calculator', ${item.id}, ${JSON.stringify(item).replace(/"/g, '&quot;')})">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <i class="fas fa-calculator" style="color: #198754;"></i>
+                                        <div>
+                                            <strong>${item.cancer_name}</strong>
+                                            <small class="text-muted ms-2">${item.body_section}</small>
+                                        </div>
+                                    </div>
+                                </button>
+                            `;
+                        } else if (item.link_type === 'reference') {
+                            const journal = item.journal ? ` — ${item.journal}` : '';
+                            const year = item.year ? ` (${item.year})` : '';
+                            return `
+                                <button type="button" class="list-group-item list-group-item-action"
+                                        onclick="addLink('reference', ${item.id}, ${JSON.stringify(item).replace(/"/g, '&quot;')})">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <i class="fas fa-bookmark" style="color: #6c757d;"></i>
+                                        <div>
+                                            <strong class="text-truncate d-block" style="max-width:400px;">${item.title}</strong>
+                                            <small class="text-muted">${journal}${year}${item.source_case_number ? ' · from ' + item.source_case_number : ''}</small>
+                                        </div>
+                                    </div>
+                                </button>
+                            `;
+                        } else {
+                            // case (related/similar)
+                            return `
+                                <button type="button" class="list-group-item list-group-item-action"
+                                        onclick="addLink('case', ${item.id}, ${JSON.stringify(item).replace(/"/g, '&quot;')})">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <i class="fas fa-file-medical" style="color: #5E899E;"></i>
+                                        <div>
+                                            <strong>${item.case_number || 'No number'}</strong>
+                                            <small class="text-muted ms-2">${item.body_part || ''}</small>
+                                        </div>
+                                    </div>
+                                    <small class="text-truncate d-block">${item.diagnosis || ''}</small>
+                                </button>
+                            `;
+                        }
+                    }).join('');
                 }
                 resultsContainer.style.display = 'block';
             } catch (error) {
-                console.error('Error searching cases:', error);
+                console.error('Error searching:', error);
             }
         }, 300);
     });
 
-    // Hide results when clicking outside
     document.addEventListener('click', function(e) {
         if (!searchInput.contains(e.target) && !resultsContainer.contains(e.target)) {
             resultsContainer.style.display = 'none';
@@ -6150,69 +6206,86 @@ function initRelatedCasesSearch() {
     });
 }
 
-async function addRelatedCase(relatedCaseId, caseNumber, diagnosis) {
-    // Get case ID from getCurrentCaseId if not already set
+async function addLink(linkType, linkedId, itemData) {
     if (!currentCaseIdForRelated) {
         currentCaseIdForRelated = getCurrentCaseId();
     }
-
     if (!currentCaseIdForRelated) {
-        showFlash('Please save the case first before adding related cases', 'warning');
+        showFlash('Please save the case first before linking content', 'warning');
         return;
     }
 
     const relationType = document.getElementById('relatedCaseType')?.value || 'related';
+    let body = { link_type: linkType };
+
+    if (linkType === 'calculator') {
+        body.calculator_id = linkedId;
+    } else if (linkType === 'reference') {
+        body.reference_id = linkedId;
+    } else {
+        body.related_case_id = linkedId;
+        body.relation_type = relationType;
+    }
 
     try {
         const response = await fetch(`/api/case/${currentCaseIdForRelated}/related`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                related_case_id: relatedCaseId,
-                relation_type: relationType
-            })
+            body: JSON.stringify(body)
         });
-
         const result = await response.json();
 
         if (response.ok) {
-            relatedCasesData.push({
-                id: relatedCaseId,
-                case_number: caseNumber,
-                diagnosis: diagnosis,
-                relation_type: relationType
-            });
+            // Push the returned item or build from itemData
+            const newItem = result.item || itemData;
+            newItem.link_type = linkType;
+            if (linkType === 'case') newItem.relation_type = relationType;
+            relatedCasesData.push(newItem);
             renderRelatedCases();
 
             document.getElementById('relatedCaseSearch').value = '';
             document.getElementById('relatedCaseSearchResults').style.display = 'none';
-
-            showFlash('Related case added', 'success');
+            showFlash('Content linked successfully', 'success');
         } else {
-            showFlash(result.error || 'Failed to add related case', 'warning');
+            showFlash(result.error || 'Failed to link content', 'warning');
         }
     } catch (error) {
-        console.error('Error adding related case:', error);
-        showFlash('Error adding related case', 'danger');
+        console.error('Error linking content:', error);
+        showFlash('Error linking content', 'danger');
     }
 }
 
-async function removeRelatedCase(relatedCaseId) {
+// Backward compat wrapper
+async function addRelatedCase(relatedCaseId, caseNumber, diagnosis) {
+    addLink('case', relatedCaseId, { id: relatedCaseId, case_number: caseNumber, diagnosis: diagnosis });
+}
+
+async function removeLinkedItem(linkedId, linkType) {
     if (!currentCaseIdForRelated) return;
+    if (!confirm('Remove this link?')) return;
 
     try {
-        const response = await fetch(`/api/case/${currentCaseIdForRelated}/related/${relatedCaseId}`, {
+        const response = await fetch(`/api/case/${currentCaseIdForRelated}/related/${linkedId}?link_type=${encodeURIComponent(linkType)}`, {
             method: 'DELETE'
         });
 
         if (response.ok) {
-            relatedCasesData = relatedCasesData.filter(c => c.id !== relatedCaseId);
+            relatedCasesData = relatedCasesData.filter(c => !(c.id === linkedId && c.link_type === linkType));
             renderRelatedCases();
-            showFlash('Related case removed', 'success');
+            showFlash('Link removed', 'success');
+        } else {
+            const result = await response.json();
+            showFlash(result.error || 'Failed to remove link', 'danger');
         }
     } catch (error) {
-        console.error('Error removing related case:', error);
+        console.error('Error removing link:', error);
+        showFlash('Error removing link', 'danger');
     }
+}
+
+// Keep old name working
+async function removeRelatedCase(relatedCaseId) {
+    removeLinkedItem(relatedCaseId, 'case');
 }
 
 function renderRelatedCases() {
@@ -6220,33 +6293,56 @@ function renderRelatedCases() {
     if (!container) return;
 
     if (relatedCasesData.length === 0) {
-        container.innerHTML = '<p class="text-muted mb-0"><small>No related cases linked yet.</small></p>';
+        container.innerHTML = '<p class="text-muted mb-0"><small>No linked content yet.</small></p>';
         return;
     }
 
-    const typeLabels = {
-        'algorithm': { label: 'Algorithm', color: 'success' },
-        'similar': { label: 'Similar', color: 'info' },
-        'reference': { label: 'Reference', color: 'secondary' },
-        'related': { label: 'Related', color: 'primary' }
-    };
-
     container.innerHTML = relatedCasesData.map(c => {
-        const type = typeLabels[c.relation_type] || typeLabels.related;
+        const lt = c.link_type || 'case';
+        let badge, icon, label, sublabel, clickUrl, target;
+
+        if (lt === 'calculator') {
+            badge = '<span class="badge bg-success">Algorithm</span>';
+            icon = '<i class="fas fa-calculator" style="color: #198754;"></i>';
+            label = c.cancer_name || c.slug || 'Calculator';
+            sublabel = c.body_section || '';
+            clickUrl = c.url || `/tnm-calculator/${c.slug}`;
+            target = '_blank';
+        } else if (lt === 'reference') {
+            badge = '<span class="badge bg-secondary">Reference</span>';
+            icon = '<i class="fas fa-bookmark" style="color: #6c757d;"></i>';
+            label = c.title || 'Reference';
+            sublabel = [c.journal, c.year].filter(Boolean).join(' · ');
+            clickUrl = c.ref_url || '#';
+            target = '_blank';
+        } else {
+            const relType = c.relation_type || 'related';
+            const colors = { 'related': 'primary', 'similar': 'info', 'algorithm': 'success', 'reference': 'secondary' };
+            const labels = { 'related': 'Related', 'similar': 'Similar', 'algorithm': 'Algorithm', 'reference': 'Reference' };
+            badge = `<span class="badge bg-${colors[relType] || 'primary'}">${labels[relType] || 'Related'}</span>`;
+            icon = '<i class="fas fa-file-medical" style="color: #5E899E;"></i>';
+            label = c.case_number || 'Case';
+            sublabel = c.diagnosis || '';
+            clickUrl = c.url || `/case/${c.id}`;
+            target = '_self';
+        }
+
         const removeBtn = canRemoveRelatedCases ? `
-                <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeRelatedCase(${c.id})" title="Remove link">
-                    <i class="fas fa-times"></i>
-                </button>
-            ` : '';
+            <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeLinkedItem(${c.id}, '${lt}')" title="Remove link">
+                <i class="fas fa-times"></i>
+            </button>
+        ` : '';
+
         return `
             <div class="d-flex align-items-center justify-content-between p-2 mb-2 border rounded" style="background: #fdfdfb;">
-                <div class="d-flex align-items-center gap-2">
-                    <span class="badge bg-${type.color}">${type.label}</span>
-                    <div>
-                        <strong>${c.case_number || 'Case'}</strong>
-                        <small class="text-muted d-block text-truncate" style="max-width: 300px;">${c.diagnosis}</small>
+                <a href="${clickUrl}" target="${target}" class="d-flex align-items-center gap-2 text-decoration-none text-dark flex-grow-1" style="min-width:0;">
+                    ${badge}
+                    ${icon}
+                    <div style="min-width:0;">
+                        <strong class="d-block text-truncate" style="max-width: 300px;">${label}</strong>
+                        <small class="text-muted d-block text-truncate" style="max-width: 300px;">${sublabel}</small>
                     </div>
-                </div>
+                </a>
                 ${removeBtn}
             </div>
         `;
@@ -6255,7 +6351,6 @@ function renderRelatedCases() {
 
 async function loadRelatedCases(caseId) {
     if (!caseId) return;
-
     currentCaseIdForRelated = caseId;
 
     try {
@@ -6265,28 +6360,18 @@ async function loadRelatedCases(caseId) {
             renderRelatedCases();
         }
     } catch (error) {
-        console.error('Error loading related cases:', error);
+        console.error('Error loading linked content:', error);
     }
 }
 
-// Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
     initRelatedCasesSearch();
-
-    // Get case ID from editCaseId field (set after case data loads)
-    // Use a small delay to ensure case data is loaded first
-    setTimeout(() => {
-        const caseId = getCurrentCaseId();
-        if (caseId) {
-            currentCaseIdForRelated = caseId;
-            loadRelatedCases(currentCaseIdForRelated);
-        }
-    }, 500);
 });
 
-// Make related cases functions globally accessible
 window.addRelatedCase = addRelatedCase;
+window.addLink = addLink;
 window.removeRelatedCase = removeRelatedCase;
+window.removeLinkedItem = removeLinkedItem;
 window.loadRelatedCases = loadRelatedCases;
 
 // Make functions globally accessible
