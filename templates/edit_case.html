@@ -5922,6 +5922,7 @@ async function proceedWithGeneration(slug, cancerName, bodySection, stagingSyste
     `;
 
     // Build request payload
+    const caseId = document.getElementById('editCaseId')?.value;
     const payload = {
         slug,
         cancer_name: cancerName,
@@ -5931,7 +5932,9 @@ async function proceedWithGeneration(slug, cancerName, bodySection, stagingSyste
         special_features: specialFeatures,
         special_notes: specialNotes,
         overwrite,
-        model
+        model,
+        // Auto-link calculator to case (for 3-tab flow in student view)
+        case_id: (caseId && !caseId.startsWith('new') && !caseId.startsWith('staging-')) ? parseInt(caseId) : null
     };
 
     // Create AbortController for client-side timeout (70s to allow server 60s + network)
@@ -5958,22 +5961,36 @@ async function proceedWithGeneration(slug, cancerName, bodySection, stagingSyste
 
         // Success
         statusDiv.className = 'tnm-gen-status status-success';
+
+        // Check if case was auto-linked
+        const wasLinked = result.data?.case_linked;
         statusDiv.innerHTML = `
             <i class="fas fa-check-circle me-2"></i><strong>Calculator generated successfully!</strong>
             <div style="margin-top: 0.5rem; font-size: 0.85rem; opacity: 0.9;">
                 ${cancerName} calculator is now available.
+                ${wasLinked ? '<br><i class="fas fa-link me-1"></i>Auto-linked to this case (3-tab flow enabled)' : ''}
             </div>
         `;
 
-        // Insert algorithm into discussion if checked
-        if (insertAlgorithm) {
-            const caseId = document.getElementById('editCaseId')?.value;
-            if (caseId && !caseId.startsWith('new')) {
-                await insertAlgorithmToDiscussion(parseInt(caseId), slug);
+        // Update the calculator dropdown to reflect the linked calculator
+        if (wasLinked) {
+            const calcDropdown = document.getElementById('editCaseCalculator');
+            if (calcDropdown) {
+                calcDropdown.value = slug;
+                // Trigger change event to update visibility of related controls
+                calcDropdown.dispatchEvent(new Event('change'));
             }
         }
 
-        showFlash('TNM Calculator and Algorithm generated successfully!', 'success');
+        // Insert algorithm into discussion if checked
+        if (insertAlgorithm) {
+            const currentCaseId = document.getElementById('editCaseId')?.value;
+            if (currentCaseId && !currentCaseId.startsWith('new')) {
+                await insertAlgorithmToDiscussion(parseInt(currentCaseId), slug);
+            }
+        }
+
+        showFlash('TNM Calculator generated and linked to case!', 'success');
         generateBtn.disabled = false;
         generateBtn.innerHTML = '<i class="fas fa-magic me-1"></i>Generate with AI';
 

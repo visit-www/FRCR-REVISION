@@ -630,9 +630,23 @@ A separate scrollable section BELOW the calculator containing:
 }}
 ```
 
+## CRITICAL LAYOUT REQUIREMENT
+
+The page MUST use a **SINGLE-COLUMN VERTICAL LAYOUT** (not side-by-side grid). This is required for iframe embedding compatibility.
+
+Structure the page as:
+1. Header (centered)
+2. Calculator Form (full width, stacked vertically)
+3. Results Card (full width, below calculator)
+4. Reference Section (full width, below results)
+
+**DO NOT use side-by-side layouts** like `grid-template-columns: 1fr 1fr` for the main content.
+Use `display: flex; flex-direction: column;` for the main content wrapper.
+
 ## QUALITY CRITERIA CHECKLIST
 Your output MUST satisfy ALL of these:
 
+- [ ] **VERTICAL LAYOUT** - Single column, no side-by-side sections (critical for iframe)
 - [ ] Form-based calculator with checkboxes for T4b/T4a features
 - [ ] Number inputs for tumor size and node measurements
 - [ ] Automatic stage calculation (user inputs findings, system determines T/N)

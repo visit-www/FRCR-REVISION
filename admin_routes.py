@@ -1720,6 +1720,21 @@ def generate_tnm_calculator():
         )
 
         if success:
+            # Auto-link calculator to case if case_id provided
+            case_id = data.get('case_id')
+            if case_id:
+                try:
+                    from models import Case
+                    case = Case.query.get(case_id)
+                    if case:
+                        case.calculator_slug = data['slug']
+                        db.session.commit()
+                        logger.info(f"Auto-linked calculator '{data['slug']}' to case {case_id}")
+                        result_data['case_linked'] = True
+                except Exception as link_error:
+                    logger.warning(f"Failed to auto-link calculator to case: {link_error}")
+                    result_data['case_linked'] = False
+
             return jsonify({'success': True, 'message': message, 'data': result_data}), 200
         else:
             return jsonify({'success': False, 'error': message}), 400
