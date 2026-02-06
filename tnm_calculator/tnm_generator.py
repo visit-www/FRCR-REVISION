@@ -910,12 +910,6 @@ def generate_and_save_tnm_content(
         if existing and not overwrite:
             return False, f"Calculator for '{slug}' already exists. Use overwrite option to replace.", {}
 
-        # If overwrite is True and existing record found, delete it first
-        if existing and overwrite:
-            logger.info(f"[TNM Generator] Overwriting existing calculator for {slug}")
-            db.session.delete(existing)
-            db.session.commit()
-
         # Use provided model or fall back to environment/default
         effective_model = model if model else get_claude_model()
         logger.info(f"[TNM Generator] Starting generation for {cancer_name} with model {effective_model}")
@@ -944,8 +938,13 @@ def generate_and_save_tnm_content(
         algorithm_html = extract_algorithm_from_calculator(calculator_html, cancer_name)
         logger.info(f"[TNM Generator] Algorithm extracted from calculator (no additional API call)")
 
-        # Save HTML file
+        # Save HTML file (non-fatal on read-only FS like Vercel)
         file_path = save_calculator_html_file(slug, calculator_html)
+
+        # Delete existing record in same transaction as insert (prevents data loss on crash)
+        if existing and overwrite:
+            logger.info(f"[TNM Generator] Overwriting existing calculator for {slug}")
+            db.session.delete(existing)
 
         # Create database record
         content = TNMCalculatorContent(
