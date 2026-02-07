@@ -604,9 +604,12 @@ class CaseImageStack(db.Model):
     def get_r2_config(self) -> dict:
         """Return R2 object keys per plan: { 'axial': ['key1', 'key2'], ... }."""
         import json
-        if self.r2_config_json:
+        val = self.r2_config_json
+        if val:
+            if isinstance(val, dict):
+                return val  # jsonb column auto-deserialized by psycopg2
             try:
-                return json.loads(self.r2_config_json)
+                return json.loads(val)
             except (json.JSONDecodeError, TypeError):
                 return {}
         return {}
