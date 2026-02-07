@@ -1,7 +1,7 @@
 /**
  * Case DICOM Viewer - Cornerstone.js v4.x Integration
  * Features: Stack scroll (mouse wheel), zoom, pan, window/level, annotations
- * v12: Center-first preload; plan-switch delay 50ms; preload cancel, 2GB cache
+ * v13: Per-image annotation tracking; annotations follow mouse-wheel scroll
  */
 (function () {
   "use strict";
@@ -28,6 +28,7 @@
   var _preloadedImages = {};
   var _preloadRunId = 0;
   var _panModeActive = false;
+  var _lastAnnotationIndex = -1; // Tracks last image index where annotations were applied/cleared
   var _keyboardListener = null;
   var _keyboardContainer = null;
   var _fullscreenContainer = null;
@@ -255,20 +256,17 @@
 
     cornerstone.loadImage(imageId).then(
       function (image) {
-        cornerstone.displayImage(_element, image);
-        _preloadedImages[imageId] = true;
-
-        if (_annotationsVisible) {
-          applyAnnotationsForImage();
-        } else {
-          clearAnnotations();
-        }
-
-        // Update stack tool state
+        // Update stack tool state BEFORE displayImage so cornerstoneimagerendered
+        // handler reads the correct index via syncSliceCounter
         var stackState = cornerstoneTools.getToolState(_element, "stack");
         if (stackState && stackState.data && stackState.data.length) {
           stackState.data[0].currentImageIdIndex = _currentIndex;
         }
+
+        cornerstone.displayImage(_element, image);
+        _preloadedImages[imageId] = true;
+
+        // Annotations are handled by cornerstoneimagerendered → handleImageChanged()
 
         // Notify slice change
         if (_onSliceChange) {
@@ -320,6 +318,7 @@
     });
 
     _currentIndex = 0;
+    _lastAnnotationIndex = -1;
     // Keep _preloadedImages global: do not clear so switching plans reuses cached images
 
     // Display first image
@@ -769,6 +768,12 @@
   function applyAnnotationsForImage() {
     if (!_element || !cornerstoneTools || !_currentPlan) return;
 
+    // Clear existing annotations from element first (prevents stale annotations persisting)
+    var toolTypes = ["ArrowAnnotate", "FreehandRoi", "TextMarker", "Length", "EllipticalRoi"];
+    toolTypes.forEach(function (toolType) {
+      cornerstoneTools.clearToolState(_element, toolType);
+    });
+
     var planAnnotations = _annotations[_currentPlan];
     // Fallback: if plan name doesn't match but there's only one plan in annotations, use it
     if (!planAnnotations) {
@@ -777,10 +782,16 @@
         planAnnotations = _annotations[annKeys[0]];
       }
     }
-    if (!planAnnotations) return;
+    if (!planAnnotations) {
+      cornerstone.updateImage(_element);
+      return;
+    }
 
     var imageAnnotations = planAnnotations[_currentIndex];
-    if (!imageAnnotations || !imageAnnotations.length) return;
+    if (!imageAnnotations || !imageAnnotations.length) {
+      cornerstone.updateImage(_element);
+      return;
+    }
 
     imageAnnotations.forEach(function (ann) {
       try {
@@ -807,6 +818,45 @@
 
     cornerstone.updateImage(_element);
     console.log("[CaseDicomViewer] Annotations cleared");
+  }
+
+  /**
+   * Save current image's live cornerstone tool state into _annotations cache.
+   * Called before switching images so admin-drawn annotations are preserved.
+   */
+  function saveCurrentAnnotationsToCache(indexOverride) {
+    if (!_element || !cornerstoneTools || !_currentPlan) return;
+    var idx = (typeof indexOverride === "number") ? indexOverride : _currentIndex;
+    var annotations = getAnnotationsForImage();
+    if (!_annotations[_currentPlan]) _annotations[_currentPlan] = {};
+    if (annotations.length) {
+      _annotations[_currentPlan][idx] = annotations;
+    } else {
+      delete _annotations[_currentPlan][idx];
+    }
+  }
+
+  /**
+   * Handle image index change: save previous annotations, clear old, apply new.
+   * Called from cornerstoneimagerendered to handle both displaySlice() and mouse wheel scroll.
+   * Uses _lastAnnotationIndex guard to prevent re-entrant calls from cornerstone.updateImage().
+   */
+  function handleImageChanged() {
+    if (_currentIndex === _lastAnnotationIndex) return;
+
+    // Save annotations from previous image (still in tool state until we clear)
+    if (_isAdmin && _lastAnnotationIndex >= 0 && _currentPlan && _annotationsVisible) {
+      saveCurrentAnnotationsToCache(_lastAnnotationIndex);
+    }
+
+    _lastAnnotationIndex = _currentIndex;
+
+    // Apply annotations for new image (clears old ones first internally)
+    if (_annotationsVisible) {
+      applyAnnotationsForImage();
+    } else {
+      clearAnnotations();
+    }
   }
 
   // Public API
@@ -895,6 +945,7 @@
 
         el.addEventListener("cornerstoneimagerendered", function () {
           syncSliceCounter();
+          handleImageChanged();
         });
 
         // Listen for stack scroll events (v4 may use different property names)
@@ -1001,12 +1052,23 @@
      * Show or hide annotations (student toggle; does not delete data)
      */
     setAnnotationsVisible: function (visible) {
+      var wasVisible = _annotationsVisible;
       _annotationsVisible = !!visible;
+      // Save current annotations before clearing (admin workflow)
+      if (wasVisible && !visible && _isAdmin) {
+        saveCurrentAnnotationsToCache();
+      }
+      _lastAnnotationIndex = -1; // Force re-apply on next render
       if (_element && _imageIds.length) displaySlice(_currentIndex);
     },
 
     toggleAnnotationsVisible: function () {
+      // Save current annotations before toggling off (admin workflow)
+      if (_annotationsVisible && _isAdmin) {
+        saveCurrentAnnotationsToCache();
+      }
       _annotationsVisible = !_annotationsVisible;
+      _lastAnnotationIndex = -1; // Force re-apply on next render
       if (_element && _imageIds.length) displaySlice(_currentIndex);
       return _annotationsVisible;
     },
@@ -1159,6 +1221,7 @@
       _onAllCached = null;
       _onSliderReady = null;
       _annotations = {};
+      _lastAnnotationIndex = -1;
       _preloadedImages = {};
       _preloadRunId = 0;
     },
@@ -1178,5 +1241,5 @@
     },
   };
 
-  console.log("[CaseDicomViewer] viewer.js v12 loaded (center-first preload, 50ms plan-switch)");
+  console.log("[CaseDicomViewer] viewer.js v13 loaded (per-image annotations, wheel-scroll support)");
 })();
