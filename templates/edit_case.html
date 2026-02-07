@@ -1147,6 +1147,9 @@ console.log('[TinyMCE Loader] Script URL was:', "{{ url_for('static', filename='
                     <button type="button" class="btn btn-lg btn-brand-primary m-2" id="aiPrelimBtn" onclick="createPrelimCaseData()">
                         <i class="fas fa-wand-magic-sparkles me-1"></i>Create Preliminary Case Data
                     </button>
+                    <button type="button" class="btn btn-lg btn-outline-primary m-2" id="aiReloadBtn" onclick="reloadPrelimCaseData()" style="display: none;">
+                        <i class="fas fa-history me-1"></i>Reload Previous AI Data
+                    </button>
                     <button type="button" class="btn btn-lg btn-danger" id="aiCancelBtn" style="display: none; background-color: #dc3545; border-color: #dc3545; color: #ffffff;">
                         <i class="fas fa-times me-2"></i>Cancel Generation
                     </button>
@@ -2130,6 +2133,9 @@ function deleteRefImage(imageId) {
     }
 })();
 
+// Pending discussion content — set when content loads before TinyMCE is ready
+window._pendingDiscussionContent = null;
+
 // Initialize TinyMCE for Discussion field
 let tinyMCERetryCount = 0;
 const MAX_TINYMCE_RETRIES = 20; // Max 10 seconds of retries (increased for slower connections)
@@ -2406,6 +2412,16 @@ function initializeDiscussionEditor() {
                     }
                 }
             });
+        },
+        init_instance_callback: function(editor) {
+            // If content was loaded before TinyMCE was ready, apply it now
+            if (window._pendingDiscussionContent !== null) {
+                editor.setContent(window._pendingDiscussionContent);
+                window._pendingDiscussionContent = null;
+                if (typeof loadExistingReferences === 'function') {
+                    loadExistingReferences(editor);
+                }
+            }
         }
     });
 }
@@ -2641,18 +2657,20 @@ function loadCaseForEdit(caseId) {
                 updateVisibilityUI(statusSelect.value);
             }
         }
-        setTimeout(() => {
-            if (typeof tinymce !== 'undefined' && tinymce.get('editCaseDiscussion')) {
-                const editor = tinymce.get('editCaseDiscussion');
-                editor.setContent(caseData.discussion || '');
-                // Load existing references after content is set
-                if (typeof loadExistingReferences === 'function') {
-                    loadExistingReferences(editor);
-                }
-            } else {
-                document.getElementById('editCaseDiscussion').value = caseData.discussion || '';
+        // Load discussion content — handles TinyMCE not yet ready
+        const discussionContent = caseData.discussion || '';
+        if (typeof tinymce !== 'undefined' && tinymce.get('editCaseDiscussion')) {
+            // TinyMCE already initialized — set content directly
+            tinymce.get('editCaseDiscussion').setContent(discussionContent);
+            if (typeof loadExistingReferences === 'function') {
+                loadExistingReferences(tinymce.get('editCaseDiscussion'));
             }
-        }, 500);
+        } else {
+            // TinyMCE not ready yet — store for init_instance_callback
+            window._pendingDiscussionContent = discussionContent;
+            // Also set textarea as fallback
+            document.getElementById('editCaseDiscussion').value = discussionContent;
+        }
         if (document.getElementById('editCaseModule')) {
             document.getElementById('editCaseModule').value = caseData.module || '';
         }
@@ -2695,6 +2713,20 @@ function loadCaseForEdit(caseId) {
         }
 
         // AI watermark preservation: watermarks preserved unless case is published/public
+
+        // Check for stored AI data to show/hide reload button
+        if (caseData.id) {
+            const model = document.getElementById('aiModelSelect')?.value || 'claude-sonnet-4-20250514';
+            fetch(`/api/case/${caseData.id}/ai-prelim/check-cache?model=${encodeURIComponent(model)}`)
+                .then(r => r.ok ? r.json() : null)
+                .then(data => {
+                    const reloadBtn = document.getElementById('aiReloadBtn');
+                    if (reloadBtn && data && data.has_stored_data) {
+                        reloadBtn.style.display = 'inline-block';
+                    }
+                })
+                .catch(() => {}); // Silent fail
+        }
 
         // Populate Q&A pairs directly using addQAPairRow
         // Wait for functions to be available, then populate Q&A
@@ -2820,20 +2852,18 @@ function loadStagingCaseForEdit(stagingId) {
             document.getElementById('editCaseNumber').value = stagingData.case_number || '';
             document.getElementById('editCaseDiagnosis').value = stagingData.diagnosis || '';
             
-            // Set discussion
-            setTimeout(() => {
-                if (typeof tinymce !== 'undefined' && tinymce.get('editCaseDiscussion')) {
-                    const editor = tinymce.get('editCaseDiscussion');
-                    editor.setContent(stagingData.discussion || '');
-                    // Load existing references after content is set
-                    if (typeof loadExistingReferences === 'function') {
-                        loadExistingReferences(editor);
-                    }
-                } else {
-                    document.getElementById('editCaseDiscussion').value = stagingData.discussion || '';
+            // Load discussion content — handles TinyMCE not yet ready
+            const stagingDiscussion = stagingData.discussion || '';
+            if (typeof tinymce !== 'undefined' && tinymce.get('editCaseDiscussion')) {
+                tinymce.get('editCaseDiscussion').setContent(stagingDiscussion);
+                if (typeof loadExistingReferences === 'function') {
+                    loadExistingReferences(tinymce.get('editCaseDiscussion'));
                 }
-            }, 500);
-            
+            } else {
+                window._pendingDiscussionContent = stagingDiscussion;
+                document.getElementById('editCaseDiscussion').value = stagingDiscussion;
+            }
+
             // Set module, body_part, age_group (may be empty for missing fields)
             if (document.getElementById('editCaseModule')) {
                 document.getElementById('editCaseModule').value = stagingData.module || '';

@@ -877,6 +877,13 @@ function saveEditedCase(event) {
     let discussion = '';
     if (typeof tinymce !== 'undefined' && tinymce.get('editCaseDiscussion')) {
         discussion = tinymce.get('editCaseDiscussion').getContent().trim();
+        // Guard: if TinyMCE returns empty but textarea has content, use textarea
+        if (!discussion) {
+            const fallback = document.getElementById('editCaseDiscussion').value.trim();
+            if (fallback) {
+                discussion = fallback;
+            }
+        }
     } else {
         discussion = document.getElementById('editCaseDiscussion').value.trim();
     }
@@ -1962,6 +1969,14 @@ function checkAiCacheAndPrompt(caseId, model, diagnosis, btn) {
                                 <button type="button" class="btn btn-cancel" onclick="this.closest('.modal').remove()">
                                     Cancel
                                 </button>
+                                ${cacheData.has_stored_data ? `
+                                <button type="button" class="btn btn-outline-primary" onclick="
+                                    this.closest('.modal').remove();
+                                    reloadPrelimCaseData();
+                                ">
+                                    <i class="fas fa-history me-1"></i>Reload Previous
+                                </button>
+                                ` : ''}
                                 <button type="button" class="btn btn-regenerate" onclick="
                                     this.closest('.modal').remove();
                                     createPrelimCaseData(true);
@@ -1973,15 +1988,68 @@ function checkAiCacheAndPrompt(caseId, model, diagnosis, btn) {
                     </div>
                 `;
                 document.body.appendChild(modal);
-                
+
                 // Close on backdrop click
                 modal.addEventListener('click', (e) => {
                     if (e.target === modal) {
                         modal.remove();
                     }
                 });
+            } else if (!cacheData.cached && cacheData.has_stored_data) {
+                // Not cached but has stored data — offer reload or generate new
+                const storedInfo = cacheData.stored_data_info || {};
+                const storedDate = storedInfo.generated_at ? new Date(storedInfo.generated_at).toLocaleString() : 'unknown';
+                const storedModel = storedInfo.model_name || 'unknown';
+
+                const modal = document.createElement('div');
+                modal.className = 'modal fade show ai-cache-modal';
+                modal.style.display = 'flex';
+                modal.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+                modal.style.zIndex = '9999';
+                modal.innerHTML = `
+                    <div class="modal-dialog modal-dialog-centered" style="max-width: 500px; width: 90vw;">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">
+                                    <i class="fas fa-database"></i>
+                                    Previous AI Data Available
+                                </h5>
+                                <button type="button" class="btn-close btn-close-white" onclick="this.closest('.modal').remove()" style="opacity: 0.8;"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="card border-0 shadow-sm" style="background-color: #f8f9fa; border-left: 4px solid #5E899E !important;">
+                                    <div class="card-body p-3">
+                                        <p class="card-text mb-2" style="color: #2c3e50; line-height: 1.6;">
+                                            This case has previously generated AI data (${storedModel}, ${storedDate}).
+                                        </p>
+                                        <p class="card-text mb-0" style="color: #2c3e50; line-height: 1.6;">
+                                            You can <strong>reload</strong> the stored data or <strong>generate new</strong> content.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-cancel" onclick="this.closest('.modal').remove()">Cancel</button>
+                                <button type="button" class="btn btn-outline-primary" onclick="
+                                    this.closest('.modal').remove();
+                                    reloadPrelimCaseData();
+                                ">
+                                    <i class="fas fa-history me-1"></i>Reload Previous
+                                </button>
+                                <button type="button" class="btn btn-regenerate" onclick="
+                                    this.closest('.modal').remove();
+                                    createPrelimCaseData(true);
+                                ">
+                                    <i class="fas fa-wand-magic-sparkles me-1"></i>Generate New
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+                modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
             } else {
-                // Not cached, proceed directly
+                // Not cached and no stored data, proceed directly
                 createPrelimCaseData(true);
             }
         })
@@ -2122,6 +2190,81 @@ function createPrelimCaseData(forceRegenerate = false) {
 }
 
 /**
+ * Reload Q&A and discussion from stored AI response_payload (no new AI call).
+ */
+function reloadPrelimCaseData() {
+    const caseIdField = document.getElementById('editCaseId')?.value;
+    if (!caseIdField || caseIdField === 'new' || caseIdField.toString().startsWith('new-') || caseIdField.toString().startsWith('staging-')) {
+        alert('Cannot reload: case must be saved first.');
+        return;
+    }
+    if (!confirm('This will replace all current Q&A pairs and discussion with the previously generated AI data. Continue?')) {
+        return;
+    }
+
+    const btn = document.getElementById('aiReloadBtn');
+    if (btn) {
+        btn.disabled = true;
+        btn.dataset.originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Reloading...';
+    }
+
+    fetch(`/api/case/${caseIdField}/ai-prelim/reload`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+    })
+    .then(async r => {
+        const text = await r.text();
+        let payload;
+        try { payload = JSON.parse(text); } catch(e) { payload = { error: text || 'Unknown error' }; }
+        if (!r.ok) throw new Error(payload.error || 'Failed to reload AI data.');
+        return payload;
+    })
+    .then(data => {
+        // Clear existing Q&A in DOM
+        const container = document.getElementById('qaPairsContainer');
+        if (container) container.innerHTML = '';
+
+        // Clear discussion editor
+        if (typeof tinymce !== 'undefined' && tinymce.get('editCaseDiscussion')) {
+            tinymce.get('editCaseDiscussion').setContent('');
+        } else {
+            const ta = document.getElementById('editCaseDiscussion');
+            if (ta) ta.value = '';
+        }
+
+        // Add Q&A pairs
+        const pairs = data.added_pairs || [];
+        pairs.forEach(pair => {
+            addQAPairRow(pair.question || '', pair.answer || '', true);
+        });
+
+        // Append discussion
+        if (data.discussion_html) {
+            appendDiscussionHtml(data.discussion_html);
+        }
+
+        const pairsCount = data.pairs_count || pairs.length || 0;
+        let message = `Reload Complete\n\nRestored ${pairsCount} Q&A pair${pairsCount !== 1 ? 's' : ''}.`;
+        if (data.discussion_appended) message += ' Discussion restored.';
+        if (data.originally_generated_at) {
+            message += `\nOriginally generated: ${new Date(data.originally_generated_at).toLocaleString()}`;
+        }
+        showAiGenerationFlash(message, pairsCount, data.discussion_appended || false);
+    })
+    .catch(error => {
+        console.error('[AI RELOAD] Error:', error);
+        alert(error.message || 'Failed to reload AI data.');
+    })
+    .finally(() => {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = btn.dataset.originalText || '<i class="fas fa-redo me-1"></i>Reload Previous AI Data';
+        }
+    });
+}
+
+/**
  * Cancel AI generation
  * Always hides the cancel button, even if no active generation
  */
@@ -2219,6 +2362,7 @@ if (typeof window !== 'undefined') {
     window.viewImageFull = viewImageFull;
     window.initializeTinyMCE = initializeTinyMCE;
     window.createPrelimCaseData = createPrelimCaseData;
+    window.reloadPrelimCaseData = reloadPrelimCaseData;
     window.stripAiGeneratedWrappers = stripAiGeneratedWrappers;
     window.cancelAiGeneration = cancelAiGeneration;
     window.showAiGenerationFlash = showAiGenerationFlash;

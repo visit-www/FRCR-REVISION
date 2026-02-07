@@ -958,8 +958,9 @@ def view_revision_case(session_id, case_index):
 @login_required
 def modules_view():
     """Display all FRCR modules"""
-    from models import FRCRModule, Case
-    
+    from models import FRCRModule, Case, AgeGroup
+    from sqlalchemy import or_
+
     # Prepare module data with case counts
     modules_data = []
     module_icons = {
@@ -981,7 +982,13 @@ def modules_view():
     }
     
     for module in FRCRModule:
-        case_count = Case.query.filter_by(module=module, is_public=True).count()
+        if module == FRCRModule.PAEDIATRIC:
+            case_count = Case.query.filter(
+                Case.is_public == True,
+                or_(Case.module == module, Case.age_group == AgeGroup.PEDIATRIC)
+            ).count()
+        else:
+            case_count = Case.query.filter_by(module=module, is_public=True).count()
         modules_data.append({
             'value': module.name,
             'display_name': module.value,
@@ -997,20 +1004,27 @@ def modules_view():
 @login_required
 def cases_by_module(module):
     """Show cases filtered by module"""
-    from models import FRCRModule, BodyPart, Case, CandidateNote
-    
+    from models import FRCRModule, BodyPart, Case, CandidateNote, AgeGroup
+    from sqlalchemy import or_
+
     # Validate module
     try:
         module_enum = FRCRModule[module]
     except KeyError:
         return redirect(url_for('modules_view'))
-    
+
     # Get filters from query params
     body_part_filter = request.args.get('body_part', '')
     search_query = request.args.get('q', '')
-    
-    # Build query
-    query = Case.query.filter_by(module=module_enum, is_public=True)
+
+    # Build query — PAEDIATRIC module also includes cases with age_group=PEDIATRIC
+    if module_enum == FRCRModule.PAEDIATRIC:
+        query = Case.query.filter(
+            Case.is_public == True,
+            or_(Case.module == module_enum, Case.age_group == AgeGroup.PEDIATRIC)
+        )
+    else:
+        query = Case.query.filter_by(module=module_enum, is_public=True)
     
     if body_part_filter:
         try:
@@ -1142,6 +1156,7 @@ def all_cases_view():
 @login_required
 def student_cases_list():
     from models import BodyPart, AgeGroup, FRCRModule, CandidateNote, CaseFlag, CaseStatus
+    from sqlalchemy import or_
 
     module_filter = request.args.get('module', '')
     body_part_filter = request.args.get('body_part', '')
@@ -1154,7 +1169,12 @@ def student_cases_list():
     if module_filter:
         try:
             module_enum = FRCRModule[module_filter]
-            query = query.filter_by(module=module_enum)
+            if module_enum == FRCRModule.PAEDIATRIC:
+                query = query.filter(
+                    or_(Case.module == module_enum, Case.age_group == AgeGroup.PEDIATRIC)
+                )
+            else:
+                query = query.filter_by(module=module_enum)
         except KeyError:
             module_filter = ''
 
@@ -1532,7 +1552,22 @@ def create_case():
             body_part_enum = BodyPart[data['body_part']]
         except KeyError:
             pass
-    
+
+    from models import AgeGroup, CaseStatus
+    age_group_enum = None
+    if data.get('age_group'):
+        try:
+            age_group_enum = AgeGroup[data['age_group']]
+        except KeyError:
+            pass
+
+    status_enum = CaseStatus.DRAFT
+    if data.get('status'):
+        try:
+            status_enum = CaseStatus[data['status']]
+        except KeyError:
+            pass
+
     # Auto-generate case_number if not provided and body_part is set
     case_number = data.get('case_number')
     if not case_number and body_part_enum:
@@ -1577,6 +1612,8 @@ def create_case():
             discussion=discussion,
             module=module_enum,
             body_part=body_part_enum,
+            age_group=age_group_enum,
+            status=status_enum,
             calculator_slug=data.get('calculator_slug') or None,
             is_public=data.get('is_public', False),
             created_by_user_id=current_user.id
@@ -3168,9 +3205,10 @@ def check_ai_prelim_cache(case_id):
         if not case.diagnosis or not case.diagnosis.strip():
             return jsonify({
                 'cached': False,
+                'has_stored_data': False,
                 'message': 'No diagnosis available'
             })
-        
+
         # Support both model (new) and provider (legacy) parameters
         model_name = request.args.get('model', '').strip()
 
@@ -3178,6 +3216,22 @@ def check_ai_prelim_cache(case_id):
         if not model_name:
             import os
             model_name = os.getenv("CLAUDE_MODEL", "claude-sonnet-4-20250514")
+
+        # Check for stored AI data (AiPrelimCaseData) for reload capability
+        has_stored_data = False
+        stored_data_info = None
+        try:
+            from models import AiPrelimCaseData
+            stored = AiPrelimCaseData.query.filter_by(case_id=case_id).order_by(AiPrelimCaseData.created_at.desc()).first()
+            if stored:
+                has_stored_data = True
+                stored_data_info = {
+                    'provider': stored.provider,
+                    'model_name': stored.model_name,
+                    'generated_at': stored.created_at.isoformat() if stored.created_at else None,
+                }
+        except Exception:
+            pass  # Table may not exist yet
 
         # Try to check cache, but handle case where table doesn't exist yet
         try:
@@ -3188,6 +3242,8 @@ def check_ai_prelim_cache(case_id):
             # Return not cached so user can proceed
             return jsonify({
                 'cached': False,
+                'has_stored_data': has_stored_data,
+                'stored_data_info': stored_data_info,
                 'message': 'Cache check unavailable (migration may be pending)',
                 'all_used_models': [],
                 'requested_model': model_name,
@@ -3195,6 +3251,8 @@ def check_ai_prelim_cache(case_id):
 
         return jsonify({
             'cached': cache_entry is not None,
+            'has_stored_data': has_stored_data,
+            'stored_data_info': stored_data_info,
             'cache_entry': {
                 'provider': cache_entry.provider if cache_entry else None,
                 'model_name': cache_entry.model_name if cache_entry else None,
@@ -3210,10 +3268,60 @@ def check_ai_prelim_cache(case_id):
         # Return not cached so user can proceed
         return jsonify({
             'cached': False,
+            'has_stored_data': False,
             'error': str(e),
             'message': 'Cache check failed, proceeding anyway',
             'all_used_models': [],
         }), 200  # Return 200 so frontend doesn't treat it as error
+
+
+def _apply_qa_pairs_from_output(case, output):
+    """Create Question/Answer records from AI output qa_pairs. Returns list of added pairs."""
+    existing_questions = Question.query.filter_by(case_id=case.id).count()
+    existing_answers = Answer.query.filter_by(case_id=case.id).count()
+    next_q_number = existing_questions + 1
+    next_a_number = existing_answers + 1
+
+    added_pairs = []
+    for pair in output.get('qa_pairs', []) or []:
+        question_text = (pair.get('question') or '').strip()
+        answer_text = (pair.get('answer') or '').strip()
+        if not question_text and not answer_text:
+            continue
+
+        # Wrap AI-generated Q&A in wrapper divs with data attribute
+        if question_text:
+            question_text = f'<div data-ai-generated="true" class="ai-generated-wrapper">{question_text}</div>'
+        if answer_text:
+            answer_text = f'<div data-ai-generated="true" class="ai-generated-wrapper">{answer_text}</div>'
+
+        if question_text:
+            q = Question(case_id=case.id, question_number=next_q_number, question_text=question_text)
+            db.session.add(q)
+            next_q_number += 1
+        if answer_text:
+            a = Answer(case_id=case.id, answer_number=next_a_number, answer_text=answer_text)
+            db.session.add(a)
+            next_a_number += 1
+        added_pairs.append({'question': question_text, 'answer': answer_text})
+    return added_pairs
+
+
+def _apply_discussion_from_output(case, output, provider, model_name):
+    """Build AI discussion HTML and append to case.discussion. Returns discussion_html string."""
+    discussion_html = _build_ai_discussion_html(output, provider, model_name)
+    if discussion_html:
+        existing_discussion = case.discussion or ''
+        separator = '\n' if existing_discussion else ''
+        footer = '''<!-- Footer -->
+<div style="background: #f3f4f6; padding: 12px 16px; border-top: 1px solid #e5e7eb; margin-top: 20px; border-radius: 0 0 8px 8px;">
+    <div style="display: flex; align-items: center; justify-content: flex-end; gap: 8px;">
+        <img style="width: 30px; height: 30px; object-fit: contain;" src="https://res.cloudinary.com/dx7b7chvn/image/upload/v1769503548/frcr-rev-logo-transp_o2hmrq.png" alt="RadiologyInsights Logo">
+        <span style="font-size: 0.85em; color: #6b7280;">&copy; All rights reserved RadiologyInsights</span>
+    </div>
+</div>'''
+        case.discussion = f"{existing_discussion}{separator}{discussion_html}{footer}"
+    return discussion_html
 
 
 @app.route('/api/case/<int:case_id>/ai-prelim', methods=['POST'])
@@ -3281,47 +3389,8 @@ def generate_preliminary_case_data(case_id):
 
     output = result.get('output', {})
 
-    existing_questions = Question.query.filter_by(case_id=case.id).count()
-    existing_answers = Answer.query.filter_by(case_id=case.id).count()
-    next_q_number = existing_questions + 1
-    next_a_number = existing_answers + 1
-
-    added_pairs = []
-    for pair in output.get('qa_pairs', []) or []:
-        question_text = (pair.get('question') or '').strip()
-        answer_text = (pair.get('answer') or '').strip()
-        if not question_text and not answer_text:
-            continue
-        
-        # Wrap AI-generated Q&A in wrapper divs with data attribute
-        if question_text:
-            question_text = f'<div data-ai-generated="true" class="ai-generated-wrapper">{question_text}</div>'
-        if answer_text:
-            answer_text = f'<div data-ai-generated="true" class="ai-generated-wrapper">{answer_text}</div>'
-        
-        if question_text:
-            q = Question(case_id=case.id, question_number=next_q_number, question_text=question_text)
-            db.session.add(q)
-            next_q_number += 1
-        if answer_text:
-            a = Answer(case_id=case.id, answer_number=next_a_number, answer_text=answer_text)
-            db.session.add(a)
-            next_a_number += 1
-        added_pairs.append({'question': question_text, 'answer': answer_text})
-
-    discussion_html = _build_ai_discussion_html(output, result.get('provider', 'claude'), result.get('model', ''))
-    if discussion_html:
-        existing_discussion = case.discussion or ''
-        separator = '\n' if existing_discussion else ''
-        # Add footer after AI-generated content
-        footer = '''<!-- Footer -->
-<div style="background: #f3f4f6; padding: 12px 16px; border-top: 1px solid #e5e7eb; margin-top: 20px; border-radius: 0 0 8px 8px;">
-    <div style="display: flex; align-items: center; justify-content: flex-end; gap: 8px;">
-        <img style="width: 30px; height: 30px; object-fit: contain;" src="https://res.cloudinary.com/dx7b7chvn/image/upload/v1769503548/frcr-rev-logo-transp_o2hmrq.png" alt="RadiologyInsights Logo">
-        <span style="font-size: 0.85em; color: #6b7280;">&copy; All rights reserved RadiologyInsights</span>
-    </div>
-</div>'''
-        case.discussion = f"{existing_discussion}{separator}{discussion_html}{footer}"
+    added_pairs = _apply_qa_pairs_from_output(case, output)
+    discussion_html = _apply_discussion_from_output(case, output, result.get('provider', 'claude'), result.get('model', ''))
 
     from models import AiPrelimCaseData
     audit = AiPrelimCaseData(
@@ -3334,7 +3403,7 @@ def generate_preliminary_case_data(case_id):
         response_payload=json.dumps(result),
     )
     db.session.add(audit)
-    
+
     # Update diagnosis cache
     try:
         update_ai_diagnosis_cache(
@@ -3362,6 +3431,58 @@ def generate_preliminary_case_data(case_id):
         'warnings': output.get('warnings', []),
         'provider': result.get('provider', 'claude'),
         'model': result.get('model', ''),
+    })
+
+
+@app.route('/api/case/<int:case_id>/ai-prelim/reload', methods=['POST'])
+@login_required
+def reload_preliminary_case_data(case_id):
+    """Reload Q&A and discussion from stored AI response_payload without calling the AI again."""
+    case = verify_case_ownership(case_id)
+    if not case:
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    from access_control import has_case_edit_permission
+    if not has_case_edit_permission(case):
+        return jsonify({'error': 'Access denied'}), 403
+
+    from models import AiPrelimCaseData
+    stored = AiPrelimCaseData.query.filter_by(case_id=case_id).order_by(AiPrelimCaseData.created_at.desc()).first()
+    if not stored:
+        return jsonify({'error': 'No stored AI data found for this case'}), 404
+
+    try:
+        result = json.loads(stored.response_payload)
+    except (json.JSONDecodeError, TypeError):
+        return jsonify({'error': 'Stored AI data is corrupt'}), 500
+
+    output = result.get('output', {})
+
+    # Delete existing Q&A for this case
+    Question.query.filter_by(case_id=case.id).delete()
+    Answer.query.filter_by(case_id=case.id).delete()
+    # Clear discussion
+    case.discussion = ''
+
+    added_pairs = _apply_qa_pairs_from_output(case, output)
+    discussion_html = _apply_discussion_from_output(case, output, stored.provider, stored.model_name)
+
+    try:
+        db.session.commit()
+    except Exception as exc:
+        db.session.rollback()
+        return jsonify({'error': f'Failed to reload AI data: {exc}'}), 500
+
+    return jsonify({
+        'success': True,
+        'reloaded': True,
+        'originally_generated_at': stored.created_at.isoformat() if stored.created_at else None,
+        'added_pairs': added_pairs,
+        'pairs_count': len(added_pairs),
+        'discussion_html': discussion_html,
+        'discussion_appended': bool(discussion_html),
+        'provider': stored.provider,
+        'model': stored.model_name,
     })
 
 
