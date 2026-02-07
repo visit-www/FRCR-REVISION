@@ -1874,7 +1874,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const r2UploadBtn = document.getElementById('caseDicomR2UploadBtn');
     if (r2UploadBtn) {
         r2UploadBtn.addEventListener('click', async function() {
-            const BATCH_SIZE = 50;
+            // Vercel Pro body limit is 4.5MB; use 3.5MB max per batch for safety (FormData overhead)
+            const MAX_BATCH_BYTES = 3.5 * 1024 * 1024;
             const caseId = document.getElementById('editCaseId')?.value;
             if (!caseId) return;
             const rows = document.querySelectorAll('#caseDicomR2PlansContainer .series-upload-row');
@@ -1940,15 +1941,33 @@ document.addEventListener('DOMContentLoaded', function() {
             progressText.textContent = 'Preparing…';
             progressBytes.textContent = 'Starting upload';
 
+            // Build size-based batches (each batch stays under Vercel's body limit)
+            var batches = [];
+            var currentBatch = [];
+            var currentBatchBytes = 0;
+            for (var fi = 0; fi < allFiles.length; fi++) {
+                var fileSize = allFiles[fi].file.size || 0;
+                // If adding this file would exceed limit AND batch isn't empty, start a new batch
+                if (currentBatch.length > 0 && (currentBatchBytes + fileSize) > MAX_BATCH_BYTES) {
+                    batches.push(currentBatch);
+                    currentBatch = [];
+                    currentBatchBytes = 0;
+                }
+                currentBatch.push(allFiles[fi]);
+                currentBatchBytes += fileSize;
+            }
+            if (currentBatch.length > 0) batches.push(currentBatch);
+
             var totalFiles = allFiles.length;
             var uploaded = 0;
             var currentStackId = stackId;
             var lastData = null;
-            var totalBatches = Math.ceil(totalFiles / BATCH_SIZE);
+            var totalBatches = batches.length;
+            var totalSizeMB = allFiles.reduce(function(s, f) { return s + (f.file.size || 0); }, 0) / (1024 * 1024);
 
             try {
                 for (var batchIdx = 0; batchIdx < totalBatches; batchIdx++) {
-                    var chunk = allFiles.slice(batchIdx * BATCH_SIZE, (batchIdx + 1) * BATCH_SIZE);
+                    var chunk = batches[batchIdx];
                     var fd = new FormData();
                     fd.append('study_label', studyLabel);
                     if (currentStackId) fd.append('stack_id', String(currentStackId));
@@ -1957,8 +1976,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         fd.append(chunk[ci].series, chunk[ci].file, chunk[ci].file.name);
                     }
 
-                    progressText.textContent = 'Batch ' + (batchIdx + 1) + '/' + totalBatches + ' — sending…';
-                    progressBytes.textContent = uploaded + ' / ' + totalFiles + ' images';
+                    progressText.textContent = 'Batch ' + (batchIdx + 1) + '/' + totalBatches + ' (' + chunk.length + ' images) — sending…';
+                    progressBytes.textContent = uploaded + ' / ' + totalFiles + ' images (' + totalSizeMB.toFixed(1) + ' MB total)';
 
                     var result = await _uploadChunkXHR(caseId, fd, uploaded, chunk.length, totalFiles, progressEl, progressBar, progressText, progressBytes);
                     if (!result.ok) {
@@ -1998,7 +2017,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 r2UploadBtn.innerHTML = '<i class="fas fa-upload me-1"></i>Upload';
                 var errText = err.message || 'Upload failed';
                 if (uploaded > 0) {
-                    errText = 'Failed at batch ' + (Math.floor(uploaded / BATCH_SIZE) + 1) + '/' + totalBatches + ': ' + errText + ' (' + uploaded + '/' + totalFiles + ' images uploaded successfully)';
+                    errText = 'Failed at batch ' + (batchIdx + 1) + '/' + totalBatches + ': ' + errText + ' (' + uploaded + '/' + totalFiles + ' images uploaded successfully)';
                 }
                 document.getElementById('caseDicomR2Error').textContent = errText;
                 document.getElementById('caseDicomR2Error').style.display = 'block';
