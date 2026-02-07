@@ -1,7 +1,7 @@
 /**
  * Case DICOM Viewer - Cornerstone.js v4.x Integration
  * Features: Stack scroll (mouse wheel), zoom, pan, window/level, annotations
- * v13: Per-image annotation tracking; annotations follow mouse-wheel scroll
+ * v14: Per-image annotations in displaySlice + cornerstonestackscroll (no cascade)
  */
 (function () {
   "use strict";
@@ -251,13 +251,18 @@
    */
   function displaySlice(index) {
     if (!_element || !_imageIds.length || index < 0 || index >= _imageIds.length) return;
+
+    // Save admin annotations from previous image before switching
+    if (_isAdmin && _lastAnnotationIndex >= 0 && _lastAnnotationIndex !== index && _annotationsVisible) {
+      saveCurrentAnnotationsToCache(_lastAnnotationIndex);
+    }
+
     _currentIndex = index;
     var imageId = _imageIds[_currentIndex];
 
     cornerstone.loadImage(imageId).then(
       function (image) {
-        // Update stack tool state BEFORE displayImage so cornerstoneimagerendered
-        // handler reads the correct index via syncSliceCounter
+        // Update stack tool state
         var stackState = cornerstoneTools.getToolState(_element, "stack");
         if (stackState && stackState.data && stackState.data.length) {
           stackState.data[0].currentImageIdIndex = _currentIndex;
@@ -266,7 +271,13 @@
         cornerstone.displayImage(_element, image);
         _preloadedImages[imageId] = true;
 
-        // Annotations are handled by cornerstoneimagerendered → handleImageChanged()
+        // Apply annotations for this image
+        _lastAnnotationIndex = _currentIndex;
+        if (_annotationsVisible) {
+          applyAnnotationsForImage();
+        } else {
+          clearAnnotations();
+        }
 
         // Notify slice change
         if (_onSliceChange) {
@@ -945,15 +956,25 @@
 
         el.addEventListener("cornerstoneimagerendered", function () {
           syncSliceCounter();
-          handleImageChanged();
         });
 
-        // Listen for stack scroll events (v4 may use different property names)
+        // Listen for stack scroll events — handle annotations for mouse wheel navigation
         el.addEventListener("cornerstonestackscroll", function (e) {
           var eventData = e.detail || {};
           var idx = eventData.newImageIdIndex ?? eventData.imageIdIndex ?? eventData.newIndex;
           if (typeof idx === "number" && idx >= 0 && idx < _imageIds.length) {
+            // Save admin annotations from previous image
+            if (_isAdmin && _lastAnnotationIndex >= 0 && _lastAnnotationIndex !== idx && _annotationsVisible) {
+              saveCurrentAnnotationsToCache(_lastAnnotationIndex);
+            }
             _currentIndex = idx;
+            _lastAnnotationIndex = idx;
+            // Apply annotations for new image
+            if (_annotationsVisible) {
+              applyAnnotationsForImage();
+            } else {
+              clearAnnotations();
+            }
             if (_onSliceChange) {
               _onSliceChange(_currentIndex + 1, _imageIds.length);
             }
@@ -1241,5 +1262,5 @@
     },
   };
 
-  console.log("[CaseDicomViewer] viewer.js v13 loaded (per-image annotations, wheel-scroll support)");
+  console.log("[CaseDicomViewer] viewer.js v14 loaded (per-image annotations, no cascade)");
 })();
