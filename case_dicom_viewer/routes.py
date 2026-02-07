@@ -383,9 +383,14 @@ def get_case_stack(case_id):
             diag_client = _get_client()
             diag_bucket = get_bucket()
             client_err = get_client_error()
+            # Dump raw column values from the stack record
+            raw_r2 = getattr(stack, 'r2_config_json', None)
+            raw_cfg = getattr(stack, 'config_json', None)
             error_detail = (
-                f"Stack exists (backend={getattr(stack, 'storage_backend', '?')}) but 0 plans resolved."
-                f" R2 diag: client={'OK' if diag_client else 'NONE'}, bucket={diag_bucket or 'NONE'}."
+                f"Stack id={stack.id} backend={getattr(stack, 'storage_backend', '?')}."
+                f" r2_config_json={'<' + str(len(raw_r2)) + ' chars>' if raw_r2 else 'NULL/empty'}."
+                f" config_json={'<' + str(len(raw_cfg)) + ' chars>' if raw_cfg else 'NULL/empty'}."
+                f" R2 client={'OK' if diag_client else 'NONE'}, bucket={diag_bucket or 'NONE'}."
             )
             if client_err:
                 error_detail += f" Client error: {client_err}."
