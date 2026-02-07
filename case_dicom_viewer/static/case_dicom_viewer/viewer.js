@@ -400,13 +400,13 @@
     // Elliptical ROI
     cornerstoneTools.addTool(cornerstoneTools.EllipticalRoiTool);
 
-    // For non-admin: enable tools for rendering only (students see saved annotations)
-    if (!_isAdmin) {
-      var readOnlyTools = ["ArrowAnnotate", "FreehandRoi", "TextMarker", "Length", "EllipticalRoi"];
-      readOnlyTools.forEach(function (tool) {
-        cornerstoneTools.setToolEnabled(tool);
-      });
-    }
+    // Enable all annotation tools for rendering. Without this, addTool() alone
+    // leaves tools in a disabled state where they won't render saved annotations.
+    // Admin can later setToolActive() to draw; setToolEnabled is render-only.
+    var allAnnotationTools = ["ArrowAnnotate", "FreehandRoi", "TextMarker", "Length", "EllipticalRoi"];
+    allAnnotationTools.forEach(function (tool) {
+      cornerstoneTools.setToolEnabled(tool);
+    });
 
     console.log("[CaseDicomViewer] Annotation tools added" + (_isAdmin ? " for admin" : " (read-only)"));
   }
