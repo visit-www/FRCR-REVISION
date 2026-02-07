@@ -1820,38 +1820,92 @@ document.addEventListener('DOMContentLoaded', function() {
             folderInput.value = '';
         });
     }
+    // ---- Chunked upload helpers ----
+    function _uploadChunkXHR(caseId, formData, alreadyUploaded, chunkSize, totalFiles, progressEl, progressBar, progressText, progressBytes) {
+        return new Promise(function(resolve, reject) {
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', '/case-dicom-viewer/api/case/' + caseId + '/stack/upload');
+            xhr.withCredentials = true;
+            xhr.upload.addEventListener('progress', function(e) {
+                // Within-chunk progress: scale to overall position
+                var chunkFraction = 0.5;
+                if (e.lengthComputable) {
+                    chunkFraction = e.loaded / e.total;
+                }
+                var overallPct = Math.round(((alreadyUploaded + chunkFraction * chunkSize) / totalFiles) * 100);
+                progressBar.style.width = overallPct + '%';
+                progressBar.setAttribute('aria-valuenow', overallPct);
+                progressText.textContent = 'Sending… ' + (alreadyUploaded + Math.round(chunkFraction * chunkSize)) + ' / ' + totalFiles + ' images';
+                if (e.lengthComputable) {
+                    var loadedMB = (e.loaded / (1024 * 1024)).toFixed(1);
+                    var totalMB = (e.total / (1024 * 1024)).toFixed(1);
+                    progressBytes.textContent = loadedMB + ' / ' + totalMB + ' MB (this batch)';
+                }
+            });
+            xhr.upload.addEventListener('loadend', function() {
+                // Upload to Vercel edge complete — now server is processing (R2 uploads)
+                progressBar.classList.add('progress-bar-striped', 'progress-bar-animated');
+                progressText.textContent = 'Server processing…';
+                progressBytes.textContent = 'Uploading to storage';
+            });
+            xhr.addEventListener('load', function() {
+                progressBar.classList.remove('progress-bar-striped', 'progress-bar-animated');
+                var data = {};
+                try { data = JSON.parse(xhr.responseText || '{}'); } catch (e) {}
+                if (xhr.status >= 200 && xhr.status < 300 && data.stack_id) {
+                    resolve({ ok: true, stack_id: data.stack_id, data: data });
+                } else {
+                    var errMsg = (data.error) || (xhr.status >= 500 ? 'Server error (' + xhr.status + ').' : 'Upload failed');
+                    resolve({ ok: false, error: errMsg });
+                }
+            });
+            xhr.addEventListener('error', function() {
+                progressBar.classList.remove('progress-bar-striped', 'progress-bar-animated');
+                resolve({ ok: false, error: 'Connection failed—may have timed out. Try fewer files.' });
+            });
+            xhr.addEventListener('abort', function() {
+                progressBar.classList.remove('progress-bar-striped', 'progress-bar-animated');
+                resolve({ ok: false, error: 'Upload aborted.' });
+            });
+            xhr.send(formData);
+        });
+    }
+
     const r2UploadBtn = document.getElementById('caseDicomR2UploadBtn');
     if (r2UploadBtn) {
-        r2UploadBtn.addEventListener('click', function() {
+        r2UploadBtn.addEventListener('click', async function() {
+            const BATCH_SIZE = 50;
             const caseId = document.getElementById('editCaseId')?.value;
             if (!caseId) return;
             const rows = document.querySelectorAll('#caseDicomR2PlansContainer .series-upload-row');
-            const fd = new FormData();
-            let hasFiles = false;
+
+            // Collect all files grouped by series name
+            var planFiles = {};
             rows.forEach(function(row) {
                 const plan = row.getAttribute('data-plan');
                 if (row.getAttribute('data-folder') === '1') {
                     var folderFiles = _caseDicomR2FolderSeries[plan];
-                    if (folderFiles) {
-                        for (var i = 0; i < folderFiles.length; i++) {
-                            fd.append(plan, folderFiles[i]);
-                            hasFiles = true;
-                        }
+                    if (folderFiles && folderFiles.length) {
+                        planFiles[plan] = (planFiles[plan] || []).concat(Array.from(folderFiles));
                     }
                 } else {
                     const input = row.querySelector('input[type="file"]');
-                    if (!input || !input.files) return;
-                    for (let i = 0; i < input.files.length; i++) {
-                        fd.append(plan, input.files[i]);
-                        hasFiles = true;
-                    }
+                    if (!input || !input.files || !input.files.length) return;
+                    planFiles[plan] = (planFiles[plan] || []).concat(Array.from(input.files));
                 }
             });
-            if (!hasFiles) {
+
+            // Flatten to array of {series, file}
+            var allFiles = [];
+            for (var series in planFiles) {
+                planFiles[series].forEach(function(f) { allFiles.push({ series: series, file: f }); });
+            }
+            if (!allFiles.length) {
                 document.getElementById('caseDicomR2Error').textContent = 'Select at least one image file.';
                 document.getElementById('caseDicomR2Error').style.display = 'block';
                 return;
             }
+
             var studyMode = document.querySelector('input[name="caseDicomR2StudyMode"]:checked')?.value;
             var stackId = null;
             var studyLabel = '';
@@ -1870,8 +1924,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     return;
                 }
             }
-            fd.append('study_label', studyLabel);
-            if (stackId) fd.append('stack_id', stackId);
+
             r2UploadBtn.disabled = true;
             r2UploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Uploading...';
             document.getElementById('caseDicomR2Error').style.display = 'none';
@@ -1883,68 +1936,73 @@ document.addEventListener('DOMContentLoaded', function() {
             progressEl.style.display = 'block';
             progressBar.style.width = '0%';
             progressBar.setAttribute('aria-valuenow', 0);
+            progressBar.classList.remove('progress-bar-striped', 'progress-bar-animated');
             progressText.textContent = 'Preparing…';
             progressBytes.textContent = 'Starting upload';
-            var progInterval = setInterval(function() {
-                if (progressText.textContent === 'Preparing…') {
-                    progressText.textContent = 'Sending to server…';
-                    progressBytes.textContent = 'Upload in progress';
+
+            var totalFiles = allFiles.length;
+            var uploaded = 0;
+            var currentStackId = stackId;
+            var lastData = null;
+            var totalBatches = Math.ceil(totalFiles / BATCH_SIZE);
+
+            try {
+                for (var batchIdx = 0; batchIdx < totalBatches; batchIdx++) {
+                    var chunk = allFiles.slice(batchIdx * BATCH_SIZE, (batchIdx + 1) * BATCH_SIZE);
+                    var fd = new FormData();
+                    fd.append('study_label', studyLabel);
+                    if (currentStackId) fd.append('stack_id', String(currentStackId));
+
+                    for (var ci = 0; ci < chunk.length; ci++) {
+                        fd.append(chunk[ci].series, chunk[ci].file, chunk[ci].file.name);
+                    }
+
+                    progressText.textContent = 'Batch ' + (batchIdx + 1) + '/' + totalBatches + ' — sending…';
+                    progressBytes.textContent = uploaded + ' / ' + totalFiles + ' images';
+
+                    var result = await _uploadChunkXHR(caseId, fd, uploaded, chunk.length, totalFiles, progressEl, progressBar, progressText, progressBytes);
+                    if (!result.ok) {
+                        throw new Error(result.error);
+                    }
+
+                    // Use returned stack_id for subsequent chunks
+                    currentStackId = result.stack_id;
+                    lastData = result.data;
+                    uploaded += chunk.length;
+
+                    // Update overall progress
+                    var overallPct = Math.round((uploaded / totalFiles) * 100);
+                    progressBar.style.width = overallPct + '%';
+                    progressBar.setAttribute('aria-valuenow', overallPct);
+                    progressText.textContent = 'Uploaded ' + uploaded + ' / ' + totalFiles + ' images';
+                    progressBytes.textContent = (batchIdx + 1) + ' of ' + totalBatches + ' batches complete';
                 }
-            }, 200);
-            var xhr = new XMLHttpRequest();
-            xhr.open('POST', '/case-dicom-viewer/api/case/' + caseId + '/stack/upload');
-            xhr.withCredentials = true;
-            xhr.upload.addEventListener('progress', function(e) {
-                if (e.lengthComputable) {
-                    var pct = Math.round((e.loaded / e.total) * 100);
-                    progressBar.style.width = pct + '%';
-                    progressBar.setAttribute('aria-valuenow', pct);
-                    progressText.textContent = 'Sending to server… ' + pct + '%';
-                    var loadedMB = (e.loaded / (1024 * 1024)).toFixed(1);
-                    var totalMB = (e.total / (1024 * 1024)).toFixed(1);
-                    progressBytes.textContent = loadedMB + ' / ' + totalMB + ' MB';
-                } else {
-                    var loadedMB = (e.loaded / (1024 * 1024)).toFixed(1);
-                    progressText.textContent = 'Sending to server…';
-                    progressBytes.textContent = loadedMB + ' MB sent';
-                }
-            });
-            xhr.addEventListener('load', function() {
-                clearInterval(progInterval);
+
+                // Success
+                progressBar.style.width = '100%';
                 progressEl.style.display = 'none';
                 r2UploadBtn.disabled = false;
                 r2UploadBtn.innerHTML = '<i class="fas fa-upload me-1"></i>Upload';
-                var data = {};
-                try { data = JSON.parse(xhr.responseText || '{}'); } catch (e) {}
-                if (xhr.status >= 200 && xhr.status < 300 && data.stack_id) {
-                    document.getElementById('caseDicomR2Success').textContent = (data.message || 'Study uploaded') + '. Series: ' + (data.plans || []).join(', ');
-                    document.getElementById('caseDicomR2Success').style.display = 'block';
+                var msg = (lastData && lastData.message) || 'Study uploaded';
+                var plans = (lastData && lastData.plans) || [];
+                document.getElementById('caseDicomR2Success').textContent = msg + '. Series: ' + plans.join(', ');
+                document.getElementById('caseDicomR2Success').style.display = 'block';
+                if (typeof updateImageStackStatus === 'function') updateImageStackStatus(caseId);
+                setTimeout(function() {
                     if (typeof updateImageStackStatus === 'function') updateImageStackStatus(caseId);
-                    setTimeout(function() {
-                        if (typeof updateImageStackStatus === 'function') updateImageStackStatus(caseId);
-                        bootstrap.Modal.getInstance(document.getElementById('caseDicomR2UploadModal')).hide();
-                    }, 1500);
-                } else {
-                    var errMsg = (data.error) || (xhr.status >= 500 ? 'Server error (' + xhr.status + '). Check terminal.' : 'Upload failed');
-                    document.getElementById('caseDicomR2Error').textContent = errMsg;
-                    document.getElementById('caseDicomR2Error').style.display = 'block';
+                    bootstrap.Modal.getInstance(document.getElementById('caseDicomR2UploadModal')).hide();
+                }, 1500);
+            } catch (err) {
+                progressEl.style.display = 'none';
+                r2UploadBtn.disabled = false;
+                r2UploadBtn.innerHTML = '<i class="fas fa-upload me-1"></i>Upload';
+                var errText = err.message || 'Upload failed';
+                if (uploaded > 0) {
+                    errText = 'Failed at batch ' + (Math.floor(uploaded / BATCH_SIZE) + 1) + '/' + totalBatches + ': ' + errText + ' (' + uploaded + '/' + totalFiles + ' images uploaded successfully)';
                 }
-            });
-            xhr.addEventListener('error', function() {
-                clearInterval(progInterval);
-                progressEl.style.display = 'none';
-                r2UploadBtn.disabled = false;
-                r2UploadBtn.innerHTML = '<i class="fas fa-upload me-1"></i>Upload';
-                document.getElementById('caseDicomR2Error').textContent = 'Upload failed—connection may have timed out. Try fewer files or one series at a time.';
+                document.getElementById('caseDicomR2Error').textContent = errText;
                 document.getElementById('caseDicomR2Error').style.display = 'block';
-            });
-            xhr.addEventListener('abort', function() {
-                clearInterval(progInterval);
-                progressEl.style.display = 'none';
-                r2UploadBtn.disabled = false;
-                r2UploadBtn.innerHTML = '<i class="fas fa-upload me-1"></i>Upload';
-            });
-            xhr.send(fd);
+            }
         });
     }
 });
@@ -2633,7 +2691,7 @@ function loadCaseForEdit(caseId) {
         document.getElementById('editCaseId').value = caseData.id;
         var viewAsStudentLink = document.getElementById('viewCaseAsStudentLink');
         if (viewAsStudentLink) {
-            viewAsStudentLink.href = '/view-case?id=' + encodeURIComponent(caseData.id);
+            viewAsStudentLink.href = '/view-case/' + encodeURIComponent(caseData.id);
             viewAsStudentLink.style.display = 'inline-block';
         }
         if (typeof updateImageStackStatus === 'function') updateImageStackStatus(caseData.id);

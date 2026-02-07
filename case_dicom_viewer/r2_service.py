@@ -205,6 +205,7 @@ def generate_presigned_url(key: str, expiry: int = PRESIGNED_EXPIRY) -> str | No
     client = _get_client()
     bucket = get_bucket()
     if not client or not bucket:
+        logger.warning("[R2] generate_presigned_url: client=%s bucket=%s", bool(client), bool(bucket))
         return None
 
     try:

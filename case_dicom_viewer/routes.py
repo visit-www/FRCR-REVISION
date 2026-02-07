@@ -314,6 +314,8 @@ def _build_plans_from_stack(stack):
                     url = generate_presigned_url(k)
                     if url:
                         urls.append(url)
+                    else:
+                        logger.warning("[CaseDicomViewer] presigned URL returned None for key: %s", k)
                 if urls:
                     plans[plan_name] = urls
         return plans
@@ -374,6 +376,16 @@ def get_case_stack(case_id):
 
         description_html = getattr(stack, "description_html", None) or None
 
+        # Diagnose: stack exists but no plans resolved (likely presigned URL issue)
+        error_detail = None
+        if stacks and not plans:
+            error_detail = f"Stack exists (backend={getattr(stack, 'storage_backend', '?')}) but 0 plans resolved. Check R2 credentials."
+            r2_cfg = stack.get_r2_config() if getattr(stack, 'storage_backend', None) == 'r2' else None
+            if r2_cfg:
+                total_keys = sum(len(v) for v in r2_cfg.values() if isinstance(v, list))
+                error_detail += f" r2_config has {len(r2_cfg)} plans, {total_keys} total keys."
+            logger.warning("[CaseDicomViewer] %s", error_detail)
+
         # Build stacks list for multi-stack UI (id, display_order, study_label, plans = series names)
         def _plan_names(s):
             cfg = s.get_r2_config() if getattr(s, "storage_backend", None) == "r2" else s.get_config()
@@ -389,7 +401,7 @@ def get_case_stack(case_id):
         ]
         return _safe_stack_response(
             plans, has_stack=True, description_html=description_html,
-            stacks=stacks_out,
+            error_detail=error_detail, stacks=stacks_out,
         )
     except Exception as e:
         logger.exception("[CaseDicomViewer] get_case_stack failed for case_id=%s: %s", case_id, e)
@@ -688,28 +700,42 @@ def upload_case_stack_to_r2(case_id):
 
         base_prefix = f"cases/{case_id}_{case_slug}/studies/{study_id}_{study_slug}/series"
 
-        all_items = []
+        # Process files in batches to limit peak memory usage
+        UPLOAD_BATCH_SIZE = 50
         plan_key_lists = {}
+        successful_keys = set()
+        failed_keys = []
         for plan_name, files in plan_files.items():
             series_slug = plan_name.replace(" ", "_")
+            # Determine starting index: if appending to existing series, offset by existing count
+            existing_keys = r2_config.get(plan_name, [])
+            start_idx = len(existing_keys) if isinstance(existing_keys, list) else 0
             plan_keys = []
-            for i, f in enumerate(files):
-                fn = getattr(f, "filename", None) or f"image_{i}"
-                ext = fn.rsplit(".", 1)[-1].lower() if "." in fn else "jpg"
-                if ext not in ("jpg", "jpeg", "png", "gif", "bmp", "webp", "tiff", "tif"):
-                    ext = "jpg"
-                key = f"{base_prefix}/{series_slug}/{i:04d}.{ext}"
-                content_type = f"image/{ext}" if ext in ("jpeg", "jpg", "png", "gif", "bmp", "webp", "tiff", "tif") else "application/octet-stream"
-                try:
-                    body = f.read()
-                except Exception as e:
-                    logger.warning("[CaseDicomViewer] Failed to read file %s: %s", fn, e)
-                    continue
-                all_items.append((key, body, content_type))
-                plan_keys.append(key)
+            for batch_start in range(0, len(files), UPLOAD_BATCH_SIZE):
+                batch = files[batch_start:batch_start + UPLOAD_BATCH_SIZE]
+                batch_items = []
+                for j, f in enumerate(batch):
+                    idx = start_idx + batch_start + j
+                    fn = getattr(f, "filename", None) or f"image_{idx}"
+                    ext = fn.rsplit(".", 1)[-1].lower() if "." in fn else "jpg"
+                    if ext not in ("jpg", "jpeg", "png", "gif", "bmp", "webp", "tiff", "tif"):
+                        ext = "jpg"
+                    key = f"{base_prefix}/{series_slug}/{idx:04d}.{ext}"
+                    content_type = f"image/{ext}" if ext in ("jpeg", "jpg", "png", "gif", "bmp", "webp", "tiff", "tif") else "application/octet-stream"
+                    try:
+                        body = f.read()
+                    except Exception as e:
+                        logger.warning("[CaseDicomViewer] Failed to read file %s: %s", fn, e)
+                        continue
+                    batch_items.append((key, body, content_type))
+                    plan_keys.append(key)
+                # Upload this batch then release memory
+                if batch_items:
+                    ok, fail = r2_upload_objects_parallel(batch_items)
+                    successful_keys.update(ok)
+                    failed_keys.extend(fail)
             plan_key_lists[plan_name] = plan_keys
 
-        successful_keys, failed_keys = r2_upload_objects_parallel(all_items)
         if failed_keys:
             for k in failed_keys:
                 logger.warning("[CaseDicomViewer] R2 upload failed for %s", k)
@@ -718,7 +744,12 @@ def upload_case_stack_to_r2(case_id):
         for plan_name, plan_keys in plan_key_lists.items():
             keys = [k for k in plan_keys if k in successful_keys]
             if keys:
-                r2_config[plan_name] = keys
+                # Merge with existing keys for this series (supports chunked uploads)
+                existing = r2_config.get(plan_name, [])
+                if isinstance(existing, list) and existing:
+                    r2_config[plan_name] = existing + keys
+                else:
+                    r2_config[plan_name] = keys
                 added_any = True
 
         if not added_any:
