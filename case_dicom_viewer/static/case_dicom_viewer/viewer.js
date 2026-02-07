@@ -258,21 +258,24 @@
     }
 
     _currentIndex = index;
-    var imageId = _imageIds[_currentIndex];
+    var imageId = _imageIds[index];
 
     cornerstone.loadImage(imageId).then(
       function (image) {
+        // Skip stale loads — a newer displaySlice() was called while this image loaded
+        if (_currentIndex !== index) return;
+
         // Update stack tool state
         var stackState = cornerstoneTools.getToolState(_element, "stack");
         if (stackState && stackState.data && stackState.data.length) {
-          stackState.data[0].currentImageIdIndex = _currentIndex;
+          stackState.data[0].currentImageIdIndex = index;
         }
 
         cornerstone.displayImage(_element, image);
         _preloadedImages[imageId] = true;
 
         // Apply annotations for this image
-        _lastAnnotationIndex = _currentIndex;
+        _lastAnnotationIndex = index;
         if (_annotationsVisible) {
           applyAnnotationsForImage();
         } else {
@@ -281,13 +284,13 @@
 
         // Notify slice change
         if (_onSliceChange) {
-          _onSliceChange(_currentIndex + 1, _imageIds.length);
+          _onSliceChange(index + 1, _imageIds.length);
         }
 
         // Preload nearby images
         var nearbyIds = [];
-        for (var i = Math.max(0, _currentIndex - 5); i <= Math.min(_imageIds.length - 1, _currentIndex + 10); i++) {
-          if (i !== _currentIndex) {
+        for (var i = Math.max(0, index - 5); i <= Math.min(_imageIds.length - 1, index + 10); i++) {
+          if (i !== index) {
             nearbyIds.push(_imageIds[i]);
           }
         }
