@@ -1,7 +1,7 @@
 /**
  * Case DICOM Viewer - Cornerstone.js v4.x Integration
  * Features: Stack scroll (mouse wheel), zoom, pan, window/level, annotations
- * v14: Per-image annotations in displaySlice + cornerstonestackscroll (no cascade)
+ * v15: Register annotation tools for all users; read-only rendering for students
  */
 (function () {
   "use strict";
@@ -372,10 +372,11 @@
   }
 
   /**
-   * Add annotation tools (admin only)
+   * Add annotation tools. For admin: tools can be activated for drawing.
+   * For students: tools are set to "enabled" (render-only, no interaction).
    */
   function addAnnotationTools() {
-    if (!cornerstoneTools || !_isAdmin) return;
+    if (!cornerstoneTools) return;
 
     // Arrow annotation
     cornerstoneTools.addTool(cornerstoneTools.ArrowAnnotateTool);
@@ -399,7 +400,15 @@
     // Elliptical ROI
     cornerstoneTools.addTool(cornerstoneTools.EllipticalRoiTool);
 
-    console.log("[CaseDicomViewer] Annotation tools added for admin");
+    // For non-admin: enable tools for rendering only (students see saved annotations)
+    if (!_isAdmin) {
+      var readOnlyTools = ["ArrowAnnotate", "FreehandRoi", "TextMarker", "Length", "EllipticalRoi"];
+      readOnlyTools.forEach(function (tool) {
+        cornerstoneTools.setToolEnabled(tool);
+      });
+    }
+
+    console.log("[CaseDicomViewer] Annotation tools added" + (_isAdmin ? " for admin" : " (read-only)"));
   }
 
   /**
@@ -923,9 +932,7 @@
 
         // Add tools
         addTools();
-        if (_isAdmin) {
-          addAnnotationTools();
-        }
+        addAnnotationTools();
 
         // Load annotations if provided
         if (options.annotations) {
@@ -1262,5 +1269,5 @@
     },
   };
 
-  console.log("[CaseDicomViewer] viewer.js v14 loaded (per-image annotations, no cascade)");
+  console.log("[CaseDicomViewer] viewer.js v15 loaded (annotation tools for all users)");
 })();
