@@ -726,8 +726,16 @@
    * Export all annotations for saving
    */
   function exportAnnotations() {
+    // Deep-copy existing annotations to preserve all images/plans
     var result = {};
-    
+    for (var plan in _annotations) {
+      result[plan] = {};
+      for (var idx in _annotations[plan]) {
+        result[plan][idx] = _annotations[plan][idx];
+      }
+    }
+
+    // Update current image's annotations from live cornerstone state
     if (_currentPlan && _imageIds.length) {
       if (!result[_currentPlan]) {
         result[_currentPlan] = {};
@@ -735,6 +743,12 @@
       var annotations = getAnnotationsForImage();
       if (annotations.length) {
         result[_currentPlan][_currentIndex] = annotations;
+      } else {
+        delete result[_currentPlan][_currentIndex];
+      }
+      // Clean up empty plan
+      if (Object.keys(result[_currentPlan]).length === 0) {
+        delete result[_currentPlan];
       }
     }
 
@@ -756,6 +770,13 @@
     if (!_element || !cornerstoneTools || !_currentPlan) return;
 
     var planAnnotations = _annotations[_currentPlan];
+    // Fallback: if plan name doesn't match but there's only one plan in annotations, use it
+    if (!planAnnotations) {
+      var annKeys = Object.keys(_annotations);
+      if (annKeys.length === 1) {
+        planAnnotations = _annotations[annKeys[0]];
+      }
+    }
     if (!planAnnotations) return;
 
     var imageAnnotations = planAnnotations[_currentIndex];

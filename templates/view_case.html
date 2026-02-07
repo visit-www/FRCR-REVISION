@@ -8660,11 +8660,7 @@
                 console.warn('[ImageStack] Non-OK response:', stackResponse.status, data.error || data.message || '(no message)');
             }
             content.style.display = 'none';
-            if (!stackResponse.ok || !data.has_stack || !data.plans || Object.keys(data.plans).length === 0) {
-                console.log('[ImageStack] Showing empty (not ok or no stack/plans)' + (data.error_detail ? '. ' + data.error_detail : ''));
-                empty.style.display = 'block';
-                return;
-            }
+            // Show description even if plans fail to load
             var descEl = document.getElementById('imageStackDescription');
             if (descEl && data.description_html) {
                 descEl.innerHTML = data.description_html;
@@ -8672,6 +8668,11 @@
             } else if (descEl) {
                 descEl.innerHTML = '';
                 descEl.style.display = 'none';
+            }
+            if (!stackResponse.ok || !data.has_stack || !data.plans || Object.keys(data.plans).length === 0) {
+                console.log('[ImageStack] Showing empty (not ok or no stack/plans)');
+                empty.style.display = 'block';
+                return;
             }
             var stacks = data.stacks || [];
             var stackSelectorEl = document.getElementById('imageStackStackSelector');
@@ -8924,9 +8925,16 @@
                         });
                     }
                 }
-                tabsEl.innerHTML = planNames.map((name, i) =>
-                    `<button type="button" class="btn ${i === 0 ? 'btn-info' : 'btn-outline-secondary'}" data-plan="${name}">${name}</button>`
-                ).join('');
+                // Only show plan tabs when there are multiple plans/series
+                if (planNames.length > 1) {
+                    tabsEl.innerHTML = planNames.map((name, i) =>
+                        `<button type="button" class="btn ${i === 0 ? 'btn-info' : 'btn-outline-secondary'}" data-plan="${name}">${name}</button>`
+                    ).join('');
+                    tabsEl.style.display = '';
+                } else {
+                    tabsEl.innerHTML = '';
+                    tabsEl.style.display = 'none';
+                }
                 function switchToPlan(planName) {
                     _imageStackCurrentPlan = planName;
                     _imageStackCurrentIndex = 0;

@@ -38,22 +38,22 @@ def _get_env(key: str) -> str | None:
 
 
 _cached_client = None
-_cached_client_err = None
+_cached_client_init_failed = False
 
 
 def _get_client():
     """Create (or return cached) boto3 S3 client configured for Cloudflare R2."""
-    global _cached_client, _cached_client_err
+    global _cached_client, _cached_client_init_failed
     if _cached_client is not None:
         return _cached_client
-    if _cached_client_err is not None:
+    if _cached_client_init_failed:
         return None
 
     try:
         import boto3
         from botocore.config import Config
     except ImportError:
-        _cached_client_err = "boto3 not installed"
+        _cached_client_init_failed = True
         logger.warning("[R2] boto3 not installed; R2 storage disabled")
         return None
 
@@ -62,8 +62,8 @@ def _get_client():
     secret_key = _get_env("R2_SECRET_ACCESS_KEY")
 
     if not all([account_id, access_key, secret_key]):
-        _cached_client_err = f"Missing credentials: ACCOUNT_ID={bool(account_id)}, ACCESS_KEY={bool(access_key)}, SECRET={bool(secret_key)}"
-        logger.warning("[R2] %s", _cached_client_err)
+        _cached_client_init_failed = True
+        logger.debug("[R2] Missing credentials (R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY)")
         return None
 
     jurisdiction = (_get_env("R2_JURISDICTION") or "").lower().strip()
@@ -81,14 +81,9 @@ def _get_client():
         )
         return _cached_client
     except Exception as e:
-        _cached_client_err = f"boto3.client() failed: {e}"
-        logger.warning("[R2] %s", _cached_client_err)
+        _cached_client_init_failed = True
+        logger.warning("[R2] boto3.client() failed: %s", e)
         return None
-
-
-def get_client_error() -> str | None:
-    """Return diagnostic error message if client creation failed."""
-    return _cached_client_err
 
 
 def test_connection() -> tuple[bool, str]:
@@ -228,7 +223,6 @@ def generate_presigned_url(key: str, expiry: int = PRESIGNED_EXPIRY) -> str | No
     client = _get_client()
     bucket = get_bucket()
     if not client or not bucket:
-        logger.warning("[R2] generate_presigned_url: client=%s bucket=%s", bool(client), bool(bucket))
         return None
 
     try:

@@ -637,9 +637,12 @@ class CaseImageAnnotation(db.Model):
 
     def get_annotations(self):
         import json
-        if self.annotations_json:
+        val = self.annotations_json
+        if val:
+            if isinstance(val, dict):
+                return val  # Already deserialized (jsonb column)
             try:
-                return json.loads(self.annotations_json)
+                return json.loads(val)
             except (json.JSONDecodeError, TypeError):
                 return {}
         return {}

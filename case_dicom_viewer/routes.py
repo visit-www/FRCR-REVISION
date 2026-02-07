@@ -314,8 +314,6 @@ def _build_plans_from_stack(stack):
                     url = generate_presigned_url(k)
                     if url:
                         urls.append(url)
-                    else:
-                        logger.warning("[CaseDicomViewer] presigned URL returned None for key: %s", k)
                 if urls:
                     plans[plan_name] = urls
         return plans
@@ -376,48 +374,6 @@ def get_case_stack(case_id):
 
         description_html = getattr(stack, "description_html", None) or None
 
-        # Diagnose: stack exists but no plans resolved (likely presigned URL issue)
-        error_detail = None
-        if stacks and not plans:
-            from case_dicom_viewer.r2_service import _get_client, get_bucket, get_client_error
-            diag_client = _get_client()
-            diag_bucket = get_bucket()
-            client_err = get_client_error()
-            # Dump raw column values from the stack record
-            raw_r2 = getattr(stack, 'r2_config_json', None)
-            raw_cfg = getattr(stack, 'config_json', None)
-            error_detail = (
-                f"Stack id={stack.id} backend={getattr(stack, 'storage_backend', '?')}."
-                f" r2_config_json={'<' + str(len(raw_r2)) + ' chars>' if raw_r2 else 'NULL/empty'}."
-                f" config_json={'<' + str(len(raw_cfg)) + ' chars>' if raw_cfg else 'NULL/empty'}."
-                f" R2 client={'OK' if diag_client else 'NONE'}, bucket={diag_bucket or 'NONE'}."
-            )
-            if client_err:
-                error_detail += f" Client error: {client_err}."
-            r2_cfg = stack.get_r2_config() if getattr(stack, 'storage_backend', None) == 'r2' else None
-            if r2_cfg:
-                total_keys = sum(len(v) for v in r2_cfg.values() if isinstance(v, list))
-                error_detail += f" r2_config has {len(r2_cfg)} plans, {total_keys} total keys."
-                # Test one presigned URL to get the actual error
-                first_key = None
-                for v in r2_cfg.values():
-                    if isinstance(v, list) and v:
-                        first_key = v[0]
-                        break
-                if first_key and diag_client and diag_bucket:
-                    try:
-                        test_url = diag_client.generate_presigned_url(
-                            "get_object",
-                            Params={"Bucket": diag_bucket, "Key": first_key},
-                            ExpiresIn=3600,
-                        )
-                        error_detail += f" Test presign: {'OK len=' + str(len(test_url)) if test_url else 'returned None'}."
-                    except Exception as presign_err:
-                        error_detail += f" Test presign EXCEPTION: {presign_err}"
-                elif first_key:
-                    error_detail += f" Cannot test presign: client={bool(diag_client)} bucket={bool(diag_bucket)}."
-            logger.warning("[CaseDicomViewer] %s", error_detail)
-
         # Build stacks list for multi-stack UI (id, display_order, study_label, plans = series names)
         def _plan_names(s):
             cfg = s.get_r2_config() if getattr(s, "storage_backend", None) == "r2" else s.get_config()
@@ -433,7 +389,7 @@ def get_case_stack(case_id):
         ]
         return _safe_stack_response(
             plans, has_stack=True, description_html=description_html,
-            error_detail=error_detail, stacks=stacks_out,
+            stacks=stacks_out,
         )
     except Exception as e:
         logger.exception("[CaseDicomViewer] get_case_stack failed for case_id=%s: %s", case_id, e)
