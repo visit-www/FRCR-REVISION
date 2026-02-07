@@ -16,13 +16,14 @@ class SessionManager {
         this.WARNING_TIME = 5 * 60 * 1000; // Show warning 5 minutes before expiration
         this.REFRESH_INTERVAL = 5 * 60 * 1000; // Refresh session every 5 minutes
         this.ACTIVITY_CHECK_INTERVAL = 60000; // Check activity every minute
-        
+
         this.lastActivity = Date.now();
         this.warningShown = false;
+        this.expired = false; // Re-entry guard for handleSessionExpired
         this.refreshTimer = null;
         this.activityTimer = null;
         this.warningTimer = null;
-        
+
         this.init();
     }
     
@@ -68,9 +69,11 @@ class SessionManager {
     }
     
     onActivity() {
+        if (this.expired) return; // Don't track activity after session expiry
+
         const now = Date.now();
         const timeSinceLastActivity = now - this.lastActivity;
-        
+
         // Only refresh if at least 1 minute has passed since last activity
         // This prevents excessive API calls
         if (timeSinceLastActivity > 60000) {
@@ -97,6 +100,8 @@ class SessionManager {
     }
     
     async refreshSession() {
+        if (this.expired) return; // Don't refresh after session expiry
+
         try {
             const response = await fetch('/auth/session/refresh', {
                 method: 'POST',
@@ -106,17 +111,14 @@ class SessionManager {
                 },
                 credentials: 'include'
             });
-            
+
             if (response.status === 401) {
-                const data = await response.json();
-                if (data.expired) {
-                    this.handleSessionExpired();
-                    return;
-                }
+                this.handleSessionExpired();
+                return;
             }
-            
+
             if (response.ok) {
-                const data = await response.json();
+                const data = await response.json().catch(() => ({}));
                 this.lastActivity = Date.now();
                 this.warningShown = false;
                 return data;
@@ -127,6 +129,8 @@ class SessionManager {
     }
     
     async checkSessionStatus() {
+        if (this.expired) return; // Don't check after session expiry
+
         try {
             const response = await fetch('/auth/session/status', {
                 method: 'GET',
@@ -135,7 +139,7 @@ class SessionManager {
                 },
                 credentials: 'include'
             });
-            
+
             if (response.status === 401) {
                 this.handleSessionExpired();
                 return;
@@ -267,37 +271,43 @@ class SessionManager {
     }
     
     handleSessionExpired() {
+        // Re-entry guard: prevent multiple calls causing toast flashing
+        if (this.expired) return;
+        this.expired = true;
+
         // Clear all timers
         this.cleanup();
-        
+
         // Remove any existing warning toast
         const warningToast = document.getElementById('session-warning-toast');
         if (warningToast) {
             warningToast.remove();
         }
-        
+
+        // Already on login page — nothing to do
+        if (window.location.pathname.startsWith('/auth/login')) {
+            return;
+        }
+
         // Show expiration message with toast
         const message = 'Your session has expired due to inactivity. Redirecting to login...';
-        
+
         if (typeof showToast === 'function') {
             showToast(message, 'session-warning', 3000);
         } else {
             alert(message);
         }
-        
-        // Redirect to login (immediate + delayed fallback)
+
+        // Redirect to login
         const redirectUrl = '/auth/login?expired=1';
-        if (window.location.pathname.startsWith('/auth/login')) {
-            return;
-        }
         try {
-            window.location.replace(redirectUrl);
+            window.location.href = redirectUrl;
         } catch (error) {
             // Immediate redirect failed, fallback below
         }
         setTimeout(() => {
             window.location.href = redirectUrl;
-        }, 3000);
+        }, 2000);
     }
     
     async handleLogout() {
@@ -320,29 +330,37 @@ class SessionManager {
         // Intercept fetch to handle 401/403 globally
         const originalFetch = window.fetch;
         const self = this;
-        
+
         window.fetch = async function(...args) {
-            const response = await originalFetch.apply(this, args);
-            
-            // Handle 401 Unauthorized
-            if (response.status === 401) {
-                const data = await response.json().catch(() => ({}));
-                if (data.expired || data.error?.includes('expired') || data.error?.includes('Session')) {
-                    self.handleSessionExpired();
-                    return response;
-                }
+            let response;
+            try {
+                response = await originalFetch.apply(this, args);
+            } catch (error) {
+                throw error;
             }
-            
+
+            // Handle 401 Unauthorized — session manager only runs for
+            // authenticated users, so any 401 means session expired
+            if (response.status === 401) {
+                self.handleSessionExpired();
+                // Return a clone so callers can still read the body
+                return response;
+            }
+
             // Handle 403 Forbidden (might be session issue)
             if (response.status === 403) {
-                // Check if it's a session-related 403
-                const data = await response.json().catch(() => ({}));
-                if (data.error?.includes('session') || data.error?.includes('expired')) {
-                    self.handleSessionExpired();
-                    return response;
+                try {
+                    // Clone response so we can read body without consuming it
+                    const cloned = response.clone();
+                    const data = await cloned.json().catch(() => ({}));
+                    if (data.error?.includes('session') || data.error?.includes('expired')) {
+                        self.handleSessionExpired();
+                    }
+                } catch (e) {
+                    // Ignore clone/parse errors
                 }
             }
-            
+
             return response;
         };
     }
