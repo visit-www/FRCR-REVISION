@@ -379,11 +379,38 @@ def get_case_stack(case_id):
         # Diagnose: stack exists but no plans resolved (likely presigned URL issue)
         error_detail = None
         if stacks and not plans:
-            error_detail = f"Stack exists (backend={getattr(stack, 'storage_backend', '?')}) but 0 plans resolved. Check R2 credentials."
+            from case_dicom_viewer.r2_service import _get_client, get_bucket, _get_env
+            diag_client = _get_client()
+            diag_bucket = get_bucket()
+            has_account = bool(_get_env("R2_ACCOUNT_ID"))
+            has_key = bool(_get_env("R2_ACCESS_KEY_ID"))
+            has_secret = bool(_get_env("R2_SECRET_ACCESS_KEY"))
+            has_bucket_env = bool(_get_env("R2_BUCKET_NAME"))
+            error_detail = (
+                f"Stack exists (backend={getattr(stack, 'storage_backend', '?')}) but 0 plans resolved."
+                f" R2 diag: client={'OK' if diag_client else 'NONE'}, bucket={diag_bucket or 'NONE'},"
+                f" envs: ACCOUNT_ID={has_account}, ACCESS_KEY={has_key}, SECRET={has_secret}, BUCKET={has_bucket_env}."
+            )
             r2_cfg = stack.get_r2_config() if getattr(stack, 'storage_backend', None) == 'r2' else None
             if r2_cfg:
                 total_keys = sum(len(v) for v in r2_cfg.values() if isinstance(v, list))
                 error_detail += f" r2_config has {len(r2_cfg)} plans, {total_keys} total keys."
+                # Test one presigned URL to get the actual error
+                first_key = None
+                for v in r2_cfg.values():
+                    if isinstance(v, list) and v:
+                        first_key = v[0]
+                        break
+                if first_key and diag_client and diag_bucket:
+                    try:
+                        test_url = diag_client.generate_presigned_url(
+                            "get_object",
+                            Params={"Bucket": diag_bucket, "Key": first_key},
+                            ExpiresIn=3600,
+                        )
+                        error_detail += f" Test presign: {'OK len=' + str(len(test_url)) if test_url else 'returned None'}."
+                    except Exception as presign_err:
+                        error_detail += f" Test presign ERROR: {presign_err}"
             logger.warning("[CaseDicomViewer] %s", error_detail)
 
         # Build stacks list for multi-stack UI (id, display_order, study_label, plans = series names)
