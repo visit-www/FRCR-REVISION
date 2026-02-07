@@ -379,18 +379,16 @@ def get_case_stack(case_id):
         # Diagnose: stack exists but no plans resolved (likely presigned URL issue)
         error_detail = None
         if stacks and not plans:
-            from case_dicom_viewer.r2_service import _get_client, get_bucket, _get_env
+            from case_dicom_viewer.r2_service import _get_client, get_bucket, get_client_error
             diag_client = _get_client()
             diag_bucket = get_bucket()
-            has_account = bool(_get_env("R2_ACCOUNT_ID"))
-            has_key = bool(_get_env("R2_ACCESS_KEY_ID"))
-            has_secret = bool(_get_env("R2_SECRET_ACCESS_KEY"))
-            has_bucket_env = bool(_get_env("R2_BUCKET_NAME"))
+            client_err = get_client_error()
             error_detail = (
                 f"Stack exists (backend={getattr(stack, 'storage_backend', '?')}) but 0 plans resolved."
-                f" R2 diag: client={'OK' if diag_client else 'NONE'}, bucket={diag_bucket or 'NONE'},"
-                f" envs: ACCOUNT_ID={has_account}, ACCESS_KEY={has_key}, SECRET={has_secret}, BUCKET={has_bucket_env}."
+                f" R2 diag: client={'OK' if diag_client else 'NONE'}, bucket={diag_bucket or 'NONE'}."
             )
+            if client_err:
+                error_detail += f" Client error: {client_err}."
             r2_cfg = stack.get_r2_config() if getattr(stack, 'storage_backend', None) == 'r2' else None
             if r2_cfg:
                 total_keys = sum(len(v) for v in r2_cfg.values() if isinstance(v, list))
@@ -410,7 +408,9 @@ def get_case_stack(case_id):
                         )
                         error_detail += f" Test presign: {'OK len=' + str(len(test_url)) if test_url else 'returned None'}."
                     except Exception as presign_err:
-                        error_detail += f" Test presign ERROR: {presign_err}"
+                        error_detail += f" Test presign EXCEPTION: {presign_err}"
+                elif first_key:
+                    error_detail += f" Cannot test presign: client={bool(diag_client)} bucket={bool(diag_bucket)}."
             logger.warning("[CaseDicomViewer] %s", error_detail)
 
         # Build stacks list for multi-stack UI (id, display_order, study_label, plans = series names)
