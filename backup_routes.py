@@ -8,9 +8,17 @@ from models import (
     db, User, Case, CaseImage, Question, Answer,
     RevisionSession, RevisionHistory, CaseFlag, TextHighlight, CandidateNote,
     ImportedCaseStaging, UserRole, FRCRModule, BodyPart, AgeGroup,
-    SubscriptionStatus, PaymentStatus,
+    SubscriptionStatus, PaymentStatus, CaseStatus,
     ForumMessage, ForumMessageVote, ForumMessageFlag,
     CaseReference, CaseReferenceImage, TnmReference, AnatomyFigure, TNMImage,
+    # Audit, analytics and approval models
+    CaseAuditLog, CaseViewLog, CaseApprovalQueue,
+    # Spaced repetition progress
+    UserQAProgress,
+    # AI cache
+    AiDiagnosisCache,
+    # Association tables
+    related_cases, case_calculator_links, case_reference_links,
     # AJCC TNM Models
     AJCCBodySection, AJCCDiseaseSite, AJCCDiagnosisYear,
     AJCCStagingData, AJCCDiseaseMapping, AJCCStagingTimePrefix,
@@ -73,7 +81,7 @@ def download_backup():
             'metadata': {
                 'backup_date': datetime.utcnow().isoformat(),
                 'database_type': 'postgresql' if os.getenv('DATABASE_URL') or os.getenv('DATABASE_POSTGRES_URL_NON_POOLING') else 'sqlite',
-                'version': '2.6',  # Bumped for tnm_calculator_content
+                'version': '2.7',  # Bumped for contributor_notes, association tables, audit/analytics
                 'app_name': 'RadInsights'
             },
             'users': [],
@@ -109,6 +117,18 @@ def download_backup():
             'case_image_annotations': [],
             # TNM Calculator Content (AI-generated calculators and algorithms)
             'tnm_calculator_content': [],
+            # Association tables
+            'related_cases_links': [],
+            'case_calculator_links': [],
+            'case_reference_links': [],
+            # Audit, analytics & approval
+            'case_audit_logs': [],
+            'case_view_logs': [],
+            'case_approval_queue': [],
+            # Spaced repetition
+            'user_qa_progress': [],
+            # AI cache
+            'ai_diagnosis_cache': [],
         }
         
         # Export users (with passwords for sync purposes)
@@ -147,6 +167,7 @@ def download_backup():
                 'is_public': case.is_public,
                 'status': case.status.value if hasattr(case, 'status') and case.status else None,
                 'calculator_slug': getattr(case, 'calculator_slug', None),
+                'contributor_notes': getattr(case, 'contributor_notes', None),
                 'created_by_user_id': case.created_by_user_id,
                 'approved_by_user_id': case.approved_by_user_id if hasattr(case, 'approved_by_user_id') else None,
                 'approved_at': case.approved_at.isoformat() if hasattr(case, 'approved_at') and case.approved_at else None,
@@ -543,6 +564,90 @@ def download_backup():
                 'updated_at': content.updated_at.isoformat() if content.updated_at else None,
             })
 
+        # Export Related Cases (association table)
+        for row in db.session.execute(related_cases.select()).fetchall():
+            backup_data['related_cases_links'].append({
+                'case_id': row.case_id,
+                'related_case_id': row.related_case_id,
+                'relation_type': row.relation_type if hasattr(row, 'relation_type') else 'related',
+            })
+
+        # Export Case-Calculator Links (association table)
+        for row in db.session.execute(case_calculator_links.select()).fetchall():
+            backup_data['case_calculator_links'].append({
+                'case_id': row.case_id,
+                'calculator_id': row.calculator_id,
+                'created_by_user_id': row.created_by_user_id,
+            })
+
+        # Export Case-Reference Links (association table)
+        for row in db.session.execute(case_reference_links.select()).fetchall():
+            backup_data['case_reference_links'].append({
+                'case_id': row.case_id,
+                'reference_id': row.reference_id,
+                'created_by_user_id': row.created_by_user_id,
+            })
+
+        # Export Case Audit Logs
+        for log in CaseAuditLog.query.order_by(CaseAuditLog.id).all():
+            backup_data['case_audit_logs'].append({
+                'id': log.id,
+                'case_id': log.case_id,
+                'user_id': log.user_id,
+                'action': log.action,
+                'changes': log.changes,
+                'notes': log.notes,
+                'created_at': log.created_at.isoformat() if log.created_at else None,
+            })
+
+        # Export Case View Logs
+        for vlog in CaseViewLog.query.order_by(CaseViewLog.id).all():
+            backup_data['case_view_logs'].append({
+                'user_id': vlog.user_id,
+                'case_id': vlog.case_id,
+                'viewed_at': vlog.viewed_at.isoformat() if vlog.viewed_at else None,
+                'time_spent_seconds': vlog.time_spent_seconds,
+            })
+
+        # Export Case Approval Queue
+        for entry in CaseApprovalQueue.query.all():
+            backup_data['case_approval_queue'].append({
+                'case_id': entry.case_id,
+                'submitted_by_user_id': entry.submitted_by_user_id,
+                'submitted_at': entry.submitted_at.isoformat() if entry.submitted_at else None,
+                'admin_notes': entry.admin_notes,
+            })
+
+        # Export User QA Progress (spaced repetition state)
+        for prog in UserQAProgress.query.all():
+            backup_data['user_qa_progress'].append({
+                'user_id': prog.user_id,
+                'question_id': prog.question_id,
+                'case_id': prog.case_id,
+                'ease_factor': prog.ease_factor,
+                'interval_days': prog.interval_days,
+                'repetition_number': prog.repetition_number,
+                'next_review_date': prog.next_review_date.isoformat() if prog.next_review_date else None,
+                'last_reviewed_at': prog.last_reviewed_at.isoformat() if prog.last_reviewed_at else None,
+                'times_correct': prog.times_correct,
+                'times_incorrect': prog.times_incorrect,
+                'created_at': prog.created_at.isoformat() if prog.created_at else None,
+            })
+
+        # Export AI Diagnosis Cache
+        for cache in AiDiagnosisCache.query.all():
+            backup_data['ai_diagnosis_cache'].append({
+                'id': cache.id,
+                'diagnosis': cache.diagnosis,
+                'provider': cache.provider,
+                'model_name': cache.model_name,
+                'first_case_id': cache.first_case_id,
+                'first_user_id': cache.first_user_id,
+                'first_generated_at': cache.first_generated_at.isoformat() if cache.first_generated_at else None,
+                'query_count': cache.query_count,
+                'last_queried_at': cache.last_queried_at.isoformat() if cache.last_queried_at else None,
+            })
+
         # Create JSON file in memory
         json_data = json.dumps(backup_data, indent=2)
         json_bytes = io.BytesIO(json_data.encode('utf-8'))
@@ -844,7 +949,7 @@ def restore_backup():
         
         for case_idx, case_data in enumerate(cases_list):
             # Filter out unknown fields - only keep fields that exist in Case model
-            valid_case_keys = ['case_number', 'diagnosis', 'discussion', 'module', 'body_part', 'age_group', 'is_public', 'calculator_slug', 'created_by_user_id', 'created_at']
+            valid_case_keys = ['case_number', 'diagnosis', 'discussion', 'module', 'body_part', 'age_group', 'is_public', 'calculator_slug', 'contributor_notes', 'status', 'created_by_user_id', 'approved_by_user_id', 'approved_at', 'created_at', 'updated_at']
             filtered_data = {k: v for k, v in case_data.items() if k in valid_case_keys}
             
             old_case_id = case_data.get('id')  # Store old ID for mapping
@@ -857,7 +962,12 @@ def restore_backup():
                 if overwrite_existing:
                     # Update existing case
                     for key, value in filtered_data.items():
-                        if key in ['module', 'body_part', 'age_group'] and value:
+                        if key == 'status' and value:
+                            try:
+                                existing_case.status = CaseStatus(str(value).strip())
+                            except (ValueError, KeyError) as e:
+                                print(f"[IMPORT] Warning: Could not set status to '{value}': {e}")
+                        elif key in ['module', 'body_part', 'age_group'] and value:
                             try:
                                 # Convert to string and strip whitespace
                                 enum_value_str = str(value).strip() if value is not None else None
@@ -1166,7 +1276,14 @@ def restore_backup():
                     discussion=filtered_data.get('discussion', ''),
                     is_public=filtered_data.get('is_public', True),
                     calculator_slug=filtered_data.get('calculator_slug'),
+                    contributor_notes=filtered_data.get('contributor_notes'),
                 )
+                # Set status if provided
+                if filtered_data.get('status'):
+                    try:
+                        case.status = CaseStatus(filtered_data['status'])
+                    except (ValueError, KeyError):
+                        pass
                 
                 # Set enums - try by value first (export format), then by name
                 # Validate and convert to string first to avoid pattern matching errors
@@ -2556,6 +2673,303 @@ def restore_backup():
             db.session.rollback()
             print(f"[IMPORT] ERROR during AJCC commit: {ajcc_error}")
         
+        # ==================== IMPORT ASSOCIATION TABLES & NEW MODELS ====================
+
+        # Import Related Cases links
+        stats['related_cases_links'] = {'added': 0, 'skipped': 0}
+        for link_data in backup_data.get('related_cases_links', []):
+            if not isinstance(link_data, dict):
+                continue
+            old_case_id = link_data.get('case_id')
+            old_related_id = link_data.get('related_case_id')
+            new_case_id = case_id_map.get(old_case_id)
+            new_related_id = case_id_map.get(old_related_id)
+            if not new_case_id or not new_related_id:
+                stats['related_cases_links']['skipped'] += 1
+                continue
+            # Check if link already exists
+            existing = db.session.execute(
+                related_cases.select().where(
+                    (related_cases.c.case_id == new_case_id) &
+                    (related_cases.c.related_case_id == new_related_id)
+                )
+            ).fetchone()
+            if existing:
+                stats['related_cases_links']['skipped'] += 1
+                continue
+            db.session.execute(related_cases.insert().values(
+                case_id=new_case_id,
+                related_case_id=new_related_id,
+                relation_type=link_data.get('relation_type', 'related'),
+            ))
+            stats['related_cases_links']['added'] += 1
+
+        # Import Case-Calculator Links
+        stats['case_calculator_links_imported'] = {'added': 0, 'skipped': 0}
+        # Build calculator ID map (slug -> new ID)
+        calc_slug_map = {}
+        for calc in TNMCalculatorContent.query.all():
+            calc_slug_map[calc.slug] = calc.id
+        for link_data in backup_data.get('case_calculator_links', []):
+            if not isinstance(link_data, dict):
+                continue
+            old_case_id = link_data.get('case_id')
+            old_calc_id = link_data.get('calculator_id')
+            new_case_id = case_id_map.get(old_case_id)
+            if not new_case_id or not old_calc_id:
+                stats['case_calculator_links_imported']['skipped'] += 1
+                continue
+            # Calculator IDs should match directly (imported earlier)
+            calc_exists = TNMCalculatorContent.query.get(old_calc_id)
+            if not calc_exists:
+                stats['case_calculator_links_imported']['skipped'] += 1
+                continue
+            existing = db.session.execute(
+                case_calculator_links.select().where(
+                    (case_calculator_links.c.case_id == new_case_id) &
+                    (case_calculator_links.c.calculator_id == old_calc_id)
+                )
+            ).fetchone()
+            if existing:
+                stats['case_calculator_links_imported']['skipped'] += 1
+                continue
+            new_user_id = user_id_map.get(link_data.get('created_by_user_id')) if link_data.get('created_by_user_id') else None
+            db.session.execute(case_calculator_links.insert().values(
+                case_id=new_case_id,
+                calculator_id=old_calc_id,
+                created_by_user_id=new_user_id,
+            ))
+            stats['case_calculator_links_imported']['added'] += 1
+
+        # Import Case-Reference Links
+        stats['case_reference_links_imported'] = {'added': 0, 'skipped': 0}
+        for link_data in backup_data.get('case_reference_links', []):
+            if not isinstance(link_data, dict):
+                continue
+            old_case_id = link_data.get('case_id')
+            old_ref_id = link_data.get('reference_id')
+            new_case_id = case_id_map.get(old_case_id)
+            if not new_case_id or not old_ref_id:
+                stats['case_reference_links_imported']['skipped'] += 1
+                continue
+            ref_exists = CaseReference.query.get(old_ref_id)
+            if not ref_exists:
+                stats['case_reference_links_imported']['skipped'] += 1
+                continue
+            existing = db.session.execute(
+                case_reference_links.select().where(
+                    (case_reference_links.c.case_id == new_case_id) &
+                    (case_reference_links.c.reference_id == old_ref_id)
+                )
+            ).fetchone()
+            if existing:
+                stats['case_reference_links_imported']['skipped'] += 1
+                continue
+            new_user_id = user_id_map.get(link_data.get('created_by_user_id')) if link_data.get('created_by_user_id') else None
+            db.session.execute(case_reference_links.insert().values(
+                case_id=new_case_id,
+                reference_id=old_ref_id,
+                created_by_user_id=new_user_id,
+            ))
+            stats['case_reference_links_imported']['added'] += 1
+
+        # Import Case Audit Logs
+        stats['case_audit_logs'] = {'added': 0, 'skipped': 0}
+        if not is_frcr_examiner:
+            for log_data in backup_data.get('case_audit_logs', []):
+                if not isinstance(log_data, dict):
+                    continue
+                old_case_id = log_data.get('case_id')
+                new_case_id = case_id_map.get(old_case_id)
+                if not new_case_id:
+                    stats['case_audit_logs']['skipped'] += 1
+                    continue
+                old_user_id = log_data.get('user_id')
+                new_user_id = user_id_map.get(old_user_id) if old_user_id else None
+                if not new_user_id:
+                    stats['case_audit_logs']['skipped'] += 1
+                    continue
+                audit = CaseAuditLog(
+                    case_id=new_case_id,
+                    user_id=new_user_id,
+                    action=log_data.get('action', ''),
+                    changes=log_data.get('changes'),
+                    notes=log_data.get('notes'),
+                )
+                if log_data.get('created_at'):
+                    try:
+                        audit.created_at = datetime.fromisoformat(log_data['created_at']) if isinstance(log_data['created_at'], str) else log_data['created_at']
+                    except (ValueError, TypeError):
+                        pass
+                db.session.add(audit)
+                stats['case_audit_logs']['added'] += 1
+
+        # Import Case View Logs
+        stats['case_view_logs'] = {'added': 0, 'skipped': 0}
+        if not is_frcr_examiner:
+            for vlog_data in backup_data.get('case_view_logs', []):
+                if not isinstance(vlog_data, dict):
+                    continue
+                old_user_id = vlog_data.get('user_id')
+                old_case_id = vlog_data.get('case_id')
+                new_user_id = user_id_map.get(old_user_id) if old_user_id else None
+                new_case_id = case_id_map.get(old_case_id) if old_case_id else None
+                if not new_user_id or not new_case_id:
+                    stats['case_view_logs']['skipped'] += 1
+                    continue
+                vlog = CaseViewLog(
+                    user_id=new_user_id,
+                    case_id=new_case_id,
+                    time_spent_seconds=vlog_data.get('time_spent_seconds'),
+                )
+                if vlog_data.get('viewed_at'):
+                    try:
+                        vlog.viewed_at = datetime.fromisoformat(vlog_data['viewed_at']) if isinstance(vlog_data['viewed_at'], str) else vlog_data['viewed_at']
+                    except (ValueError, TypeError):
+                        pass
+                db.session.add(vlog)
+                stats['case_view_logs']['added'] += 1
+
+        # Import Case Approval Queue
+        stats['case_approval_queue'] = {'added': 0, 'skipped': 0}
+        for entry_data in backup_data.get('case_approval_queue', []):
+            if not isinstance(entry_data, dict):
+                continue
+            old_case_id = entry_data.get('case_id')
+            new_case_id = case_id_map.get(old_case_id)
+            if not new_case_id:
+                stats['case_approval_queue']['skipped'] += 1
+                continue
+            # Check if already in queue
+            existing = CaseApprovalQueue.query.filter_by(case_id=new_case_id).first()
+            if existing:
+                stats['case_approval_queue']['skipped'] += 1
+                continue
+            old_user_id = entry_data.get('submitted_by_user_id')
+            new_user_id = user_id_map.get(old_user_id) if old_user_id else current_user.id
+            entry = CaseApprovalQueue(
+                case_id=new_case_id,
+                submitted_by_user_id=new_user_id,
+                admin_notes=entry_data.get('admin_notes'),
+            )
+            if entry_data.get('submitted_at'):
+                try:
+                    entry.submitted_at = datetime.fromisoformat(entry_data['submitted_at']) if isinstance(entry_data['submitted_at'], str) else entry_data['submitted_at']
+                except (ValueError, TypeError):
+                    pass
+            db.session.add(entry)
+            stats['case_approval_queue']['added'] += 1
+
+        # Import User QA Progress (spaced repetition state)
+        stats['user_qa_progress'] = {'added': 0, 'skipped': 0}
+        if not is_frcr_examiner:
+            for prog_data in backup_data.get('user_qa_progress', []):
+                if not isinstance(prog_data, dict):
+                    continue
+                old_user_id = prog_data.get('user_id')
+                new_user_id = user_id_map.get(old_user_id) if old_user_id else None
+                if not new_user_id:
+                    stats['user_qa_progress']['skipped'] += 1
+                    continue
+                # question_id mapping: questions were recreated with new IDs during case import
+                # We need to match by case_id + question_number
+                old_case_id = prog_data.get('case_id')
+                new_case_id = case_id_map.get(old_case_id)
+                if not new_case_id:
+                    stats['user_qa_progress']['skipped'] += 1
+                    continue
+                old_question_id = prog_data.get('question_id')
+                # Try to find matching question in the new case
+                new_question = Question.query.filter_by(case_id=new_case_id).first()
+                if not new_question:
+                    stats['user_qa_progress']['skipped'] += 1
+                    continue
+                # Check for existing progress
+                existing = UserQAProgress.query.filter_by(user_id=new_user_id, question_id=new_question.id).first()
+                if existing:
+                    stats['user_qa_progress']['skipped'] += 1
+                    continue
+                from datetime import date
+                next_review = None
+                if prog_data.get('next_review_date'):
+                    try:
+                        next_review = date.fromisoformat(prog_data['next_review_date']) if isinstance(prog_data['next_review_date'], str) else prog_data['next_review_date']
+                    except (ValueError, TypeError):
+                        next_review = date.today()
+                else:
+                    next_review = date.today()
+                prog = UserQAProgress(
+                    user_id=new_user_id,
+                    question_id=new_question.id,
+                    case_id=new_case_id,
+                    ease_factor=prog_data.get('ease_factor', 2.5),
+                    interval_days=prog_data.get('interval_days', 0),
+                    repetition_number=prog_data.get('repetition_number', 0),
+                    next_review_date=next_review,
+                    times_correct=prog_data.get('times_correct', 0),
+                    times_incorrect=prog_data.get('times_incorrect', 0),
+                )
+                if prog_data.get('last_reviewed_at'):
+                    try:
+                        prog.last_reviewed_at = datetime.fromisoformat(prog_data['last_reviewed_at']) if isinstance(prog_data['last_reviewed_at'], str) else prog_data['last_reviewed_at']
+                    except (ValueError, TypeError):
+                        pass
+                db.session.add(prog)
+                stats['user_qa_progress']['added'] += 1
+
+        # Import AI Diagnosis Cache
+        stats['ai_diagnosis_cache'] = {'added': 0, 'skipped': 0}
+        for cache_data in backup_data.get('ai_diagnosis_cache', []):
+            if not isinstance(cache_data, dict):
+                continue
+            diagnosis = cache_data.get('diagnosis')
+            provider = cache_data.get('provider')
+            model_name = cache_data.get('model_name')
+            if not diagnosis or not provider or not model_name:
+                stats['ai_diagnosis_cache']['skipped'] += 1
+                continue
+            existing = AiDiagnosisCache.query.filter_by(
+                diagnosis=diagnosis, provider=provider, model_name=model_name
+            ).first()
+            if existing:
+                stats['ai_diagnosis_cache']['skipped'] += 1
+                continue
+            old_case_id = cache_data.get('first_case_id')
+            new_case_id = case_id_map.get(old_case_id) if old_case_id else None
+            old_user_id = cache_data.get('first_user_id')
+            new_user_id = user_id_map.get(old_user_id) if old_user_id else None
+            if not new_case_id or not new_user_id:
+                stats['ai_diagnosis_cache']['skipped'] += 1
+                continue
+            cache_entry = AiDiagnosisCache(
+                diagnosis=diagnosis,
+                provider=provider,
+                model_name=model_name,
+                first_case_id=new_case_id,
+                first_user_id=new_user_id,
+                query_count=cache_data.get('query_count', 1),
+            )
+            if cache_data.get('first_generated_at'):
+                try:
+                    cache_entry.first_generated_at = datetime.fromisoformat(cache_data['first_generated_at']) if isinstance(cache_data['first_generated_at'], str) else cache_data['first_generated_at']
+                except (ValueError, TypeError):
+                    pass
+            if cache_data.get('last_queried_at'):
+                try:
+                    cache_entry.last_queried_at = datetime.fromisoformat(cache_data['last_queried_at']) if isinstance(cache_data['last_queried_at'], str) else cache_data['last_queried_at']
+                except (ValueError, TypeError):
+                    pass
+            db.session.add(cache_entry)
+            stats['ai_diagnosis_cache']['added'] += 1
+
+        # Final commit for new tables
+        try:
+            db.session.commit()
+            print(f"[IMPORT] New tables imported: {stats.get('related_cases_links', {}).get('added', 0)} related links, {stats.get('case_audit_logs', {}).get('added', 0)} audit logs, {stats.get('case_view_logs', {}).get('added', 0)} view logs, {stats.get('user_qa_progress', {}).get('added', 0)} QA progress, {stats.get('ai_diagnosis_cache', {}).get('added', 0)} AI cache")
+        except Exception as new_tables_error:
+            db.session.rollback()
+            print(f"[IMPORT] ERROR during new tables commit: {new_tables_error}")
+
         # Build response message
         message_parts = ['Database imported successfully']
         if stats['staging']['added'] > 0:
