@@ -1029,6 +1029,30 @@ def study_dashboard():
     ).filter(Case.status == CaseStatus.PUBLISHED).scalar() or 0
     new_cards_available = max(0, total_qa - total_progress)
 
+    # All modules with published Q&A pairs (for dropdown — works for new users too)
+    available_modules = db.session.query(
+        Case.module,
+        func.count(Question.id).label('qa_count')
+    ).join(
+        Question, Question.case_id == Case.id
+    ).filter(
+        Case.status == CaseStatus.PUBLISHED,
+        Case.module.isnot(None)
+    ).group_by(Case.module).all()
+
+    all_modules = []
+    for module, qa_count in available_modules:
+        # Find due count from modules_data if available
+        md = next((m for m in modules_data if m['module'] == module), None)
+        due_count = md['due'] if md else 0
+        all_modules.append({
+            'module': module,
+            'module_name': module.value,
+            'qa_count': qa_count,
+            'due': due_count,
+        })
+    all_modules.sort(key=lambda x: list(FRCRModule).index(x['module']))
+
     return render_template('study.html',
                            due_today=due_today,
                            mastered=mastered,
@@ -1036,7 +1060,8 @@ def study_dashboard():
                            accuracy_percent=accuracy_percent,
                            total_progress=total_progress,
                            new_cards_available=new_cards_available,
-                           modules_data=modules_data)
+                           modules_data=modules_data,
+                           all_modules=all_modules)
 
 
 @app.route('/study/session')
@@ -1057,6 +1082,14 @@ def study_session():
     return render_template('study_session.html',
                            selected_module=selected_module,
                            modules=list(FRCRModule))
+
+
+def _strip_html_tags(text):
+    """Strip HTML tags from text, returning plain text content."""
+    if not text:
+        return text
+    import re
+    return re.sub(r'<[^>]+>', '', text).strip()
 
 
 @app.route('/api/study/cards', methods=['GET'])
@@ -1109,8 +1142,8 @@ def get_study_cards():
     for c in due_cards:
         cards.append({
             'question_id': c.question_id,
-            'question_text': c.question_text,
-            'answer_text': c.answer_text,
+            'question_text': _strip_html_tags(c.question_text),
+            'answer_text': _strip_html_tags(c.answer_text),
             'case_id': c.case_id,
             'diagnosis': c.diagnosis,
             'module': c.module.value if c.module else None,
@@ -1149,8 +1182,8 @@ def get_study_cards():
         for c in new_cards:
             cards.append({
                 'question_id': c.question_id,
-                'question_text': c.question_text,
-                'answer_text': c.answer_text,
+                'question_text': _strip_html_tags(c.question_text),
+                'answer_text': _strip_html_tags(c.answer_text),
                 'case_id': c.case_id,
                 'diagnosis': c.diagnosis,
                 'module': c.module.value if c.module else None,

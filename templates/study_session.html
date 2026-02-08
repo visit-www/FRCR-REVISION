@@ -65,8 +65,8 @@
             <div id="flashcard" class="card border-0 shadow-lg" style="display: none; min-height: 350px;">
                 <div class="card-body p-4 d-flex flex-column">
                     <!-- Context -->
-                    <div class="mb-3">
-                        <span class="badge bg-secondary" id="caseDiagnosis"></span>
+                    <div class="mb-3 d-flex align-items-center flex-wrap gap-1">
+                        <a id="caseLink" href="#" class="badge bg-secondary text-decoration-none" target="_blank"></a>
                         <span class="badge" id="cardModule" style="background-color: #5E899E;"></span>
                         <span class="badge" id="cardStatus" style="background-color: #ffc107; color: #333;"></span>
                     </div>
@@ -84,10 +84,13 @@
                         <p id="answerText" class="fs-5 mb-0"></p>
                     </div>
 
-                    <!-- Show Answer Button -->
-                    <div id="showAnswerBtn" class="d-grid mt-3">
-                        <button class="btn btn-brand-primary btn-lg" onclick="showAnswer()">
-                            <i class="fas fa-eye me-2"></i>Show Answer
+                    <!-- Show/Hide Answer Button -->
+                    <div id="showAnswerBtn" class="d-grid gap-2 mt-3">
+                        <button class="btn btn-brand-primary btn-lg" id="toggleAnswerBtn" onclick="toggleAnswer()">
+                            <i class="fas fa-eye me-2" id="toggleAnswerIcon"></i><span id="toggleAnswerLabel">Show Answer</span>
+                        </button>
+                        <button class="btn btn-outline-secondary btn-sm" onclick="skipCard()">
+                            <i class="fas fa-forward me-1"></i>Skip
                         </button>
                     </div>
 
@@ -198,7 +201,11 @@ function displayCard(idx) {
     currentIndex = idx;
     const card = cards[idx];
 
-    document.getElementById('caseDiagnosis').textContent = card.diagnosis || 'Unknown';
+    // Case link with diagnosis
+    const caseLink = document.getElementById('caseLink');
+    caseLink.textContent = card.diagnosis || 'Unknown';
+    caseLink.href = '/view-case/' + card.case_id;
+
     document.getElementById('cardModule').textContent = card.module || '';
     document.getElementById('cardStatus').textContent = card.is_new ? 'New' : 'Review';
     document.getElementById('questionText').textContent = card.question_text;
@@ -207,6 +214,9 @@ function displayCard(idx) {
     document.getElementById('answerSection').style.display = 'none';
     document.getElementById('showAnswerBtn').style.display = 'block';
     document.getElementById('ratingButtons').style.display = 'none';
+    // Reset toggle button
+    document.getElementById('toggleAnswerLabel').textContent = 'Show Answer';
+    document.getElementById('toggleAnswerIcon').className = 'fas fa-eye me-2';
 
     const pct = Math.round((idx / cards.length) * 100);
     document.getElementById('progressBar').style.width = pct + '%';
@@ -215,12 +225,25 @@ function displayCard(idx) {
         'Due: ' + sessionStats.due_today + ' | Mastered: ' + sessionStats.mastered;
 }
 
-function showAnswer() {
-    document.getElementById('answerSection').style.display = 'block';
-    document.getElementById('showAnswerBtn').style.display = 'none';
-    document.getElementById('ratingButtons').style.display = 'block';
-    // Scroll answer into view on mobile
-    document.getElementById('answerSection').scrollIntoView({behavior: 'smooth', block: 'nearest'});
+function toggleAnswer() {
+    const answerSection = document.getElementById('answerSection');
+    const isVisible = answerSection.style.display !== 'none';
+    if (isVisible) {
+        answerSection.style.display = 'none';
+        document.getElementById('ratingButtons').style.display = 'none';
+        document.getElementById('toggleAnswerLabel').textContent = 'Show Answer';
+        document.getElementById('toggleAnswerIcon').className = 'fas fa-eye me-2';
+    } else {
+        answerSection.style.display = 'block';
+        document.getElementById('ratingButtons').style.display = 'block';
+        document.getElementById('toggleAnswerLabel').textContent = 'Hide Answer';
+        document.getElementById('toggleAnswerIcon').className = 'fas fa-eye-slash me-2';
+        answerSection.scrollIntoView({behavior: 'smooth', block: 'nearest'});
+    }
+}
+
+function skipCard() {
+    displayCard(currentIndex + 1);
 }
 
 function rateCard(quality) {

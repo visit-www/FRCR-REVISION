@@ -87,8 +87,8 @@
                         <label for="moduleFilter" class="form-label">Filter by Module (optional)</label>
                         <select class="form-select" id="moduleFilter">
                             <option value="">All Modules</option>
-                            {% for m in modules_data %}
-                            <option value="{{ m.module.name }}">{{ m.module_name }} ({{ m.due }} due)</option>
+                            {% for m in all_modules %}
+                            <option value="{{ m.module.name }}">{{ m.module_name }} ({{ m.due }} due, {{ m.qa_count }} total)</option>
                             {% endfor %}
                         </select>
                     </div>
