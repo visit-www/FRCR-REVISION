@@ -935,6 +935,7 @@ def get_case(case_id):
         'created_by_user_id': case.created_by_user_id,
         'created_by_name': creator_name,
         'created_at': case.created_at.isoformat() if case.created_at else None,
+        'contributor_notes': case.contributor_notes or '',
     }), 200
 
 # ============================================================================

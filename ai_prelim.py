@@ -258,28 +258,18 @@ Each item should be a complete, actionable statement."""
 4) sources — REFERENCES
 ───────────────────────────────────────────────────────────────────
 
-List 2-5 reputable sources for your information:
-• Include title, url, and pmid (if applicable)
-• Include pdf_url field when PDF version is available (for journal articles)
+Provide exactly 1-3 high-quality references. Each source object must have:
+• "title" — the exact article title (required)
+• "journal" — the journal or website name (required)
+• "url" — ONLY for Radiopaedia articles (optional, leave empty string for all other sources)
 
-PREFERRED JOURNALS (prioritize these for high-quality pictorial essays and anatomical/pathological correlations):
-• Radiographics (pictorial reviews, case-based learning) - https://pubs.rsna.org/journal/radiographics
-• AJNR (American Journal of Neuroradiology) - pictorial essays and case reports
-• IJR (Indian Journal of Radiology) - pictorial articles
-• RadiologyAssistant (radiologyassistant.nl) - comprehensive pictorial reviews
-• Radiopaedia (radiopaedia.org) - case-based learning
-• ScienceDirect - peer-reviewed radiology articles with full-text access
-• Clinical Key - comprehensive medical reference with imaging correlations
-
-IMPORTANT GUIDELINES:
-• PREFER pictorial articles and articles with anatomical/pathological correlations
-• PREFER case reviews and teaching files over general review articles
-• Include PDF links when available (especially for Radiographics, AJNR, ScienceDirect)
-• DO NOT link to generic journal homepages or main pages (e.g., acr.org main page, journal index pages)
-• DO NOT invent or guess URLs - only use URLs you can verify exist
-• Only cite sources you are confident exist and ensure the URL and links are valid
-• For Radiopaedia: Use exact case/article slugs from search results, not guessed URLs
-• For journal articles: Link to specific article DOIs, not journal homepages"""
+RULES:
+• Include exactly 1 Radiopaedia article with its URL (radiopaedia.org/articles/... or radiopaedia.org/cases/...)
+• Include 1-2 journal articles — provide ONLY the exact article title and journal name, NO URL
+• PREFER pictorial essays, case reviews, and teaching articles from: Radiographics, AJR, AJNR, European Radiology, RadioGraphics, RadiologyAssistant
+• The article title must be the REAL, EXACT title of a published article — do NOT invent titles
+• Do NOT generate URLs for journal articles — URLs will be auto-generated as search links
+• Do NOT include pmid, pdf_url, or doi fields"""
 
     # Section 5: Warnings
     warnings_section = """
@@ -453,118 +443,49 @@ def generate_prelim_case_data(case_context, provider="claude", model=None):
     parsed.setdefault("sources", [])
     parsed.setdefault("warnings", [])
     
-    # Fix URLs in sources (PMC, RadiologyAssistant, Radiopaedia, and journal articles)
+    # Process sources: keep Radiopaedia URLs, generate Google Scholar search links for others
     if isinstance(parsed.get("sources"), list):
-        import re
-        from urllib.parse import urlparse
-        
-        filtered_sources = []
-        generic_urls = [
-            "acr.org/clinical-resources/clinical-tools-and-reference/appropriateness-criteria",
-            "acr.org/clinical-resources",
-            "pubs.rsna.org/journal/radiographics",  # Journal homepage, not specific article
-            "ajnr.org",  # Journal homepage
-        ]
-        
+        from urllib.parse import quote_plus
+
+        processed_sources = []
         for source in parsed["sources"]:
-            if isinstance(source, dict) and "url" in source:
-                url = source["url"]
-                url_lower = url.lower()
-                
-                # Fix PMC URLs with duplicate prefix (e.g., PMCPMC10481713)
-                if "pmc.ncbi.nlm.nih.gov" in url or "ncbi.nlm.nih.gov/pmc" in url:
-                    # Extract PMC ID and reconstruct URL correctly
-                    # Match patterns like PMCPMC123 or PMC123
-                    pmc_match = re.search(r'PMC?PMC?(\d+)', url, re.IGNORECASE)
-                    if pmc_match:
-                        pmc_id_clean = pmc_match.group(1)
-                        source["url"] = f"https://www.ncbi.nlm.nih.gov/pmc/articles/PMC{pmc_id_clean}/"
-                
-                # Fix RadiologyAssistant URLs (ensure correct domain and protocol)
-                elif "radiologyassistant" in url.lower():
-                    # Normalize domain: ensure it's radiologyassistant.nl (not .com or other)
-                    url_lower = url.lower()
-                    # Extract the path/query part
-                    if "radiologyassistant.nl" in url_lower:
-                        # Already correct domain, just ensure https://
-                        if not url.startswith("http://") and not url.startswith("https://"):
-                            # Reconstruct with https://
-                            path_part = url.split("radiologyassistant.nl", 1)[1] if "radiologyassistant.nl" in url_lower else ""
-                            source["url"] = f"https://radiologyassistant.nl{path_part}"
-                        elif url.startswith("http://"):
-                            # Upgrade http to https
-                            source["url"] = url.replace("http://", "https://", 1)
-                    elif "radiologyassistant.com" in url_lower or "radiology-assistant" in url_lower:
-                        # Wrong domain, fix to .nl
-                        path_part = ""
-                        for domain in ["radiologyassistant.com", "radiology-assistant"]:
-                            if domain in url_lower:
-                                path_part = url.split(domain, 1)[1] if domain in url else ""
-                                break
-                        # Ensure protocol
-                        if not path_part.startswith("/"):
-                            path_part = "/" + path_part
-                        source["url"] = f"https://radiologyassistant.nl{path_part}"
-                    else:
-                        # Just radiologyassistant mentioned, ensure full URL
-                        if not url.startswith("http://") and not url.startswith("https://"):
-                            source["url"] = f"https://radiologyassistant.nl{url if url.startswith('/') else '/' + url}"
-                
-                # Fix Radiopaedia URLs (detect truncation and validate)
-                elif "radiopaedia.org" in url.lower():
-                    url_lower = url.lower()
-                    # Ensure proper protocol
-                    if not url.startswith("http://") and not url.startswith("https://"):
-                        source["url"] = f"https://{url}"
-                    elif url.startswith("http://"):
-                        source["url"] = url.replace("http://", "https://", 1)
-                    # Note: We can't easily validate truncated URLs without making HTTP requests
-                    # The model should be instructed to use exact URLs, and we'll add warnings if needed
-                
-                # Filter out generic/homepage URLs
-                is_generic = any(generic in url_lower for generic in generic_urls)
-                # Also check if it's just a domain or main page
-                parsed_url = urlparse(url if url.startswith("http") else f"https://{url}")
-                if is_generic or (parsed_url.path in ["/", ""] and not parsed_url.query and not parsed_url.fragment):
-                    # Mark for removal - we'll filter these out
-                    source["_should_remove"] = True
-                    if "warnings" not in parsed:
-                        parsed["warnings"] = []
-                    parsed["warnings"].append(f"Removed generic URL: {url}")
-                
-                # Generate PDF links for journal articles
-                if "pubs.rsna.org/doi/full" in url_lower or "pubs.rsna.org/doi/abs" in url_lower:
-                    # Convert to PDF link
-                    doi_match = re.search(r'10\.\d+/[^\s/]+', url)
-                    if doi_match:
-                        doi = doi_match.group(0)
-                        pdf_url = f"https://pubs.rsna.org/doi/pdf/{doi}"
-                        source["pdf_url"] = pdf_url
-                elif "ajnr.org/content" in url_lower:
-                    # AJNR article - try to generate PDF link
-                    # AJNR PDF links typically follow pattern: ajnr.org/content/{vol}/{issue}/{page}.full.pdf
-                    # We'll keep the article URL and note that PDF may be available
-                    source["pdf_note"] = "PDF may be available on article page"
-                elif "sciencedirect.com" in url_lower and "/article/" in url_lower:
-                    # ScienceDirect article - PDF link typically available
-                    # Format: sciencedirect.com/science/article/pii/{pii}/pdfft
-                    pii_match = re.search(r'/pii/([A-Z0-9]+)', url_lower)
-                    if pii_match:
-                        pii = pii_match.group(1)
-                        pdf_url = url.replace("/article/", "/article/pii/").replace("?via%3Dihub", "") + "/pdfft"
-                        source["pdf_url"] = pdf_url
-                
-                # Only add source if not marked for removal
-                if not source.get("_should_remove", False):
-                    # Remove the temporary flag
-                    source.pop("_should_remove", None)
-                    filtered_sources.append(source)
+            if not isinstance(source, dict):
+                continue
+            title = source.get("title", "").strip()
+            if not title:
+                continue
+            url = source.get("url", "").strip()
+            journal = source.get("journal", "").strip()
+
+            # Radiopaedia: keep URL (fix protocol if needed)
+            if url and "radiopaedia.org" in url.lower():
+                if url.startswith("http://"):
+                    url = url.replace("http://", "https://", 1)
+                elif not url.startswith("https://"):
+                    url = f"https://{url}"
+                source["url"] = url
+            elif url and "radiologyassistant.nl" in url.lower():
+                # RadiologyAssistant also has predictable URLs — keep them
+                if url.startswith("http://"):
+                    url = url.replace("http://", "https://", 1)
+                elif not url.startswith("https://"):
+                    url = f"https://{url}"
+                source["url"] = url
             else:
-                # Keep sources without URLs or invalid structure
-                filtered_sources.append(source)
-        
-        # Update sources list with filtered results
-        parsed["sources"] = filtered_sources
+                # All other sources: generate Google Scholar search link from title
+                search_query = title
+                if journal:
+                    search_query = f"{title} {journal}"
+                source["url"] = f"https://scholar.google.com/scholar?q={quote_plus(search_query)}"
+                # Remove any hallucinated fields
+                source.pop("pmid", None)
+                source.pop("pdf_url", None)
+                source.pop("doi", None)
+
+            processed_sources.append(source)
+
+        # Limit to 3 sources max
+        parsed["sources"] = processed_sources[:3]
 
     # Validate qa_pairs structure
     validated_pairs = []

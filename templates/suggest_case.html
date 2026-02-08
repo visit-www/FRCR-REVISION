@@ -95,6 +95,11 @@
                             </div>
                         </div>
                         <div class="mb-3">
+                            <label for="scContributorName" class="form-label fw-semibold">Your Name (for attribution)</label>
+                            <input type="text" class="form-control" id="scContributorName" value="{{ current_user.full_name }}" placeholder="Your full name">
+                            <small class="text-muted">This name will be credited on the published case.</small>
+                        </div>
+                        <div class="mb-3">
                             <label class="form-label fw-semibold">Age Group</label>
                             <div class="d-flex gap-3">
                                 <div class="form-check">
@@ -648,8 +653,10 @@ function loadMySuggestions() {
             else if (c.status === 'rejected') { statusBadge = 'Rejected'; statusColor = '#dc3545'; }
             else { statusBadge = c.status; }
 
-            var clickable = c.status === 'draft' ? ' cursor: pointer;' : '';
-            var onclick = c.status === 'draft' ? ' onclick="resumeDraft(' + c.id + ')"' : '';
+            var clickable = ' cursor: pointer;';
+            var onclick = c.status === 'draft'
+                ? ' onclick="resumeDraft(' + c.id + ')"'
+                : ' onclick="window.location.href=\'/view-case/' + c.id + '\'"';
 
             html += '<div class="list-group-item px-2 py-2 small"' + onclick + ' style="' + clickable + '">';
             html += '<div class="d-flex justify-content-between align-items-start">';

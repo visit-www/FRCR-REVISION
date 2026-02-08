@@ -370,6 +370,27 @@ console.log('[TinyMCE Loader] Script URL was:', "{{ url_for('static', filename='
                 </div>
             </div>
 
+            <!-- Contributor Notes (shown when case has student contributor notes) -->
+            <div id="contributorNotesSection" class="card shadow-sm mb-5 border-0" style="display: none;">
+                <div class="card-header bg-gradient text-white" style="background: linear-gradient(135deg, #e96304 0%, #c75002 100%);">
+                    <h5 class="mb-0">
+                        <i class="fas fa-pen-fancy me-2"></i>Contributor Notes
+                        <span id="contributorNameBadge" class="badge bg-light text-dark ms-2" style="font-size: 0.7em;"></span>
+                    </h5>
+                </div>
+                <div class="card-body p-4">
+                    <div id="contributorNotesContent" class="mb-3 p-3 rounded" style="background: #fffbf0; border-left: 4px solid #e96304; white-space: pre-wrap; font-size: 0.95em; line-height: 1.6;"></div>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-sm btn-success" onclick="appendContributorNotesToDiscussion()">
+                            <i class="fas fa-plus-circle me-1"></i>Append to Discussion
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="clearContributorNotes()">
+                            <i class="fas fa-times me-1"></i>Dismiss
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             <!-- Section 4: Images -->
             <div class="card shadow-sm mb-5 border-0">
                 <div class="card-header bg-gradient text-white" style="background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);">
@@ -1583,7 +1604,7 @@ function initImageStackDescriptionEditor(initialHtml) {
                 { title: 'Indent Block', block: 'div', classes: 'indent-block' },
             ]},
         ],
-        content_style: 'body { font-family: Charter, Georgia, Cambria, "Times New Roman", serif; font-size: 15px; line-height: 1.7; color: #2c3e50; } .clinical-note { margin: 1.1rem 0; padding: 10px 16px; background: transparent; border-left: 3px solid #5E899E; } .key-finding { margin: 1.1rem 0; padding: 10px 16px; background: transparent; border-left: 3px solid #28a745; } .differential-dx { margin: 1.1rem 0; padding: 10px 16px; background: transparent; border-left: 3px solid #7952b3; } .teaching-pearl { margin: 1.1rem 0; padding: 10px 16px; background: transparent; border-left: 3px solid #e9a304; } .pitfall { margin: 1.1rem 0; padding: 10px 16px; background: transparent; border-left: 3px solid #dc3545; } .normal-variant { margin: 1.1rem 0; padding: 10px 16px; background: transparent; border-left: 3px solid #17a2b8; } .diagnosis-box { margin: 1.2rem 0; padding: 12px 16px; background: #fdf8f3; border-left: 3px solid #e96304; font-weight: normal; } .staging-info { margin: 1.1rem 0; padding: 10px 16px; background: transparent; border-left: 3px solid #c8d6e5; } .comparison-box { margin: 1.1rem 0; padding: 10px 16px; background: transparent; border-left: 3px solid #adb5bd; } .highlight-yellow { background-color: #fff3cd; padding: 1px 4px; border-radius: 2px; } .highlight-green { background-color: #d4edda; padding: 1px 4px; border-radius: 2px; } .highlight-red { background-color: #f8d7da; padding: 1px 4px; border-radius: 2px; } .highlight-blue { background-color: #d1ecf1; padding: 1px 4px; border-radius: 2px; } .important-text { color: #dc3545; font-weight: 600; } .subtle-text { color: #6c757d; font-size: 0.9em; } .two-column { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 1rem 0; } .indent-block { margin: 0.5rem 0 0.5rem 1.5rem; padding: 6px 12px; border-left: 2px solid #dee2e6; color: #495057; } .image-finding { margin: 0.75rem 0; padding: 10px 14px; background: transparent; border-left: 3px solid #e96304; } .measurement { display: inline-block; background: #e2e8f0; padding: 2px 8px; border-radius: 4px; font-family: monospace; font-size: 0.9em; } .anatomy-label { display: inline-block; background: #5E899E; color: #fff; padding: 2px 8px; border-radius: 12px; font-size: 0.85em; font-weight: 500; }',
+        content_style: 'body { font-family: Charter, Georgia, Cambria, "Times New Roman", serif; font-size: 15px; line-height: 1.7; color: #2c3e50; } .clinical-note, .key-finding, .differential-dx, .teaching-pearl, .pitfall, .normal-variant, .staging-info, .comparison-box { margin: 1.1rem 0; padding: 10px 16px; background: transparent; border: none; border-radius: 0; font-size: 0.95em; line-height: 1.7; } .clinical-note { border-left: 3px solid #5E899E; } .key-finding { border-left: 3px solid #28a745; } .differential-dx { border-left: 3px solid #7952b3; } .teaching-pearl { border-left: 3px solid #e9a304; } .pitfall { border-left: 3px solid #dc3545; } .normal-variant { border-left: 3px solid #17a2b8; } .staging-info { border-left: 3px solid #c8d6e5; } .comparison-box { border-left: 3px solid #adb5bd; } .diagnosis-box { margin: 1.2rem 0; padding: 14px 18px; background: #fdf8f3; border: none; border-left: 4px solid #e96304; border-radius: 0; font-weight: normal; font-size: 1em; line-height: 1.7; } .highlight-yellow { background-color: #fff3cd; padding: 1px 4px; border-radius: 2px; } .highlight-green { background-color: #d4edda; padding: 1px 4px; border-radius: 2px; } .highlight-red { background-color: #f8d7da; padding: 1px 4px; border-radius: 2px; } .highlight-blue { background-color: #d1ecf1; padding: 1px 4px; border-radius: 2px; } .important-text { color: #dc3545; font-weight: 600; } .subtle-text { color: #6c757d; font-size: 0.9em; } .two-column { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 1rem 0; } .indent-block { margin: 0.5rem 0 0.5rem 1.5rem; padding: 6px 12px; border-left: 2px solid #dee2e6; color: #495057; } .image-finding { margin: 0.75rem 0; padding: 10px 14px; background: transparent; border-left: 3px solid #e96304; } .measurement { display: inline-block; background: #e2e8f0; padding: 2px 8px; border-radius: 4px; font-family: monospace; font-size: 0.9em; } .anatomy-label { display: inline-block; background: #5E899E; color: #fff; padding: 2px 8px; border-radius: 12px; font-size: 0.85em; font-weight: 500; }',
         base_url: 'https://cdn.jsdelivr.net/npm/tinymce@6',
         init_instance_callback: function(ed) {
             ed.setContent(initialHtml || '');
@@ -2076,6 +2097,25 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 <script>
+// ========== Contributor Notes (Suggest a Case) ==========
+function appendContributorNotesToDiscussion() {
+    var notes = document.getElementById('contributorNotesContent').textContent.trim();
+    if (!notes) return;
+    var html = '<div class="clinical-note"><strong>Contributor Notes</strong><p>' + notes.replace(/\n/g, '<br>') + '</p></div>';
+    if (typeof tinymce !== 'undefined' && tinymce.get('editCaseDiscussion')) {
+        tinymce.get('editCaseDiscussion').execCommand('mceInsertContent', false, html);
+    } else {
+        var textarea = document.getElementById('editCaseDiscussion');
+        textarea.value += '\n' + html;
+    }
+    document.getElementById('contributorNotesSection').style.display = 'none';
+    if (typeof showFlash === 'function') showFlash('Contributor notes appended to discussion.', 'success');
+}
+function clearContributorNotes() {
+    document.getElementById('contributorNotesSection').style.display = 'none';
+}
+</script>
+<script>
 // Reference Image Curation (CC-licensed)
 function openRefImageSearchModal() {
     const caseId = document.getElementById('editCaseId')?.value;
@@ -2504,16 +2544,17 @@ function initializeDiscussionEditor() {
                 }
             }
             /* Custom content classes (match static/style.css) */
-            .clinical-note { margin: 1rem 0; padding: 12px 16px; background: #eef6fa; border-left: 4px solid #5E899E; border-radius: 4px; font-size: 0.95em; line-height: 1.6; }
-            .key-finding { margin: 1rem 0; padding: 12px 16px; background: #eaf7ef; border-left: 4px solid #28a745; border-radius: 4px; font-size: 0.95em; line-height: 1.6; }
-            .differential-dx { margin: 1rem 0; padding: 12px 16px; background: #f3eef8; border-left: 4px solid #7952b3; border-radius: 4px; font-size: 0.95em; line-height: 1.6; }
-            .teaching-pearl { margin: 1rem 0; padding: 12px 16px; background: #fef9e7; border-left: 4px solid #e9a304; border-radius: 4px; font-size: 0.95em; line-height: 1.6; }
-            .pitfall { margin: 1rem 0; padding: 12px 16px; background: #fdecea; border-left: 4px solid #dc3545; border-radius: 4px; font-size: 0.95em; line-height: 1.6; }
-            .normal-variant { margin: 1rem 0; padding: 12px 16px; background: #e8f4fd; border-left: 4px solid #17a2b8; border-radius: 4px; font-size: 0.95em; line-height: 1.6; }
-            .diagnosis-box { margin: 1rem 0; padding: 14px 18px; background: #fdf8f3; border-left: 4px solid #e96304; border-radius: 0; font-weight: normal; font-size: 1em; line-height: 1.7; }
+            .clinical-note, .key-finding, .differential-dx, .teaching-pearl, .pitfall, .normal-variant, .staging-info, .comparison-box { margin: 1.1rem 0; padding: 10px 16px; background: transparent; border: none; border-radius: 0; font-size: 0.95em; line-height: 1.7; }
+            .clinical-note { border-left: 3px solid #5E899E; }
+            .key-finding { border-left: 3px solid #28a745; }
+            .differential-dx { border-left: 3px solid #7952b3; }
+            .teaching-pearl { border-left: 3px solid #e9a304; }
+            .pitfall { border-left: 3px solid #dc3545; }
+            .normal-variant { border-left: 3px solid #17a2b8; }
+            .staging-info { border-left: 3px solid #c8d6e5; }
+            .comparison-box { border-left: 3px solid #adb5bd; }
+            .diagnosis-box { margin: 1.2rem 0; padding: 14px 18px; background: #fdf8f3; border: none; border-left: 4px solid #e96304; border-radius: 0; font-weight: normal; font-size: 1em; line-height: 1.7; }
             .diagnosis-box > strong:first-child { display: block; font-weight: 700; font-size: 1.1em; color: #2c3e50; margin-bottom: 6px; }
-            .staging-info { margin: 1.1rem 0; padding: 10px 16px; background: transparent; border-left: 3px solid #c8d6e5; border-radius: 0; font-size: 0.95em; line-height: 1.7; }
-            .comparison-box { margin: 1.1rem 0; padding: 10px 16px; background: transparent; border-left: 3px solid #adb5bd; border-radius: 0; font-size: 0.95em; line-height: 1.7; }
             .highlight-yellow { background-color: #fff3cd; padding: 1px 4px; border-radius: 2px; }
             .highlight-green { background-color: #d4edda; padding: 1px 4px; border-radius: 2px; }
             .highlight-red { background-color: #f8d7da; padding: 1px 4px; border-radius: 2px; }
@@ -2846,6 +2887,19 @@ function loadCaseForEdit(caseId) {
             // Also set textarea as fallback
             document.getElementById('editCaseDiscussion').value = discussionContent;
         }
+        // Contributor Notes — show section if notes exist
+        var cnSection = document.getElementById('contributorNotesSection');
+        if (cnSection && caseData.contributor_notes) {
+            document.getElementById('contributorNotesContent').textContent = caseData.contributor_notes;
+            var nameBadge = document.getElementById('contributorNameBadge');
+            if (nameBadge && caseData.created_by_name) {
+                nameBadge.textContent = 'by ' + caseData.created_by_name;
+            }
+            cnSection.style.display = 'block';
+        } else if (cnSection) {
+            cnSection.style.display = 'none';
+        }
+
         if (document.getElementById('editCaseModule')) {
             document.getElementById('editCaseModule').value = caseData.module || '';
         }
