@@ -1551,7 +1551,38 @@ function initImageStackDescriptionEditor(initialHtml) {
         height: 220,
         menubar: false,
         plugins: 'lists link code',
-        toolbar: 'undo redo | formatselect | bold italic | alignleft aligncenter alignright | bullist numlist | link | code',
+        toolbar: 'undo redo | blocks styles | bold italic | alignleft aligncenter alignright | bullist numlist | link | code',
+        extended_valid_elements: 'div[*],span[*],sup[*],i[*],a[*]',
+        style_formats_merge: true,
+        style_formats: [
+            { title: 'Callout Boxes', items: [
+                { title: 'Clinical Note', block: 'div', classes: 'clinical-note' },
+                { title: 'Key Finding', block: 'div', classes: 'key-finding' },
+                { title: 'Teaching Pearl', block: 'div', classes: 'teaching-pearl' },
+                { title: 'Pitfall', block: 'div', classes: 'pitfall' },
+                { title: 'Differential Dx', block: 'div', classes: 'differential-dx' },
+                { title: 'Normal Variant', block: 'div', classes: 'normal-variant' },
+            ]},
+            { title: 'Diagnostic Boxes', items: [
+                { title: 'Diagnosis Box', block: 'div', classes: 'diagnosis-box' },
+                { title: 'Staging Info', block: 'div', classes: 'staging-info' },
+                { title: 'Comparison Box', block: 'div', classes: 'comparison-box' },
+                { title: 'Image Finding', block: 'div', classes: 'image-finding' },
+            ]},
+            { title: 'Text Emphasis', items: [
+                { title: 'Highlight Yellow', inline: 'span', classes: 'highlight-yellow' },
+                { title: 'Highlight Green', inline: 'span', classes: 'highlight-green' },
+                { title: 'Highlight Red', inline: 'span', classes: 'highlight-red' },
+                { title: 'Highlight Blue', inline: 'span', classes: 'highlight-blue' },
+                { title: 'Important Text', inline: 'span', classes: 'important-text' },
+                { title: 'Subtle Text', inline: 'span', classes: 'subtle-text' },
+            ]},
+            { title: 'Radiology', items: [
+                { title: 'Measurement', inline: 'span', classes: 'measurement' },
+                { title: 'Anatomy Label', inline: 'span', classes: 'anatomy-label' },
+                { title: 'Indent Block', block: 'div', classes: 'indent-block' },
+            ]},
+        ],
         content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 14px; } .clinical-note { margin: 1rem 0; padding: 12px 16px; background: #eef6fa; border-left: 4px solid #5E899E; border-radius: 4px; } .key-finding { margin: 1rem 0; padding: 12px 16px; background: #eaf7ef; border-left: 4px solid #28a745; border-radius: 4px; } .differential-dx { margin: 1rem 0; padding: 12px 16px; background: #f3eef8; border-left: 4px solid #7952b3; border-radius: 4px; } .teaching-pearl { margin: 1rem 0; padding: 12px 16px; background: #fef9e7; border-left: 4px solid #e9a304; border-radius: 4px; } .pitfall { margin: 1rem 0; padding: 12px 16px; background: #fdecea; border-left: 4px solid #dc3545; border-radius: 4px; } .normal-variant { margin: 1rem 0; padding: 12px 16px; background: #e8f4fd; border-left: 4px solid #17a2b8; border-radius: 4px; } .diagnosis-box { margin: 1rem 0; padding: 14px 18px; background: linear-gradient(135deg, #fff7ed, #fff2e0); border: 2px solid #e96304; border-radius: 8px; font-weight: 600; } .staging-info { margin: 1rem 0; padding: 12px 16px; background: #f0f4f8; border: 1px solid #c8d6e5; border-radius: 6px; } .comparison-box { margin: 1rem 0; padding: 12px 16px; background: #f8f9fa; border: 1px dashed #6c757d; border-radius: 6px; } .highlight-yellow { background-color: #fff3cd; padding: 1px 4px; border-radius: 2px; } .highlight-green { background-color: #d4edda; padding: 1px 4px; border-radius: 2px; } .highlight-red { background-color: #f8d7da; padding: 1px 4px; border-radius: 2px; } .highlight-blue { background-color: #d1ecf1; padding: 1px 4px; border-radius: 2px; } .important-text { color: #dc3545; font-weight: 700; } .subtle-text { color: #6c757d; font-size: 0.9em; } .two-column { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 1rem 0; } .indent-block { margin: 0.5rem 0 0.5rem 1.5rem; padding: 8px 12px; border-left: 3px solid #dee2e6; color: #495057; } .image-finding { margin: 0.75rem 0; padding: 10px 14px; background: #f8f9fa; border-left: 3px solid #e96304; border-radius: 4px; } .measurement { display: inline-block; background: #e2e8f0; padding: 2px 8px; border-radius: 4px; font-family: monospace; font-size: 0.9em; } .anatomy-label { display: inline-block; background: #5E899E; color: #fff; padding: 2px 8px; border-radius: 12px; font-size: 0.85em; font-weight: 500; }',
         base_url: 'https://cdn.jsdelivr.net/npm/tinymce@6',
         init_instance_callback: function(ed) {
@@ -2280,7 +2311,7 @@ function initializeDiscussionEditor() {
         max_height: 800,
         autoresize_bottom_margin: 50,
         menubar: 'edit view insert format tools',
-        toolbar: 'undo redo | blocks | bold italic underline strikethrough | numlist bullist indent outdent | table link image code removeformat cleanuphtml',
+        toolbar: 'undo redo | blocks styles | bold italic underline strikethrough | numlist bullist indent outdent | table link image code removeformat cleanuphtml',
         plugins: 'table link image code autoresize',
         // Use CDN for assets (themes, skins, etc.) since we only have the minified JS locally
         base_url: 'https://cdn.jsdelivr.net/npm/tinymce@6',
@@ -2293,6 +2324,39 @@ function initializeDiscussionEditor() {
         remove_trailing_brs: true,
         remove_linebreaks: false,
         apply_source_formatting: false,
+        // Allow div/span/sup/i/a with all attributes (custom classes, data-* for references)
+        extended_valid_elements: 'div[*],span[*],sup[*],i[*],a[*]',
+        // Custom class formats — shown in "Styles" toolbar dropdown
+        style_formats_merge: true,
+        style_formats: [
+            { title: 'Callout Boxes', items: [
+                { title: 'Clinical Note', block: 'div', classes: 'clinical-note' },
+                { title: 'Key Finding', block: 'div', classes: 'key-finding' },
+                { title: 'Teaching Pearl', block: 'div', classes: 'teaching-pearl' },
+                { title: 'Pitfall', block: 'div', classes: 'pitfall' },
+                { title: 'Differential Dx', block: 'div', classes: 'differential-dx' },
+                { title: 'Normal Variant', block: 'div', classes: 'normal-variant' },
+            ]},
+            { title: 'Diagnostic Boxes', items: [
+                { title: 'Diagnosis Box', block: 'div', classes: 'diagnosis-box' },
+                { title: 'Staging Info', block: 'div', classes: 'staging-info' },
+                { title: 'Comparison Box', block: 'div', classes: 'comparison-box' },
+                { title: 'Image Finding', block: 'div', classes: 'image-finding' },
+            ]},
+            { title: 'Text Emphasis', items: [
+                { title: 'Highlight Yellow', inline: 'span', classes: 'highlight-yellow' },
+                { title: 'Highlight Green', inline: 'span', classes: 'highlight-green' },
+                { title: 'Highlight Red', inline: 'span', classes: 'highlight-red' },
+                { title: 'Highlight Blue', inline: 'span', classes: 'highlight-blue' },
+                { title: 'Important Text', inline: 'span', classes: 'important-text' },
+                { title: 'Subtle Text', inline: 'span', classes: 'subtle-text' },
+            ]},
+            { title: 'Radiology', items: [
+                { title: 'Measurement', inline: 'span', classes: 'measurement' },
+                { title: 'Anatomy Label', inline: 'span', classes: 'anatomy-label' },
+                { title: 'Indent Block', block: 'div', classes: 'indent-block' },
+            ]},
+        ],
         // TinyMCE 6: paste is core; deprecated options (paste_word_valid_elements etc) removed
         table_advtab: false,
         table_cell_advtab: false,
@@ -2305,8 +2369,6 @@ function initializeDiscussionEditor() {
         link_assume_external_targets: true,
         content_css: 'default',
         skin: 'oxide',
-        // Allow custom reference elements with data attributes
-        extended_valid_elements: 'span[class|style|data-ref|data-url|data-title|data-journal|data-year],sup[class|style|data-ref|data-url|data-title|data-journal|data-year]',
         // Custom context menu with Find Reference
         contextmenu: 'findreference cleanuphtml | link image table',
         content_style: `
