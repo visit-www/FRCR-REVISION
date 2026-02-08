@@ -1953,12 +1953,34 @@ pre {
 
 .discussion-text {
     color: #2c3e50 !important;
-    font-size: 1rem !important;
-    line-height: 1.8 !important;
+    font-size: 1.02rem !important;
+    line-height: 1.85 !important;
     text-align: left !important;
     text-indent: 0 !important;
     padding-left: 0 !important;
     margin-left: 0 !important;
+    font-family: 'Charter', 'Georgia', 'Cambria', 'Times New Roman', serif !important;
+    letter-spacing: 0.01em;
+}
+/* Softer bold inside discussion boxes — reduce visual heaviness */
+.discussion-text strong {
+    font-weight: 600;
+}
+.discussion-text .diagnosis-box strong,
+.discussion-text .key-finding strong,
+.discussion-text .clinical-note strong,
+.discussion-text .teaching-pearl strong,
+.discussion-text .pitfall strong,
+.discussion-text .differential-dx strong,
+.discussion-text .normal-variant strong,
+.discussion-text .staging-info strong,
+.discussion-text .image-finding strong {
+    font-weight: 600;
+    font-size: 0.92em;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: inherit;
+    opacity: 0.75;
 }
 
 /* Images Gallery */
@@ -4882,137 +4904,151 @@ body {
    Matching styles also in TinyMCE content_style for in-editor preview. */
 
 /* --- Callout Boxes --- */
+/* Clean, minimal style: subtle left accent + very light background. No border-radius for less "card" feel. */
 .clinical-note {
-    margin: 1rem 0;
-    padding: 12px 16px;
-    background: #eef6fa;
-    border-left: 4px solid #5E899E;
-    border-radius: 4px;
+    margin: 1.1rem 0;
+    padding: 10px 16px;
+    background: transparent;
+    border-left: 3px solid #5E899E;
+    border-radius: 0;
     font-size: 0.95em;
-    line-height: 1.6;
+    line-height: 1.7;
 }
 .clinical-note::before {
-    content: "\f0f1  ";  /* stethoscope */
+    content: "\f0f1  ";
     font-family: "Font Awesome 6 Free";
     font-weight: 900;
     color: #5E899E;
     margin-right: 6px;
+    font-size: 0.85em;
+    opacity: 0.7;
 }
 
 .key-finding {
-    margin: 1rem 0;
-    padding: 12px 16px;
-    background: #eaf7ef;
-    border-left: 4px solid #28a745;
-    border-radius: 4px;
+    margin: 1.1rem 0;
+    padding: 10px 16px;
+    background: transparent;
+    border-left: 3px solid #28a745;
+    border-radius: 0;
     font-size: 0.95em;
-    line-height: 1.6;
+    line-height: 1.7;
 }
 .key-finding::before {
-    content: "\f058  ";  /* check-circle */
+    content: "\f058  ";
     font-family: "Font Awesome 6 Free";
     font-weight: 900;
     color: #28a745;
     margin-right: 6px;
+    font-size: 0.85em;
+    opacity: 0.7;
 }
 
 .differential-dx {
-    margin: 1rem 0;
-    padding: 12px 16px;
-    background: #f3eef8;
-    border-left: 4px solid #7952b3;
-    border-radius: 4px;
+    margin: 1.1rem 0;
+    padding: 10px 16px;
+    background: transparent;
+    border-left: 3px solid #7952b3;
+    border-radius: 0;
     font-size: 0.95em;
-    line-height: 1.6;
+    line-height: 1.7;
 }
 .differential-dx::before {
-    content: "\f074  ";  /* random/shuffle */
+    content: "\f074  ";
     font-family: "Font Awesome 6 Free";
     font-weight: 900;
     color: #7952b3;
     margin-right: 6px;
+    font-size: 0.85em;
+    opacity: 0.7;
 }
 
 .teaching-pearl {
-    margin: 1rem 0;
-    padding: 12px 16px;
-    background: #fef9e7;
-    border-left: 4px solid #e9a304;
-    border-radius: 4px;
+    margin: 1.1rem 0;
+    padding: 10px 16px;
+    background: transparent;
+    border-left: 3px solid #e9a304;
+    border-radius: 0;
     font-size: 0.95em;
-    line-height: 1.6;
+    line-height: 1.7;
 }
 .teaching-pearl::before {
-    content: "\f0eb  ";  /* lightbulb */
+    content: "\f0eb  ";
     font-family: "Font Awesome 6 Free";
     font-weight: 900;
     color: #e9a304;
     margin-right: 6px;
+    font-size: 0.85em;
+    opacity: 0.7;
 }
 
 .pitfall {
-    margin: 1rem 0;
-    padding: 12px 16px;
-    background: #fdecea;
-    border-left: 4px solid #dc3545;
-    border-radius: 4px;
+    margin: 1.1rem 0;
+    padding: 10px 16px;
+    background: transparent;
+    border-left: 3px solid #dc3545;
+    border-radius: 0;
     font-size: 0.95em;
-    line-height: 1.6;
+    line-height: 1.7;
 }
 .pitfall::before {
-    content: "\f071  ";  /* exclamation-triangle */
+    content: "\f071  ";
     font-family: "Font Awesome 6 Free";
     font-weight: 900;
     color: #dc3545;
     margin-right: 6px;
+    font-size: 0.85em;
+    opacity: 0.7;
 }
 
 .normal-variant {
-    margin: 1rem 0;
-    padding: 12px 16px;
-    background: #e8f4fd;
-    border-left: 4px solid #17a2b8;
-    border-radius: 4px;
+    margin: 1.1rem 0;
+    padding: 10px 16px;
+    background: transparent;
+    border-left: 3px solid #17a2b8;
+    border-radius: 0;
     font-size: 0.95em;
-    line-height: 1.6;
+    line-height: 1.7;
 }
 .normal-variant::before {
-    content: "\f05a  ";  /* info-circle */
+    content: "\f05a  ";
     font-family: "Font Awesome 6 Free";
     font-weight: 900;
     color: #17a2b8;
     margin-right: 6px;
+    font-size: 0.85em;
+    opacity: 0.7;
 }
 
 /* --- Diagnostic Boxes --- */
 .diagnosis-box {
-    margin: 1rem 0;
-    padding: 14px 18px;
-    background: linear-gradient(135deg, #fff7ed 0%, #fff2e0 100%);
-    border: 2px solid #e96304;
-    border-radius: 8px;
-    font-weight: 600;
-    font-size: 1.05em;
+    margin: 1.2rem 0;
+    padding: 12px 16px;
+    background: #fdf8f3;
+    border-left: 3px solid #e96304;
+    border-radius: 0;
+    font-weight: normal;
+    font-size: 1em;
+    line-height: 1.7;
 }
 
 .staging-info {
-    margin: 1rem 0;
-    padding: 12px 16px;
-    background: #f0f4f8;
-    border: 1px solid #c8d6e5;
-    border-radius: 6px;
+    margin: 1.1rem 0;
+    padding: 10px 16px;
+    background: transparent;
+    border-left: 3px solid #c8d6e5;
+    border-radius: 0;
     font-size: 0.95em;
-    line-height: 1.6;
+    line-height: 1.7;
 }
 
 .comparison-box {
-    margin: 1rem 0;
-    padding: 12px 16px;
-    background: #f8f9fa;
-    border: 1px dashed #6c757d;
-    border-radius: 6px;
+    margin: 1.1rem 0;
+    padding: 10px 16px;
+    background: transparent;
+    border-left: 3px solid #adb5bd;
+    border-radius: 0;
     font-size: 0.95em;
-    line-height: 1.6;
+    line-height: 1.7;
 }
 
 /* --- Text Emphasis --- */
@@ -5042,7 +5078,7 @@ body {
 
 .important-text {
     color: #dc3545;
-    font-weight: 700;
+    font-weight: 600;
 }
 
 .subtle-text {
@@ -5065,8 +5101,8 @@ body {
 
 .indent-block {
     margin: 0.5rem 0 0.5rem 1.5rem;
-    padding: 8px 12px;
-    border-left: 3px solid #dee2e6;
+    padding: 6px 12px;
+    border-left: 2px solid #dee2e6;
     color: #495057;
 }
 
@@ -5074,10 +5110,11 @@ body {
 .image-finding {
     margin: 0.75rem 0;
     padding: 10px 14px;
-    background: #f8f9fa;
+    background: transparent;
     border-left: 3px solid #e96304;
-    border-radius: 4px;
+    border-radius: 0;
     font-size: 0.95em;
+    line-height: 1.7;
 }
 
 .measurement {

@@ -853,6 +853,7 @@
                                                 </div>
                                             </div>
                                             <button type="button" class="btn btn-sm btn-outline-light position-absolute top-0 end-0 m-2" id="imageStackExitFullscreenBtn" style="display: none; z-index: 11;" title="Exit fullscreen"><i class="fas fa-compress"></i></button>
+                                            <input type="range" id="imageStackFsSliceSlider" min="1" max="1" value="1" step="1" title="Scroll through slices">
                                             <div id="imageStackViewport" style="display: none;"></div>
                                             <img id="imageStackImg" src="" alt="Slice" class="img-fluid w-100" style="max-height: 500px; object-fit: contain;">
                                         </div>
@@ -1045,6 +1046,7 @@
                                     </div>
                                 </div>
                                 <button type="button" class="btn btn-sm btn-outline-light position-absolute top-0 end-0 m-2" id="imageStackExitFullscreenBtn" style="display: none; z-index: 11;" title="Exit fullscreen"><i class="fas fa-compress"></i></button>
+                                <input type="range" id="imageStackFsSliceSlider" min="1" max="1" value="1" step="1" title="Scroll through slices">
                                 <div id="imageStackViewport" style="display: none;"></div>
                                 <img id="imageStackImg" src="" alt="Slice" class="img-fluid w-100" style="max-height: 500px; object-fit: contain;">
                             </div>
@@ -8748,6 +8750,11 @@
                             sliceSliderEl.max = Math.max(1, total);
                             sliceSliderEl.value = current;
                         }
+                        var fsSlider = document.getElementById('imageStackFsSliceSlider');
+                        if (fsSlider) {
+                            fsSlider.max = Math.max(1, total);
+                            fsSlider.value = current;
+                        }
                     });
                     if (sliceInfoEl && _imageStackData[_imageStackCurrentPlan]) {
                         sliceInfoEl.textContent = '1 / ' + (_imageStackData[_imageStackCurrentPlan].length || 0);
@@ -8803,7 +8810,27 @@
                         const fsSlice = document.getElementById('imageStackFullscreenSliceInfo');
                         if (sliceInfoEl && fsSlice) fsSlice.textContent = sliceInfoEl.textContent;
                     }
+                    // Fullscreen vertical slice slider
+                    var fsSliderEl = document.getElementById('imageStackFsSliceSlider');
+                    if (fsSliderEl) {
+                        fsSliderEl.addEventListener('input', function() {
+                            var idx = parseInt(this.value, 10) - 1;
+                            if (window.CaseDicomViewer) window.CaseDicomViewer.setSliceIndex(idx);
+                        });
+                    }
                     document.addEventListener('fullscreenchange', function() {
+                        // Show/hide fullscreen slider
+                        if (fsSliderEl) {
+                            if (document.fullscreenElement && document.fullscreenElement.id === 'imageStackViewerWrapper') {
+                                var total = window.CaseDicomViewer ? window.CaseDicomViewer.getImageCount() : 1;
+                                if (total > 1) {
+                                    fsSliderEl.max = total;
+                                    fsSliderEl.classList.add('fs-slider-visible');
+                                }
+                            } else {
+                                fsSliderEl.classList.remove('fs-slider-visible');
+                            }
+                        }
                         if (document.fullscreenElement && document.fullscreenElement.id === 'imageStackViewerWrapper') {
                             function populateFullscreenPlanTabs() {
                                 const planTabs = document.getElementById('imageStackFullscreenPlanTabs');

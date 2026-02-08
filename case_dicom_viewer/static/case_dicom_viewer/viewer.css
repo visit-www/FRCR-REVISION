@@ -127,6 +127,30 @@
 #imageStackExitFullscreenBtn {
   z-index: 11;
 }
+
+/* Fullscreen: vertical slice slider on the right edge */
+#imageStackFsSliceSlider {
+  display: none;
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 55vh;
+  width: 28px;
+  z-index: 12;
+  cursor: pointer;
+  writing-mode: vertical-lr;
+  accent-color: rgba(255, 255, 255, 0.85);
+  opacity: 0.6;
+  transition: opacity 0.2s;
+}
+#imageStackFsSliceSlider:hover,
+#imageStackFsSliceSlider:active {
+  opacity: 1;
+}
+#imageStackFsSliceSlider.fs-slider-visible {
+  display: block;
+}
 #imageStackViewport {
   width: 100%;
   height: 100%;
