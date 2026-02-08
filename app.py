@@ -3058,20 +3058,56 @@ def _format_paragraph(text):
     return f'<p>{safe}</p>'
 
 
+def _sanitize_ai_html(html_content):
+    """
+    Sanitize AI-generated HTML, allowing only safe tags and our custom CSS classes.
+    Strips <script>, onclick=, etc. while preserving styled content.
+    """
+    import bleach
+
+    ALLOWED_TAGS = [
+        'div', 'span', 'p', 'br', 'strong', 'em', 'b', 'i', 'u',
+        'h3', 'h4', 'h5', 'ul', 'ol', 'li', 'table', 'thead', 'tbody',
+        'tr', 'th', 'td', 'a', 'hr', 'sup', 'sub',
+    ]
+    ALLOWED_ATTRS = {
+        '*': ['class'],
+        'a': ['href', 'target', 'rel'],
+        'td': ['colspan', 'rowspan'],
+        'th': ['colspan', 'rowspan'],
+    }
+    return bleach.clean(
+        html_content,
+        tags=ALLOWED_TAGS,
+        attributes=ALLOWED_ATTRS,
+        strip=True,
+    )
+
+
+def _is_html_discussion(text):
+    """Detect if discussion content is HTML (new format) vs plain text (old cached data)."""
+    if not text:
+        return False
+    return '<div' in text or '<table' in text or 'class=' in text
+
+
 def _build_ai_discussion_html(output, provider, model_name):
     """
     Build HTML for AI-generated discussion content.
-    
+
     Uses wrapper div with data-ai-generated="true" attribute for simple detection and removal.
-    The wrapper provides visual distinction (orange background) and is removed when 
+    The wrapper provides visual distinction (orange background) and is removed when
     the case is saved and published, making the content appear as normal text.
+
+    Handles both new HTML-formatted discussions (sanitized with bleach) and
+    old plain-text discussions (escaped + newline conversion) for backward compat.
     """
     sections = []
     timestamp = datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')
-    
+
     # Wrap entire AI-generated content in a single wrapper div with data attribute
     sections.append('<div data-ai-generated="true" class="ai-generated-wrapper">')
-    
+
     # Header with AI attribution
     header = (
         '<hr style="border-top: 2px solid #dc3545; margin: 0.5rem 0;">'
@@ -3085,53 +3121,35 @@ def _build_ai_discussion_html(output, provider, model_name):
     discussion = (output or {}).get('discussion', '')
     if discussion:
         sections.append('<h4>Discussion</h4>')
-        # Format discussion with better paragraph handling
-        safe_discussion = _escape_html(discussion).replace('\n\n', '</p><p>').replace('\n', '<br>')
-        sections.append(f'<p>{safe_discussion}</p>')
+        if _is_html_discussion(discussion):
+            # New format: sanitize HTML, preserving our CSS classes
+            sections.append(_sanitize_ai_html(discussion))
+        else:
+            # Old cached plain text: escape and convert newlines
+            safe_discussion = _escape_html(discussion).replace('\n\n', '</p><p>').replace('\n', '<br>')
+            sections.append(f'<p>{safe_discussion}</p>')
 
-    # Safety checklist
+    # Safety checklist — styled as .pitfall callout box
     checklist = (output or {}).get('safety_checklist', []) or []
     if checklist:
-        sections.append('<h4>Clinico-Radiological Safety Focus</h4>')
         items = ''.join(f'<li>{_escape_html(item)}</li>' for item in checklist if item)
         if items:
-            sections.append(f'<ul>{items}</ul>')
-
-    # Teaching image
-    teaching = (output or {}).get('teaching_image', {}) or {}
-    if teaching and any(teaching.values()):
-        title = _escape_html(teaching.get('title', ''))
-        link = teaching.get('link', '')  # Don't escape yet - need for href
-        description = _escape_html(teaching.get('description', ''))
-        teaching_point = _escape_html(teaching.get('teaching_point', ''))
-        source = _escape_html(teaching.get('source', ''))
-        
-        sections.append('<h4>Teaching Image</h4>')
-        if title:
-            sections.append(f'<p><strong>Image:</strong> {title}</p>')
-        if link:
-            safe_link = _escape_html(link)
             sections.append(
-                f'<p><strong>Link:</strong> '
-                f'<a href="{safe_link}" target="_blank" rel="noopener noreferrer">{safe_link}</a></p>'
+                '<div class="pitfall">'
+                '<strong>Safety Checklist</strong>'
+                f'<ul>{items}</ul>'
+                '</div>'
             )
-        if description:
-            sections.append(f'<p><strong>Description:</strong> {description}</p>')
-        if teaching_point:
-            sections.append(f'<p><strong>Teaching point:</strong> {teaching_point}</p>')
-        if source:
-            sections.append(f'<p><strong>Source:</strong> {source}</p>')
 
-    # Sources/References
+    # Sources/References — styled as .indent-block
     sources = (output or {}).get('sources', []) or []
     if sources:
-        sections.append('<h4>Sources</h4>')
         source_items = []
         for item in sources:
             title = _escape_html(item.get('title', 'Source'))
             url = item.get('url', '')
             pmid = item.get('pmid', '')
-            
+
             if url:
                 safe_url = _escape_html(url)
                 link_text = title
@@ -3143,7 +3161,6 @@ def _build_ai_discussion_html(output, provider, model_name):
                     f'</li>'
                 )
             elif pmid:
-                # Link to PubMed if we have PMID but no URL
                 pubmed_url = f'https://pubmed.ncbi.nlm.nih.gov/{_escape_html(pmid)}/'
                 source_items.append(
                     f'<li>'
@@ -3154,15 +3171,22 @@ def _build_ai_discussion_html(output, provider, model_name):
             else:
                 source_items.append(f'<li>{title}</li>')
         if source_items:
-            sections.append(f"<ul>{''.join(source_items)}</ul>")
+            sections.append(
+                '<div class="indent-block">'
+                '<strong>Sources &amp; References</strong>'
+                f"<ul>{''.join(source_items)}</ul>"
+                '</div>'
+            )
 
-    # Warnings
+    # Warnings — styled as .clinical-note callout
     warnings = (output or {}).get('warnings', []) or []
     if warnings:
         warning_text = '; '.join(_escape_html(w) for w in warnings if w)
         if warning_text:
-            sections.append(f'<p><strong>⚠️ Warnings:</strong> {warning_text}</p>')
-    
+            sections.append(
+                f'<div class="clinical-note"><strong>Warnings:</strong> {warning_text}</div>'
+            )
+
     # Close the wrapper div
     sections.append('</div>')
 

@@ -75,8 +75,6 @@ If Case Diagnosis is 'NOT PROVIDED', return ONLY:
   "qa_pairs": [],
   "discussion": "",
   "safety_checklist": [],
-  "teaching_image": {},
-  "anatomy_image": {},
   "sources": [],
   "warnings": ["Diagnosis is required"]
 }
@@ -98,27 +96,16 @@ Return valid JSON with this exact structure:
   "qa_pairs": [
     {"question": "...", "answer": "..."}
   ],
-  "discussion": "...",
+  "discussion": "<div class=\\"diagnosis-box\\">...</div>...(HTML fragments using CSS classes)...",
   "safety_checklist": ["..."],
-  "teaching_image": {
-    "title": "...",
-    "link": "...",
-    "description": "...",
-    "teaching_point": "...",
-    "source": "..."
-  },
-  "anatomy_image": {
-    "title": "...",
-    "link": "...",
-    "description": "...",
-    "teaching_point": "...",
-    "source": "..."
-  },
   "sources": [
     {"title": "...", "url": "...", "pmid": "..."}
   ],
   "warnings": ["..."]
-}"""
+}
+
+IMPORTANT: The "discussion" field must contain HTML using the CSS classes described in Section 2.
+Do NOT include teaching_image or anatomy_image fields."""
 
     # Section 1: Q&A pairs
     qa_section = """
@@ -143,53 +130,111 @@ Rules:
     # Section 2: Discussion
     discussion_section = """
 ───────────────────────────────────────────────────────────────────
-2) discussion — RADIOLOGIST'S HIGH-YIELD NOTES
+2) discussion — RADIOLOGIST'S HIGH-YIELD NOTES (HTML OUTPUT)
 ───────────────────────────────────────────────────────────────────
 
-Provide a concise discussion using:
-• Short paragraphs
-• Bullet lists (use • or -)
-• Simple pipe tables where helpful
+Output STYLED HTML FRAGMENTS for the discussion field. Do NOT output plain text.
+Do NOT output a full HTML page (no <html>, <head>, <body> tags). The output is
+inserted directly into a TinyMCE rich-text editor.
 
-Focus on:
+USE THESE CSS CLASSES (all are pre-defined in the app stylesheet):
+
+CALLOUT BOXES (use as <div class="CLASS_NAME">):
+  .clinical-note    — blue-left-border box for clinical context / pearls
+  .key-finding      — green-left-border box for key imaging findings
+  .teaching-pearl   — purple-left-border box for teaching points
+  .pitfall          — red-left-border box for pitfalls / danger / must-not-miss
+  .differential-dx  — orange-left-border box for differentials
+  .normal-variant   — grey-left-border box for normal variants
+
+DIAGNOSTIC BOXES:
+  .diagnosis-box    — blue-background summary box (use for the diagnosis summary)
+  .staging-info     — green-background box for staging/grading info
+  .comparison-box   — yellow-background box for side-by-side comparisons
+
+TEXT EMPHASIS (use as <span class="CLASS_NAME">):
+  .highlight-yellow, .highlight-green, .highlight-red — background highlight
+  .important-text   — bold red text for critical items
+  .subtle-text      — grey smaller text for supplementary info
+
+LAYOUT:
+  .two-column       — responsive 2-column grid (collapses on mobile).
+                      Put two child <div> elements inside.
+  .indent-block     — indented content block
+
+RADIOLOGY-SPECIFIC:
+  .image-finding    — light-blue box for describing imaging findings
+  .measurement      — inline green box for measurements/dimensions
+  .anatomy-label    — inline dark box for anatomical labels
+
+TABLES:
+  Use <table class="table table-sm table-bordered"> for staging/classification tables.
+
+STRUCTURE YOUR OUTPUT LIKE THIS EXAMPLE (adapt content to the actual diagnosis):
+
+<div class="diagnosis-box">
+  <strong>Diagnosis Summary</strong>
+  <p>Brief 1-2 sentence overview of the diagnosis anchored to imaging.</p>
+</div>
+
+<div class="key-finding">
+  <strong>Key Imaging Findings</strong>
+  <ul>
+    <li><span class="anatomy-label">Structure</span> — finding description with <span class="measurement">measurement</span></li>
+  </ul>
+</div>
+
+<div class="two-column">
+  <div>
+    <div class="clinical-note">
+      <strong>Dangerous Anatomy</strong>
+      <p>Anatomical danger points relevant to this diagnosis.</p>
+    </div>
+  </div>
+  <div>
+    <div class="differential-dx">
+      <strong>Key Differentials</strong>
+      <ul><li>Differential 1 — distinguishing feature</li></ul>
+    </div>
+  </div>
+</div>
+
+<div class="pitfall">
+  <strong>Pitfalls &amp; Must-Not-Miss</strong>
+  <ul><li>Critical pitfall that changes management</li></ul>
+</div>
+
+<div class="teaching-pearl">
+  <strong>Teaching Points</strong>
+  <ul><li>High-yield teaching point for FRCR</li></ul>
+</div>
+
+CONTENT FOCUS (unchanged from before):
 • Dangerous anatomy relevant to this diagnosis
 • Spread patterns and routes of involvement
 • Complications and what to look for
 • Key imaging signs and how they appear
-• What differentiates mild vs severe
-• What differentiates stable vs unstable
+• What differentiates mild vs severe / stable vs unstable
 • What MUST be mentioned in a report
 
 If staging/grading/classification exists (non-cancer):
-• Do NOT give full TNM or full scoring tables
-• Instead give only:
-  - The 2-4 most important differentiating features
-  - What specifically changes management
+• Do NOT give full scoring tables — only the 2-4 features that change management
+• Present in a .staging-info box or table
 
 TNM CLASSIFICATION (CANCER ONLY):
-• If the diagnosis contains the word "cancer", include AJCC TNM classification table in this section
-• Format using pipe tables (|) for clear structure
-• Include:
-  - T Stage definitions (T1, T2, T3, T4, etc.)
-  - N Stage definitions (N0, N1, N2, N3, etc.)
-  - M Stage definitions (M0, M1, etc.)
-  - Stage groupings (Stage I, II, III, IV with corresponding T N M combinations)
-• Example format:
-  | T Stage | Definition |
-  |---------|------------|
-  | T1      | ...        |
-  | T2      | ...        |
-  | N Stage | Definition |
-  |---------|------------|
-  | N0      | ...        |
-  | M Stage | Definition |
-  |---------|------------|
-  | M0      | ...        |
-  | Stage Grouping | T N M |
-  |----------------|-------|
-  | Stage I        | T1N0M0 |
-• Only include TNM classification if diagnosis contains "cancer" keyword
-• Keep the table concise - focus on the most clinically relevant stages"""
+• If the diagnosis contains "cancer", include AJCC TNM classification
+• Use <table class="table table-sm table-bordered"> for T, N, M stages and stage groupings
+• Wrap the table section in <div class="staging-info">
+• Keep tables concise — focus on clinically relevant stages
+
+RULES:
+• Every <div> must have a class from the list above
+• Use <strong> for headings inside boxes, NOT <h3>/<h4> (those are reserved for outer structure)
+• Use <ul>/<li> for lists, <p> for paragraphs
+• Do NOT use markdown — output HTML only
+• Do NOT wrap in <html>, <head>, or <body>
+• Do NOT use inline styles — only the CSS classes listed above
+• Keep clinical content accurate and FRCR-relevant"""
 
     # Section 3: Safety checklist
     safety_section = """
@@ -207,83 +252,10 @@ This section answers: "Is the candidate safe to report this independently?"
 
 Each item should be a complete, actionable statement."""
 
-    # Section 4: Teaching image
-    image_section = """
-───────────────────────────────────────────────────────────────────
-4) teaching_image — TEACHING IMAGE WITH CREDITS
-───────────────────────────────────────────────────────────────────
-
-Suggest ONE teaching image that explains a key concept of this diagnosis:
-• CT, MRI, X-ray, or explanatory diagram
-• Something that shows anatomy, spread pattern, or a classic sign
-
-Provide:
-• title: Brief descriptive title
-• link: URL to a reputable medical image source
-• description: What the image shows
-• teaching_point: What it teaches the learner
-• source: Attribution/credit (e.g., "Radiopaedia - Dr. X")
-
-Use sources such as:
-• Radiopaedia (radiopaedia.org)
-• Radiology Assistant (radiologyassistant.nl)
-• ACR (acr.org)
-• NICE guidelines (nice.org.uk)
-• Radiology key (radiologykey.com)
-• Radiographics (https://pubs.rsna.org/journal/radiographics)
-• Cancer staging atlases (https://www.cancernetwork.org/tool?tnm_version=v8)
-• Musculoskeletal MRI anatomy from https://www.freitasrad.net
-• Head and neck MRI anatomy from https://headandneckrad.com
-• Radiology Gyan (https://radiogyan.com/radiological-anatomy/) - comprehensive anatomy links collection
-
-If no suitable image is known, leave teaching_image as empty object {}"""
-
-    # Section 5: Anatomy image (OPTIONAL - Normal anatomy reference)
-    anatomy_image_section = """
-───────────────────────────────────────────────────────────────────
-5) anatomy_image — NORMAL ANATOMY REFERENCE (OPTIONAL)
-───────────────────────────────────────────────────────────────────
-
-OPTIONAL SUPPLEMENT: If you can find a DISTINCT image showing NORMAL 
-radiological anatomy relevant to this diagnosis, provide it here.
-
-This should be DIFFERENT from teaching_image and specifically show:
-• Normal anatomical structures (not pathology)
-• Cross-sectional anatomy (CT/MRI) for spatial reference
-• Anatomical landmarks relevant to the diagnosis location
-• Structures that help understand the pathology context
-
-CRITICAL REQUIREMENTS:
-• MUST be different from teaching_image (do not duplicate)
-• MUST focus on NORMAL anatomy (not pathology)
-• MUST be relevant to the diagnosis location/structures
-• If uncertain or no suitable image exists, leave as empty object {}
-
-This helps students compare normal vs. pathology anatomy.
-
-Provide:
-• title: Brief descriptive title
-• link: URL to normal anatomy resource (MUST be valid, working URL)
-• description: What normal anatomical structures are shown
-• teaching_point: How this normal anatomy relates to the diagnosis
-• source: Attribution/credit
-
-Preferred sources for normal anatomy:
-• Radiopaedia normal anatomy sections (radiopaedia.org)
-• Radiology Assistant anatomy atlases (radiologyassistant.nl)
-• Radiology Gyan (https://radiogyan.com/radiological-anatomy/) - comprehensive anatomy links
-• Freitasrad (https://www.freitasrad.net) - MSK MRI anatomy
-• Head and Neck Radiology (https://headandneckrad.com) - Head/neck MRI anatomy
-• Medical Image Cafe normal anatomy sections (medicalimagecafe.com)
-• Sectional anatomy resources (sectional-anatomy.org)
-• Castlemountain imaging anatomy (castlemountain.dk)
-
-If no suitable normal anatomy image is known, leave anatomy_image as empty object {}"""
-
-    # Section 6: Sources
+    # Section 4: Sources
     sources_section = """
 ───────────────────────────────────────────────────────────────────
-6) sources — REFERENCES
+4) sources — REFERENCES
 ───────────────────────────────────────────────────────────────────
 
 List 2-5 reputable sources for your information:
@@ -309,10 +281,10 @@ IMPORTANT GUIDELINES:
 • For Radiopaedia: Use exact case/article slugs from search results, not guessed URLs
 • For journal articles: Link to specific article DOIs, not journal homepages"""
 
-    # Section 7: Warnings
+    # Section 5: Warnings
     warnings_section = """
 ───────────────────────────────────────────────────────────────────
-7) warnings — IMPORTANT CAVEATS
+5) warnings — IMPORTANT CAVEATS
 ───────────────────────────────────────────────────────────────────
 
 Include any warnings about:
@@ -345,8 +317,6 @@ Keep everything clinically relevant, radiology-focused, and easy to retain."""
         qa_section,
         discussion_section,
         safety_section,
-        image_section,
-        anatomy_image_section,
         sources_section,
         warnings_section,
         quality_bar
@@ -401,7 +371,7 @@ def generate_prelim_case_data(case_context, provider="claude", model=None):
 
     payload = {
         "model": model,
-        "max_tokens": 4000,  # Increased for more comprehensive output
+        "max_tokens": 6000,  # HTML markup adds ~40-50% overhead vs plain text
         "temperature": 0.3,  # Slightly higher for more natural language
         "system": system_prompt,
         "messages": [
