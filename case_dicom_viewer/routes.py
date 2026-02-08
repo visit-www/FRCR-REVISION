@@ -503,12 +503,13 @@ def update_case_stack_description(case_id):
             stack = CaseImageStack.query.filter_by(case_id=case_id).order_by(CaseImageStack.display_order, CaseImageStack.id).first()
         if not stack:
             return jsonify({"error": "No image stack linked to this case"}), 404
-        data = request.get_json() or {}
         description_html = data.get("description_html")
         if description_html is None:
             return jsonify({"error": "description_html required"}), 400
         stack.description_html = description_html if description_html else None
         db.session.commit()
+        logger.info("[CaseDicomViewer] Description saved for case_id=%s stack_id=%s len=%s",
+                     case_id, stack.id, len(description_html) if description_html else 0)
         return jsonify({
             "message": "Description saved",
             "description_html": getattr(stack, "description_html", None),

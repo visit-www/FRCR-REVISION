@@ -1380,6 +1380,11 @@ console.log('[TinyMCE Loader] Script URL was:', "{{ url_for('static', filename='
 <script>
 // Global handler for save button - ensures function exists
 function handleSaveCase(event) {
+    // Auto-save image stack description if the section is visible
+    var descSection = document.getElementById('imageStackDescriptionSection');
+    if (descSection && descSection.style.display !== 'none' && typeof saveImageStackDescription === 'function') {
+        saveImageStackDescription();
+    }
     if (typeof saveEditedCase === 'function') {
         saveEditedCase(event);
     } else if (window.saveEditedCase && typeof window.saveEditedCase === 'function') {
@@ -1532,12 +1537,13 @@ function updateImageStackStatus(caseId) {
 function initImageStackDescriptionEditor(initialHtml) {
     const ta = document.getElementById('imageStackDescription');
     if (!ta) return;
+    // Always set textarea value as fallback in case TinyMCE fails to init
+    ta.value = initialHtml || '';
     if (_imageStackDescriptionEditorInited && typeof tinymce !== 'undefined' && tinymce.get('imageStackDescription')) {
         tinymce.get('imageStackDescription').setContent(initialHtml || '');
         return;
     }
     if (typeof tinymce === 'undefined' || !tinymce.init) {
-        ta.value = initialHtml || '';
         return;
     }
     tinymce.init({
@@ -1556,7 +1562,10 @@ function initImageStackDescriptionEditor(initialHtml) {
 }
 function saveImageStackDescription() {
     const caseId = document.getElementById('editCaseId')?.value;
-    if (!caseId) { alert('Case ID missing.'); return; }
+    if (!caseId || caseId === 'new' || caseId.startsWith('staging-')) {
+        console.log('[ImageStackDesc] Skip save — caseId:', caseId);
+        return;
+    }
     const statusEl = document.getElementById('imageStackDescriptionSaveStatus');
     const btn = document.getElementById('saveImageStackDescriptionBtn');
     let html = '';
@@ -1566,6 +1575,12 @@ function saveImageStackDescription() {
     } else {
         html = document.getElementById('imageStackDescription')?.value || '';
     }
+    // Guard: if TinyMCE returned empty but textarea has content, use textarea
+    if (!html && document.getElementById('imageStackDescription')) {
+        var fallback = document.getElementById('imageStackDescription').value || '';
+        if (fallback) html = fallback;
+    }
+    console.log('[ImageStackDesc] Saving description for case', caseId, '— length:', html.length);
     if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Saving...'; }
     if (statusEl) statusEl.textContent = '';
     fetch('/case-dicom-viewer/api/case/' + caseId + '/stack/description', {
@@ -1587,12 +1602,15 @@ function saveImageStackDescription() {
     }).then(function(data) {
         if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-save me-1"></i>Save description'; }
         if (data.error) {
+            console.warn('[ImageStackDesc] Server error:', data.error);
             if (statusEl) statusEl.textContent = 'Error: ' + data.error;
             return;
         }
+        console.log('[ImageStackDesc] Saved OK');
         if (statusEl) statusEl.textContent = 'Saved.';
         setTimeout(function() { if (statusEl) statusEl.textContent = ''; }, 2000);
     }).catch(function(err) {
+        console.error('[ImageStackDesc] Save failed:', err);
         if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-save me-1"></i>Save description'; }
         if (statusEl) statusEl.textContent = 'Failed: ' + (err.message || 'Unknown error');
     });
