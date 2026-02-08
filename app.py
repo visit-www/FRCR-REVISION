@@ -19,6 +19,7 @@ from flask_login import LoginManager, login_required, current_user
 from flask_migrate import Migrate
 from models import db, User, Case, CaseImage, Question, Answer, BodyPart
 from models import RevisionSession, RevisionHistory  # STUDENT REVISION: New models for balanced revision
+from models import UserQAProgress  # STUDY MODE: SM-2 spaced repetition
 from models import ForumMessage, ForumMessageVote, ForumMessageFlag  # Forum models
 from auth import auth_bp
 from backup_routes import backup_bp
@@ -952,6 +953,322 @@ def view_revision_case(session_id, case_index):
                          has_next=has_next,
                          previous_url=previous_url,
                          next_url=next_url)
+
+
+# ==================== SPACED REPETITION STUDY SYSTEM ====================
+
+
+@app.route('/study')
+@login_required
+def study_dashboard():
+    """Study dashboard with stats and module breakdown."""
+    from models import FRCRModule, Case, Question, CaseStatus
+    from sqlalchemy import func, case as sql_case
+    from datetime import date
+
+    user_id = current_user.id
+    today = date.today()
+
+    # Overall stats
+    total_progress = UserQAProgress.query.filter_by(user_id=user_id).count()
+
+    due_today = UserQAProgress.query.filter(
+        UserQAProgress.user_id == user_id,
+        UserQAProgress.next_review_date <= today
+    ).count()
+
+    mastered = UserQAProgress.query.filter(
+        UserQAProgress.user_id == user_id,
+        UserQAProgress.repetition_number >= 5,
+        UserQAProgress.interval_days >= 21
+    ).count()
+
+    learning = UserQAProgress.query.filter(
+        UserQAProgress.user_id == user_id,
+        UserQAProgress.repetition_number < 5
+    ).count()
+
+    total_correct = db.session.query(func.sum(UserQAProgress.times_correct)).filter(
+        UserQAProgress.user_id == user_id
+    ).scalar() or 0
+    total_incorrect = db.session.query(func.sum(UserQAProgress.times_incorrect)).filter(
+        UserQAProgress.user_id == user_id
+    ).scalar() or 0
+    total_attempts = total_correct + total_incorrect
+    accuracy_percent = round((total_correct / total_attempts * 100), 1) if total_attempts > 0 else 0
+
+    # Per-module breakdown
+    module_stats = db.session.query(
+        Case.module,
+        func.count(UserQAProgress.id).label('total'),
+        func.sum(sql_case((UserQAProgress.next_review_date <= today, 1), else_=0)).label('due'),
+        func.sum(sql_case(
+            ((UserQAProgress.repetition_number >= 5) & (UserQAProgress.interval_days >= 21), 1),
+            else_=0
+        )).label('mastered')
+    ).join(Case, UserQAProgress.case_id == Case.id).filter(
+        UserQAProgress.user_id == user_id
+    ).group_by(Case.module).all()
+
+    modules_data = []
+    for module, total, due_count, mastered_count in module_stats:
+        if module:
+            modules_data.append({
+                'module': module,
+                'module_name': module.value,
+                'total': total or 0,
+                'due': due_count or 0,
+                'mastered': mastered_count or 0,
+                'progress_percent': round(((mastered_count or 0) / total * 100), 1) if total else 0
+            })
+    modules_data.sort(key=lambda x: list(FRCRModule).index(x['module']))
+
+    # Total available Q&A pairs (published cases)
+    total_qa = db.session.query(func.count(Question.id)).join(
+        Case, Question.case_id == Case.id
+    ).filter(Case.status == CaseStatus.PUBLISHED).scalar() or 0
+    new_cards_available = max(0, total_qa - total_progress)
+
+    return render_template('study.html',
+                           due_today=due_today,
+                           mastered=mastered,
+                           learning=learning,
+                           accuracy_percent=accuracy_percent,
+                           total_progress=total_progress,
+                           new_cards_available=new_cards_available,
+                           modules_data=modules_data)
+
+
+@app.route('/study/session')
+@login_required
+def study_session():
+    """Flashcard study session page."""
+    from models import FRCRModule
+
+    module_param = request.args.get('module')
+    selected_module = None
+    if module_param:
+        try:
+            selected_module = FRCRModule[module_param]
+        except KeyError:
+            flash('Invalid module selected', 'warning')
+            return redirect(url_for('study_dashboard'))
+
+    return render_template('study_session.html',
+                           selected_module=selected_module,
+                           modules=list(FRCRModule))
+
+
+@app.route('/api/study/cards', methods=['GET'])
+@login_required
+def get_study_cards():
+    """Get next batch of cards for study session (due first, then new)."""
+    from models import Question, Answer, Case, FRCRModule, CaseStatus
+    from sqlalchemy import func
+    from datetime import date
+
+    user_id = current_user.id
+    today = date.today()
+    module_param = request.args.get('module')
+    limit = min(int(request.args.get('limit', 20)), 50)
+
+    selected_module = None
+    if module_param:
+        try:
+            selected_module = FRCRModule[module_param]
+        except KeyError:
+            return jsonify({'error': 'Invalid module'}), 400
+
+    cards = []
+
+    # 1) Due cards (most overdue first)
+    due_query = db.session.query(
+        Question.id.label('question_id'),
+        Question.question_text,
+        Question.case_id,
+        Answer.answer_text,
+        Case.diagnosis,
+        Case.module,
+        UserQAProgress.repetition_number,
+        UserQAProgress.interval_days
+    ).join(
+        Answer, (Answer.case_id == Question.case_id) & (Answer.answer_number == Question.question_number)
+    ).join(
+        Case, Question.case_id == Case.id
+    ).join(
+        UserQAProgress, (UserQAProgress.question_id == Question.id) & (UserQAProgress.user_id == user_id)
+    ).filter(
+        Case.status == CaseStatus.PUBLISHED,
+        UserQAProgress.next_review_date <= today
+    )
+    if selected_module:
+        due_query = due_query.filter(Case.module == selected_module)
+    due_query = due_query.order_by(UserQAProgress.next_review_date.asc())
+    due_cards = due_query.limit(limit).all()
+
+    for c in due_cards:
+        cards.append({
+            'question_id': c.question_id,
+            'question_text': c.question_text,
+            'answer_text': c.answer_text,
+            'case_id': c.case_id,
+            'diagnosis': c.diagnosis,
+            'module': c.module.value if c.module else None,
+            'is_new': False,
+            'repetition_number': c.repetition_number,
+            'interval_days': c.interval_days,
+        })
+
+    # 2) New cards (fill remaining)
+    remaining = limit - len(cards)
+    if remaining > 0:
+        started_ids = db.session.query(UserQAProgress.question_id).filter(
+            UserQAProgress.user_id == user_id
+        ).subquery()
+
+        new_query = db.session.query(
+            Question.id.label('question_id'),
+            Question.question_text,
+            Question.case_id,
+            Answer.answer_text,
+            Case.diagnosis,
+            Case.module,
+        ).join(
+            Answer, (Answer.case_id == Question.case_id) & (Answer.answer_number == Question.question_number)
+        ).join(
+            Case, Question.case_id == Case.id
+        ).filter(
+            Case.status == CaseStatus.PUBLISHED,
+            Question.id.notin_(started_ids)
+        )
+        if selected_module:
+            new_query = new_query.filter(Case.module == selected_module)
+        new_query = new_query.order_by(func.random())
+        new_cards = new_query.limit(remaining).all()
+
+        for c in new_cards:
+            cards.append({
+                'question_id': c.question_id,
+                'question_text': c.question_text,
+                'answer_text': c.answer_text,
+                'case_id': c.case_id,
+                'diagnosis': c.diagnosis,
+                'module': c.module.value if c.module else None,
+                'is_new': True,
+                'repetition_number': 0,
+                'interval_days': 0,
+            })
+
+    return jsonify({
+        'cards': cards,
+        'total_returned': len(cards),
+        'due_count': len([c for c in cards if not c['is_new']]),
+        'new_count': len([c for c in cards if c['is_new']]),
+    })
+
+
+@app.route('/api/study/answer', methods=['POST'])
+@login_required
+def record_study_answer():
+    """Record answer and update SM-2 schedule."""
+    from models import Question
+    from sm2_algorithm import update_progress_on_answer
+    from datetime import date
+
+    data = request.get_json()
+    question_id = data.get('question_id')
+    quality = data.get('quality')
+
+    if not question_id or quality is None:
+        return jsonify({'error': 'Missing required fields'}), 400
+    if quality not in [0, 1, 2]:
+        return jsonify({'error': 'Quality must be 0, 1, or 2'}), 400
+
+    question = Question.query.get(question_id)
+    if not question:
+        return jsonify({'error': 'Question not found'}), 404
+
+    progress = UserQAProgress.query.filter_by(
+        user_id=current_user.id, question_id=question_id
+    ).first()
+
+    if not progress:
+        progress = UserQAProgress(
+            user_id=current_user.id,
+            question_id=question_id,
+            case_id=question.case_id,
+            ease_factor=2.5,
+            interval_days=0,
+            repetition_number=0,
+            next_review_date=date.today(),
+            times_correct=0,
+            times_incorrect=0,
+        )
+        db.session.add(progress)
+
+    update_progress_on_answer(progress, quality)
+    db.session.commit()
+
+    today = date.today()
+    due_remaining = UserQAProgress.query.filter(
+        UserQAProgress.user_id == current_user.id,
+        UserQAProgress.next_review_date <= today
+    ).count()
+    mastered_total = UserQAProgress.query.filter(
+        UserQAProgress.user_id == current_user.id,
+        UserQAProgress.repetition_number >= 5,
+        UserQAProgress.interval_days >= 21
+    ).count()
+
+    return jsonify({
+        'success': True,
+        'next_review_date': progress.next_review_date.isoformat(),
+        'interval_days': progress.interval_days,
+        'repetition_number': progress.repetition_number,
+        'stats': {'due_today': due_remaining, 'mastered': mastered_total},
+    })
+
+
+@app.route('/api/study/stats', methods=['GET'])
+@login_required
+def get_study_stats():
+    """Get overall study statistics for current user."""
+    from sqlalchemy import func
+    from datetime import date
+
+    user_id = current_user.id
+    today = date.today()
+
+    total_progress = UserQAProgress.query.filter_by(user_id=user_id).count()
+    due_today = UserQAProgress.query.filter(
+        UserQAProgress.user_id == user_id,
+        UserQAProgress.next_review_date <= today
+    ).count()
+    mastered = UserQAProgress.query.filter(
+        UserQAProgress.user_id == user_id,
+        UserQAProgress.repetition_number >= 5,
+        UserQAProgress.interval_days >= 21
+    ).count()
+    learning = UserQAProgress.query.filter(
+        UserQAProgress.user_id == user_id,
+        UserQAProgress.repetition_number < 5
+    ).count()
+    total_correct = db.session.query(func.sum(UserQAProgress.times_correct)).filter(
+        UserQAProgress.user_id == user_id
+    ).scalar() or 0
+    total_incorrect = db.session.query(func.sum(UserQAProgress.times_incorrect)).filter(
+        UserQAProgress.user_id == user_id
+    ).scalar() or 0
+    total_attempts = total_correct + total_incorrect
+    accuracy_percent = round((total_correct / total_attempts * 100), 1) if total_attempts > 0 else 0
+
+    return jsonify({
+        'total_progress': total_progress,
+        'due_today': due_today,
+        'mastered': mastered,
+        'learning': learning,
+        'accuracy_percent': accuracy_percent,
+    })
 
 
 @app.route('/modules')

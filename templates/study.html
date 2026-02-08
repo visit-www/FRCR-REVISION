@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+
+{% block mobile_breadcrumb %}
+<li class="breadcrumb-item active text-white" aria-current="page">
+    <i class="fas fa-brain me-1"></i>Study Mode
+</li>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="breadcrumb-custom mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="/"><i class="fas fa-home"></i> Home</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Study Mode</li>
+        </ol>
+    </nav>
+
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2 class="mb-1">
+                <i class="fas fa-brain me-2" style="color: #e96304;"></i>Study Mode
+            </h2>
+            <p class="text-muted mb-0">Master FRCR cases with spaced repetition</p>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center py-3">
+                    <div style="font-size: 1.8rem; color: #e96304;">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <h3 class="mt-1 mb-0">{{ due_today }}</h3>
+                    <p class="text-muted small mb-0">Due Today</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center py-3">
+                    <div style="font-size: 1.8rem; color: #a8d5ba;">
+                        <i class="fas fa-trophy"></i>
+                    </div>
+                    <h3 class="mt-1 mb-0">{{ mastered }}</h3>
+                    <p class="text-muted small mb-0">Mastered</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center py-3">
+                    <div style="font-size: 1.8rem; color: #ffc107;">
+                        <i class="fas fa-book-reader"></i>
+                    </div>
+                    <h3 class="mt-1 mb-0">{{ learning }}</h3>
+                    <p class="text-muted small mb-0">Learning</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body text-center py-3">
+                    <div style="font-size: 1.8rem; color: #5E899E;">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <h3 class="mt-1 mb-0">{{ accuracy_percent }}%</h3>
+                    <p class="text-muted small mb-0">Accuracy</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Start Session -->
+    <div class="row mb-5">
+        <div class="col-lg-8 mx-auto">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-4">
+                    <h4 class="mb-3">
+                        <i class="fas fa-play-circle me-2" style="color: #e96304;"></i>
+                        Start Study Session
+                    </h4>
+                    <div class="mb-3">
+                        <label for="moduleFilter" class="form-label">Filter by Module (optional)</label>
+                        <select class="form-select" id="moduleFilter">
+                            <option value="">All Modules</option>
+                            {% for m in modules_data %}
+                            <option value="{{ m.module.name }}">{{ m.module_name }} ({{ m.due }} due)</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="d-grid">
+                        <button class="btn btn-brand-primary btn-lg" onclick="startStudySession()">
+                            <i class="fas fa-play me-2"></i>
+                            Start Session ({{ due_today }} due, {{ new_cards_available }} new)
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Module Breakdown -->
+    {% if modules_data %}
+    <div class="row">
+        <div class="col-12">
+            <h4 class="mb-3">Progress by Module</h4>
+        </div>
+        {% for m in modules_data %}
+        <div class="col-lg-6 mb-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="mb-0">{{ m.module_name }}</h6>
+                        <span class="badge bg-secondary">{{ m.total }} cards</span>
+                    </div>
+                    <div class="progress mb-2" style="height: 18px;">
+                        <div class="progress-bar" role="progressbar"
+                             style="width: {{ m.progress_percent }}%; background-color: #a8d5ba;"
+                             aria-valuenow="{{ m.progress_percent }}" aria-valuemin="0" aria-valuemax="100">
+                            {{ m.progress_percent }}%
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-between small text-muted">
+                        <span><i class="fas fa-clock me-1" style="color: #e96304;"></i>{{ m.due }} due</span>
+                        <span><i class="fas fa-trophy me-1" style="color: #a8d5ba;"></i>{{ m.mastered }} mastered</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="row">
+        <div class="col-12">
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle me-2"></i>
+                No study progress yet. Click "Start Session" to begin reviewing Q&A pairs!
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+function startStudySession() {
+    const mod = document.getElementById('moduleFilter').value;
+    let url = '/study/session';
+    if (mod) url += '?module=' + encodeURIComponent(mod);
+    window.location.href = url;
+}
+</script>
+{% endblock %}

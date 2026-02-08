@@ -968,6 +968,44 @@ class RevisionHistory(db.Model):
         return f'<RevisionHistory User:{self.user_id} Case:{self.case_id} Module:{self.module.value} Seen:{self.times_seen}x>'
 
 
+# ==================== SPACED REPETITION STUDY SYSTEM ====================
+# SM-2 algorithm implementation for Q&A pair mastery tracking
+
+class UserQAProgress(db.Model):
+    """SM-2 spaced repetition progress per user per question."""
+    __tablename__ = 'user_qa_progress'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+    question_id = db.Column(db.Integer, db.ForeignKey('question.id'), nullable=False, index=True)
+    case_id = db.Column(db.Integer, db.ForeignKey('case.id'), nullable=False, index=True)  # Denormalized for module queries
+
+    # SM-2 parameters
+    ease_factor = db.Column(db.Float, default=2.5, nullable=False)
+    interval_days = db.Column(db.Integer, default=0, nullable=False)
+    repetition_number = db.Column(db.Integer, default=0, nullable=False)
+    next_review_date = db.Column(db.Date, nullable=False, index=True)
+    last_reviewed_at = db.Column(db.DateTime, nullable=True)
+
+    # Stats
+    times_correct = db.Column(db.Integer, default=0, nullable=False)
+    times_incorrect = db.Column(db.Integer, default=0, nullable=False)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        db.UniqueConstraint('user_id', 'question_id', name='uq_user_question_progress'),
+        db.Index('idx_user_qa_due', 'user_id', 'next_review_date'),
+    )
+
+    user = db.relationship('User', backref='qa_progress', lazy=True)
+    question = db.relationship('Question', backref='user_progress', lazy=True)
+    case = db.relationship('Case', backref='qa_progress', lazy=True)
+
+    def __repr__(self):
+        return f'<UserQAProgress user={self.user_id} q={self.question_id} interval={self.interval_days}d>'
+
+
 # ==================== DATA IMPORT & ENRICHMENT MODELS ====================
 # These models support importing cases from external sources (e.g., FRCR-Examiner)
 # and enriching them with metadata before promoting to production
