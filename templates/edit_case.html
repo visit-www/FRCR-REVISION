@@ -1552,7 +1552,7 @@ function initImageStackDescriptionEditor(initialHtml) {
         menubar: false,
         plugins: 'lists link code',
         toolbar: 'undo redo | formatselect | bold italic | alignleft aligncenter alignright | bullist numlist | link | code',
-        content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 14px; }',
+        content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 14px; } .clinical-note { margin: 1rem 0; padding: 12px 16px; background: #eef6fa; border-left: 4px solid #5E899E; border-radius: 4px; } .key-finding { margin: 1rem 0; padding: 12px 16px; background: #eaf7ef; border-left: 4px solid #28a745; border-radius: 4px; } .differential-dx { margin: 1rem 0; padding: 12px 16px; background: #f3eef8; border-left: 4px solid #7952b3; border-radius: 4px; } .teaching-pearl { margin: 1rem 0; padding: 12px 16px; background: #fef9e7; border-left: 4px solid #e9a304; border-radius: 4px; } .pitfall { margin: 1rem 0; padding: 12px 16px; background: #fdecea; border-left: 4px solid #dc3545; border-radius: 4px; } .normal-variant { margin: 1rem 0; padding: 12px 16px; background: #e8f4fd; border-left: 4px solid #17a2b8; border-radius: 4px; } .diagnosis-box { margin: 1rem 0; padding: 14px 18px; background: linear-gradient(135deg, #fff7ed, #fff2e0); border: 2px solid #e96304; border-radius: 8px; font-weight: 600; } .staging-info { margin: 1rem 0; padding: 12px 16px; background: #f0f4f8; border: 1px solid #c8d6e5; border-radius: 6px; } .comparison-box { margin: 1rem 0; padding: 12px 16px; background: #f8f9fa; border: 1px dashed #6c757d; border-radius: 6px; } .highlight-yellow { background-color: #fff3cd; padding: 1px 4px; border-radius: 2px; } .highlight-green { background-color: #d4edda; padding: 1px 4px; border-radius: 2px; } .highlight-red { background-color: #f8d7da; padding: 1px 4px; border-radius: 2px; } .highlight-blue { background-color: #d1ecf1; padding: 1px 4px; border-radius: 2px; } .important-text { color: #dc3545; font-weight: 700; } .subtle-text { color: #6c757d; font-size: 0.9em; } .two-column { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 1rem 0; } .indent-block { margin: 0.5rem 0 0.5rem 1.5rem; padding: 8px 12px; border-left: 3px solid #dee2e6; color: #495057; } .image-finding { margin: 0.75rem 0; padding: 10px 14px; background: #f8f9fa; border-left: 3px solid #e96304; border-radius: 4px; } .measurement { display: inline-block; background: #e2e8f0; padding: 2px 8px; border-radius: 4px; font-family: monospace; font-size: 0.9em; } .anatomy-label { display: inline-block; background: #5E899E; color: #fff; padding: 2px 8px; border-radius: 12px; font-size: 0.85em; font-weight: 500; }',
         base_url: 'https://cdn.jsdelivr.net/npm/tinymce@6',
         init_instance_callback: function(ed) {
             ed.setContent(initialHtml || '');
@@ -2445,6 +2445,27 @@ function initializeDiscussionEditor() {
                     -webkit-overflow-scrolling: touch;
                 }
             }
+            /* Custom content classes (match static/style.css) */
+            .clinical-note { margin: 1rem 0; padding: 12px 16px; background: #eef6fa; border-left: 4px solid #5E899E; border-radius: 4px; font-size: 0.95em; line-height: 1.6; }
+            .key-finding { margin: 1rem 0; padding: 12px 16px; background: #eaf7ef; border-left: 4px solid #28a745; border-radius: 4px; font-size: 0.95em; line-height: 1.6; }
+            .differential-dx { margin: 1rem 0; padding: 12px 16px; background: #f3eef8; border-left: 4px solid #7952b3; border-radius: 4px; font-size: 0.95em; line-height: 1.6; }
+            .teaching-pearl { margin: 1rem 0; padding: 12px 16px; background: #fef9e7; border-left: 4px solid #e9a304; border-radius: 4px; font-size: 0.95em; line-height: 1.6; }
+            .pitfall { margin: 1rem 0; padding: 12px 16px; background: #fdecea; border-left: 4px solid #dc3545; border-radius: 4px; font-size: 0.95em; line-height: 1.6; }
+            .normal-variant { margin: 1rem 0; padding: 12px 16px; background: #e8f4fd; border-left: 4px solid #17a2b8; border-radius: 4px; font-size: 0.95em; line-height: 1.6; }
+            .diagnosis-box { margin: 1rem 0; padding: 14px 18px; background: linear-gradient(135deg, #fff7ed 0%, #fff2e0 100%); border: 2px solid #e96304; border-radius: 8px; font-weight: 600; font-size: 1.05em; }
+            .staging-info { margin: 1rem 0; padding: 12px 16px; background: #f0f4f8; border: 1px solid #c8d6e5; border-radius: 6px; font-size: 0.95em; line-height: 1.6; }
+            .comparison-box { margin: 1rem 0; padding: 12px 16px; background: #f8f9fa; border: 1px dashed #6c757d; border-radius: 6px; font-size: 0.95em; line-height: 1.6; }
+            .highlight-yellow { background-color: #fff3cd; padding: 1px 4px; border-radius: 2px; }
+            .highlight-green { background-color: #d4edda; padding: 1px 4px; border-radius: 2px; }
+            .highlight-red { background-color: #f8d7da; padding: 1px 4px; border-radius: 2px; }
+            .highlight-blue { background-color: #d1ecf1; padding: 1px 4px; border-radius: 2px; }
+            .important-text { color: #dc3545; font-weight: 700; }
+            .subtle-text { color: #6c757d; font-size: 0.9em; }
+            .two-column { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 1rem 0; }
+            .indent-block { margin: 0.5rem 0 0.5rem 1.5rem; padding: 8px 12px; border-left: 3px solid #dee2e6; color: #495057; }
+            .image-finding { margin: 0.75rem 0; padding: 10px 14px; background: #f8f9fa; border-left: 3px solid #e96304; border-radius: 4px; font-size: 0.95em; }
+            .measurement { display: inline-block; background: #e2e8f0; padding: 2px 8px; border-radius: 4px; font-family: monospace; font-size: 0.9em; color: #2d3748; }
+            .anatomy-label { display: inline-block; background: #5E899E; color: #fff; padding: 2px 8px; border-radius: 12px; font-size: 0.85em; font-weight: 500; }
         `,
         // Simplified paste handling - CSS handles link styling with !important rules
         // No need for complex regex processing on every paste

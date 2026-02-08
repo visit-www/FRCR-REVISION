@@ -17,6 +17,7 @@ This document lists all custom CSS classes used in the FRCR Revision app. Classe
 9. [User Highlights & Notes](#9-user-highlights--notes)
 10. [DICOM Viewer](#10-dicom-viewer)
 11. [Miscellaneous Utilities](#11-miscellaneous-utilities)
+12. [TinyMCE Rich Content Classes](#12-tinymce-rich-content-classes)
 
 ---
 
@@ -407,4 +408,100 @@ Defined in `:root` in style.css:
 
 ---
 
-*Last updated: February 2025*
+## 12. TinyMCE Rich Content Classes
+
+Custom classes for use in TinyMCE **Source Code** view (`<>` button). Available on all pages (via `static/style.css` through `base.html`) and inside TinyMCE editors (via `content_style`).
+
+### Callout Boxes
+
+| Class | Description | Appearance |
+|-------|-------------|------------|
+| `.clinical-note` | Clinical context/notes | Blue-teal left border, light blue bg |
+| `.key-finding` | Important findings | Green left border, light green bg |
+| `.differential-dx` | Differential diagnosis | Purple left border, light purple bg |
+| `.teaching-pearl` | Teaching points/tips | Gold left border, light yellow bg |
+| `.pitfall` | Common mistakes/pitfalls | Red left border, light red bg |
+| `.normal-variant` | Normal variants | Cyan left border, light blue bg |
+
+**Usage** (in TinyMCE source code):
+```html
+<div class="clinical-note">65-year-old male presenting with acute onset chest pain.</div>
+<div class="key-finding">Ground-glass opacities in bilateral lower lobes.</div>
+<div class="teaching-pearl">Remember: miliary pattern = 1-3mm nodules uniformly distributed.</div>
+<div class="pitfall">Do not confuse motion artifact with dissection flap.</div>
+```
+
+### Diagnostic Boxes
+
+| Class | Description | Appearance |
+|-------|-------------|------------|
+| `.diagnosis-box` | Prominent diagnosis display | Orange border, warm gradient bg, bold |
+| `.staging-info` | Staging information | Gray border, cool blue bg |
+| `.comparison-box` | Before/after or comparison content | Dashed gray border |
+
+**Usage:**
+```html
+<div class="diagnosis-box">Diagnosis: Right middle lobe pneumonia (community-acquired)</div>
+<div class="staging-info">T2a N1 M0 — Stage IIB (AJCC 8th Edition)</div>
+```
+
+### Text Emphasis
+
+| Class | Description | Appearance |
+|-------|-------------|------------|
+| `.highlight-yellow` | Yellow text highlight | Yellow background |
+| `.highlight-green` | Green text highlight | Green background |
+| `.highlight-red` | Red text highlight | Red background |
+| `.highlight-blue` | Blue text highlight | Blue background |
+| `.important-text` | Critical information | Bold red text |
+| `.subtle-text` | Secondary/muted text | Gray, smaller font |
+
+**Usage:**
+```html
+<span class="highlight-yellow">key measurement</span>
+<span class="important-text">Do not miss this finding</span>
+<p class="subtle-text">Additional context for advanced learners.</p>
+```
+
+### Layout Helpers
+
+| Class | Description | Appearance |
+|-------|-------------|------------|
+| `.two-column` | Side-by-side grid (collapses on mobile) | 2-column grid |
+| `.indent-block` | Indented block quote | Left border, indented |
+
+**Usage:**
+```html
+<div class="two-column">
+  <div>Left column content</div>
+  <div>Right column content</div>
+</div>
+<div class="indent-block">Quoted or indented supplementary text.</div>
+```
+
+### Radiology-Specific
+
+| Class | Description | Appearance |
+|-------|-------------|------------|
+| `.image-finding` | Image finding callout | Orange left border, gray bg |
+| `.measurement` | Measurement/numeric value | Monospace, gray pill |
+| `.anatomy-label` | Anatomy label/tag | Teal pill badge, white text |
+
+**Usage:**
+```html
+<div class="image-finding">Hyperdense lesion in segment VII measuring <span class="measurement">3.2 x 2.8 cm</span>.</div>
+<p>The <span class="anatomy-label">left adrenal gland</span> appears normal.</p>
+```
+
+### Source Files
+
+| File | Role |
+|------|------|
+| `static/style.css` | Canonical CSS (loaded via `base.html` on all pages) |
+| `templates/edit_case.html` | TinyMCE `content_style` for discussion + image stack description editors |
+
+**Note:** Font Awesome icons (via `::before` pseudo-elements) appear on rendered pages but NOT inside TinyMCE editors (Font Awesome is not loaded in TinyMCE iframe). The callout box styling (borders, backgrounds) still works everywhere.
+
+---
+
+*Last updated: February 2026*

@@ -4874,3 +4874,229 @@ body {
         font-size: 0.8em;
     }
 }
+
+/* ==================== CUSTOM CONTENT CLASSES ==================== */
+/* Rich-text classes for TinyMCE source code editing.
+   Used in: case discussion, image stack description, TNM views.
+   Admins can use these in TinyMCE Source Code view (<> button).
+   Matching styles also in TinyMCE content_style for in-editor preview. */
+
+/* --- Callout Boxes --- */
+.clinical-note {
+    margin: 1rem 0;
+    padding: 12px 16px;
+    background: #eef6fa;
+    border-left: 4px solid #5E899E;
+    border-radius: 4px;
+    font-size: 0.95em;
+    line-height: 1.6;
+}
+.clinical-note::before {
+    content: "\f0f1  ";  /* stethoscope */
+    font-family: "Font Awesome 6 Free";
+    font-weight: 900;
+    color: #5E899E;
+    margin-right: 6px;
+}
+
+.key-finding {
+    margin: 1rem 0;
+    padding: 12px 16px;
+    background: #eaf7ef;
+    border-left: 4px solid #28a745;
+    border-radius: 4px;
+    font-size: 0.95em;
+    line-height: 1.6;
+}
+.key-finding::before {
+    content: "\f058  ";  /* check-circle */
+    font-family: "Font Awesome 6 Free";
+    font-weight: 900;
+    color: #28a745;
+    margin-right: 6px;
+}
+
+.differential-dx {
+    margin: 1rem 0;
+    padding: 12px 16px;
+    background: #f3eef8;
+    border-left: 4px solid #7952b3;
+    border-radius: 4px;
+    font-size: 0.95em;
+    line-height: 1.6;
+}
+.differential-dx::before {
+    content: "\f074  ";  /* random/shuffle */
+    font-family: "Font Awesome 6 Free";
+    font-weight: 900;
+    color: #7952b3;
+    margin-right: 6px;
+}
+
+.teaching-pearl {
+    margin: 1rem 0;
+    padding: 12px 16px;
+    background: #fef9e7;
+    border-left: 4px solid #e9a304;
+    border-radius: 4px;
+    font-size: 0.95em;
+    line-height: 1.6;
+}
+.teaching-pearl::before {
+    content: "\f0eb  ";  /* lightbulb */
+    font-family: "Font Awesome 6 Free";
+    font-weight: 900;
+    color: #e9a304;
+    margin-right: 6px;
+}
+
+.pitfall {
+    margin: 1rem 0;
+    padding: 12px 16px;
+    background: #fdecea;
+    border-left: 4px solid #dc3545;
+    border-radius: 4px;
+    font-size: 0.95em;
+    line-height: 1.6;
+}
+.pitfall::before {
+    content: "\f071  ";  /* exclamation-triangle */
+    font-family: "Font Awesome 6 Free";
+    font-weight: 900;
+    color: #dc3545;
+    margin-right: 6px;
+}
+
+.normal-variant {
+    margin: 1rem 0;
+    padding: 12px 16px;
+    background: #e8f4fd;
+    border-left: 4px solid #17a2b8;
+    border-radius: 4px;
+    font-size: 0.95em;
+    line-height: 1.6;
+}
+.normal-variant::before {
+    content: "\f05a  ";  /* info-circle */
+    font-family: "Font Awesome 6 Free";
+    font-weight: 900;
+    color: #17a2b8;
+    margin-right: 6px;
+}
+
+/* --- Diagnostic Boxes --- */
+.diagnosis-box {
+    margin: 1rem 0;
+    padding: 14px 18px;
+    background: linear-gradient(135deg, #fff7ed 0%, #fff2e0 100%);
+    border: 2px solid #e96304;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 1.05em;
+}
+
+.staging-info {
+    margin: 1rem 0;
+    padding: 12px 16px;
+    background: #f0f4f8;
+    border: 1px solid #c8d6e5;
+    border-radius: 6px;
+    font-size: 0.95em;
+    line-height: 1.6;
+}
+
+.comparison-box {
+    margin: 1rem 0;
+    padding: 12px 16px;
+    background: #f8f9fa;
+    border: 1px dashed #6c757d;
+    border-radius: 6px;
+    font-size: 0.95em;
+    line-height: 1.6;
+}
+
+/* --- Text Emphasis --- */
+.highlight-yellow {
+    background-color: #fff3cd;
+    padding: 1px 4px;
+    border-radius: 2px;
+}
+
+.highlight-green {
+    background-color: #d4edda;
+    padding: 1px 4px;
+    border-radius: 2px;
+}
+
+.highlight-red {
+    background-color: #f8d7da;
+    padding: 1px 4px;
+    border-radius: 2px;
+}
+
+.highlight-blue {
+    background-color: #d1ecf1;
+    padding: 1px 4px;
+    border-radius: 2px;
+}
+
+.important-text {
+    color: #dc3545;
+    font-weight: 700;
+}
+
+.subtle-text {
+    color: #6c757d;
+    font-size: 0.9em;
+}
+
+/* --- Layout Helpers --- */
+.two-column {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin: 1rem 0;
+}
+@media (max-width: 768px) {
+    .two-column {
+        grid-template-columns: 1fr;
+    }
+}
+
+.indent-block {
+    margin: 0.5rem 0 0.5rem 1.5rem;
+    padding: 8px 12px;
+    border-left: 3px solid #dee2e6;
+    color: #495057;
+}
+
+/* --- Radiology-Specific --- */
+.image-finding {
+    margin: 0.75rem 0;
+    padding: 10px 14px;
+    background: #f8f9fa;
+    border-left: 3px solid #e96304;
+    border-radius: 4px;
+    font-size: 0.95em;
+}
+
+.measurement {
+    display: inline-block;
+    background: #e2e8f0;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', monospace;
+    font-size: 0.9em;
+    color: #2d3748;
+}
+
+.anatomy-label {
+    display: inline-block;
+    background: #5E899E;
+    color: #fff;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.85em;
+    font-weight: 500;
+    letter-spacing: 0.3px;
+}
