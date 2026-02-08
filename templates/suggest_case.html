@@ -1,0 +1,642 @@
+{% extends "base.html" %}
+
+{% block mobile_breadcrumb %}
+<li class="breadcrumb-item active text-white" aria-current="page">
+    <i class="fas fa-lightbulb me-1"></i>Suggest a Case
+</li>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="breadcrumb-custom mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="/"><i class="fas fa-home"></i> Home</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Suggest a Case</li>
+        </ol>
+    </nav>
+
+    <div class="row">
+        <!-- Main Content -->
+        <div class="col-lg-8">
+            <h2 class="mb-1">
+                <i class="fas fa-lightbulb me-2" style="color: #e96304;"></i>Suggest a Case
+            </h2>
+            <p class="text-muted mb-4">Contribute to the case library. AI will generate discussion and Q&A for expert review.</p>
+
+            <!-- ====== PHASE 1: Metadata Form ====== -->
+            <div id="phaseMetadata">
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header text-white" style="background: linear-gradient(135deg, #5E899E 0%, #4a7285 100%);">
+                        <h5 class="mb-0"><i class="fas fa-clipboard-list me-2"></i>Case Details</h5>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="mb-3">
+                            <label for="scDiagnosis" class="form-label fw-semibold">Diagnosis <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="scDiagnosis" placeholder="e.g. Osteoid Osteoma, Pancoast Tumour, Crohn's Disease" required>
+                        </div>
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label for="scModule" class="form-label fw-semibold">Module <span class="text-danger">*</span></label>
+                                <select class="form-select" id="scModule" required>
+                                    <option value="">Select module...</option>
+                                    <option value="CARDIOTHORACIC_VASCULAR">Cardiothoracic and Vascular</option>
+                                    <option value="MUSCULOSKELETAL_TRAUMA">Musculoskeletal and Trauma</option>
+                                    <option value="GASTROINTESTINAL">Gastro-intestinal</option>
+                                    <option value="GENITOURINARY_BREAST">Genito-urinary, Adrenal, O&G and Breast</option>
+                                    <option value="PAEDIATRIC">Paediatric</option>
+                                    <option value="CNS_HEAD_NECK">CNS and Head & Neck</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="scBodyPart" class="form-label fw-semibold">Body Part <span class="text-danger">*</span></label>
+                                <select class="form-select" id="scBodyPart" required>
+                                    <option value="">Select body part...</option>
+                                    <optgroup label="Cardiovascular">
+                                        <option value="CARDIOVASCULAR">Cardiovascular</option>
+                                    </optgroup>
+                                    <optgroup label="Lung and Thorax">
+                                        <option value="LUNG_MEDIASTINUM">Lung and Mediastinum</option>
+                                        <option value="CHEST_WALL">Chest Wall</option>
+                                    </optgroup>
+                                    <optgroup label="Gastrointestinal">
+                                        <option value="UPPER_GASTROINTESTINAL">Upper gastrointestinal</option>
+                                        <option value="LOWER_GASTROINTESTINAL">Lower gastrointestinal</option>
+                                        <option value="GASTROINTESTINAL">Gastrointestinal</option>
+                                        <option value="HEPATOPANCREATICOBILIARY">Hepatopancreaticobiliary</option>
+                                    </optgroup>
+                                    <optgroup label="Genitourinary and Endocrine">
+                                        <option value="ADRENAL">Adrenal</option>
+                                        <option value="MALE_GENITAL">Male genital</option>
+                                        <option value="THYROID_PARATHYROID">Thyroid and Parathyroid</option>
+                                        <option value="SPLEEN">Spleen</option>
+                                        <option value="KUB">KUB</option>
+                                    </optgroup>
+                                    <optgroup label="Gynaecology and Breast">
+                                        <option value="GYNAECOLOGY">Gynaecology</option>
+                                        <option value="BREAST">Breast</option>
+                                    </optgroup>
+                                    <optgroup label="Musculoskeletal">
+                                        <option value="UPPER_LIMB">Upper Limb</option>
+                                        <option value="LOWER_LIMB">Lower Limb</option>
+                                        <option value="BONES">Bones</option>
+                                        <option value="SOFT_TISSUE">Soft tissue</option>
+                                    </optgroup>
+                                    <optgroup label="CNS and Head & Neck">
+                                        <option value="BRAIN_PITUITARY">Brain and Pituitary</option>
+                                        <option value="BRAIN_SPINE">Brain and Spinal Cord</option>
+                                        <option value="SPINE">Spine</option>
+                                        <option value="HEAD_NECK">Head and Neck</option>
+                                    </optgroup>
+                                    <optgroup label="Multi-system">
+                                        <option value="MULTISYSTEM">Multisystem</option>
+                                    </optgroup>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Age Group</label>
+                            <div class="d-flex gap-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="scAgeGroup" id="scAgeAdult" value="ADULT" checked>
+                                    <label class="form-check-label" for="scAgeAdult">Adult</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="scAgeGroup" id="scAgePediatric" value="PEDIATRIC">
+                                    <label class="form-check-label" for="scAgePediatric">Paediatric</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="d-grid mt-4">
+                            <button class="btn btn-brand-success btn-lg" id="generateBtn" onclick="generateCase()">
+                                <i class="fas fa-magic me-2"></i>Generate with RadInsights
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ====== PHASE 2: Loading ====== -->
+            <div id="phaseLoading" style="display: none;">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body text-center p-5">
+                        <div class="spinner-border mb-3" style="color: #5E899E; width: 3rem; height: 3rem;" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <h5 class="text-muted">Generating case content with RadInsights AI...</h5>
+                        <p class="text-muted small mb-0">This may take 30-60 seconds. Please wait.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ====== PHASE 3: Content + Enhancement ====== -->
+            <div id="phaseContent" style="display: none;">
+
+                <!-- Expert Review Banner -->
+                <div class="alert mb-4" style="background: linear-gradient(135deg, #fff3cd 0%, #fffbe6 100%); border: 2px solid #ffc107; border-left: 5px solid #e96304;">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-exclamation-triangle me-3" style="font-size: 1.5rem; color: #e96304;"></i>
+                        <div>
+                            <strong style="color: #856404;">Exercise Caution &mdash; Pending Review by Expert Panel</strong>
+                            <p class="mb-0 small text-muted">AI-generated content requires expert verification before publication.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Generated Discussion -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header text-white" style="background: linear-gradient(135deg, #5E899E 0%, #4a7285 100%);">
+                        <h5 class="mb-0"><i class="fas fa-stethoscope me-2"></i>Discussion</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="scDiscussion" class="discussion-text" style="line-height: 1.8; color: #2c3e50;"></div>
+                    </div>
+                </div>
+
+                <!-- Generated Q&A -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header text-white" style="background: linear-gradient(135deg, #5E899E 0%, #4a7285 100%);">
+                        <h5 class="mb-0"><i class="fas fa-question-circle me-2"></i>Questions & Answers</h5>
+                    </div>
+                    <div class="card-body" id="scQAPairs"></div>
+                </div>
+
+                <!-- Image Upload -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header text-white" style="background: linear-gradient(135deg, #5E899E 0%, #4a7285 100%);">
+                        <h5 class="mb-0"><i class="fas fa-images me-2"></i>Case Images</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-danger border-0 mb-3" style="background: rgba(220, 53, 69, 0.08); border-left: 4px solid #dc3545 !important;">
+                            <i class="fas fa-shield-alt me-2 text-danger"></i>
+                            <strong>All images must be your own personal images</strong> and must not contain any copyright material or patient identifiable information.
+                            Submissions containing such material will be summarily removed and your account may be blocked.
+                        </div>
+                        <div class="d-flex gap-2 align-items-center flex-wrap mb-3">
+                            <input type="file" class="form-control" id="scImageFile" accept="image/jpeg,image/png,image/gif,image/webp" style="max-width: 350px;">
+                            <button class="btn btn-outline-secondary btn-sm" onclick="uploadImage()">
+                                <i class="fas fa-upload me-1"></i>Upload
+                            </button>
+                        </div>
+                        <div id="scImageGallery" class="d-flex flex-wrap gap-3"></div>
+                    </div>
+                </div>
+
+                <!-- Image Stack Upload -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header text-white" style="background: linear-gradient(135deg, #5E899E 0%, #4a7285 100%);">
+                        <h5 class="mb-0"><i class="fas fa-layer-group me-2"></i>Image Stack (CT/MRI Series)</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-danger border-0 mb-3" style="background: rgba(220, 53, 69, 0.08); border-left: 4px solid #dc3545 !important;">
+                            <i class="fas fa-shield-alt me-2 text-danger"></i>
+                            <strong>All images must be your own personal images</strong> and must not contain any copyright material or patient identifiable information.
+                            Submissions containing such material will be summarily removed and your account may be blocked.
+                        </div>
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-5">
+                                <input type="text" class="form-control" id="scStudyLabel" placeholder="Study label (e.g. CT Abdomen)">
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control" id="scSeriesName" placeholder="Series (e.g. axial)" value="axial">
+                            </div>
+                            <div class="col-md-4">
+                                <input type="file" class="form-control" id="scStackFiles" accept="image/*" multiple>
+                            </div>
+                        </div>
+                        <button class="btn btn-outline-secondary btn-sm" onclick="uploadStack()">
+                            <i class="fas fa-upload me-1"></i>Upload Stack
+                        </button>
+                        <div id="scStackStatus" class="mt-2 small text-muted"></div>
+                    </div>
+                </div>
+
+                <!-- Additional Insights -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header text-white" style="background: linear-gradient(135deg, #5E899E 0%, #4a7285 100%);">
+                        <h5 class="mb-0"><i class="fas fa-pen-fancy me-2"></i>Additional Insights</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-danger border-0 mb-3" style="background: rgba(220, 53, 69, 0.08); border-left: 4px solid #dc3545 !important;">
+                            <i class="fas fa-shield-alt me-2 text-danger"></i>
+                            <strong>Do not include copyright material, plagiarism, or patient identifiable information.</strong>
+                            Submissions containing such material will be rejected and your account may be blocked.
+                        </div>
+                        <textarea class="form-control" id="scContributorNotes" rows="4" placeholder="Share additional clinical context, teaching points, or insights that may help learners..."></textarea>
+                        <small class="text-muted mt-1 d-block" id="scNotesSaveStatus"></small>
+                    </div>
+                </div>
+
+                <!-- Related Cases -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header text-white" style="background: linear-gradient(135deg, #5E899E 0%, #4a7285 100%);">
+                        <h5 class="mb-0"><i class="fas fa-link me-2"></i>Related Cases</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="input-group mb-2">
+                            <span class="input-group-text"><i class="fas fa-search"></i></span>
+                            <input type="text" class="form-control" id="scRelatedSearch" placeholder="Search by diagnosis or case number...">
+                        </div>
+                        <div id="scRelatedResults" class="list-group mt-1 shadow-sm" style="display: none; max-height: 200px; overflow-y: auto;"></div>
+                        <div id="scRelatedList" class="mt-2"></div>
+                    </div>
+                </div>
+
+                <!-- Submit Button -->
+                <div class="text-center mt-4 mb-5" id="scSubmitSection">
+                    <button class="btn btn-lg btn-brand-primary" id="submitBtn" onclick="submitForReview()">
+                        <i class="fas fa-paper-plane me-2"></i>Submit for Review
+                    </button>
+                    <p class="text-muted small mt-2">
+                        <i class="fas fa-info-circle me-1"></i>Once submitted, the case will be reviewed by the expert panel before publication.
+                    </p>
+                </div>
+
+                <!-- Submitted Confirmation (hidden) -->
+                <div id="scSubmitted" style="display: none;">
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-body text-center p-5">
+                            <div style="font-size: 3.5rem; color: #a8d5ba;">
+                                <i class="fas fa-check-circle"></i>
+                            </div>
+                            <h3 class="mt-3 mb-2">Case Submitted for Review!</h3>
+                            <p class="text-muted mb-4">Thank you for your contribution. The expert panel will review your case and you'll be notified of any updates.</p>
+                            <a href="/dashboard" class="btn btn-brand-primary">
+                                <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar: My Suggestions -->
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header text-white" style="background: linear-gradient(135deg, #e96304 0%, #c75002 100%);">
+                    <h6 class="mb-0"><i class="fas fa-list me-2"></i>My Suggestions</h6>
+                </div>
+                <div class="card-body p-2" id="scMySuggestions">
+                    <div class="text-center text-muted small p-3">
+                        <i class="fas fa-spinner fa-spin me-1"></i>Loading...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let _caseId = null;
+let _relatedCases = [];
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadMySuggestions();
+    initRelatedSearch();
+    initNotesAutoSave();
+});
+
+// ========== PHASE 1 → 2: Generate ==========
+function generateCase() {
+    var diagnosis = document.getElementById('scDiagnosis').value.trim();
+    var module = document.getElementById('scModule').value;
+    var bodyPart = document.getElementById('scBodyPart').value;
+    var ageGroup = document.querySelector('input[name="scAgeGroup"]:checked');
+    ageGroup = ageGroup ? ageGroup.value : '';
+
+    if (!diagnosis) { if (typeof showToast === 'function') showToast('Diagnosis is required', 'error'); return; }
+    if (!module) { if (typeof showToast === 'function') showToast('Module is required', 'error'); return; }
+    if (!bodyPart) { if (typeof showToast === 'function') showToast('Body Part is required', 'error'); return; }
+
+    document.getElementById('phaseMetadata').style.display = 'none';
+    document.getElementById('phaseLoading').style.display = 'block';
+
+    // Step 1: Create the case
+    fetch('/api/suggest-case/create', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({diagnosis: diagnosis, module: module, body_part: bodyPart, age_group: ageGroup})
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (!data.success) {
+            throw new Error(data.error || 'Failed to create case');
+        }
+        _caseId = data.case_id;
+
+        // Step 2: Generate AI content
+        return fetch('/api/case/' + _caseId + '/ai-prelim', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({force_regenerate: true})
+        });
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        document.getElementById('phaseLoading').style.display = 'none';
+
+        if (!data.success) {
+            if (typeof showToast === 'function') showToast(data.error || 'AI generation failed', 'error');
+            document.getElementById('phaseMetadata').style.display = 'block';
+            return;
+        }
+
+        // Display content
+        showGeneratedContent(data);
+        loadMySuggestions();
+    })
+    .catch(function(err) {
+        console.error('Generate error:', err);
+        document.getElementById('phaseLoading').style.display = 'none';
+        document.getElementById('phaseMetadata').style.display = 'block';
+        if (typeof showToast === 'function') showToast(err.message || 'Generation failed', 'error');
+    });
+}
+
+function showGeneratedContent(data) {
+    document.getElementById('phaseContent').style.display = 'block';
+
+    // Discussion
+    var disc = document.getElementById('scDiscussion');
+    if (data.discussion_html) {
+        disc.innerHTML = data.discussion_html;
+    } else {
+        disc.innerHTML = '<em class="text-muted">No discussion generated.</em>';
+    }
+
+    // Q&A Pairs — fetch from API
+    fetch('/api/case/' + _caseId + '/qa-pairs')
+    .then(function(r) { return r.json(); })
+    .then(function(qaData) {
+        var container = document.getElementById('scQAPairs');
+        var pairs = qaData.pairs || qaData.qa_pairs || [];
+        if (pairs.length === 0) {
+            container.innerHTML = '<p class="text-muted">No Q&A pairs generated.</p>';
+            return;
+        }
+        var html = '';
+        pairs.forEach(function(p, i) {
+            html += '<div class="mb-3 p-3 rounded" style="background: #f8f9fa;">';
+            html += '<p class="mb-1"><strong class="text-muted">Q' + (i + 1) + ':</strong> ' + (p.question_text || p.question || '') + '</p>';
+            html += '<p class="mb-0"><strong style="color: #28a745;">A:</strong> ' + (p.answer_text || p.answer || '') + '</p>';
+            html += '</div>';
+        });
+        container.innerHTML = html;
+    })
+    .catch(function() {
+        document.getElementById('scQAPairs').innerHTML = '<p class="text-muted">Failed to load Q&A pairs.</p>';
+    });
+}
+
+// ========== Image Upload ==========
+function uploadImage() {
+    if (!_caseId) { if (typeof showToast === 'function') showToast('Generate case first', 'error'); return; }
+    var input = document.getElementById('scImageFile');
+    if (!input.files.length) { if (typeof showToast === 'function') showToast('Select an image', 'error'); return; }
+
+    var formData = new FormData();
+    formData.append('image', input.files[0]);
+
+    fetch('/api/case/' + _caseId + '/image', {method: 'POST', body: formData})
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.error) { if (typeof showToast === 'function') showToast(data.error, 'error'); return; }
+        var gallery = document.getElementById('scImageGallery');
+        var img = document.createElement('img');
+        img.src = data.thumbnail_url || data.image_url;
+        img.alt = data.filename || 'Image';
+        img.style.cssText = 'width: 100px; height: 100px; object-fit: cover; border-radius: 8px; border: 2px solid #dee2e6;';
+        gallery.appendChild(img);
+        input.value = '';
+        if (typeof showToast === 'function') showToast('Image uploaded', 'success');
+    })
+    .catch(function(err) {
+        if (typeof showToast === 'function') showToast('Upload failed', 'error');
+    });
+}
+
+// ========== Image Stack Upload ==========
+function uploadStack() {
+    if (!_caseId) { if (typeof showToast === 'function') showToast('Generate case first', 'error'); return; }
+    var label = document.getElementById('scStudyLabel').value.trim();
+    var series = document.getElementById('scSeriesName').value.trim() || 'axial';
+    var files = document.getElementById('scStackFiles').files;
+
+    if (!label) { if (typeof showToast === 'function') showToast('Study label is required', 'error'); return; }
+    if (!files.length) { if (typeof showToast === 'function') showToast('Select image files', 'error'); return; }
+
+    var statusEl = document.getElementById('scStackStatus');
+    statusEl.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Uploading ' + files.length + ' files...';
+
+    var formData = new FormData();
+    formData.append('study_label', label);
+    for (var i = 0; i < files.length; i++) {
+        formData.append(series, files[i]);
+    }
+
+    fetch('/case-dicom-viewer/api/case/' + _caseId + '/stack/upload', {method: 'POST', body: formData})
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.error) {
+            statusEl.innerHTML = '<span class="text-danger">' + data.error + '</span>';
+            return;
+        }
+        statusEl.innerHTML = '<span class="text-success"><i class="fas fa-check me-1"></i>Study "' + (data.study_label || label) + '" uploaded (' + files.length + ' images)</span>';
+        document.getElementById('scStackFiles').value = '';
+        if (typeof showToast === 'function') showToast('Image stack uploaded', 'success');
+    })
+    .catch(function(err) {
+        statusEl.innerHTML = '<span class="text-danger">Upload failed</span>';
+    });
+}
+
+// ========== Contributor Notes Auto-save ==========
+function initNotesAutoSave() {
+    var textarea = document.getElementById('scContributorNotes');
+    var status = document.getElementById('scNotesSaveStatus');
+    var timeout;
+
+    textarea.addEventListener('input', function() {
+        clearTimeout(timeout);
+        status.textContent = '';
+        timeout = setTimeout(function() {
+            if (!_caseId) return;
+            fetch('/api/case/' + _caseId + '/contributor-notes', {
+                method: 'PUT',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({notes: textarea.value})
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(d) {
+                status.textContent = d.success ? 'Saved' : 'Save failed';
+                setTimeout(function() { status.textContent = ''; }, 2000);
+            })
+            .catch(function() { status.textContent = 'Save failed'; });
+        }, 1500);
+    });
+}
+
+// ========== Related Cases Search ==========
+function initRelatedSearch() {
+    var input = document.getElementById('scRelatedSearch');
+    var results = document.getElementById('scRelatedResults');
+    var timeout;
+
+    input.addEventListener('input', function() {
+        clearTimeout(timeout);
+        var q = input.value.trim();
+        if (q.length < 2) { results.style.display = 'none'; return; }
+
+        timeout = setTimeout(function() {
+            fetch('/api/cases/search?q=' + encodeURIComponent(q) + '&limit=8')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                var items = data.results || data || [];
+                if (!items.length) { results.style.display = 'none'; return; }
+                var html = '';
+                items.forEach(function(c) {
+                    html += '<button type="button" class="list-group-item list-group-item-action small" onclick="addRelated(' + c.id + ', \'' + (c.diagnosis || '').replace(/'/g, "\\'") + '\')">';
+                    html += '<strong>' + (c.case_number || '') + '</strong> ' + (c.diagnosis || '');
+                    html += '</button>';
+                });
+                results.innerHTML = html;
+                results.style.display = 'block';
+            })
+            .catch(function() { results.style.display = 'none'; });
+        }, 300);
+    });
+
+    document.addEventListener('click', function(e) {
+        if (!results.contains(e.target) && e.target !== input) results.style.display = 'none';
+    });
+}
+
+function addRelated(relatedId, diagnosis) {
+    if (!_caseId) return;
+    if (_relatedCases.indexOf(relatedId) >= 0) { if (typeof showToast === 'function') showToast('Already linked', 'info'); return; }
+
+    fetch('/api/case/' + _caseId + '/related', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({link_type: 'case', related_case_id: relatedId, relation_type: 'related'})
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.error) { if (typeof showToast === 'function') showToast(data.error, 'error'); return; }
+        _relatedCases.push(relatedId);
+        renderRelatedList();
+        document.getElementById('scRelatedSearch').value = '';
+        document.getElementById('scRelatedResults').style.display = 'none';
+        if (typeof showToast === 'function') showToast('Related case linked', 'success');
+    });
+}
+
+function renderRelatedList() {
+    // Refresh from API
+    if (!_caseId) return;
+    fetch('/api/case/' + _caseId + '/related')
+    .then(function(r) { return r.json(); })
+    .then(function(items) {
+        var list = document.getElementById('scRelatedList');
+        if (!items.length) { list.innerHTML = ''; return; }
+        var html = '';
+        items.forEach(function(item) {
+            html += '<span class="badge bg-secondary me-1 mb-1">';
+            html += '<i class="fas fa-link me-1"></i>' + (item.diagnosis || item.title || 'Case #' + item.id);
+            html += '</span>';
+        });
+        list.innerHTML = html;
+    });
+}
+
+// ========== Submit for Review ==========
+function submitForReview() {
+    if (!_caseId) return;
+    if (!confirm('Submit this case for expert review? You will not be able to edit it after submission.')) return;
+
+    var btn = document.getElementById('submitBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Submitting...';
+
+    // Save notes first
+    var notes = document.getElementById('scContributorNotes').value.trim();
+    var savePromise = notes
+        ? fetch('/api/case/' + _caseId + '/contributor-notes', {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({notes: notes})
+        })
+        : Promise.resolve();
+
+    savePromise
+    .then(function() {
+        return fetch('/api/case/' + _caseId + '/submit-for-review', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'}
+        });
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            document.getElementById('scSubmitSection').style.display = 'none';
+            document.getElementById('scSubmitted').style.display = 'block';
+            loadMySuggestions();
+            if (typeof showToast === 'function') showToast('Case submitted for review!', 'success');
+        } else {
+            if (typeof showToast === 'function') showToast(data.error || 'Submission failed', 'error');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-paper-plane me-2"></i>Submit for Review';
+        }
+    })
+    .catch(function(err) {
+        if (typeof showToast === 'function') showToast('Submission failed', 'error');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-paper-plane me-2"></i>Submit for Review';
+    });
+}
+
+// ========== My Suggestions Sidebar ==========
+function loadMySuggestions() {
+    fetch('/api/my-suggested-cases')
+    .then(function(r) { return r.json(); })
+    .then(function(cases) {
+        var el = document.getElementById('scMySuggestions');
+        if (!cases.length) {
+            el.innerHTML = '<p class="text-muted small text-center p-3 mb-0">No suggestions yet. Create your first case above!</p>';
+            return;
+        }
+        var html = '<div class="list-group list-group-flush">';
+        cases.forEach(function(c) {
+            var statusBadge = '';
+            var statusColor = '#6c757d';
+            if (c.status === 'draft') { statusBadge = 'Draft'; statusColor = '#ffc107'; }
+            else if (c.status === 'pending_review') { statusBadge = 'Under Review'; statusColor = '#17a2b8'; }
+            else if (c.status === 'published') { statusBadge = 'Published'; statusColor = '#28a745'; }
+            else if (c.status === 'rejected') { statusBadge = 'Rejected'; statusColor = '#dc3545'; }
+            else { statusBadge = c.status; }
+
+            var clickable = c.status === 'draft' ? ' cursor: pointer;' : '';
+            var onclick = c.status === 'draft' ? ' onclick="resumeDraft(' + c.id + ')"' : '';
+
+            html += '<div class="list-group-item px-2 py-2 small"' + onclick + ' style="' + clickable + '">';
+            html += '<div class="d-flex justify-content-between align-items-start">';
+            html += '<span class="text-truncate" style="max-width: 160px;" title="' + (c.diagnosis || '') + '">' + (c.diagnosis || 'Untitled') + '</span>';
+            html += '<span class="badge" style="background-color: ' + statusColor + '; font-size: 0.7rem;">' + statusBadge + '</span>';
+            html += '</div>';
+            if (c.module) html += '<small class="text-muted d-block">' + c.module + '</small>';
+            html += '</div>';
+        });
+        html += '</div>';
+        el.innerHTML = html;
+    })
+    .catch(function() {
+        document.getElementById('scMySuggestions').innerHTML = '<p class="text-muted small text-center p-3 mb-0">Failed to load.</p>';
+    });
+}
+
+function resumeDraft(caseId) {
+    // For now, redirect to view — could be enhanced later to reload the form
+    window.location.href = '/view-case/' + caseId;
+}
+</script>
+{% endblock %}

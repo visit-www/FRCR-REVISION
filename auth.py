@@ -226,6 +226,57 @@ def send_admin_approval_email(requesting_admin_email, requesting_admin_name, tar
         return {'success': False, 'error': error_msg, 'email_id': None}
 
 
+def send_case_review_notification(case, submitter):
+    """Send email to admin when a student submits a case for review."""
+    resend_key = os.getenv('RESEND_API_KEY')
+    if not resend_key:
+        print("[EMAIL] RESEND_API_KEY not configured — skipping review notification")
+        return False
+
+    import resend
+    resend.api_key = resend_key
+    from_email = os.getenv('EMAIL_FROM', "RadInsights <no-reply@radinsights.xyz>")
+    admin_email = os.getenv('SUPERADMIN_EMAIL', 'lotusheart2016@gmail.com')
+    app_url = os.getenv('APP_URL', 'https://www.radinsights.xyz').rstrip('/')
+    review_url = f"{app_url}/view-case/{case.id}"
+
+    try:
+        params = {
+            "from": from_email,
+            "to": [admin_email],
+            "subject": f"New Case Suggestion: {case.diagnosis[:60]}",
+            "html": f"""
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 12px; overflow: hidden;">
+                <div style="background: linear-gradient(135deg, #5E899E 0%, #4a7285 100%); color: white; padding: 20px; text-align: center;">
+                    <h2 style="margin: 0;">New Case Suggestion for Review</h2>
+                </div>
+                <div style="padding: 25px;">
+                    <div style="background-color: #f0f8fc; border: 1px solid #5E899E; border-radius: 8px; padding: 15px; margin-bottom: 20px;">
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <tr><td style="padding: 5px 0; color: #666;"><strong>Diagnosis:</strong></td><td>{case.diagnosis}</td></tr>
+                            <tr><td style="padding: 5px 0; color: #666;"><strong>Module:</strong></td><td>{case.module.value if case.module else 'N/A'}</td></tr>
+                            <tr><td style="padding: 5px 0; color: #666;"><strong>Body Part:</strong></td><td>{case.body_part.value if case.body_part else 'N/A'}</td></tr>
+                            <tr><td style="padding: 5px 0; color: #666;"><strong>Submitted By:</strong></td><td>{submitter.full_name} ({submitter.email})</td></tr>
+                            <tr><td style="padding: 5px 0; color: #666;"><strong>Images:</strong></td><td>{len(case.images) if case.images else 0} uploaded</td></tr>
+                        </table>
+                    </div>
+                    <div style="text-align: center; margin: 25px 0;">
+                        <a href="{review_url}" style="display: inline-block; background: linear-gradient(135deg, #e96304 0%, #c75002 100%); color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold;">Review Case</a>
+                    </div>
+                </div>
+                <div style="background-color: #2c3e50; color: #aaa; padding: 15px; text-align: center; font-size: 12px;">
+                    <p style="margin: 0;">RadInsights Admin Notification</p>
+                </div>
+            </div>"""
+        }
+        response = resend.Emails.send(params)
+        print(f"[EMAIL] Case review notification sent for case {case.id}: {response}")
+        return True
+    except Exception as e:
+        print(f"[EMAIL] Failed to send case review notification: {e}")
+        return False
+
+
 def generate_approval_code():
     """Generate an 8-character alphanumeric approval code"""
     import string

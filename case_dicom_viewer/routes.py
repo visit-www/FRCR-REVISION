@@ -622,17 +622,23 @@ def upload_case_stack_to_r2(case_id):
     Multipart form: one field per series (e.g. axial_contrast, sagittal) with multiple files.
     R2 path: cases/{case_id}_{case_slug}/studies/{study_id}_{study_slug}/series/{series_slug}/{index}.{ext}
     """
-    from models import Case, db
+    from models import Case, CaseStatus, db
 
     try:
-        if not is_admin():
-            return jsonify({"error": "Admin access required"}), 403
         if not r2_is_configured():
             return jsonify({"error": "R2 storage not configured. Set R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME in .env"}), 503
 
         case = Case.query.get(case_id)
-        if not case or not has_case_edit_permission(case):
-            return jsonify({"error": "Case not found or access denied"}), 404
+        if not case:
+            return jsonify({"error": "Case not found"}), 404
+        # Allow admins, content managers, and student creators of DRAFT cases
+        if not is_admin():
+            if not (current_user.is_authenticated
+                    and case.created_by_user_id == current_user.id
+                    and case.status == CaseStatus.DRAFT):
+                return jsonify({"error": "Admin access required"}), 403
+        if not has_case_edit_permission(case):
+            return jsonify({"error": "Access denied"}), 403
 
         study_label = (request.form.get("study_label") or "").strip()
         stack_id = request.form.get("stack_id", type=int)

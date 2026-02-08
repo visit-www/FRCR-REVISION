@@ -308,6 +308,9 @@ class Case(db.Model):
     # === CALCULATOR INTEGRATION ===
     calculator_slug = db.Column(db.String(50), nullable=True)  # e.g., 'oropharynx', 'lung', None
 
+    # === CONTRIBUTOR (Suggest a Case) ===
+    contributor_notes = db.Column(db.Text, nullable=True)  # Student "Additional Insights" free text
+
     # === RELATED CASES ===
     # Self-referential many-to-many for linking related cases (e.g., algorithm → specific cases)
     related_cases_list = db.relationship(

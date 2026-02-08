@@ -777,6 +777,164 @@ def dashboard():
                          case_count=case_count)
 
 
+# ==================== SUGGEST A CASE: Student-powered case contribution ====================
+
+@app.route('/suggest-case')
+@login_required
+def suggest_case():
+    """Student-facing page for suggesting a new case."""
+    return render_template('suggest_case.html')
+
+
+@app.route('/api/suggest-case/create', methods=['POST'])
+@login_required
+def create_suggested_case():
+    """Create a case as a student suggestion (always DRAFT status)."""
+    from models import FRCRModule, BodyPart, AgeGroup, CaseStatus
+    import re
+
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'Invalid request'}), 400
+
+    diagnosis = (data.get('diagnosis') or '').strip()
+    if not diagnosis:
+        return jsonify({'error': 'Diagnosis is required'}), 400
+    if not data.get('module'):
+        return jsonify({'error': 'Module is required'}), 400
+    if not data.get('body_part'):
+        return jsonify({'error': 'Body Part is required'}), 400
+
+    try:
+        module_enum = FRCRModule[data['module']]
+    except KeyError:
+        return jsonify({'error': 'Invalid module'}), 400
+    try:
+        body_part_enum = BodyPart[data['body_part']]
+    except KeyError:
+        return jsonify({'error': 'Invalid body part'}), 400
+
+    age_group_enum = None
+    if data.get('age_group'):
+        try:
+            age_group_enum = AgeGroup[data['age_group']]
+        except KeyError:
+            pass
+
+    # Rate limit: max 5 DRAFT cases per student
+    draft_count = Case.query.filter_by(
+        created_by_user_id=current_user.id,
+        status=CaseStatus.DRAFT
+    ).count()
+    if draft_count >= 5:
+        return jsonify({'error': 'You have 5 draft cases. Please submit or delete existing drafts before creating more.'}), 429
+
+    # Auto-generate case_number
+    short_code = data['body_part'].replace('_', '').upper()[:6]
+    prefix = f"{short_code}-"
+    existing = Case.query.filter(
+        Case.body_part == body_part_enum,
+        Case.case_number.ilike(f"{prefix}%")
+    ).all()
+    max_num = 0
+    for c in existing:
+        if c.case_number:
+            match = re.search(r'-(\d+)$', c.case_number)
+            if match:
+                num = int(match.group(1))
+                if num > max_num:
+                    max_num = num
+    case_number = f"{prefix}{max_num + 1:03d}"
+
+    try:
+        case = Case(
+            case_number=case_number,
+            diagnosis=diagnosis,
+            module=module_enum,
+            body_part=body_part_enum,
+            age_group=age_group_enum,
+            status=CaseStatus.DRAFT,
+            is_public=False,
+            created_by_user_id=current_user.id
+        )
+        db.session.add(case)
+        db.session.commit()
+        return jsonify({'success': True, 'case_id': case.id, 'case_number': case.case_number})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f'Failed to create case: {str(e)}'}), 500
+
+
+@app.route('/api/case/<int:case_id>/contributor-notes', methods=['PUT'])
+@login_required
+def update_contributor_notes(case_id):
+    """Save student Additional Insights for a case."""
+    case = verify_case_ownership(case_id)
+    if not case:
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    data = request.get_json() or {}
+    case.contributor_notes = (data.get('notes') or '').strip()
+    db.session.commit()
+    return jsonify({'success': True})
+
+
+@app.route('/api/case/<int:case_id>/submit-for-review', methods=['POST'])
+@login_required
+def submit_case_for_review(case_id):
+    """Submit a student-suggested case for admin review."""
+    from models import CaseStatus, CaseApprovalQueue
+
+    case = Case.query.get(case_id)
+    if not case:
+        return jsonify({'error': 'Case not found'}), 404
+    if case.created_by_user_id != current_user.id:
+        return jsonify({'error': 'Unauthorized'}), 403
+    if case.status != CaseStatus.DRAFT:
+        return jsonify({'error': 'Only draft cases can be submitted for review'}), 400
+
+    case.status = CaseStatus.PENDING_REVIEW
+
+    # Create approval queue entry (upsert — ignore if already exists)
+    existing_entry = CaseApprovalQueue.query.filter_by(case_id=case.id).first()
+    if not existing_entry:
+        queue_entry = CaseApprovalQueue(
+            case_id=case.id,
+            submitted_by_user_id=current_user.id
+        )
+        db.session.add(queue_entry)
+
+    db.session.commit()
+
+    # Send email notification to admin (best effort)
+    try:
+        from auth import send_case_review_notification
+        send_case_review_notification(case, current_user)
+    except Exception as e:
+        print(f"[SUGGEST] Email notification failed: {e}")
+
+    return jsonify({'success': True, 'message': 'Case submitted for review. Thank you!'})
+
+
+@app.route('/api/my-suggested-cases')
+@login_required
+def get_my_suggested_cases():
+    """Get all cases created by the current user."""
+    from models import CaseStatus
+    cases = Case.query.filter_by(
+        created_by_user_id=current_user.id
+    ).order_by(Case.created_at.desc()).all()
+
+    return jsonify([{
+        'id': c.id,
+        'diagnosis': c.diagnosis,
+        'module': c.module.value if c.module else None,
+        'status': c.status.value if c.status else 'draft',
+        'created_at': c.created_at.isoformat() if c.created_at else None,
+        'image_count': len(c.images) if c.images else 0,
+    } for c in cases])
+
+
 # ==================== STUDENT REVISION: BALANCED REVISION ====================
 # This section implements the balanced revision feature for students
 # CRITICAL: Does NOT interfere with examiner workflows
@@ -3271,6 +3429,11 @@ def verify_case_ownership(case_id):
         return None
     # Admins and content managers can edit all cases
     if has_case_edit_permission(case):
+        return case
+    # Student contributors: can edit their own DRAFT cases (Suggest a Case)
+    if (current_user.is_authenticated
+            and case.created_by_user_id == current_user.id
+            and case.status == CaseStatus.DRAFT):
         return case
     # Students: only allow view if published, never edit
     if has_case_view_access(case):

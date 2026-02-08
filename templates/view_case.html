@@ -8819,16 +8819,26 @@
                         });
                     }
                     document.addEventListener('fullscreenchange', function() {
-                        // Show/hide fullscreen slider
+                        // Show/hide fullscreen slider and horizontal slider
                         if (fsSliderEl) {
                             if (document.fullscreenElement && document.fullscreenElement.id === 'imageStackViewerWrapper') {
+                                if (sliceSliderEl) sliceSliderEl.style.display = 'none';
                                 var total = window.CaseDicomViewer ? window.CaseDicomViewer.getImageCount() : 1;
                                 if (total > 1) {
                                     fsSliderEl.max = total;
                                     fsSliderEl.classList.add('fs-slider-visible');
                                 }
+                                setTimeout(function() {
+                                    if (!document.fullscreenElement || document.fullscreenElement.id !== 'imageStackViewerWrapper') return;
+                                    var t = window.CaseDicomViewer ? window.CaseDicomViewer.getImageCount() : 1;
+                                    if (t > 1) {
+                                        fsSliderEl.max = Math.max(1, t);
+                                        fsSliderEl.classList.add('fs-slider-visible');
+                                    }
+                                }, 100);
                             } else {
                                 fsSliderEl.classList.remove('fs-slider-visible');
+                                if (sliceSliderEl) sliceSliderEl.style.display = '';
                             }
                         }
                         if (document.fullscreenElement && document.fullscreenElement.id === 'imageStackViewerWrapper') {

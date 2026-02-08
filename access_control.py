@@ -184,7 +184,12 @@ def has_case_edit_permission(case, user=None):
     # Content Manager can edit cases they created
     if user.role == UserRole.CONTENT_MANAGER:
         return case.created_by_user_id == user.id
-    
+
+    # Students can edit their own DRAFT cases (Suggest a Case feature)
+    if user.role == UserRole.STUDENT:
+        from models import CaseStatus
+        return (case.created_by_user_id == user.id and case.status == CaseStatus.DRAFT)
+
     return False
 
 

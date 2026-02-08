@@ -31,13 +31,13 @@
   position: relative;
   overflow: hidden;
 }
-/* Fullscreen: top-left overlay = plan/plane selection only */
+/* Fullscreen: top-left overlay = plan/plane selection only (above slice slider) */
 #imageStackFullscreenPlanOverlay {
   display: none;
   position: absolute;
   top: 0;
   left: 0;
-  z-index: 12;
+  z-index: 13;
   padding: 10px 12px;
   min-height: 44px;
   background: rgba(0, 0, 0, 0.9);
