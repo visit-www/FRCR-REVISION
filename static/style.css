@@ -1962,25 +1962,53 @@ pre {
     font-family: 'Charter', 'Georgia', 'Cambria', 'Times New Roman', serif !important;
     letter-spacing: 0.01em;
 }
-/* Softer bold inside discussion boxes — reduce visual heaviness */
+/* Softer bold inside discussion — reduce visual heaviness */
 .discussion-text strong {
     font-weight: 600;
 }
-.discussion-text .diagnosis-box strong,
-.discussion-text .key-finding strong,
-.discussion-text .clinical-note strong,
-.discussion-text .teaching-pearl strong,
-.discussion-text .pitfall strong,
-.discussion-text .differential-dx strong,
-.discussion-text .normal-variant strong,
-.discussion-text .staging-info strong,
-.discussion-text .image-finding strong {
-    font-weight: 600;
-    font-size: 0.92em;
+/* Section headers inside callout boxes: first <strong> child acts as label */
+.discussion-text .key-finding > strong:first-child,
+.discussion-text .clinical-note > strong:first-child,
+.discussion-text .teaching-pearl > strong:first-child,
+.discussion-text .pitfall > strong:first-child,
+.discussion-text .differential-dx > strong:first-child,
+.discussion-text .normal-variant > strong:first-child,
+.discussion-text .staging-info > strong:first-child,
+.discussion-text .image-finding > strong:first-child {
+    display: block;
+    font-weight: 700;
+    font-size: 0.82em;
     text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: inherit;
-    opacity: 0.75;
+    letter-spacing: 0.06em;
+    margin-bottom: 6px;
+    opacity: 0.55;
+}
+/* List items inside callout boxes: breathing room between bullets */
+.discussion-text .diagnosis-box li,
+.discussion-text .key-finding li,
+.discussion-text .clinical-note li,
+.discussion-text .teaching-pearl li,
+.discussion-text .pitfall li,
+.discussion-text .differential-dx li,
+.discussion-text .normal-variant li,
+.discussion-text .staging-info li,
+.discussion-text .image-finding li {
+    margin-bottom: 5px;
+    line-height: 1.65;
+}
+/* Lists inside callout boxes: tighter top margin so they sit near their header */
+.discussion-text .diagnosis-box ul,
+.discussion-text .key-finding ul,
+.discussion-text .clinical-note ul,
+.discussion-text .teaching-pearl ul,
+.discussion-text .pitfall ul,
+.discussion-text .differential-dx ul,
+.discussion-text .normal-variant ul,
+.discussion-text .staging-info ul,
+.discussion-text .image-finding ul {
+    margin-top: 2px;
+    margin-bottom: 4px;
+    padding-left: 1.3em;
 }
 
 /* Images Gallery */
@@ -4914,15 +4942,7 @@ body {
     font-size: 0.95em;
     line-height: 1.7;
 }
-.clinical-note::before {
-    content: "\f0f1  ";
-    font-family: "Font Awesome 6 Free";
-    font-weight: 900;
-    color: #5E899E;
-    margin-right: 6px;
-    font-size: 0.85em;
-    opacity: 0.7;
-}
+/* Icons removed — left-border colour is sufficient section identifier */
 
 .key-finding {
     margin: 1.1rem 0;
@@ -4933,15 +4953,7 @@ body {
     font-size: 0.95em;
     line-height: 1.7;
 }
-.key-finding::before {
-    content: "\f058  ";
-    font-family: "Font Awesome 6 Free";
-    font-weight: 900;
-    color: #28a745;
-    margin-right: 6px;
-    font-size: 0.85em;
-    opacity: 0.7;
-}
+/* Icons removed — left-border colour is sufficient section identifier */
 
 .differential-dx {
     margin: 1.1rem 0;
@@ -4952,15 +4964,7 @@ body {
     font-size: 0.95em;
     line-height: 1.7;
 }
-.differential-dx::before {
-    content: "\f074  ";
-    font-family: "Font Awesome 6 Free";
-    font-weight: 900;
-    color: #7952b3;
-    margin-right: 6px;
-    font-size: 0.85em;
-    opacity: 0.7;
-}
+/* Icons removed — left-border colour is sufficient section identifier */
 
 .teaching-pearl {
     margin: 1.1rem 0;
@@ -4971,15 +4975,7 @@ body {
     font-size: 0.95em;
     line-height: 1.7;
 }
-.teaching-pearl::before {
-    content: "\f0eb  ";
-    font-family: "Font Awesome 6 Free";
-    font-weight: 900;
-    color: #e9a304;
-    margin-right: 6px;
-    font-size: 0.85em;
-    opacity: 0.7;
-}
+/* Icons removed — left-border colour is sufficient section identifier */
 
 .pitfall {
     margin: 1.1rem 0;
@@ -4990,15 +4986,7 @@ body {
     font-size: 0.95em;
     line-height: 1.7;
 }
-.pitfall::before {
-    content: "\f071  ";
-    font-family: "Font Awesome 6 Free";
-    font-weight: 900;
-    color: #dc3545;
-    margin-right: 6px;
-    font-size: 0.85em;
-    opacity: 0.7;
-}
+/* Icons removed — left-border colour is sufficient section identifier */
 
 .normal-variant {
     margin: 1.1rem 0;
@@ -5009,26 +4997,29 @@ body {
     font-size: 0.95em;
     line-height: 1.7;
 }
-.normal-variant::before {
-    content: "\f05a  ";
-    font-family: "Font Awesome 6 Free";
-    font-weight: 900;
-    color: #17a2b8;
-    margin-right: 6px;
-    font-size: 0.85em;
-    opacity: 0.7;
-}
+/* Icons removed — left-border colour is sufficient section identifier */
 
 /* --- Diagnostic Boxes --- */
 .diagnosis-box {
     margin: 1.2rem 0;
-    padding: 12px 16px;
+    padding: 14px 18px;
     background: #fdf8f3;
-    border-left: 3px solid #e96304;
+    border-left: 4px solid #e96304;
     border-radius: 0;
     font-weight: normal;
     font-size: 1em;
     line-height: 1.7;
+}
+/* Diagnosis box first strong is the diagnosis name — make it prominent */
+.diagnosis-box > strong:first-child {
+    display: block;
+    font-weight: 700;
+    font-size: 1.1em;
+    color: #2c3e50;
+    margin-bottom: 6px;
+    text-transform: none !important;
+    letter-spacing: normal !important;
+    opacity: 1 !important;
 }
 
 .staging-info {
@@ -5077,8 +5068,9 @@ body {
 }
 
 .important-text {
-    color: #dc3545;
+    color: #c0392b;
     font-weight: 600;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 .subtle-text {
@@ -5131,9 +5123,12 @@ body {
     display: inline-block;
     background: #5E899E;
     color: #fff;
-    padding: 2px 8px;
-    border-radius: 12px;
-    font-size: 0.85em;
-    font-weight: 500;
+    padding: 1px 9px;
+    border-radius: 10px;
+    font-size: 0.82em;
+    font-weight: 600;
     letter-spacing: 0.3px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    vertical-align: baseline;
+    white-space: nowrap;
 }

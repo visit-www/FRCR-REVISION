@@ -22,7 +22,7 @@
             <h2 class="mb-1">
                 <i class="fas fa-lightbulb me-2" style="color: #e96304;"></i>Suggest a Case
             </h2>
-            <p class="text-muted mb-4">Contribute to the case library. AI will generate discussion and Q&A for expert review.</p>
+            <p class="text-muted mb-4">Contribute to the case library | RadInsight expert panel will review | once approved your case will be published with due attributes</p>
 
             <!-- ====== PHASE 1: Metadata Form ====== -->
             <div id="phaseMetadata">
@@ -123,7 +123,7 @@
                         <div class="spinner-border mb-3" style="color: #5E899E; width: 3rem; height: 3rem;" role="status">
                             <span class="visually-hidden">Loading...</span>
                         </div>
-                        <h5 class="text-muted">Generating case content with RadInsights AI...</h5>
+                        <h5 class="text-muted">Generating case content with RadInsights Intelligence...</h5>
                         <p class="text-muted small mb-0">This may take 30-60 seconds. Please wait.</p>
                     </div>
                 </div>
@@ -138,7 +138,7 @@
                         <i class="fas fa-exclamation-triangle me-3" style="font-size: 1.5rem; color: #e96304;"></i>
                         <div>
                             <strong style="color: #856404;">Exercise Caution &mdash; Pending Review by Expert Panel</strong>
-                            <p class="mb-0 small text-muted">AI-generated content requires expert verification before publication.</p>
+                            <p class="mb-0 small text-muted">RadInsights Intelligence content requires expert verification before publication.</p>
                         </div>
                     </div>
                 </div>
@@ -172,11 +172,14 @@
                             <strong>All images must be your own personal images</strong> and must not contain any copyright material or patient identifiable information.
                             Submissions containing such material will be summarily removed and your account may be blocked.
                         </div>
-                        <div class="d-flex gap-2 align-items-center flex-wrap mb-3">
-                            <input type="file" class="form-control" id="scImageFile" accept="image/jpeg,image/png,image/gif,image/webp" style="max-width: 350px;">
-                            <button class="btn btn-outline-secondary btn-sm" onclick="uploadImage()">
-                                <i class="fas fa-upload me-1"></i>Upload
-                            </button>
+                        <div class="mb-3">
+                            <div class="d-flex gap-2 align-items-center flex-wrap mb-2">
+                                <input type="file" class="form-control" id="scImageFile" accept="image/jpeg,image/png,image/gif,image/webp" style="max-width: 350px;">
+                                <button class="btn btn-outline-secondary btn-sm" onclick="uploadImage()">
+                                    <i class="fas fa-upload me-1"></i>Upload
+                                </button>
+                            </div>
+                            <input type="text" class="form-control form-control-sm" id="scImageDescription" placeholder="Image description (optional, e.g. 'Axial CT showing hepatic lesion')" style="max-width: 550px;">
                         </div>
                         <div id="scImageGallery" class="d-flex flex-wrap gap-3"></div>
                     </div>
@@ -193,7 +196,7 @@
                             <strong>All images must be your own personal images</strong> and must not contain any copyright material or patient identifiable information.
                             Submissions containing such material will be summarily removed and your account may be blocked.
                         </div>
-                        <div class="row g-2 mb-3">
+                        <div class="row g-2 mb-2">
                             <div class="col-md-5">
                                 <input type="text" class="form-control" id="scStudyLabel" placeholder="Study label (e.g. CT Abdomen)">
                             </div>
@@ -203,6 +206,9 @@
                             <div class="col-md-4">
                                 <input type="file" class="form-control" id="scStackFiles" accept="image/*" multiple>
                             </div>
+                        </div>
+                        <div class="mb-3">
+                            <textarea class="form-control form-control-sm" id="scStackDescription" rows="2" placeholder="Study description (optional, e.g. 'Post-contrast CT abdomen demonstrating pancreatic mass with vascular encasement')"></textarea>
                         </div>
                         <button class="btn btn-outline-secondary btn-sm" onclick="uploadStack()">
                             <i class="fas fa-upload me-1"></i>Upload Stack
@@ -336,7 +342,7 @@ function generateCase() {
         document.getElementById('phaseLoading').style.display = 'none';
 
         if (!data.success) {
-            if (typeof showToast === 'function') showToast(data.error || 'AI generation failed', 'error');
+            if (typeof showToast === 'function') showToast(data.error || 'RadInsights Intelligence generation failed', 'error');
             document.getElementById('phaseMetadata').style.display = 'block';
             return;
         }
@@ -394,20 +400,35 @@ function uploadImage() {
     var input = document.getElementById('scImageFile');
     if (!input.files.length) { if (typeof showToast === 'function') showToast('Select an image', 'error'); return; }
 
+    var descInput = document.getElementById('scImageDescription');
+    var description = descInput ? descInput.value.trim() : '';
+
     var formData = new FormData();
     formData.append('image', input.files[0]);
+    if (description) formData.append('description', description);
 
     fetch('/api/case/' + _caseId + '/image', {method: 'POST', body: formData})
     .then(function(r) { return r.json(); })
     .then(function(data) {
         if (data.error) { if (typeof showToast === 'function') showToast(data.error, 'error'); return; }
         var gallery = document.getElementById('scImageGallery');
+        var card = document.createElement('div');
+        card.style.cssText = 'text-align: center; max-width: 120px;';
         var img = document.createElement('img');
         img.src = data.thumbnail_url || data.image_url;
-        img.alt = data.filename || 'Image';
+        img.alt = description || data.filename || 'Image';
         img.style.cssText = 'width: 100px; height: 100px; object-fit: cover; border-radius: 8px; border: 2px solid #dee2e6;';
-        gallery.appendChild(img);
+        card.appendChild(img);
+        if (description) {
+            var desc = document.createElement('small');
+            desc.className = 'text-muted d-block mt-1';
+            desc.style.cssText = 'font-size: 0.7em; line-height: 1.2; word-break: break-word;';
+            desc.textContent = description.length > 60 ? description.substring(0, 57) + '...' : description;
+            card.appendChild(desc);
+        }
+        gallery.appendChild(card);
         input.value = '';
+        if (descInput) descInput.value = '';
         if (typeof showToast === 'function') showToast('Image uploaded', 'success');
     })
     .catch(function(err) {
@@ -421,6 +442,8 @@ function uploadStack() {
     var label = document.getElementById('scStudyLabel').value.trim();
     var series = document.getElementById('scSeriesName').value.trim() || 'axial';
     var files = document.getElementById('scStackFiles').files;
+    var descEl = document.getElementById('scStackDescription');
+    var description = descEl ? descEl.value.trim() : '';
 
     if (!label) { if (typeof showToast === 'function') showToast('Study label is required', 'error'); return; }
     if (!files.length) { if (typeof showToast === 'function') showToast('Select image files', 'error'); return; }
@@ -443,7 +466,17 @@ function uploadStack() {
         }
         statusEl.innerHTML = '<span class="text-success"><i class="fas fa-check me-1"></i>Study "' + (data.study_label || label) + '" uploaded (' + files.length + ' images)</span>';
         document.getElementById('scStackFiles').value = '';
+        if (descEl) descEl.value = '';
         if (typeof showToast === 'function') showToast('Image stack uploaded', 'success');
+
+        // Save study description if provided
+        if (description && data.stack_id) {
+            fetch('/case-dicom-viewer/api/case/' + _caseId + '/stack/description', {
+                method: 'PATCH',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({stack_id: data.stack_id, description_html: description})
+            }).catch(function() {});
+        }
     })
     .catch(function(err) {
         statusEl.innerHTML = '<span class="text-danger">Upload failed</span>';

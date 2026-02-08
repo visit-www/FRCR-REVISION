@@ -144,6 +144,10 @@ def has_case_view_access(case, user=None):
     if user.role in [UserRole.ADMIN, UserRole.CONTENT_MANAGER]:
         return True
     
+    # Case creators can always view their own submissions
+    if hasattr(case, 'created_by_user_id') and case.created_by_user_id and case.created_by_user_id == user.id:
+        return True
+
     # Students: only public cases visible (use is_public field, not status)
     # The system uses is_public=True to mark cases visible to students
     if not case.is_public:

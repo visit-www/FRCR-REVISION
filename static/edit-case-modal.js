@@ -2259,7 +2259,7 @@ function reloadPrelimCaseData() {
     .finally(() => {
         if (btn) {
             btn.disabled = false;
-            btn.innerHTML = btn.dataset.originalText || '<i class="fas fa-redo me-1"></i>Reload Previous AI Data';
+            btn.innerHTML = btn.dataset.originalText || '<i class="fas fa-redo me-1"></i>Reload Previous Data';
         }
     });
 }

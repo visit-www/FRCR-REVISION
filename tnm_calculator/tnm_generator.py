@@ -927,13 +927,13 @@ def generate_calculator_html(
             timeout=240,  # Vercel maxDuration=300, leave headroom
         )
     except http_requests.exceptions.Timeout:
-        raise ValueError(f"Claude API timed out generating {cancer_name} calculator. Try running locally.")
+        raise ValueError(f"RadInsights Intelligence timed out generating {cancer_name} calculator. Try running locally.")
     except http_requests.exceptions.RequestException as exc:
-        raise ValueError(f"Failed to connect to Claude API: {exc}")
+        raise ValueError(f"Failed to connect to RadInsights Intelligence: {exc}")
 
     if response.status_code >= 300:
         error_detail = response.text[:300] if response.text else "No details"
-        raise ValueError(f"Claude API error (HTTP {response.status_code}): {error_detail}")
+        raise ValueError(f"RadInsights Intelligence error (HTTP {response.status_code}): {error_detail}")
 
     data = response.json()
     html_content = data["content"][0]["text"]

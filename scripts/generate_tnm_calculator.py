@@ -514,7 +514,7 @@ def generate_and_sync(slug, cancer_name, body_section, special_notes=None, speci
     print(f"{'='*60}\n")
 
     # Step 1: Generate locally
-    print("[1/4] Generating calculator with Claude AI...")
+    print("[1/4] Generating calculator with RadInsights Intelligence...")
 
     from app import app, db
     from tnm_calculator.tnm_generator import generate_calculator_html, extract_algorithm_from_calculator, save_calculator_html_file

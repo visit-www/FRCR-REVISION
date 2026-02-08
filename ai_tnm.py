@@ -1217,22 +1217,22 @@ def _call_claude_tnm(system_prompt: str, user_prompt: str, model: str = None) ->
             timeout=90,  # Increased timeout for longer responses
         )
     except requests.exceptions.Timeout:
-        raise AiTnmError("Claude API request timed out.")
+        raise AiTnmError("RadInsights Intelligence request timed out.")
     except requests.exceptions.RequestException as exc:
-        raise AiTnmError(f"Failed to connect to Claude API: {exc}")
-    
+        raise AiTnmError(f"Failed to connect to RadInsights Intelligence: {exc}")
+
     if response.status_code >= 300:
         error_detail = response.text[:500] if response.text else "No details"
-        raise AiTnmError(f"Claude API error (HTTP {response.status_code}): {error_detail}")
-    
+        raise AiTnmError(f"RadInsights Intelligence error (HTTP {response.status_code}): {error_detail}")
+
     data = response.json()
     content = data.get("content", [])
     if not content:
-        raise AiTnmError("Claude response missing content block")
-    
+        raise AiTnmError("RadInsights Intelligence response missing content block")
+
     text = content[0].get("text", "").strip()
     if not text:
-        raise AiTnmError("Claude response was empty")
+        raise AiTnmError("RadInsights Intelligence response was empty")
     
     # Clean up - remove any code fence wrapper if Claude added it
     if text.startswith("```markdown"):

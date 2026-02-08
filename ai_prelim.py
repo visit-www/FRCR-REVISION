@@ -140,17 +140,17 @@ inserted directly into a TinyMCE rich-text editor.
 USE THESE CSS CLASSES (all are pre-defined in the app stylesheet):
 
 CALLOUT BOXES (use as <div class="CLASS_NAME">):
-  .clinical-note    — blue-left-border box for clinical context / pearls
-  .key-finding      — green-left-border box for key imaging findings
-  .teaching-pearl   — purple-left-border box for teaching points
-  .pitfall          — red-left-border box for pitfalls / danger / must-not-miss
-  .differential-dx  — orange-left-border box for differentials
-  .normal-variant   — grey-left-border box for normal variants
+  .clinical-note    — teal left-border for clinical context / pearls
+  .key-finding      — green left-border for key imaging findings
+  .teaching-pearl   — amber left-border for teaching points
+  .pitfall          — red left-border for pitfalls / danger / must-not-miss
+  .differential-dx  — purple left-border for differentials
+  .normal-variant   — blue left-border for normal variants
 
 DIAGNOSTIC BOXES:
-  .diagnosis-box    — blue-background summary box (use for the diagnosis summary)
-  .staging-info     — green-background box for staging/grading info
-  .comparison-box   — yellow-background box for side-by-side comparisons
+  .diagnosis-box    — warm-tint left-border box (use for the diagnosis name + summary)
+  .staging-info     — grey left-border for staging/grading info
+  .comparison-box   — grey left-border for side-by-side comparisons
 
 TEXT EMPHASIS (use as <span class="CLASS_NAME">):
   .highlight-yellow, .highlight-green, .highlight-red — background highlight
@@ -163,9 +163,9 @@ LAYOUT:
   .indent-block     — indented content block
 
 RADIOLOGY-SPECIFIC:
-  .image-finding    — light-blue box for describing imaging findings
-  .measurement      — inline green box for measurements/dimensions
-  .anatomy-label    — inline dark box for anatomical labels
+  .image-finding    — orange left-border for describing imaging findings
+  .measurement      — inline monospace box for measurements/dimensions
+  .anatomy-label    — teal pill badge for anatomical structure names
 
 TABLES:
   Use <table class="table table-sm table-bordered"> for staging/classification tables.
@@ -391,24 +391,24 @@ def generate_prelim_case_data(case_context, provider="claude", model=None):
             timeout=90,  # Increased timeout for longer responses
         )
     except requests.exceptions.Timeout:
-        raise AiPrelimError("Claude API request timed out. Please try again.")
+        raise AiPrelimError("RadInsights Intelligence request timed out. Please try again.")
     except requests.exceptions.RequestException as exc:
-        raise AiPrelimError(f"Failed to connect to Claude API: {exc}")
+        raise AiPrelimError(f"Failed to connect to RadInsights Intelligence: {exc}")
 
     if response.status_code >= 300:
         error_detail = response.text[:500] if response.text else "No details"
         raise AiPrelimError(
-            f"Claude API error (HTTP {response.status_code}): {error_detail}"
+            f"RadInsights Intelligence error (HTTP {response.status_code}): {error_detail}"
         )
 
     data = response.json()
     content = data.get("content", [])
     if not content:
-        raise AiPrelimError("Claude response missing content block")
+        raise AiPrelimError("RadInsights Intelligence response missing content block")
 
     text = content[0].get("text", "").strip()
     if not text:
-        raise AiPrelimError("Claude response was empty")
+        raise AiPrelimError("RadInsights Intelligence response was empty")
 
     # Clean up potential markdown fences
     if text.startswith("```"):
@@ -431,12 +431,12 @@ def generate_prelim_case_data(case_context, provider="claude", model=None):
                 parsed = json.loads(json_match.group())
             except json.JSONDecodeError:
                 raise AiPrelimError(
-                    f"Claude response was not valid JSON: {exc}. "
+                    f"RadInsights Intelligence response was not valid JSON: {exc}. "
                     f"Response preview: {text[:200]}..."
                 ) from exc
         else:
             raise AiPrelimError(
-                f"Claude response was not valid JSON: {exc}. "
+                f"RadInsights Intelligence response was not valid JSON: {exc}. "
                 f"Response preview: {text[:200]}..."
             ) from exc
 

@@ -2899,7 +2899,28 @@
         color: #e96304;
         background: transparent;
     }
-    
+
+    /* Image Stack tab — highlighted solid when stacks are available */
+    .notes-tabs .nav-link.image-stack-available {
+        background: rgba(23, 162, 184, 0.12);
+        color: #148a9b;
+        font-weight: 600;
+        border-bottom-color: #17a2b8;
+    }
+    .notes-tabs .nav-link.image-stack-available:hover {
+        background: rgba(23, 162, 184, 0.22);
+        color: #117a8a;
+    }
+    .notes-tabs .nav-link.image-stack-available.active {
+        background: #17a2b8;
+        color: #fff;
+        border-bottom-color: #17a2b8;
+        border-radius: 4px 4px 0 0;
+    }
+    .notes-tabs .nav-link.image-stack-available.active i {
+        color: #fff !important;
+    }
+
     /* Notion pages list */
     .notion-pages-list {
         max-height: 300px;
@@ -8436,13 +8457,26 @@
                 }
             });
         }
-        // Image Stack: load when tab is shown (student), or on load (admin - viewer is below Case Images)
+        // Image Stack: auto-activate tab if stacks exist (student), or load on page (admin)
         const imageStackTab = document.getElementById('imageStackTab');
         if (imageStackTab) {
             imageStackTab.addEventListener('shown.bs.tab', function() {
                 console.log('[ImageStack] Tab shown, loading stack...');
                 loadImageStack();
             });
+            // Student: check if image stacks exist, highlight tab & auto-activate
+            if (caseId && !isAdminUser) {
+                fetch('/case-dicom-viewer/api/case/' + caseId + '/stack', { credentials: 'include' })
+                    .then(function(r) { return r.json(); })
+                    .then(function(data) {
+                        if (data.has_stack && data.plans && Object.keys(data.plans).length > 0) {
+                            imageStackTab.classList.add('image-stack-available');
+                            var tab = new bootstrap.Tab(imageStackTab);
+                            tab.show();
+                        }
+                    })
+                    .catch(function() {});
+            }
         }
         if (isAdminUser && document.getElementById('imageStackSectionAdmin')) {
             console.log('[ImageStack] Admin: loading stack on page load');

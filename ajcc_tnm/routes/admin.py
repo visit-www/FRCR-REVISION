@@ -1322,7 +1322,7 @@ Return your analysis as JSON with this exact structure:
         )
 
         if response.status_code >= 300:
-            return jsonify({'success': False, 'error': f'Claude API error: {response.status_code}'}), 500
+            return jsonify({'success': False, 'error': f'RadInsights Intelligence error: {response.status_code}'}), 500
 
         ai_text = response.json()["content"][0]["text"].strip()
 

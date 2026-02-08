@@ -487,14 +487,18 @@ def save_case_stack(case_id):
 @case_dicom_bp.route("/api/case/<int:case_id>/stack/description", methods=["PATCH", "PUT"])
 @login_required
 def update_case_stack_description(case_id):
-    """Update only the rich-text description for a study (admin/content manager). Use stack_id in body/args for specific study."""
-    from models import Case, db
+    """Update the rich-text description for a study. Admins, content managers, and student creators of DRAFT cases."""
+    from models import Case, CaseStatus, db
     try:
-        if not is_admin_or_content_manager():
-            return jsonify({"error": "Admin or content manager access required"}), 403
         case = Case.query.get(case_id)
-        if not case or not has_case_edit_permission(case):
-            return jsonify({"error": "Case not found or access denied"}), 404
+        if not case:
+            return jsonify({"error": "Case not found"}), 404
+        # Allow admin/content managers, or student creator of their own DRAFT case
+        if not is_admin_or_content_manager():
+            if not (current_user.is_authenticated
+                    and case.created_by_user_id == current_user.id
+                    and case.status == CaseStatus.DRAFT):
+                return jsonify({"error": "Access denied"}), 403
         data = request.get_json() or {}
         stack_id = data.get("stack_id") or request.args.get("stack_id", type=int)
         if stack_id:

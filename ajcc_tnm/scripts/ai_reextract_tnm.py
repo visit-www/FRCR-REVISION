@@ -184,12 +184,12 @@ def call_claude(html: str, api_key: str) -> dict:
 
     if response.status_code >= 300:
         error_detail = response.text[:500] if response.text else "No details"
-        raise RuntimeError(f"Claude API error (HTTP {response.status_code}): {error_detail}")
+        raise RuntimeError(f"RadInsights Intelligence error (HTTP {response.status_code}): {error_detail}")
 
     data = response.json()
     content = data.get("content", [])
     if not content:
-        raise RuntimeError("Claude returned empty content")
+        raise RuntimeError("RadInsights Intelligence returned empty content")
 
     text = content[0].get("text", "")
 
