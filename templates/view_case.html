@@ -792,7 +792,6 @@
                                     </div>
                                     <div id="imageStackViewer" style="display: none;" tabindex="0">
                                         <div id="imageStackDescription" class="image-stack-description mb-3 p-3 rounded border bg-light" style="display: none;"></div>
-                                        <div id="imageStackStackSelector" class="d-flex align-items-center mb-2" style="display: none;"><select class="form-select form-select-sm" style="max-width: 280px; border-color: #5E899E;"></select></div>
                                         <div class="btn-group btn-group-sm mb-2" id="imageStackPlanTabs" role="group"></div>
                                         <!-- Annotation Toolbar (Admin Only) -->
                                         {% if current_user.is_authenticated and current_user.role and (current_user.role.value == 'admin' or current_user.role.value == 'content_manager') %}
