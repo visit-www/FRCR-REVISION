@@ -66,10 +66,19 @@ def search():
             image_types=image_types,
             max_per_type=max_per_type,
         )
-        # Add placeholder attribution (Google CSE filters for CC; actual attribution from source)
+        # Set attribution based on source
         for r in results:
-            r.setdefault("attribution", f"Source: {r.get('displayLink', r.get('source_domain', 'unknown'))}")
-            r.setdefault("license", "CC (filtered by search)")
+            if r.get("source_domain") == "radiopaedia.org":
+                case_url = r.get("case_url", r.get("link", ""))
+                r.setdefault("license", "CC BY-NC-SA 3.0")
+                r.setdefault("attribution",
+                    f'<a href="{case_url}" target="_blank" rel="noopener">{r.get("title", "Case")}</a> - '
+                    f'<a href="https://radiopaedia.org" target="_blank" rel="noopener">Radiopaedia.org</a>. '
+                    f'Licensed under <a href="https://creativecommons.org/licenses/by-nc-sa/3.0/" target="_blank" rel="noopener">CC BY-NC-SA 3.0</a>.'
+                )
+            else:
+                r.setdefault("attribution", f"Source: {r.get('displayLink', r.get('source_domain', 'unknown'))}")
+                r.setdefault("license", "CC (filtered by search)")
         if not results:
             manual_url = build_manual_search_url(
                 diagnosis=diagnosis,
@@ -80,7 +89,7 @@ def search():
             return jsonify({
                 "results": [],
                 "diagnosis": diagnosis,
-                "hint": "No images found from Wikimedia Commons or Open-i. Try a different query or use the manual search link below.",
+                "hint": "No images found. Try a different query or use the manual search link below.",
                 "manual_search_url": manual_url,
             })
         return jsonify({"results": results, "diagnosis": diagnosis})

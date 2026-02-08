@@ -397,12 +397,12 @@ console.log('[TinyMCE Loader] Script URL was:', "{{ url_for('static', filename='
                         </small>
                     </div>
 
-                    <!-- Reference Images (CC-licensed: CT/MRI, anatomy, concept) -->
+                    <!-- Search & Add External Images (CC-licensed) -->
                     <div class="border-top pt-4 mt-4">
                         <label class="form-label fw-bold text-secondary mb-2">
-                            <i class="fas fa-images me-1" style="color: #28a745;"></i>Reference Images (CC-licensed)
+                            <i class="fas fa-images me-1" style="color: #28a745;"></i>Search & Add External Images
                         </label>
-                        <p class="small text-muted mb-2">Curate CT/MRI, anatomy diagrams, and concept diagrams for the Anatomy tab. All images must be Creative Commons.</p>
+                        <p class="small text-muted mb-2">Search Radiopaedia for CC-licensed radiology images. Added images appear in the Image Viewer above.</p>
                         <button type="button" class="ref-image-trigger-btn" id="refImageSearchBtn" onclick="openRefImageSearchModal()">
                             <i class="fas fa-search me-1"></i>Search Reference Images
                         </button>
@@ -2139,20 +2139,23 @@ function searchRefImages() {
                     (manualUrl ? '<a href="' + manualUrl + '" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary mt-2"><i class="fas fa-external-link-alt me-1"></i>Search Google Images (CC)</a>' : '');
                 return;
             }
-            container.innerHTML = results.map((r, i) => `
+            container.innerHTML = results.map((r, i) => {
+                const defaultDesc = r.attribution || `Source: ${r.displayLink || r.source_domain || 'unknown'}`;
+                return `
                 <div class="d-flex gap-3 align-items-start mb-3 p-2 ref-image-result-card">
                     <img src="${r.thumbnail_link || r.link}" alt="" class="ref-image-thumb" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2280%22 height=%2280%22><rect fill=%22%23ddd%22 width=%2280%22 height=%2280%22/><text x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22%23999%22>?</text></svg>'">
                     <div class="flex-grow-1">
                         <span class="ref-image-type-badge">${r.image_type || 'ct_mri'}</span>
-                        <p class="ref-image-title">${(r.title || '').substring(0, 80)}...</p>
+                        <p class="ref-image-title">${(r.title || '').substring(0, 80)}</p>
                         <small class="ref-image-domain">${r.displayLink || r.source_domain || ''}</small>
-                        <input type="text" class="form-control form-control-sm mt-1" placeholder="Attribution (required)" id="refAttrib${i}" value="Source: ${r.displayLink || r.source_domain || 'unknown'}">
-                        <button type="button" class="ref-image-add-btn mt-1" onclick="addRefImageFromSearch('${r.link.replace(/'/g, "\\'")}', '${(r.source_domain || '').replace(/'/g, "\\'")}', '${(r.thumbnail_link || r.link || '').replace(/'/g, "\\'")}', '${(r.image_type || 'ct_mri').replace(/'/g, "\\'")}', ${i})">
-                            <i class="fas fa-plus me-1"></i>Add
+                        ${r.license ? '<small class="d-block text-success mt-1"><i class="fas fa-check-circle me-1"></i>' + r.license + '</small>' : ''}
+                        <textarea class="form-control form-control-sm mt-1" rows="2" placeholder="Description / attribution" id="refDesc${i}">${defaultDesc}</textarea>
+                        <button type="button" class="ref-image-add-btn mt-1" onclick="addRefImageFromSearch('${r.link.replace(/'/g, "\\'")}', '${(r.thumbnail_link || r.link || '').replace(/'/g, "\\'")}', ${i})">
+                            <i class="fas fa-plus me-1"></i>Add to Images
                         </button>
                     </div>
-                </div>
-            `).join('');
+                </div>`;
+            }).join('');
         })
         .catch(err => {
             btn.disabled = false;
@@ -2161,24 +2164,17 @@ function searchRefImages() {
             document.getElementById('refImageSearchResults').style.display = 'block';
         });
 }
-function addRefImageFromSearch(link, sourceDomain, thumbnailLink, imageType, idx) {
-    const attribution = document.getElementById('refAttrib' + idx)?.value?.trim();
-    if (!attribution) {
-        alert('Attribution is required for CC compliance.');
-        return;
-    }
+function addRefImageFromSearch(imageUrl, thumbnailUrl, idx) {
+    const description = document.getElementById('refDesc' + idx)?.value?.trim() || '';
     const caseId = document.getElementById('editCaseId')?.value;
     if (!caseId) return;
-    fetch('/api/reference-images/case/' + caseId, {
+    fetch('/api/case/' + caseId + '/image-url', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-            source_url: link,
-            source_domain: sourceDomain || 'unknown',
-            thumbnail_url: thumbnailLink,
-            image_type: imageType || 'ct_mri',
-            license: 'CC BY 4.0',
-            attribution: attribution
+            image_url: imageUrl,
+            thumbnail_url: thumbnailUrl,
+            description: description
         })
     })
     .then(r => r.json())
@@ -2187,7 +2183,7 @@ function addRefImageFromSearch(link, sourceDomain, thumbnailLink, imageType, idx
             alert(data.error);
             return;
         }
-        loadRefImagesList();
+        reloadImages(caseId);
         closeRefImageSearchPanel();
     })
     .catch(err => alert('Add failed: ' + err.message));

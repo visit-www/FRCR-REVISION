@@ -24,16 +24,17 @@ PROVIDER_GOOGLE = "google"
 PROVIDER_OPENI = "openi"
 PROVIDER_BING = "bing"
 PROVIDER_COMMONS = "commons"
+PROVIDER_RADIOPAEDIA = "radiopaedia"
 
 # Result shape: { link, thumbnail_link, title, displayLink, source_domain, image_type }
 
 
 def _get_provider_order() -> list[str]:
-    """Read provider order from env. Default: commons, openi (free, no API keys).
+    """Read provider order from env. Default: radiopaedia (free, CC-BY-NC-SA 3.0).
     Add google when CSE works; add bing with BING_IMAGE_SEARCH_KEY for web search."""
-    raw = os.environ.get("REFERENCE_IMAGE_SEARCH_PROVIDERS", "commons")
+    raw = os.environ.get("REFERENCE_IMAGE_SEARCH_PROVIDERS", "radiopaedia")
     order = [p.strip().lower() for p in raw.split(",") if p.strip()]
-    return order or [PROVIDER_COMMONS]
+    return order or [PROVIDER_RADIOPAEDIA]
 
 
 def _search_google(
@@ -119,11 +120,34 @@ def _search_commons(
         return []
 
 
+def _search_radiopaedia(
+    diagnosis: str,
+    body_part: str,
+    modality: str,
+    image_types: list[str] | None,
+    max_per_type: int,
+) -> list[dict]:
+    """Search Radiopaedia. Returns [] on error."""
+    try:
+        from radiopaedia_search_service import search_radiopaedia_images
+        return search_radiopaedia_images(
+            diagnosis=diagnosis,
+            body_part=body_part,
+            modality=modality,
+            image_types=image_types,
+            max_per_type=max_per_type,
+        )
+    except Exception as e:
+        logger.warning(f"[ReferenceImage] Radiopaedia search failed: {e}")
+        return []
+
+
 _PROVIDER_FUNCS: dict[str, Callable] = {
     PROVIDER_GOOGLE: _search_google,
     PROVIDER_OPENI: _search_openi,
     PROVIDER_BING: _search_bing,
     PROVIDER_COMMONS: _search_commons,
+    PROVIDER_RADIOPAEDIA: _search_radiopaedia,
 }
 
 

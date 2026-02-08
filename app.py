@@ -2147,6 +2147,53 @@ def upload_case_image(case_id):
         return jsonify({'error': f'Upload error: {str(e)}'}), 500
 
 
+@app.route('/api/case/<int:case_id>/image-url', methods=['POST'])
+@login_required
+def add_case_image_from_url(case_id):
+    """Add a CaseImage from an external URL (no Cloudinary upload).
+    Used for Radiopaedia and other CC-licensed search results."""
+    case = verify_case_ownership(case_id)
+    if not case:
+        return jsonify({"error": "Unauthorized"}), 403
+
+    data = request.get_json() or {}
+    image_url = (data.get("image_url") or "").strip()
+    if not image_url:
+        return jsonify({"error": "image_url is required"}), 400
+
+    thumbnail_url = (data.get("thumbnail_url") or "").strip() or image_url
+    description = (data.get("description") or "").strip()
+    filename = (data.get("filename") or "").strip()
+    if not filename:
+        # Extract filename from URL
+        from urllib.parse import urlparse
+        path = urlparse(image_url).path
+        filename = path.split("/")[-1] or "external_image.jpg"
+
+    case_image = CaseImage(
+        case_id=case_id,
+        image_url=image_url,
+        image_public_id=None,
+        image_thumbnail_url=thumbnail_url,
+        image_filename=filename,
+        image_type="image/jpeg",
+        image_description=description,
+    )
+    db.session.add(case_image)
+    try:
+        db.session.commit()
+        return jsonify({
+            "image_id": case_image.id,
+            "filename": case_image.image_filename,
+            "image_url": case_image.image_url,
+            "thumbnail_url": case_image.image_thumbnail_url,
+            "message": "Image added successfully",
+        }), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route('/api/case/<int:case_id>/images')
 @login_required
 def get_case_images(case_id):
