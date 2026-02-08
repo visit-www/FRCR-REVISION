@@ -3,11 +3,15 @@ Radiopaedia search service for reference images.
 
 Scrapes Radiopaedia HTML search results for CC-BY-NC-SA 3.0 radiology images.
 No API key required. Uses BeautifulSoup for parsing.
+
+Key: The X-Requested-With: XMLHttpRequest header makes Radiopaedia return
+server-rendered HTML with case links and thumbnail images. Without it,
+the page is a JS-only SPA shell with no content.
 """
 
 import re
 import logging
-from urllib.parse import urlencode, quote_plus
+from urllib.parse import urlencode
 
 from google_search_service import (
     build_search_queries,
@@ -21,14 +25,18 @@ logger = logging.getLogger(__name__)
 SOURCE_DOMAIN = "radiopaedia.org"
 SEARCH_URL = "https://radiopaedia.org/search"
 HEADERS = {
-    "User-Agent": "Mozilla/5.0 (compatible; RadInsights/1.0; radiology education app)",
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Accept": "text/html",
+    "Accept-Encoding": "gzip, deflate",
+    "X-Requested-With": "XMLHttpRequest",
 }
+# Regex for thumbnail images hosted on Radiopaedia's image CDN
+_IMG_CDN_RE = re.compile(r"prod-images-static\.radiopaedia\.org/images/")
 
 
 def _full_size_url(thumb_url: str) -> str:
     """Convert thumbnail URL to full-size by removing _thumb suffix."""
-    return re.sub(r'_thumb\.', '.', thumb_url)
+    return re.sub(r"_thumb\.", ".", thumb_url)
 
 
 def search_radiopaedia_single(
@@ -37,14 +45,13 @@ def search_radiopaedia_single(
     max_results: int = 10,
 ) -> list[dict]:
     """
-    Scrape Radiopaedia search results for a query.
-    Returns list of normalized result dicts.
+    Fetch Radiopaedia search page (cases scope) and parse results.
+    Returns list of normalised result dicts.
     """
     import requests
     from bs4 import BeautifulSoup
 
     params = {
-        "utf8": "✓",
         "q": query,
         "scope": "cases",
         "lang": "us",
@@ -55,67 +62,63 @@ def search_radiopaedia_single(
         r = requests.get(url, headers=HEADERS, timeout=15)
         r.raise_for_status()
     except Exception as e:
-        logger.warning(f"[Radiopaedia] Request failed for '{query}': {e}")
+        logger.warning("[Radiopaedia] Request failed for '%s': %s", query, e)
+        return []
+
+    if len(r.text) < 500:
+        logger.warning("[Radiopaedia] Empty/short response for '%s' (%d bytes)", query, len(r.text))
         return []
 
     soup = BeautifulSoup(r.text, "html.parser")
-    results = []
 
-    # Find case links: <a> with href matching /cases/{slug}
-    case_links = soup.find_all("a", href=re.compile(r"/cases/[^/]+"))
-    seen_hrefs = set()
+    # Find the search-results-listing container
+    listing = soup.find("div", class_="search-results-listing")
+    if not listing:
+        listing = soup  # Fallback to whole page
 
-    for link_tag in case_links:
+    # Collect case links and case images in DOM order within the listing.
+    # Radiopaedia renders one <a href="/cases/..."> and one <img> per result
+    # as siblings/descendants in the same flat structure.
+    case_links: list[dict] = []
+    case_imgs: list[str] = []
+    seen_slugs: set[str] = set()
+
+    for tag in listing.descendants:
+        if tag.name == "a":
+            href = tag.get("href", "")
+            m = re.match(r"^/cases/([^/?#]+)", href)
+            if m:
+                slug = m.group(1)
+                if slug not in seen_slugs:
+                    seen_slugs.add(slug)
+                    # Extract title from pipe-separated text parts
+                    raw = tag.get_text(separator="|", strip=True)
+                    parts = [p.strip() for p in raw.split("|") if p.strip()]
+                    title = parts[1] if len(parts) > 1 else slug.replace("-", " ").title()
+                    case_links.append({"slug": slug, "href": href, "title": title})
+        elif tag.name == "img":
+            src = tag.get("src", "") or ""
+            if _IMG_CDN_RE.search(src):
+                case_imgs.append(src)
+
+    # Match case links with images by position (1:1 correspondence in DOM order)
+    results: list[dict] = []
+    for i, case in enumerate(case_links):
         if len(results) >= max_results:
             break
 
-        href = link_tag.get("href", "")
-        # Normalize href
-        if href.startswith("/"):
-            href = f"https://radiopaedia.org{href}"
-
-        # Skip duplicates and non-case URLs
-        case_match = re.search(r"/cases/([^/?#]+)", href)
-        if not case_match:
-            continue
-        case_slug = case_match.group(1)
-        if case_slug in seen_hrefs:
-            continue
-        seen_hrefs.add(case_slug)
-
-        # Find thumbnail: look for <img> inside or near this link
-        img_tag = link_tag.find("img")
-        if not img_tag:
-            # Check parent for img siblings
-            parent = link_tag.parent
-            if parent:
-                img_tag = parent.find("img")
-
-        thumb_url = ""
-        full_url = href  # Default to case page URL
-        if img_tag:
-            src = img_tag.get("src", "") or img_tag.get("data-src", "")
-            if src and "radiopaedia" in src:
-                thumb_url = src
-                full_url = _full_size_url(src)
-
-        # Extract title from link text or slug
-        title = link_tag.get_text(strip=True)
-        if not title or len(title) < 3:
-            title = case_slug.replace("-", " ").title()
-
-        # Skip non-useful entries (navigation links etc)
-        if title.lower() in ("cases", "articles", "courses", "playlists"):
-            continue
+        thumb = case_imgs[i] if i < len(case_imgs) else ""
+        full_img = _full_size_url(thumb) if thumb else ""
+        case_url = f"https://radiopaedia.org{case['href'].split('?')[0]}"
 
         results.append({
-            "link": full_url,
-            "thumbnail_link": thumb_url or full_url,
-            "title": title,
+            "link": full_img or case_url,
+            "thumbnail_link": thumb or case_url,
+            "title": case["title"],
             "displayLink": SOURCE_DOMAIN,
             "source_domain": SOURCE_DOMAIN,
             "image_type": image_type,
-            "case_url": href,
+            "case_url": case_url,
             "license": "CC BY-NC-SA 3.0",
         })
 
@@ -131,28 +134,39 @@ def search_radiopaedia_images(
 ) -> list[dict]:
     """
     Search Radiopaedia for radiology case images.
-    Uses same query logic as other providers via build_search_queries().
+
+    Unlike other providers, Radiopaedia IS a radiology site — so adding
+    "radiology imaging" to queries over-restricts results. We search with
+    the raw diagnosis first, then try built queries only if needed.
     """
     if image_types is None or not image_types:
         image_types = [IMAGE_TYPE_CT_MRI]
-        if modality and modality.strip().upper() in ("CT", "MRI"):
-            image_types = [IMAGE_TYPE_CT_MRI]
-        else:
-            image_types = [IMAGE_TYPE_CT_MRI, IMAGE_TYPE_ANATOMY_DIAGRAM]
 
-    queries = build_search_queries(diagnosis, body_part, modality)
     seen_urls: set[str] = set()
     results: list[dict] = []
 
+    # Primary search: raw diagnosis (optionally with modality)
+    primary_query = diagnosis.strip()
+    if modality and modality.strip():
+        primary_query = f"{diagnosis.strip()} {modality.strip()}"
+    for hit in search_radiopaedia_single(primary_query, IMAGE_TYPE_CT_MRI, max_results=max_per_type):
+        if hit["link"] not in seen_urls:
+            seen_urls.add(hit["link"])
+            results.append(hit)
+
+    # If we got enough, return early
+    if len(results) >= max_per_type:
+        return results[:max_per_type]
+
+    # Fallback: try built queries for remaining slots
+    queries = build_search_queries(diagnosis, body_part, modality)
     for itype in image_types:
         for q in queries.get(itype, [])[:2]:
-            for hit in search_radiopaedia_single(
-                q, image_type=itype, max_results=max_per_type
-            ):
+            if len(results) >= max_per_type:
+                break
+            for hit in search_radiopaedia_single(q, itype, max_results=max_per_type):
                 if hit["link"] not in seen_urls:
                     seen_urls.add(hit["link"])
                     results.append(hit)
-            if len([r for r in results if r["image_type"] == itype]) >= max_per_type:
-                break
 
     return results

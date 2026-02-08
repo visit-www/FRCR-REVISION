@@ -1233,33 +1233,60 @@
             // Folders
             (data.prefixes || []).forEach(p => {
                 const name = p.replace(prefix, '').replace(/\/$/, '');
-                const a = document.createElement('a');
-                a.href = '#';
-                a.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center';
-                a.innerHTML = '<span><i class="fas fa-folder text-warning me-2"></i>' + name + '</span><i class="fas fa-chevron-right text-muted"></i>';
-                a.addEventListener('click', function(e) { e.preventDefault(); loadR2Contents(p); });
-                folders.appendChild(a);
+                const item = document.createElement('div');
+                item.className = 'list-group-item d-flex justify-content-between align-items-center';
+                const link = document.createElement('a');
+                link.href = '#';
+                link.className = 'flex-grow-1 text-decoration-none';
+                link.innerHTML = '<span><i class="fas fa-folder text-warning me-2"></i>' + name + '</span>';
+                link.addEventListener('click', function(e) { e.preventDefault(); loadR2Contents(p); });
+                const delFolderBtn = document.createElement('button');
+                delFolderBtn.className = 'btn btn-outline-danger btn-sm ms-2';
+                delFolderBtn.innerHTML = '<i class="fas fa-trash-alt"></i>';
+                delFolderBtn.title = 'Delete folder: ' + name;
+                delFolderBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    if (!confirm('Permanently delete all files in "' + p + '" from R2? This cannot be undone.')) return;
+                    delFolderBtn.disabled = true;
+                    delFolderBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+                    fetch('/api/admin/r2/delete', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify({ prefix: p })
+                    }).then(r => r.json()).then(d => {
+                        if (d.error) { alert('Error: ' + d.error); delFolderBtn.disabled = false; delFolderBtn.innerHTML = '<i class="fas fa-trash-alt"></i>'; return; }
+                        showToast('Deleted ' + (d.deleted || 0) + ' object(s) from ' + name, 'success');
+                        loadR2Contents(prefix);
+                    }).catch(err => { delFolderBtn.disabled = false; delFolderBtn.innerHTML = '<i class="fas fa-trash-alt"></i>'; alert('Failed: ' + err.message); });
+                });
+                item.appendChild(link);
+                item.appendChild(delFolderBtn);
+                folders.appendChild(item);
             });
             // Files
             const objs = data.objects || [];
             if (objs.length > 0) {
-                let tbl = '<table class="table table-sm table-hover"><thead><tr><th>Name</th><th>Size</th><th></th></tr></thead><tbody>';
-                objs.forEach(o => {
+                let tbl = '<table class="table table-sm table-hover"><thead><tr><th>Name</th><th>Size</th><th style="width:60px"></th></tr></thead><tbody>';
+                objs.forEach((o, idx) => {
                     const name = o.Key.replace(prefix, '');
                     const size = typeof o.Size === 'number' ? (o.Size < 1024 ? o.Size + ' B' : (o.Size < 1024*1024 ? (o.Size/1024).toFixed(1) + ' KB' : (o.Size/(1024*1024)).toFixed(2) + ' MB')) : '';
-                    tbl += '<tr><td><i class="fas fa-file-image text-info me-2"></i>' + name + '</td><td class="text-muted">' + size + '</td><td></td></tr>';
+                    const safeKey = o.Key.replace(/'/g, "\\'");
+                    tbl += '<tr><td><i class="fas fa-file-image text-info me-2"></i>' + name + '</td><td class="text-muted">' + size + '</td>'
+                        + '<td><button class="btn btn-outline-danger btn-sm py-0 px-1" title="Delete file" onclick="deleteR2File(\'' + safeKey + '\', this)"><i class="fas fa-trash-alt"></i></button></td></tr>';
                 });
                 tbl += '</tbody></table>';
                 files.innerHTML = tbl;
             }
-            // Delete folder button (only if we have prefix and it looks like a stack folder: cases/123/abc123/)
-            if (prefix && prefix.match(/^cases\/\d+\/[^/]+\/$/)) {
+            // Delete current folder button (when inside a subfolder)
+            if (prefix) {
                 const delBtn = document.createElement('button');
                 delBtn.className = 'btn btn-danger btn-sm mt-3';
-                delBtn.innerHTML = '<i class="fas fa-trash-alt me-1"></i>Delete this folder from R2';
+                delBtn.innerHTML = '<i class="fas fa-trash-alt me-1"></i>Delete this entire folder';
                 delBtn.addEventListener('click', function() {
-                    if (!confirm('Permanently delete all files in "' + prefix + '" from R2? This cannot be undone. Ensure no case is linked to this stack.')) return;
+                    if (!confirm('Permanently delete ALL files in "' + prefix + '" from R2? This cannot be undone.')) return;
                     delBtn.disabled = true;
+                    delBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Deleting...';
                     fetch('/api/admin/r2/delete', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -1267,10 +1294,12 @@
                         body: JSON.stringify({ prefix: prefix })
                     }).then(r => r.json()).then(data => {
                         delBtn.disabled = false;
+                        delBtn.innerHTML = '<i class="fas fa-trash-alt me-1"></i>Delete this entire folder';
                         if (data.error) { alert('Error: ' + data.error); return; }
                         showToast('Deleted ' + (data.deleted || 0) + ' object(s)', 'success');
-                        loadR2Contents(prefix.split('/').slice(0, -2).join('/') + '/');
-                    }).catch(e => { delBtn.disabled = false; alert('Failed: ' + e.message); });
+                        const parent = prefix.replace(/\/$/, '').split('/').slice(0, -1).join('/');
+                        loadR2Contents(parent ? parent + '/' : '');
+                    }).catch(e => { delBtn.disabled = false; delBtn.innerHTML = '<i class="fas fa-trash-alt me-1"></i>Delete this entire folder'; alert('Failed: ' + e.message); });
                 });
                 folders.appendChild(delBtn);
             }
@@ -1315,10 +1344,27 @@
         }
     }
 
+    function deleteR2File(key, btn) {
+        const name = key.split('/').pop();
+        if (!confirm('Delete "' + name + '" from R2? This cannot be undone.')) return;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        fetch('/api/admin/r2/delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ keys: [key] })
+        }).then(r => r.json()).then(data => {
+            if (data.error) { alert('Error: ' + data.error); btn.disabled = false; btn.innerHTML = '<i class="fas fa-trash-alt"></i>'; return; }
+            showToast('Deleted ' + name, 'success');
+            loadR2Contents(r2CurrentPrefix);
+        }).catch(e => { btn.disabled = false; btn.innerHTML = '<i class="fas fa-trash-alt"></i>'; alert('Failed: ' + e.message); });
+    }
+
     // ============================================================================
     // APP DOCUMENTS TAB
     // ============================================================================
-    
+
     let currentDocPath = null;
     let showingRaw = false;
     let currentRawContent = '';
