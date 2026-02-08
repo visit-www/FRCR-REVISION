@@ -48,8 +48,11 @@ def search_wikimedia_single(
     }
     url = f"{COMMONS_API}?{urlencode(params)}"
 
+    headers = {
+        "User-Agent": "RadInsights/1.0 (radiology education app; mailto:lotusheart2016@gmail.com)",
+    }
     try:
-        r = requests.get(url, timeout=15)
+        r = requests.get(url, headers=headers, timeout=15)
         r.raise_for_status()
         data = r.json()
     except Exception as e:
@@ -59,7 +62,7 @@ def search_wikimedia_single(
     pages = data.get("query", {}).get("pages") or {}
     results = []
     for page_id, page in pages.items():
-        if page_id < 0:  # Special pages (missing, etc.)
+        if str(page_id).startswith("-"):  # Missing/special pages
             continue
         title = page.get("title", "")
         if not title.startswith("File:"):

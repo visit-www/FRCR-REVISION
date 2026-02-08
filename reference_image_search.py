@@ -31,7 +31,7 @@ PROVIDER_COMMONS = "commons"
 def _get_provider_order() -> list[str]:
     """Read provider order from env. Default: commons, openi (free, no API keys).
     Add google when CSE works; add bing with BING_IMAGE_SEARCH_KEY for web search."""
-    raw = os.environ.get("REFERENCE_IMAGE_SEARCH_PROVIDERS", "commons,openi")
+    raw = os.environ.get("REFERENCE_IMAGE_SEARCH_PROVIDERS", "commons")
     order = [p.strip().lower() for p in raw.split(",") if p.strip()]
     return order or [PROVIDER_COMMONS]
 
