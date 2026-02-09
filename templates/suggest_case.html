@@ -34,6 +34,9 @@
                         <div class="mb-3">
                             <label for="scDiagnosis" class="form-label fw-semibold">Diagnosis <span class="text-danger">*</span></label>
                             <input type="text" class="form-control" id="scDiagnosis" placeholder="e.g. Osteoid Osteoma, Pancoast Tumour, Crohn's Disease" required>
+                            <div id="diagnosisSimilarWarning" class="mt-2 p-2 rounded" role="alert"
+                                 style="display: none; background: #fff3cd; border: 1px solid #ffc107;">
+                            </div>
                         </div>
                         <div class="row g-3 mb-3">
                             <div class="col-md-6">
@@ -297,6 +300,27 @@
     </div>
 </div>
 
+<!-- Duplicate Confirmation Modal -->
+<div class="modal fade" id="duplicateConfirmModal" tabindex="-1" aria-labelledby="duplicateConfirmLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header" style="background: #fff3cd; border-bottom: 2px solid #ffc107;">
+                <h5 class="modal-title" id="duplicateConfirmLabel"><i class="fas fa-exclamation-triangle me-2" style="color: #e96304;"></i>Similar Case Found</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>A similar case already exists in the library:</p>
+                <div id="duplicateModalList"></div>
+                <p class="mt-3 mb-0 text-muted small">Do you still want to create a new case?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-warning" id="duplicateConfirmBtn">Yes, Create Anyway</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 let _caseId = null;
 let _relatedCases = [];
@@ -305,10 +329,45 @@ document.addEventListener('DOMContentLoaded', function() {
     loadMySuggestions();
     initRelatedSearch();
     initNotesAutoSave();
+    initDiagnosisSimilarityCheck();
 });
 
+// ========== Diagnosis Similarity Check ==========
+function initDiagnosisSimilarityCheck() {
+    var input = document.getElementById('scDiagnosis');
+    var warning = document.getElementById('diagnosisSimilarWarning');
+    var timeout;
+
+    input.addEventListener('input', function() {
+        clearTimeout(timeout);
+        var q = input.value.trim();
+        if (q.length < 4) { warning.style.display = 'none'; return; }
+
+        timeout = setTimeout(function() {
+            fetch('/api/diagnoses/similar?q=' + encodeURIComponent(q))
+            .then(function(r) { return r.json(); })
+            .then(function(matches) {
+                if (!matches.length) { warning.style.display = 'none'; return; }
+                var html = '<small class="fw-semibold" style="color: #856404;"><i class="fas fa-exclamation-triangle me-1"></i>Similar cases already exist:</small><ul class="mb-0 mt-1 ps-3" style="font-size: 0.85rem;">';
+                matches.forEach(function(m) {
+                    var statusLabel = m.status === 'published' ? '<span class="text-success">Published</span>'
+                                    : m.status === 'pending_review' ? '<span class="text-info">Under Review</span>'
+                                    : '<span class="text-muted">' + m.status + '</span>';
+                    html += '<li><a href="/view-case/' + m.id + '" target="_blank" class="text-decoration-none">' + m.diagnosis + '</a>';
+                    html += ' <small class="text-muted">(' + (m.case_number || '') + ')</small> — ' + statusLabel;
+                    html += ' <small class="text-muted">(' + Math.round(m.similarity * 100) + '% match)</small></li>';
+                });
+                html += '</ul>';
+                warning.innerHTML = html;
+                warning.style.display = 'block';
+            })
+            .catch(function() { warning.style.display = 'none'; });
+        }, 500);
+    });
+}
+
 // ========== PHASE 1 → 2: Generate ==========
-function generateCase() {
+function generateCase(confirmed) {
     var diagnosis = document.getElementById('scDiagnosis').value.trim();
     var module = document.getElementById('scModule').value;
     var bodyPart = document.getElementById('scBodyPart').value;
@@ -322,14 +381,25 @@ function generateCase() {
     document.getElementById('phaseMetadata').style.display = 'none';
     document.getElementById('phaseLoading').style.display = 'block';
 
+    var contributorName = document.getElementById('scContributorName').value.trim();
+    var payload = {diagnosis: diagnosis, module: module, body_part: bodyPart, age_group: ageGroup, contributor_name: contributorName};
+    if (confirmed) payload.confirmed = true;
+
     // Step 1: Create the case
     fetch('/api/suggest-case/create', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({diagnosis: diagnosis, module: module, body_part: bodyPart, age_group: ageGroup})
+        body: JSON.stringify(payload)
     })
     .then(function(r) { return r.json(); })
     .then(function(data) {
+        // Handle duplicate confirmation
+        if (data.needs_confirmation) {
+            document.getElementById('phaseLoading').style.display = 'none';
+            document.getElementById('phaseMetadata').style.display = 'block';
+            showDuplicateConfirmModal(data.similar_cases);
+            return;
+        }
         if (!data.success) {
             throw new Error(data.error || 'Failed to create case');
         }
@@ -342,8 +412,12 @@ function generateCase() {
             body: JSON.stringify({force_regenerate: true})
         });
     })
-    .then(function(r) { return r.json(); })
+    .then(function(r) {
+        if (!r) return;  // Skipped due to confirmation modal
+        return r.json();
+    })
     .then(function(data) {
+        if (!data) return;  // Skipped due to confirmation modal
         document.getElementById('phaseLoading').style.display = 'none';
 
         if (!data.success) {
@@ -362,6 +436,35 @@ function generateCase() {
         document.getElementById('phaseMetadata').style.display = 'block';
         if (typeof showToast === 'function') showToast(err.message || 'Generation failed', 'error');
     });
+}
+
+function showDuplicateConfirmModal(similarCases) {
+    var listEl = document.getElementById('duplicateModalList');
+    var html = '<div class="list-group">';
+    similarCases.forEach(function(m) {
+        var statusBadge = m.status === 'published'
+            ? '<span class="badge bg-success ms-2">Published</span>'
+            : '<span class="badge bg-info ms-2">Under Review</span>';
+        html += '<a href="/view-case/' + m.id + '" target="_blank" class="list-group-item list-group-item-action">';
+        html += '<strong>' + m.diagnosis + '</strong>' + statusBadge;
+        html += '<br><small class="text-muted">' + (m.case_number || '') + ' — ' + Math.round(m.similarity * 100) + '% match</small>';
+        html += '</a>';
+    });
+    html += '</div>';
+    listEl.innerHTML = html;
+
+    var modal = new bootstrap.Modal(document.getElementById('duplicateConfirmModal'));
+    var confirmBtn = document.getElementById('duplicateConfirmBtn');
+
+    // Remove old listener and add new one
+    var newBtn = confirmBtn.cloneNode(true);
+    confirmBtn.parentNode.replaceChild(newBtn, confirmBtn);
+    newBtn.addEventListener('click', function() {
+        modal.hide();
+        generateCase(true);
+    });
+
+    modal.show();
 }
 
 function showGeneratedContent(data) {

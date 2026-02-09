@@ -786,9 +786,12 @@ def list_cases():
         # Build response
         cases_data = []
         for case in pagination.items:
-            # Get creator's name
-            creator = User.query.get(case.created_by_user_id) if case.created_by_user_id else None
-            creator_name = creator.full_name if creator else 'Unknown'
+            # Get creator's name (prefer contributor_name from case, fallback to User.full_name)
+            if case.contributor_name:
+                creator_name = case.contributor_name
+            else:
+                creator = User.query.get(case.created_by_user_id) if case.created_by_user_id else None
+                creator_name = creator.full_name if creator else 'Unknown'
             
             cases_data.append({
                 'id': case.id,
@@ -917,7 +920,9 @@ def get_case(case_id):
         return jsonify({'success': False, 'error': 'Case not found'}), 404
     creator = None
     creator_name = 'Unknown'
-    if case.created_by_user_id:
+    if case.contributor_name:
+        creator_name = case.contributor_name
+    elif case.created_by_user_id:
         creator = User.query.get(case.created_by_user_id)
         if creator:
             creator_name = creator.full_name
@@ -934,6 +939,7 @@ def get_case(case_id):
         'is_public': case.is_public,
         'created_by_user_id': case.created_by_user_id,
         'created_by_name': creator_name,
+        'contributor_name': case.contributor_name or '',
         'created_at': case.created_at.isoformat() if case.created_at else None,
         'contributor_notes': case.contributor_notes or '',
     }), 200

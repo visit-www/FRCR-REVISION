@@ -786,6 +786,85 @@ def suggest_case():
     return render_template('suggest_case.html')
 
 
+def _normalize_diagnosis(text):
+    """Normalize diagnosis text for similarity comparison: lowercase, strip laterality."""
+    import re
+    text = text.lower().strip()
+    text = re.sub(r'^(right|left|bilateral|rt|lt|bilat)\s+', '', text)
+    return text
+
+
+def _find_similar_diagnoses(diagnosis_text, threshold=0.3, limit=5):
+    """Find existing cases with similar diagnoses using pg_trgm similarity."""
+    from sqlalchemy import text
+    normalized = _normalize_diagnosis(diagnosis_text)
+    if len(normalized) < 3:
+        return []
+
+    sql = text("""
+        SELECT id, case_number, diagnosis, status,
+               GREATEST(
+                   similarity(lower(diagnosis), :normalized),
+                   similarity(
+                       regexp_replace(lower(diagnosis), '^(right|left|bilateral|rt|lt|bilat)\\s+', ''),
+                       :normalized
+                   )
+               ) AS sim
+        FROM "case"
+        WHERE GREATEST(
+                  similarity(lower(diagnosis), :normalized),
+                  similarity(
+                      regexp_replace(lower(diagnosis), '^(right|left|bilateral|rt|lt|bilat)\\s+', ''),
+                      :normalized
+                  )
+              ) > :threshold
+        ORDER BY sim DESC
+        LIMIT :lim
+    """)
+    rows = db.session.execute(sql, {
+        'normalized': normalized,
+        'threshold': threshold,
+        'lim': limit
+    }).fetchall()
+
+    results = []
+    for r in rows:
+        # Raw SQL returns status as string (PostgreSQL enum value)
+        status_str = r.status.value if hasattr(r.status, 'value') else str(r.status)
+        results.append({
+            'id': r.id,
+            'case_number': r.case_number,
+            'diagnosis': r.diagnosis,
+            'status': status_str,
+            'similarity': round(float(r.sim), 3)
+        })
+    return results
+
+
+@app.route('/api/diagnoses/similar')
+@login_required
+def get_similar_diagnoses():
+    """Find existing cases with similar diagnoses (pg_trgm fuzzy matching)."""
+    q = (request.args.get('q') or '').strip()
+    if len(q) < 3:
+        return jsonify([])
+
+    try:
+        threshold = float(request.args.get('threshold', 0.3))
+    except (ValueError, TypeError):
+        threshold = 0.3
+
+    threshold = max(0.1, min(threshold, 0.9))
+
+    try:
+        results = _find_similar_diagnoses(q, threshold=threshold)
+        return jsonify(results)
+    except Exception as e:
+        # pg_trgm extension may not be enabled
+        print(f"Similar diagnoses query failed: {e}")
+        return jsonify([])
+
+
 @app.route('/api/suggest-case/create', methods=['POST'])
 @login_required
 def create_suggested_case():
@@ -804,6 +883,20 @@ def create_suggested_case():
         return jsonify({'error': 'Module is required'}), 400
     if not data.get('body_part'):
         return jsonify({'error': 'Body Part is required'}), 400
+
+    # Duplicate check (soft guard): warn if similar published/reviewed case exists
+    if not data.get('confirmed'):
+        try:
+            similar = _find_similar_diagnoses(diagnosis, threshold=0.5)
+            # Only flag published or pending_review cases
+            flagged = [s for s in similar if s['status'] in ('published', 'pending_review')]
+            if flagged:
+                return jsonify({
+                    'needs_confirmation': True,
+                    'similar_cases': flagged
+                })
+        except Exception:
+            pass  # Don't block creation if similarity check fails
 
     try:
         module_enum = FRCRModule[data['module']]
@@ -846,6 +939,9 @@ def create_suggested_case():
                     max_num = num
     case_number = f"{prefix}{max_num + 1:03d}"
 
+    # Contributor name for attribution (falls back to user's full_name)
+    contributor_name = (data.get('contributor_name') or '').strip() or current_user.full_name
+
     try:
         case = Case(
             case_number=case_number,
@@ -855,7 +951,8 @@ def create_suggested_case():
             age_group=age_group_enum,
             status=CaseStatus.DRAFT,
             is_public=False,
-            created_by_user_id=current_user.id
+            created_by_user_id=current_user.id,
+            contributor_name=contributor_name
         )
         db.session.add(case)
         db.session.commit()
@@ -3426,9 +3523,11 @@ def verify_case_ownership(case_id):
     """
     Helper to check if the current user can access/edit the case.
     Admins and content managers: can edit all cases.
-    Students: can only view published cases, never edit.
+    Student contributors: can edit their own DRAFT cases.
+    Other students: can only view published cases (GET only).
     Returns the case if allowed, else None.
     """
+    from models import CaseStatus
     case = Case.query.get(case_id)
     if not case:
         return None
@@ -3440,9 +3539,8 @@ def verify_case_ownership(case_id):
             and case.created_by_user_id == current_user.id
             and case.status == CaseStatus.DRAFT):
         return case
-    # Students: only allow view if published, never edit
+    # Other students: only allow GET on viewable cases
     if has_case_view_access(case):
-        # Only allow GET requests for students
         if request.method == 'GET':
             return case
         else:
@@ -3474,6 +3572,7 @@ def get_case(case_id):
             'is_public': case.is_public,
             'status': case.status.name if case.status else 'DRAFT',
             'contributor_notes': case.contributor_notes or '',
+            'contributor_name': case.contributor_name or '',
             'created_by_user_id': case.created_by_user_id,
         })
 

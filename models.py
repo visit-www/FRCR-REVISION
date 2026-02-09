@@ -309,6 +309,7 @@ class Case(db.Model):
     calculator_slug = db.Column(db.String(50), nullable=True)  # e.g., 'oropharynx', 'lung', None
 
     # === CONTRIBUTOR (Suggest a Case) ===
+    contributor_name = db.Column(db.String(120), nullable=True)  # Attribution name for student-submitted cases
     contributor_notes = db.Column(db.Text, nullable=True)  # Student "Additional Insights" free text
 
     # === RELATED CASES ===

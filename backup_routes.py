@@ -81,7 +81,7 @@ def download_backup():
             'metadata': {
                 'backup_date': datetime.utcnow().isoformat(),
                 'database_type': 'postgresql' if os.getenv('DATABASE_URL') or os.getenv('DATABASE_POSTGRES_URL_NON_POOLING') else 'sqlite',
-                'version': '2.7',  # Bumped for contributor_notes, association tables, audit/analytics
+                'version': '2.8',  # Bumped for contributor_name field
                 'app_name': 'RadInsights'
             },
             'users': [],
@@ -167,6 +167,7 @@ def download_backup():
                 'is_public': case.is_public,
                 'status': case.status.value if hasattr(case, 'status') and case.status else None,
                 'calculator_slug': getattr(case, 'calculator_slug', None),
+                'contributor_name': getattr(case, 'contributor_name', None),
                 'contributor_notes': getattr(case, 'contributor_notes', None),
                 'created_by_user_id': case.created_by_user_id,
                 'approved_by_user_id': case.approved_by_user_id if hasattr(case, 'approved_by_user_id') else None,
@@ -949,7 +950,7 @@ def restore_backup():
         
         for case_idx, case_data in enumerate(cases_list):
             # Filter out unknown fields - only keep fields that exist in Case model
-            valid_case_keys = ['case_number', 'diagnosis', 'discussion', 'module', 'body_part', 'age_group', 'is_public', 'calculator_slug', 'contributor_notes', 'status', 'created_by_user_id', 'approved_by_user_id', 'approved_at', 'created_at', 'updated_at']
+            valid_case_keys = ['case_number', 'diagnosis', 'discussion', 'module', 'body_part', 'age_group', 'is_public', 'calculator_slug', 'contributor_name', 'contributor_notes', 'status', 'created_by_user_id', 'approved_by_user_id', 'approved_at', 'created_at', 'updated_at']
             filtered_data = {k: v for k, v in case_data.items() if k in valid_case_keys}
             
             old_case_id = case_data.get('id')  # Store old ID for mapping
@@ -1276,6 +1277,7 @@ def restore_backup():
                     discussion=filtered_data.get('discussion', ''),
                     is_public=filtered_data.get('is_public', True),
                     calculator_slug=filtered_data.get('calculator_slug'),
+                    contributor_name=filtered_data.get('contributor_name'),
                     contributor_notes=filtered_data.get('contributor_notes'),
                 )
                 # Set status if provided

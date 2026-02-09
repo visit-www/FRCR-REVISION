@@ -267,6 +267,14 @@
                                 {% endif %}
                             </div>
                         </div>
+                        <!-- Attribution banner -->
+                        <div class="mb-3 px-3 py-2 rounded d-flex align-items-center gap-2" style="background: rgba(94, 137, 158, 0.08); border: 1px solid rgba(94, 137, 158, 0.15);">
+                            <img src="https://res.cloudinary.com/dx7b7chvn/image/upload/v1769503548/frcr-rev-logo-transp_o2hmrq.png"
+                                 alt="RadInsight" style="width: 20px; height: 20px; object-fit: contain;">
+                            <small class="text-muted" style="font-size: 0.78rem;">
+                                Generated with inputs from <strong>RadInsight Intelligence</strong>{% if case.contributor_name %} by <strong>{{ case.contributor_name }}</strong>{% elif case.created_by and case.created_by.full_name %} by <strong>{{ case.created_by.full_name }}</strong>{% endif %}{% if case.approved_at %}. Published on {{ case.approved_at.strftime('%d %b %Y') }}{% endif %}
+                            </small>
+                        </div>
                         {% if current_user.is_authenticated and current_user.role and current_user.role.value == 'student' %}
                         <div class="mb-3 px-2 py-2 rounded highlight-tip" style="background: rgba(102, 126, 234, 0.08); border-left: 3px solid #667eea;">
                             <small class="text-muted" style="font-size: 0.8rem;">
@@ -296,14 +304,6 @@
                             </div>
                         </div>
                         
-                        <!-- RadiologyInsights Footer -->
-                        <div class="mt-4 pt-3" style="border-top: 1px solid #e0e0e0;">
-                            <div class="d-flex align-items-center justify-content-start gap-2">
-                                <img src="https://res.cloudinary.com/dx7b7chvn/image/upload/v1769503548/frcr-rev-logo-transp_o2hmrq.png" 
-                                     alt="RadiologyInsights Logo" style="width: 24px; height: 24px; object-fit: contain;">
-                                <span class="small text-muted">&copy; RadiologyInsights. All rights reserved.</span>
-                            </div>
-                        </div>
                     </div>
 
                     <!-- My Notes Section (Student Notes - STUDENTS ONLY) -->
