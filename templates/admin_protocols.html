@@ -1,0 +1,449 @@
+{% extends 'base.html' %}
+
+{% block mobile_breadcrumb %}
+<li class="breadcrumb-item">
+    <a href="{{ url_for('oncall.oncall_helper') }}" class="text-white text-decoration-none">On-Call Helper</a>
+</li>
+<li class="breadcrumb-item active text-white-50">Manage Protocols</li>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-12 col-xl-10">
+
+            <!-- Header -->
+            <div class="d-flex flex-wrap gap-2 mb-3">
+                <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary btn-sm">
+                    <i class="fas fa-home me-1"></i>Dashboard
+                </a>
+                <a href="{{ url_for('oncall.oncall_helper') }}" class="btn btn-outline-secondary btn-sm">
+                    <i class="fas fa-headset me-1"></i>On-Call Helper
+                </a>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="mb-1"><i class="fas fa-database me-2" style="color: #5E899E;"></i>Clinical Protocols</h2>
+                    <p class="text-muted mb-0">Manage the curated protocol knowledge base</p>
+                </div>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#aiGenerateModal"
+                            style="background: #e96304; border-color: #e96304;">
+                        <i class="fas fa-magic me-1"></i>Generate with AI
+                    </button>
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#protocolModal"
+                            onclick="resetModal()" style="background: #5E899E; border-color: #5E899E;">
+                        <i class="fas fa-plus me-1"></i>Add Protocol
+                    </button>
+                </div>
+            </div>
+
+            <!-- Filter Bar -->
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-body py-2 px-3">
+                    <div class="d-flex flex-wrap gap-2 align-items-center">
+                        <span class="small text-muted me-2">Filter:</span>
+                        <button class="btn btn-sm btn-outline-secondary filter-btn active" data-category="all">All ({{ protocols|length }})</button>
+                        {% for cat in categories %}
+                        <button class="btn btn-sm btn-outline-secondary filter-btn" data-category="{{ cat }}">{{ cat|capitalize }}</button>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Protocols Table -->
+            <div class="card shadow-sm border-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0" id="protocolsTable">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Title</th>
+                                <th>Category</th>
+                                <th>Source</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for p in protocols %}
+                            <tr data-category="{{ p.category }}" data-id="{{ p.id }}">
+                                <td>
+                                    <div class="fw-semibold">{{ p.title }}</div>
+                                    <small class="text-muted">{{ p.keywords[:80] }}{% if p.keywords|length > 80 %}...{% endif %}</small>
+                                </td>
+                                <td><span class="badge bg-light text-dark border">{{ p.category }}</span></td>
+                                <td>
+                                    <small>{{ p.source_citation }}</small>
+                                    {% if p.guideline_version %}
+                                    <br><small class="text-muted">{{ p.guideline_version }}</small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if p.is_published %}
+                                    <span class="badge bg-success"><i class="fas fa-check me-1"></i>Published</span>
+                                    {% else %}
+                                    <span class="badge bg-warning text-dark"><i class="fas fa-clock me-1"></i>Draft</span>
+                                    {% endif %}
+                                    {% if p.verified_at %}
+                                    <br><small class="text-muted"><i class="fas fa-shield-alt me-1"></i>Verified</small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <button class="btn btn-outline-primary" onclick="editProtocol({{ p.id }})" title="Edit">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        {% if not p.verified_at %}
+                                        <button class="btn btn-outline-success" onclick="verifyProtocol({{ p.id }})" title="Verify & Publish">
+                                            <i class="fas fa-check"></i>
+                                        </button>
+                                        {% endif %}
+                                        {% if p.is_published %}
+                                        <button class="btn btn-outline-warning" onclick="unpublishProtocol({{ p.id }})" title="Unpublish">
+                                            <i class="fas fa-eye-slash"></i>
+                                        </button>
+                                        {% endif %}
+                                        <button class="btn btn-outline-danger" onclick="deleteProtocol({{ p.id }}, '{{ p.title|e }}')" title="Delete">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                            {% if not protocols %}
+                            <tr>
+                                <td colspan="5" class="text-center py-4 text-muted">
+                                    <i class="fas fa-inbox d-block mb-2" style="font-size: 2rem;"></i>
+                                    No protocols yet. Click "Add Protocol" to get started.
+                                </td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Protocol Modal -->
+<div class="modal fade" id="protocolModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalTitle">Add Clinical Protocol</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="protocolId" value="">
+                <div class="row g-3">
+                    <div class="col-md-8">
+                        <label class="form-label fw-semibold">Title <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="protocolTitle"
+                               placeholder="e.g. AAST Renal Trauma Grading Scale">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Category <span class="text-danger">*</span></label>
+                        <select class="form-select" id="protocolCategory">
+                            <option value="contrast">Contrast</option>
+                            <option value="scoring">Scoring</option>
+                            <option value="staging">Staging</option>
+                            <option value="criteria">Criteria</option>
+                            <option value="emergency">Emergency</option>
+                            <option value="anatomy">Anatomy</option>
+                            <option value="dose">Dose</option>
+                            <option value="safety">Safety</option>
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Keywords <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="protocolKeywords"
+                               placeholder="renal, trauma, kidney, AAST, grading, injury">
+                        <small class="text-muted">Comma-separated keywords for search matching</small>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Source Citation <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="protocolSource"
+                               placeholder="AAST 2018 Revised Organ Injury Scale">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold">Guideline Version</label>
+                        <input type="text" class="form-control" id="protocolVersion"
+                               placeholder="2018 Revision">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold">Source URL</label>
+                        <input type="url" class="form-control" id="protocolUrl"
+                               placeholder="https://...">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Content (HTML)</label>
+                        <textarea class="form-control" id="protocolContentHtml" rows="8"
+                                  placeholder="Rich formatted reference content (HTML)..."></textarea>
+                        <small class="text-muted">Protocol reference content in HTML format</small>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">Structured Data (JSON)</label>
+                        <textarea class="form-control font-monospace" id="protocolContentStructured" rows="5"
+                                  placeholder='{"grades": [{"grade": "I", "description": "..."}], ...}'></textarea>
+                        <small class="text-muted">Optional structured data (grades, criteria, values) as JSON</small>
+                    </div>
+                    <div class="col-12">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="protocolPublished">
+                            <label class="form-check-label" for="protocolPublished">
+                                Publish immediately (make available in search)
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="saveProtocolBtn"
+                        onclick="saveProtocol()" style="background: #5E899E; border-color: #5E899E;">
+                    <i class="fas fa-save me-1"></i>Save Protocol
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- AI Generate Modal -->
+<div class="modal fade" id="aiGenerateModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header" style="background: linear-gradient(135deg, #e96304 0%, #d45703 100%); color: white;">
+                <h5 class="modal-title"><i class="fas fa-magic me-2"></i>Generate Protocol with AI</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info border-0 py-2 mb-3">
+                    <small><i class="fas fa-info-circle me-1"></i>
+                    AI will generate structured protocol content based on published guidelines.
+                    The protocol is saved as <strong>Draft</strong> — review against the source before publishing.</small>
+                </div>
+                <div class="row g-3">
+                    <div class="col-md-8">
+                        <label class="form-label fw-semibold">Protocol Title <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="aiTitle"
+                               placeholder="e.g. AAST Splenic Injury Scale, Modified CT Severity Index">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Category <span class="text-danger">*</span></label>
+                        <select class="form-select" id="aiCategory">
+                            <option value="scoring">Scoring</option>
+                            <option value="grading">Grading</option>
+                            <option value="staging">Staging</option>
+                            <option value="criteria">Criteria</option>
+                            <option value="emergency">Emergency</option>
+                            <option value="pathway">Pathway</option>
+                            <option value="imaging_features">Imaging Features</option>
+                            <option value="management_support">Management Support</option>
+                            <option value="contrast">Contrast</option>
+                            <option value="dose">Dose</option>
+                            <option value="safety">Safety</option>
+                            <option value="anatomy">Anatomy</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Source / Guideline</label>
+                        <input type="text" class="form-control" id="aiSource"
+                               placeholder="e.g. AAST 2018, ACR Appropriateness Criteria">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Additional Context</label>
+                        <textarea class="form-control" id="aiContext" rows="2"
+                                  placeholder="Optional scope constraints, focus areas, or specific version notes"></textarea>
+                    </div>
+                </div>
+                <!-- Generation result / warnings shown here -->
+                <div id="aiGenerateWarnings" class="d-none mt-3"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="aiGenerateBtn" onclick="generateProtocolAI()"
+                        style="background: #e96304; border-color: #e96304;">
+                    <i class="fas fa-magic me-1"></i>Generate
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Category filter
+document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+        const cat = this.dataset.category;
+        document.querySelectorAll('#protocolsTable tbody tr').forEach(row => {
+            if (cat === 'all' || row.dataset.category === cat) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    });
+});
+
+function resetModal() {
+    document.getElementById('modalTitle').textContent = 'Add Clinical Protocol';
+    document.getElementById('protocolId').value = '';
+    document.getElementById('protocolTitle').value = '';
+    document.getElementById('protocolCategory').value = 'scoring';
+    document.getElementById('protocolKeywords').value = '';
+    document.getElementById('protocolSource').value = '';
+    document.getElementById('protocolVersion').value = '';
+    document.getElementById('protocolUrl').value = '';
+    document.getElementById('protocolContentHtml').value = '';
+    document.getElementById('protocolContentStructured').value = '';
+    document.getElementById('protocolPublished').checked = false;
+}
+
+function editProtocol(id) {
+    fetch(`/on-call-helper/admin/protocols/api/${id}`)
+        .then(r => r.json())
+        .then(p => {
+            document.getElementById('modalTitle').textContent = 'Edit Protocol';
+            document.getElementById('protocolId').value = p.id;
+            document.getElementById('protocolTitle').value = p.title || '';
+            document.getElementById('protocolCategory').value = p.category || '';
+            document.getElementById('protocolKeywords').value = p.keywords || '';
+            document.getElementById('protocolSource').value = p.source_citation || '';
+            document.getElementById('protocolVersion').value = p.guideline_version || '';
+            document.getElementById('protocolUrl').value = p.source_url || '';
+            document.getElementById('protocolContentHtml').value = p.content_html || '';
+            document.getElementById('protocolContentStructured').value =
+                p.content_structured ? JSON.stringify(p.content_structured, null, 2) : '';
+            document.getElementById('protocolPublished').checked = p.is_published;
+
+            new bootstrap.Modal(document.getElementById('protocolModal')).show();
+        });
+}
+
+function saveProtocol() {
+    const id = document.getElementById('protocolId').value;
+    let structured = null;
+    const structuredText = document.getElementById('protocolContentStructured').value.trim();
+    if (structuredText) {
+        try {
+            structured = JSON.parse(structuredText);
+        } catch (e) {
+            alert('Invalid JSON in Structured Data field.');
+            return;
+        }
+    }
+
+    const data = {
+        title: document.getElementById('protocolTitle').value,
+        category: document.getElementById('protocolCategory').value,
+        keywords: document.getElementById('protocolKeywords').value,
+        source_citation: document.getElementById('protocolSource').value,
+        guideline_version: document.getElementById('protocolVersion').value,
+        source_url: document.getElementById('protocolUrl').value,
+        content_html: document.getElementById('protocolContentHtml').value,
+        content_structured: structured,
+        is_published: document.getElementById('protocolPublished').checked,
+    };
+
+    const url = id ? `/on-call-helper/admin/protocols/api/${id}` : '/on-call-helper/admin/protocols/api';
+    const method = id ? 'PUT' : 'POST';
+
+    fetch(url, {
+        method: method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    })
+    .then(r => r.json())
+    .then(result => {
+        if (result.error) {
+            alert(result.error);
+            return;
+        }
+        location.reload();
+    })
+    .catch(err => alert('Error saving protocol: ' + err));
+}
+
+function verifyProtocol(id) {
+    if (!confirm('Verify and publish this protocol?')) return;
+    fetch(`/on-call-helper/admin/protocols/api/${id}/verify`, { method: 'POST' })
+        .then(r => r.json())
+        .then(() => location.reload());
+}
+
+function unpublishProtocol(id) {
+    if (!confirm('Unpublish this protocol?')) return;
+    fetch(`/on-call-helper/admin/protocols/api/${id}/unpublish`, { method: 'POST' })
+        .then(r => r.json())
+        .then(() => location.reload());
+}
+
+function deleteProtocol(id, title) {
+    if (!confirm(`Delete protocol "${title}"? This cannot be undone.`)) return;
+    fetch(`/on-call-helper/admin/protocols/api/${id}`, { method: 'DELETE' })
+        .then(r => r.json())
+        .then(() => location.reload());
+}
+
+function generateProtocolAI() {
+    const title = document.getElementById('aiTitle').value.trim();
+    const category = document.getElementById('aiCategory').value;
+    const source = document.getElementById('aiSource').value.trim();
+    const context = document.getElementById('aiContext').value.trim();
+    const btn = document.getElementById('aiGenerateBtn');
+    const warningsDiv = document.getElementById('aiGenerateWarnings');
+
+    if (!title) { alert('Protocol title is required.'); return; }
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Generating...';
+    warningsDiv.classList.add('d-none');
+
+    fetch('/on-call-helper/admin/protocols/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            title: title,
+            category: category,
+            source_citation: source,
+            additional_context: context,
+        }),
+    })
+    .then(r => r.json())
+    .then(data => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-magic me-1"></i>Generate';
+
+        if (data.error) {
+            warningsDiv.classList.remove('d-none');
+            warningsDiv.innerHTML = `<div class="alert alert-danger mb-0"><i class="fas fa-exclamation-circle me-1"></i>${data.error}</div>`;
+            return;
+        }
+
+        // Show warnings if any
+        if (data.warnings && data.warnings.length > 0) {
+            warningsDiv.classList.remove('d-none');
+            warningsDiv.innerHTML = `<div class="alert alert-warning mb-0">
+                <strong><i class="fas fa-exclamation-triangle me-1"></i>AI Warnings:</strong>
+                <ul class="mb-0 mt-1">${data.warnings.map(w => `<li>${w}</li>`).join('')}</ul>
+            </div>`;
+        }
+
+        // Reload to show new draft protocol
+        alert(data.message || 'Protocol generated as draft.');
+        location.reload();
+    })
+    .catch(err => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-magic me-1"></i>Generate';
+        warningsDiv.classList.remove('d-none');
+        warningsDiv.innerHTML = `<div class="alert alert-danger mb-0">Generation failed: ${err}</div>`;
+    });
+}
+</script>
+{% endblock %}

@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from werkzeug.security import generate_password_hash, check_password_hash
 import secrets
 import enum
+import json
 
 db = SQLAlchemy()
 
@@ -2422,3 +2423,233 @@ class TNMImage(db.Model):
             db.session.rollback()
             print(f"Error deleting TNM image {image_id}: {e}")
             return False
+
+
+# ==================== CLINICAL PROTOCOL (On-Call Helper Knowledge Base) ====================
+
+class ProtocolCategory(enum.Enum):
+    """Categories for clinical protocols"""
+    CONTRAST = "contrast"
+    SCORING = "scoring"
+    STAGING = "staging"
+    CRITERIA = "criteria"
+    EMERGENCY = "emergency"
+    ANATOMY = "anatomy"
+    DOSE = "dose"
+    SAFETY = "safety"
+
+
+class ClinicalProtocol(db.Model):
+    """
+    Curated clinical protocol knowledge base for on-call helper.
+    Each protocol is a verified, citable reference entry.
+    Claude formats these for the user — it does NOT source them.
+    """
+    __tablename__ = 'clinical_protocol'
+
+    id = db.Column(db.Integer, primary_key=True)
+    category = db.Column(db.String(50), nullable=False, index=True)
+    title = db.Column(db.String(300), nullable=False)
+    keywords = db.Column(db.Text, nullable=False)  # comma-separated, for pg_trgm search
+    content_structured = db.Column(db.Text, nullable=True)  # JSONB-style structured data
+    content_html = db.Column(db.Text, nullable=True)  # rich formatted reference content
+    source_citation = db.Column(db.String(500), nullable=False)
+    guideline_version = db.Column(db.String(100), nullable=True)
+    source_url = db.Column(db.String(1000), nullable=True)
+    is_published = db.Column(db.Boolean, default=False, nullable=False, index=True)
+    verified_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    verified_at = db.Column(db.DateTime, nullable=True)
+    created_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    verified_by = db.relationship('User', foreign_keys=[verified_by_user_id], backref='verified_protocols', lazy=True)
+    created_by = db.relationship('User', foreign_keys=[created_by_user_id], backref='created_protocols', lazy=True)
+
+    def get_content_structured(self):
+        if self.content_structured:
+            try:
+                return json.loads(self.content_structured)
+            except (json.JSONDecodeError, TypeError):
+                return None
+        return None
+
+    def set_content_structured(self, data):
+        self.content_structured = json.dumps(data) if data else None
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'category': self.category,
+            'title': self.title,
+            'keywords': self.keywords,
+            'content_structured': self.get_content_structured(),
+            'content_html': self.content_html,
+            'source_citation': self.source_citation,
+            'guideline_version': self.guideline_version,
+            'source_url': self.source_url,
+            'is_published': self.is_published,
+            'verified_by_user_id': self.verified_by_user_id,
+            'verified_at': self.verified_at.isoformat() if self.verified_at else None,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+    def __repr__(self):
+        return f'<ClinicalProtocol {self.id}: {self.title}>'
+
+
+class OnCallQueryLog(db.Model):
+    """
+    Audit trail for on-call helper queries — medicolegal requirement.
+    Every query and AI response is logged with user, timestamp, and matched protocols.
+    """
+    __tablename__ = 'oncall_query_log'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+    query_text = db.Column(db.Text, nullable=False)
+    matched_protocol_ids = db.Column(db.Text, nullable=True)  # JSON array of protocol IDs
+    ai_response_text = db.Column(db.Text, nullable=True)
+    model_used = db.Column(db.String(100), nullable=True)
+    token_count = db.Column(db.Integer, nullable=True)
+    response_source = db.Column(db.String(50), default='protocol')  # 'protocol', 'no_match', 'cached'
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    user = db.relationship('User', backref='oncall_queries', lazy=True)
+
+    def get_matched_protocol_ids(self):
+        if self.matched_protocol_ids:
+            try:
+                return json.loads(self.matched_protocol_ids)
+            except (json.JSONDecodeError, TypeError):
+                return []
+        return []
+
+    def set_matched_protocol_ids(self, ids):
+        self.matched_protocol_ids = json.dumps(ids) if ids else None
+
+    def __repr__(self):
+        return f'<OnCallQueryLog {self.id}: user={self.user_id} at {self.created_at}>'
+
+
+# ==================== REPORTING TEMPLATE (Non-Oncologic Decision Trees) ====================
+
+class ReportingTemplate(db.Model):
+    """
+    Non-oncologic interactive reporting templates (Layer B of Algorithmic Reporting).
+    Stores AI-generated decision tree HTML for trauma scoring, grading systems, etc.
+    Mirrors TNMCalculatorContent pattern.
+    """
+    __tablename__ = 'reporting_template'
+
+    id = db.Column(db.Integer, primary_key=True)
+    slug = db.Column(db.String(200), unique=True, nullable=False, index=True)
+    title = db.Column(db.String(300), nullable=False)
+    category = db.Column(db.String(100), nullable=False, index=True)  # trauma, grading, emergency
+    body_section = db.Column(db.String(100), nullable=True)  # e.g. 'Abdomen', 'Thorax'
+    description = db.Column(db.String(500), nullable=True)
+    keywords = db.Column(db.Text, nullable=True)  # for pg_trgm search
+    template_html = db.Column(db.Text, nullable=True)  # interactive decision tree HTML
+    algorithm_html = db.Column(db.Text, nullable=True)  # extracted algorithm discussion
+    source_citation = db.Column(db.String(500), nullable=True)
+    guideline_version = db.Column(db.String(100), nullable=True)
+    is_available = db.Column(db.Boolean, default=False, nullable=False, index=True)
+    is_ai_generated = db.Column(db.Boolean, default=False, nullable=False)
+    verified_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    verified_at = db.Column(db.DateTime, nullable=True)
+    pacs_report_text = db.Column(db.Text, nullable=True)  # Plain-text PACS report for copy-to-clipboard
+    generation_prompt = db.Column(db.Text, nullable=True)
+    generation_model = db.Column(db.String(100), nullable=True)
+    generated_at = db.Column(db.DateTime, nullable=True)
+    created_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    last_edit_note = db.Column(db.String(500), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    verified_by = db.relationship('User', foreign_keys=[verified_by_user_id], backref='verified_reporting_templates', lazy=True)
+    created_by = db.relationship('User', foreign_keys=[created_by_user_id], backref='created_reporting_templates', lazy=True)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'slug': self.slug,
+            'title': self.title,
+            'category': self.category,
+            'body_section': self.body_section,
+            'description': self.description,
+            'keywords': self.keywords,
+            'source_citation': self.source_citation,
+            'guideline_version': self.guideline_version,
+            'is_available': self.is_available,
+            'is_ai_generated': self.is_ai_generated,
+            'verified_at': self.verified_at.isoformat() if self.verified_at else None,
+            'pacs_report_text': self.pacs_report_text,
+            'generation_model': self.generation_model,
+            'generated_at': self.generated_at.isoformat() if self.generated_at else None,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+    def __repr__(self):
+        return f'<ReportingTemplate {self.slug}: {self.title}>'
+
+
+# ==================== INCIDENTAL FINDING CALCULATOR ====================
+
+class IncidentalFindingCalculator(db.Model):
+    """
+    Interactive calculators for incidental findings management.
+    Deterministic decision trees based on published guidelines (Fleischner, ACR, etc.).
+    Mirrors TNMCalculatorContent pattern.
+    """
+    __tablename__ = 'incidental_finding_calculator'
+
+    id = db.Column(db.Integer, primary_key=True)
+    slug = db.Column(db.String(200), unique=True, nullable=False, index=True)
+    finding_name = db.Column(db.String(300), nullable=False)
+    body_section = db.Column(db.String(100), nullable=True)
+    category = db.Column(db.String(100), nullable=True)  # pulmonary, adrenal, renal, liver, thyroid, etc.
+    description = db.Column(db.String(500), nullable=True)
+    keywords = db.Column(db.Text, nullable=True)  # for pg_trgm search
+    calculator_html = db.Column(db.Text, nullable=True)  # interactive decision tree HTML
+    algorithm_html = db.Column(db.Text, nullable=True)  # extracted algorithm/reference
+    guideline_source = db.Column(db.String(300), nullable=True)  # e.g. "Fleischner Society 2017"
+    guideline_version = db.Column(db.String(100), nullable=True)
+    guideline_url = db.Column(db.String(1000), nullable=True)
+    is_available = db.Column(db.Boolean, default=False, nullable=False, index=True)
+    generation_prompt = db.Column(db.Text, nullable=True)
+    generation_model = db.Column(db.String(100), nullable=True)
+    generated_at = db.Column(db.DateTime, nullable=True)
+    verified_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    verified_at = db.Column(db.DateTime, nullable=True)
+    created_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    last_edit_note = db.Column(db.String(500), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    verified_by = db.relationship('User', foreign_keys=[verified_by_user_id], backref='verified_if_calculators', lazy=True)
+    created_by = db.relationship('User', foreign_keys=[created_by_user_id], backref='created_if_calculators', lazy=True)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'slug': self.slug,
+            'finding_name': self.finding_name,
+            'body_section': self.body_section,
+            'category': self.category,
+            'description': self.description,
+            'keywords': self.keywords,
+            'guideline_source': self.guideline_source,
+            'guideline_version': self.guideline_version,
+            'guideline_url': self.guideline_url,
+            'is_available': self.is_available,
+            'generation_model': self.generation_model,
+            'generated_at': self.generated_at.isoformat() if self.generated_at else None,
+            'verified_at': self.verified_at.isoformat() if self.verified_at else None,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+    def __repr__(self):
+        return f'<IncidentalFindingCalculator {self.slug}: {self.finding_name}>'
