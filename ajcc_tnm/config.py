@@ -15,7 +15,7 @@ class CloudinaryConfig:
     cloud_name: Optional[str] = None
     api_key: Optional[str] = None
     api_secret: Optional[str] = None
-    folder: str = "ajcc_tnm/images"
+    folder: str = "frcr_revision/AJCC_figures"
     
     @classmethod
     def from_env(cls):
@@ -24,7 +24,7 @@ class CloudinaryConfig:
             cloud_name=os.getenv('CLOUDINARY_CLOUD_NAME'),
             api_key=os.getenv('CLOUDINARY_API_KEY'),
             api_secret=os.getenv('CLOUDINARY_API_SECRET'),
-            folder=os.getenv('AJCC_CLOUDINARY_FOLDER', 'ajcc_tnm/images')
+            folder=os.getenv('AJCC_CLOUDINARY_FOLDER', 'frcr_revision/AJCC_figures')
         )
     
     @property

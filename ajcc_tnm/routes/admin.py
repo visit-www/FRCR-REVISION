@@ -1626,7 +1626,7 @@ def _extract_list_items_from_html(html_content):
 def upload_tnm_image():
     """
     Upload an image to Cloudinary for TNM content.
-    Images are stored in Frcr-revision-media/tnm-case folder.
+    Images are stored in frcr_revision/tnm_cases folder.
     Creates a database record linking the image to the disease.
     """
     import os
@@ -1680,13 +1680,13 @@ def upload_tnm_image():
         filename_base = file.filename.rsplit('.', 1)[0] if '.' in file.filename else file.filename
         # Sanitize filename for URL
         filename_base = ''.join(c if c.isalnum() or c in '-_' else '_' for c in filename_base)
-        public_id = f"Frcr-revision-media/tnm-case/disease_{disease_site_id}/{filename_base}_{unique_id}"
+        public_id = f"frcr_revision/tnm_cases/disease_{disease_site_id}/{filename_base}_{unique_id}"
         
         # Upload to Cloudinary
         result = cloudinary.uploader.upload(
             file,
             public_id=public_id,
-            folder=None,  # Public ID includes the folder
+            folder=None,  # Public ID includes the folder path
             resource_type='image',
             tags=['tnm', 'frcr-revision', f'disease_{disease_site_id}']
         )

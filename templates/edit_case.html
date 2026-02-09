@@ -52,6 +52,11 @@ console.log('[TinyMCE Loader] Script URL was:', "{{ url_for('static', filename='
     setTimeout(() => checkAndInit(), 100);
 })();
 </script>
+<!-- Cloudinary direct upload config (avoids 413 on Vercel for large case images). Set CLOUDINARY_UPLOAD_PRESET in env. -->
+<script>
+window.CLOUDINARY_CLOUD_NAME = {{ cloudinary_cloud_name|default('', true)|tojson }};
+window.CLOUDINARY_UPLOAD_PRESET = {{ cloudinary_upload_preset|default('', true)|tojson }};
+</script>
 
 <div class="row">
     <div class="col-12 px-2 px-md-5">

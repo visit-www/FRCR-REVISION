@@ -1222,7 +1222,7 @@ def upload_profile_picture():
         # Upload to Cloudinary
         upload_result = cloudinary.uploader.upload(
             picture_base64,
-            folder='frcr_profiles',
+            folder='frcr_revision/frcr_profile',
             resource_type='image',
             transformation=[
                 {'width': 200, 'height': 200, 'crop': 'fill', 'gravity': 'face'},

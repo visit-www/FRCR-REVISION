@@ -1,0 +1,357 @@
+{% extends 'base.html' %}
+
+{% block mobile_breadcrumb %}
+<li class="breadcrumb-item active text-white-50">On-Call Helper</li>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-12 col-xl-10">
+
+            <!-- Header -->
+            <div class="d-flex flex-wrap gap-2 mb-3">
+                <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary btn-sm">
+                    <i class="fas fa-home me-1"></i>Dashboard
+                </a>
+                <a href="{{ url_for('reporting.algorithm_finder') }}" class="btn btn-outline-secondary btn-sm">
+                    <i class="fas fa-sitemap me-1"></i>Algorithm Finder
+                </a>
+            </div>
+
+            <div class="text-center mb-4">
+                <i class="fas fa-headset" style="font-size: 2.5rem; color: #5E899E;"></i>
+                <h2 class="mt-2 mb-1">On-Call Helper</h2>
+                <p class="text-muted">Curated clinical protocols with verified source citations</p>
+            </div>
+
+            <!-- Clinical Disclaimer Banner -->
+            <div class="alert alert-warning border-0 shadow-sm mb-4" id="disclaimer-banner">
+                <div class="d-flex align-items-start">
+                    <i class="fas fa-shield-alt me-2 mt-1" style="color: #e96304;"></i>
+                    <div>
+                        <strong>Clinical Decision Support Tool</strong>
+                        <p class="mb-0 small">This tool provides answers grounded in curated, admin-verified protocols only.
+                        Verify against current guidelines and institutional protocols before clinical use.
+                        All queries are logged for audit purposes.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <!-- Main Search Column -->
+                <div class="col-lg-8">
+                    <!-- Search Box -->
+                    <div class="card shadow-sm border-0 mb-4">
+                        <div class="card-body p-4">
+                            <div class="position-relative">
+                                <div class="input-group input-group-lg">
+                                    <span class="input-group-text bg-white border-end-0">
+                                        <i class="fas fa-search text-muted"></i>
+                                    </span>
+                                    <input type="text" id="queryInput" class="form-control border-start-0"
+                                           placeholder="e.g. renal trauma grading, contrast reaction, adrenal incidentaloma..."
+                                           autocomplete="off">
+                                    <button class="btn btn-primary" id="submitBtn" style="background: #5E899E; border-color: #5E899E;">
+                                        <i class="fas fa-paper-plane me-1"></i>Ask
+                                    </button>
+                                </div>
+                                <!-- Autocomplete Dropdown -->
+                                <div id="autocompleteDropdown" class="position-absolute w-100 bg-white border rounded shadow-sm mt-1 d-none"
+                                     style="z-index: 1050; max-height: 300px; overflow-y: auto;">
+                                </div>
+                            </div>
+                            <div class="mt-2">
+                                <small class="text-muted">
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    Search curated protocols by topic, scoring system, or clinical scenario
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Loading Indicator -->
+                    <div id="loadingIndicator" class="text-center py-4 d-none">
+                        <div class="spinner-border" style="color: #5E899E;" role="status">
+                            <span class="visually-hidden">Searching protocols...</span>
+                        </div>
+                        <p class="text-muted mt-2">Searching verified protocols...</p>
+                    </div>
+
+                    <!-- Response Area -->
+                    <div id="responseArea" class="d-none">
+                        <div class="card shadow-sm border-0 mb-4">
+                            <div class="card-body p-4">
+                                <!-- Response Header -->
+                                <div class="d-flex justify-content-between align-items-start mb-3">
+                                    <h5 class="mb-0" id="responseSummary"></h5>
+                                    <span class="badge" id="confidenceBadge"></span>
+                                </div>
+
+                                <!-- Main Answer -->
+                                <div id="responseContent" class="mb-3"></div>
+
+                                <!-- Source Citations -->
+                                <div id="citationsArea" class="mt-3 pt-3 border-top">
+                                    <h6 class="text-muted"><i class="fas fa-book me-1"></i>Sources</h6>
+                                    <div id="citationsList"></div>
+                                </div>
+
+                                <!-- Matched Protocols -->
+                                <div id="matchedProtocols" class="mt-3 pt-3 border-top">
+                                    <h6 class="text-muted"><i class="fas fa-database me-1"></i>Matched Protocols</h6>
+                                    <div id="protocolsList"></div>
+                                </div>
+
+                                <!-- Flags/Warnings -->
+                                <div id="flagsArea" class="mt-3 d-none">
+                                    <div id="flagsList"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Empty State -->
+                    <div id="emptyState" class="text-center py-5">
+                        <i class="fas fa-book-medical" style="font-size: 3rem; color: #dee2e6;"></i>
+                        <h5 class="text-muted mt-3">Ask a clinical question</h5>
+                        <p class="text-muted small">Your query will be matched against verified clinical protocols.<br>
+                        Examples: contrast reactions, trauma grading scales, scoring systems</p>
+                    </div>
+                </div>
+
+                <!-- History Sidebar -->
+                <div class="col-lg-4">
+                    <div class="card shadow-sm border-0">
+                        <div class="card-header bg-white border-0 py-3">
+                            <h6 class="mb-0"><i class="fas fa-history me-2" style="color: #5E899E;"></i>Recent Queries</h6>
+                        </div>
+                        <div class="card-body p-0" id="historyList" style="max-height: 500px; overflow-y: auto;">
+                            <div class="text-center py-4 text-muted small" id="historyEmpty">
+                                <i class="fas fa-clock d-block mb-2" style="font-size: 1.5rem;"></i>
+                                No recent queries
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const queryInput = document.getElementById('queryInput');
+    const submitBtn = document.getElementById('submitBtn');
+    const autocompleteDropdown = document.getElementById('autocompleteDropdown');
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    const responseArea = document.getElementById('responseArea');
+    const emptyState = document.getElementById('emptyState');
+    const historyList = document.getElementById('historyList');
+    const historyEmpty = document.getElementById('historyEmpty');
+
+    let autocompleteTimeout = null;
+
+    // Load query history
+    loadHistory();
+
+    // Autocomplete
+    queryInput.addEventListener('input', function() {
+        const q = this.value.trim();
+        clearTimeout(autocompleteTimeout);
+
+        if (q.length < 2) {
+            autocompleteDropdown.classList.add('d-none');
+            return;
+        }
+
+        autocompleteTimeout = setTimeout(() => {
+            fetch(`/on-call-helper/api/search?q=${encodeURIComponent(q)}`)
+                .then(r => r.json())
+                .then(results => {
+                    if (results.length === 0) {
+                        autocompleteDropdown.classList.add('d-none');
+                        return;
+                    }
+                    autocompleteDropdown.innerHTML = results.map(r => `
+                        <div class="autocomplete-item px-3 py-2 border-bottom"
+                             style="cursor: pointer;"
+                             data-title="${r.title}">
+                            <div class="fw-semibold small">${r.title}</div>
+                            <div class="text-muted" style="font-size: 0.75rem;">
+                                <span class="badge bg-light text-dark me-1">${r.category}</span>
+                                ${r.source}
+                            </div>
+                        </div>
+                    `).join('');
+                    autocompleteDropdown.classList.remove('d-none');
+
+                    // Click handlers for autocomplete items
+                    autocompleteDropdown.querySelectorAll('.autocomplete-item').forEach(item => {
+                        item.addEventListener('click', function() {
+                            queryInput.value = this.dataset.title;
+                            autocompleteDropdown.classList.add('d-none');
+                            submitQuery();
+                        });
+                    });
+                })
+                .catch(() => autocompleteDropdown.classList.add('d-none'));
+        }, 300);
+    });
+
+    // Hide autocomplete on click outside
+    document.addEventListener('click', function(e) {
+        if (!autocompleteDropdown.contains(e.target) && e.target !== queryInput) {
+            autocompleteDropdown.classList.add('d-none');
+        }
+    });
+
+    // Submit on Enter
+    queryInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            autocompleteDropdown.classList.add('d-none');
+            submitQuery();
+        }
+    });
+
+    // Submit button
+    submitBtn.addEventListener('click', function() {
+        autocompleteDropdown.classList.add('d-none');
+        submitQuery();
+    });
+
+    function submitQuery() {
+        const query = queryInput.value.trim();
+        if (!query) return;
+
+        // Show loading
+        emptyState.classList.add('d-none');
+        responseArea.classList.add('d-none');
+        loadingIndicator.classList.remove('d-none');
+        submitBtn.disabled = true;
+
+        fetch('/on-call-helper/api/query', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query: query }),
+        })
+        .then(r => r.json())
+        .then(data => {
+            loadingIndicator.classList.add('d-none');
+            submitBtn.disabled = false;
+            displayResponse(data);
+            loadHistory();
+        })
+        .catch(err => {
+            loadingIndicator.classList.add('d-none');
+            submitBtn.disabled = false;
+            displayError('An unexpected error occurred. Please try again.');
+        });
+    }
+
+    function displayResponse(data) {
+        responseArea.classList.remove('d-none');
+
+        // Summary
+        document.getElementById('responseSummary').textContent = data.summary || 'Response';
+
+        // Confidence badge
+        const badge = document.getElementById('confidenceBadge');
+        const confColors = { high: 'bg-success', medium: 'bg-warning text-dark', low: 'bg-danger', none: 'bg-secondary' };
+        badge.className = `badge ${confColors[data.confidence] || 'bg-secondary'}`;
+        badge.textContent = data.confidence ? data.confidence.charAt(0).toUpperCase() + data.confidence.slice(1) + ' confidence' : '';
+
+        // Main content
+        document.getElementById('responseContent').innerHTML = data.answer_html || data.error || '';
+
+        // Citations
+        const citationsList = document.getElementById('citationsList');
+        if (data.citations && data.citations.length > 0) {
+            citationsList.innerHTML = data.citations.map(c => {
+                let text = `<strong>${c.source}</strong>`;
+                if (c.version) text += ` (${c.version})`;
+                if (c.url) text += ` — <a href="${c.url}" target="_blank" rel="noopener">View guideline</a>`;
+                return `<div class="small mb-1"><i class="fas fa-quote-left me-1 text-muted"></i>${text}</div>`;
+            }).join('');
+            document.getElementById('citationsArea').classList.remove('d-none');
+        } else {
+            document.getElementById('citationsArea').classList.add('d-none');
+        }
+
+        // Matched protocols
+        const protocolsList = document.getElementById('protocolsList');
+        if (data.matched_protocols && data.matched_protocols.length > 0) {
+            protocolsList.innerHTML = data.matched_protocols.map(p =>
+                `<span class="badge bg-light text-dark border me-1 mb-1">${p.title}</span>`
+            ).join('');
+            document.getElementById('matchedProtocols').classList.remove('d-none');
+        } else {
+            document.getElementById('matchedProtocols').classList.add('d-none');
+        }
+
+        // Flags
+        const flagsArea = document.getElementById('flagsArea');
+        const flagsList = document.getElementById('flagsList');
+        if (data.flags && data.flags.length > 0) {
+            flagsList.innerHTML = data.flags.map(f =>
+                `<div class="alert alert-info py-2 px-3 mb-2 small"><i class="fas fa-info-circle me-1"></i>${f}</div>`
+            ).join('');
+            flagsArea.classList.remove('d-none');
+        } else {
+            flagsArea.classList.add('d-none');
+        }
+    }
+
+    function displayError(message) {
+        responseArea.classList.remove('d-none');
+        document.getElementById('responseSummary').textContent = 'Error';
+        document.getElementById('confidenceBadge').className = 'badge bg-danger';
+        document.getElementById('confidenceBadge').textContent = 'Error';
+        document.getElementById('responseContent').innerHTML =
+            `<div class="alert alert-danger"><i class="fas fa-exclamation-circle me-2"></i>${message}</div>`;
+        document.getElementById('citationsArea').classList.add('d-none');
+        document.getElementById('matchedProtocols').classList.add('d-none');
+        document.getElementById('flagsArea').classList.add('d-none');
+    }
+
+    function loadHistory() {
+        fetch('/on-call-helper/api/history?limit=15')
+            .then(r => r.json())
+            .then(queries => {
+                if (queries.length === 0) {
+                    historyEmpty.classList.remove('d-none');
+                    return;
+                }
+                historyEmpty.classList.add('d-none');
+
+                const items = queries.map(q => {
+                    const date = new Date(q.created_at);
+                    const timeStr = date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) +
+                                    ' ' + date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+                    const sourceIcon = q.response_source === 'no_match' ?
+                        '<i class="fas fa-exclamation-triangle text-warning"></i>' :
+                        '<i class="fas fa-check-circle text-success"></i>';
+                    return `
+                        <div class="history-item px-3 py-2 border-bottom" style="cursor: pointer;"
+                             onclick="document.getElementById('queryInput').value='${q.query_text.replace(/'/g, "\\'")}'; document.getElementById('submitBtn').click();">
+                            <div class="small fw-semibold text-truncate">${q.query_text}</div>
+                            <div class="text-muted" style="font-size: 0.7rem;">
+                                ${sourceIcon} ${timeStr}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                // Keep empty state element but hide it, add items before it
+                const existingItems = historyList.querySelectorAll('.history-item');
+                existingItems.forEach(el => el.remove());
+                historyList.insertAdjacentHTML('afterbegin', items);
+            })
+            .catch(() => {});
+    }
+});
+</script>
+{% endblock %}

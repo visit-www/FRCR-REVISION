@@ -45,7 +45,7 @@ class PostProcessor:
     - Clean and normalize data
     """
     
-    def __init__(self, cloudinary_folder: str = 'Frcr-revision-media/AJCC_figures', authenticated_session: Optional[requests.Session] = None, browser_service: Optional[Any] = None):
+    def __init__(self, cloudinary_folder: str = 'frcr_revision/AJCC_figures', authenticated_session: Optional[requests.Session] = None, browser_service: Optional[Any] = None):
         """
         Initialize the post-processor.
         

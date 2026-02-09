@@ -1,0 +1,169 @@
+{% extends 'base.html' %}
+
+{% block mobile_breadcrumb %}
+<li class="breadcrumb-item active text-white-50">Incidental Findings</li>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-12 col-xl-10">
+
+            <!-- Header -->
+            <div class="d-flex flex-wrap gap-2 mb-3">
+                <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary btn-sm">
+                    <i class="fas fa-home me-1"></i>Dashboard
+                </a>
+                <a href="{{ url_for('reporting.algorithm_finder') }}" class="btn btn-outline-secondary btn-sm">
+                    <i class="fas fa-sitemap me-1"></i>Algorithm Finder
+                </a>
+                <a href="{{ url_for('oncall.oncall_helper') }}" class="btn btn-outline-secondary btn-sm">
+                    <i class="fas fa-headset me-1"></i>On-Call Helper
+                </a>
+            </div>
+
+            <div class="text-center mb-4">
+                <i class="fas fa-search-plus" style="font-size: 2.5rem; color: #5E899E;"></i>
+                <h2 class="mt-2 mb-1">Incidental Findings Helper</h2>
+                <p class="text-muted">Guideline-based management recommendations with report language generation</p>
+            </div>
+
+            <!-- Clinical Disclaimer -->
+            <div class="alert alert-warning border-0 shadow-sm mb-4">
+                <div class="d-flex align-items-start">
+                    <i class="fas fa-shield-alt me-2 mt-1" style="color: #e96304;"></i>
+                    <div>
+                        <strong>Clinical Decision Support Tool</strong>
+                        <p class="mb-0 small">All recommendations are based on published guidelines (ACR, Fleischner, Bosniak, etc.).
+                        Verify against current guidelines and institutional protocols before clinical use.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Search Box -->
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-body p-4">
+                    <div class="input-group input-group-lg">
+                        <span class="input-group-text bg-white border-end-0">
+                            <i class="fas fa-search text-muted"></i>
+                        </span>
+                        <input type="text" id="searchInput" class="form-control border-start-0"
+                               placeholder="e.g. pulmonary nodule, adrenal incidentaloma, renal cyst..."
+                               autocomplete="off">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Search Results -->
+            <div id="searchResults" class="d-none mb-4"></div>
+
+            <!-- Browse by Category -->
+            {% if grouped %}
+            <div id="browseCategories">
+                {% for category, calcs in grouped.items() %}
+                <div class="mb-4">
+                    <h5 class="mb-3">
+                        <i class="fas fa-folder-open me-2" style="color: #5E899E;"></i>
+                        {{ category|capitalize }}
+                    </h5>
+                    <div class="row g-3">
+                        {% for calc in calcs %}
+                        <div class="col-md-6 col-lg-4">
+                            <div class="card border-0 shadow-sm hover-card h-100"
+                                 style="cursor: pointer; transition: transform 0.2s ease;"
+                                 onclick="window.location.href='{{ url_for('incidental_findings.view_calculator', slug=calc.slug) }}'">
+                                <div class="card-body">
+                                    <h6 class="mb-2">
+                                        <i class="fas fa-calculator me-1" style="color: #5E899E;"></i>
+                                        {{ calc.finding_name }}
+                                    </h6>
+                                    {% if calc.description %}
+                                    <p class="text-muted small mb-2">{{ calc.description }}</p>
+                                    {% endif %}
+                                    {% if calc.guideline_source %}
+                                    <small class="text-muted">
+                                        <i class="fas fa-book me-1"></i>{{ calc.guideline_source }}
+                                    </small>
+                                    {% endif %}
+                                    {% if calc.verified_at %}
+                                    <br><small class="text-success"><i class="fas fa-check-circle me-1"></i>Verified</small>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-inbox" style="font-size: 3rem; color: #dee2e6;"></i>
+                <h5 class="text-muted mt-3">No calculators available yet</h5>
+                <p class="text-muted small">Incidental finding calculators will be generated and verified by admin radiologists.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('searchInput');
+    const searchResults = document.getElementById('searchResults');
+    const browseCategories = document.getElementById('browseCategories');
+    let searchTimeout = null;
+
+    searchInput.addEventListener('input', function() {
+        const q = this.value.trim();
+        clearTimeout(searchTimeout);
+
+        if (q.length < 2) {
+            searchResults.classList.add('d-none');
+            if (browseCategories) browseCategories.classList.remove('d-none');
+            return;
+        }
+
+        searchTimeout = setTimeout(() => {
+            fetch(`/incidental-findings/api/search?q=${encodeURIComponent(q)}`)
+                .then(r => r.json())
+                .then(results => {
+                    if (browseCategories) browseCategories.classList.add('d-none');
+                    searchResults.classList.remove('d-none');
+
+                    if (results.length === 0) {
+                        searchResults.innerHTML = `
+                            <div class="text-center py-4 text-muted">
+                                <i class="fas fa-search d-block mb-2" style="font-size: 1.5rem;"></i>
+                                No calculators found matching "${q}"
+                            </div>`;
+                        return;
+                    }
+
+                    searchResults.innerHTML = results.map(r => `
+                        <div class="card border-0 shadow-sm mb-3 hover-card" style="cursor: pointer; transition: transform 0.2s ease;"
+                             onclick="window.location.href='${r.url}'">
+                            <div class="card-body py-3">
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-calculator me-3" style="font-size: 1.3rem; color: #5E899E;"></i>
+                                    <div>
+                                        <h6 class="mb-0">${r.finding_name}</h6>
+                                        ${r.description ? `<small class="text-muted">${r.description}</small>` : ''}
+                                        ${r.guideline_source ? `<br><small class="text-muted"><i class="fas fa-book me-1"></i>${r.guideline_source}</small>` : ''}
+                                    </div>
+                                    <i class="fas fa-chevron-right text-muted ms-auto"></i>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('');
+                })
+                .catch(() => {
+                    searchResults.innerHTML = '<div class="alert alert-danger">Search failed.</div>';
+                });
+        }, 300);
+    });
+});
+</script>
+{% endblock %}

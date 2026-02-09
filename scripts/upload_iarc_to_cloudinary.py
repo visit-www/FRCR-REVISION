@@ -28,7 +28,7 @@ cloudinary.config(
     api_secret=os.environ.get('CLOUDINARY_API_SECRET')
 )
 
-CLOUDINARY_FOLDER = "frcr_revision/essential_tnm"
+CLOUDINARY_FOLDER = "frcr_revision/essential_tnm_iacr"
 IARC_FIGURES_DIR = Path(__file__).parent / "iarc_figures"
 ESSENTIAL_TNM_JSON = Path(__file__).parent.parent / "static" / "essential_tnm_data.json"
 

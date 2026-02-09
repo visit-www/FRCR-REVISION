@@ -679,6 +679,38 @@ function formatImageDescriptionForDisplay(text) {
     return escaped.replace(metaPattern, '<span class="image-desc-meta">$1</span>');
 }
 
+/**
+ * Upload a file directly to Cloudinary (unsigned preset). Returns { secure_url, public_id }.
+ * Use when CLOUDINARY_CLOUD_NAME and CLOUDINARY_UPLOAD_PRESET are set to avoid 413 on Vercel.
+ */
+function uploadFileToCloudinary(file) {
+    const cloudName = window.CLOUDINARY_CLOUD_NAME;
+    const preset = window.CLOUDINARY_UPLOAD_PRESET;
+    if (!cloudName || !preset) {
+        return Promise.reject(new Error('Direct upload not configured'));
+    }
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', preset);
+    formData.append('folder', 'frcr_revision/frcr_cases');
+    const url = `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`;
+    return fetch(url, { method: 'POST', body: formData })
+        .then(function(r) {
+            if (!r.ok) {
+                return r.json().then(function(d) {
+                    throw new Error(d.error && d.error.message ? d.error.message : 'Cloudinary upload failed');
+                }).catch(function(e) {
+                    if (e instanceof Error && e.message !== 'Cloudinary upload failed') throw e;
+                    throw new Error(r.statusText || 'Cloudinary upload failed');
+                });
+            }
+            return r.json();
+        })
+        .then(function(data) {
+            return { secure_url: data.secure_url, public_id: data.public_id };
+        });
+}
+
 // Upload image with validation
 function uploadImage() {
     const input = document.getElementById('editImageInput');
@@ -752,88 +784,107 @@ function uploadImage() {
         return;
     }
     
-    const formData = new FormData();
-    formData.append('image', file);
-    
-    // Show upload progress
-    const uploadBtn = event.target;
-    const originalText = uploadBtn.innerHTML;
-    uploadBtn.disabled = true;
-    uploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Uploading...';
-    
-    fetch(`/api/case/${caseId}/image`, {
-        method: 'POST',
-        body: formData
-    })
-    .then(async r => {
-        // Check if response is OK and is JSON
-        if (!r.ok) {
-            // Try to parse error as JSON, otherwise use status text
-            let errorMessage = r.statusText;
-            try {
-                const errorData = await r.json();
-                errorMessage = errorData.error || errorMessage;
-            } catch (e) {
-                // Not JSON, use status text
-                if (r.status === 403) {
-                    errorMessage = 'Access denied. Please ensure you have permission to edit this case.';
-                } else if (r.status === 401) {
-                    errorMessage = 'Unauthorized. Please log in again.';
-                } else if (r.status === 500) {
-                    errorMessage = 'Server error. Please try again or contact support.';
-                }
-            }
-            throw new Error(errorMessage);
-        }
-        
-        // Check content type before parsing
-        const contentType = r.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) {
-            throw new Error('Server returned non-JSON response. Please try again.');
-        }
-        
-        return r.json();
-    })
-    .then(data => {
+    const uploadBtn = (typeof event !== 'undefined' && event && event.target) ? event.target : document.querySelector('button[onclick*="uploadImage"]');
+    const originalText = uploadBtn ? uploadBtn.innerHTML : '';
+    if (uploadBtn) {
+        uploadBtn.disabled = true;
+        uploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Uploading...';
+    }
+
+    function onUploadSuccess(data) {
         console.log('[IMAGE] Upload response:', data);
         if (data.image_id || data.success) {
             input.value = '';
-            // Wait a moment before reloading to ensure database is updated
-            setTimeout(() => {
-            reloadImages(caseId);
-            }, 300);
-            // Show success message
+            setTimeout(function() { reloadImages(caseId); }, 300);
             if (typeof showToast === 'function') {
                 showToast('Image uploaded successfully!', 'success');
-        } else {
+            } else {
                 alert('Image uploaded successfully!');
             }
         } else {
             console.error('[IMAGE] Upload failed - no image_id or success flag:', data);
             alert('Error: ' + (data.error || 'Upload failed'));
         }
-    })
-    .catch(error => {
+    }
+
+    function onUploadError(error) {
         console.error('Error uploading image:', error);
-        let errorMsg = 'Unknown error occurred';
-        
-        if (error.message) {
-            errorMsg = error.message;
-        } else if (error.error) {
-            errorMsg = error.error;
-        } else if (typeof error === 'string') {
-            errorMsg = error;
+        var errorMsg = (error && error.message) ? error.message : (error && error.error) ? error.error : (typeof error === 'string') ? error : 'Unknown error occurred';
+        if (errorMsg.indexOf('413') !== -1 || errorMsg.indexOf('too large') !== -1) {
+            errorMsg = 'Image too large for server upload (limit ~4.5 MB). Try compressing or resizing the image, or ask an admin to enable direct Cloudinary upload.';
         }
-        
-        // Log full error for debugging
         console.error('Full error object:', error);
-        
         alert('Error uploading image: ' + errorMsg);
-    })
-    .finally(() => {
-        uploadBtn.disabled = false;
-        uploadBtn.innerHTML = originalText;
-    });
+    }
+
+    function doServerUpload() {
+        var formData = new FormData();
+        formData.append('image', file);
+        return fetch('/api/case/' + caseId + '/image', { method: 'POST', body: formData, credentials: 'same-origin' })
+            .then(async function(r) {
+                if (!r.ok) {
+                    var errorMessage = r.statusText;
+                    try {
+                        var errorData = await r.json();
+                        errorMessage = errorData.error || errorMessage;
+                    } catch (e) {
+                        if (r.status === 403) errorMessage = 'Access denied. Please ensure you have permission to edit this case.';
+                        else if (r.status === 401) errorMessage = 'Unauthorized. Please log in again.';
+                        else if (r.status === 500) errorMessage = 'Server error. Please try again or contact support.';
+                    }
+                    throw new Error(errorMessage);
+                }
+                var contentType = r.headers.get('content-type');
+                if (!contentType || contentType.indexOf('application/json') === -1) {
+                    throw new Error('Server returned non-JSON response. Please try again.');
+                }
+                return r.json();
+            });
+    }
+
+    function doDirectUpload() {
+        return uploadFileToCloudinary(file).then(function(result) {
+            var cloudName = window.CLOUDINARY_CLOUD_NAME;
+            var thumbUrl = 'https://res.cloudinary.com/' + cloudName + '/image/upload/w_200,h_200,c_fill/' + result.public_id;
+            return fetch('/api/case/' + caseId + '/image-url', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    image_url: result.secure_url,
+                    image_public_id: result.public_id,
+                    thumbnail_url: thumbUrl,
+                    filename: file.name || 'image.jpg',
+                    description: '',
+                    image_type: file.type || 'image/jpeg'
+                }),
+                credentials: 'same-origin'
+            });
+        }).then(async function(r) {
+            if (!r.ok) {
+                var errData = await r.json().catch(function() { return {}; });
+                throw new Error((errData && errData.error) ? errData.error : r.statusText);
+            }
+            return r.json();
+        });
+    }
+
+    var useDirect = window.CLOUDINARY_CLOUD_NAME && window.CLOUDINARY_UPLOAD_PRESET;
+    var uploadPromise = useDirect
+        ? doDirectUpload().catch(function(err) {
+            console.warn('[IMAGE] Direct upload failed, falling back to server upload:', err);
+            return doServerUpload();
+        })
+        : doServerUpload();
+
+    uploadPromise
+        .then(onUploadSuccess)
+        .catch(onUploadError)
+        .finally(function() {
+            if (uploadBtn) {
+                uploadBtn.disabled = false;
+                uploadBtn.innerHTML = originalText;
+            }
+        });
 }
 
 /**
@@ -1133,22 +1184,55 @@ function saveEditedCase(event) {
                                         return;
                                     }
                                     
-                                    const formData = new FormData();
-                                    formData.append('image', file, file.name || 'image.jpg');
-                                    
+                                    const controller = new AbortController();
+                                    const timeoutId = setTimeout(() => controller.abort(), 30000);
                                     console.log('[SAVE] Uploading pending image:', file.name, 'size:', file.size, 'type:', file.type, 'isFile:', isFile, 'isBlob:', isBlob, 'to case', newCaseId);
                                     
-                                    // Add timeout to fetch request
-                                    const controller = new AbortController();
-                                    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+                                    // Direct Cloudinary upload when configured (avoids 413 for large files)
+                                    if (window.CLOUDINARY_CLOUD_NAME && window.CLOUDINARY_UPLOAD_PRESET) {
+                                        uploadFileToCloudinary(file).then(function(result) {
+                                            var cloudName = window.CLOUDINARY_CLOUD_NAME;
+                                            var thumbUrl = 'https://res.cloudinary.com/' + cloudName + '/image/upload/w_200,h_200,c_fill/' + result.public_id;
+                                            return fetch('/api/case/' + newCaseId + '/image-url', {
+                                                method: 'POST',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({
+                                                    image_url: result.secure_url,
+                                                    image_public_id: result.public_id,
+                                                    thumbnail_url: thumbUrl,
+                                                    filename: file.name || 'image.jpg',
+                                                    description: '',
+                                                    image_type: file.type || 'image/jpeg'
+                                                }),
+                                                credentials: 'same-origin'
+                                            });
+                                        }).then(function(r) {
+                                            if (!r.ok) return r.json().then(function(d) { throw new Error(d.error || r.statusText); });
+                                            return r.json();
+                                        }).then(function(data) {
+                                            clearTimeout(timeoutId);
+                                            console.log('[SAVE] Pending image uploaded successfully (direct):', file.name, data);
+                                            var idx = window.pendingImages.indexOf(file);
+                                            if (idx > -1) window.pendingImages.splice(idx, 1);
+                                            resolve(data);
+                                        }).catch(function(err) {
+                                            clearTimeout(timeoutId);
+                                            console.error('[SAVE] Direct upload failed for pending image:', file.name, err);
+                                            reject(err);
+                                        });
+                                        return;
+                                    }
+                                    
+                                    const formData = new FormData();
+                                    formData.append('image', file, file.name || 'image.jpg');
                                     
                                     // Retry logic for network errors
                                     let retryCount = 0;
                                     const maxRetries = 2;
                                     
                                     function attemptUpload() {
-                                        console.log(`[SAVE] Starting fetch request for ${file.name} to /api/case/${newCaseId}/image`);
-                                        fetch(`/api/case/${newCaseId}/image`, {
+                                        console.log('[SAVE] Starting fetch request for ' + file.name + ' to /api/case/' + newCaseId + '/image');
+                                        fetch('/api/case/' + newCaseId + '/image', {
                                             method: 'POST',
                                             body: formData,
                                             credentials: 'same-origin', // Ensure cookies are sent

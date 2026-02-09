@@ -1,0 +1,196 @@
+{% extends 'base.html' %}
+
+{% block mobile_breadcrumb %}
+<li class="breadcrumb-item">
+    <a href="{{ url_for('reporting.algorithm_finder') }}" class="text-white text-decoration-none">Algorithm Finder</a>
+</li>
+<li class="breadcrumb-item active text-white-50">Manage Templates</li>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-12 col-xl-10">
+
+            <div class="d-flex flex-wrap gap-2 mb-3">
+                <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary btn-sm">
+                    <i class="fas fa-home me-1"></i>Dashboard
+                </a>
+                <a href="{{ url_for('reporting.algorithm_finder') }}" class="btn btn-outline-secondary btn-sm">
+                    <i class="fas fa-sitemap me-1"></i>Algorithm Finder
+                </a>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="mb-1"><i class="fas fa-clipboard-list me-2" style="color: #e96304;"></i>Reporting Templates</h2>
+                    <p class="text-muted mb-0">Manage non-oncologic reporting decision trees</p>
+                </div>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#generateModal"
+                            style="background: #e96304; border-color: #e96304;">
+                        <i class="fas fa-magic me-1"></i>Generate New
+                    </button>
+                </div>
+            </div>
+
+            <!-- Templates List -->
+            <div class="card shadow-sm border-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Title</th>
+                                <th>Category</th>
+                                <th>Body Section</th>
+                                <th>Source</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for t in templates %}
+                            <tr>
+                                <td>
+                                    <div class="fw-semibold">{{ t.title }}</div>
+                                    <small class="text-muted">{{ t.slug }}</small>
+                                </td>
+                                <td><span class="badge bg-light text-dark border">{{ t.category }}</span></td>
+                                <td>{{ t.body_section or '—' }}</td>
+                                <td><small>{{ t.source_citation or '—' }}</small></td>
+                                <td>
+                                    {% if t.is_available %}
+                                    <span class="badge bg-success"><i class="fas fa-check me-1"></i>Available</span>
+                                    {% else %}
+                                    <span class="badge bg-warning text-dark"><i class="fas fa-clock me-1"></i>Draft</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        {% if t.is_available %}
+                                        <a href="{{ url_for('reporting.view_reporting_template', slug=t.slug) }}"
+                                           class="btn btn-outline-secondary" title="View">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        {% endif %}
+                                        <button class="btn btn-outline-danger"
+                                                onclick="deleteTemplate({{ t.id }}, '{{ t.title|e }}')" title="Delete">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                            {% if not templates %}
+                            <tr>
+                                <td colspan="6" class="text-center py-4 text-muted">
+                                    No templates yet. Click "Generate New" to create one.
+                                </td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Generate Modal -->
+<div class="modal fade" id="generateModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Generate Reporting Template</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Template Title</label>
+                    <input type="text" class="form-control" id="genTitle" placeholder="e.g. AAST Splenic Injury Scale">
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Category</label>
+                        <select class="form-select" id="genCategory">
+                            <option value="trauma">Trauma</option>
+                            <option value="grading">Grading System</option>
+                            <option value="emergency">Emergency</option>
+                            <option value="scoring">Scoring</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Body Section</label>
+                        <input type="text" class="form-control" id="genBodySection" placeholder="e.g. Abdomen">
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Source Citation</label>
+                    <input type="text" class="form-control" id="genSource" placeholder="e.g. AAST 2018 Revised">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Additional Context</label>
+                    <textarea class="form-control" id="genContext" rows="3"
+                              placeholder="Optional: specific criteria, grading details..."></textarea>
+                </div>
+                <div id="genStatus" class="d-none"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="genBtn" onclick="generateTemplate()"
+                        style="background: #e96304; border-color: #e96304;">
+                    <i class="fas fa-magic me-1"></i>Generate
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function generateTemplate() {
+    const btn = document.getElementById('genBtn');
+    const status = document.getElementById('genStatus');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Generating...';
+    status.classList.remove('d-none');
+    status.innerHTML = '<div class="alert alert-info py-2"><i class="fas fa-spinner fa-spin me-1"></i>Generating template...</div>';
+
+    fetch('/admin/reporting-templates/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            title: document.getElementById('genTitle').value,
+            category: document.getElementById('genCategory').value,
+            body_section: document.getElementById('genBodySection').value,
+            source_citation: document.getElementById('genSource').value,
+            additional_context: document.getElementById('genContext').value,
+        }),
+    })
+    .then(r => r.json())
+    .then(result => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-magic me-1"></i>Generate';
+        if (result.success) {
+            status.innerHTML = `<div class="alert alert-success py-2"><i class="fas fa-check me-1"></i>${result.message}</div>`;
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            status.innerHTML = `<div class="alert alert-danger py-2">${result.message || result.error}</div>`;
+        }
+    })
+    .catch(() => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-magic me-1"></i>Generate';
+        status.innerHTML = '<div class="alert alert-danger py-2">Generation failed.</div>';
+    });
+}
+
+function deleteTemplate(id, title) {
+    if (!confirm(`Delete template "${title}"?`)) return;
+    fetch(`/admin/reporting-templates/api/${id}`, { method: 'DELETE' })
+        .then(r => r.json())
+        .then(() => location.reload());
+}
+</script>
+{% endblock %}

@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+
+{% block mobile_breadcrumb %}
+<li class="breadcrumb-item">
+    <a href="{{ url_for('incidental_findings.finder') }}" class="text-white text-decoration-none">Incidental Findings</a>
+</li>
+<li class="breadcrumb-item active text-white-50">{{ calculator.finding_name }}</li>
+{% endblock %}
+
+{% block content %}
+<!-- Navigation Links -->
+<div class="container-fluid py-3">
+    <div class="row justify-content-center">
+        <div class="col-12 col-xl-10">
+            <div class="d-flex flex-wrap gap-2 mb-3">
+                <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary btn-sm">
+                    <i class="fas fa-home me-1"></i>Dashboard
+                </a>
+                <a href="{{ url_for('incidental_findings.finder') }}" class="btn btn-outline-secondary btn-sm">
+                    <i class="fas fa-search-plus me-1"></i>All Incidental Findings
+                </a>
+                <a href="{{ url_for('reporting.algorithm_finder') }}" class="btn btn-outline-secondary btn-sm">
+                    <i class="fas fa-sitemap me-1"></i>Algorithm Finder
+                </a>
+            </div>
+
+            <!-- Guideline Citation -->
+            {% if calculator.guideline_source %}
+            <div class="alert alert-info border-0 py-2 mb-3">
+                <small>
+                    <i class="fas fa-book me-1"></i>
+                    <strong>{{ calculator.guideline_source }}</strong>
+                    {% if calculator.guideline_version %} ({{ calculator.guideline_version }}){% endif %}
+                    {% if calculator.guideline_url %}
+                    &mdash; <a href="{{ calculator.guideline_url }}" target="_blank" rel="noopener">View guideline</a>
+                    {% endif %}
+                    {% if calculator.verified_at %}
+                    <span class="ms-2 text-success"><i class="fas fa-check-circle me-1"></i>Verified</span>
+                    {% endif %}
+                </small>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{# Inject calculator styles #}
+<style>
+    {{ content.styles | safe }}
+
+    .calculator-integrated-wrapper .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+</style>
+
+<div class="calculator-integrated-wrapper">
+    {{ content.body | safe }}
+</div>
+
+<!-- Clinical Disclaimer Footer -->
+<div class="container-fluid py-3">
+    <div class="row justify-content-center">
+        <div class="col-12 col-xl-10">
+            <div class="p-3 rounded" style="background: #f8f9fa; border: 1px solid #e9ecef;">
+                <small class="text-muted">
+                    <i class="fas fa-shield-alt me-1" style="color: #e96304;"></i>
+                    <strong>Clinical Decision Support Tool</strong> &mdash;
+                    This tool is for educational and reference purposes. Always verify against
+                    current guidelines and institutional protocols before clinical use.
+                    {% if calculator.guideline_source %}
+                    Source: {{ calculator.guideline_source }}
+                    {% if calculator.guideline_version %}({{ calculator.guideline_version }}){% endif %}.
+                    {% endif %}
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

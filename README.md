@@ -146,7 +146,8 @@ RESEND_API_KEY=re_xxxxxxxxx
 | `SECRET_KEY` | Yes | Session encryption key |
 | `DATABASE_POSTGRES_URL_NON_POOLING` | Production | Neon PostgreSQL URL |
 | `CLAUDE_API_KEY` | Yes | Anthropic Claude API key |
-| `CLOUDINARY_URL` | Yes | Image upload service |
+| `CLOUDINARY_URL` | Yes | Image upload service (or use `CLOUDINARY_CLOUD_NAME` + `CLOUDINARY_API_KEY` + `CLOUDINARY_API_SECRET`) |
+| `CLOUDINARY_UPLOAD_PRESET` | No | Unsigned preset name for Edit Case direct upload (avoids 413 for large images). See [docs/CLOUDINARY_DIRECT_UPLOAD.md](docs/CLOUDINARY_DIRECT_UPLOAD.md) |
 | `RESEND_API_KEY` | Yes | Email service (resend.com) |
 | `EMAIL_FROM` | No | Sender email (default: onboarding@resend.dev) |
 | `APP_URL` | No | App URL for email links |

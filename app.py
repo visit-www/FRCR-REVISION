@@ -21,6 +21,7 @@ from models import db, User, Case, CaseImage, Question, Answer, BodyPart
 from models import RevisionSession, RevisionHistory  # STUDENT REVISION: New models for balanced revision
 from models import UserQAProgress  # STUDY MODE: SM-2 spaced repetition
 from models import ForumMessage, ForumMessageVote, ForumMessageFlag  # Forum models
+from models import ClinicalProtocol, OnCallQueryLog, ReportingTemplate, IncidentalFindingCalculator  # Clinical tools
 from auth import auth_bp
 from backup_routes import backup_bp
 from admin_routes import admin_bp
@@ -34,6 +35,9 @@ admin_tnm_bp, tnm_bp = get_blueprints()
 # TNM Calculator - standalone clinical-grade calculator module
 from tnm_calculator.routes import tnm_calc_bp
 from case_dicom_viewer import init_app as init_case_dicom, get_blueprint as get_case_dicom_bp
+from oncall_routes import oncall_bp
+from reporting_routes import reporting_bp
+from incidental_findings import if_bp
 from ai_prelim import AiPrelimError, generate_prelim_case_data
 from datetime import datetime
 from sqlalchemy.pool import NullPool
@@ -601,6 +605,9 @@ app.register_blueprint(tnm_bp)  # AJCC TNM staging system - public routes
 app.register_blueprint(tnm_calc_bp)  # TNM Calculator - standalone clinical-grade calculator
 init_case_dicom(app)
 app.register_blueprint(get_case_dicom_bp())  # Case DICOM Viewer - OneDrive image stacks
+app.register_blueprint(oncall_bp)  # On-Call Session Helper - curated clinical protocols
+app.register_blueprint(reporting_bp)  # Algorithm Finder + Non-oncologic reporting templates
+app.register_blueprint(if_bp)  # Incidental Findings Helper - guideline-based calculators
 
 
 # ============================================================================
@@ -2537,7 +2544,9 @@ def edit_case():
                          prev_staging_id=prev_staging_id,
                          next_staging_id=next_staging_id,
                          status_filter=status_filter,
-                         body_part_groups=body_part_groups)
+                         body_part_groups=body_part_groups,
+                         cloudinary_cloud_name=os.environ.get('CLOUDINARY_CLOUD_NAME', ''),
+                         cloudinary_upload_preset=os.environ.get('CLOUDINARY_UPLOAD_PRESET', ''))
 
 
 
@@ -2720,7 +2729,7 @@ def upload_case_image(case_id):
         # Upload to Cloudinary
         upload_result = cloudinary.uploader.upload(
             file,
-            folder='frcr_cases',
+            folder='frcr_revision/frcr_cases',
             resource_type='image',
             transformation=[{'quality': 'auto', 'fetch_format': 'auto'}]
         )
@@ -2760,8 +2769,8 @@ def upload_case_image(case_id):
 @app.route('/api/case/<int:case_id>/image-url', methods=['POST'])
 @login_required
 def add_case_image_from_url(case_id):
-    """Add a CaseImage from an external URL (no Cloudinary upload).
-    Used for Radiopaedia and other CC-licensed search results."""
+    """Add a CaseImage from an external URL or from client-side Cloudinary upload.
+    Used for Radiopaedia/CC-licensed URLs, or when frontend uploads directly to Cloudinary (avoids 413 on Vercel)."""
     case = verify_case_ownership(case_id)
     if not case:
         return jsonify({"error": "Unauthorized"}), 403
@@ -2780,13 +2789,17 @@ def add_case_image_from_url(case_id):
         path = urlparse(image_url).path
         filename = path.split("/")[-1] or "external_image.jpg"
 
+    # Optional: for client-side Cloudinary uploads we store public_id so delete can remove from Cloudinary
+    image_public_id = (data.get("image_public_id") or "").strip() or None
+    image_type = (data.get("image_type") or "").strip() or "image/jpeg"
+
     case_image = CaseImage(
         case_id=case_id,
         image_url=image_url,
-        image_public_id=None,
+        image_public_id=image_public_id,
         image_thumbnail_url=thumbnail_url,
         image_filename=filename,
-        image_type="image/jpeg",
+        image_type=image_type,
         image_description=description,
     )
     db.session.add(case_image)
@@ -4618,7 +4631,7 @@ def upload_forum_image():
         # Upload to Cloudinary with auto-thumbnail
         result = cloudinary.uploader.upload(
             file_data,
-            folder='frcr_forum',
+            folder='frcr_revision/frcr_forum',
             transformation=[{'width': 800, 'crop': 'limit'}],  # Limit size
             eager=[{'width': 80, 'height': 80, 'crop': 'fill'}]  # Generate thumbnail
         )
