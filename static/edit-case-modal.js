@@ -711,6 +711,79 @@ function uploadFileToCloudinary(file) {
         });
 }
 
+/**
+ * Compress an image file using canvas to stay under server upload limits.
+ * Returns a Promise that resolves to a compressed File object.
+ * For JPEG/WebP: reduces quality. For PNG: converts to JPEG.
+ * Target: under 4MB to stay within Vercel's ~4.5MB body limit.
+ */
+function compressImage(file, maxWidthPx, maxSizeMB) {
+    maxWidthPx = maxWidthPx || 2048;
+    maxSizeMB = maxSizeMB || 3.5;
+    var maxSizeBytes = maxSizeMB * 1024 * 1024;
+
+    // Skip if already under limit
+    if (file.size <= maxSizeBytes) {
+        return Promise.resolve(file);
+    }
+
+    return new Promise(function(resolve, reject) {
+        var img = new Image();
+        var url = URL.createObjectURL(file);
+
+        img.onload = function() {
+            URL.revokeObjectURL(url);
+
+            var width = img.width;
+            var height = img.height;
+
+            // Scale down if wider than maxWidthPx
+            if (width > maxWidthPx) {
+                height = Math.round(height * (maxWidthPx / width));
+                width = maxWidthPx;
+            }
+
+            var canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            var ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+
+            // Try progressively lower quality until under limit
+            var mimeType = 'image/jpeg';
+            var quality = 0.85;
+            var minQuality = 0.4;
+
+            function tryCompress() {
+                canvas.toBlob(function(blob) {
+                    if (!blob) {
+                        reject(new Error('Canvas compression failed'));
+                        return;
+                    }
+                    if (blob.size <= maxSizeBytes || quality <= minQuality) {
+                        var compressedName = file.name.replace(/\.[^.]+$/, '') + '.jpg';
+                        var compressedFile = new File([blob], compressedName, { type: mimeType });
+                        console.log('[IMAGE] Compressed: ' + (file.size / 1024 / 1024).toFixed(1) + 'MB -> ' + (blob.size / 1024 / 1024).toFixed(1) + 'MB (quality=' + quality.toFixed(2) + ', ' + width + 'x' + height + ')');
+                        resolve(compressedFile);
+                    } else {
+                        quality -= 0.1;
+                        tryCompress();
+                    }
+                }, mimeType, quality);
+            }
+
+            tryCompress();
+        };
+
+        img.onerror = function() {
+            URL.revokeObjectURL(url);
+            reject(new Error('Failed to load image for compression'));
+        };
+
+        img.src = url;
+    });
+}
+
 // Upload image with validation
 function uploadImage() {
     const input = document.getElementById('editImageInput');
@@ -818,28 +891,31 @@ function uploadImage() {
     }
 
     function doServerUpload() {
-        var formData = new FormData();
-        formData.append('image', file);
-        return fetch('/api/case/' + caseId + '/image', { method: 'POST', body: formData, credentials: 'same-origin' })
-            .then(async function(r) {
-                if (!r.ok) {
-                    var errorMessage = r.statusText;
-                    try {
-                        var errorData = await r.json();
-                        errorMessage = errorData.error || errorMessage;
-                    } catch (e) {
-                        if (r.status === 403) errorMessage = 'Access denied. Please ensure you have permission to edit this case.';
-                        else if (r.status === 401) errorMessage = 'Unauthorized. Please log in again.';
-                        else if (r.status === 500) errorMessage = 'Server error. Please try again or contact support.';
+        // Compress image before server upload to stay under Vercel's ~4.5MB body limit
+        return compressImage(file, 2048, 3.5).then(function(compressedFile) {
+            var formData = new FormData();
+            formData.append('image', compressedFile);
+            return fetch('/api/case/' + caseId + '/image', { method: 'POST', body: formData, credentials: 'same-origin' })
+                .then(async function(r) {
+                    if (!r.ok) {
+                        var errorMessage = r.statusText;
+                        try {
+                            var errorData = await r.json();
+                            errorMessage = errorData.error || errorMessage;
+                        } catch (e) {
+                            if (r.status === 403) errorMessage = 'Access denied. Please ensure you have permission to edit this case.';
+                            else if (r.status === 401) errorMessage = 'Unauthorized. Please log in again.';
+                            else if (r.status === 500) errorMessage = 'Server error. Please try again or contact support.';
+                        }
+                        throw new Error(errorMessage);
                     }
-                    throw new Error(errorMessage);
-                }
-                var contentType = r.headers.get('content-type');
-                if (!contentType || contentType.indexOf('application/json') === -1) {
-                    throw new Error('Server returned non-JSON response. Please try again.');
-                }
-                return r.json();
-            });
+                    var contentType = r.headers.get('content-type');
+                    if (!contentType || contentType.indexOf('application/json') === -1) {
+                        throw new Error('Server returned non-JSON response. Please try again.');
+                    }
+                    return r.json();
+                });
+        });
     }
 
     function doDirectUpload() {
