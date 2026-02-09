@@ -16,7 +16,7 @@ from models import (
     # Spaced repetition progress
     UserQAProgress,
     # AI cache
-    AiDiagnosisCache,
+    AiDiagnosisCache, AiPrelimCaseData,
     # Association tables
     related_cases, case_calculator_links, case_reference_links,
     # AJCC TNM Models
@@ -26,7 +26,10 @@ from models import (
     # Case DICOM Viewer Models
     CaseImageStack, CaseImageAnnotation,
     # TNM Calculator Content (AI-generated calculators and algorithms)
-    TNMCalculatorContent
+    TNMCalculatorContent,
+    # Clinical Tools (On-Call Helper, Reporting Templates, Incidental Findings)
+    ClinicalProtocol, OnCallQueryLog, ReportingTemplate,
+    IncidentalFindingCalculator,
 )
 from datetime import datetime, timedelta
 from sqlalchemy import inspect
@@ -81,7 +84,7 @@ def download_backup():
             'metadata': {
                 'backup_date': datetime.utcnow().isoformat(),
                 'database_type': 'postgresql' if os.getenv('DATABASE_URL') or os.getenv('DATABASE_POSTGRES_URL_NON_POOLING') else 'sqlite',
-                'version': '2.8',  # Bumped for contributor_name field
+                'version': '2.9',  # Bumped for clinical tools tables
                 'app_name': 'RadInsights'
             },
             'users': [],
@@ -129,6 +132,12 @@ def download_backup():
             'user_qa_progress': [],
             # AI cache
             'ai_diagnosis_cache': [],
+            'ai_prelim_case_data': [],
+            # Clinical Tools
+            'clinical_protocols': [],
+            'oncall_query_logs': [],
+            'reporting_templates': [],
+            'incidental_finding_calculators': [],
         }
         
         # Export users (with passwords for sync purposes)
@@ -647,6 +656,109 @@ def download_backup():
                 'first_generated_at': cache.first_generated_at.isoformat() if cache.first_generated_at else None,
                 'query_count': cache.query_count,
                 'last_queried_at': cache.last_queried_at.isoformat() if cache.last_queried_at else None,
+            })
+
+        # Export AI Prelim Case Data (audit trail for AI-generated cases)
+        for apcd in AiPrelimCaseData.query.all():
+            backup_data['ai_prelim_case_data'].append({
+                'id': apcd.id,
+                'case_id': apcd.case_id,
+                'created_by_user_id': apcd.created_by_user_id,
+                'provider': apcd.provider,
+                'model_name': apcd.model_name,
+                'prompt_version': apcd.prompt_version,
+                'request_payload': apcd.request_payload,
+                'response_payload': apcd.response_payload,
+                'created_at': apcd.created_at.isoformat() if apcd.created_at else None,
+            })
+
+        # Export Clinical Protocols (On-Call Helper knowledge base)
+        for protocol in ClinicalProtocol.query.all():
+            backup_data['clinical_protocols'].append({
+                'id': protocol.id,
+                'category': protocol.category,
+                'title': protocol.title,
+                'keywords': protocol.keywords,
+                'content_structured': protocol.content_structured,
+                'content_html': protocol.content_html,
+                'source_citation': protocol.source_citation,
+                'guideline_version': protocol.guideline_version,
+                'source_url': protocol.source_url,
+                'is_published': protocol.is_published,
+                'verified_by_user_id': protocol.verified_by_user_id,
+                'verified_at': protocol.verified_at.isoformat() if protocol.verified_at else None,
+                'created_by_user_id': protocol.created_by_user_id,
+                'created_at': protocol.created_at.isoformat() if protocol.created_at else None,
+                'updated_at': protocol.updated_at.isoformat() if protocol.updated_at else None,
+            })
+
+        # Export On-Call Query Logs (audit trail)
+        for log in OnCallQueryLog.query.all():
+            backup_data['oncall_query_logs'].append({
+                'id': log.id,
+                'user_id': log.user_id,
+                'query_text': log.query_text,
+                'matched_protocol_ids': log.matched_protocol_ids,
+                'ai_response_text': log.ai_response_text,
+                'model_used': log.model_used,
+                'token_count': log.token_count,
+                'response_source': log.response_source,
+                'created_at': log.created_at.isoformat() if log.created_at else None,
+            })
+
+        # Export Reporting Templates (admin-curated + AI-generated cached algorithms)
+        for rt in ReportingTemplate.query.all():
+            backup_data['reporting_templates'].append({
+                'id': rt.id,
+                'slug': rt.slug,
+                'title': rt.title,
+                'category': rt.category,
+                'body_section': rt.body_section,
+                'description': rt.description,
+                'keywords': rt.keywords,
+                'template_html': rt.template_html,
+                'algorithm_html': rt.algorithm_html,
+                'source_citation': rt.source_citation,
+                'guideline_version': rt.guideline_version,
+                'is_available': rt.is_available,
+                'is_ai_generated': rt.is_ai_generated,
+                'verified_by_user_id': rt.verified_by_user_id,
+                'verified_at': rt.verified_at.isoformat() if rt.verified_at else None,
+                'pacs_report_text': rt.pacs_report_text,
+                'generation_prompt': rt.generation_prompt,
+                'generation_model': rt.generation_model,
+                'generated_at': rt.generated_at.isoformat() if rt.generated_at else None,
+                'created_by_user_id': rt.created_by_user_id,
+                'last_edit_note': rt.last_edit_note,
+                'created_at': rt.created_at.isoformat() if rt.created_at else None,
+                'updated_at': rt.updated_at.isoformat() if rt.updated_at else None,
+            })
+
+        # Export Incidental Finding Calculators
+        for ifc in IncidentalFindingCalculator.query.all():
+            backup_data['incidental_finding_calculators'].append({
+                'id': ifc.id,
+                'slug': ifc.slug,
+                'finding_name': ifc.finding_name,
+                'body_section': ifc.body_section,
+                'category': ifc.category,
+                'description': ifc.description,
+                'keywords': ifc.keywords,
+                'calculator_html': ifc.calculator_html,
+                'algorithm_html': ifc.algorithm_html,
+                'guideline_source': ifc.guideline_source,
+                'guideline_version': ifc.guideline_version,
+                'guideline_url': ifc.guideline_url,
+                'is_available': ifc.is_available,
+                'generation_prompt': ifc.generation_prompt,
+                'generation_model': ifc.generation_model,
+                'generated_at': ifc.generated_at.isoformat() if ifc.generated_at else None,
+                'verified_by_user_id': ifc.verified_by_user_id,
+                'verified_at': ifc.verified_at.isoformat() if ifc.verified_at else None,
+                'created_by_user_id': ifc.created_by_user_id,
+                'last_edit_note': ifc.last_edit_note,
+                'created_at': ifc.created_at.isoformat() if ifc.created_at else None,
+                'updated_at': ifc.updated_at.isoformat() if ifc.updated_at else None,
             })
 
         # Create JSON file in memory
@@ -2964,10 +3076,188 @@ def restore_backup():
             db.session.add(cache_entry)
             stats['ai_diagnosis_cache']['added'] += 1
 
+        # Import AI Prelim Case Data (audit trail)
+        stats['ai_prelim_case_data'] = {'added': 0, 'skipped': 0}
+        for apcd_data in backup_data.get('ai_prelim_case_data', []):
+            if not isinstance(apcd_data, dict):
+                continue
+            old_case_id = apcd_data.get('case_id')
+            new_case_id = case_id_map.get(old_case_id) if old_case_id else None
+            if not new_case_id:
+                stats['ai_prelim_case_data']['skipped'] += 1
+                continue
+            old_user_id = apcd_data.get('created_by_user_id')
+            new_user_id = user_id_map.get(old_user_id) if old_user_id else None
+            entry = AiPrelimCaseData(
+                case_id=new_case_id,
+                created_by_user_id=new_user_id,
+                provider=apcd_data.get('provider', ''),
+                model_name=apcd_data.get('model_name', ''),
+                prompt_version=apcd_data.get('prompt_version', ''),
+                request_payload=apcd_data.get('request_payload'),
+                response_payload=apcd_data.get('response_payload'),
+            )
+            if apcd_data.get('created_at'):
+                entry.created_at = _parse_datetime_for_sqlite(apcd_data['created_at']) or datetime.utcnow()
+            db.session.add(entry)
+            stats['ai_prelim_case_data']['added'] += 1
+
+        # Import Clinical Protocols
+        stats['clinical_protocols'] = {'added': 0, 'skipped': 0}
+        protocol_id_map = {}
+        for proto_data in backup_data.get('clinical_protocols', []):
+            if not isinstance(proto_data, dict):
+                continue
+            title = proto_data.get('title', '')
+            category = proto_data.get('category', '')
+            if not title or not category:
+                stats['clinical_protocols']['skipped'] += 1
+                continue
+            existing = ClinicalProtocol.query.filter_by(title=title, category=category).first()
+            if existing:
+                protocol_id_map[proto_data.get('id')] = existing.id
+                stats['clinical_protocols']['skipped'] += 1
+                continue
+            old_created_by = proto_data.get('created_by_user_id')
+            old_verified_by = proto_data.get('verified_by_user_id')
+            protocol = ClinicalProtocol(
+                category=category,
+                title=title,
+                keywords=proto_data.get('keywords', title),
+                content_structured=proto_data.get('content_structured'),
+                content_html=proto_data.get('content_html'),
+                source_citation=proto_data.get('source_citation', ''),
+                guideline_version=proto_data.get('guideline_version'),
+                source_url=proto_data.get('source_url'),
+                is_published=proto_data.get('is_published', False),
+                verified_by_user_id=user_id_map.get(old_verified_by) if old_verified_by else None,
+                verified_at=_parse_datetime_for_sqlite(proto_data.get('verified_at')),
+                created_by_user_id=user_id_map.get(old_created_by) if old_created_by else None,
+            )
+            if proto_data.get('created_at'):
+                protocol.created_at = _parse_datetime_for_sqlite(proto_data['created_at']) or datetime.utcnow()
+            if proto_data.get('updated_at'):
+                protocol.updated_at = _parse_datetime_for_sqlite(proto_data['updated_at']) or datetime.utcnow()
+            db.session.add(protocol)
+            db.session.flush()
+            protocol_id_map[proto_data.get('id')] = protocol.id
+            stats['clinical_protocols']['added'] += 1
+
+        # Import On-Call Query Logs
+        stats['oncall_query_logs'] = {'added': 0, 'skipped': 0}
+        for log_data in backup_data.get('oncall_query_logs', []):
+            if not isinstance(log_data, dict):
+                continue
+            old_user_id = log_data.get('user_id')
+            new_user_id = user_id_map.get(old_user_id) if old_user_id else None
+            if not new_user_id:
+                stats['oncall_query_logs']['skipped'] += 1
+                continue
+            log_entry = OnCallQueryLog(
+                user_id=new_user_id,
+                query_text=log_data.get('query_text', ''),
+                matched_protocol_ids=log_data.get('matched_protocol_ids'),
+                ai_response_text=log_data.get('ai_response_text'),
+                model_used=log_data.get('model_used'),
+                token_count=log_data.get('token_count'),
+                response_source=log_data.get('response_source', 'protocol'),
+            )
+            if log_data.get('created_at'):
+                log_entry.created_at = _parse_datetime_for_sqlite(log_data['created_at']) or datetime.utcnow()
+            db.session.add(log_entry)
+            stats['oncall_query_logs']['added'] += 1
+
+        # Import Reporting Templates
+        stats['reporting_templates'] = {'added': 0, 'skipped': 0}
+        for rt_data in backup_data.get('reporting_templates', []):
+            if not isinstance(rt_data, dict):
+                continue
+            slug = rt_data.get('slug', '')
+            if not slug:
+                stats['reporting_templates']['skipped'] += 1
+                continue
+            existing = ReportingTemplate.query.filter_by(slug=slug).first()
+            if existing:
+                stats['reporting_templates']['skipped'] += 1
+                continue
+            old_created_by = rt_data.get('created_by_user_id')
+            old_verified_by = rt_data.get('verified_by_user_id')
+            rt = ReportingTemplate(
+                slug=slug,
+                title=rt_data.get('title', ''),
+                category=rt_data.get('category', ''),
+                body_section=rt_data.get('body_section'),
+                description=rt_data.get('description'),
+                keywords=rt_data.get('keywords'),
+                template_html=rt_data.get('template_html'),
+                algorithm_html=rt_data.get('algorithm_html'),
+                source_citation=rt_data.get('source_citation'),
+                guideline_version=rt_data.get('guideline_version'),
+                is_available=rt_data.get('is_available', False),
+                is_ai_generated=rt_data.get('is_ai_generated', False),
+                verified_by_user_id=user_id_map.get(old_verified_by) if old_verified_by else None,
+                verified_at=_parse_datetime_for_sqlite(rt_data.get('verified_at')),
+                pacs_report_text=rt_data.get('pacs_report_text'),
+                generation_prompt=rt_data.get('generation_prompt'),
+                generation_model=rt_data.get('generation_model'),
+                generated_at=_parse_datetime_for_sqlite(rt_data.get('generated_at')),
+                created_by_user_id=user_id_map.get(old_created_by) if old_created_by else None,
+                last_edit_note=rt_data.get('last_edit_note'),
+            )
+            if rt_data.get('created_at'):
+                rt.created_at = _parse_datetime_for_sqlite(rt_data['created_at']) or datetime.utcnow()
+            if rt_data.get('updated_at'):
+                rt.updated_at = _parse_datetime_for_sqlite(rt_data['updated_at']) or datetime.utcnow()
+            db.session.add(rt)
+            stats['reporting_templates']['added'] += 1
+
+        # Import Incidental Finding Calculators
+        stats['incidental_finding_calculators'] = {'added': 0, 'skipped': 0}
+        for ifc_data in backup_data.get('incidental_finding_calculators', []):
+            if not isinstance(ifc_data, dict):
+                continue
+            slug = ifc_data.get('slug', '')
+            if not slug:
+                stats['incidental_finding_calculators']['skipped'] += 1
+                continue
+            existing = IncidentalFindingCalculator.query.filter_by(slug=slug).first()
+            if existing:
+                stats['incidental_finding_calculators']['skipped'] += 1
+                continue
+            old_created_by = ifc_data.get('created_by_user_id')
+            old_verified_by = ifc_data.get('verified_by_user_id')
+            ifc = IncidentalFindingCalculator(
+                slug=slug,
+                finding_name=ifc_data.get('finding_name', ''),
+                body_section=ifc_data.get('body_section'),
+                category=ifc_data.get('category'),
+                description=ifc_data.get('description'),
+                keywords=ifc_data.get('keywords'),
+                calculator_html=ifc_data.get('calculator_html'),
+                algorithm_html=ifc_data.get('algorithm_html'),
+                guideline_source=ifc_data.get('guideline_source'),
+                guideline_version=ifc_data.get('guideline_version'),
+                guideline_url=ifc_data.get('guideline_url'),
+                is_available=ifc_data.get('is_available', False),
+                generation_prompt=ifc_data.get('generation_prompt'),
+                generation_model=ifc_data.get('generation_model'),
+                generated_at=_parse_datetime_for_sqlite(ifc_data.get('generated_at')),
+                verified_by_user_id=user_id_map.get(old_verified_by) if old_verified_by else None,
+                verified_at=_parse_datetime_for_sqlite(ifc_data.get('verified_at')),
+                created_by_user_id=user_id_map.get(old_created_by) if old_created_by else None,
+                last_edit_note=ifc_data.get('last_edit_note'),
+            )
+            if ifc_data.get('created_at'):
+                ifc.created_at = _parse_datetime_for_sqlite(ifc_data['created_at']) or datetime.utcnow()
+            if ifc_data.get('updated_at'):
+                ifc.updated_at = _parse_datetime_for_sqlite(ifc_data['updated_at']) or datetime.utcnow()
+            db.session.add(ifc)
+            stats['incidental_finding_calculators']['added'] += 1
+
         # Final commit for new tables
         try:
             db.session.commit()
-            print(f"[IMPORT] New tables imported: {stats.get('related_cases_links', {}).get('added', 0)} related links, {stats.get('case_audit_logs', {}).get('added', 0)} audit logs, {stats.get('case_view_logs', {}).get('added', 0)} view logs, {stats.get('user_qa_progress', {}).get('added', 0)} QA progress, {stats.get('ai_diagnosis_cache', {}).get('added', 0)} AI cache")
+            print(f"[IMPORT] New tables imported: {stats.get('related_cases_links', {}).get('added', 0)} related links, {stats.get('case_audit_logs', {}).get('added', 0)} audit logs, {stats.get('case_view_logs', {}).get('added', 0)} view logs, {stats.get('user_qa_progress', {}).get('added', 0)} QA progress, {stats.get('ai_diagnosis_cache', {}).get('added', 0)} AI cache, {stats.get('clinical_protocols', {}).get('added', 0)} protocols, {stats.get('reporting_templates', {}).get('added', 0)} reporting templates, {stats.get('incidental_finding_calculators', {}).get('added', 0)} IF calculators")
         except Exception as new_tables_error:
             db.session.rollback()
             print(f"[IMPORT] ERROR during new tables commit: {new_tables_error}")
@@ -3083,6 +3373,11 @@ def backup_status():
         'ajcc_disease_mappings': AJCCDiseaseMapping.query.count(),
         'intelligent_tnm_data': IntelligentTNMData.query.count(),
         'case_reference_images': CaseReferenceImage.query.count(),
+        # Clinical Tools
+        'clinical_protocols': ClinicalProtocol.query.count(),
+        'oncall_query_logs': OnCallQueryLog.query.count(),
+        'reporting_templates': ReportingTemplate.query.count(),
+        'incidental_finding_calculators': IncidentalFindingCalculator.query.count(),
     }
     
     return jsonify({
