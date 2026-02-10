@@ -54,17 +54,20 @@
                             </div>
                         </div>
                     </div>
-                    <!-- Browse algorithms -->
+                    <!-- Quick Reference Tools -->
                     <div class="col-md-4">
-                        <a href="{{ url_for('reporting.algorithm_finder') }}" class="text-decoration-none">
-                            <div class="card border-0 shadow-sm h-100 hover-card" style="cursor: pointer; transition: transform 0.2s ease;">
-                                <div class="card-body text-center py-4">
-                                    <i class="fas fa-search mb-3" style="font-size: 2.5rem; color: #a8d5ba;"></i>
-                                    <h5 class="mb-2 text-dark">Find existing algorithms</h5>
-                                    <p class="text-muted small mb-0">Search cases, TNM calculators, incidental findings, and reporting templates</p>
+                        <div class="card border-0 shadow-sm h-100 hover-card" style="transition: transform 0.2s ease;">
+                            <div class="card-body text-center py-4">
+                                <i class="fas fa-toolbox mb-3" style="font-size: 2.5rem; color: #a8d5ba;"></i>
+                                <h5 class="mb-2">Quick Reference</h5>
+                                <div class="d-grid gap-1 mt-3">
+                                    <a href="/tnm" class="btn btn-sm btn-outline-secondary text-start"><i class="fas fa-dna me-2" style="color: #6b46c1;"></i>TNM Staging</a>
+                                    <a href="/incidental-findings" class="btn btn-sm btn-outline-secondary text-start"><i class="fas fa-search-plus me-2" style="color: #5E899E;"></i>Incidental Findings</a>
+                                    <a href="/on-call-helper" class="btn btn-sm btn-outline-secondary text-start"><i class="fas fa-headset me-2" style="color: #198754;"></i>Clinical Protocols</a>
+                                    <a href="{{ url_for('reporting.algorithm_finder') }}" class="btn btn-sm btn-outline-secondary text-start"><i class="fas fa-sitemap me-2" style="color: #e96304;"></i>Reporting Templates</a>
                                 </div>
                             </div>
-                        </a>
+                        </div>
                     </div>
                 </div>
 
@@ -319,6 +322,15 @@
                                     <pre id="runningReport" class="mb-0" style="white-space: pre-wrap; font-family: 'Courier New', monospace; font-size: 0.8rem; line-height: 1.5; color: #333;"></pre>
                                 </div>
                             </div>
+                            <!-- Related Resources (Scene 1) -->
+                            <div id="relatedResourcesScene1" class="d-none mt-3">
+                                <div class="card border-0 shadow-sm">
+                                    <div class="card-header bg-white border-0 py-2">
+                                        <small class="fw-semibold"><i class="fas fa-link me-1" style="color: #a8d5ba;"></i>Related Resources</small>
+                                    </div>
+                                    <div class="card-body p-2" id="relatedContentScene1"></div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -474,6 +486,16 @@
                             <i class="fas fa-exclamation-triangle me-1"></i>
                             <strong>Do not enter</strong> patient names, dates of birth, hospital numbers, or other identifiable information.
                         </div>
+
+                        <!-- Related Resources (Scene 2) -->
+                        <div id="relatedResourcesScene2" class="d-none mt-3">
+                            <div class="card border-0 shadow-sm">
+                                <div class="card-header bg-white border-0 py-2">
+                                    <small class="fw-semibold"><i class="fas fa-link me-1" style="color: #a8d5ba;"></i>Related Resources</small>
+                                </div>
+                                <div class="card-body p-2" id="relatedContentScene2"></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -599,6 +621,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // Start walkthrough at first step
             startWalkthrough();
+            // Fetch related resources based on clinical question
+            fetchRelatedForScene1();
         })
         .catch(err => {
             btn.disabled = false;
@@ -1719,6 +1743,83 @@ document.addEventListener('DOMContentLoaded', function() {
     // Load community on page load
     loadCommunity(false);
 
+    // ==================== RELATED RESOURCES ====================
+
+    let relatedContentTimer = null;
+
+    function fetchRelatedContent(query, bodySection, targetPanelId, targetContentId) {
+        const params = new URLSearchParams();
+        if (query) params.set('q', query);
+        if (bodySection) params.set('body_section', bodySection);
+
+        if (!query && !bodySection) {
+            document.getElementById(targetPanelId).classList.add('d-none');
+            return;
+        }
+
+        fetch('/api/smart-reporter/relevant-content?' + params.toString())
+            .then(r => r.json())
+            .then(data => {
+                const panel = document.getElementById(targetPanelId);
+                const container = document.getElementById(targetContentId);
+
+                if (!data.results || data.results.length === 0) {
+                    panel.classList.add('d-none');
+                    return;
+                }
+
+                let html = '';
+                data.results.forEach(r => {
+                    html += `
+                        <a href="${r.url}" target="_blank" class="text-decoration-none d-block">
+                            <div class="p-2 mb-1 rounded hover-card" style="border: 1px solid #e9ecef; transition: all 0.15s;">
+                                <div class="d-flex align-items-center">
+                                    <i class="fas ${r.icon} me-2" style="color: ${r.color}; font-size: 0.85rem; width: 18px; text-align: center;"></i>
+                                    <div style="min-width: 0;">
+                                        <small class="fw-semibold text-dark d-block text-truncate">${escapeHtmlSafe(r.title)}</small>
+                                        <small class="text-muted" style="font-size: 0.7rem;">${escapeHtmlSafe(r.subtitle)}</small>
+                                    </div>
+                                    <i class="fas fa-external-link-alt ms-auto text-muted" style="font-size: 0.65rem;"></i>
+                                </div>
+                            </div>
+                        </a>`;
+                });
+                container.innerHTML = html;
+                panel.classList.remove('d-none');
+            })
+            .catch(() => {});
+    }
+
+    // Trigger related content fetch after tree generation (Scene 1)
+    function fetchRelatedForScene1() {
+        const q = document.getElementById('inputClinicalQuestion').value.trim();
+        const body = document.getElementById('inputBodySection').value;
+        fetchRelatedContent(q, body, 'relatedResourcesScene1', 'relatedContentScene1');
+    }
+
+    // Trigger related content fetch for Scene 2 (debounced on input)
+    function fetchRelatedForScene2() {
+        clearTimeout(relatedContentTimer);
+        relatedContentTimer = setTimeout(() => {
+            const input = document.getElementById('editorInput');
+            if (!input) return;
+            const text = input.value.trim();
+            // Extract a search query: first meaningful line or first 60 chars
+            let q = '';
+            const lines = text.split('\n');
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].replace(/^(INDICATION|TECHNIQUE|COMPARISON|FINDINGS|IMPRESSION|RECOMMENDATION):\s*/i, '').trim();
+                if (line.length > 5) { q = line.substring(0, 80); break; }
+            }
+            if (q) {
+                fetchRelatedContent(q, '', 'relatedResourcesScene2', 'relatedContentScene2');
+            }
+        }, 1500);
+    }
+
+    // Hook into editor input for Scene 2
+    document.getElementById('editorInput').addEventListener('input', fetchRelatedForScene2);
+
     // ==================== SCENE EXTENSION ====================
 
     // Extend showScene to update session info and reload lists
@@ -1727,6 +1828,8 @@ document.addEventListener('DOMContentLoaded', function() {
         origShowScene(scene);
         if (scene === 'editor') {
             updateEditorSessionInfo();
+            // Fetch related content if there's text
+            fetchRelatedForScene2();
         }
         if (scene === 'landing') {
             loadSessions(false);

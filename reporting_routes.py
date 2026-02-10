@@ -18,7 +18,7 @@ import logging
 
 from models import (
     db, Case, CaseStatus, Question, Answer, CaseApprovalQueue,
-    ReportingTemplate, TNMCalculatorContent,
+    ReportingTemplate, TNMCalculatorContent, ClinicalProtocol,
     IncidentalFindingCalculator, AJCCDiseaseSite, AJCCBodySection,
     User, AiPrelimCaseData, ReportingSession, PublishedReport,
 )
@@ -1396,3 +1396,153 @@ def smart_reporter_get_published_report(report_id):
     """Get a single published report (full content) for loading into editor."""
     report = PublishedReport.query.get_or_404(report_id)
     return jsonify(report.to_dict())
+
+
+@reporting_bp.route('/api/smart-reporter/relevant-content', methods=['GET'])
+@login_required
+def smart_reporter_relevant_content():
+    """Search across DB for content relevant to the current report context.
+
+    Searches: Cases, TNM calculators, IF calculators, Reporting templates, Clinical protocols.
+    Returns top results per category as clickable cards.
+    """
+    q = request.args.get('q', '').strip()
+    body_section = request.args.get('body_section', '').strip()
+
+    if not q and not body_section:
+        return jsonify({'results': []})
+
+    results = []
+    search_terms = [t for t in q.lower().split() if len(t) > 2]
+
+    # --- Cases (published, matching diagnosis or body_part) ---
+    try:
+        case_query = Case.query.filter(Case.status == CaseStatus.PUBLISHED)
+        if q:
+            case_query = case_query.filter(
+                db.or_(
+                    Case.diagnosis.ilike(f'%{q}%'),
+                    Case.body_part.ilike(f'%{q}%'),
+                )
+            )
+        elif body_section:
+            case_query = case_query.filter(Case.body_part.ilike(f'%{body_section}%'))
+
+        cases = case_query.order_by(Case.diagnosis).limit(4).all()
+        for c in cases:
+            results.append({
+                'type': 'case',
+                'icon': 'fa-book-medical',
+                'color': '#e96304',
+                'title': c.diagnosis or 'Case',
+                'subtitle': c.body_part or '',
+                'url': f'/view-case/{c.id}',
+            })
+    except Exception:
+        pass
+
+    # --- TNM Calculators (available, matching cancer name or body section) ---
+    try:
+        tnm_query = TNMCalculatorContent.query.filter_by(is_available=True)
+        if q:
+            tnm_query = tnm_query.filter(
+                db.or_(
+                    TNMCalculatorContent.cancer_name.ilike(f'%{q}%'),
+                    TNMCalculatorContent.body_section.ilike(f'%{q}%'),
+                )
+            )
+        elif body_section:
+            tnm_query = tnm_query.filter(TNMCalculatorContent.body_section.ilike(f'%{body_section}%'))
+
+        tnms = tnm_query.limit(4).all()
+        for t in tnms:
+            results.append({
+                'type': 'tnm',
+                'icon': 'fa-dna',
+                'color': '#6b46c1',
+                'title': f'TNM: {t.cancer_name}',
+                'subtitle': t.body_section or '',
+                'url': f'/tnm-calculator/{t.slug}',
+            })
+    except Exception:
+        pass
+
+    # --- Incidental Findings Calculators ---
+    try:
+        if_query = IncidentalFindingCalculator.query.filter_by(is_available=True)
+        if q:
+            if_query = if_query.filter(
+                db.or_(
+                    IncidentalFindingCalculator.finding_name.ilike(f'%{q}%'),
+                    IncidentalFindingCalculator.keywords.ilike(f'%{q}%'),
+                )
+            )
+        elif body_section:
+            if_query = if_query.filter(IncidentalFindingCalculator.body_section.ilike(f'%{body_section}%'))
+
+        ifs = if_query.limit(4).all()
+        for f in ifs:
+            results.append({
+                'type': 'incidental',
+                'icon': 'fa-search-plus',
+                'color': '#5E899E',
+                'title': f.finding_name,
+                'subtitle': f.guideline_source or f.body_section or '',
+                'url': f'/incidental-findings/{f.slug}',
+            })
+    except Exception:
+        pass
+
+    # --- Reporting Templates ---
+    try:
+        rt_query = ReportingTemplate.query.filter_by(is_available=True)
+        if q:
+            rt_query = rt_query.filter(
+                db.or_(
+                    ReportingTemplate.title.ilike(f'%{q}%'),
+                    ReportingTemplate.keywords.ilike(f'%{q}%'),
+                )
+            )
+        elif body_section:
+            rt_query = rt_query.filter(ReportingTemplate.body_section.ilike(f'%{body_section}%'))
+
+        rts = rt_query.limit(3).all()
+        for t in rts:
+            results.append({
+                'type': 'template',
+                'icon': 'fa-clipboard-list',
+                'color': '#a8d5ba',
+                'title': t.title,
+                'subtitle': t.category or t.body_section or '',
+                'url': f'/reporting-template/{t.slug}',
+            })
+    except Exception:
+        pass
+
+    # --- Clinical Protocols ---
+    try:
+        cp_query = ClinicalProtocol.query.filter_by(is_published=True)
+        if q:
+            cp_query = cp_query.filter(
+                db.or_(
+                    ClinicalProtocol.title.ilike(f'%{q}%'),
+                    ClinicalProtocol.keywords.ilike(f'%{q}%'),
+                )
+            )
+        # Protocols don't have body_section, skip if only body_section provided
+
+        if q:  # Only search protocols when there's a text query
+            cps = cp_query.limit(3).all()
+            for p in cps:
+                results.append({
+                    'type': 'protocol',
+                    'icon': 'fa-headset',
+                    'color': '#198754',
+                    'title': p.title,
+                    'subtitle': p.category or '',
+                    'url': f'/on-call-helper',  # Protocols don't have individual pages
+                })
+    except Exception:
+        pass
+
+    return jsonify({'results': results[:15]})
