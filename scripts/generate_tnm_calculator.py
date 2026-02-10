@@ -478,6 +478,49 @@ DISEASE_DEFAULTS = {
 }
 
 
+# Complete list of FRCR-relevant cancers for batch generation
+# (slug, cancer_name, body_section)
+BATCH_LIST = [
+    # --- Head and Neck ---
+    ('oropharynx', 'Oropharynx', 'Head and Neck'),
+    ('larynx', 'Larynx', 'Head and Neck'),
+    ('thyroid', 'Thyroid', 'Head and Neck'),
+    ('nasopharynx', 'Nasopharynx', 'Head and Neck'),
+    ('hypopharynx', 'Hypopharynx', 'Head and Neck'),
+    ('oral-cavity', 'Oral Cavity', 'Head and Neck'),
+    ('salivary-glands', 'Salivary Glands', 'Head and Neck'),
+    # --- Thorax ---
+    ('lung', 'Lung (NSCLC)', 'Thorax'),
+    ('esophagus', 'Esophagus', 'Thorax'),
+    ('mesothelioma', 'Pleural Mesothelioma', 'Thorax'),
+    # --- Breast ---
+    ('breast', 'Breast', 'Breast'),
+    # --- Gastrointestinal ---
+    ('colon-and-rectum', 'Colon and Rectum', 'Abdomen'),
+    ('stomach', 'Stomach (Gastric)', 'Abdomen'),
+    ('pancreas', 'Pancreas', 'Abdomen'),
+    ('liver', 'Hepatocellular Carcinoma', 'Abdomen'),
+    ('cholangiocarcinoma', 'Intrahepatic Cholangiocarcinoma', 'Abdomen'),
+    ('gallbladder', 'Gallbladder', 'Abdomen'),
+    # --- Genitourinary ---
+    ('kidney', 'Kidney (Renal Cell Carcinoma)', 'Abdomen'),
+    ('bladder', 'Urinary Bladder', 'Pelvis'),
+    ('prostate', 'Prostate', 'Pelvis'),
+    ('testis', 'Testis', 'Pelvis'),
+    # --- Gynaecological ---
+    ('cervix-uteri', 'Cervix Uteri', 'Pelvis'),
+    ('endometrium', 'Endometrium (Corpus Uteri)', 'Pelvis'),
+    ('ovary', 'Ovary / Fallopian Tube / Peritoneum', 'Pelvis'),
+    # --- Skin / Soft Tissue ---
+    ('melanoma', 'Cutaneous Melanoma', 'Skin'),
+    ('soft-tissue-sarcoma', 'Soft Tissue Sarcoma', 'Musculoskeletal'),
+    # --- Bone ---
+    ('bone', 'Primary Bone Tumours', 'Musculoskeletal'),
+    # --- CNS ---
+    ('brain', 'Brain and Spinal Cord Tumours', 'Neuro'),
+]
+
+
 def get_defaults(slug):
     """Get disease-specific defaults or generic ones."""
     if slug in DISEASE_DEFAULTS:
@@ -490,7 +533,11 @@ def get_defaults(slug):
 
 
 def generate_and_sync(slug, cancer_name, body_section, special_notes=None, special_features=None, description=None):
-    """Generate calculator locally and sync to Neon."""
+    """Generate calculator via Claude API and save to Neon (production DB) + local HTML file."""
+
+    from sqlalchemy import create_engine, text
+    from sqlalchemy.orm import sessionmaker
+    import json
 
     defaults = get_defaults(slug)
 
@@ -509,77 +556,41 @@ def generate_and_sync(slug, cancer_name, body_section, special_notes=None, speci
     print(f"Cancer: {cancer_name}")
     print(f"Body Section: {body_section}")
     print(f"Description: {description}")
-    print(f"Features: {special_features}")
-    print(f"Notes: {special_notes[:80]}..." if len(special_notes) > 80 else f"Notes: {special_notes}")
+    notes_preview = special_notes[:80] + '...' if len(special_notes) > 80 else special_notes
+    print(f"Notes: {notes_preview}")
     print(f"{'='*60}\n")
 
-    # Step 1: Generate locally
-    print("[1/4] Generating calculator with RadInsights Intelligence...")
+    # Step 1: Generate HTML via Claude API (needs app context for AJCC data lookup)
+    print("[1/3] Generating calculator with RadInsight Intelligence...")
+    print("  Calling Claude API (this takes 30-90 seconds)...")
 
-    from app import app, db
-    from tnm_calculator.tnm_generator import generate_calculator_html, extract_algorithm_from_calculator, save_calculator_html_file
-    from models import TNMCalculatorContent
+    from app import app
+    from tnm_calculator.tnm_generator import generate_calculator_html, extract_algorithm_from_calculator, save_calculator_html_file, get_claude_model
 
     with app.app_context():
-        # Check if exists locally
-        existing = TNMCalculatorContent.query.filter_by(slug=slug).first()
-        if existing:
-            print(f"  ⚠ Calculator '{slug}' already exists locally. Regenerating...")
-            # Delete existing
-            db.session.delete(existing)
-            db.session.commit()
-
-        # Generate HTML
-        print("  Generating calculator HTML (this takes 30-60 seconds)...")
         calculator_html = generate_calculator_html(
             cancer_name=cancer_name,
             body_section=body_section,
             special_notes=special_notes
         )
-        print(f"  ✓ Calculator HTML: {len(calculator_html):,} chars")
+    print(f"  Calculator HTML: {len(calculator_html):,} chars")
 
-        # Extract algorithm from calculator (no second API call)
-        print("  Extracting algorithm from calculator...")
-        algorithm_html = extract_algorithm_from_calculator(calculator_html, cancer_name)
-        print(f"  ✓ Algorithm HTML: {len(algorithm_html):,} chars")
+    # Extract algorithm summary (no API call — parses existing HTML)
+    algorithm_html = extract_algorithm_from_calculator(calculator_html, cancer_name)
+    print(f"  Algorithm HTML: {len(algorithm_html):,} chars")
 
-        # Save HTML file
-        print("\n[2/4] Saving HTML file...")
-        file_path = save_calculator_html_file(slug, calculator_html)
-        print(f"  ✓ Saved to: {file_path}")
+    # Step 2: Save HTML file locally
+    print("\n[2/3] Saving HTML file...")
+    file_path = save_calculator_html_file(slug, calculator_html)
+    print(f"  Saved to: {file_path}")
 
-        # Save to local SQLite
-        print("\n[3/4] Saving to local SQLite...")
-        from tnm_calculator.tnm_generator import get_claude_model
-        content = TNMCalculatorContent(
-            slug=slug,
-            cancer_name=cancer_name,
-            body_section=body_section,
-            calculator_html=calculator_html,
-            algorithm_discussion_html=algorithm_html,
-            staging_system='AJCC 9th Edition',
-            description=description,
-            special_features=str(special_features),
-            is_available=True,
-            generation_model=get_claude_model(),
-            generated_at=datetime.utcnow()
-        )
-        db.session.add(content)
-        db.session.commit()
-        print(f"  ✓ Saved to local DB (id: {content.id})")
-
-    # Step 4: Sync to Neon
-    print("\n[4/4] Syncing to Neon (production DB)...")
-
-    from sqlalchemy import create_engine, text
-    from sqlalchemy.orm import sessionmaker
-    import json
+    # Step 3: Upsert into Neon (production DB)
+    print("\n[3/3] Syncing to Neon (production DB)...")
 
     engine = create_engine(NEON_URL)
     Session = sessionmaker(bind=engine)
     session = Session()
 
-    # Check if exists in Neon
     result = session.execute(
         text("SELECT id FROM tnm_calculator_content WHERE slug = :slug"),
         {'slug': slug}
@@ -587,9 +598,20 @@ def generate_and_sync(slug, cancer_name, body_section, special_notes=None, speci
     existing_row = result.fetchone()
 
     features_json = json.dumps(special_features) if special_features else '[]'
+    model = get_claude_model()
+
+    params = {
+        'slug': slug,
+        'cancer_name': cancer_name,
+        'body_section': body_section,
+        'calculator_html': calculator_html,
+        'algorithm_html': algorithm_html,
+        'description': description,
+        'special_features': features_json,
+        'model': model,
+    }
 
     if existing_row:
-        # Update existing
         session.execute(text("""
             UPDATE tnm_calculator_content SET
                 cancer_name = :cancer_name,
@@ -603,36 +625,17 @@ def generate_and_sync(slug, cancer_name, body_section, special_notes=None, speci
                 generation_model = :model,
                 generated_at = NOW()
             WHERE slug = :slug
-        """), {
-            'slug': slug,
-            'cancer_name': cancer_name,
-            'body_section': body_section,
-            'calculator_html': calculator_html,
-            'algorithm_html': algorithm_html,
-            'description': description,
-            'special_features': features_json,
-            'model': os.environ.get('CLAUDE_MODEL', 'claude-sonnet-4-20250514')
-        })
-        print(f"  ✓ Updated existing record in Neon")
+        """), params)
+        print(f"  Updated existing record in Neon")
     else:
-        # Insert new
         session.execute(text("""
             INSERT INTO tnm_calculator_content
             (slug, cancer_name, body_section, calculator_html, algorithm_discussion_html,
              staging_system, description, special_features, is_available, generation_model, generated_at, created_at)
             VALUES (:slug, :cancer_name, :body_section, :calculator_html, :algorithm_html,
                     'AJCC 9th Edition', :description, :special_features, true, :model, NOW(), NOW())
-        """), {
-            'slug': slug,
-            'cancer_name': cancer_name,
-            'body_section': body_section,
-            'calculator_html': calculator_html,
-            'algorithm_html': algorithm_html,
-            'description': description,
-            'special_features': features_json,
-            'model': os.environ.get('CLAUDE_MODEL', 'claude-sonnet-4-20250514')
-        })
-        print(f"  ✓ Inserted new record in Neon")
+        """), params)
+        print(f"  Inserted new record in Neon")
 
     session.commit()
 
@@ -642,37 +645,183 @@ def generate_and_sync(slug, cancer_name, body_section, special_notes=None, speci
         {'slug': slug}
     )
     row = result.fetchone()
-    print(f"  ✓ Verified: {row[0]} has {row[1]:,} chars in Neon")
+    print(f"  Verified: {row[0]} has {row[1]:,} chars in Neon")
+    session.close()
+
+    print(f"\n  SUCCESS — /tnm-calculator/{slug}")
+
+
+def batch_generate(skip_existing=True, only_slugs=None):
+    """Generate all calculators in BATCH_LIST sequentially.
+
+    Args:
+        skip_existing: If True, skip slugs that already exist in Neon.
+        only_slugs: If provided, only generate these slugs (subset of BATCH_LIST).
+    """
+    import time
+    from sqlalchemy import create_engine, text
+    from sqlalchemy.orm import sessionmaker
+
+    # Check existing in Neon
+    existing_slugs = set()
+    if skip_existing:
+        engine = create_engine(NEON_URL)
+        Session = sessionmaker(bind=engine)
+        session = Session()
+        rows = session.execute(text("SELECT slug FROM tnm_calculator_content")).fetchall()
+        existing_slugs = {r[0] for r in rows}
+        session.close()
+
+    # Filter batch list
+    todo = []
+    for slug, cancer_name, body_section in BATCH_LIST:
+        if only_slugs and slug not in only_slugs:
+            continue
+        if slug in existing_slugs:
+            print(f"  SKIP {slug} (already exists in Neon)")
+            continue
+        todo.append((slug, cancer_name, body_section))
+
+    if not todo:
+        print("\nNothing to generate — all calculators already exist.")
+        return
 
     print(f"\n{'='*60}")
-    print(f"✅ SUCCESS! Calculator generated and synced.")
+    print(f"BATCH TNM Calculator Generation")
     print(f"{'='*60}")
+    print(f"Total to generate: {len(todo)}")
+    print(f"Estimated cost: ~${len(todo) * 0.24:.2f}")
+    print(f"Estimated time: ~{len(todo) * 1}-{len(todo) * 2} minutes")
+    print(f"{'='*60}")
+    for i, (slug, name, section) in enumerate(todo, 1):
+        has_notes = slug in DISEASE_DEFAULTS
+        print(f"  {i:2d}. {slug:30s} | {name:35s} | {section:20s} | {'+ notes' if has_notes else 'generic'}")
+    print(f"{'='*60}\n")
+
+    results = {'success': [], 'failed': []}
+    start_time = time.time()
+
+    for i, (slug, cancer_name, body_section) in enumerate(todo, 1):
+        print(f"\n[{i}/{len(todo)}] Generating: {cancer_name} ({slug})")
+        print(f"{'-'*50}")
+        t0 = time.time()
+        try:
+            generate_and_sync(slug, cancer_name, body_section)
+            elapsed = time.time() - t0
+            results['success'].append((slug, elapsed))
+            print(f"  Completed in {elapsed:.0f}s")
+        except Exception as e:
+            elapsed = time.time() - t0
+            results['failed'].append((slug, str(e)))
+            print(f"  FAILED after {elapsed:.0f}s: {e}")
+
+        # Brief pause between API calls to be respectful
+        if i < len(todo):
+            time.sleep(2)
+
+    # Summary
+    total_time = time.time() - start_time
+    print(f"\n{'='*60}")
+    print(f"BATCH GENERATION COMPLETE")
+    print(f"{'='*60}")
+    print(f"Total time: {total_time:.0f}s ({total_time/60:.1f} min)")
+    print(f"Success: {len(results['success'])}")
+    print(f"Failed:  {len(results['failed'])}")
+
+    if results['success']:
+        print(f"\nSuccessful:")
+        for slug, elapsed in results['success']:
+            print(f"  {slug:30s} ({elapsed:.0f}s)")
+
+    if results['failed']:
+        print(f"\nFailed:")
+        for slug, error in results['failed']:
+            print(f"  {slug:30s} — {error[:80]}")
+
     print(f"\nNext steps:")
-    print(f"1. Commit the HTML file: git add tnm_calculator/calculators/{slug}_calc.html")
-    print(f"2. Push to deploy: git push")
-    print(f"3. Access at: /tnm-calculator/{slug}")
+    print(f"1. git add tnm_calculator/calculators/")
+    print(f"2. git commit -m 'Add batch-generated TNM calculators'")
+    print(f"3. git push && vercel --prod")
     print()
 
 
 def main():
     parser = argparse.ArgumentParser(description='Generate TNM Calculator and sync to Neon')
-    parser.add_argument('slug', help='URL slug (e.g., larynx, breast)')
-    parser.add_argument('cancer_name', help='Display name (e.g., "Larynx", "Breast")')
-    parser.add_argument('body_section', help='Body section (e.g., "Head and Neck", "Thorax")')
-    parser.add_argument('--notes', '-n', help='Special notes for AI generation')
-    parser.add_argument('--features', '-f', nargs='+', help='Special features (space-separated)')
-    parser.add_argument('--description', '-d', help='Brief description')
+    subparsers = parser.add_subparsers(dest='command', help='Command to run')
+
+    # Single generation
+    single = subparsers.add_parser('generate', help='Generate a single calculator')
+    single.add_argument('slug', help='URL slug (e.g., larynx, breast)')
+    single.add_argument('cancer_name', help='Display name (e.g., "Larynx", "Breast")')
+    single.add_argument('body_section', help='Body section (e.g., "Head and Neck", "Thorax")')
+    single.add_argument('--notes', '-n', help='Special notes for AI generation')
+    single.add_argument('--features', '-f', nargs='+', help='Special features (space-separated)')
+    single.add_argument('--description', '-d', help='Brief description')
+
+    # Batch generation
+    batch = subparsers.add_parser('batch', help='Batch generate all calculators')
+    batch.add_argument('--include-existing', action='store_true',
+                       help='Regenerate even if calculator already exists in Neon')
+    batch.add_argument('--only', nargs='+', help='Only generate specific slugs (space-separated)')
+
+    # List available
+    subparsers.add_parser('list', help='List all cancers in batch list and their status')
 
     args = parser.parse_args()
 
-    generate_and_sync(
-        slug=args.slug,
-        cancer_name=args.cancer_name,
-        body_section=args.body_section,
-        special_notes=args.notes,
-        special_features=args.features,
-        description=args.description
-    )
+    if args.command == 'generate':
+        generate_and_sync(
+            slug=args.slug,
+            cancer_name=args.cancer_name,
+            body_section=args.body_section,
+            special_notes=args.notes,
+            special_features=args.features,
+            description=args.description
+        )
+    elif args.command == 'batch':
+        batch_generate(
+            skip_existing=not args.include_existing,
+            only_slugs=set(args.only) if args.only else None,
+        )
+    elif args.command == 'list':
+        list_status()
+    else:
+        parser.print_help()
+
+
+def list_status():
+    """Show all cancers and whether they exist in Neon."""
+    from sqlalchemy import create_engine, text
+    from sqlalchemy.orm import sessionmaker
+
+    engine = create_engine(NEON_URL)
+    Session = sessionmaker(bind=engine)
+    session = Session()
+    rows = session.execute(text(
+        "SELECT slug, LENGTH(calculator_html) as html_len FROM tnm_calculator_content"
+    )).fetchall()
+    existing = {r[0]: r[1] for r in rows}
+    session.close()
+
+    print(f"\n{'Slug':30s} | {'Cancer':35s} | {'Section':20s} | {'Status':15s} | Notes")
+    print(f"{'-'*130}")
+    for slug, cancer_name, body_section in BATCH_LIST:
+        has_notes = slug in DISEASE_DEFAULTS
+        if slug in existing:
+            status = f"EXISTS ({existing[slug]:,} chars)"
+        else:
+            status = "PENDING"
+        notes_flag = '+ detailed notes' if has_notes else ''
+        print(f"{slug:30s} | {cancer_name:35s} | {body_section:20s} | {status:15s} | {notes_flag}")
+
+    # Show extras in DB not in BATCH_LIST
+    batch_slugs = {s for s, _, _ in BATCH_LIST}
+    extras = [s for s in existing if s not in batch_slugs]
+    if extras:
+        print(f"\nExtra calculators in DB (not in batch list):")
+        for s in sorted(extras):
+            print(f"  {s:30s} ({existing[s]:,} chars)")
+    print()
 
 
 if __name__ == '__main__':

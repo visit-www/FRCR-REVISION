@@ -1,0 +1,1821 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prostate Cancer TNM Staging Calculator - AJCC 9th Edition</title>
+    <style>
+        :root {
+            --brand-primary: #e96304;
+            --brand-secondary: #ffc107;
+            --brand-success: #a8d5ba;
+            --brand-neutral: #5E899E;
+            --brand-text-primary: #2c3e50;
+            --brand-text-secondary: #5a6270;
+            --brand-text-light: #8b94a3;
+            --brand-bg-white: #ffffff;
+            --brand-bg-offwhite: #fdfdfb;
+            --brand-border: #c5cad1;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: var(--brand-text-primary);
+            background-color: var(--brand-bg-offwhite);
+            padding: 20px;
+        }
+
+        .main-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+
+        .header {
+            text-align: center;
+            background: linear-gradient(135deg, var(--brand-primary), var(--brand-neutral));
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            margin-bottom: 5px;
+        }
+
+        .calculator-section {
+            background: var(--brand-bg-white);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+            border: 2px solid var(--brand-border);
+        }
+
+        .calculator-form {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+
+        .form-section {
+            border: 2px solid var(--brand-border);
+            border-radius: 10px;
+            padding: 20px;
+            background: var(--brand-bg-offwhite);
+        }
+
+        .section-title {
+            color: var(--brand-primary);
+            font-size: 1.4rem;
+            margin-bottom: 15px;
+            font-weight: 600;
+            border-bottom: 2px solid var(--brand-primary);
+            padding-bottom: 8px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--brand-text-primary);
+        }
+
+        .help-text {
+            font-weight: 400;
+            color: var(--brand-text-secondary);
+            font-size: 0.9rem;
+            display: block;
+            margin-top: 4px;
+        }
+
+        .checkbox-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .checkbox-option {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            padding: 10px;
+            background: var(--brand-bg-white);
+            border: 1px solid var(--brand-border);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .checkbox-option:hover {
+            background: #f8f9fa;
+            border-color: var(--brand-primary);
+        }
+
+        .checkbox-option input[type="checkbox"] {
+            margin-top: 2px;
+            transform: scale(1.2);
+        }
+
+        .input-with-unit {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .input-with-unit input {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid var(--brand-border);
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+
+        .input-with-unit input:focus {
+            outline: none;
+            border-color: var(--brand-primary);
+        }
+
+        .unit {
+            font-weight: 600;
+            color: var(--brand-text-secondary);
+            min-width: 30px;
+        }
+
+        .radio-group {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .radio-option {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 15px;
+            background: var(--brand-bg-white);
+            border: 2px solid var(--brand-border);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .radio-option:hover {
+            border-color: var(--brand-primary);
+        }
+
+        .radio-option input[type="radio"]:checked + span {
+            color: var(--brand-primary);
+            font-weight: 600;
+        }
+
+        select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid var(--brand-border);
+            border-radius: 8px;
+            font-size: 1rem;
+            background: var(--brand-bg-white);
+            transition: border-color 0.3s ease;
+        }
+
+        select:focus {
+            outline: none;
+            border-color: var(--brand-primary);
+        }
+
+        .calculate-button {
+            background: linear-gradient(135deg, var(--brand-primary), var(--brand-neutral));
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 20px 0;
+        }
+
+        .calculate-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(233, 99, 4, 0.3);
+        }
+
+        .reset-button {
+            background: var(--brand-text-light);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+
+        .result-card {
+            background: linear-gradient(135deg, var(--brand-success), #e8f5e8);
+            border-radius: 15px;
+            padding: 25px;
+            margin-top: 20px;
+            border: 2px solid var(--brand-success);
+            display: none;
+        }
+
+        .result-card.show {
+            display: block;
+            animation: slideIn 0.5s ease;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .result-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .result-item {
+            text-align: center;
+            padding: 15px;
+            background: var(--brand-bg-white);
+            border-radius: 10px;
+            border: 2px solid var(--brand-success);
+        }
+
+        .result-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--brand-primary);
+            margin-top: 5px;
+        }
+
+        .overall-stage {
+            text-align: center;
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--brand-primary);
+            margin: 20px 0;
+            padding: 15px;
+            background: var(--brand-bg-white);
+            border-radius: 10px;
+            border: 2px solid var(--brand-success);
+        }
+
+        .reasoning-section {
+            background: var(--brand-bg-white);
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 15px;
+            border: 2px solid var(--brand-success);
+        }
+
+        .reasoning-section h3 {
+            color: var(--brand-primary);
+            margin-bottom: 15px;
+        }
+
+        .reasoning-item {
+            margin-bottom: 10px;
+            padding: 10px;
+            background: var(--brand-bg-offwhite);
+            border-radius: 8px;
+            border-left: 4px solid var(--brand-primary);
+        }
+
+        .clinical-implications {
+            background: var(--brand-bg-white);
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 15px;
+            border: 2px solid var(--brand-secondary);
+        }
+
+        .clinical-implications h3 {
+            color: var(--brand-primary);
+            margin-bottom: 15px;
+        }
+
+        .reference-section {
+            background: var(--brand-bg-white);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+            border: 2px solid var(--brand-border);
+        }
+
+        .reference-card {
+            margin-bottom: 30px;
+            padding: 25px;
+            background: var(--brand-bg-offwhite);
+            border-radius: 12px;
+            border: 2px solid var(--brand-border);
+        }
+
+        .reference-subtitle {
+            color: var(--brand-primary);
+            font-size: 1.3rem;
+            margin-bottom: 20px;
+            font-weight: 600;
+            border-bottom: 2px solid var(--brand-primary);
+            padding-bottom: 8px;
+        }
+
+        .mnemonic-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .mnemonic-box {
+            background: var(--brand-bg-white);
+            border: 2px solid var(--brand-primary);
+            border-radius: 10px;
+            padding: 20px;
+        }
+
+        .mnemonic-box h4 {
+            color: var(--brand-primary);
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+        }
+
+        .mnemonic-detail {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .mnemonic-letter {
+            background: var(--brand-primary);
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .staging-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            background: var(--brand-bg-white);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .staging-table th,
+        .staging-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid var(--brand-border);
+        }
+
+        .staging-table th {
+            background: var(--brand-primary);
+            color: white;
+            font-weight: 600;
+        }
+
+        .staging-table tr:nth-child(even) {
+            background: var(--brand-bg-offwhite);
+        }
+
+        .tips-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+        }
+
+        .tip-card {
+            background: var(--brand-bg-white);
+            border: 2px solid var(--brand-neutral);
+            border-radius: 10px;
+            padding: 20px;
+            transition: transform 0.3s ease;
+        }
+
+        .tip-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        }
+
+        .tip-card h4 {
+            color: var(--brand-primary);
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+        }
+
+        .tip-detail {
+            background: var(--brand-bg-offwhite);
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 10px;
+            border-left: 4px solid var(--brand-neutral);
+        }
+
+        .pitfall-card {
+            border-color: #dc3545;
+        }
+
+        .pitfall-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .pitfall-item {
+            display: flex;
+            gap: 15px;
+            padding: 15px;
+            background: var(--brand-bg-white);
+            border-radius: 10px;
+            border: 2px solid #dc3545;
+        }
+
+        .pitfall-number {
+            background: #dc3545;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .systematic-steps {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .step-item {
+            display: flex;
+            gap: 15px;
+            padding: 15px;
+            background: var(--brand-bg-white);
+            border-radius: 10px;
+            border: 2px solid var(--brand-success);
+        }
+
+        .step-number {
+            background: var(--brand-success);
+            color: var(--brand-text-primary);
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .checkbox-group {
+                grid-template-columns: 1fr;
+            }
+            
+            .radio-group {
+                flex-direction: column;
+            }
+            
+            .result-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .tips-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .mnemonic-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .warning-box {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+
+        .warning-box h4 {
+            color: #856404;
+            margin-bottom: 8px;
+        }
+
+        .info-box {
+            background: #d1ecf1;
+            border: 2px solid #bee5eb;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+
+        .info-box h4 {
+            color: #0c5460;
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <!-- Header Section -->
+        <div class="header">
+            <h1>Prostate Cancer TNM Staging Calculator</h1>
+            <p>AJCC 9th Edition - Interactive Clinical Tool</p>
+            <p>For Radiology Registrars and FRCR Exam Preparation</p>
+        </div>
+
+        <!-- Calculator Section -->
+        <div class="calculator-section">
+            <h2 style="color: var(--brand-primary); margin-bottom: 20px; text-align: center;">Interactive Staging Calculator</h2>
+            
+            <div class="calculator-form">
+                <!-- Clinical Parameters -->
+                <div class="form-section">
+                    <h3 class="section-title">Clinical Parameters</h3>
+                    
+                    <div class="form-group">
+                        <label class="form-label">
+                            <strong>PSA Level:</strong>
+                            <span class="help-text">Pre-treatment serum PSA level (ng/mL)</span>
+                        </label>
+                        <select id="psaLevel" onchange="updateCalculator()">
+                            <option value="">Select PSA level</option>
+                            <option value="low">&lt;10 ng/mL</option>
+                            <option value="intermediate">10-20 ng/mL</option>
+                            <option value="high">&gt;20 ng/mL</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">
+                            <strong>Grade Group (ISUP):</strong>
+                            <span class="help-text">Based on Gleason score from biopsy</span>
+                        </label>
+                        <select id="gradeGroup" onchange="updateCalculator()">
+                            <option value="">Select Grade Group</option>
+                            <option value="1">Grade Group 1 (Gleason ≤6)</option>
+                            <option value="2">Grade Group 2 (Gleason 3+4=7)</option>
+                            <option value="3">Grade Group 3 (Gleason 4+3=7)</option>
+                            <option value="4">Grade Group 4 (Gleason 8)</option>
+                            <option value="5">Grade Group 5 (Gleason 9-10)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">
+                            <strong>Staging Type:</strong>
+                            <span class="help-text">Clinical vs Pathological staging</span>
+                        </label>
+                        <div class="radio-group">
+                            <label class="radio-option">
+                                <input type="radio" name="stagingType" value="clinical" checked onchange="updateCalculator()">
+                                <span>Clinical (cTNM)</span>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="stagingType" value="pathological" onchange="updateCalculator()">
+                                <span>Pathological (pTNM)</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- T Stage Section -->
+                <div class="form-section">
+                    <h3 class="section-title">T Stage: Primary Tumor</h3>
+
+                    <!-- T4 Features -->
+                    <div class="form-group">
+                        <label class="form-label">
+                            <strong>T4 Features (Fixed/Invasive):</strong>
+                            <span class="help-text">If ANY present = Automatic T4</span>
+                        </label>
+                        <div class="checkbox-group">
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="t4_bladder" onchange="updateCalculator()">
+                                <span>Bladder invasion (beyond bladder neck)</span>
+                            </label>
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="t4_rectum" onchange="updateCalculator()">
+                                <span>Rectal invasion</span>
+                            </label>
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="t4_levator" onchange="updateCalculator()">
+                                <span>Levator muscle invasion</span>
+                            </label>
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="t4_pelvic_wall" onchange="updateCalculator()">
+                                <span>Pelvic wall invasion</span>
+                            </label>
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="t4_external_sphincter" onchange="updateCalculator()">
+                                <span>External sphincter invasion</span>
+                            </label>
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="t4_fixed" onchange="updateCalculator()">
+                                <span>Tumor is fixed</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- T3 Features -->
+                    <div class="form-group">
+                        <label class="form-label">
+                            <strong>T3 Features (Extraprostatic):</strong>
+                            <span class="help-text">Extraprostatic extension or seminal vesicle invasion</span>
+                        </label>
+                        <div class="checkbox-group">
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="t3a_epe" onchange="updateCalculator()">
+                                <span>Extraprostatic extension (unilateral or bilateral)</span>
+                            </label>
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="t3b_sv" onchange="updateCalculator()">
+                                <span>Seminal vesicle invasion</span>
+                            </label>
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="t3a_bladder_neck" onchange="updateCalculator()">
+                                <span>Microscopic bladder neck invasion (pathological only)</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- T2 Clinical Features -->
+                    <div class="form-group" id="clinicalT2Group">
+                        <label class="form-label">
+                            <strong>T2 Clinical Features (Palpable, Organ-Confined):</strong>
+                            <span class="help-text">For clinical staging only</span>
+                        </label>
+                        <div class="radio-group">
+                            <label class="radio-option">
+                                <input type="radio" name="t2Clinical" value="t2a" onchange="updateCalculator()">
+                                <span>T2a: ≤50% of one lobe</span>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="t2Clinical" value="t2b" onchange="updateCalculator()">
+                                <span>T2b: >50% of one lobe</span>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="t2Clinical" value="t2c" onchange="updateCalculator()">
+                                <span>T2c: Both lobes involved</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- T1 Clinical Features -->
+                    <div class="form-group" id="clinicalT1Group">
+                        <label class="form-label">
+                            <strong>T1 Clinical Features (Clinically Inapparent):</strong>
+                            <span class="help-text">For clinical staging only</span>
+                        </label>
+                        <div class="radio-group">
+                            <label class="radio-option">
+                                <input type="radio" name="t1Clinical" value="t1a" onchange="updateCalculator()">
+                                <span>T1a: Incidental, ≤5% of resected tissue</span>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="t1Clinical" value="t1b" onchange="updateCalculator()">
+                                <span>T1b: Incidental, >5% of resected tissue</span>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="t1Clinical" value="t1c" onchange="updateCalculator()">
+                                <span>T1c: Needle biopsy (not palpable)</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Pathological T2 -->
+                    <div class="form-group" id="pathologicalT2Group" style="display: none;">
+                        <label class="form-label">
+                            <strong>Pathological T2:</strong>
+                            <span class="help-text">All organ-confined disease is pT2 (no subdivisions)</span>
+                        </label>
+                        <label class="checkbox-option">
+                            <input type="checkbox" id="pt2_organ_confined" onchange="updateCalculator()">
+                            <span>Organ-confined disease</span>
+                        </label>
+                    </div>
+
+                    <!-- Other T categories -->
+                    <div class="form-group">
+                        <label class="form-label">
+                            <strong>Other T Categories:</strong>
+                        </label>
+                        <div class="checkbox-group">
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="tx" onchange="updateCalculator()">
+                                <span>TX: Primary tumor cannot be assessed</span>
+                            </label>
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="t0" onchange="updateCalculator()">
+                                <span>T0: No evidence of primary tumor</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- N Stage Section -->
+                <div class="form-section">
+                    <h3 class="section-title">N Stage: Regional Lymph Nodes</h3>
+                    
+                    <div class="form-group">
+                        <label class="form-label">
+                            <strong>Regional Lymph Node Status:</strong>
+                            <span class="help-text">Regional nodes: obturator, internal iliac, external iliac, presacral, sacral, common iliac</span>
+                        </label>
+                        <div class="radio-group">
+                            <label class="radio-option">
+                                <input type="radio" name="nStage" value="nx" onchange="updateCalculator()">
+                                <span>NX: Cannot be assessed</span>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="nStage" value="n0" checked onchange="updateCalculator()">
+                                <span>N0: No positive regional nodes</span>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="nStage" value="n1" onchange="updateCalculator()">
+                                <span>N1: Metastases in regional node(s)</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-group" id="nodeDetailsGroup" style="display: none;">
+                        <label class="form-label">
+                            <strong>Largest Positive Node Size:</strong>
+                            <span class="help-text">Measure short axis diameter</span>
+                        </label>
+                        <div class="input-with-unit">
+                            <input type="number" id="largestNode" step="0.1" min="0" placeholder="e.g., 1.5" onchange="updateCalculator()">
+                            <span class="unit">cm</span>
+                        </div>
+                    </div>
+
+                    <div class="form-group" id="nodeCountGroup" style="display: none;">
+                        <label class="form-label">
+                            <strong>Number of Positive Nodes:</strong>
+                        </label>
+                        <div class="input-with-unit">
+                            <input type="number" id="nodeCount" min="0" placeholder="e.g., 3" onchange="updateCalculator()">
+                            <span class="unit">nodes</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- M Stage Section -->
+                <div class="form-section">
+                    <h3 class="section-title">M Stage: Distant Metastases</h3>
+                    
+                    <div class="form-group">
+                        <label class="form-label">
+                            <strong>Distant Metastases:</strong>
+                            <span class="help-text">Any metastases beyond regional lymph nodes</span>
+                        </label>
+                        <div class="radio-group">
+                            <label class="radio-option">
+                                <input type="radio" name="mStage" value="m0" checked onchange="updateCalculator()">
+                                <span>M0: No distant metastases</span>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="mStage" value="m1a" onchange="updateCalculator()">
+                                <span>M1a: Nonregional lymph nodes</span>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="mStage" value="m1b" onchange="updateCalculator()">
+                                <span>M1b: Bone metastases</span>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="mStage" value="m1c" onchange="updateCalculator()">
+                                <span>M1c: Other sites ± bone</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-group" id="metastasesDetailsGroup" style="display: none;">
+                        <label class="form-label">
+                            <strong>Metastases Details:</strong>
+                        </label>
+                        <div class="checkbox-group">
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="liver_mets" onchange="updateCalculator()">
+                                <span>Liver metastases</span>
+                            </label>
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="lung_mets" onchange="updateCalculator()">
+                                <span>Lung metastases</span>
+                            </label>
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="brain_mets" onchange="updateCalculator()">
+                                <span>Brain metastases</span>
+                            </label>
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="peritoneal_mets" onchange="updateCalculator()">
+                                <span>Peritoneal metastases</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Calculate Button -->
+                <div style="text-align: center;">
+                    <button class="calculate-button" onclick="calculateStaging()">Calculate TNM Stage</button>
+                    <button class="reset-button" onclick="resetCalculator()">Reset</button>
+                </div>
+            </div>
+
+            <!-- Results Card -->
+            <div class="result-card" id="finalResult">
+                <h2>Final Staging Result</h2>
+                <div class="result-grid">
+                    <div class="result-item">
+                        <strong>T Stage</strong>
+                        <div class="result-value" id="resultT">-</div>
+                    </div>
+                    <div class="result-item">
+                        <strong>N Stage</strong>
+                        <div class="result-value" id="resultN">-</div>
+                    </div>
+                    <div class="result-item">
+                        <strong>M Stage</strong>
+                        <div class="result-value" id="resultM">-</div>
+                    </div>
+                </div>
+                <div class="overall-stage">
+                    Overall Stage: <span id="resultStage">-</span>
+                </div>
+                
+                <div class="reasoning-section">
+                    <h3>Staging Reasoning</h3>
+                    <div id="resultReasoning">
+                        <!-- JavaScript will populate this -->
+                    </div>
+                </div>
+
+                <div class="clinical-implications">
+                    <h3>Clinical Implications</h3>
+                    <div id="clinicalImplications">
+                        <!-- JavaScript will populate this -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reference Section -->
+        <div class="reference-section">
+            <h2 style="color: var(--brand-primary); margin-bottom: 30px; text-align: center;">Comprehensive Reference Guide</h2>
+            
+            <!-- Mnemonics -->
+            <div class="reference-card">
+                <h3 class="reference-subtitle">Mnemonics to Remember</h3>
+                <div class="mnemonic-grid">
+                    <div class="mnemonic-box">
+                        <h4>T4 Features - "BLREP"</h4>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">B</div>
+                            <div><strong>Bladder</strong> invasion (beyond neck)</div>
+                        </div>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">L</div>
+                            <div><strong>Levator</strong> muscle invasion</div>
+                        </div>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">R</div>
+                            <div><strong>Rectum</strong> invasion</div>
+                        </div>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">E</div>
+                            <div><strong>External</strong> sphincter invasion</div>
+                        </div>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">P</div>
+                            <div><strong>Pelvic</strong> wall invasion or fixed</div>
+                        </div>
+                    </div>
+                    
+                    <div class="mnemonic-box">
+                        <h4>T3 Features - "ESP"</h4>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">E</div>
+                            <div><strong>Extraprostatic</strong> extension</div>
+                        </div>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">S</div>
+                            <div><strong>Seminal</strong> vesicle invasion</div>
+                        </div>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">P</div>
+                            <div><strong>Pathological</strong> bladder neck (microscopic)</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- T Staging Table -->
+            <div class="reference-card">
+                <h3 class="reference-subtitle">T Stage Reference Table</h3>
+                <table class="staging-table">
+                    <thead>
+                        <tr>
+                            <th>T Stage</th>
+                            <th>Clinical Definition</th>
+                            <th>Pathological Definition</th>
+                            <th>Key Features</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>TX</strong></td>
+                            <td>Cannot be assessed</td>
+                            <td>Cannot be assessed</td>
+                            <td>Insufficient information</td>
+                        </tr>
+                        <tr>
+                            <td><strong>T0</strong></td>
+                            <td>No evidence of primary</td>
+                            <td>No evidence of primary</td>
+                            <td>No tumor identified</td>
+                        </tr>
+                        <tr>
+                            <td><strong>T1</strong></td>
+                            <td>Clinically inapparent</td>
+                            <td>N/A</td>
+                            <td>Not palpable/visible</td>
+                        </tr>
+                        <tr>
+                            <td><strong>T1a</strong></td>
+                            <td>≤5% of resected tissue</td>
+                            <td>N/A</td>
+                            <td>Incidental TURP finding</td>
+                        </tr>
+                        <tr>
+                            <td><strong>T1b</strong></td>
+                            <td>>5% of resected tissue</td>
+                            <td>N/A</td>
+                            <td>Incidental TURP finding</td>
+                        </tr>
+                        <tr>
+                            <td><strong>T1c</strong></td>
+                            <td>Needle biopsy identified</td>
+                            <td>N/A</td>
+                            <td>PSA elevation, not palpable</td>
+                        </tr>
+                        <tr>
+                            <td><strong>T2</strong></td>
+                            <td>Palpable, organ-confined</td>
+                            <td>Organ-confined</td>
+                            <td>Within prostatic capsule</td>
+                        </tr>
+                        <tr>
+                            <td><strong>T2a</strong></td>
+                            <td>≤50% of one lobe</td>
+                            <td>N/A (all pT2)</td>
+                            <td>Limited involvement</td>
+                        </tr>
+                        <tr>
+                            <td><strong>T2b</strong></td>
+                            <td>>50% of one lobe</td>
+                            <td>N/A (all pT2)</td>
+                            <td>Extensive unilateral</td>
+                        </tr>
+                        <tr>
+                            <td><strong>T2c</strong></td>
+                            <td>Both lobes involved</td>
+                            <td>N/A (all pT2)</td>
+                            <td>Bilateral involvement</td>
+                        </tr>
+                        <tr>
+                            <td><strong>T3a</strong></td>
+                            <td>Extraprostatic extension</td>
+                            <td>EPE ± bladder neck</td>
+                            <td>Through capsule</td>
+                        </tr>
+                        <tr>
+                            <td><strong>T3b</strong></td>
+                            <td>Seminal vesicle invasion</td>
+                            <td>Seminal vesicle invasion</td>
+                            <td>SV involvement</td>
+                        </tr>
+                        <tr>
+                            <td><strong>T4</strong></td>
+                            <td>Fixed/adjacent structures</td>
+                            <td>Fixed/adjacent structures</td>
+                            <td>Beyond SV (BLREP)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- N and M Staging -->
+            <div class="reference-card">
+                <h3 class="reference-subtitle">N and M Stage Reference</h3>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div>
+                        <h4 style="color: var(--brand-primary); margin-bottom: 10px;">N Stage</h4>
+                        <table class="staging-table">
+                            <thead>
+                                <tr>
+                                    <th>N Stage</th>
+                                    <th>Definition</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>NX</strong></td>
+                                    <td>Cannot be assessed</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>N0</strong></td>
+                                    <td>No positive regional nodes</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>N1</strong></td>
+                                    <td>Regional node metastases</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div>
+                        <h4 style="color: var(--brand-primary); margin-bottom: 10px;">M Stage</h4>
+                        <table class="staging-table">
+                            <thead>
+                                <tr>
+                                    <th>M Stage</th>
+                                    <th>Definition</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>M0</strong></td>
+                                    <td>No distant metastases</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>M1a</strong></td>
+                                    <td>Nonregional lymph nodes</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>M1b</strong></td>
+                                    <td>Bone metastases</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>M1c</strong></td>
+                                    <td>Other sites ± bone</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Key Imaging Tips -->
+            <div class="reference-card">
+                <h3 class="reference-subtitle">Key Imaging Tips</h3>
+                <div class="tips-grid">
+                    <div class="tip-card">
+                        <h4>Extraprostatic Extension (EPE)</h4>
+                        <p>Look for capsular irregularity, bulging, or frank extension</p>
+                        <div class="tip-detail">
+                            <strong>MRI signs:</strong> Asymmetric bulging of prostatic contour, irregular capsular margin, direct tumor extension into periprostatic fat, neurovascular bundle thickening >2mm
+                        </div>
+                    </div>
+                    
+                    <div class="tip-card">
+                        <h4>Seminal Vesicle Invasion</h4>
+                        <p>Direct tumor extension into seminal vesicles</p>
+                        <div class="tip-detail">
+                            <strong>MRI signs:</strong> Low T2 signal in SV, loss of normal SV architecture, direct tumor extension from prostate base, obliteration of angle between prostate and SV
+                        </div>
+                    </div>
+                    
+                    <div class="tip-card">
+                        <h4>Bladder Neck Involvement</h4>
+                        <p>Distinguish bladder neck from bladder wall invasion</p>
+                        <div class="tip-detail">
+                            <strong>Key point:</strong> Microscopic bladder neck invasion = T3a (pathological only). Gross bladder wall invasion = T4. Look for tumor at the bladder neck on sagittal images
+                        </div>
+                    </div>
+                    
+                    <div class="tip-card">
+                        <h4>Regional vs Nonregional Nodes</h4>
+                        <p>Know the regional node boundaries</p>
+                        <div class="tip-detail">
+                            <strong>Regional:</strong> Obturator, internal/external iliac, presacral, sacral, common iliac. <strong>Nonregional:</strong> Inguinal, superficial inguinal, supraclavicular, mediastinal, para-aortic above bifurcation
+                        </div>
+                    </div>
+                    
+                    <div class="tip-card">
+                        <h4>Bone Metastases Detection</h4>
+                        <p>Prostate cancer has predilection for bone</p>
+                        <div class="tip-detail">
+                            <strong>Imaging:</strong> Bone scan most sensitive for multiple lesions. MRI/CT for characterization. Look for sclerotic lesions in axial skeleton (spine, pelvis, ribs). PSMA PET increasingly used
+                        </div>
+                    </div>
+                    
+                    <div class="tip-card">
+                        <h4>Rectal Wall Assessment</h4>
+                        <p>Evaluate for T4 rectal invasion</p>
+                        <div class="tip-detail">
+                            <strong>MRI technique:</strong> Use high-resolution T2 axial images. Look for loss of fat plane between prostate and rectum, direct tumor extension, rectal wall thickening/irregularity
+                        </div>
+                    </div>
+
+                    <div class="tip-card">
+                        <h4>Pelvic Sidewall Invasion</h4>
+                        <p>T4 feature - tumor extends to pelvic sidewall</p>
+                        <div class="tip-detail">
+                            <strong>Assessment:</strong> Look for tumor extension to obturator internus, piriformis, or levator ani muscles. Loss of fat planes. Direct muscle invasion or encasement
+                        </div>
+                    </div>
+
+                    <div class="tip-card">
+                        <h4>PSMA PET Integration</h4>
+                        <p>Increasingly used for staging and restaging</p>
+                        <div class="tip-detail">
+                            <strong>Applications:</strong> Superior to conventional imaging for nodal staging, bone metastases detection, and biochemical recurrence. Particularly useful for oligometastatic disease assessment
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Common Pitfalls -->
+            <div class="reference-card pitfall-card">
+                <h3 class="reference-subtitle">Common Pitfalls to Avoid</h3>
+                <div class="pitfall-list">
+                    <div class="pitfall-item">
+                        <div class="pitfall-number">1</div>
+                        <div>
+                            <strong>Confusing Clinical vs Pathological T2 Staging</strong>
+                            <p>Clinical T2 has subdivisions (T2a/b/c) based on extent, but pathological T2 does not. All organ-confined disease at surgery is pT2, regardless of extent or laterality.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="pitfall-item">
+                        <div class="pitfall-number">2</div>
+                        <div>
+                            <strong>Mistaking Bladder Neck for Bladder Wall</strong>
+                            <p>Microscopic bladder neck invasion is T3a (pathological only), while gross bladder wall invasion is T4. The bladder neck is the junction between bladder and prostate.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="pitfall-item">
+                        <div class="pitfall-number">3</div>
+                        <div>
+                            <strong>Overcalling EPE on MRI</strong>
+                            <p>Benign prostatic hyperplasia can cause capsular bulging. True EPE requires irregular capsular contour with tumor signal extending beyond the capsule. Use DWI and dynamic contrast for confirmation.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="pitfall-item">
+                        <div class="pitfall-number">4</div>
+                        <div>
+                            <strong>Missing Anterior Tumors</strong>
+                            <p>Anterior/transition zone tumors may be missed on DRE and TRUS. MRI is superior for detecting anterior tumors. These can still be T2 if organ-confined.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="pitfall-item">
+                        <div class="pitfall-number">5</div>
+                        <div>
+                            <strong>Incorrect Regional Node Classification</strong>
+                            <p>Para-aortic nodes above the bifurcation are M1a (nonregional), not N1. Know the boundaries: regional nodes are limited to pelvis below common iliac bifurcation.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="pitfall-item">
+                        <div class="pitfall-number">6</div>
+                        <div>
+                            <strong>Ignoring Grade Group in Stage Grouping</strong>
+                            <p>AJCC 8th/9th edition incorporates Grade Group and PSA into stage grouping. High-grade (GG 5) or high PSA (>20) can upstage to Group III even with organ-confined disease.</p>
+                        </div>
+                    </div>
+
+                    <div class="pitfall-item">
+                        <div class="pitfall-number">7</div>
+                        <div>
+                            <strong>Misinterpreting Post-Biopsy Changes</strong>
+                            <p>Recent biopsy can cause hemorrhage and inflammation, mimicking EPE on MRI. Wait 6-8 weeks post-biopsy for optimal MRI staging, or use DWI to differentiate tumor from hemorrhage.</p>
+                        </div>
+                    </div>
+
+                    <div class="pitfall-item">
+                        <div class="pitfall-number">8</div>
+                        <div>
+                            <strong>Understaging Seminal Vesicle Invasion</strong>
+                            <p>SV invasion can be subtle on imaging. Look carefully at the angle between prostate base and SV. Any tumor extension into SV = T3b, regardless of the extent of invasion.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Systematic Reading Approach -->
+            <div class="reference-card">
+                <h3 class="reference-subtitle">8-Step Systematic Reading Approach</h3>
+                <div class="systematic-steps">
+                    <div class="step-item">
+                        <div class="step-number">1</div>
+                        <div>
+                            <strong>Clinical Context Review</strong>
+                            <p>Review PSA level, DRE findings, biopsy results (Gleason score/Grade Group), and indication for imaging. Determine if clinical or pathological staging is needed.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="step-item">
+                        <div class="step-number">2</div>
+                        <div>
+                            <strong>Primary Tumor Identification</strong>
+                            <p>Locate the primary tumor on T2WI. Assess size, location (peripheral vs transition zone), and signal characteristics. Use DWI and DCE to confirm tumor location.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="step-item">
+                        <div class="step-number">3</div>
+                        <div>
+                            <strong>Capsular Assessment</strong>
+                            <p>Systematically evaluate the prostatic capsule for irregularity, bulging, or frank extension. Look for loss of the normal hypointense capsular rim on T2WI.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="step-item">
+                        <div class="step-number">4</div>
+                        <div>
+                            <strong>Seminal Vesicle Evaluation</strong>
+                            <p>Assess SV architecture and signal intensity. Look for loss of normal T2 hyperintense signal, asymmetry, or direct tumor extension from prostate base.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="step-item">
+                        <div class="step-number">5</div>
+                        <div>
+                            <strong>Adjacent Structure Assessment</strong>
+                            <p>Evaluate bladder wall, rectal wall, pelvic sidewall muscles (levator ani, obturator internus), and external sphincter for invasion. Look for loss of fat planes.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="step-item">
+                        <div class="step-number">6</div>
+                        <div>
+                            <strong>Lymph Node Evaluation</strong>
+                            <p>Assess regional nodes (obturator, internal/external iliac, presacral, sacral, common iliac) for size, morphology, and signal characteristics. Size >8mm is suspicious.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="step-item">
+                        <div class="step-number">7</div>
+                        <div>
+                            <strong>Distant Metastases Search</strong>
+                            <p>Review bone marrow signal on MRI for metastases. Assess for nonregional nodes, liver lesions, and other distant sites. Correlate with bone scan if available.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="step-item">
+                        <div class="step-number">8</div>
+                        <div>
+                            <strong>Final TNM Assignment</strong>
+                            <p>Integrate all findings to assign T, N, and M stages. Consider clinical parameters (PSA, Grade Group) for overall stage grouping. Document confidence level and recommendations.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stage Grouping Reference -->
+            <div class="reference-card">
+                <h3 class="reference-subtitle">AJCC Stage Grouping (Simplified)</h3>
+                <div class="info-box">
+                    <h4>Important Note</h4>
+                    <p>AJCC 8th/9th edition stage grouping incorporates T stage, N stage, M stage, PSA level, and Grade Group. The complete stage grouping is complex and requires all parameters for accurate assignment.</p>
+                </div>
+                <table class="staging-table">
+                    <thead>
+                        <tr>
+                            <th>Stage Group</th>
+                            <th>T</th>
+                            <th>N</th>
+                            <th>M</th>
+                            <th>Additional Criteria</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>I</strong></td>
+                            <td>T1a-c, T2a, pT2</td>
+                            <td>N0</td>
+                            <td>M0</td>
+                            <td>PSA <10, GG 1</td>
+                        </tr>
+                        <tr>
+                            <td><strong>IIA</strong></td>
+                            <td>T1a-c, T2a, pT2</td>
+                            <td>N0</td>
+                            <td>M0</td>
+                            <td>PSA <20, GG 1; OR PSA 10-20, GG 1</td>
+                        </tr>
+                        <tr>
+                            <td><strong>IIB</strong></td>
+                            <td>T2b-c</td>
+                            <td>N0</td>
+                            <td>M0</td>
+                            <td>PSA <20, GG 1-2</td>
+                        </tr>
+                        <tr>
+                            <td><strong>IIC</strong></td>
+                            <td>T1-2, pT2</td>
+                            <td>N0</td>
+                            <td>M0</td>
+                            <td>PSA <20, GG 3-4</td>
+                        </tr>
+                        <tr>
+                            <td><strong>IIIA</strong></td>
+                            <td>T1-2, pT2</td>
+                            <td>N0</td>
+                            <td>M0</td>
+                            <td>PSA ≥20 OR GG 5</td>
+                        </tr>
+                        <tr>
+                            <td><strong>IIIB</strong></td>
+                            <td>T3-4</td>
+                            <td>N0</td>
+                            <td>M0</td>
+                            <td>Any PSA, Any GG</td>
+                        </tr>
+                        <tr>
+                            <td><strong>IIIC</strong></td>
+                            <td>Any T</td>
+                            <td>N0</td>
+                            <td>M0</td>
+                            <td>Any PSA, GG 5</td>
+                        </tr>
+                        <tr>
+                            <td><strong>IVA</strong></td>
+                            <td>Any T</td>
+                            <td>N1</td>
+                            <td>M0</td>
+                            <td>Any PSA, Any GG</td>
+                        </tr>
+                        <tr>
+                            <td><strong>IVB</strong></td>
+                            <td>Any T</td>
+                            <td>Any N</td>
+                            <td>M1</td>
+                            <td>Any PSA, Any GG</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables to store staging results
+        let currentTStage = '';
+        let currentNStage = '';
+        let currentMStage = '';
+        let stagingReasoning = {
+            tStage: '',
+            nStage: '',
+            mStage: ''
+        };
+
+        // Initialize calculator
+        function initializeCalculator() {
+            updateStagingTypeVisibility();
+            updateNodeDetailsVisibility();
+            updateMetastasesDetailsVisibility();
+        }
+
+        // Update visibility based on staging type
+        function updateStagingTypeVisibility() {
+            const stagingType = document.querySelector('input[name="stagingType"]:checked').value;
+            const clinicalT1Group = document.getElementById('clinicalT1Group');
+            const clinicalT2Group = document.getElementById('clinicalT2Group');
+            const pathologicalT2Group = document.getElementById('pathologicalT2Group');
+
+            if (stagingType === 'clinical') {
+                clinicalT1Group.style.display = 'block';
+                clinicalT2Group.style.display = 'block';
+                pathologicalT2Group.style.display = 'none';
+            } else {
+                clinicalT1Group.style.display = 'none';
+                clinicalT2Group.style.display = 'none';
+                pathologicalT2Group.style.display = 'block';
+            }
+        }
+
+        // Update node details visibility
+        function updateNodeDetailsVisibility() {
+            const nStage = document.querySelector('input[name="nStage"]:checked').value;
+            const nodeDetailsGroup = document.getElementById('nodeDetailsGroup');
+            const nodeCountGroup = document.getElementById('nodeCountGroup');
+
+            if (nStage === 'n1') {
+                nodeDetailsGroup.style.display = 'block';
+                nodeCountGroup.style.display = 'block';
+            } else {
+                nodeDetailsGroup.style.display = 'none';
+                nodeCountGroup.style.display = 'none';
+            }
+        }
+
+        // Update metastases details visibility
+        function updateMetastasesDetailsVisibility() {
+            const mStage = document.querySelector('input[name="mStage"]:checked').value;
+            const metastasesDetailsGroup = document.getElementById('metastasesDetailsGroup');
+
+            if (mStage.startsWith('m1')) {
+                metastasesDetailsGroup.style.display = 'block';
+            } else {
+                metastasesDetailsGroup.style.display = 'none';
+            }
+        }
+
+        // Update calculator when inputs change
+        function updateCalculator() {
+            updateStagingTypeVisibility();
+            updateNodeDetailsVisibility();
+            updateMetastasesDetailsVisibility();
+        }
+
+        // Calculate T Stage
+        function calculateTStage() {
+            const stagingType = document.querySelector('input[name="stagingType"]:checked').value;
+            
+            // Check for TX/T0 first
+            if (document.getElementById('tx').checked) {
+                stagingReasoning.tStage = "TX: Primary tumor cannot be assessed due to insufficient information.";
+                return 'TX';
+            }
+            
+            if (document.getElementById('t0').checked) {
+                stagingReasoning.tStage = "T0: No evidence of primary tumor identified.";
+                return 'T0';
+            }
+
+            // Check for T4 features
+            const t4Features = [
+                { id: 't4_bladder', desc: 'bladder invasion' },
+                { id: 't4_rectum', desc: 'rectal invasion' },
+                { id: 't4_levator', desc: 'levator muscle invasion' },
+                { id: 't4_pelvic_wall', desc: 'pelvic wall invasion' },
+                { id: 't4_external_sphincter', desc: 'external sphincter invasion' },
+                { id: 't4_fixed', desc: 'tumor is fixed' }
+            ];
+
+            const presentT4Features = t4Features.filter(feature => 
+                document.getElementById(feature.id).checked
+            );
+
+            if (presentT4Features.length > 0) {
+                const featureList = presentT4Features.map(f => f.desc).join(', ');
+                stagingReasoning.tStage = `T4: Tumor is fixed or invades adjacent structures other than seminal vesicles. Present features: ${featureList}.`;
+                return 'T4';
+            }
+
+            // Check for T3 features
+            const t3bSV = document.getElementById('t3b_sv').checked;
+            const t3aEPE = document.getElementById('t3a_epe').checked;
+            const t3aBladderNeck = document.getElementById('t3a_bladder_neck').checked;
+
+            if (t3bSV) {
+                stagingReasoning.tStage = "T3b: Tumor invades seminal vesicle(s).";
+                return 'T3b';
+            }
+
+            if (t3aEPE || (t3aBladderNeck && stagingType === 'pathological')) {
+                let features = [];
+                if (t3aEPE) features.push('extraprostatic extension');
+                if (t3aBladderNeck && stagingType === 'pathological') features.push('microscopic bladder neck invasion');
+                
+                stagingReasoning.tStage = `T3a: Extraprostatic extension (unilateral or bilateral)${stagingType === 'pathological' ? ' or microscopic invasion of bladder neck' : ''}. Present features: ${features.join(', ')}.`;
+                return 'T3a';
+            }
+
+            // T2 and T1 staging based on type
+            if (stagingType === 'clinical') {
+                // Clinical T2 staging
+                const t2Clinical = document.querySelector('input[name="t2Clinical"]:checked');
+                if (t2Clinical) {
+                    const t2Value = t2Clinical.value;
+                    switch (t2Value) {
+                        case 't2a':
+                            stagingReasoning.tStage = "T2a: Tumor involves one-half of one side or less (palpable and confined within prostate).";
+                            return 'T2a';
+                        case 't2b':
+                            stagingReasoning.tStage = "T2b: Tumor involves more than one-half of one side but not both sides (palpable and confined within prostate).";
+                            return 'T2b';
+                        case 't2c':
+                            stagingReasoning.tStage = "T2c: Tumor involves both sides (palpable and confined within prostate).";
+                            return 'T2c';
+                    }
+                }
+
+                // Clinical T1 staging
+                const t1Clinical = document.querySelector('input[name="t1Clinical"]:checked');
+                if (t1Clinical) {
+                    const t1Value = t1Clinical.value;
+                    switch (t1Value) {
+                        case 't1a':
+                            stagingReasoning.tStage = "T1a: Tumor incidental histologic finding in 5 percent or less of tissue resected (clinically inapparent).";
+                            return 'T1a';
+                        case 't1b':
+                            stagingReasoning.tStage = "T1b: Tumor incidental histologic finding in more than 5 percent of tissue resected (clinically inapparent).";
+                            return 'T1b';
+                        case 't1c':
+                            stagingReasoning.tStage = "T1c: Tumor identified by needle biopsy found in one or both sides, but not palpable (clinically inapparent).";
+                            return 'T1c';
+                    }
+                }
+            } else {
+                // Pathological staging
+                if (document.getElementById('pt2_organ_confined').checked) {
+                    stagingReasoning.tStage = "pT2: Organ confined disease. All pathological organ-confined disease is classified as pT2 regardless of extent or laterality.";
+                    return 'pT2';
+                }
+            }
+
+            // Default if no specific features identified
+            stagingReasoning.tStage = "Unable to determine T stage - please check all relevant findings.";
+            return 'TX';
+        }
+
+        // Calculate N Stage
+        function calculateNStage() {
+            const nStageRadio = document.querySelector('input[name="nStage"]:checked');
+            if (!nStageRadio) {
+                stagingReasoning.nStage = "N stage not specified.";
+                return 'NX';
+            }
+
+            const nValue = nStageRadio.value;
+            
+            switch (nValue) {
+                case 'nx':
+                    stagingReasoning.nStage = "NX: Regional lymph nodes cannot be assessed.";
+                    return 'NX';
+                case 'n0':
+                    stagingReasoning.nStage = "N0: No positive regional lymph nodes identified.";
+                    return 'N0';
+                case 'n1':
+                    const largestNode = document.getElementById('largestNode').value;
+                    const nodeCount = document.getElementById('nodeCount').value;
+                    let details = [];
+                    if (largestNode) details.push(`largest node ${largestNode}cm`);
+                    if (nodeCount) details.push(`${nodeCount} positive nodes`);
+                    
+                    const detailString = details.length > 0 ? ` (${details.join(', ')})` : '';
+                    stagingReasoning.nStage = `N1: Metastases in regional lymph node(s)${detailString}. Regional nodes include obturator, internal iliac, external iliac, presacral, sacral, and common iliac nodes.`;
+                    return 'N1';
+                default:
+                    stagingReasoning.nStage = "Unable to determine N stage.";
+                    return 'NX';
+            }
+        }
+
+        // Calculate M Stage
+        function calculateMStage() {
+            const mStageRadio = document.querySelector('input[name="mStage"]:checked');
+            if (!mStageRadio) {
+                stagingReasoning.mStage = "M stage not specified.";
+                return 'M0';
+            }
+
+            const mValue = mStageRadio.value;
+            
+            switch (mValue) {
+                case 'm0':
+                    stagingReasoning.mStage = "M0: No distant metastases identified.";
+                    return 'M0';
+                case 'm1a':
+                    stagingReasoning.mStage = "M1a: Distant metastases in nonregional lymph node(s). Nonregional nodes include those outside the pelvis (e.g., para-aortic, mediastinal, supraclavicular).";
+                    return 'M1a';
+                case 'm1b':
+                    stagingReasoning.mStage = "M1b: Bone metastases present. Prostate cancer commonly metastasizes to bone, particularly the axial skeleton.";
+                    return 'M1b';
+                case 'm1c':
+                    const metDetails = [];
+                    if (document.getElementById('liver_mets').checked) metDetails.push('liver');
+                    if (document.getElementById('lung_mets').checked) metDetails.push('lung');
+                    if (document.getElementById('brain_mets').checked) metDetails.push('brain');
+                    if (document.getElementById('peritoneal_mets').checked) metDetails.push('peritoneal');
+                    
+                    const metString = metDetails.length > 0 ? ` (${metDetails.join(', ')})` : '';
+                    stagingReasoning.mStage = `M1c: Other site(s) with or without bone disease${metString}.`;
+                    return 'M1c';
+                default:
+                    stagingReasoning.mStage = "Unable to determine M stage.";
+                    return 'M0';
+            }
+        }
+
+        // Calculate Overall Stage Group
+        function calculateOverallStage(tStage, nStage, mStage) {
+            const psaLevel = document.getElementById('psaLevel').value;
+            const gradeGroup = document.getElementById('gradeGroup').value;
+            
+            // M1 = Stage IVB
+            if (mStage.startsWith('M1')) {
+                return 'IVB';
+            }
+            
+            // N1 = Stage IVA
+            if (nStage === 'N1') {
+                return 'IVA';
+            }
+            
+            // T3-T4 = Stage IIIB (if N0 M0)
+            if (tStage.startsWith('T3') || tStage.startsWith('T4')) {
+                return 'IIIB';
+            }
+            
+            // For T1-T2, consider PSA and Grade Group
+            if (gradeGroup === '5') {
+                return 'IIIC'; // Grade Group 5 = Stage IIIC
+            }
+            
+            if (psaLevel === 'high') { // >20 ng/mL
+                return 'IIIA';
+            }
+            
+            // Simplified stage grouping for remaining cases
+            if (gradeGroup === '4' || gradeGroup === '3') {
+                return 'IIC';
+            }
+            
+            if (tStage === 'T2b' || tStage === 'T2c') {
+                return 'IIB';
+            }
+            
+            if (psaLevel === 'intermediate') { // 10-20 ng/mL
+                return 'IIA';
+            }
+            
+            // Default for low-risk disease
+            return 'I';
+        }
+
+        // Get clinical implications
+        function getClinicalImplications(tStage, nStage, mStage, overallStage) {
+            let implications = [];
+            
+            // T stage implications
+            if (tStage.startsWith('T3') || tStage.startsWith('T4')) {
+                implications.push("• Extraprostatic disease indicates higher risk and may require multimodal therapy");
+                implications.push("• Consider adjuvant radiotherapy after surgery or hormone therapy with radiotherapy");
+            }
+            
+            if (tStage === 'T3b') {
+                implications.push("• Seminal vesicle invasion is associated with higher risk of recurrence");
+            }
+            
+            if (tStage.startsWith('T4')) {
+                implications.push("• T4 disease may not be suitable for surgery; consider radiotherapy with hormone therapy");
+            }
+            
+            // N stage implications
+            if (nStage === 'N1') {
+                implications.push("• Regional nodal involvement indicates systemic disease risk");
+                implications.push("• Patients with N1 disease may benefit from radiotherapy to prostate and pelvis");
+                implications.push("• Consider extended pelvic lymph node dissection if surgery planned");
+            }
+            
+            // M stage implications
+            if (mStage.startsWith('M1')) {
+                implications.push("• Distant metastases indicate systemic disease requiring systemic therapy");
+                implications.push("• Hormone therapy (ADT) is typically first-line treatment");
+                implications.push("• Local therapy benefit in M1 disease is investigational");
+            }
+            
+            if (mStage === 'M1b') {
+                implications.push("• Bone metastases may require bone-targeted therapy (bisphosphonates, denosumab)");
+                implications.push("• Monitor for skeletal-related events");
+            }
+            
+            // Overall stage implications
+            if (overallStage === 'I' || overallStage === 'IIA') {
+                implications.push("• Low-risk disease - active surveillance may be appropriate for select patients");
+                implications.push("• Single modality treatment (surgery or radiotherapy) typically sufficient");
+            }
+            
+            if (overallStage === 'IIB' || overallStage === 'IIC') {
+                implications.push("• Intermediate-risk disease - definitive treatment recommended");
+                implications.push("• Consider risk stratification tools for treatment planning");
+            }
+            
+            if (overallStage.startsWith('III')) {
+                implications.push("• High-risk disease - aggressive treatment approach recommended");
+                implications.push("• Multimodal therapy often required");
+                implications.push("• Consider clinical trial participation");
+            }
+            
+            if (overallStage.startsWith('IV')) {
+                implications.push("• Advanced disease requiring multidisciplinary care");
+                implications.push("• Systemic therapy is primary treatment modality");
+                implications.push("• Palliative care consultation may be appropriate");
+            }
+            
+            return implications.length > 0 ? implications : ["• Multidisciplinary team discussion recommended for treatment planning"];
+        }
+
+        // Main calculation function
+        function calculateStaging() {
+            // Calculate individual stages
+            currentTStage = calculateTStage();
+            currentNStage = calculateNStage();
+            currentMStage = calculateMStage();
+            
+            // Calculate overall stage
+            const overallStage = calculateOverallStage(currentTStage, currentNStage, currentMStage);
+            
+            // Get clinical implications
+            const implications = getClinicalImplications(currentTStage, currentNStage, currentMStage, overallStage);
+            
+            // Display results
+            document.getElementById('resultT').textContent = currentTStage;
+            document.getElementById('resultN').textContent = currentNStage;
+            document.getElementById('resultM').textContent = currentMStage;
+            document.getElementById('resultStage').textContent = overallStage;
+            
+            // Display reasoning
+            const reasoningDiv = document.getElementById('resultReasoning');
+            reasoningDiv.innerHTML = `
+                <div class="reasoning-item">
+                    <strong>T Stage (${currentTStage}):</strong> ${stagingReasoning.tStage}
+                </div>
+                <div class="reasoning-item">
+                    <strong>N Stage (${currentNStage}):</strong> ${stagingReasoning.nStage}
+                </div>
+                <div class="reasoning-item">
+                    <strong>M Stage (${currentMStage}):</strong> ${stagingReasoning.mStage}
+                </div>
+            `;
+            
+            // Display clinical implications
+            const implicationsDiv = document.getElementById('clinicalImplications');
+            implicationsDiv.innerHTML = implications.join('<br>');
+            
+            // Show results
+            document.getElementById('finalResult').classList.add('show');
+            
+            // Scroll to results
+            document.getElementById('finalResult').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // Reset calculator
+        function resetCalculator() {
+            // Reset all form inputs
+            document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+            document.querySelectorAll('input[type="radio"]').forEach(radio => {
+                if (radio.value === 'clinical' || radio.value === 'n0' || radio.value === 'm0') {
+                    radio.checked = true;
+                } else {
+                    radio.checked = false;
+                }
+            });
+            document.querySelectorAll('input[type="number"]').forEach(input => input.value = '');
+            document.querySelectorAll('select').forEach(select => select.selectedIndex = 0);
+            
+            // Hide results
+            document.getElementById('finalResult').classList.remove('show');
+            
+            // Reset visibility
+            update

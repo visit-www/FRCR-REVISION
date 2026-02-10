@@ -1,0 +1,1424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ovarian/Fallopian Tube/Peritoneal Cancer TNM Staging Calculator - AJCC 9th Edition</title>
+    <style>
+        :root {
+            --brand-primary: #e96304;
+            --brand-secondary: #ffc107;
+            --brand-success: #a8d5ba;
+            --brand-neutral: #5E899E;
+            --brand-text-primary: #2c3e50;
+            --brand-text-secondary: #5a6270;
+            --brand-text-light: #8b94a3;
+            --brand-bg-white: #ffffff;
+            --brand-bg-offwhite: #fdfdfb;
+            --brand-border: #c5cad1;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: var(--brand-text-primary);
+            background-color: var(--brand-bg-offwhite);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+
+        .header {
+            text-align: center;
+            background: linear-gradient(135deg, var(--brand-primary), var(--brand-secondary));
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 8px 25px rgba(233, 99, 4, 0.2);
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            margin-bottom: 5px;
+        }
+
+        .calculator-section {
+            background: var(--brand-bg-white);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            border: 1px solid var(--brand-border);
+        }
+
+        .calculator-form {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+
+        .form-section {
+            background: var(--brand-bg-offwhite);
+            padding: 25px;
+            border-radius: 12px;
+            border: 1px solid var(--brand-border);
+        }
+
+        .section-title {
+            color: var(--brand-primary);
+            font-size: 1.4rem;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--brand-primary);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: var(--brand-text-primary);
+        }
+
+        .help-text {
+            font-size: 0.9rem;
+            color: var(--brand-text-light);
+            font-weight: 400;
+            display: block;
+            margin-top: 5px;
+        }
+
+        .checkbox-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .checkbox-option {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            background: var(--brand-bg-white);
+            border: 1px solid var(--brand-border);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .checkbox-option:hover {
+            background: #f8f9fa;
+            border-color: var(--brand-primary);
+        }
+
+        .checkbox-option input[type="checkbox"] {
+            margin-right: 10px;
+            transform: scale(1.2);
+        }
+
+        .input-with-unit {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .input-with-unit input {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid var(--brand-border);
+            border-radius: 8px;
+            font-size: 1rem;
+        }
+
+        .input-with-unit input:focus {
+            outline: none;
+            border-color: var(--brand-primary);
+        }
+
+        .unit {
+            font-weight: 600;
+            color: var(--brand-text-secondary);
+        }
+
+        .radio-group {
+            display: flex;
+            gap: 20px;
+            margin-top: 10px;
+        }
+
+        .radio-option {
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+            background: var(--brand-bg-white);
+            border: 2px solid var(--brand-border);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .radio-option:hover {
+            border-color: var(--brand-primary);
+        }
+
+        .radio-option input[type="radio"] {
+            margin-right: 8px;
+            transform: scale(1.2);
+        }
+
+        .subsite-selector {
+            margin-bottom: 25px;
+        }
+
+        .subsite-selector select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid var(--brand-border);
+            border-radius: 8px;
+            font-size: 1rem;
+            background: var(--brand-bg-white);
+        }
+
+        .calculate-button {
+            background: linear-gradient(135deg, var(--brand-primary), var(--brand-secondary));
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+            margin: 20px 0;
+        }
+
+        .calculate-button:hover {
+            transform: translateY(-2px);
+        }
+
+        .reset-button {
+            background: var(--brand-neutral);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+
+        .result-card {
+            background: var(--brand-bg-white);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            border: 1px solid var(--brand-border);
+            margin-top: 20px;
+        }
+
+        .result-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .result-item {
+            text-align: center;
+            padding: 15px;
+            background: var(--brand-bg-offwhite);
+            border-radius: 10px;
+            border: 1px solid var(--brand-border);
+        }
+
+        .result-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--brand-primary);
+            margin-top: 5px;
+        }
+
+        .overall-stage {
+            text-align: center;
+            font-size: 2rem;
+            color: var(--brand-primary);
+            margin: 20px 0;
+            padding: 20px;
+            background: var(--brand-bg-offwhite);
+            border-radius: 10px;
+            border: 2px solid var(--brand-primary);
+        }
+
+        .reasoning-section {
+            margin-top: 25px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border-left: 4px solid var(--brand-primary);
+        }
+
+        .reasoning-section h3 {
+            color: var(--brand-primary);
+            margin-bottom: 15px;
+        }
+
+        .reasoning-item {
+            margin-bottom: 10px;
+            padding: 10px;
+            background: white;
+            border-radius: 5px;
+        }
+
+        .clinical-implications {
+            margin-top: 20px;
+            padding: 20px;
+            background: var(--brand-success);
+            border-radius: 10px;
+            color: var(--brand-text-primary);
+        }
+
+        .reference-section {
+            background: var(--brand-bg-white);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            border: 1px solid var(--brand-border);
+        }
+
+        .reference-title {
+            color: var(--brand-primary);
+            font-size: 2rem;
+            margin-bottom: 30px;
+            text-align: center;
+            padding-bottom: 15px;
+            border-bottom: 3px solid var(--brand-primary);
+        }
+
+        .reference-card {
+            background: var(--brand-bg-offwhite);
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 25px;
+            border: 1px solid var(--brand-border);
+        }
+
+        .reference-subtitle {
+            color: var(--brand-primary);
+            font-size: 1.3rem;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--brand-primary);
+        }
+
+        .mnemonic-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .mnemonic-box {
+            background: var(--brand-bg-white);
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid var(--brand-border);
+        }
+
+        .mnemonic-box h4 {
+            color: var(--brand-primary);
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+        }
+
+        .mnemonic-detail {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .mnemonic-letter {
+            background: var(--brand-primary);
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+
+        .staging-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        .staging-table th,
+        .staging-table td {
+            border: 1px solid var(--brand-border);
+            padding: 12px;
+            text-align: left;
+        }
+
+        .staging-table th {
+            background: var(--brand-primary);
+            color: white;
+            font-weight: 600;
+        }
+
+        .staging-table tr:nth-child(even) {
+            background: var(--brand-bg-offwhite);
+        }
+
+        .tips-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .tip-card {
+            background: var(--brand-bg-white);
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid var(--brand-border);
+            transition: transform 0.2s ease;
+        }
+
+        .tip-card:hover {
+            transform: translateY(-2px);
+        }
+
+        .tip-card h4 {
+            color: var(--brand-primary);
+            margin-bottom: 10px;
+        }
+
+        .tip-detail {
+            font-size: 0.9rem;
+            color: var(--brand-text-secondary);
+            margin-top: 10px;
+            font-style: italic;
+        }
+
+        .pitfall-card {
+            background: #fff5f5;
+            border-left: 4px solid #e53e3e;
+        }
+
+        .pitfall-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .pitfall-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+            padding: 15px;
+            background: var(--brand-bg-white);
+            border-radius: 8px;
+            border: 1px solid var(--brand-border);
+        }
+
+        .pitfall-number {
+            background: #e53e3e;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+
+        .systematic-steps {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .step-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+            padding: 15px;
+            background: var(--brand-bg-white);
+            border-radius: 8px;
+            border: 1px solid var(--brand-border);
+        }
+
+        .step-number {
+            background: var(--brand-primary);
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .checkbox-group {
+                grid-template-columns: 1fr;
+            }
+
+            .radio-group {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .result-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .mnemonic-grid,
+            .tips-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+
+        .info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>Ovarian/Fallopian Tube/Peritoneal Cancer</h1>
+            <p>TNM Staging Calculator - AJCC 9th Edition</p>
+            <p>Interactive staging tool for radiology registrars and FRCR exam preparation</p>
+        </div>
+
+        <!-- Calculator Section -->
+        <div class="calculator-section">
+            <h2 style="color: var(--brand-primary); margin-bottom: 25px; text-align: center;">Interactive Staging Calculator</h2>
+            
+            <div class="calculator-form">
+                <!-- Subsite Selection -->
+                <div class="form-section">
+                    <h3 class="section-title">Primary Site Selection</h3>
+                    <div class="form-group">
+                        <label class="form-label">
+                            <strong>Select Primary Site:</strong>
+                            <span class="help-text">Choose the primary site of origin</span>
+                        </label>
+                        <div class="subsite-selector">
+                            <select id="primarySite" onchange="updateCalculator()">
+                                <option value="ovary">Ovary</option>
+                                <option value="fallopian">Fallopian Tube</option>
+                                <option value="peritoneum">Primary Peritoneum</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- T Stage Section -->
+                <div class="form-section">
+                    <h3 class="section-title">T Stage: Primary Tumor Assessment</h3>
+                    
+                    <div class="info">
+                        <strong>Note:</strong> This staging system applies to epithelial ovarian, fallopian tube, and primary peritoneal carcinomas. The staging is identical for all three sites as they are treated similarly clinically.
+                    </div>
+
+                    <!-- T4 Features -->
+                    <div class="form-group">
+                        <label class="form-label">
+                            <strong>T4 Features (Stage IV Disease):</strong>
+                            <span class="help-text">Check if ANY of these features are present</span>
+                        </label>
+                        <div class="checkbox-group">
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="t4_liver_parenchyma" onchange="updateCalculator()">
+                                <span>Liver parenchymal metastases</span>
+                            </label>
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="t4_splenic_parenchyma" onchange="updateCalculator()">
+                                <span>Splenic parenchymal metastases</span>
+                            </label>
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="t4_distant_organs" onchange="updateCalculator()">
+                                <span>Metastases to other distant organs</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- T3 Features -->
+                    <div class="form-group">
+                        <label class="form-label">
+                            <strong>T3 Features (Extrapelvic Peritoneal Involvement):</strong>
+                            <span class="help-text">Check if ANY of these features are present</span>
+                        </label>
+                        <div class="checkbox-group">
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="t3_extrapelvic_peritoneum" onchange="updateCalculator()">
+                                <span>Extrapelvic peritoneal involvement ≤2 cm</span>
+                            </label>
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="t3_extrapelvic_peritoneum_large" onchange="updateCalculator()">
+                                <span>Extrapelvic peritoneal involvement >2 cm</span>
+                            </label>
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="t3_liver_capsule" onchange="updateCalculator()">
+                                <span>Extension to liver capsule</span>
+                            </label>
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="t3_splenic_capsule" onchange="updateCalculator()">
+                                <span>Extension to splenic capsule</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- T2 Features -->
+                    <div class="form-group">
+                        <label class="form-label">
+                            <strong>T2 Features (Pelvic Extension):</strong>
+                            <span class="help-text">Check if ANY of these features are present</span>
+                        </label>
+                        <div class="checkbox-group">
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="t2_uterus" onchange="updateCalculator()">
+                                <span>Extension to uterus</span>
+                            </label>
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="t2_tubes" onchange="updateCalculator()">
+                                <span>Extension to fallopian tubes</span>
+                            </label>
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="t2_ovaries" onchange="updateCalculator()">
+                                <span>Extension to ovaries</span>
+                            </label>
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="t2_pelvic_peritoneum" onchange="updateCalculator()">
+                                <span>Extension to pelvic peritoneum</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- T1 Subcategories -->
+                    <div class="form-group">
+                        <label class="form-label">
+                            <strong>T1 Subcategories (Tumor Limited to Ovaries/Tubes):</strong>
+                            <span class="help-text">Select the most appropriate subcategory</span>
+                        </label>
+                        <div class="radio-group" style="flex-direction: column; gap: 10px;">
+                            <label class="radio-option">
+                                <input type="radio" name="t1_subtype" value="t1a" onchange="updateCalculator()">
+                                <span>T1a: Limited to one ovary/tube, capsule intact, no tumor on surface, negative cytology</span>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="t1_subtype" value="t1b" onchange="updateCalculator()">
+                                <span>T1b: Limited to both ovaries/tubes, capsule intact, no tumor on surface, negative cytology</span>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="t1_subtype" value="t1c1" onchange="updateCalculator()">
+                                <span>T1c1: Surgical spill (intraoperative rupture)</span>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="t1_subtype" value="t1c2" onchange="updateCalculator()">
+                                <span>T1c2: Capsule ruptured before surgery or tumor on surface</span>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="t1_subtype" value="t1c3" onchange="updateCalculator()">
+                                <span>T1c3: Positive peritoneal cytology</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- N Stage Section -->
+                <div class="form-section">
+                    <h3 class="section-title">N Stage: Regional Lymph Node Assessment</h3>
+                    
+                    <div class="form-group">
+                        <label class="form-label">
+                            <strong>Regional Lymph Node Metastases:</strong>
+                            <span class="help-text">Include pelvic and para-aortic lymph nodes</span>
+                        </label>
+                        <div class="radio-group">
+                            <label class="radio-option">
+                                <input type="radio" name="n_stage" value="n0" onchange="updateCalculator()">
+                                <span>N0: No regional lymph node metastases</span>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="n_stage" value="n1" onchange="updateCalculator()">
+                                <span>N1: Regional lymph node metastases present</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">
+                            <strong>Largest Metastatic Node Size:</strong>
+                            <span class="help-text">Measure short axis diameter</span>
+                        </label>
+                        <div class="input-with-unit">
+                            <input type="number" id="nodeSize" step="0.1" min="0" placeholder="e.g., 1.5" onchange="updateCalculator()">
+                            <span class="unit">cm</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- M Stage Section -->
+                <div class="form-section">
+                    <h3 class="section-title">M Stage: Distant Metastases</h3>
+                    
+                    <div class="form-group">
+                        <label class="form-label">
+                            <strong>Distant Metastases:</strong>
+                            <span class="help-text">Includes pleural effusion with positive cytology</span>
+                        </label>
+                        <div class="radio-group">
+                            <label class="radio-option">
+                                <input type="radio" name="m_stage" value="m0" onchange="updateCalculator()">
+                                <span>M0: No distant metastases</span>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="m_stage" value="m1a" onchange="updateCalculator()">
+                                <span>M1a: Pleural effusion with positive cytology</span>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="m_stage" value="m1b" onchange="updateCalculator()">
+                                <span>M1b: Liver/splenic parenchymal metastases or other distant organs</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Calculate Button -->
+                <div style="text-align: center;">
+                    <button class="calculate-button" onclick="calculateStaging()">Calculate TNM Stage</button>
+                    <button class="reset-button" onclick="resetForm()">Reset Form</button>
+                </div>
+            </div>
+
+            <!-- Results Card -->
+            <div class="result-card" id="finalResult" style="display: none;">
+                <h2 style="color: var(--brand-primary); text-align: center; margin-bottom: 20px;">Staging Results</h2>
+                
+                <div class="result-grid">
+                    <div class="result-item">
+                        <strong>T Stage</strong>
+                        <div class="result-value" id="resultT">-</div>
+                    </div>
+                    <div class="result-item">
+                        <strong>N Stage</strong>
+                        <div class="result-value" id="resultN">-</div>
+                    </div>
+                    <div class="result-item">
+                        <strong>M Stage</strong>
+                        <div class="result-value" id="resultM">-</div>
+                    </div>
+                </div>
+
+                <div class="overall-stage">
+                    <strong>Overall Stage: <span id="resultStage">-</span></strong>
+                </div>
+
+                <div class="reasoning-section" id="resultReasoning">
+                    <h3>Staging Rationale</h3>
+                    <div id="reasoningContent"></div>
+                </div>
+
+                <div class="clinical-implications" id="clinicalImplications">
+                    <h3>Clinical Implications</h3>
+                    <div id="implicationsContent"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reference Section -->
+        <div class="reference-section">
+            <h2 class="reference-title">Comprehensive Reference Guide</h2>
+
+            <!-- Mnemonics -->
+            <div class="reference-card">
+                <h3 class="reference-subtitle">Memory Aids & Mnemonics</h3>
+                <div class="mnemonic-grid">
+                    <div class="mnemonic-box">
+                        <h4>T1 Subcategories - "SCRIP"</h4>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">S</div>
+                            <div><strong>Surgical</strong> spill (T1c1)</div>
+                        </div>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">C</div>
+                            <div><strong>Capsule</strong> rupture pre-op (T1c2)</div>
+                        </div>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">R</div>
+                            <div><strong>Ruptured</strong> surface tumor (T1c2)</div>
+                        </div>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">I</div>
+                            <div><strong>Intact</strong> capsule (T1a/T1b)</div>
+                        </div>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">P</div>
+                            <div><strong>Positive</strong> cytology (T1c3)</div>
+                        </div>
+                    </div>
+                    <div class="mnemonic-box">
+                        <h4>Stage IV Features - "LIPS"</h4>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">L</div>
+                            <div><strong>Liver</strong> parenchymal mets</div>
+                        </div>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">I</div>
+                            <div><strong>Internal</strong> organ mets</div>
+                        </div>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">P</div>
+                            <div><strong>Pleural</strong> effusion (+cytology)</div>
+                        </div>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">S</div>
+                            <div><strong>Splenic</strong> parenchymal mets</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Staging Tables -->
+            <div class="reference-card">
+                <h3 class="reference-subtitle">TNM Staging Reference Tables</h3>
+                
+                <h4 style="color: var(--brand-primary); margin: 20px 0 10px 0;">T Stage Classification</h4>
+                <table class="staging-table">
+                    <thead>
+                        <tr>
+                            <th>T Stage</th>
+                            <th>Description</th>
+                            <th>Key Features</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>T1a</strong></td>
+                            <td>Limited to one ovary/tube</td>
+                            <td>Capsule intact, no surface tumor, negative cytology</td>
+                        </tr>
+                        <tr>
+                            <td><strong>T1b</strong></td>
+                            <td>Limited to both ovaries/tubes</td>
+                            <td>Capsule intact, no surface tumor, negative cytology</td>
+                        </tr>
+                        <tr>
+                            <td><strong>T1c1</strong></td>
+                            <td>Surgical spill</td>
+                            <td>Intraoperative rupture</td>
+                        </tr>
+                        <tr>
+                            <td><strong>T1c2</strong></td>
+                            <td>Pre-surgical rupture</td>
+                            <td>Capsule ruptured before surgery OR tumor on surface</td>
+                        </tr>
+                        <tr>
+                            <td><strong>T1c3</strong></td>
+                            <td>Positive cytology</td>
+                            <td>Positive peritoneal cytology with/without rupture</td>
+                        </tr>
+                        <tr>
+                            <td><strong>T2</strong></td>
+                            <td>Pelvic extension</td>
+                            <td>Extension to uterus, tubes, ovaries, or pelvic peritoneum</td>
+                        </tr>
+                        <tr>
+                            <td><strong>T3</strong></td>
+                            <td>Extrapelvic peritoneal</td>
+                            <td>Extrapelvic peritoneum, liver/splenic capsule</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h4 style="color: var(--brand-primary); margin: 20px 0 10px 0;">Overall Stage Groups</h4>
+                <table class="staging-table">
+                    <thead>
+                        <tr>
+                            <th>Stage</th>
+                            <th>T</th>
+                            <th>N</th>
+                            <th>M</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>IA</strong></td>
+                            <td>T1a</td>
+                            <td>N0</td>
+                            <td>M0</td>
+                            <td>Limited to one ovary/tube, intact</td>
+                        </tr>
+                        <tr>
+                            <td><strong>IB</strong></td>
+                            <td>T1b</td>
+                            <td>N0</td>
+                            <td>M0</td>
+                            <td>Limited to both ovaries/tubes, intact</td>
+                        </tr>
+                        <tr>
+                            <td><strong>IC</strong></td>
+                            <td>T1c</td>
+                            <td>N0</td>
+                            <td>M0</td>
+                            <td>Limited to ovaries/tubes with rupture/cytology</td>
+                        </tr>
+                        <tr>
+                            <td><strong>II</strong></td>
+                            <td>T2</td>
+                            <td>N0</td>
+                            <td>M0</td>
+                            <td>Pelvic extension</td>
+                        </tr>
+                        <tr>
+                            <td><strong>IIIA1</strong></td>
+                            <td>T1-T2</td>
+                            <td>N1</td>
+                            <td>M0</td>
+                            <td>Positive retroperitoneal nodes only</td>
+                        </tr>
+                        <tr>
+                            <td><strong>IIIA2</strong></td>
+                            <td>T3a</td>
+                            <td>N0-N1</td>
+                            <td>M0</td>
+                            <td>Extrapelvic peritoneum ≤2cm</td>
+                        </tr>
+                        <tr>
+                            <td><strong>IIIB</strong></td>
+                            <td>T3b</td>
+                            <td>N0-N1</td>
+                            <td>M0</td>
+                            <td>Extrapelvic peritoneum >2cm</td>
+                        </tr>
+                        <tr>
+                            <td><strong>IIIC</strong></td>
+                            <td>T3c</td>
+                            <td>N0-N1</td>
+                            <td>M0</td>
+                            <td>Liver/splenic capsule involvement</td>
+                        </tr>
+                        <tr>
+                            <td><strong>IVA</strong></td>
+                            <td>Any T</td>
+                            <td>Any N</td>
+                            <td>M1a</td>
+                            <td>Pleural effusion with positive cytology</td>
+                        </tr>
+                        <tr>
+                            <td><strong>IVB</strong></td>
+                            <td>Any T</td>
+                            <td>Any N</td>
+                            <td>M1b</td>
+                            <td>Liver/splenic parenchymal or distant mets</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Imaging Tips -->
+            <div class="reference-card">
+                <h3 class="reference-subtitle">Key Imaging Tips for Staging</h3>
+                <div class="tips-grid">
+                    <div class="tip-card">
+                        <h4>Capsule Integrity Assessment</h4>
+                        <p>Look for smooth, intact ovarian/tubal contours on T2-weighted images.</p>
+                        <div class="tip-detail">Irregular contours, surface nodularity, or fluid signal around the mass suggest capsule breach (T1c2).</div>
+                    </div>
+                    <div class="tip-card">
+                        <h4>Peritoneal Disease Detection</h4>
+                        <p>Use fat-suppressed T1 post-contrast sequences to identify small peritoneal implants.</p>
+                        <div class="tip-detail">Look in dependent portions: pouch of Douglas, paracolic gutters, and right subphrenic space.</div>
+                    </div>
+                    <div class="tip-card">
+                        <h4>Liver Involvement Distinction</h4>
+                        <p>Differentiate capsular (T3c) from parenchymal (M1b) liver involvement.</p>
+                        <div class="tip-detail">Capsular disease appears as surface nodules; parenchymal disease shows discrete intraparenchymal lesions.</div>
+                    </div>
+                    <div class="tip-card">
+                        <h4>Lymph Node Assessment</h4>
+                        <p>Evaluate pelvic and para-aortic nodes systematically on axial images.</p>
+                        <div class="tip-detail">Short axis >1cm is suspicious; look for central necrosis and irregular enhancement patterns.</div>
+                    </div>
+                    <div class="tip-card">
+                        <h4>Ascites Evaluation</h4>
+                        <p>Assess ascites volume and distribution pattern for staging implications.</p>
+                        <div class="tip-detail">Large volume ascites often indicates advanced disease; obtain cytology when possible.</div>
+                    </div>
+                    <div class="tip-card">
+                        <h4>Pleural Assessment</h4>
+                        <p>Include lung bases in abdominal imaging to detect pleural effusions.</p>
+                        <div class="tip-detail">Pleural effusion with positive cytology = M1a disease (Stage IVA).</div>
+                    </div>
+                    <div class="tip-card">
+                        <h4>Bowel Involvement</h4>
+                        <p>Look for bowel wall thickening and serosal implants on mesenteric surfaces.</p>
+                        <div class="tip-detail">Distinguish serosal implants (T3) from full-thickness bowel wall invasion requiring surgical assessment.</div>
+                    </div>
+                    <div class="tip-card">
+                        <h4>Diaphragmatic Disease</h4>
+                        <p>Assess diaphragmatic surfaces for nodular thickening or masses.</p>
+                        <div class="tip-detail">Right hemidiaphragm more commonly involved; may require surgical staging confirmation.</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Common Pitfalls -->
+            <div class="reference-card pitfall-card">
+                <h3 class="reference-subtitle">Common Staging Pitfalls to Avoid</h3>
+                <div class="pitfall-list">
+                    <div class="pitfall-item">
+                        <div class="pitfall-number">1</div>
+                        <div>
+                            <strong>Confusing Capsular vs. Parenchymal Liver Disease</strong>
+                            <p>Liver capsule involvement is T3c (Stage IIIC), while parenchymal metastases are M1b (Stage IVB). Always distinguish surface nodules from intraparenchymal lesions.</p>
+                        </div>
+                    </div>
+                    <div class="pitfall-item">
+                        <div class="pitfall-number">2</div>
+                        <div>
+                            <strong>Missing Small Peritoneal Implants</strong>
+                            <p>Small peritoneal deposits can be subtle on imaging. Use fat-suppressed post-contrast sequences and look systematically in all peritoneal recesses.</p>
+                        </div>
+                    </div>
+                    <div class="pitfall-item">
+                        <div class="pitfall-number">3</div>
+                        <div>
+                            <strong>Overlooking T1c Subcategories</strong>
+                            <p>T1c has three important subcategories (surgical spill, pre-op rupture, positive cytology) that affect prognosis. Document capsule integrity carefully.</p>
+                        </div>
+                    </div>
+                    <div class="pitfall-item">
+                        <div class="pitfall-number">4</div>
+                        <div>
+                            <strong>Inadequate Lymph Node Assessment</strong>
+                            <p>Both pelvic and para-aortic nodes are regional. Positive nodes in T1-T2 disease = Stage IIIA1, not Stage I or II.</p>
+                        </div>
+                    </div>
+                    <div class="pitfall-item">
+                        <div class="pitfall-number">5</div>
+                        <div>
+                            <strong>Misclassifying Pleural Effusions</strong>
+                            <p>Only pleural effusions with positive cytology are M1a. Simple effusions without malignant cells don't upstage the disease.</p>
+                        </div>
+                    </div>
+                    <div class="pitfall-item">
+                        <div class="pitfall-number">6</div>
+                        <div>
+                            <strong>Ignoring Bilateral Disease</strong>
+                            <p>Bilateral ovarian involvement without other features is still T1b if capsules are intact. Don't automatically assume higher T stage.</p>
+                        </div>
+                    </div>
+                    <div class="pitfall-item">
+                        <div class="pitfall-number">7</div>
+                        <div>
+                            <strong>Confusing Pelvic vs. Extrapelvic Disease</strong>
+                            <p>Pelvic extension (uterus, tubes, pelvic peritoneum) is T2, while extrapelvic peritoneum is T3. Know your pelvic anatomy boundaries.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Systematic Approach -->
+            <div class="reference-card">
+                <h3 class="reference-subtitle">8-Step Systematic Staging Approach</h3>
+                <div class="systematic-steps">
+                    <div class="step-item">
+                        <div class="step-number">1</div>
+                        <div>
+                            <strong>Identify Primary Site</strong>
+                            <p>Determine if the primary is ovarian, fallopian tube, or peritoneal. Look for the dominant mass and pattern of spread.</p>
+                        </div>
+                    </div>
+                    <div class="step-item">
+                        <div class="step-number">2</div>
+                        <div>
+                            <strong>Assess Capsule Integrity</strong>
+                            <p>Evaluate ovarian/tubal surface contours on T2-weighted images. Look for surface irregularity or nodularity suggesting capsule breach.</p>
+                        </div>
+                    </div>
+                    <div class="step-item">
+                        <div class="step-number">3</div>
+                        <div>
+                            <strong>Evaluate Pelvic Extension</strong>
+                            <p>Check for extension to uterus, contralateral adnexa, and pelvic peritoneum. This determines T2 disease.</p>
+                        </div>
+                    </div>
+                    <div class="step-item">
+                        <div class="step-number">4</div>
+                        <div>
+                            <strong>Search for Extrapelvic Peritoneal Disease</strong>
+                            <p>Systematically evaluate all peritoneal surfaces: paracolic gutters, subphrenic spaces, lesser sac, mesentery, and omentum.</p>
+                        </div>
+                    </div>
+                    <div class="step-item">
+                        <div class="step-number">5</div>
+                        <div>
+                            <strong>Assess Liver and Spleen</strong>
+                            <p>Distinguish capsular involvement (T3c) from parenchymal metastases (M1b). Look at surface contours and intraparenchymal lesions separately.</p>
+                        </div>
+                    </div>
+                    <div class="step-item">
+                        <div class="step-number">6</div>
+                        <div>
+                            <strong>Evaluate Regional Lymph Nodes</strong>
+                            <p>Assess pelvic (internal iliac, external iliac, obturator) and para-aortic lymph nodes. Size >1cm short axis is suspicious.</p>
+                        </div>
+                    </div>
+                    <div class="step-item">
+                        <div class="step-number">7</div>
+                        <div>
+                            <strong>Check for Distant Metastases</strong>
+                            <p>Evaluate pleural spaces, lung parenchyma, liver parenchyma, and other distant organs. Include lung bases in abdominal scans.</p>
+                        </div>
+                    </div>
+                    <div class="step-item">
+                        <div class="step-number">8</div>
+                        <div>
+                            <strong>Correlate with Clinical Information</strong>
+                            <p>Consider surgical findings, cytology results, and CA-125 levels. Imaging findings should be correlated with clinical context.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function updateCalculator() {
+            // This function can be used for real-time updates if needed
+            // Currently, calculation is triggered by the Calculate button
+        }
+
+        function calculateTStage() {
+            // Check T4 features first
+            if (document.getElementById('t4_liver_parenchyma').checked ||
+                document.getElementById('t4_splenic_parenchyma').checked ||
+                document.getElementById('t4_distant_organs').checked) {
+                return {
+                    stage: 'T4',
+                    reasoning: 'T4 assigned due to presence of liver parenchymal metastases, splenic parenchymal metastases, or metastases to other distant organs.'
+                };
+            }
+
+            // Check T3 features
+            if (document.getElementById('t3_extrapelvic_peritoneum').checked ||
+                document.getElementById('t3_extrapelvic_peritoneum_large').checked ||
+                document.getElementById('t3_liver_capsule').checked ||
+                document.getElementById('t3_splenic_capsule').checked) {
+                return {
+                    stage: 'T3',
+                    reasoning: 'T3 assigned due to extrapelvic peritoneal involvement or extension to liver/splenic capsule.'
+                };
+            }
+
+            // Check T2 features
+            if (document.getElementById('t2_uterus').checked ||
+                document.getElementById('t2_tubes').checked ||
+                document.getElementById('t2_ovaries').checked ||
+                document.getElementById('t2_pelvic_peritoneum').checked) {
+                return {
+                    stage: 'T2',
+                    reasoning: 'T2 assigned due to pelvic extension to uterus, fallopian tubes, ovaries, or pelvic peritoneum.'
+                };
+            }
+
+            // Check T1 subcategories
+            const t1Subtype = document.querySelector('input[name="t1_subtype"]:checked');
+            if (t1Subtype) {
+                switch (t1Subtype.value) {
+                    case 't1a':
+                        return {
+                            stage: 'T1a',
+                            reasoning: 'T1a assigned: tumor limited to one ovary/fallopian tube with intact capsule, no tumor on surface, and negative cytology.'
+                        };
+                    case 't1b':
+                        return {
+                            stage: 'T1b',
+                            reasoning: 'T1b assigned: tumor limited to both ovaries/fallopian tubes with intact capsules, no tumor on surface, and negative cytology.'
+                        };
+                    case 't1c1':
+                        return {
+                            stage: 'T1c1',
+                            reasoning: 'T1c1 assigned: tumor limited to ovaries/tubes with surgical spill (intraoperative rupture).'
+                        };
+                    case 't1c2':
+                        return {
+                            stage: 'T1c2',
+                            reasoning: 'T1c2 assigned: tumor limited to ovaries/tubes with capsule ruptured before surgery or tumor on surface.'
+                        };
+                    case 't1c3':
+                        return {
+                            stage: 'T1c3',
+                            reasoning: 'T1c3 assigned: tumor limited to ovaries/tubes with positive peritoneal cytology.'
+                        };
+                }
+            }
+
+            return {
+                stage: 'TX',
+                reasoning: 'TX assigned: Primary tumor cannot be assessed based on provided information.'
+            };
+        }
+
+        function calculateNStage() {
+            const nStage = document.querySelector('input[name="n_stage"]:checked');
+            
+            if (!nStage) {
+                return {
+                    stage: 'NX',
+                    reasoning: 'NX assigned: Regional lymph node status not assessed.'
+                };
+            }
+
+            if (nStage.value === 'n0') {
+                return {
+                    stage: 'N0',
+                    reasoning: 'N0 assigned: No regional lymph node metastases identified.'
+                };
+            } else {
+                return {
+                    stage: 'N1',
+                    reasoning: 'N1 assigned: Regional lymph node metastases present (pelvic and/or para-aortic nodes).'
+                };
+            }
+        }
+
+        function calculateMStage() {
+            const mStage = document.querySelector('input[name="m_stage"]:checked');
+            
+            if (!mStage) {
+                return {
+                    stage: 'MX',
+                    reasoning: 'MX assigned: Distant metastasis status not assessed.'
+                };
+            }
+
+            switch (mStage.value) {
+                case 'm0':
+                    return {
+                        stage: 'M0',
+                        reasoning: 'M0 assigned: No distant metastases identified.'
+                    };
+                case 'm1a':
+                    return {
+                        stage: 'M1a',
+                        reasoning: 'M1a assigned: Pleural effusion with positive cytology present.'
+                    };
+                case 'm1b':
+                    return {
+                        stage: 'M1b',
+                        reasoning: 'M1b assigned: Liver parenchymal metastases, splenic parenchymal metastases, or metastases to other distant organs.'
+                    };
+                default:
+                    return {
+                        stage: 'MX',
+                        reasoning: 'MX assigned: Distant metastasis status not assessed.'
+                    };
+            }
+        }
+
+        function calculateOverallStage(tStage, nStage, mStage) {
+            // Stage IV (any M1)
+            if (mStage.stage === 'M1a') {
+                return {
+                    stage: 'IVA',
+                    reasoning: 'Stage IVA assigned due to M1a disease (pleural effusion with positive cytology).'
+                };
+            }
+            if (mStage.stage === 'M1b') {
+                return {
+                    stage: 'IVB',
+                    reasoning: 'Stage IVB assigned due to M1b disease (liver/splenic parenchymal metastases or other distant organ metastases).'
+                };
+            }
+
+            // Stage III
+            if (tStage.stage === 'T3') {
+                if (tStage.reasoning.includes('extrapelvic peritoneum') && tStage.reasoning.includes('≤2cm')) {
+                    return {
+                        stage: 'IIIA2',
+                        reasoning: 'Stage IIIA2 assigned: T3a disease with extrapelvic peritoneal involvement ≤2cm.'
+                    };
+                } else if (tStage.reasoning.includes('extrapelvic peritoneum') && tStage.reasoning.includes('>2cm')) {
+                    return {
+                        stage: 'IIIB',
+                        reasoning: 'Stage IIIB assigned: T3b disease with extrapelvic peritoneal involvement >2cm.'
+                    };
+                } else if (tStage.reasoning.includes('liver') || tStage.reasoning.includes('splenic')) {
+                    return {
+                        stage: 'IIIC',
+                        reasoning: 'Stage IIIC assigned: T3c disease with liver or splenic capsule involvement.'
+                    };
+                } else {
+                    return {
+                        stage: 'IIIA2',
+                        reasoning: 'Stage IIIA2 assigned: T3 disease with extrapelvic spread.'
+                    };
+                }
+            }
+
+            // Stage IIIA1 (N1 with T1-T2)
+            if (nStage.stage === 'N1' && (tStage.stage.startsWith('T1') || tStage.stage === 'T2')) {
+                return {
+                    stage: 'IIIA1',
+                    reasoning: 'Stage IIIA1 assigned: T1-T2 disease with positive retroperitoneal lymph nodes (N1).'
+                };
+            }
+
+            // Stage II
+            if (tStage.stage === 'T2' && nStage.stage === 'N0') {
+                return {
+                    stage: 'II',
+                    reasoning: 'Stage II assigned: T2 disease with pelvic extension but no nodal involvement.'
+                };
+            }
+
+            // Stage I
+            if (tStage.stage === 'T1a' && nStage.stage === 'N0') {
+                return {
+                    stage: 'IA',
+                    reasoning: 'Stage IA assigned: T1a disease limited to one ovary/tube with intact capsule.'
+                };
+            }
+            if (tStage.stage === 'T1b' && nStage.stage === 'N0') {
+                return {
+                    stage: 'IB',
+                    reasoning: 'Stage IB assigned: T1b disease limited to both ovaries/tubes with intact capsules.'
+                };
+            }
+            if (tStage.stage.startsWith('T1c') && nStage.stage === 'N0') {
+                return {
+                    stage: 'IC',
+                    reasoning: `Stage IC assigned: ${tStage.stage} disease with capsule rupture, surface involvement, or positive cytology.`
+                };
+            }
+
+            return {
+                stage: 'Cannot be determined',
+                reasoning: 'Overall stage cannot be determined based on provided information.'
+            };
+        }
+
+        function getClinicaImplications(overallStage) {
+            const implications = {
+                'IA': 'Excellent prognosis with 5-year survival >90%. Surgery alone may be sufficient for low-grade tumors. Consider fertility-sparing surgery in young patients.',
+                'IB': 'Excellent prognosis with 5-year survival >90%. Bilateral disease but still confined to ovaries/tubes. May require adjuvant chemotherapy.',
+                'IC': 'Good prognosis with 5-year survival 85-90%. Adjuvant chemotherapy typically recommended due to capsule breach or positive cytology.',
+                'II': 'Good prognosis with 5-year survival 70-80%. Pelvic extension present. Standard treatment includes cytoreductive surgery and chemotherapy.',
+                'IIIA1': 'Moderate prognosis with 5-year survival 60-70%. Positive retroperitoneal nodes only. Requires systematic lymphadenectomy and chemotherapy.',
+                'IIIA2': 'Moderate prognosis with 5-year survival 50-60%. Small volume extrapelvic disease. Optimal cytoreduction crucial for outcomes.',
+                'IIIB': 'Moderate prognosis with 5-year survival 40-50%. Larger volume extrapelvic disease. Neoadjuvant chemotherapy may be considered.',
+                'IIIC': 'Moderate prognosis with 5-year survival 30-40%. Liver/splenic capsule involvement. Aggressive cytoreductive surgery needed.',
+                'IVA': 'Poor prognosis with 5-year survival 20-30%. Pleural involvement present. Systemic chemotherapy is primary treatment.',
+                'IVB': 'Poor prognosis with 5-year survival 10-20%. Parenchymal organ metastases. Palliative care considerations important.'
+            };
+
+            return implications[overallStage] || 'Clinical implications depend on specific staging details and patient factors.';
+        }
+
+        function calculateStaging() {
+            const tResult = calculateTStage();
+            const nResult = calculateNStage();
+            const mResult = calculateMStage();
+            const overallResult = calculateOverallStage(tResult, nResult, mResult);
+
+            // Display results
+            document.getElementById('resultT').textContent = tResult.stage;
+            document.getElementById('resultN').textContent = nResult.stage;
+            document.getElementById('resultM').textContent = mResult.stage;
+            document.getElementById('resultStage').textContent = overallResult.stage;
+
+            // Display reasoning
+            const reasoningContent = document.getElementById('reasoningContent');
+            reasoningContent.innerHTML = `
+                <div class="reasoning-item"><strong>T Stage (${tResult.stage}):</strong> ${tResult.reasoning}</div>
+                <div class="reasoning-item"><strong>N Stage (${nResult.stage}):</strong> ${nResult.reasoning}</div>
+                <div class="reasoning-item"><strong>M Stage (${mResult.stage}):</strong> ${mResult.reasoning}</div>
+                <div class="reasoning-item"><strong>Overall Stage (${overallResult.stage}):</strong> ${overallResult.reasoning}</div>
+            `;
+
+            // Display clinical implications
+            const implicationsContent = document.getElementById('implicationsContent');
+            implicationsContent.innerHTML = getClinicaImplications(overallResult.stage);
+
+            // Show results
+            document.getElementById('finalResult').style.display = 'block';
+            document.getElementById('finalResult').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function resetForm() {
+            // Reset all form inputs
+            document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+            document.querySelectorAll('input[type="radio"]').forEach(rb => rb.checked = false);
+            document.querySelectorAll('input[type="number"]').forEach(nb => nb.value = '');
+            document.getElementById('primarySite').selectedIndex = 0;
+
+            // Hide results
+            document.getElementById('finalResult').style.display = 'none';
+        }
+
+        // Initialize form
+        document.addEventListener('DOMContentLoaded', function() {
+            resetForm();
+        });
+    </script>
+</body>
+</html>

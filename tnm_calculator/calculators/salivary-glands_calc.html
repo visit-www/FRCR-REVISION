@@ -1,0 +1,1738 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Salivary Glands Cancer TNM Staging Calculator - AJCC 9th Edition</title>
+    <style>
+        :root {
+            --brand-primary: #e96304;
+            --brand-secondary: #ffc107;
+            --brand-success: #a8d5ba;
+            --brand-neutral: #5E899E;
+            --brand-text-primary: #2c3e50;
+            --brand-text-secondary: #5a6270;
+            --brand-text-light: #8b94a3;
+            --brand-bg-white: #ffffff;
+            --brand-bg-offwhite: #fdfdfb;
+            --brand-border: #c5cad1;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: var(--brand-text-primary);
+            background-color: var(--brand-bg-offwhite);
+            font-size: 16px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+
+        .header {
+            text-align: center;
+            background: linear-gradient(135deg, var(--brand-primary), var(--brand-secondary));
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 8px 25px rgba(233, 99, 4, 0.2);
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.95;
+            margin-bottom: 5px;
+        }
+
+        .calculator-section {
+            background: var(--brand-bg-white);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+            border: 1px solid var(--brand-border);
+        }
+
+        .calculator-form {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+
+        .form-section {
+            border: 2px solid var(--brand-border);
+            border-radius: 12px;
+            padding: 25px;
+            background: var(--brand-bg-offwhite);
+        }
+
+        .section-title {
+            color: var(--brand-primary);
+            font-size: 1.4rem;
+            margin-bottom: 20px;
+            font-weight: 600;
+            border-bottom: 2px solid var(--brand-primary);
+            padding-bottom: 8px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            font-weight: 600;
+            color: var(--brand-text-primary);
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+        }
+
+        .help-text {
+            font-weight: 400;
+            color: var(--brand-text-light);
+            font-size: 0.9rem;
+            display: block;
+            margin-top: 4px;
+        }
+
+        .checkbox-group {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 10px;
+        }
+
+        .checkbox-option {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 12px;
+            background: var(--brand-bg-white);
+            border: 1px solid var(--brand-border);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .checkbox-option:hover {
+            background: #f8f9fa;
+            border-color: var(--brand-primary);
+        }
+
+        .checkbox-option input[type="checkbox"] {
+            margin: 0;
+            transform: scale(1.2);
+        }
+
+        .checkbox-option span {
+            flex: 1;
+            font-size: 1rem;
+            line-height: 1.4;
+        }
+
+        .input-with-unit {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            max-width: 200px;
+        }
+
+        .input-with-unit input {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid var(--brand-border);
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+
+        .input-with-unit input:focus {
+            outline: none;
+            border-color: var(--brand-primary);
+            box-shadow: 0 0 0 3px rgba(233, 99, 4, 0.1);
+        }
+
+        .unit {
+            font-weight: 600;
+            color: var(--brand-text-secondary);
+            font-size: 1rem;
+        }
+
+        .radio-group {
+            display: flex;
+            gap: 20px;
+            margin-top: 10px;
+        }
+
+        .radio-option {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+        }
+
+        .radio-option input[type="radio"] {
+            transform: scale(1.2);
+        }
+
+        .select-dropdown {
+            width: 100%;
+            max-width: 300px;
+            padding: 12px;
+            border: 2px solid var(--brand-border);
+            border-radius: 8px;
+            font-size: 1rem;
+            background: var(--brand-bg-white);
+            transition: border-color 0.3s ease;
+        }
+
+        .select-dropdown:focus {
+            outline: none;
+            border-color: var(--brand-primary);
+            box-shadow: 0 0 0 3px rgba(233, 99, 4, 0.1);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 30px;
+        }
+
+        .btn {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-primary {
+            background: var(--brand-primary);
+            color: white;
+            box-shadow: 0 4px 15px rgba(233, 99, 4, 0.3);
+        }
+
+        .btn-primary:hover {
+            background: #d55a04;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(233, 99, 4, 0.4);
+        }
+
+        .btn-secondary {
+            background: var(--brand-neutral);
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #4a7489;
+            transform: translateY(-2px);
+        }
+
+        .result-card {
+            background: linear-gradient(135deg, var(--brand-success), #c8e6c9);
+            border-radius: 15px;
+            padding: 30px;
+            margin-top: 30px;
+            box-shadow: 0 8px 25px rgba(168, 213, 186, 0.3);
+            display: none;
+        }
+
+        .result-card.show {
+            display: block;
+            animation: slideIn 0.5s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .result-card h2 {
+            color: var(--brand-text-primary);
+            font-size: 1.8rem;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .result-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        .result-item {
+            text-align: center;
+            background: var(--brand-bg-white);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .result-item strong {
+            display: block;
+            color: var(--brand-text-secondary);
+            font-size: 0.9rem;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .result-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--brand-primary);
+        }
+
+        .overall-stage {
+            text-align: center;
+            background: var(--brand-bg-white);
+            padding: 25px;
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 3px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .overall-stage h3 {
+            font-size: 1.5rem;
+            color: var(--brand-text-primary);
+            margin-bottom: 10px;
+        }
+
+        .overall-stage .stage-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--brand-primary);
+        }
+
+        .reasoning-section {
+            background: var(--brand-bg-white);
+            padding: 25px;
+            border-radius: 12px;
+            margin-top: 20px;
+            box-shadow: 0 3px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .reasoning-section h3 {
+            color: var(--brand-primary);
+            font-size: 1.3rem;
+            margin-bottom: 15px;
+            border-bottom: 2px solid var(--brand-primary);
+            padding-bottom: 8px;
+        }
+
+        .reasoning-item {
+            margin-bottom: 15px;
+            padding: 15px;
+            background: var(--brand-bg-offwhite);
+            border-left: 4px solid var(--brand-primary);
+            border-radius: 0 8px 8px 0;
+        }
+
+        .reasoning-item strong {
+            color: var(--brand-primary);
+            font-size: 1.1rem;
+        }
+
+        .clinical-implications {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .clinical-implications h4 {
+            color: #856404;
+            font-size: 1.2rem;
+            margin-bottom: 10px;
+        }
+
+        .clinical-implications p {
+            color: #856404;
+            line-height: 1.6;
+        }
+
+        .reference-section {
+            background: var(--brand-bg-white);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+            border: 1px solid var(--brand-border);
+        }
+
+        .reference-title {
+            color: var(--brand-primary);
+            font-size: 2rem;
+            text-align: center;
+            margin-bottom: 30px;
+            font-weight: 700;
+            border-bottom: 3px solid var(--brand-primary);
+            padding-bottom: 15px;
+        }
+
+        .reference-card {
+            background: var(--brand-bg-offwhite);
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 30px;
+            border: 1px solid var(--brand-border);
+        }
+
+        .reference-subtitle {
+            color: var(--brand-primary);
+            font-size: 1.4rem;
+            margin-bottom: 20px;
+            font-weight: 600;
+            border-bottom: 2px solid var(--brand-primary);
+            padding-bottom: 8px;
+        }
+
+        .mnemonic-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .mnemonic-box {
+            background: var(--brand-bg-white);
+            border: 2px solid var(--brand-primary);
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 3px 15px rgba(233, 99, 4, 0.1);
+        }
+
+        .mnemonic-box h4 {
+            color: var(--brand-primary);
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+            text-align: center;
+            font-weight: 700;
+        }
+
+        .mnemonic-detail {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 10px;
+            padding: 8px;
+            background: var(--brand-bg-offwhite);
+            border-radius: 6px;
+        }
+
+        .mnemonic-letter {
+            background: var(--brand-primary);
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+
+        .staging-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: var(--brand-bg-white);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 3px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .staging-table th {
+            background: var(--brand-primary);
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        .staging-table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid var(--brand-border);
+            vertical-align: top;
+        }
+
+        .staging-table tr:nth-child(even) {
+            background: var(--brand-bg-offwhite);
+        }
+
+        .staging-table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .tips-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+        }
+
+        .tip-card {
+            background: var(--brand-bg-white);
+            border: 1px solid var(--brand-border);
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 3px 15px rgba(0, 0, 0, 0.08);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .tip-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 25px rgba(0, 0, 0, 0.12);
+        }
+
+        .tip-card h4 {
+            color: var(--brand-primary);
+            font-size: 1.1rem;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .tip-card p {
+            color: var(--brand-text-secondary);
+            line-height: 1.5;
+            margin-bottom: 10px;
+        }
+
+        .tip-detail {
+            background: var(--brand-bg-offwhite);
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            color: var(--brand-text-primary);
+            border-left: 3px solid var(--brand-primary);
+        }
+
+        .pitfall-card {
+            background: #fff5f5;
+            border: 1px solid #fed7d7;
+        }
+
+        .pitfall-list {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .pitfall-item {
+            display: flex;
+            gap: 15px;
+            background: var(--brand-bg-white);
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid var(--brand-border);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .pitfall-number {
+            background: #e53e3e;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .pitfall-item strong {
+            color: #e53e3e;
+            font-size: 1.1rem;
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        .pitfall-item p {
+            color: var(--brand-text-secondary);
+            line-height: 1.5;
+        }
+
+        .systematic-steps {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .step-item {
+            display: flex;
+            gap: 15px;
+            background: var(--brand-bg-white);
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid var(--brand-border);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .step-number {
+            background: var(--brand-primary);
+            color: white;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            flex-shrink: 0;
+            font-size: 1.1rem;
+        }
+
+        .step-item strong {
+            color: var(--brand-primary);
+            font-size: 1.1rem;
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        .step-item p {
+            color: var(--brand-text-secondary);
+            line-height: 1.5;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+                gap: 20px;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .header p {
+                font-size: 1rem;
+            }
+
+            .calculator-section,
+            .reference-section {
+                padding: 20px;
+            }
+
+            .form-section {
+                padding: 20px;
+            }
+
+            .result-grid {
+                grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+                gap: 15px;
+            }
+
+            .result-value {
+                font-size: 1.5rem;
+            }
+
+            .overall-stage .stage-value {
+                font-size: 2rem;
+            }
+
+            .mnemonic-grid,
+            .tips-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .button-group {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .btn {
+                width: 100%;
+                max-width: 300px;
+            }
+        }
+
+        .warning-box {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+
+        .warning-box strong {
+            color: #856404;
+        }
+
+        .info-box {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+
+        .info-box strong {
+            color: #0c5460;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>Salivary Glands Cancer TNM Staging Calculator</h1>
+            <p>AJCC 9th Edition - Interactive Clinical Tool</p>
+            <p>For Major and Minor Salivary Gland Malignancies</p>
+        </div>
+
+        <!-- Calculator Section -->
+        <div class="calculator-section">
+            <div class="calculator-form">
+                <!-- Subsite Selection -->
+                <div class="form-section">
+                    <h3 class="section-title">Salivary Gland Location</h3>
+                    <div class="form-group">
+                        <label class="form-label">
+                            <strong>Primary Tumor Location:</strong>
+                            <span class="help-text">Select the primary salivary gland involved</span>
+                        </label>
+                        <select class="select-dropdown" id="subsiteSelect" onchange="updateCalculator()">
+                            <option value="">Select location...</option>
+                            <option value="parotid">Parotid Gland</option>
+                            <option value="submandibular">Submandibular Gland</option>
+                            <option value="sublingual">Sublingual Gland</option>
+                            <option value="minor">Minor Salivary Glands</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- T Stage -->
+                <div class="form-section">
+                    <h3 class="section-title">T Stage: Primary Tumor Assessment</h3>
+
+                    <!-- T4b Features -->
+                    <div class="form-group">
+                        <label class="form-label">
+                            <strong>T4b Features (Unresectable - Very Advanced):</strong>
+                            <span class="help-text">If ANY present = Automatic T4b</span>
+                        </label>
+                        <div class="checkbox-group">
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="t4b_skull_base" onchange="updateCalculator()">
+                                <span>Skull base invasion (except nasopharynx)</span>
+                            </label>
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="t4b_pterygoid" onchange="updateCalculator()">
+                                <span>Pterygoid plates invasion</span>
+                            </label>
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="t4b_carotid" onchange="updateCalculator()">
+                                <span>Carotid artery encasement</span>
+                            </label>
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="t4b_prevertebral" onchange="updateCalculator()">
+                                <span>Prevertebral space invasion</span>
+                            </label>
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="t4b_mediastinal" onchange="updateCalculator()">
+                                <span>Mediastinal structures invasion</span>
+                            </label>
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="t4b_intracranial" onchange="updateCalculator()">
+                                <span>Intracranial invasion</span>
+                            </label>
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="t4b_orbital_apex" onchange="updateCalculator()">
+                                <span>Orbital apex invasion</span>
+                            </label>
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="t4b_masticator" onchange="updateCalculator()">
+                                <span>Masticator space invasion</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- T4a Features -->
+                    <div class="form-group">
+                        <label class="form-label">
+                            <strong>T4a Features (Moderately Advanced - Resectable):</strong>
+                            <span class="help-text">If ANY present (and no T4b) = T4a</span>
+                        </label>
+                        <div class="checkbox-group">
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="t4a_skin" onchange="updateCalculator()">
+                                <span>Skin invasion (dermis)</span>
+                            </label>
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="t4a_mandible" onchange="updateCalculator()">
+                                <span>Mandible invasion</span>
+                            </label>
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="t4a_ear_canal" onchange="updateCalculator()">
+                                <span>External auditory canal invasion</span>
+                            </label>
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="t4a_facial_nerve" onchange="updateCalculator()">
+                                <span>Facial nerve invasion</span>
+                            </label>
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="t4a_bone" onchange="updateCalculator()">
+                                <span>Bone invasion (other than mandible)</span>
+                            </label>
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="t4a_cartilage" onchange="updateCalculator()">
+                                <span>Cartilage invasion</span>
+                            </label>
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="t4a_organ" onchange="updateCalculator()">
+                                <span>Solid organ parenchyma invasion</span>
+                            </label>
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="t4a_named_nerve" onchange="updateCalculator()">
+                                <span>Named nerve invasion</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- T3 Features -->
+                    <div class="form-group">
+                        <label class="form-label">
+                            <strong>T3 Features:</strong>
+                            <span class="help-text">Tumor >4cm OR extraparenchymal extension</span>
+                        </label>
+                        <div class="checkbox-group">
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="t3_extraparenchymal" onchange="updateCalculator()">
+                                <span>Gross extraparenchymal extension (for major salivary glands)</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Tumor Size -->
+                    <div class="form-group">
+                        <label class="form-label">
+                            <strong>Maximum Tumor Dimension:</strong>
+                            <span class="help-text">Measure largest dimension on any imaging plane</span>
+                        </label>
+                        <div class="input-with-unit">
+                            <input type="number" id="tumorSize" step="0.1" min="0" placeholder="e.g., 3.5" onchange="updateCalculator()">
+                            <span class="unit">cm</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- N Stage -->
+                <div class="form-section">
+                    <h3 class="section-title">N Stage: Regional Lymph Node Assessment</h3>
+
+                    <!-- Node Count -->
+                    <div class="form-group">
+                        <label class="form-label">
+                            <strong>Number of Involved Lymph Nodes:</strong>
+                            <span class="help-text">Count all pathologically enlarged nodes</span>
+                        </label>
+                        <div class="input-with-unit">
+                            <input type="number" id="nodeCount" min="0" max="20" placeholder="0" onchange="updateCalculator()">
+                            <span class="unit">nodes</span>
+                        </div>
+                    </div>
+
+                    <!-- Largest Node Size -->
+                    <div class="form-group">
+                        <label class="form-label">
+                            <strong>Largest Lymph Node Size:</strong>
+                            <span class="help-text">Short axis measurement preferred</span>
+                        </label>
+                        <div class="input-with-unit">
+                            <input type="number" id="largestNode" step="0.1" min="0" placeholder="0" onchange="updateCalculator()">
+                            <span class="unit">cm</span>
+                        </div>
+                    </div>
+
+                    <!-- ENE -->
+                    <div class="form-group">
+                        <label class="form-label">
+                            <strong>Extranodal Extension (ENE):</strong>
+                            <span class="help-text">Unequivocal imaging evidence or clinical ENE</span>
+                        </label>
+                        <div class="radio-group">
+                            <label class="radio-option">
+                                <input type="radio" name="ene" value="no" id="eneNo" onchange="updateCalculator()">
+                                <span>No ENE</span>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="ene" value="yes" id="eneYes" onchange="updateCalculator()">
+                                <span>ENE Present</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Assessment Type -->
+                    <div class="form-group">
+                        <label class="form-label">
+                            <strong>Assessment Type:</strong>
+                            <span class="help-text">Clinical (cN) vs Pathological (pN) staging</span>
+                        </label>
+                        <div class="radio-group">
+                            <label class="radio-option">
+                                <input type="radio" name="assessmentType" value="clinical" id="clinicalAssessment" checked onchange="updateCalculator()">
+                                <span>Clinical (cN)</span>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="assessmentType" value="pathological" id="pathologicalAssessment" onchange="updateCalculator()">
+                                <span>Pathological (pN)</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- M Stage -->
+                <div class="form-section">
+                    <h3 class="section-title">M Stage: Distant Metastasis</h3>
+                    <div class="form-group">
+                        <label class="form-label">
+                            <strong>Distant Metastases:</strong>
+                            <span class="help-text">Any metastases beyond regional lymph nodes</span>
+                        </label>
+                        <div class="radio-group">
+                            <label class="radio-option">
+                                <input type="radio" name="metastases" value="M0" id="m0" checked onchange="updateCalculator()">
+                                <span>M0 - No distant metastases</span>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="metastases" value="M1" id="m1" onchange="updateCalculator()">
+                                <span>M1 - Distant metastases present</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Calculate Button -->
+                <div class="button-group">
+                    <button type="button" class="btn btn-primary" onclick="calculateStaging()">
+                        Calculate TNM Stage
+                    </button>
+                    <button type="button" class="btn btn-secondary" onclick="resetCalculator()">
+                        Reset Form
+                    </button>
+                </div>
+            </div>
+
+            <!-- Results -->
+            <div class="result-card" id="finalResult">
+                <h2>TNM Staging Results</h2>
+                <div class="result-grid">
+                    <div class="result-item">
+                        <strong>T Stage</strong>
+                        <div class="result-value" id="resultT">-</div>
+                    </div>
+                    <div class="result-item">
+                        <strong>N Stage</strong>
+                        <div class="result-value" id="resultN">-</div>
+                    </div>
+                    <div class="result-item">
+                        <strong>M Stage</strong>
+                        <div class="result-value" id="resultM">-</div>
+                    </div>
+                </div>
+                
+                <div class="overall-stage">
+                    <h3>Overall Stage</h3>
+                    <div class="stage-value" id="resultStage">-</div>
+                </div>
+
+                <div class="reasoning-section">
+                    <h3>Staging Rationale</h3>
+                    <div id="resultReasoning">
+                        <!-- JavaScript will populate reasoning here -->
+                    </div>
+                </div>
+
+                <div class="clinical-implications" id="clinicalImplications">
+                    <h4>Clinical Implications</h4>
+                    <div id="implicationsText">
+                        <!-- JavaScript will populate implications here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reference Section -->
+        <div class="reference-section">
+            <h2 class="reference-title">Comprehensive Reference Guide</h2>
+
+            <!-- Mnemonics -->
+            <div class="reference-card">
+                <h3 class="reference-subtitle">Mnemonics to Remember</h3>
+                <div class="mnemonic-grid">
+                    <div class="mnemonic-box">
+                        <h4>T4b - "SPACE CAMP"</h4>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">S</div>
+                            <div><strong>Skull base</strong> invasion</div>
+                        </div>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">P</div>
+                            <div><strong>Pterygoid plates</strong> invasion</div>
+                        </div>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">A</div>
+                            <div><strong>Artery</strong> (carotid) encasement</div>
+                        </div>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">C</div>
+                            <div><strong>Cranial</strong> (intracranial) invasion</div>
+                        </div>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">E</div>
+                            <div><strong>Eye</strong> (orbital apex) invasion</div>
+                        </div>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">C</div>
+                            <div><strong>Chew muscles</strong> (masticator space)</div>
+                        </div>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">A</div>
+                            <div><strong>Anterior spine</strong> (prevertebral)</div>
+                        </div>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">M</div>
+                            <div><strong>Mediastinal</strong> structures</div>
+                        </div>
+                    </div>
+
+                    <div class="mnemonic-box">
+                        <h4>T4a - "SAFE BONE"</h4>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">S</div>
+                            <div><strong>Skin</strong> (dermis) invasion</div>
+                        </div>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">A</div>
+                            <div><strong>Auditory canal</strong> (external)</div>
+                        </div>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">F</div>
+                            <div><strong>Facial nerve</strong> invasion</div>
+                        </div>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">E</div>
+                            <div><strong>Ear</strong> canal invasion</div>
+                        </div>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">B</div>
+                            <div><strong>Bone</strong> invasion</div>
+                        </div>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">O</div>
+                            <div><strong>Organ</strong> parenchyma invasion</div>
+                        </div>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">N</div>
+                            <div><strong>Named nerve</strong> invasion</div>
+                        </div>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">E</div>
+                            <div><strong>External</strong> structures</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Size-Based T Staging Table -->
+            <div class="reference-card">
+                <h3 class="reference-subtitle">T Stage Size Criteria</h3>
+                <table class="staging-table">
+                    <thead>
+                        <tr>
+                            <th>T Stage</th>
+                            <th>Size Criteria</th>
+                            <th>Extension Criteria</th>
+                            <th>Key Features</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>T1</strong></td>
+                            <td>≤2 cm</td>
+                            <td>No extraparenchymal extension</td>
+                            <td>Confined to gland</td>
+                        </tr>
+                        <tr>
+                            <td><strong>T2</strong></td>
+                            <td>>2 cm to ≤4 cm</td>
+                            <td>No extraparenchymal extension</td>
+                            <td>Still confined to gland</td>
+                        </tr>
+                        <tr>
+                            <td><strong>T3</strong></td>
+                            <td>>4 cm OR any size</td>
+                            <td>Gross extraparenchymal extension</td>
+                            <td>Beyond gland capsule</td>
+                        </tr>
+                        <tr>
+                            <td><strong>T4a</strong></td>
+                            <td>Any size</td>
+                            <td>Moderately advanced local invasion</td>
+                            <td>Resectable adjacent structures</td>
+                        </tr>
+                        <tr>
+                            <td><strong>T4b</strong></td>
+                            <td>Any size</td>
+                            <td>Very advanced local invasion</td>
+                            <td>Unresectable structures</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- N Staging Comparison -->
+            <div class="reference-card">
+                <h3 class="reference-subtitle">N Stage Criteria (Salivary Gland Specific)</h3>
+                <table class="staging-table">
+                    <thead>
+                        <tr>
+                            <th>N Stage</th>
+                            <th>Node Count</th>
+                            <th>ENE Status</th>
+                            <th>Clinical vs Pathological</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>N0</strong></td>
+                            <td>0 nodes</td>
+                            <td>N/A</td>
+                            <td>Same for both</td>
+                        </tr>
+                        <tr>
+                            <td><strong>N1</strong></td>
+                            <td>1-3 nodes</td>
+                            <td>No ENE</td>
+                            <td>Clinical: imaging/clinical evidence<br>Pathological: definitive pathological</td>
+                        </tr>
+                        <tr>
+                            <td><strong>N2</strong></td>
+                            <td>>3 nodes OR any number</td>
+                            <td>ENE present OR >3 nodes</td>
+                            <td>Clinical: unequivocal imaging/clinical<br>Pathological: definitive pathological</td>
+                        </tr>
+                    </tbody>
+                </table>
+                
+                <div class="info-box">
+                    <strong>Key Difference:</strong> Salivary gland N staging eliminates N2 subcategories and N3 entirely. 
+                    Uses simplified system based on node count (≤3 vs >3) and ENE status.
+                </div>
+            </div>
+
+            <!-- Imaging Tips -->
+            <div class="reference-card">
+                <h3 class="reference-subtitle">Key Imaging Tips</h3>
+                <div class="tips-grid">
+                    <div class="tip-card">
+                        <h4>Extraparenchymal Extension</h4>
+                        <p>Critical for T3 staging in major salivary glands</p>
+                        <div class="tip-detail">
+                            Look for tumor extending beyond the gland capsule into adjacent fat planes or tissues. 
+                            This is particularly important in parotid tumors where extension beyond the capsule 
+                            automatically makes it T3 regardless of size.
+                        </div>
+                    </div>
+
+                    <div class="tip-card">
+                        <h4>Facial Nerve Assessment</h4>
+                        <p>Facial nerve involvement = automatic T4a</p>
+                        <div class="tip-detail">
+                            Look for tumor tracking along the facial nerve course, facial nerve enhancement, 
+                            or clinical facial weakness. MRI with contrast is best for evaluating perineural spread, 
+                            especially in adenoid cystic carcinoma.
+                        </div>
+                    </div>
+
+                    <div class="tip-card">
+                        <h4>Parotid Deep Lobe Assessment</h4>
+                        <p>Deep lobe involvement affects surgical planning</p>
+                        <div class="tip-detail">
+                            Identify the retromandibular vein as a landmark separating superficial and deep lobes. 
+                            Deep lobe tumors may extend toward the parapharyngeal space and require more extensive surgery.
+                        </div>
+                    </div>
+
+                    <div class="tip-card">
+                        <h4>Submandibular Gland Anatomy</h4>
+                        <p>Understand the mylohyoid muscle relationship</p>
+                        <div class="tip-detail">
+                            The submandibular gland wraps around the mylohyoid muscle. The deep portion lies above 
+                            the muscle in the sublingual space, while the superficial portion lies below in the 
+                            submandibular space.
+                        </div>
+                    </div>
+
+                    <div class="tip-card">
+                        <h4>Minor Salivary Gland Tumors</h4>
+                        <p>Most commonly in oral cavity and sinonasal tract</p>
+                        <div class="tip-detail">
+                            Minor salivary gland tumors can arise anywhere in the upper aerodigestive tract. 
+                            They follow the same staging as major salivary glands. Look for submucosal masses 
+                            with characteristic imaging features.
+                        </div>
+                    </div>
+
+                    <div class="tip-card">
+                        <h4>Perineural Invasion Detection</h4>
+                        <p>High-resolution MRI with contrast is essential</p>
+                        <div class="tip-detail">
+                            Look for nerve thickening, enhancement, or loss of normal fat around nerves. 
+                            Adenoid cystic carcinoma has high propensity for perineural spread. 
+                            Trace nerves from skull base to periphery.
+                        </div>
+                    </div>
+
+                    <div class="tip-card">
+                        <h4>ENE Assessment in Nodes</h4>
+                        <p>Look for capsular breakthrough</p>
+                        <div class="tip-detail">
+                            ENE appears as irregular nodal margins, stranding into adjacent fat, or loss of 
+                            normal nodal capsule. CT may show rim enhancement. Size alone is not sufficient 
+                            for ENE diagnosis.
+                        </div>
+                    </div>
+
+                    <div class="tip-card">
+                        <h4>Mandible Invasion Assessment</h4>
+                        <p>Cortical destruction vs pressure erosion</p>
+                        <div class="tip-detail">
+                            True invasion shows cortical destruction with marrow involvement. 
+                            Pressure erosion from large tumors may cause smooth cortical thinning 
+                            but doesn't constitute T4a invasion.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Common Pitfalls -->
+            <div class="reference-card pitfall-card">
+                <h3 class="reference-subtitle">Common Pitfalls to Avoid</h3>
+                <div class="pitfall-list">
+                    <div class="pitfall-item">
+                        <div class="pitfall-number">1</div>
+                        <div>
+                            <strong>Confusing Pleomorphic Adenoma with Malignancy</strong>
+                            <p>Pleomorphic adenomas can be large and heterogeneous. Look for capsular integrity, 
+                            lack of invasion, and characteristic T2 hyperintensity. Malignant transformation 
+                            shows capsular disruption and invasion.</p>
+                        </div>
+                    </div>
+
+                    <div class="pitfall-item">
+                        <div class="pitfall-number">2</div>
+                        <div>
+                            <strong>Missing Extraparenchymal Extension</strong>
+                            <p>Subtle extension beyond gland capsule can be missed on CT. Use MRI when possible 
+                            for better soft tissue contrast. Look carefully at fat planes around the gland.</p>
+                        </div>
+                    </div>
+
+                    <div class="pitfall-item">
+                        <div class="pitfall-number">3</div>
+                        <div>
+                            <strong>Overlooking Perineural Spread</strong>
+                            <p>Adenoid cystic carcinoma commonly spreads along nerves, sometimes far from the primary. 
+                            Always trace the facial nerve and other cranial nerves on MRI with contrast.</p>
+                        </div>
+                    </div>
+
+                    <div class="pitfall-item">
+                        <div class="pitfall-number">4</div>
+                        <div>
+                            <strong>Misclassifying Lymph Node ENE</strong>
+                            <p>Not all irregular node margins represent ENE. True ENE requires definitive 
+                            capsular breakthrough with extension into adjacent tissues. Reactive changes 
+                            can mimic ENE.</p>
+                        </div>
+                    </div>
+
+                    <div class="pitfall-item">
+                        <div class="pitfall-number">5</div>
+                        <div>
+                            <strong>Incorrect Size Measurement</strong>
+                            <p>Always measure the largest dimension in any plane, not just axial. 
+                            Coronal and sagittal measurements may be larger. Include any extraparenchymal 
+                            extension in size measurement.</p>
+                        </div>
+                    </div>
+
+                    <div class="pitfall-item">
+                        <div class="pitfall-number">6</div>
+                        <div>
+                            <strong>Forgetting Bilateral Node Assessment</strong>
+                            <p>While rare in salivary gland cancers, bilateral nodal involvement can occur. 
+                            Always assess both sides of the neck, especially for minor salivary gland tumors 
+                            near midline structures.</p>
+                        </div>
+                    </div>
+
+                    <div class="pitfall-item">
+                        <div class="pitfall-number">7</div>
+                        <div>
+                            <strong>Misunderstanding N2 Criteria</strong>
+                            <p>Salivary gland N staging is simplified compared to other head and neck cancers. 
+                            N2 is defined as >3 nodes OR any ENE, not the complex size-based criteria 
+                            used elsewhere in head and neck.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Systematic Reading Approach -->
+            <div class="reference-card">
+                <h3 class="reference-subtitle">8-Step Systematic Reading Approach</h3>
+                <div class="systematic-steps">
+                    <div class="step-item">
+                        <div class="step-number">1</div>
+                        <div>
+                            <strong>Identify Primary Location</strong>
+                            <p>Determine if tumor arises from parotid, submandibular, sublingual, or minor salivary glands. 
+                            This affects surgical approach and staging considerations.</p>
+                        </div>
+                    </div>
+
+                    <div class="step-item">
+                        <div class="step-number">2</div>
+                        <div>
+                            <strong>Measure Maximum Dimension</strong>
+                            <p>Measure largest tumor dimension in any plane (axial, coronal, or sagittal). 
+                            Include any extraparenchymal extension in the measurement.</p>
+                        </div>
+                    </div>
+
+                    <div class="step-item">
+                        <div class="step-number">3</div>
+                        <div>
+                            <strong>Assess Extraparenchymal Extension</strong>
+                            <p>Look for tumor extension beyond the gland capsule into adjacent fat or tissues. 
+                            This is critical for T3 staging regardless of size.</p>
+                        </div>
+                    </div>
+
+                    <div class="step-item">
+                        <div class="step-number">4</div>
+                        <div>
+                            <strong>Evaluate for T4a Features</strong>
+                            <p>Systematically check for skin, bone, cartilage, facial nerve, or other adjacent 
+                            structure invasion. Any T4a feature makes the tumor at least T4a.</p>
+                        </div>
+                    </div>
+
+                    <div class="step-item">
+                        <div class="step-number">5</div>
+                        <div>
+                            <strong>Screen for T4b Features</strong>
+                            <p>Look for skull base, pterygoid plates, carotid encasement, prevertebral space, 
+                            or other unresectable structure involvement.</p>
+                        </div>
+                    </div>
+
+                    <div class="step-item">
+                        <div class="step-number">6</div>
+                        <div>
+                            <strong>Count and Measure Lymph Nodes</strong>
+                            <p>Count all pathologically enlarged nodes and measure the largest. 
+                            Remember the simplified N staging: ≤3 nodes vs >3 nodes.</p>
+                        </div>
+                    </div>
+
+                    <div class="step-item">
+                        <div class="step-number">7</div>
+                        <div>
+                            <strong>Assess for Extranodal Extension</strong>
+                            <p>Look for irregular nodal margins, capsular breakthrough, and extension into 
+                            adjacent tissues. ENE automatically makes it N2.</p>
+                        </div>
+                    </div>
+
+                    <div class="step-item">
+                        <div class="step-number">8</div>
+                        <div>
+                            <strong>Search for Distant Metastases</strong>
+                            <p>Evaluate lungs, liver, bones, and other distant sites. Consider PET-CT 
+                            for high-grade tumors or when distant disease is suspected.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function updateCalculator() {
+            // This function can be used for real-time updates if needed
+            // Currently, calculation is triggered by the Calculate button
+        }
+
+        function calculateTStage() {
+            // Check T4b features first (highest priority)
+            const t4bFeatures = [
+                't4b_skull_base', 't4b_pterygoid', 't4b_carotid', 't4b_prevertebral',
+                't4b_mediastinal', 't4b_intracranial', 't4b_orbital_apex', 't4b_masticator'
+            ];
+            
+            for (let feature of t4bFeatures) {
+                if (document.getElementById(feature).checked) {
+                    return {
+                        stage: 'T4b',
+                        reasoning: `T4b: Tumor invades unresectable structures (${getCheckedT4bFeatures().join(', ')}). These represent very advanced local disease requiring multimodal therapy.`
+                    };
+                }
+            }
+
+            // Check T4a features
+            const t4aFeatures = [
+                't4a_skin', 't4a_mandible', 't4a_ear_canal', 't4a_facial_nerve',
+                't4a_bone', 't4a_cartilage', 't4a_organ', 't4a_named_nerve'
+            ];
+            
+            for (let feature of t4aFeatures) {
+                if (document.getElementById(feature).checked) {
+                    return {
+                        stage: 'T4a',
+                        reasoning: `T4a: Tumor invades moderately advanced adjacent structures (${getCheckedT4aFeatures().join(', ')}). These are resectable but require extensive surgery.`
+                    };
+                }
+            }
+
+            // Get tumor size
+            const tumorSize = parseFloat(document.getElementById('tumorSize').value) || 0;
+            const extraparenchymal = document.getElementById('t3_extraparenchymal').checked;
+
+            // Check T3 criteria
+            if (tumorSize > 4 || extraparenchymal) {
+                let reasoning = 'T3: ';
+                let reasons = [];
+                if (tumorSize > 4) reasons.push(`tumor size >4 cm (${tumorSize} cm)`);
+                if (extraparenchymal) reasons.push('gross extraparenchymal extension');
+                reasoning += reasons.join(' and ') + '. This represents locally advanced disease.';
+                
+                return {
+                    stage: 'T3',
+                    reasoning: reasoning
+                };
+            }
+
+            // Size-based staging for T1-T2
+            if (tumorSize === 0) {
+                return {
+                    stage: 'TX',
+                    reasoning: 'TX: Primary tumor cannot be assessed - tumor size not provided.'
+                };
+            } else if (tumorSize <= 2) {
+                return {
+                    stage: 'T1',
+                    reasoning: `T1: Tumor ≤2 cm (${tumorSize} cm) without extraparenchymal extension. This represents early-stage disease with excellent prognosis.`
+                };
+            } else if (tumorSize <= 4) {
+                return {
+                    stage: 'T2',
+                    reasoning: `T2: Tumor >2 cm but ≤4 cm (${tumorSize} cm) without extraparenchymal extension. This represents intermediate-stage disease.`
+                };
+            }
+
+            return {
+                stage: 'TX',
+                reasoning: 'TX: Unable to determine T stage with provided information.'
+            };
+        }
+
+        function calculateNStage() {
+            const nodeCount = parseInt(document.getElementById('nodeCount').value) || 0;
+            const largestNode = parseFloat(document.getElementById('largestNode').value) || 0;
+            const enePresent = document.getElementById('eneYes').checked;
+            const isPathological = document.getElementById('pathologicalAssessment').checked;
+            const assessmentType = isPathological ? 'p' : 'c';
+
+            if (nodeCount === 0 && largestNode === 0) {
+                return {
+                    stage: `${assessmentType}N0`,
+                    reasoning: `${assessmentType}N0: No regional lymph node involvement detected.`
+                };
+            }
+
+            // N2 criteria: >3 nodes OR any ENE
+            if (nodeCount > 3 || enePresent) {
+                let reasoning = `${assessmentType}N2: `;
+                let reasons = [];
+                if (nodeCount > 3) reasons.push(`>3 involved nodes (${nodeCount} nodes)`);
+                if (enePresent) reasons.push('extranodal extension present');
+                reasoning += reasons.join(' and ');
+                reasoning += isPathological ? 
+                    '. Definitive pathological evidence of advanced nodal disease.' :
+                    '. Unequivocal imaging/clinical evidence of advanced nodal disease.';
+                
+                return {
+                    stage: `${assessmentType}N2`,
+                    reasoning: reasoning
+                };
+            }
+
+            // N1 criteria: 1-3 nodes without ENE
+            if (nodeCount >= 1 && nodeCount <= 3 && !enePresent) {
+                return {
+                    stage: `${assessmentType}N1`,
+                    reasoning: `${assessmentType}N1: ${nodeCount} involved lymph node(s) without extranodal extension. This represents limited regional disease.`
+                };
+            }
+
+            return {
+                stage: `${assessmentType}NX`,
+                reasoning: `${assessmentType}NX: Regional lymph nodes cannot be adequately assessed.`
+            };
+        }
+
+        function calculateMStage() {
+            const m1Selected = document.getElementById('m1').checked;
+            
+            if (m1Selected) {
+                return {
+                    stage: 'cM1',
+                    reasoning: 'cM1: Distant metastases present. This represents Stage IV disease regardless of T and N status.'
+                };
+            } else {
+                return {
+                    stage: 'cM0',
+                    reasoning: 'cM0: No distant metastases detected on imaging.'
+                };
+            }
+        }
+
+        function calculateOverallStage(tStage, nStage, mStage) {
+            // Extract base stages without prefixes
+            const tBase = tStage.replace(/^[cp]?/, '');
+            const nBase = nStage.replace(/^[cp]?/, '');
+            const mBase = mStage.replace(/^[cp]?/, '');
+
+            // Any M1 = Stage IV
+            if (mBase === 'M1') {
+                return {
+                    stage: 'IV',
+                    reasoning: 'Stage IV: Any distant metastases (M1) automatically results in Stage IV disease.'
+                };
+            }
+
+            // Stage 0: Tis N0 M0
+            if (tBase === 'Tis' && nBase === 'N0' && mBase === 'M0') {
+                return {
+                    stage: '0',
+                    reasoning: 'Stage 0: Carcinoma in situ without nodal involvement or distant metastases.'
+                };
+            }
+
+            // Stage I: T1 N0 M0
+            if (tBase === 'T1' && nBase === 'N0' && mBase === 'M0') {
+                return {
+                    stage: 'I',
+                    reasoning: 'Stage I: Small tumor (≤2 cm) confined to salivary gland without nodal involvement.'
+                };
+            }
+
+            // Stage II: T2 N0 M0
+            if (tBase === 'T2' && nBase === 'N0' && mBase === 'M0') {
+                return {
+                    stage: 'II',
+                    reasoning: 'Stage II: Intermediate-sized tumor (2-4 cm) confined to salivary gland without nodal involvement.'
+                };
+            }
+
+            // Stage IIIA: T1-T2 N1 M0 OR T3-T4 N0 M0
+            if (((tBase === 'T1' || tBase === 'T2') && nBase === 'N1' && mBase === 'M0') ||
+                ((tBase === 'T3' || tBase === 'T4a' || tBase === 'T4b') && nBase === 'N0' && mBase === 'M0')) {
+                let reasoning = 'Stage IIIA: ';
+                if ((tBase === 'T1' || tBase === 'T2') && nBase === 'N1') {
+                    reasoning += 'Early T stage with limited regional nodal involvement.';
+                } else {
+                    reasoning += 'Advanced local disease without nodal involvement.';
+                }
+                return {
+                    stage: 'IIIA',
+                    reasoning: reasoning
+                };
+            }
+
+            // Stage IIIB: T1-T2 N2 M0 OR T3-T4 N1-N2 M0
+            if (((tBase === 'T1' || tBase === 'T2') && nBase === 'N2' && mBase === 'M0') ||
+                ((tBase === 'T3' || tBase === 'T4a' || tBase === 'T4b') && (nBase === 'N1' || nBase === 'N2') && mBase === 'M0')) {
+                return {
+                    stage: 'IIIB',
+                    reasoning: 'Stage IIIB: Advanced regional disease with either early T stage and extensive nodal involvement, or advanced T stage with any nodal involvement.'
+                };
+            }
+
+            // Default for unclear cases
+            return {
+                stage: 'Unable to determine',
+                reasoning: 'Unable to determine overall stage with current T, N, M combination.'
+            };
+        }
+
+        function getCheckedT4bFeatures() {
+            const features = {
+                't4b_skull_base': 'skull base invasion',
+                't4b_pterygoid': 'pterygoid plates invasion',
+                't4b_carotid': 'carotid encasement',
+                't4b_prevertebral': 'prevertebral space invasion',
+                't4b_mediastinal': 'mediastinal structures invasion',
+                't4b_intracranial': 'intracranial invasion',
+                't4b_orbital_apex': 'orbital apex invasion',
+                't4b_masticator': 'masticator space invasion'
+            };
+            
+            return Object.keys(features)
+                .filter(id => document.getElementById(id).checked)
+                .map(id => features[id]);
+        }
+
+        function getCheckedT4aFeatures() {
+            const features = {
+                't4a_skin': 'skin invasion',
+                't4a_mandible': 'mandible invasion',
+                't4a_ear_canal': 'ear canal invasion',
+                't4a_facial_nerve': 'facial nerve invasion',
+                't4a_bone': 'bone invasion',
+                't4a_cartilage': 'cartilage invasion',
+                't4a_organ': 'organ parenchyma invasion',
+                't4a_named_nerve': 'named nerve invasion'
+            };
+            
+            return Object.keys(features)
+                .filter(id => document.getElementById(id).checked)
+                .map(id => features[id]);
+        }
+
+        function getClinicalImplications(overallStage, tStage, nStage, mStage) {
+            const stage = overallStage.replace(/[AB]$/, ''); // Remove A/B suffixes for general implications
+            
+            const implications = {
+                '0': 'Carcinoma in situ requires complete excision with clear margins. Excellent prognosis with appropriate treatment.',
+                'I': 'Early-stage disease with excellent prognosis. Surgery alone is typically curative. 5-year survival >95%.',
+                'II': 'Early-stage disease with very good prognosis. Surgery is primary treatment. Consider adjuvant therapy based on histologic grade.',
+                'III': 'Locally advanced disease requiring multimodal therapy. Surgery with adjuvant radiation therapy typically recommended. Neck dissection often indicated.',
+                'IV': 'Advanced disease requiring aggressive multimodal treatment. May include surgery, radiation, and systemic therapy. Prognosis depends on extent of disease.',
+                'Unable to determine': 'Complete staging information needed for treatment planning. Consider additional imaging or tissue sampling.'
+            };
+
+            let implication = implications[stage] || implications['Unable to determine'];
+            
+            // Add specific considerations
+            if (tStage.includes('T4b')) {
+                implication += ' T4b disease may be unresectable and require primary chemoradiation.';
+            }
+            
+            if (nStage.includes('N2')) {
+                implication += ' Extensive nodal disease indicates need for comprehensive neck treatment.';
+            }
+            
+            if (mStage.includes('M1')) {
+                implication += ' Distant metastases require systemic therapy evaluation and palliative care consideration.';
+            }
+
+            return implication;
+        }
+
+        function calculateStaging() {
+            const tResult = calculateTStage();
+            const nResult = calculateNStage();
+            const mResult = calculateMStage();
+            const overallResult = calculateOverallStage(tResult.stage, nResult.stage, mResult.stage);
+
+            // Display results
+            document.getElementById('resultT').textContent = tResult.stage;
+            document.getElementById('resultN').textContent = nResult.stage;
+            document.getElementById('resultM').textContent = mResult.stage;
+            document.getElementById('resultStage').textContent = overallResult.stage;
+
+            // Display reasoning
+            const reasoningHtml = `
+                <div class="reasoning-item">
+                    <strong>T Stage (${tResult.stage}):</strong> ${tResult.reasoning}
+                </div>
+                <div class="reasoning-item">
+                    <strong>N Stage (${nResult.stage}):</strong> ${nResult.reasoning}
+                </div>
+                <div class="reasoning-item">
+                    <strong>M Stage (${mResult.stage}):</strong> ${mResult.reasoning}
+                </div>
+                <div class="reasoning-item">
+                    <strong>Overall Stage (${overallResult.stage}):</strong> ${overallResult.reasoning}
+                </div>
+            `;
+            document.getElementById('resultReasoning').innerHTML = reasoningHtml;
+
+            // Display clinical implications
+            const implications = getClinicalImplications(overallResult.stage, tResult.stage, nResult.stage, mResult.stage);
+            document.getElementById('implicationsText').innerHTML = `<p>${implications}</p>`;
+
+            // Show results
+            document.getElementById('finalResult').classList.add('show');
+            
+            // Scroll to results
+            document.getElementById('finalResult').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        function resetCalculator() {
+            // Reset all form inputs
+            document.getElementById('subsiteSelect').value = '';
+            document.getElementById('tumorSize').value = '';
+            document.getElementById('nodeCount').value = '';
+            document.getElementById('largestNode').value = '';
+            
+            // Reset all checkboxes
+            const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+            checkboxes.forEach(cb => cb.checked = false);
+            
+            // Reset radio buttons to default
+            document.getElementById('eneNo').checked = true;
+            document.getElementById('clinicalAssessment').checked = true;
+            document.getElementById('m0').checked = true;
+            
+            // Hide results
+            document.getElementById('finalResult').classList.remove('show');
+            
+            // Scroll to top
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // Initialize calculator
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set default values
+            document.getElementById('eneNo').checked = true;
+            document.getElementById('clinicalAssessment').checked = true;
+            document.getElementById('m0').checked = true;
+        });
+    </script>
+</body>
+</html>

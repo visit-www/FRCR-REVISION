@@ -1,0 +1,1559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Primary Bone Tumours TNM Staging Calculator - AJCC 9th Edition</title>
+    <style>
+        :root {
+            --brand-primary: #e96304;
+            --brand-secondary: #ffc107;
+            --brand-success: #a8d5ba;
+            --brand-neutral: #5E899E;
+            --brand-text-primary: #2c3e50;
+            --brand-text-secondary: #5a6270;
+            --brand-text-light: #8b94a3;
+            --brand-bg-white: #ffffff;
+            --brand-bg-offwhite: #fdfdfb;
+            --brand-border: #c5cad1;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: var(--brand-text-primary);
+            background-color: var(--brand-bg-offwhite);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+
+        .header {
+            text-align: center;
+            background: linear-gradient(135deg, var(--brand-primary), var(--brand-neutral));
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 8px 25px rgba(233, 99, 4, 0.2);
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            margin-bottom: 5px;
+        }
+
+        .calculator-section {
+            background: var(--brand-bg-white);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+            border: 1px solid var(--brand-border);
+        }
+
+        .calculator-form {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+
+        .form-section {
+            border: 2px solid var(--brand-border);
+            border-radius: 10px;
+            padding: 20px;
+            background: var(--brand-bg-offwhite);
+        }
+
+        .section-title {
+            color: var(--brand-primary);
+            font-size: 1.4rem;
+            margin-bottom: 15px;
+            font-weight: 600;
+            border-bottom: 2px solid var(--brand-primary);
+            padding-bottom: 5px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--brand-text-primary);
+        }
+
+        .help-text {
+            font-weight: 400;
+            color: var(--brand-text-light);
+            font-size: 0.9rem;
+            display: block;
+            margin-top: 2px;
+        }
+
+        .checkbox-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .checkbox-option {
+            display: flex;
+            align-items: center;
+            padding: 8px;
+            background: var(--brand-bg-white);
+            border: 1px solid var(--brand-border);
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .checkbox-option:hover {
+            background: #f8f9fa;
+            border-color: var(--brand-primary);
+        }
+
+        .checkbox-option input[type="checkbox"] {
+            margin-right: 10px;
+            transform: scale(1.2);
+        }
+
+        .input-with-unit {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .input-with-unit input {
+            flex: 1;
+            padding: 10px;
+            border: 2px solid var(--brand-border);
+            border-radius: 5px;
+            font-size: 1rem;
+        }
+
+        .input-with-unit input:focus {
+            outline: none;
+            border-color: var(--brand-primary);
+        }
+
+        .unit {
+            font-weight: 600;
+            color: var(--brand-text-secondary);
+        }
+
+        .radio-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 10px;
+        }
+
+        .radio-option {
+            display: flex;
+            align-items: center;
+            padding: 8px 15px;
+            background: var(--brand-bg-white);
+            border: 2px solid var(--brand-border);
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .radio-option:hover {
+            border-color: var(--brand-primary);
+        }
+
+        .radio-option input[type="radio"] {
+            margin-right: 8px;
+        }
+
+        .radio-option input[type="radio"]:checked + span {
+            color: var(--brand-primary);
+            font-weight: 600;
+        }
+
+        select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid var(--brand-border);
+            border-radius: 5px;
+            font-size: 1rem;
+            background: var(--brand-bg-white);
+        }
+
+        select:focus {
+            outline: none;
+            border-color: var(--brand-primary);
+        }
+
+        .calculate-btn {
+            background: linear-gradient(135deg, var(--brand-primary), var(--brand-neutral));
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(233, 99, 4, 0.3);
+        }
+
+        .calculate-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(233, 99, 4, 0.4);
+        }
+
+        .reset-btn {
+            background: var(--brand-text-light);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+
+        .result-card {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border: 2px solid var(--brand-success);
+            border-radius: 15px;
+            padding: 25px;
+            margin-top: 20px;
+            box-shadow: 0 5px 20px rgba(168, 213, 186, 0.2);
+        }
+
+        .result-card h2 {
+            color: var(--brand-primary);
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .result-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .result-item {
+            text-align: center;
+            padding: 15px;
+            background: var(--brand-bg-white);
+            border-radius: 10px;
+            border: 1px solid var(--brand-border);
+        }
+
+        .result-item strong {
+            display: block;
+            color: var(--brand-text-secondary);
+            margin-bottom: 5px;
+        }
+
+        .result-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--brand-primary);
+        }
+
+        .overall-stage {
+            text-align: center;
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--brand-primary);
+            margin: 20px 0;
+            padding: 15px;
+            background: var(--brand-bg-white);
+            border-radius: 10px;
+            border: 2px solid var(--brand-primary);
+        }
+
+        .reasoning-section {
+            background: var(--brand-bg-white);
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 15px;
+            border-left: 4px solid var(--brand-primary);
+        }
+
+        .reasoning-section h3 {
+            color: var(--brand-primary);
+            margin-bottom: 15px;
+        }
+
+        .reasoning-item {
+            margin-bottom: 10px;
+            padding: 10px;
+            background: var(--brand-bg-offwhite);
+            border-radius: 5px;
+            border-left: 3px solid var(--brand-secondary);
+        }
+
+        .clinical-implications {
+            background: #e8f5e8;
+            border: 1px solid var(--brand-success);
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 15px;
+        }
+
+        .clinical-implications h3 {
+            color: var(--brand-text-primary);
+            margin-bottom: 15px;
+        }
+
+        .reference-section {
+            background: var(--brand-bg-white);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+            border: 1px solid var(--brand-border);
+        }
+
+        .reference-title {
+            color: var(--brand-primary);
+            font-size: 2rem;
+            margin-bottom: 25px;
+            text-align: center;
+            font-weight: 700;
+        }
+
+        .reference-card {
+            background: var(--brand-bg-offwhite);
+            border-radius: 10px;
+            padding: 25px;
+            margin-bottom: 25px;
+            border: 1px solid var(--brand-border);
+        }
+
+        .reference-subtitle {
+            color: var(--brand-primary);
+            font-size: 1.4rem;
+            margin-bottom: 20px;
+            font-weight: 600;
+            border-bottom: 2px solid var(--brand-primary);
+            padding-bottom: 5px;
+        }
+
+        .mnemonic-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .mnemonic-box {
+            background: var(--brand-bg-white);
+            border: 2px solid var(--brand-secondary);
+            border-radius: 10px;
+            padding: 20px;
+        }
+
+        .mnemonic-box h4 {
+            color: var(--brand-primary);
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+        }
+
+        .mnemonic-detail {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .mnemonic-letter {
+            background: var(--brand-secondary);
+            color: var(--brand-text-primary);
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            margin-right: 10px;
+        }
+
+        .staging-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: var(--brand-bg-white);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .staging-table th {
+            background: var(--brand-primary);
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        .staging-table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid var(--brand-border);
+        }
+
+        .staging-table tr:nth-child(even) {
+            background: var(--brand-bg-offwhite);
+        }
+
+        .tips-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .tip-card {
+            background: var(--brand-bg-white);
+            border: 1px solid var(--brand-border);
+            border-radius: 10px;
+            padding: 20px;
+            border-left: 4px solid var(--brand-success);
+        }
+
+        .tip-card h4 {
+            color: var(--brand-primary);
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+        }
+
+        .tip-detail {
+            color: var(--brand-text-secondary);
+            font-size: 0.9rem;
+            margin-top: 10px;
+            font-style: italic;
+        }
+
+        .pitfall-card {
+            background: #fff5f5;
+            border: 1px solid #fed7d7;
+        }
+
+        .pitfall-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .pitfall-item {
+            display: flex;
+            align-items: flex-start;
+            background: var(--brand-bg-white);
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #e53e3e;
+        }
+
+        .pitfall-number {
+            background: #e53e3e;
+            color: white;
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            margin-right: 15px;
+            flex-shrink: 0;
+        }
+
+        .systematic-steps {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .step-item {
+            display: flex;
+            align-items: flex-start;
+            background: var(--brand-bg-white);
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 4px solid var(--brand-primary);
+        }
+
+        .step-number {
+            background: var(--brand-primary);
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            margin-right: 15px;
+            flex-shrink: 0;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .header p {
+                font-size: 1rem;
+            }
+
+            .result-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .mnemonic-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .tips-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>Primary Bone Tumours TNM Staging Calculator</h1>
+            <p>AJCC 9th Edition - Interactive Staging Tool</p>
+            <p>For Radiology Registrars & FRCR Exam Preparation</p>
+        </div>
+
+        <!-- Calculator Section -->
+        <div class="calculator-section">
+            <div class="calculator-form">
+                <!-- Anatomical Site Selection -->
+                <div class="form-section">
+                    <h3 class="section-title">Anatomical Site Classification</h3>
+                    <div class="form-group">
+                        <label class="form-label">
+                            <strong>Primary Tumor Location:</strong>
+                            <span class="help-text">Select the anatomical site - this determines staging criteria</span>
+                        </label>
+                        <select id="anatomicalSite" onchange="updateCalculator()">
+                            <option value="">Select anatomical site...</option>
+                            <option value="appendicular">Appendicular Skeleton, Trunk, Skull, and Facial Bones</option>
+                            <option value="pelvis">Pelvis</option>
+                            <option value="spine">Spine</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- T Stage Section -->
+                <div class="form-section">
+                    <h3 class="section-title">T Stage: Primary Tumor Assessment</h3>
+
+                    <!-- Appendicular/Trunk/Skull T Stage -->
+                    <div id="appendicularTStage" class="hidden">
+                        <div class="form-group">
+                            <label class="form-label">
+                                <strong>T3 Features (Skip Metastases):</strong>
+                                <span class="help-text">If present = Automatic T3</span>
+                            </label>
+                            <div class="checkbox-group">
+                                <label class="checkbox-option">
+                                    <input type="checkbox" id="t3_skip_mets" onchange="updateCalculator()">
+                                    <span>Discontinuous tumors in the primary bone site (skip metastases)</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">
+                                <strong>Tumor Size (maximum dimension):</strong>
+                                <span class="help-text">Measure on any imaging plane - critical for T1/T2 distinction</span>
+                            </label>
+                            <div class="input-with-unit">
+                                <input type="number" id="tumorSizeAppendicular" step="0.1" min="0" placeholder="e.g., 3.5" onchange="updateCalculator()">
+                                <span class="unit">cm</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Pelvis T Stage -->
+                    <div id="pelvisTStage" class="hidden">
+                        <div class="form-group">
+                            <label class="form-label">
+                                <strong>T4b Features (Most Advanced):</strong>
+                                <span class="help-text">If ANY present = Automatic T4b</span>
+                            </label>
+                            <div class="checkbox-group">
+                                <label class="checkbox-option">
+                                    <input type="checkbox" id="t4b_iliac_vessels" onchange="updateCalculator()">
+                                    <span>Tumor encasement of external iliac vessels</span>
+                                </label>
+                                <label class="checkbox-option">
+                                    <input type="checkbox" id="t4b_tumor_thrombus" onchange="updateCalculator()">
+                                    <span>Gross tumor thrombus in major pelvic vessels</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">
+                                <strong>T4a Features:</strong>
+                                <span class="help-text">If present = T4a (unless T4b features present)</span>
+                            </label>
+                            <div class="checkbox-group">
+                                <label class="checkbox-option">
+                                    <input type="checkbox" id="t4a_sacroiliac_medial" onchange="updateCalculator()">
+                                    <span>Tumor involves sacroiliac joint and extends medial to sacral neuroforamen</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">
+                                <strong>Pelvic Segment Involvement:</strong>
+                                <span class="help-text">Count involved segments (ilium, ischium, pubis, sacrum)</span>
+                            </label>
+                            <select id="pelvicSegments" onchange="updateCalculator()">
+                                <option value="">Select number of segments...</option>
+                                <option value="1">One pelvic segment</option>
+                                <option value="2">Two pelvic segments</option>
+                                <option value="3">Three pelvic segments</option>
+                                <option value="4">Crosses sacroiliac joint</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">
+                                <strong>Extraosseous Extension:</strong>
+                                <span class="help-text">Extension beyond bone cortex into soft tissues</span>
+                            </label>
+                            <div class="radio-group">
+                                <label class="radio-option">
+                                    <input type="radio" name="extraosseous" value="no" onchange="updateCalculator()">
+                                    <span>No extraosseous extension</span>
+                                </label>
+                                <label class="radio-option">
+                                    <input type="radio" name="extraosseous" value="yes" onchange="updateCalculator()">
+                                    <span>Extraosseous extension present</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">
+                                <strong>Tumor Size (maximum dimension):</strong>
+                                <span class="help-text">For T1a/T1b, T2a/T2b, T3a/T3b subdivision</span>
+                            </label>
+                            <div class="input-with-unit">
+                                <input type="number" id="tumorSizePelvis" step="0.1" min="0" placeholder="e.g., 3.5" onchange="updateCalculator()">
+                                <span class="unit">cm</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Spine T Stage -->
+                    <div id="spineTStage" class="hidden">
+                        <div class="form-group">
+                            <label class="form-label">
+                                <strong>T4b Features (Most Advanced):</strong>
+                                <span class="help-text">If present = Automatic T4b</span>
+                            </label>
+                            <div class="checkbox-group">
+                                <label class="checkbox-option">
+                                    <input type="checkbox" id="t4b_vascular_invasion" onchange="updateCalculator()">
+                                    <span>Gross vascular invasion or tumor thrombus in great vessels</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">
+                                <strong>T4a Features:</strong>
+                                <span class="help-text">If present = T4a (unless T4b features present)</span>
+                            </label>
+                            <div class="checkbox-group">
+                                <label class="checkbox-option">
+                                    <input type="checkbox" id="t4a_spinal_canal" onchange="updateCalculator()">
+                                    <span>Extension into the spinal canal</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">
+                                <strong>Vertebral Segment Involvement:</strong>
+                                <span class="help-text">Count involved vertebral segments</span>
+                            </label>
+                            <select id="vertebralSegments" onchange="updateCalculator()">
+                                <option value="">Select involvement pattern...</option>
+                                <option value="1-2">1-2 adjacent vertebral segments</option>
+                                <option value="3">3 adjacent vertebral segments</option>
+                                <option value="4+">4+ adjacent vertebral segments</option>
+                                <option value="nonadjacent">Any nonadjacent vertebral segments</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Histologic Grade -->
+                <div class="form-section">
+                    <h3 class="section-title">Histologic Grade Assessment</h3>
+                    <div class="form-group">
+                        <label class="form-label">
+                            <strong>Tumor Grade:</strong>
+                            <span class="help-text">Critical for final staging - G1 = low grade, G2/G3 = high grade</span>
+                        </label>
+                        <div class="radio-group">
+                            <label class="radio-option">
+                                <input type="radio" name="grade" value="low" onchange="updateCalculator()">
+                                <span>Low Grade (G1)</span>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="grade" value="high" onchange="updateCalculator()">
+                                <span>High Grade (G2/G3)</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- N Stage Section -->
+                <div class="form-section">
+                    <h3 class="section-title">N Stage: Regional Lymph Nodes</h3>
+                    <div class="form-group">
+                        <label class="form-label">
+                            <strong>Regional Lymph Node Involvement:</strong>
+                            <span class="help-text">Lymph node metastasis is rare in bone sarcomas</span>
+                        </label>
+                        <div class="radio-group">
+                            <label class="radio-option">
+                                <input type="radio" name="nodes" value="N0" onchange="updateCalculator()">
+                                <span>N0 - No regional lymph node metastasis</span>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="nodes" value="N1" onchange="updateCalculator()">
+                                <span>N1 - Regional lymph node metastasis</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- M Stage Section -->
+                <div class="form-section">
+                    <h3 class="section-title">M Stage: Distant Metastasis</h3>
+                    <div class="form-group">
+                        <label class="form-label">
+                            <strong>Distant Metastasis:</strong>
+                            <span class="help-text">Check chest CT and bone scan/PET for metastases</span>
+                        </label>
+                        <div class="radio-group">
+                            <label class="radio-option">
+                                <input type="radio" name="metastasis" value="M0" onchange="updateCalculator()">
+                                <span>M0 - No distant metastasis</span>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="metastasis" value="M1a" onchange="updateCalculator()">
+                                <span>M1a - Lung metastasis</span>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="metastasis" value="M1b" onchange="updateCalculator()">
+                                <span>M1b - Bone or other distant sites</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Calculate Button -->
+                <div style="text-align: center; margin-top: 30px;">
+                    <button class="calculate-btn" onclick="calculateStaging()">Calculate TNM Stage</button>
+                    <button class="reset-btn" onclick="resetCalculator()">Reset</button>
+                </div>
+            </div>
+
+            <!-- Results Card -->
+            <div class="result-card hidden" id="finalResult">
+                <h2>Final Staging Result</h2>
+                <div class="result-grid">
+                    <div class="result-item">
+                        <strong>T Stage</strong>
+                        <div class="result-value" id="resultT">-</div>
+                    </div>
+                    <div class="result-item">
+                        <strong>N Stage</strong>
+                        <div class="result-value" id="resultN">-</div>
+                    </div>
+                    <div class="result-item">
+                        <strong>M Stage</strong>
+                        <div class="result-value" id="resultM">-</div>
+                    </div>
+                    <div class="result-item">
+                        <strong>Grade</strong>
+                        <div class="result-value" id="resultGrade">-</div>
+                    </div>
+                </div>
+                <div class="overall-stage">
+                    Overall Stage: <span id="resultStage">-</span>
+                </div>
+                
+                <div class="reasoning-section">
+                    <h3>Staging Rationale</h3>
+                    <div id="resultReasoning">
+                        <!-- JavaScript will populate this -->
+                    </div>
+                </div>
+
+                <div class="clinical-implications">
+                    <h3>Clinical Implications</h3>
+                    <div id="clinicalImplications">
+                        <!-- JavaScript will populate this -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reference Section -->
+        <div class="reference-section">
+            <h2 class="reference-title">Comprehensive Reference Guide</h2>
+
+            <!-- Mnemonics -->
+            <div class="reference-card">
+                <h3 class="reference-subtitle">Mnemonics to Remember</h3>
+                <div class="mnemonic-grid">
+                    <div class="mnemonic-box">
+                        <h4>Pelvis T4b - "VEIN"</h4>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">V</div>
+                            <div>Vessel encasement (external iliac)</div>
+                        </div>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">E</div>
+                            <div>External iliac involvement</div>
+                        </div>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">I</div>
+                            <div>Intravascular tumor thrombus</div>
+                        </div>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">N</div>
+                            <div>No resectability (unresectable)</div>
+                        </div>
+                    </div>
+
+                    <div class="mnemonic-box">
+                        <h4>Spine T4 - "CAVE"</h4>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">C</div>
+                            <div>Canal extension (spinal)</div>
+                        </div>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">A</div>
+                            <div>Aorta/great vessel invasion</div>
+                        </div>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">V</div>
+                            <div>Vascular invasion (gross)</div>
+                        </div>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">E</div>
+                            <div>Extension beyond resectable limits</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Size-Based T Staging -->
+            <div class="reference-card">
+                <h3 class="reference-subtitle">T Stage Size Cutoffs by Site</h3>
+                <table class="staging-table">
+                    <thead>
+                        <tr>
+                            <th>Anatomical Site</th>
+                            <th>T1</th>
+                            <th>T2</th>
+                            <th>T3/T4</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Appendicular/Trunk/Skull</strong></td>
+                            <td>≤8cm</td>
+                            <td>>8cm</td>
+                            <td>T3: Skip metastases in primary bone</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Pelvis</strong></td>
+                            <td>T1a: ≤8cm (1 segment, no extraosseous)<br>T1b: >8cm (1 segment, no extraosseous)</td>
+                            <td>T2a: ≤8cm (1 segment + extraosseous OR 2 segments)<br>T2b: >8cm (1 segment + extraosseous OR 2 segments)</td>
+                            <td>T3: 2 segments + extraosseous<br>T4: 3+ segments or sacroiliac joint</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Spine</strong></td>
+                            <td>1-2 adjacent segments</td>
+                            <td>3 adjacent segments</td>
+                            <td>T3: 4+ adjacent OR any nonadjacent<br>T4: Spinal canal or vascular invasion</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- N Staging Comparison -->
+            <div class="reference-card">
+                <h3 class="reference-subtitle">N Stage Classification</h3>
+                <table class="staging-table">
+                    <thead>
+                        <tr>
+                            <th>N Stage</th>
+                            <th>Definition</th>
+                            <th>Clinical Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>NX</strong></td>
+                            <td>Regional lymph nodes cannot be assessed</td>
+                            <td>Rarely appropriate - consider N0 unless clear involvement</td>
+                        </tr>
+                        <tr>
+                            <td><strong>N0</strong></td>
+                            <td>No regional lymph node metastasis</td>
+                            <td>Most common - lymph node involvement rare in bone sarcomas</td>
+                        </tr>
+                        <tr>
+                            <td><strong>N1</strong></td>
+                            <td>Regional lymph node metastasis</td>
+                            <td>Uncommon but indicates poor prognosis</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Imaging Tips -->
+            <div class="reference-card">
+                <h3 class="reference-subtitle">Key Imaging Tips</h3>
+                <div class="tips-grid">
+                    <div class="tip-card">
+                        <h4>MRI for Local Staging</h4>
+                        <p>MRI is the gold standard for local staging of bone sarcomas</p>
+                        <div class="tip-detail">Use T1, T2, and fat-suppressed sequences. Measure maximum dimension in any plane for T staging.</div>
+                    </div>
+
+                    <div class="tip-card">
+                        <h4>Skip Metastases Recognition</h4>
+                        <p>Look for discontinuous tumor deposits within the same bone</p>
+                        <div class="tip-detail">These appear as separate enhancing masses within the primary bone, not continuous with main tumor.</div>
+                    </div>
+
+                    <div class="tip-card">
+                        <h4>Pelvic Segment Identification</h4>
+                        <p>Learn the four pelvic segments: ilium, ischium, pubis, sacrum</p>
+                        <div class="tip-detail">Count segments involved to determine T stage. Sacroiliac joint crossing = T4.</div>
+                    </div>
+
+                    <div class="tip-card">
+                        <h4>Extraosseous Extension</h4>
+                        <p>Assess soft tissue extension beyond bone cortex</p>
+                        <div class="tip-detail">Critical for pelvic staging. Use fat-suppressed sequences to detect subtle extension.</div>
+                    </div>
+
+                    <div class="tip-card">
+                        <h4>Spinal Canal Assessment</h4>
+                        <p>Carefully evaluate for spinal canal extension in spine tumors</p>
+                        <div class="tip-detail">Any extension into spinal canal = T4a. Use sagittal T2 and axial T1 post-contrast.</div>
+                    </div>
+
+                    <div class="tip-card">
+                        <h4>Vascular Involvement</h4>
+                        <p>Look for vessel encasement or tumor thrombus</p>
+                        <div class="tip-detail">Use contrast-enhanced sequences. >270° encasement suggests unresectability.</div>
+                    </div>
+
+                    <div class="tip-card">
+                        <h4>Chest CT for Metastases</h4>
+                        <p>Dedicated chest CT essential for staging workup</p>
+                        <div class="tip-detail">Lung is most common metastatic site. Use thin-section CT without contrast.</div>
+                    </div>
+
+                    <div class="tip-card">
+                        <h4>Bone Scan/PET Correlation</h4>
+                        <p>Whole-body imaging to detect bone metastases</p>
+                        <div class="tip-detail">PET-CT increasingly used. Correlate with anatomical imaging for accurate staging.</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Common Pitfalls -->
+            <div class="reference-card pitfall-card">
+                <h3 class="reference-subtitle">Common Pitfalls to Avoid</h3>
+                <div class="pitfall-list">
+                    <div class="pitfall-item">
+                        <div class="pitfall-number">1</div>
+                        <div>
+                            <strong>Confusing anatomical sites</strong>
+                            <p>Different T staging criteria apply to appendicular, pelvic, and spinal sites. Always identify the correct anatomical location first before applying staging criteria.</p>
+                        </div>
+                    </div>
+
+                    <div class="pitfall-item">
+                        <div class="pitfall-number">2</div>
+                        <div>
+                            <strong>Missing skip metastases</strong>
+                            <p>Skip metastases appear as separate tumor deposits within the same bone. These automatically make the tumor T3 regardless of size, significantly affecting staging.</p>
+                        </div>
+                    </div>
+
+                    <div class="pitfall-item">
+                        <div class="pitfall-number">3</div>
+                        <div>
+                            <strong>Incorrect pelvic segment counting</strong>
+                            <p>Learn the four pelvic segments (ilium, ischium, pubis, sacrum). Miscounting segments leads to incorrect T staging in pelvic tumors.</p>
+                        </div>
+                    </div>
+
+                    <div class="pitfall-item">
+                        <div class="pitfall-number">4</div>
+                        <div>
+                            <strong>Overlooking extraosseous extension</strong>
+                            <p>Subtle soft tissue extension beyond bone cortex significantly affects pelvic T staging. Use fat-suppressed sequences to detect minimal extension.</p>
+                        </div>
+                    </div>
+
+                    <div class="pitfall-item">
+                        <div class="pitfall-number">5</div>
+                        <div>
+                            <strong>Ignoring grade in final staging</strong>
+                            <p>Histologic grade is crucial for final stage grouping. Low-grade and high-grade tumors with identical TNM have different overall stages and prognoses.</p>
+                        </div>
+                    </div>
+
+                    <div class="pitfall-item">
+                        <div class="pitfall-number">6</div>
+                        <div>
+                            <strong>Assuming lymph node involvement</strong>
+                            <p>Lymph node metastases are rare in bone sarcomas. Don't overcall reactive nodes as metastatic - requires histologic confirmation.</p>
+                        </div>
+                    </div>
+
+                    <div class="pitfall-item">
+                        <div class="pitfall-number">7</div>
+                        <div>
+                            <strong>Inadequate metastatic workup</strong>
+                            <p>Always include chest CT and bone scan/PET in staging workup. Missing pulmonary metastases significantly understages the patient.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Systematic Reading Approach -->
+            <div class="reference-card">
+                <h3 class="reference-subtitle">8-Step Systematic Reading Approach</h3>
+                <div class="systematic-steps">
+                    <div class="step-item">
+                        <div class="step-number">1</div>
+                        <div>
+                            <strong>Identify Anatomical Site</strong>
+                            <p>Determine if tumor is in appendicular skeleton, pelvis, or spine. This determines which T staging criteria to apply.</p>
+                        </div>
+                    </div>
+
+                    <div class="step-item">
+                        <div class="step-number">2</div>
+                        <div>
+                            <strong>Measure Maximum Dimension</strong>
+                            <p>Measure tumor in all three planes on MRI. Record the maximum dimension - critical for T staging in all sites.</p>
+                        </div>
+                    </div>
+
+                    <div class="step-item">
+                        <div class="step-number">3</div>
+                        <div>
+                            <strong>Assess for Skip Metastases</strong>
+                            <p>Look for discontinuous tumor deposits within the primary bone. If present, automatically T3 regardless of size.</p>
+                        </div>
+                    </div>
+
+                    <div class="step-item">
+                        <div class="step-number">4</div>
+                        <div>
+                            <strong>Evaluate Local Extension</strong>
+                            <p>For pelvis: count segments and assess extraosseous extension. For spine: count vertebral segments and check spinal canal. For appendicular: assess cortical breakthrough.</p>
+                        </div>
+                    </div>
+
+                    <div class="step-item">
+                        <div class="step-number">5</div>
+                        <div>
+                            <strong>Check for Vascular Involvement</strong>
+                            <p>Look for vessel encasement or tumor thrombus, especially in pelvic and spinal tumors. This indicates T4b disease.</p>
+                        </div>
+                    </div>
+
+                    <div class="step-item">
+                        <div class="step-number">6</div>
+                        <div>
+                            <strong>Assess Regional Lymph Nodes</strong>
+                            <p>Examine regional lymph nodes, but remember metastases are rare in bone sarcomas. Don't overcall reactive nodes.</p>
+                        </div>
+                    </div>
+
+                    <div class="step-item">
+                        <div class="step-number">7</div>
+                        <div>
+                            <strong>Evaluate for Distant Metastases</strong>
+                            <p>Review chest CT for pulmonary metastases and bone scan/PET for skeletal metastases. Lung is the most common site.</p>
+                        </div>
+                    </div>
+
+                    <div class="step-item">
+                        <div class="step-number">8</div>
+                        <div>
+                            <strong>Correlate with Histology</strong>
+                            <p>Obtain histologic grade (low vs high) and tumor type. Grade significantly affects final stage grouping and prognosis.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function updateCalculator() {
+            const site = document.getElementById('anatomicalSite').value;
+            
+            // Show/hide appropriate T staging sections
+            document.getElementById('appendicularTStage').classList.add('hidden');
+            document.getElementById('pelvisTStage').classList.add('hidden');
+            document.getElementById('spineTStage').classList.add('hidden');
+            
+            if (site === 'appendicular') {
+                document.getElementById('appendicularTStage').classList.remove('hidden');
+            } else if (site === 'pelvis') {
+                document.getElementById('pelvisTStage').classList.remove('hidden');
+            } else if (site === 'spine') {
+                document.getElementById('spineTStage').classList.remove('hidden');
+            }
+        }
+
+        function calculateTStageAppendicular() {
+            const skipMets = document.getElementById('t3_skip_mets').checked;
+            const tumorSize = parseFloat(document.getElementById('tumorSizeAppendicular').value) || 0;
+            
+            if (skipMets) {
+                return {
+                    stage: 'T3',
+                    reason: 'T3: Discontinuous tumors in the primary bone site (skip metastases) - automatically T3 regardless of size'
+                };
+            }
+            
+            if (tumorSize <= 8) {
+                return {
+                    stage: 'T1',
+                    reason: `T1: Tumor ≤8cm in greatest dimension (${tumorSize}cm)`
+                };
+            } else if (tumorSize > 8) {
+                return {
+                    stage: 'T2',
+                    reason: `T2: Tumor >8cm in greatest dimension (${tumorSize}cm)`
+                };
+            }
+            
+            return {
+                stage: 'TX',
+                reason: 'TX: Primary tumor cannot be assessed - insufficient information'
+            };
+        }
+
+        function calculateTStagePelvis() {
+            const t4bIliac = document.getElementById('t4b_iliac_vessels').checked;
+            const t4bThrombus = document.getElementById('t4b_tumor_thrombus').checked;
+            const t4aSacroiliac = document.getElementById('t4a_sacroiliac_medial').checked;
+            const segments = document.getElementById('pelvicSegments').value;
+            const extraosseous = document.querySelector('input[name="extraosseous"]:checked')?.value;
+            const tumorSize = parseFloat(document.getElementById('tumorSizePelvis').value) || 0;
+            
+            // T4b features
+            if (t4bIliac || t4bThrombus) {
+                let reasons = [];
+                if (t4bIliac) reasons.push('tumor encasement of external iliac vessels');
+                if (t4bThrombus) reasons.push('gross tumor thrombus in major pelvic vessels');
+                return {
+                    stage: 'T4b',
+                    reason: `T4b: ${reasons.join(' and ')} - unresectable disease`
+                };
+            }
+            
+            // T4a features
+            if (t4aSacroiliac || segments === '3' || segments === '4') {
+                if (t4aSacroiliac) {
+                    return {
+                        stage: 'T4a',
+                        reason: 'T4a: Tumor involves sacroiliac joint and extends medial to sacral neuroforamen'
+                    };
+                }
+                if (segments === '3') {
+                    return {
+                        stage: 'T4a',
+                        reason: 'T4a: Tumor spanning three pelvic segments'
+                    };
+                }
+                if (segments === '4') {
+                    return {
+                        stage: 'T4a',
+                        reason: 'T4a: Tumor crossing the sacroiliac joint'
+                    };
+                }
+            }
+            
+            // T3 features
+            if (segments === '2' && extraosseous === 'yes') {
+                const sizeDesignation = tumorSize <= 8 ? 'a' : 'b';
+                return {
+                    stage: `T3${sizeDesignation}`,
+                    reason: `T3${sizeDesignation}: Tumor spanning two pelvic segments with extraosseous extension (${tumorSize}cm)`
+                };
+            }
+            
+            // T2 features
+            if ((segments === '1' && extraosseous === 'yes') || (segments === '2' && extraosseous === 'no')) {
+                const sizeDesignation = tumorSize <= 8 ? 'a' : 'b';
+                let reason = segments === '1' ? 
+                    'confined to one pelvic segment with extraosseous extension' :
+                    'confined to two segments without extraosseous extension';
+                return {
+                    stage: `T2${sizeDesignation}`,
+                    reason: `T2${sizeDesignation}: Tumor ${reason} (${tumorSize}cm)`
+                };
+            }
+            
+            // T1 features
+            if (segments === '1' && extraosseous === 'no') {
+                const sizeDesignation = tumorSize <= 8 ? 'a' : 'b';
+                return {
+                    stage: `T1${sizeDesignation}`,
+                    reason: `T1${sizeDesignation}: Tumor confined to one pelvic segment with no extraosseous extension (${tumorSize}cm)`
+                };
+            }
+            
+            return {
+                stage: 'TX',
+                reason: 'TX: Primary tumor cannot be assessed - insufficient information'
+            };
+        }
+
+        function calculateTStageSpine() {
+            const t4bVascular = document.getElementById('t4b_vascular_invasion').checked;
+            const t4aCanal = document.getElementById('t4a_spinal_canal').checked;
+            const segments = document.getElementById('vertebralSegments').value;
+            
+            // T4b features
+            if (t4bVascular) {
+                return {
+                    stage: 'T4b',
+                    reason: 'T4b: Evidence of gross vascular invasion or tumor thrombus in the great vessels'
+                };
+            }
+            
+            // T4a features
+            if (t4aCanal) {
+                return {
+                    stage: 'T4a',
+                    reason: 'T4a: Extension into the spinal canal'
+                };
+            }
+            
+            // T3 features
+            if (segments === '4+' || segments === 'nonadjacent') {
+                const reason = segments === '4+' ? 
+                    'four or more adjacent vertebral segments' :
+                    'any nonadjacent vertebral segments';
+                return {
+                    stage: 'T3',
+                    reason: `T3: Tumor confined to ${reason}`
+                };
+            }
+            
+            // T2 features
+            if (segments === '3') {
+                return {
+                    stage: 'T2',
+                    reason: 'T2: Tumor confined to three adjacent vertebral segments'
+                };
+            }
+            
+            // T1 features
+            if (segments === '1-2') {
+                return {
+                    stage: 'T1',
+                    reason: 'T1: Tumor confined to one vertebral segment or two adjacent vertebral segments'
+                };
+            }
+            
+            return {
+                stage: 'TX',
+                reason: 'TX: Primary tumor cannot be assessed - insufficient information'
+            };
+        }
+
+        function calculateNStage() {
+            const nodes = document.querySelector('input[name="nodes"]:checked')?.value;
+            
+            if (nodes === 'N0') {
+                return {
+                    stage: 'N0',
+                    reason: 'N0: No regional lymph node metastasis'
+                };
+            } else if (nodes === 'N1') {
+                return {
+                    stage: 'N1',
+                    reason: 'N1: Regional lymph node metastasis present'
+                };
+            }
+            
+            return {
+                stage: 'NX',
+                reason: 'NX: Regional lymph nodes cannot be assessed'
+            };
+        }
+
+        function calculateMStage() {
+            const metastasis = document.querySelector('input[name="metastasis"]:checked')?.value;
+            
+            if (metastasis === 'M0') {
+                return {
+                    stage: 'M0',
+                    reason: 'M0: No distant metastasis'
+                };
+            } else if (metastasis === 'M1a') {
+                return {
+                    stage: 'M1a',
+                    reason: 'M1a: Lung metastasis present'
+                };
+            } else if (metastasis === 'M1b') {
+                return {
+                    stage: 'M1b',
+                    reason: 'M1b: Bone or other distant sites metastasis'
+                };
+            }
+            
+            return {
+                stage: 'MX',
+                reason: 'MX: Distant metastasis cannot be assessed'
+            };
+        }
+
+        function calculateOverallStage(tStage, nStage, mStage, grade) {
+            // Extract base T stage (remove a/b suffixes)
+            const baseT = tStage.replace(/[ab]$/, '');
+            
+            // M1 disease
+            if (mStage === 'M1a') {
+                return {
+                    stage: 'IVA',
+                    reason: 'Stage IVA: Any T, N0, M1a (lung metastasis)'
+                };
+            }
+            
+            if (mStage === 'M1b' || nStage === 'N1') {
+                return {
+                    stage: 'IVB',
+                    reason: `Stage IVB: ${mStage === 'M1b' ? 'M1b (bone/other distant metastasis)' : 'N1 (regional lymph node metastasis)'}`
+                };
+            }
+            
+            // M0 disease - depends on T stage and grade
+            if (mStage === 'M0' && nStage === 'N0') {
+                if (grade === 'low') {
+                    if (baseT === 'T1') {
+                        return {
+                            stage: 'IA',
+                            reason: 'Stage IA: T1, N0, M0, Low Grade'
+                        };
+                    } else if (baseT === 'T2' || baseT === 'T3') {
+                        return {
+                            stage: 'IB',
+                            reason: `Stage IB: ${baseT}, N0, M0, Low Grade`
+                        };
+                    }
+                } else if (grade === 'high') {
+                    if (baseT === 'T1') {
+                        return {
+                            stage: 'IIA',
+                            reason: 'Stage IIA: T1, N0, M0, High Grade'
+                        };
+                    } else if (baseT === 'T2') {
+                        return {
+                            stage: 'IIB',
+                            reason: 'Stage IIB: T2, N0, M0, High Grade'
+                        };
+                    } else if (baseT === 'T3') {
+                        return {
+                            stage: 'III',
+                            reason: 'Stage III: T3, N0, M0, High Grade'
+                        };
+                    }
+                }
+            }
+            
+            return {
+                stage: 'Cannot determine',
+                reason: 'Insufficient information to determine overall stage'
+            };
+        }
+
+        function getClinicaImplications(stage, tStage, grade) {
+            const implications = [];
+            
+            // Stage-specific implications
+            if (stage === 'IA' || stage === 'IB') {
+                implications.push('• Early-stage disease with good prognosis');
+                implications.push('• Wide surgical resection is typically curative');
+                implications.push('• Low-grade tumors have excellent outcomes with surgery alone');
+            } else if (stage === 'IIA' || stage === 'IIB') {
+                implications.push('• High-grade localized disease');
+                implications.push('• Multimodal therapy typically required');
+                implications.push('• Neoadjuvant chemotherapy often considered');
+            } else if (stage === 'III') {
+                implications.push('• High-grade disease with skip metastases or large size');
+                implications.push('• Complex surgical planning required');
+                implications.push('• Aggressive multimodal therapy indicated');
+            } else if (stage === 'IVA') {
+                implications.push('• Metastatic disease to lungs');
+                implications.push('• Systemic therapy primary treatment');
+                implications.push('• Pulmonary metastasectomy may be considered if limited disease');
+            } else if (stage === 'IVB') {
+                implications.push('• Advanced metastatic disease');
+                implications.push('• Palliative care considerations');
+                implications.push('• Systemic therapy for symptom control');
+            }
+            
+            // T-stage specific implications
+            if (tStage.includes('T4')) {
+                implications.push('• T4 disease indicates locally advanced tumor');
+                implications.push('• Resectability assessment crucial');
+                implications.push('• Multidisciplinary team evaluation essential');
+            }
+            
+            // Grade-specific implications
+            if (grade === 'high') {
+                implications.push('• High-grade histology indicates aggressive behavior');
+                implications.push('• Higher risk of metastasis');
+                implications.push('• Chemotherapy typically indicated');
+            } else if (grade === 'low') {
+                implications.push('• Low-grade histology has better prognosis');
+                implications.push('• Surgery often primary treatment');
+                implications.push('• Lower risk of metastasis');
+            }
+            
+            return implications;
+        }
+
+        function calculateStaging() {
+            const site = document.getElementById('anatomicalSite').value;
+            const grade = document.querySelector('input[name="grade"]:checked')?.value;
+            
+            if (!site) {
+                alert('Please select an anatomical site first.');
+                return;
+            }
+            
+            let tResult;
+            if (site === 'appendicular') {
+                tResult = calculateTStageAppendicular();
+            } else if (site === 'pelvis') {
+                tResult = calculateTStagePelvis();
+            } else if (site === 'spine') {
+                tResult = calculateTStageSpine();
+            }
+            
+            const nResult = calculateNStage();
+            const mResult = calculateMStage();
+            const overallResult = calculateOverallStage(tResult.stage, nResult.stage, mResult.stage, grade);
+            const implications = getClinicaImplications(overallResult.stage, tResult.stage, grade);
+            
+            // Display results
+            document.getElementById('resultT').textContent = tResult.stage;
+            document.getElementById('resultN').textContent = nResult.stage;
+            document.getElementById('resultM').textContent = mResult.stage;
+            document.getElementById('resultGrade').textContent = grade ? (grade === 'low' ? 'Low (G1)' : 'High (G2/G3)') : 'Not specified';
+            document.getElementById('resultStage').textContent = overallResult.stage;
+            
+            // Display reasoning
+            const reasoningDiv = document.getElementById('resultReasoning');
+            reasoningDiv.innerHTML = `
+                <div class="reasoning-item"><strong>T Stage:</strong> ${tResult.reason}</div>
+                <div class="reasoning-item"><strong>N Stage:</strong> ${nResult.reason}</div>
+                <div class="reasoning-item"><strong>M Stage:</strong> ${mResult.reason}</div>
+                <div class="reasoning-item"><strong>Overall Stage:</strong> ${overallResult.reason}</div>
+            `;
+            
+            // Display clinical implications
+            const implicationsDiv = document.getElementById('clinicalImplications');
+            implicationsDiv.innerHTML = implications.join('<br>');
+            
+            // Show results
+            document.getElementById('finalResult').classList.remove('hidden');
+            
+            // Scroll to results
+            document.getElementById('finalResult').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function resetCalculator() {
+            // Reset all form inputs
+            document.getElementById('anatomicalSite').value = '';
+            
+            // Reset checkboxes
+            const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+            checkboxes.forEach(cb => cb.checked = false);
+            
+            // Reset radio buttons
+            const radios = document.querySelectorAll('input[type="radio"]');
+            radios.forEach(radio => radio.checked = false);
+            
+            // Reset number inputs
+            const numbers = document.querySelectorAll('input[type="number"]');
+            numbers.forEach(num => num.value = '');
+            
+            // Reset selects
+            const selects = document.querySelectorAll('select');
+            selects.forEach(select => select.value = '');
+            
+            // Hide all T staging sections
+            document.getElementById('appendicularTStage').classList.add('hidden');
+            document.getElementById('pelvisTStage').classList.add('hidden');
+            document.getElementById('spineTStage').classList.add('hidden');
+            
+            // Hide results
+            document.getElementById('finalResult').classList.add('hidden');
+        }
+
+        // Initialize calculator
+        document.addEventListener('DOMContentLoaded', function() {
+            updateCalculator();
+        });
+    </script>
+</body>
+</html>

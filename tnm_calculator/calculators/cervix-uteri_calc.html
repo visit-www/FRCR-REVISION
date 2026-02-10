@@ -1,0 +1,1304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cervix Uteri Cancer TNM Staging Calculator - FIGO 2018</title>
+    <style>
+        :root {
+            --brand-primary: #e96304;
+            --brand-secondary: #ffc107;
+            --brand-success: #a8d5ba;
+            --brand-neutral: #5E899E;
+            --brand-text-primary: #2c3e50;
+            --brand-text-secondary: #5a6270;
+            --brand-text-light: #8b94a3;
+            --brand-bg-white: #ffffff;
+            --brand-bg-offwhite: #fdfdfb;
+            --brand-border: #c5cad1;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: var(--brand-text-primary);
+            background-color: var(--brand-bg-offwhite);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+
+        .header {
+            text-align: center;
+            background: linear-gradient(135deg, var(--brand-primary), var(--brand-neutral));
+            color: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(233, 99, 4, 0.2);
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .calculator-section {
+            background: var(--brand-bg-white);
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            border: 1px solid var(--brand-border);
+        }
+
+        .calculator-form {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+
+        .form-section {
+            border: 1px solid var(--brand-border);
+            border-radius: 8px;
+            padding: 20px;
+            background: var(--brand-bg-offwhite);
+        }
+
+        .section-title {
+            color: var(--brand-primary);
+            font-size: 1.4rem;
+            margin-bottom: 15px;
+            font-weight: 600;
+            border-bottom: 2px solid var(--brand-primary);
+            padding-bottom: 8px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--brand-text-primary);
+        }
+
+        .help-text {
+            font-weight: 400;
+            color: var(--brand-text-light);
+            font-size: 0.9rem;
+            display: block;
+            margin-top: 4px;
+        }
+
+        .checkbox-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .checkbox-option {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px;
+            background: var(--brand-bg-white);
+            border: 1px solid var(--brand-border);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .checkbox-option:hover {
+            background: #f8f9fa;
+            border-color: var(--brand-primary);
+        }
+
+        .checkbox-option input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: var(--brand-primary);
+        }
+
+        .input-with-unit {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .input-with-unit input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid var(--brand-border);
+            border-radius: 6px;
+            font-size: 1rem;
+        }
+
+        .unit {
+            font-weight: 600;
+            color: var(--brand-text-secondary);
+        }
+
+        .radio-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 10px;
+        }
+
+        .radio-option {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+        }
+
+        .radio-option input[type="radio"] {
+            width: 18px;
+            height: 18px;
+            accent-color: var(--brand-primary);
+        }
+
+        .calculate-button {
+            background: var(--brand-primary);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 20px;
+        }
+
+        .calculate-button:hover {
+            background: #d55a04;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(233, 99, 4, 0.3);
+        }
+
+        .reset-button {
+            background: var(--brand-neutral);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+
+        .result-card {
+            background: var(--brand-bg-white);
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            border: 1px solid var(--brand-border);
+            margin-top: 20px;
+        }
+
+        .result-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .result-item {
+            text-align: center;
+            padding: 15px;
+            background: var(--brand-bg-offwhite);
+            border-radius: 8px;
+            border: 1px solid var(--brand-border);
+        }
+
+        .result-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--brand-primary);
+            margin-top: 5px;
+        }
+
+        .overall-stage {
+            text-align: center;
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--brand-primary);
+            margin: 20px 0;
+            padding: 15px;
+            background: var(--brand-bg-offwhite);
+            border-radius: 8px;
+            border: 2px solid var(--brand-primary);
+        }
+
+        .reasoning-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid var(--brand-primary);
+            margin-top: 20px;
+        }
+
+        .reasoning-section h4 {
+            color: var(--brand-primary);
+            margin-bottom: 10px;
+        }
+
+        .clinical-implications {
+            background: var(--brand-success);
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            color: #2d5a3d;
+        }
+
+        .reference-section {
+            background: var(--brand-bg-white);
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            border: 1px solid var(--brand-border);
+        }
+
+        .reference-title {
+            color: var(--brand-primary);
+            font-size: 2rem;
+            margin-bottom: 25px;
+            text-align: center;
+            font-weight: 700;
+        }
+
+        .reference-card {
+            background: var(--brand-bg-offwhite);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 25px;
+            border: 1px solid var(--brand-border);
+        }
+
+        .reference-subtitle {
+            color: var(--brand-primary);
+            font-size: 1.3rem;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        .mnemonic-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .mnemonic-box {
+            background: var(--brand-bg-white);
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid var(--brand-border);
+        }
+
+        .mnemonic-box h4 {
+            color: var(--brand-primary);
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+        }
+
+        .mnemonic-detail {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .mnemonic-letter {
+            background: var(--brand-primary);
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .staging-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        .staging-table th,
+        .staging-table td {
+            border: 1px solid var(--brand-border);
+            padding: 12px;
+            text-align: left;
+        }
+
+        .staging-table th {
+            background: var(--brand-primary);
+            color: white;
+            font-weight: 600;
+        }
+
+        .staging-table tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+
+        .tips-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+        }
+
+        .tip-card {
+            background: var(--brand-bg-white);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid var(--brand-border);
+            border-left: 4px solid var(--brand-secondary);
+        }
+
+        .tip-card h4 {
+            color: var(--brand-primary);
+            margin-bottom: 8px;
+            font-size: 1rem;
+        }
+
+        .tip-detail {
+            font-size: 0.9rem;
+            color: var(--brand-text-secondary);
+            margin-top: 8px;
+            font-style: italic;
+        }
+
+        .pitfall-card {
+            background: #fff5f5;
+            border: 1px solid #feb2b2;
+        }
+
+        .pitfall-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .pitfall-item {
+            display: flex;
+            gap: 15px;
+            background: var(--brand-bg-white);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid var(--brand-border);
+        }
+
+        .pitfall-number {
+            background: #dc3545;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .systematic-steps {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .step-item {
+            display: flex;
+            gap: 15px;
+            background: var(--brand-bg-white);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid var(--brand-border);
+        }
+
+        .step-number {
+            background: var(--brand-neutral);
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .result-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .mnemonic-grid,
+            .tips-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 10px;
+            border-radius: 6px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>Cervix Uteri Cancer Staging Calculator</h1>
+            <p>FIGO 2018 Classification with AJCC TNM Correlation | Interactive Clinical Tool for Radiologists</p>
+        </div>
+
+        <!-- Calculator Section -->
+        <div class="calculator-section">
+            <h2 style="color: var(--brand-primary); margin-bottom: 20px; text-align: center;">Interactive Staging Calculator</h2>
+            
+            <div class="calculator-form">
+                <!-- T Stage Section -->
+                <div class="form-section">
+                    <h3 class="section-title">T Stage: Primary Tumor Assessment</h3>
+
+                    <!-- Stage IV Features -->
+                    <div class="form-group">
+                        <label class="form-label">
+                            <strong>Stage IVA Features (Bladder/Rectal Invasion):</strong>
+                            <span class="help-text">If ANY present = Automatic Stage IVA</span>
+                        </label>
+                        <div class="checkbox-group">
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="bladder_invasion" onchange="updateCalculator()">
+                                <span>Bladder mucosal invasion (confirmed by cystoscopy/biopsy)</span>
+                            </label>
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="rectal_invasion" onchange="updateCalculator()">
+                                <span>Rectal mucosal invasion (confirmed by proctoscopy/biopsy)</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Stage III Features -->
+                    <div class="form-group">
+                        <label class="form-label">
+                            <strong>Stage III Features:</strong>
+                            <span class="help-text">Extension beyond cervix with specific criteria</span>
+                        </label>
+                        <div class="checkbox-group">
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="lower_vagina" onchange="updateCalculator()">
+                                <span>Extension to lower 1/3 of vagina (Stage IIIA)</span>
+                            </label>
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="pelvic_wall" onchange="updateCalculator()">
+                                <span>Extension to pelvic sidewall (Stage IIIB)</span>
+                            </label>
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="hydronephrosis" onchange="updateCalculator()">
+                                <span>Hydronephrosis or non-functioning kidney (Stage IIIB)</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Stage II Features -->
+                    <div class="form-group">
+                        <label class="form-label">
+                            <strong>Stage II Features:</strong>
+                            <span class="help-text">Extension beyond cervix but not to pelvic wall</span>
+                        </label>
+                        <div class="checkbox-group">
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="parametrial_invasion" onchange="updateCalculator()">
+                                <span>Parametrial invasion (Stage IIB)</span>
+                            </label>
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="upper_vagina" onchange="updateCalculator()">
+                                <span>Extension to upper 2/3 of vagina without parametrial invasion (Stage IIA)</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Tumor Size -->
+                    <div class="form-group">
+                        <label class="form-label">
+                            <strong>Maximum Tumor Dimension:</strong>
+                            <span class="help-text">Measure greatest dimension on any imaging plane</span>
+                        </label>
+                        <div class="input-with-unit">
+                            <input type="number" id="tumorSize" step="0.1" min="0" placeholder="e.g., 3.5" onchange="updateCalculator()">
+                            <span class="unit">cm</span>
+                        </div>
+                    </div>
+
+                    <!-- Stromal Invasion Depth -->
+                    <div class="form-group">
+                        <label class="form-label">
+                            <strong>Stromal Invasion Depth:</strong>
+                            <span class="help-text">For microscopic disease assessment (Stage IA)</span>
+                        </label>
+                        <div class="input-with-unit">
+                            <input type="number" id="invasionDepth" step="0.1" min="0" placeholder="e.g., 3.0" onchange="updateCalculator()">
+                            <span class="unit">mm</span>
+                        </div>
+                    </div>
+
+                    <!-- Microscopic vs Clinical -->
+                    <div class="form-group">
+                        <label class="form-label">
+                            <strong>Disease Visibility:</strong>
+                            <span class="help-text">Can tumor be seen clinically/on imaging?</span>
+                        </label>
+                        <div class="radio-group">
+                            <label class="radio-option">
+                                <input type="radio" name="visibility" value="microscopic" onchange="updateCalculator()">
+                                <span>Microscopic only (not visible clinically)</span>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="visibility" value="clinical" onchange="updateCalculator()">
+                                <span>Clinically visible lesion</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- N Stage Section -->
+                <div class="form-section">
+                    <h3 class="section-title">N Stage: Regional Lymph Node Assessment</h3>
+
+                    <!-- Lymph Node Involvement -->
+                    <div class="form-group">
+                        <label class="form-label">
+                            <strong>Lymph Node Metastases:</strong>
+                            <span class="help-text">Based on imaging, biopsy, or surgical findings</span>
+                        </label>
+                        <div class="checkbox-group">
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="pelvic_nodes" onchange="updateCalculator()">
+                                <span>Pelvic lymph node metastases (Stage IIIC1)</span>
+                            </label>
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="paraaortic_nodes" onchange="updateCalculator()">
+                                <span>Para-aortic lymph node metastases (Stage IIIC2)</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Node Size -->
+                    <div class="form-group">
+                        <label class="form-label">
+                            <strong>Largest Lymph Node Short Axis:</strong>
+                            <span class="help-text">Measure short axis diameter of largest suspicious node</span>
+                        </label>
+                        <div class="input-with-unit">
+                            <input type="number" id="nodeSize" step="0.1" min="0" placeholder="e.g., 1.2" onchange="updateCalculator()">
+                            <span class="unit">cm</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- M Stage Section -->
+                <div class="form-section">
+                    <h3 class="section-title">M Stage: Distant Metastases</h3>
+
+                    <div class="form-group">
+                        <label class="form-label">
+                            <strong>Distant Metastases Present:</strong>
+                            <span class="help-text">Extra-pelvic disease (Stage IVB)</span>
+                        </label>
+                        <div class="radio-group">
+                            <label class="radio-option">
+                                <input type="radio" name="metastases" value="no" onchange="updateCalculator()" checked>
+                                <span>No distant metastases (M0)</span>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="metastases" value="yes" onchange="updateCalculator()">
+                                <span>Distant metastases present (M1)</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Calculate Button -->
+                <div style="text-align: center;">
+                    <button class="calculate-button" onclick="updateCalculator()">Calculate Stage</button>
+                    <button class="reset-button" onclick="resetCalculator()">Reset Form</button>
+                </div>
+            </div>
+
+            <!-- Results Card -->
+            <div class="result-card hidden" id="finalResult">
+                <h2 style="color: var(--brand-primary); text-align: center; margin-bottom: 20px;">Staging Results</h2>
+                
+                <div class="result-grid">
+                    <div class="result-item">
+                        <strong>T Stage</strong>
+                        <div class="result-value" id="resultT">-</div>
+                    </div>
+                    <div class="result-item">
+                        <strong>N Stage</strong>
+                        <div class="result-value" id="resultN">-</div>
+                    </div>
+                    <div class="result-item">
+                        <strong>M Stage</strong>
+                        <div class="result-value" id="resultM">-</div>
+                    </div>
+                </div>
+
+                <div class="overall-stage">
+                    <div>Overall FIGO Stage: <span id="resultStage">-</span></div>
+                </div>
+
+                <div class="reasoning-section">
+                    <h4>Staging Rationale:</h4>
+                    <div id="resultReasoning">
+                        <!-- JavaScript will populate this -->
+                    </div>
+                </div>
+
+                <div class="clinical-implications">
+                    <h4>Clinical Implications:</h4>
+                    <div id="clinicalImplications">
+                        <!-- JavaScript will populate this -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reference Section -->
+        <div class="reference-section">
+            <h2 class="reference-title">Comprehensive Reference Guide</h2>
+
+            <!-- Mnemonics -->
+            <div class="reference-card">
+                <h3 class="reference-subtitle">Memory Aids & Mnemonics</h3>
+                <div class="mnemonic-grid">
+                    <div class="mnemonic-box">
+                        <h4>FIGO Stage III - "HELP"</h4>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">H</div>
+                            <div><strong>H</strong>ydronephrosis or non-functioning kidney</div>
+                        </div>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">E</div>
+                            <div><strong>E</strong>xtension to pelvic sidewall</div>
+                        </div>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">L</div>
+                            <div><strong>L</strong>ower 1/3 vaginal involvement</div>
+                        </div>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">P</div>
+                            <div><strong>P</strong>elvic or para-aortic nodes</div>
+                        </div>
+                    </div>
+
+                    <div class="mnemonic-box">
+                        <h4>Stage IB Size Cutoffs - "2-4 Rule"</h4>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">1</div>
+                            <div>IB1: &lt;2 cm</div>
+                        </div>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">2</div>
+                            <div>IB2: 2-4 cm</div>
+                        </div>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">3</div>
+                            <div>IB3: ≥4 cm</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- FIGO Staging Table -->
+            <div class="reference-card">
+                <h3 class="reference-subtitle">FIGO 2018 Staging Classification</h3>
+                <table class="staging-table">
+                    <thead>
+                        <tr>
+                            <th>FIGO Stage</th>
+                            <th>TNM</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>IA</strong></td>
+                            <td>T1a N0 M0</td>
+                            <td>Microscopic stromal invasion ≤5mm depth</td>
+                        </tr>
+                        <tr>
+                            <td><strong>IB1</strong></td>
+                            <td>T1b1 N0 M0</td>
+                            <td>Clinically visible, &lt;2cm greatest dimension</td>
+                        </tr>
+                        <tr>
+                            <td><strong>IB2</strong></td>
+                            <td>T1b2 N0 M0</td>
+                            <td>Clinically visible, 2-4cm greatest dimension</td>
+                        </tr>
+                        <tr>
+                            <td><strong>IB3</strong></td>
+                            <td>T1b3 N0 M0</td>
+                            <td>Clinically visible, ≥4cm greatest dimension</td>
+                        </tr>
+                        <tr>
+                            <td><strong>IIA</strong></td>
+                            <td>T2a N0 M0</td>
+                            <td>Upper 2/3 vagina, no parametrial invasion</td>
+                        </tr>
+                        <tr>
+                            <td><strong>IIB</strong></td>
+                            <td>T2b N0 M0</td>
+                            <td>Parametrial invasion</td>
+                        </tr>
+                        <tr>
+                            <td><strong>IIIA</strong></td>
+                            <td>T3a N0 M0</td>
+                            <td>Lower 1/3 vaginal involvement</td>
+                        </tr>
+                        <tr>
+                            <td><strong>IIIB</strong></td>
+                            <td>T3b N0 M0</td>
+                            <td>Pelvic wall extension or hydronephrosis</td>
+                        </tr>
+                        <tr>
+                            <td><strong>IIIC1</strong></td>
+                            <td>Any T N1 M0</td>
+                            <td>Pelvic lymph node metastases</td>
+                        </tr>
+                        <tr>
+                            <td><strong>IIIC2</strong></td>
+                            <td>Any T N2 M0</td>
+                            <td>Para-aortic lymph node metastases</td>
+                        </tr>
+                        <tr>
+                            <td><strong>IVA</strong></td>
+                            <td>T4 Any N M0</td>
+                            <td>Bladder or rectal mucosal invasion</td>
+                        </tr>
+                        <tr>
+                            <td><strong>IVB</strong></td>
+                            <td>Any T Any N M1</td>
+                            <td>Distant metastases</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Imaging Tips -->
+            <div class="reference-card">
+                <h3 class="reference-subtitle">Key Imaging Assessment Tips</h3>
+                <div class="tips-grid">
+                    <div class="tip-card">
+                        <h4>MRI T2-Weighted Imaging</h4>
+                        <p>Primary modality for local staging. Tumor appears hyperintense compared to normal cervical stroma.</p>
+                        <div class="tip-detail">Use sagittal and axial planes. Intravaginal gel improves vaginal assessment.</div>
+                    </div>
+
+                    <div class="tip-card">
+                        <h4>Parametrial Invasion Assessment</h4>
+                        <p>Look for disruption of the hypointense cervical stromal ring on T2WI.</p>
+                        <div class="tip-detail">Spiculated or irregular tumor margins extending into parametrium indicate invasion.</div>
+                    </div>
+
+                    <div class="tip-card">
+                        <h4>Pelvic Sidewall Extension</h4>
+                        <p>Measure distance from tumor edge to pelvic sidewall muscles.</p>
+                        <div class="tip-detail">≤3mm distance suggests sidewall involvement. Look for loss of fat plane.</div>
+                    </div>
+
+                    <div class="tip-card">
+                        <h4>Vaginal Extension Assessment</h4>
+                        <p>Identify upper vs lower 1/3 involvement - critical for Stage II vs III distinction.</p>
+                        <div class="tip-detail">Lower 1/3 extends from introitus to level of bladder base.</div>
+                    </div>
+
+                    <div class="tip-card">
+                        <h4>Lymph Node Evaluation</h4>
+                        <p>Size criteria: >1cm short axis for pelvic nodes, >8mm for para-aortic nodes.</p>
+                        <div class="tip-detail">PET/CT helpful for metabolically active nodes of any size.</div>
+                    </div>
+
+                    <div class="tip-card">
+                        <h4>Hydronephrosis Detection</h4>
+                        <p>Assess for ureteral obstruction - automatically upgrades to Stage IIIB.</p>
+                        <div class="tip-detail">Look for dilated collecting system and delayed nephrogram on contrast studies.</div>
+                    </div>
+
+                    <div class="tip-card">
+                        <h4>Bladder/Rectal Invasion</h4>
+                        <p>Requires mucosal involvement, not just wall thickening or contact.</p>
+                        <div class="tip-detail">Cystoscopy/proctoscopy with biopsy needed for confirmation.</div>
+                    </div>
+
+                    <div class="tip-card">
+                        <h4>DWI and ADC Mapping</h4>
+                        <p>Tumor shows restricted diffusion (high DWI signal, low ADC values).</p>
+                        <div class="tip-detail">Useful for detecting small lesions and assessing treatment response.</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Common Pitfalls -->
+            <div class="reference-card pitfall-card">
+                <h3 class="reference-subtitle">Common Staging Pitfalls to Avoid</h3>
+                <div class="pitfall-list">
+                    <div class="pitfall-item">
+                        <div class="pitfall-number">1</div>
+                        <div>
+                            <strong>Confusing Bladder Wall Thickening with Mucosal Invasion</strong>
+                            <p>Stage IVA requires proven mucosal invasion by cystoscopy/biopsy. Wall thickening alone is insufficient and may be inflammatory.</p>
+                        </div>
+                    </div>
+
+                    <div class="pitfall-item">
+                        <div class="pitfall-number">2</div>
+                        <div>
+                            <strong>Misidentifying Vaginal Thirds</strong>
+                            <p>Lower 1/3 extends from introitus to bladder base level. Upper 2/3 involvement = Stage IIA, lower 1/3 = Stage IIIA.</p>
+                        </div>
+                    </div>
+
+                    <div class="pitfall-item">
+                        <div class="pitfall-number">3</div>
+                        <div>
+                            <strong>Overlooking Hydronephrosis</strong>
+                            <p>Any degree of hydronephrosis or non-functioning kidney automatically upgrades to Stage IIIB, regardless of other findings.</p>
+                        </div>
+                    </div>
+
+                    <div class="pitfall-item">
+                        <div class="pitfall-number">4</div>
+                        <div>
+                            <strong>Inadequate Lymph Node Assessment</strong>
+                            <p>Must evaluate entire pelvic and para-aortic chain. Single positive node changes staging significantly (Stage III).</p>
+                        </div>
+                    </div>
+
+                    <div class="pitfall-item">
+                        <div class="pitfall-number">5</div>
+                        <div>
+                            <strong>Ignoring Size Cutoffs for Stage IB</strong>
+                            <p>Stage IB subdivisions are critical: IB1 (&lt;2cm), IB2 (2-4cm), IB3 (≥4cm). Treatment approaches differ significantly.</p>
+                        </div>
+                    </div>
+
+                    <div class="pitfall-item">
+                        <div class="pitfall-number">6</div>
+                        <div>
+                            <strong>Parametrial vs Paracervical Tissue</strong>
+                            <p>True parametrial invasion requires extension beyond the cervical stroma into the cardinal/uterosacral ligaments.</p>
+                        </div>
+                    </div>
+
+                    <div class="pitfall-item">
+                        <div class="pitfall-number">7</div>
+                        <div>
+                            <strong>Missing Microscopic Disease Criteria</strong>
+                            <p>Stage IA requires stromal invasion ≤5mm depth. If clinically visible or &gt;5mm invasion, it's at least Stage IB1.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Systematic Reading Approach -->
+            <div class="reference-card">
+                <h3 class="reference-subtitle">8-Step Systematic Reading Approach</h3>
+                <div class="systematic-steps">
+                    <div class="step-item">
+                        <div class="step-number">1</div>
+                        <div>
+                            <strong>Confirm Primary Site</strong>
+                            <p>Verify tumor originates from cervix, not vagina or uterine corpus. Check transformation zone involvement.</p>
+                        </div>
+                    </div>
+
+                    <div class="step-item">
+                        <div class="step-number">2</div>
+                        <div>
+                            <strong>Measure Maximum Tumor Dimension</strong>
+                            <p>Measure in all three planes. Record greatest dimension for Stage IB subdivision (2cm and 4cm cutoffs).</p>
+                        </div>
+                    </div>
+
+                    <div class="step-item">
+                        <div class="step-number">3</div>
+                        <div>
+                            <strong>Assess Parametrial Extension</strong>
+                            <p>Look for disruption of hypointense stromal ring. Spiculated margins or loss of fat planes indicate invasion.</p>
+                        </div>
+                    </div>
+
+                    <div class="step-item">
+                        <div class="step-number">4</div>
+                        <div>
+                            <strong>Evaluate Vaginal Extension</strong>
+                            <p>Determine if upper 2/3 (Stage IIA) or lower 1/3 (Stage IIIA). Use bladder base as anatomical landmark.</p>
+                        </div>
+                    </div>
+
+                    <div class="step-item">
+                        <div class="step-number">5</div>
+                        <div>
+                            <strong>Check for Pelvic Sidewall Extension</strong>
+                            <p>Measure distance to pelvic muscles. ≤3mm suggests sidewall involvement (Stage IIIB).</p>
+                        </div>
+                    </div>
+
+                    <div class="step-item">
+                        <div class="step-number">6</div>
+                        <div>
+                            <strong>Assess Urinary Tract</strong>
+                            <p>Look for hydronephrosis, ureteral obstruction, or bladder invasion. Any hydronephrosis = Stage IIIB minimum.</p>
+                        </div>
+                    </div>
+
+                    <div class="step-item">
+                        <div class="step-number">7</div>
+                        <div>
+                            <strong>Evaluate Lymph Nodes</strong>
+                            <p>Assess pelvic and para-aortic chains. Size criteria and PET activity. Positive nodes = Stage IIIC.</p>
+                        </div>
+                    </div>
+
+                    <div class="step-item">
+                        <div class="step-number">8</div>
+                        <div>
+                            <strong>Screen for Distant Disease</strong>
+                            <p>Check for extra-pelvic metastases, peritoneal disease, distant organ involvement (Stage IVB).</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Treatment Implications -->
+            <div class="reference-card">
+                <h3 class="reference-subtitle">Treatment Implications by Stage</h3>
+                <table class="staging-table">
+                    <thead>
+                        <tr>
+                            <th>FIGO Stage</th>
+                            <th>Primary Treatment</th>
+                            <th>5-Year Survival</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>IA</strong></td>
+                            <td>Conization or simple hysterectomy</td>
+                            <td>95-99%</td>
+                        </tr>
+                        <tr>
+                            <td><strong>IB1-IB2</strong></td>
+                            <td>Radical hysterectomy or chemoradiation</td>
+                            <td>85-95%</td>
+                        </tr>
+                        <tr>
+                            <td><strong>IB3-IIB</strong></td>
+                            <td>Chemoradiation therapy</td>
+                            <td>70-85%</td>
+                        </tr>
+                        <tr>
+                            <td><strong>III</strong></td>
+                            <td>Chemoradiation ± immunotherapy</td>
+                            <td>45-70%</td>
+                        </tr>
+                        <tr>
+                            <td><strong>IVA</strong></td>
+                            <td>Chemoradiation or pelvic exenteration</td>
+                            <td>20-45%</td>
+                        </tr>
+                        <tr>
+                            <td><strong>IVB</strong></td>
+                            <td>Palliative chemotherapy/immunotherapy</td>
+                            <td>5-20%</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function calculateTStage() {
+            // Check for Stage IVA features first
+            const bladderInvasion = document.getElementById('bladder_invasion').checked;
+            const rectalInvasion = document.getElementById('rectal_invasion').checked;
+            
+            if (bladderInvasion || rectalInvasion) {
+                let reason = "T4 - ";
+                if (bladderInvasion && rectalInvasion) {
+                    reason += "Bladder and rectal mucosal invasion confirmed";
+                } else if (bladderInvasion) {
+                    reason += "Bladder mucosal invasion confirmed";
+                } else {
+                    reason += "Rectal mucosal invasion confirmed";
+                }
+                return { stage: "T4", reason: reason };
+            }
+
+            // Check for Stage III features
+            const lowerVagina = document.getElementById('lower_vagina').checked;
+            const pelvicWall = document.getElementById('pelvic_wall').checked;
+            const hydronephrosis = document.getElementById('hydronephrosis').checked;
+            
+            if (lowerVagina) {
+                return { stage: "T3a", reason: "T3a - Extension to lower 1/3 of vagina" };
+            }
+            
+            if (pelvicWall || hydronephrosis) {
+                let reason = "T3b - ";
+                if (pelvicWall && hydronephrosis) {
+                    reason += "Pelvic sidewall extension and hydronephrosis";
+                } else if (pelvicWall) {
+                    reason += "Extension to pelvic sidewall";
+                } else {
+                    reason += "Hydronephrosis or non-functioning kidney";
+                }
+                return { stage: "T3b", reason: reason };
+            }
+
+            // Check for Stage II features
+            const parametrialInvasion = document.getElementById('parametrial_invasion').checked;
+            const upperVagina = document.getElementById('upper_vagina').checked;
+            
+            if (parametrialInvasion) {
+                return { stage: "T2b", reason: "T2b - Parametrial invasion present" };
+            }
+            
+            if (upperVagina) {
+                return { stage: "T2a", reason: "T2a - Extension to upper 2/3 of vagina without parametrial invasion" };
+            }
+
+            // Stage I assessment
+            const tumorSize = parseFloat(document.getElementById('tumorSize').value) || 0;
+            const invasionDepth = parseFloat(document.getElementById('invasionDepth').value) || 0;
+            const visibility = document.querySelector('input[name="visibility"]:checked')?.value;
+
+            if (visibility === 'microscopic' && invasionDepth > 0 && invasionDepth <= 5) {
+                return { stage: "T1a", reason: `T1a - Microscopic stromal invasion ≤5mm (${invasionDepth}mm depth)` };
+            }
+
+            if (visibility === 'clinical' || invasionDepth > 5) {
+                if (tumorSize === 0) {
+                    return { stage: "T1b", reason: "T1b - Clinically visible lesion (size not specified)" };
+                } else if (tumorSize < 2) {
+                    return { stage: "T1b1", reason: `T1b1 - Clinically visible lesion <2cm (${tumorSize}cm)` };
+                } else if (tumorSize < 4) {
+                    return { stage: "T1b2", reason: `T1b2 - Clinically visible lesion 2-4cm (${tumorSize}cm)` };
+                } else {
+                    return { stage: "T1b3", reason: `T1b3 - Clinically visible lesion ≥4cm (${tumorSize}cm)` };
+                }
+            }
+
+            if (tumorSize > 0 || invasionDepth > 0) {
+                return { stage: "T1", reason: "T1 - Tumor confined to cervix (insufficient data for subdivision)" };
+            }
+
+            return { stage: "TX", reason: "TX - Primary tumor cannot be assessed (insufficient information)" };
+        }
+
+        function calculateNStage() {
+            const pelvicNodes = document.getElementById('pelvic_nodes').checked;
+            const paraaorticNodes = document.getElementById('paraaortic_nodes').checked;
+            const nodeSize = parseFloat(document.getElementById('nodeSize').value) || 0;
+
+            if (paraaorticNodes) {
+                return { stage: "N2", reason: "N2 - Para-aortic lymph node metastases present" };
+            }
+
+            if (pelvicNodes) {
+                return { stage: "N1", reason: "N1 - Pelvic lymph node metastases present" };
+            }
+
+            if (nodeSize >= 1.0) {
+                return { stage: "N1", reason: `N1 - Enlarged lymph node ≥1cm (${nodeSize}cm) - suspicious for metastasis` };
+            }
+
+            return { stage: "N0", reason: "N0 - No regional lymph node metastasis" };
+        }
+
+        function calculateMStage() {
+            const metastases = document.querySelector('input[name="metastases"]:checked')?.value;
+            
+            if (metastases === 'yes') {
+                return { stage: "M1", reason: "M1 - Distant metastases present" };
+            }
+            
+            return { stage: "M0", reason: "M0 - No distant metastases" };
+        }
+
+        function calculateFIGOStage(tStage, nStage, mStage) {
+            // Stage IVB - Distant metastases
+            if (mStage === "M1") {
+                return { stage: "IVB", reason: "Stage IVB - Distant metastases present" };
+            }
+
+            // Stage IVA - Bladder/rectal invasion
+            if (tStage === "T4") {
+                return { stage: "IVA", reason: "Stage IVA - Bladder or rectal mucosal invasion" };
+            }
+
+            // Stage IIIC - Lymph node involvement
+            if (nStage === "N2") {
+                return { stage: "IIIC2", reason: "Stage IIIC2 - Para-aortic lymph node metastases" };
+            }
+            if (nStage === "N1") {
+                return { stage: "IIIC1", reason: "Stage IIIC1 - Pelvic lymph node metastases" };
+            }
+
+            // Stage IIIB - Pelvic wall or hydronephrosis
+            if (tStage === "T3b") {
+                return { stage: "IIIB", reason: "Stage IIIB - Pelvic sidewall extension or hydronephrosis" };
+            }
+
+            // Stage IIIA - Lower vagina
+            if (tStage === "T3a") {
+                return { stage: "IIIA", reason: "Stage IIIA - Extension to lower 1/3 of vagina" };
+            }
+
+            // Stage IIB - Parametrial invasion
+            if (tStage === "T2b") {
+                return { stage: "IIB", reason: "Stage IIB - Parametrial invasion" };
+            }
+
+            // Stage IIA - Upper vagina
+            if (tStage === "T2a") {
+                return { stage: "IIA", reason: "Stage IIA - Extension to upper 2/3 of vagina" };
+            }
+
+            // Stage IB - Clinically visible, confined to cervix
+            if (tStage === "T1b3") {
+                return { stage: "IB3", reason: "Stage IB3 - Clinically visible lesion ≥4cm" };
+            }
+            if (tStage === "T1b2") {
+                return { stage: "IB2", reason: "Stage IB2 - Clinically visible lesion 2-4cm" };
+            }
+            if (tStage === "T1b1" || tStage === "T1b") {
+                return { stage: "IB1", reason: "Stage IB1 - Clinically visible lesion <2cm" };
+            }
+
+            // Stage IA - Microscopic
+            if (tStage === "T1a") {
+                return { stage: "IA", reason: "Stage IA - Microscopic stromal invasion ≤5mm" };
+            }
+
+            // Default
+            if (tStage === "T1") {
+                return { stage: "I", reason: "Stage I - Tumor confined to cervix (subdivision unclear)" };
+            }
+
+            return { stage: "Unknown", reason: "Insufficient information for staging" };
+        }
+
+        function getClinicaImplications(figoStage) {
+            const implications = {
+                "IA": "Excellent prognosis. Treatment options include conization or simple hysterectomy. Fertility preservation possible. 5-year survival >95%.",
+                "IB1": "Good prognosis. Treatment options include radical hysterectomy with lymphadenectomy or chemoradiation. Fertility-sparing options may be considered. 5-year survival 85-95%.",
+                "IB2": "Good prognosis. Treatment typically involves radical hysterectomy with lymphadenectomy or chemoradiation therapy. 5-year survival 85-95%.",
+                "IB3": "Moderate prognosis. Chemoradiation therapy is typically preferred over surgery. 5-year survival 70-85%.",
+                "IIA": "Moderate prognosis. Chemoradiation therapy is the standard treatment. 5-year survival 70-85%.",
+                "IIB": "Moderate prognosis. Chemoradiation therapy is the standard treatment. 5-year survival 70-85%.",
+                "IIIA": "Guarded prognosis. Chemoradiation therapy with possible immunotherapy. 5-year survival 45-70%.",
+                "IIIB": "Guarded prognosis. Chemoradiation therapy with possible immunotherapy. 5-year survival 45-70%.",
+                "IIIC1": "Guarded prognosis. Chemoradiation therapy with possible immunotherapy. Pelvic nodal involvement significantly impacts prognosis. 5-year survival 45-70%.",
+                "IIIC2": "Guarded prognosis. Chemoradiation therapy with possible immunotherapy. Para-aortic nodal involvement indicates more advanced disease. 5-year survival 45-70%.",
+                "IVA": "Poor prognosis. Treatment options include chemoradiation or pelvic exenteration in selected cases. 5-year survival 20-45%.",
+                "IVB": "Very poor prognosis. Palliative chemotherapy and/or immunotherapy. Supportive care important. 5-year survival 5-20%."
+            };
+
+            return implications[figoStage] || "Treatment planning should involve multidisciplinary team consultation.";
+        }
+
+        function updateCalculator() {
+            const tResult = calculateTStage();
+            const nResult = calculateNStage();
+            const mResult = calculateMStage();
+            const figoResult = calculateFIGOStage(tResult.stage, nResult.stage, mResult.stage);
+
+            // Update display
+            document.getElementById('resultT').textContent = tResult.stage;
+            document.getElementById('resultN').textContent = nResult.stage;
+            document.getElementById('resultM').textContent = mResult.stage;
+            document.getElementById('resultStage').textContent = figoResult.stage;
+
+            // Update reasoning
+            const reasoning = `
+                <p><strong>T Stage (${tResult.stage}):</strong> ${tResult.reason}</p>
+                <p><strong>N Stage (${nResult.stage}):</strong> ${nResult.reason}</p>
+                <p><strong>M Stage (${mResult.stage}):</strong> ${mResult.reason}</p>
+                <p><strong>Overall FIGO Stage (${figoResult.stage}):</strong> ${figoResult.reason}</p>
+            `;
+            document.getElementById('resultReasoning').innerHTML = reasoning;
+
+            // Update clinical implications
+            document.getElementById('clinicalImplications').innerHTML = getClinicaImplications(figoResult.stage);
+
+            // Show results
+            document.getElementById('finalResult').classList.remove('hidden');
+        }
+
+        function resetCalculator() {
+            // Reset all form inputs
+            document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+            document.querySelectorAll('input[type="number"]').forEach(input => input.value = '');
+            document.querySelectorAll('input[type="radio"]').forEach(radio => radio.checked = false);
+            
+            // Reset default radio selection
+            document.querySelector('input[name="metastases"][value="no"]').checked = true;
+
+            // Hide results
+            document.getElementById('finalResult').classList.add('hidden');
+        }
+
+        // Initialize calculator
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set default values
+            document.querySelector('input[name="metastases"][value="no"]').checked = true;
+        });
+    </script>
+</body>
+</html>
