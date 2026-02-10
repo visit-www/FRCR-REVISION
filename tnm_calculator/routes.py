@@ -113,11 +113,40 @@ def generate_slug(disease_name: str) -> str:
     return disease_name.lower().replace(' ', '-').replace('(', '').replace(')', '').replace(',', '').replace('/', '-')
 
 
-# Slug aliases: map multiple catalog entries to single calculator
-# This allows one calculator to serve multiple related disease variants
+# Slug aliases: map AJCC ontology-generated slugs to actual calculator slugs.
+# The ontology uses verbose names (e.g. "Urinary Bladder") but our calculators
+# use simplified slugs (e.g. "bladder"). This dict bridges the gap.
 SLUG_ALIASES = {
+    # Head and Neck
     'oropharynx-hpv-mediated': 'oropharynx',
     'oropharynx-non-hpv': 'oropharynx',
+    'unknown-primary-of-the-head-and-neck': 'unknown-primary-of-the-head-and-neck',
+    # Upper GI
+    'esophagus-and-esophagogastric-junction': 'esophagus',
+    # Lower GI — AJCC splits colon/rectum, we have combined calculator
+    'colon': 'colon-and-rectum',
+    'rectum': 'colon-and-rectum',
+    # Hepatobiliary
+    'intrahepatic-bile-ducts': 'cholangiocarcinoma',
+    # Thorax
+    'pleural-mesothelioma': 'mesothelioma',
+    # Soft Tissue Sarcoma — all subtypes map to one calculator
+    'soft-tissue-sarcoma-of-the-head-and-neck': 'soft-tissue-sarcoma',
+    'soft-tissue-sarcoma-of-the-trunk-and-extremities': 'soft-tissue-sarcoma',
+    'soft-tissue-sarcoma-of-the-abdomen-and-thoracic-visceral-organs': 'soft-tissue-sarcoma',
+    'soft-tissue-sarcoma-of-the-retroperitoneum': 'soft-tissue-sarcoma',
+    # Skin
+    'melanoma-of-the-skin': 'melanoma',
+    # Female Reproductive
+    'corpus-uteri-carcinoma-and-carcinosarcoma': 'endometrium',
+    'ovary-fallopian-tube-and-primary-peritoneal-carcinoma': 'ovary',
+    # Urinary Tract
+    'urinary-bladder': 'bladder',
+    # CNS
+    'brain-and-spinal-cord': 'brain',
+    # Endocrine
+    'thyroid---differentiated-and-anaplastic': 'thyroid',
+    'thyroid---medullary': 'thyroid',
 }
 
 
