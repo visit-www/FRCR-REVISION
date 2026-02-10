@@ -20,7 +20,7 @@ from models import (
     db, Case, CaseStatus, Question, Answer, CaseApprovalQueue,
     ReportingTemplate, TNMCalculatorContent,
     IncidentalFindingCalculator, AJCCDiseaseSite, AJCCBodySection,
-    User, AiPrelimCaseData, ReportingSession,
+    User, AiPrelimCaseData, ReportingSession, PublishedReport,
 )
 from access_control import require_admin
 
@@ -1284,3 +1284,115 @@ def smart_reporter_list_sessions():
         'offset': offset,
         'has_more': (offset + limit) < total,
     })
+
+
+@reporting_bp.route('/api/smart-reporter/session/<int:session_id>', methods=['DELETE'])
+@login_required
+def smart_reporter_delete_session(session_id):
+    """Delete a Smart Reporter session."""
+    session = ReportingSession.query.get_or_404(session_id)
+    if session.user_id != current_user.id:
+        return jsonify({'error': 'Access denied.'}), 403
+
+    try:
+        db.session.delete(session)
+        db.session.commit()
+    except Exception as exc:
+        db.session.rollback()
+        logger.error(f"Failed to delete Smart Reporter session {session_id}: {exc}")
+        return jsonify({'error': 'Failed to delete session.'}), 500
+
+    return jsonify({'success': True})
+
+
+@reporting_bp.route('/api/smart-reporter/session/<int:session_id>/publish', methods=['POST'])
+@login_required
+def smart_reporter_publish_session(session_id):
+    """Publish a session to the community library."""
+    session = ReportingSession.query.get_or_404(session_id)
+    if session.user_id != current_user.id:
+        return jsonify({'error': 'Access denied.'}), 403
+
+    if not session.report_text or not session.report_text.strip():
+        return jsonify({'error': 'Cannot publish an empty report. Add content first.'}), 400
+
+    # Check if already published
+    existing = PublishedReport.query.filter_by(
+        session_id=session_id, user_id=current_user.id
+    ).first()
+    if existing:
+        return jsonify({'error': 'This session has already been published.'}), 409
+
+    # Determine contributor name
+    contributor_name = (
+        current_user.public_display_name
+        or current_user.full_name
+        or 'Anonymous'
+    )
+
+    published = PublishedReport(
+        session_id=session.id,
+        user_id=current_user.id,
+        clinical_question=session.clinical_question,
+        modality=session.modality,
+        body_section=session.body_section,
+        report_text=session.report_text,
+        algorithm_tree_json=session.algorithm_tree_json,
+        contributor_name=contributor_name,
+    )
+    db.session.add(published)
+
+    try:
+        db.session.commit()
+    except Exception as exc:
+        db.session.rollback()
+        logger.error(f"Failed to publish session {session_id}: {exc}")
+        return jsonify({'error': 'Failed to publish.'}), 500
+
+    return jsonify({
+        'success': True,
+        'published_id': published.id,
+        'message': f'Report published to community library as "{contributor_name}".',
+    })
+
+
+@reporting_bp.route('/api/smart-reporter/community', methods=['GET'])
+@login_required
+def smart_reporter_community_library():
+    """List published reports from all users (community library)."""
+    search = request.args.get('q', '').strip()
+    offset = request.args.get('offset', 0, type=int)
+    limit = request.args.get('limit', 20, type=int)
+    limit = min(limit, 50)
+
+    query = PublishedReport.query
+
+    if search:
+        query = query.filter(
+            db.or_(
+                PublishedReport.clinical_question.ilike(f'%{search}%'),
+                PublishedReport.modality.ilike(f'%{search}%'),
+                PublishedReport.body_section.ilike(f'%{search}%'),
+                PublishedReport.contributor_name.ilike(f'%{search}%'),
+            )
+        )
+
+    total = query.count()
+    reports = query.order_by(
+        PublishedReport.published_at.desc()
+    ).offset(offset).limit(limit).all()
+
+    return jsonify({
+        'reports': [r.to_summary_dict() for r in reports],
+        'total': total,
+        'offset': offset,
+        'has_more': (offset + limit) < total,
+    })
+
+
+@reporting_bp.route('/api/smart-reporter/community/<int:report_id>', methods=['GET'])
+@login_required
+def smart_reporter_get_published_report(report_id):
+    """Get a single published report (full content) for loading into editor."""
+    report = PublishedReport.query.get_or_404(report_id)
+    return jsonify(report.to_dict())

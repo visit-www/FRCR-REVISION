@@ -2673,6 +2673,62 @@ class ReportingSession(db.Model):
         return f'<ReportingSession {self.id} user={self.user_id} status={self.status}>'
 
 
+# ==================== PUBLISHED REPORT (COMMUNITY LIBRARY) ====================
+
+class PublishedReport(db.Model):
+    """
+    Snapshot of a reporting session submitted for community publication.
+    Independent of the original session — deleting the session does not remove the publication.
+    """
+    __tablename__ = 'published_report'
+
+    id = db.Column(db.Integer, primary_key=True)
+    session_id = db.Column(db.Integer, nullable=True)  # Reference only, no FK constraint
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+
+    # Report content (snapshot at publish time)
+    clinical_question = db.Column(db.String(500), nullable=False)
+    modality = db.Column(db.String(100), nullable=True)
+    body_section = db.Column(db.String(100), nullable=True)
+    report_text = db.Column(db.Text, nullable=False)
+    algorithm_tree_json = db.Column(db.Text, nullable=True)
+
+    # Attribution
+    contributor_name = db.Column(db.String(120), nullable=False)
+
+    # Timestamps
+    published_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
+    # Relationships
+    user = db.relationship('User', backref='published_reports', lazy=True)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'clinical_question': self.clinical_question,
+            'modality': self.modality,
+            'body_section': self.body_section,
+            'report_text': self.report_text,
+            'contributor_name': self.contributor_name,
+            'published_at': self.published_at.isoformat() if self.published_at else None,
+            'has_algorithm': bool(self.algorithm_tree_json),
+        }
+
+    def to_summary_dict(self):
+        return {
+            'id': self.id,
+            'clinical_question': self.clinical_question,
+            'modality': self.modality,
+            'body_section': self.body_section,
+            'contributor_name': self.contributor_name,
+            'published_at': self.published_at.isoformat() if self.published_at else None,
+            'has_algorithm': bool(self.algorithm_tree_json),
+        }
+
+    def __repr__(self):
+        return f'<PublishedReport {self.id} by={self.contributor_name}>'
+
+
 # ==================== INCIDENTAL FINDING CALCULATOR ====================
 
 class IncidentalFindingCalculator(db.Model):

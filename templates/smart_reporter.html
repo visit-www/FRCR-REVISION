@@ -110,6 +110,48 @@
                     </div>
                 </div>
 
+                <!-- Community Library -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white border-0 py-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0"><i class="fas fa-globe me-2" style="color: #a8d5ba;"></i>Community Reports <span id="communityCount" class="badge bg-success ms-1" style="font-size: 0.7rem;"></span></h6>
+                            <div class="input-group input-group-sm" style="max-width: 250px;">
+                                <input type="text" id="communitySearchInput" class="form-control" placeholder="Search community..." autocomplete="off">
+                                <button class="btn btn-outline-secondary" type="button" onclick="searchCommunity()">
+                                    <i class="fas fa-search"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="small">Clinical Question</th>
+                                        <th class="small">Modality</th>
+                                        <th class="small">Contributor</th>
+                                        <th class="small">Date</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="communityTableBody">
+                                    <tr><td colspan="5" class="text-center text-muted py-3"><small>Loading...</small></td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div id="communityLoadMore" class="d-none text-center py-2">
+                            <button class="btn btn-sm btn-outline-secondary" onclick="loadMoreCommunity()">
+                                <i class="fas fa-chevron-down me-1"></i>Load more
+                            </button>
+                        </div>
+                        <div id="communityEmpty" class="d-none text-center py-4">
+                            <i class="fas fa-users text-muted" style="font-size: 1.5rem;"></i>
+                            <p class="text-muted small mt-2 mb-0">No published reports yet. Be the first to share!</p>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Clinical Disclaimer -->
                 <div class="p-3 rounded" style="background: #f8f9fa; border: 1px solid #e9ecef;">
                     <small class="text-muted">
@@ -118,6 +160,27 @@
                         AI-generated content requires clinical verification. Do not use as the sole basis for clinical decisions.
                         Verify against current guidelines and institutional protocols. Do not enter patient-identifiable information.
                     </small>
+                </div>
+            </div>
+
+            <!-- Resume/New Modal -->
+            <div class="modal fade" id="resumeModal" tabindex="-1">
+                <div class="modal-dialog modal-dialog-centered modal-sm">
+                    <div class="modal-content border-0 shadow">
+                        <div class="modal-body text-center p-4">
+                            <i class="fas fa-folder-open mb-3" style="font-size: 2rem; color: #5E899E;"></i>
+                            <h6 class="mb-1" id="resumeModalTitle">Session found</h6>
+                            <p class="text-muted small mb-3" id="resumeModalDesc"></p>
+                            <div class="d-grid gap-2">
+                                <button class="btn btn-brand-primary btn-sm" id="btnResumeSession">
+                                    <i class="fas fa-play me-1"></i>Resume Session
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm" id="btnNewSession">
+                                    <i class="fas fa-plus me-1"></i>Start New Instead
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -276,6 +339,9 @@
                         <span id="editorSaveStatus" class="d-none">
                             <small class="text-success"><i class="fas fa-check-circle me-1"></i>Saved</small>
                         </span>
+                        <button class="btn btn-sm btn-outline-success" onclick="publishSession()" title="Share with community" id="btnPublish">
+                            <i class="fas fa-share-alt me-1"></i><span class="d-none d-md-inline">Publish</span>
+                        </button>
                         <button class="btn btn-sm btn-outline-secondary" onclick="startNewEditorSession()" title="New session">
                             <i class="fas fa-plus me-1"></i>New
                         </button>
@@ -1308,7 +1374,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     data.sessions.forEach(s => {
                         const tr = document.createElement('tr');
                         tr.style.cursor = 'pointer';
-                        tr.onclick = () => resumeSession(s.id);
 
                         const q = s.clinical_question || '';
                         const statusMap = {
@@ -1320,11 +1385,15 @@ document.addEventListener('DOMContentLoaded', function() {
                         const date = s.created_at ? new Date(s.created_at).toLocaleDateString('en-GB', {day: 'numeric', month: 'short', year: 'numeric'}) : '';
 
                         tr.innerHTML = `
-                            <td class="small">${escapeHtmlSafe(q.length > 60 ? q.substring(0, 60) + '...' : q)}</td>
-                            <td class="small">${escapeHtmlSafe(s.modality || '\u2014')}</td>
-                            <td>${statusBadge}</td>
-                            <td class="small text-muted">${date}</td>
-                            <td><i class="fas fa-chevron-right text-muted small"></i></td>
+                            <td class="small" onclick="handleSessionClick(${s.id}, '${s.status}')">${escapeHtmlSafe(q.length > 60 ? q.substring(0, 60) + '...' : q)}</td>
+                            <td class="small" onclick="handleSessionClick(${s.id}, '${s.status}')">${escapeHtmlSafe(s.modality || '\u2014')}</td>
+                            <td onclick="handleSessionClick(${s.id}, '${s.status}')">${statusBadge}</td>
+                            <td class="small text-muted" onclick="handleSessionClick(${s.id}, '${s.status}')">${date}</td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-danger py-0 px-1 border-0" onclick="deleteSession(${s.id}, event)" title="Delete">
+                                    <i class="fas fa-trash-alt" style="font-size: 0.75rem;"></i>
+                                </button>
+                            </td>
                         `;
                         tbody.appendChild(tr);
                     });
@@ -1444,7 +1513,215 @@ document.addEventListener('DOMContentLoaded', function() {
         updateAskClaudeCounter();
     };
 
-    // Extend showScene to update session info and reload sessions
+    // ==================== DELETE SESSION ====================
+
+    window.deleteSession = function(sessionId, event) {
+        event.stopPropagation();
+        if (!confirm('Delete this session? This cannot be undone.')) return;
+
+        fetch(`/api/smart-reporter/session/${sessionId}`, { method: 'DELETE' })
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) {
+                    showToast(data.error, 'error');
+                    return;
+                }
+                showToast('Session deleted.', 'success');
+                // If we just deleted the active session, clear it
+                if (state.sessionId === sessionId) {
+                    state.sessionId = null;
+                    updateEditorSessionInfo();
+                }
+                loadSessions(false);
+            })
+            .catch(() => showToast('Failed to delete.', 'error'));
+    };
+
+    // ==================== RESUME / NEW CHOICE ====================
+
+    let pendingResumeId = null;
+
+    window.handleSessionClick = function(sessionId, status) {
+        if (status === 'completed') {
+            // Completed sessions open directly (read-only feel, can still edit)
+            resumeSession(sessionId);
+            return;
+        }
+        // Active/in-progress sessions show resume/new choice
+        pendingResumeId = sessionId;
+        const modal = document.getElementById('resumeModal');
+        document.getElementById('resumeModalDesc').textContent =
+            status === 'walkthrough' ? 'This walkthrough is still in progress.' : 'This report is still being edited.';
+        document.getElementById('btnResumeSession').onclick = function() {
+            bootstrap.Modal.getInstance(modal).hide();
+            resumeSession(pendingResumeId);
+        };
+        document.getElementById('btnNewSession').onclick = function() {
+            bootstrap.Modal.getInstance(modal).hide();
+            showScene('editor');
+            startNewEditorSession();
+        };
+        new bootstrap.Modal(modal).show();
+    };
+
+    // ==================== PUBLISH SESSION ====================
+
+    window.publishSession = function() {
+        if (!state.sessionId) {
+            showToast('Save your session first.', 'warning');
+            return;
+        }
+        const reportText = getCurrentReportText();
+        if (!reportText.trim()) {
+            showToast('Cannot publish an empty report.', 'warning');
+            return;
+        }
+
+        if (!confirm('Publish this report to the community library? Other users will be able to see and use it as a template.')) return;
+
+        // Save current state first, then publish
+        saveSessionToServer();
+
+        const btn = document.getElementById('btnPublish');
+        btn.disabled = true;
+
+        fetch(`/api/smart-reporter/session/${state.sessionId}/publish`, { method: 'POST' })
+            .then(r => r.json())
+            .then(data => {
+                btn.disabled = false;
+                if (data.error) {
+                    showToast(data.error, 'error');
+                    return;
+                }
+                showToast(data.message || 'Published!', 'success');
+                btn.innerHTML = '<i class="fas fa-check me-1"></i>Published';
+                btn.classList.remove('btn-outline-success');
+                btn.classList.add('btn-success');
+                btn.disabled = true;
+            })
+            .catch(() => {
+                btn.disabled = false;
+                showToast('Failed to publish.', 'error');
+            });
+    };
+
+    // ==================== COMMUNITY LIBRARY ====================
+
+    let communityOffset = 0;
+    let communitySearch = '';
+
+    function loadCommunity(append) {
+        if (!append) communityOffset = 0;
+
+        const params = new URLSearchParams({
+            offset: communityOffset,
+            limit: 20,
+        });
+        if (communitySearch) params.set('q', communitySearch);
+
+        fetch('/api/smart-reporter/community?' + params.toString())
+            .then(r => r.json())
+            .then(data => {
+                const tbody = document.getElementById('communityTableBody');
+                const loadMore = document.getElementById('communityLoadMore');
+                const empty = document.getElementById('communityEmpty');
+                const countBadge = document.getElementById('communityCount');
+
+                countBadge.textContent = data.total || '';
+
+                if (!append) tbody.innerHTML = '';
+
+                if (data.reports && data.reports.length > 0) {
+                    empty.classList.add('d-none');
+                    data.reports.forEach(r => {
+                        const tr = document.createElement('tr');
+                        tr.style.cursor = 'pointer';
+                        tr.onclick = () => loadCommunityReport(r.id);
+
+                        const q = r.clinical_question || '';
+                        const date = r.published_at ? new Date(r.published_at).toLocaleDateString('en-GB', {day: 'numeric', month: 'short', year: 'numeric'}) : '';
+
+                        tr.innerHTML = `
+                            <td class="small">${escapeHtmlSafe(q.length > 60 ? q.substring(0, 60) + '...' : q)}</td>
+                            <td class="small">${escapeHtmlSafe(r.modality || '\u2014')}</td>
+                            <td class="small">${escapeHtmlSafe(r.contributor_name || 'Anonymous')}</td>
+                            <td class="small text-muted">${date}</td>
+                            <td>${r.has_algorithm ? '<i class="fas fa-sitemap text-muted small" title="Has algorithm"></i>' : ''}</td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+
+                    if (data.has_more) {
+                        loadMore.classList.remove('d-none');
+                    } else {
+                        loadMore.classList.add('d-none');
+                    }
+                } else if (!append) {
+                    tbody.innerHTML = '';
+                    empty.classList.remove('d-none');
+                    loadMore.classList.add('d-none');
+                }
+            })
+            .catch(() => {});
+    }
+
+    window.searchCommunity = function() {
+        communitySearch = document.getElementById('communitySearchInput').value.trim();
+        loadCommunity(false);
+    };
+
+    document.getElementById('communitySearchInput').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') { e.preventDefault(); searchCommunity(); }
+    });
+
+    let communitySearchTimer = null;
+    document.getElementById('communitySearchInput').addEventListener('input', function() {
+        clearTimeout(communitySearchTimer);
+        communitySearchTimer = setTimeout(() => searchCommunity(), 400);
+    });
+
+    window.loadMoreCommunity = function() {
+        communityOffset += 20;
+        loadCommunity(true);
+    };
+
+    window.loadCommunityReport = function(reportId) {
+        fetch(`/api/smart-reporter/community/${reportId}`)
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) {
+                    showToast(data.error, 'error');
+                    return;
+                }
+                // Load into editor as a new session (user can edit and save as their own)
+                state.sessionId = null;
+                state.inputText = data.report_text || '';
+                state.outputText = '';
+                state.suggestions = [];
+                state.improvedReport = '';
+                state.askClaudeRemaining = 20;
+
+                showScene('editor');
+                const input = document.getElementById('editorInput');
+                input.value = state.inputText;
+                autoResizeTextarea(input);
+                document.getElementById('outputSection').classList.add('d-none');
+                document.getElementById('suggestionsPanel').classList.add('d-none');
+                document.getElementById('askClaudeResponse').classList.add('d-none');
+                updateEditorSessionInfo();
+                updateAskClaudeCounter();
+
+                showToast(`Loaded community report by ${data.contributor_name}. Edit and save as your own.`, 'success');
+            })
+            .catch(() => showToast('Failed to load report.', 'error'));
+    };
+
+    // Load community on page load
+    loadCommunity(false);
+
+    // ==================== SCENE EXTENSION ====================
+
+    // Extend showScene to update session info and reload lists
     const origShowScene = window.showScene;
     window.showScene = function(scene) {
         origShowScene(scene);
@@ -1453,6 +1730,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         if (scene === 'landing') {
             loadSessions(false);
+            loadCommunity(false);
         }
     };
 
