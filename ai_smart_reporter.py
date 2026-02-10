@@ -38,6 +38,46 @@ ASK_CLAUDE_SYSTEM_PROMPT = (
     "Keep answers under 200 words. Plain text only — no markdown or HTML."
 )
 
+REVIEW_REPORT_SYSTEM_PROMPT = (
+    "You are a consultant radiologist reviewing a trainee's draft PACS report. "
+    "You check for spelling, grammar, radiology phrasing conventions, and structural completeness. "
+    "Output valid JSON only. No markdown fences. No text outside the JSON object."
+)
+
+REVIEW_REPORT_PROMPT = """Review this draft PACS report for spelling, grammar, radiology phrasing, and structure.
+
+DRAFT REPORT:
+---
+{report_text}
+---
+
+Return a JSON object with this EXACT structure:
+
+{{
+  "improved_report": "The full corrected report text with all suggestions applied. Preserve the user's section headings (INDICATION, TECHNIQUE, etc.) exactly as they appear. If the report has no headings, add appropriate ones.",
+  "suggestions": [
+    {{
+      "original": "the exact original phrase from the report",
+      "suggested": "the corrected/improved phrase",
+      "reason": "Brief explanation (5-10 words)",
+      "type": "spelling|grammar|phrasing|structure|completeness"
+    }}
+  ]
+}}
+
+RULES:
+1. Fix genuine spelling and grammar errors.
+2. Improve phrasing to match standard radiology reporting conventions (e.g. "There is no evidence of" → "No evidence of", "The liver appears normal" → "The liver is unremarkable").
+3. Suggest structural improvements if sections are missing or out of standard order.
+4. Do NOT change clinical meaning. Do NOT add findings the user did not describe.
+5. Do NOT remove any content the user wrote — only rephrase for clarity and convention.
+6. If the report is already well-written, return an empty suggestions array and the original text as improved_report.
+7. Each suggestion must quote the EXACT original text so the frontend can locate it.
+8. Limit to the most impactful 15 suggestions maximum. Prioritise: spelling > grammar > phrasing > structure.
+9. For completeness type: suggest if standard sections (INDICATION, TECHNIQUE, COMPARISON, FINDINGS, IMPRESSION) are missing.
+
+Output ONLY the JSON object. No markdown. No explanation."""
+
 
 # ==================== TREE GENERATION PROMPT ====================
 
@@ -291,6 +331,114 @@ Trainee's question: {question}"""
         'model': effective_model,
         'token_count': result.get("usage", {}).get("output_tokens", 0),
     }
+
+
+# ==================== REVIEW REPORT ====================
+
+def review_report(report_text):
+    """
+    Review a report for spelling, grammar, phrasing, and structure.
+
+    Args:
+        report_text: The draft PACS report text
+
+    Returns:
+        dict with: improved_report, suggestions[], model, token_count
+    """
+    api_key = os.getenv("CLAUDE_API_KEY")
+    if not api_key:
+        raise SmartReporterError("RadInsight Intelligence API key not configured.")
+
+    effective_model = os.getenv("CLAUDE_MODEL", "claude-sonnet-4-20250514")
+
+    user_prompt = REVIEW_REPORT_PROMPT.format(report_text=report_text)
+
+    payload = {
+        "model": effective_model,
+        "max_tokens": 4000,
+        "temperature": 0.2,
+        "system": REVIEW_REPORT_SYSTEM_PROMPT,
+        "messages": [
+            {"role": "user", "content": user_prompt}
+        ],
+    }
+
+    try:
+        response = requests.post(
+            "https://api.anthropic.com/v1/messages",
+            headers={
+                "Content-Type": "application/json",
+                "x-api-key": api_key,
+                "anthropic-version": "2023-06-01",
+            },
+            json=payload,
+            timeout=60,
+        )
+    except requests.exceptions.Timeout:
+        raise SmartReporterError("Review timed out. Please try again.")
+    except requests.exceptions.RequestException as exc:
+        raise SmartReporterError(f"Connection failed: {exc}")
+
+    if response.status_code >= 300:
+        detail = response.text[:500]
+        raise SmartReporterError(f"Error (HTTP {response.status_code}): {detail}")
+
+    result = response.json()
+    content = result.get("content", [])
+    if not content:
+        raise SmartReporterError("Empty response.")
+
+    text = content[0].get("text", "").strip()
+    if not text:
+        raise SmartReporterError("No text in response.")
+
+    parsed = _parse_review_response(text)
+    parsed['model'] = effective_model
+    parsed['token_count'] = result.get("usage", {}).get("output_tokens", 0)
+
+    return parsed
+
+
+def _parse_review_response(text):
+    """Parse review report JSON response."""
+    # Strip markdown code fences
+    if text.strip().startswith("```"):
+        lines = text.strip().split("\n")
+        if lines[0].startswith("```"):
+            lines = lines[1:]
+        if lines and lines[-1].strip() == "```":
+            lines = lines[:-1]
+        text = "\n".join(lines)
+
+    try:
+        parsed = json.loads(text)
+    except json.JSONDecodeError:
+        match = re.search(r'\{[\s\S]*\}', text)
+        if match:
+            try:
+                parsed = json.loads(match.group())
+            except json.JSONDecodeError:
+                raise SmartReporterError("Failed to parse review response as JSON.")
+        else:
+            raise SmartReporterError("Review response was not valid JSON.")
+
+    parsed.setdefault('improved_report', '')
+    parsed.setdefault('suggestions', [])
+
+    # Validate suggestions
+    valid_suggestions = []
+    for s in parsed['suggestions']:
+        if not isinstance(s, dict):
+            continue
+        s.setdefault('original', '')
+        s.setdefault('suggested', '')
+        s.setdefault('reason', '')
+        s.setdefault('type', 'phrasing')
+        if s['original'] and s['suggested'] and s['original'] != s['suggested']:
+            valid_suggestions.append(s)
+    parsed['suggestions'] = valid_suggestions
+
+    return parsed
 
 
 # ==================== TREE RESPONSE PARSER ====================

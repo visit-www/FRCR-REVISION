@@ -969,15 +969,8 @@ def generate_reporting_template():
 @reporting_bp.route('/smart-reporter')
 @login_required
 def smart_reporter():
-    """Landing page for Smart Reporter — 3 scene entry points + recent sessions."""
-    recent_sessions = ReportingSession.query.filter_by(
-        user_id=current_user.id,
-    ).order_by(ReportingSession.created_at.desc()).limit(10).all()
-
-    return render_template(
-        'smart_reporter.html',
-        recent_sessions=recent_sessions,
-    )
+    """Landing page for Smart Reporter — sessions loaded dynamically via JS."""
+    return render_template('smart_reporter.html')
 
 
 @reporting_bp.route('/api/smart-reporter/generate-tree', methods=['POST'])
@@ -1173,14 +1166,121 @@ def smart_reporter_ask_claude():
     })
 
 
+@reporting_bp.route('/api/smart-reporter/review-report', methods=['POST'])
+@login_required
+def smart_reporter_review_report():
+    """Review a report for spelling, grammar, phrasing, and structure."""
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'JSON body required.'}), 400
+
+    report_text = (data.get('report_text') or '').strip()
+    session_id = data.get('session_id')
+
+    if not report_text:
+        return jsonify({'error': 'Report text is required.'}), 400
+    if len(report_text) > 10000:
+        return jsonify({'error': 'Report text too long (max 10000 characters).'}), 400
+
+    # Rate limit via session if provided
+    session = None
+    if session_id:
+        session = ReportingSession.query.get(session_id)
+        if session and session.user_id != current_user.id:
+            return jsonify({'error': 'Access denied.'}), 403
+        if session and (session.ask_claude_count or 0) >= 20:
+            return jsonify({
+                'error': 'You have reached the maximum number of AI requests for this session (20).'
+            }), 429
+
+    try:
+        from ai_smart_reporter import review_report, SmartReporterError
+        result = review_report(report_text=report_text)
+    except Exception as exc:
+        logger.error(f"Smart Reporter review failed: {exc}")
+        return jsonify({'error': f'Review failed: {exc}'}), 500
+
+    # Increment counter
+    if session:
+        session.ask_claude_count = (session.ask_claude_count or 0) + 1
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+
+    remaining = 20 - (session.ask_claude_count if session else 0)
+
+    return jsonify({
+        'success': True,
+        'improved_report': result.get('improved_report', ''),
+        'suggestions': result.get('suggestions', []),
+        'remaining_questions': max(0, remaining),
+    })
+
+
+@reporting_bp.route('/api/smart-reporter/create-session', methods=['POST'])
+@login_required
+def smart_reporter_create_session():
+    """Create a blank session for Scene 2 direct entry (no algorithm tree)."""
+    data = request.get_json() or {}
+
+    clinical_question = (data.get('clinical_question') or 'Report editing session').strip()[:500]
+
+    # Rate limit: max 5 active sessions per user
+    active_count = ReportingSession.query.filter(
+        ReportingSession.user_id == current_user.id,
+        ReportingSession.status.in_(['generating', 'walkthrough', 'editing']),
+    ).count()
+    if active_count >= 5:
+        return jsonify({
+            'error': 'You have too many active sessions. '
+                     'Please complete or close existing sessions before starting a new one.'
+        }), 429
+
+    session = ReportingSession(
+        user_id=current_user.id,
+        clinical_question=clinical_question,
+        status='editing',
+    )
+    db.session.add(session)
+
+    try:
+        db.session.commit()
+    except Exception as exc:
+        db.session.rollback()
+        logger.error(f"Failed to create Smart Reporter session: {exc}")
+        return jsonify({'error': 'Failed to create session.'}), 500
+
+    return jsonify({
+        'success': True,
+        'session_id': session.id,
+    })
+
+
 @reporting_bp.route('/api/smart-reporter/sessions', methods=['GET'])
 @login_required
 def smart_reporter_list_sessions():
-    """List the current user's recent Smart Reporter sessions."""
-    sessions = ReportingSession.query.filter_by(
-        user_id=current_user.id,
-    ).order_by(ReportingSession.created_at.desc()).limit(20).all()
+    """List the current user's Smart Reporter sessions with search + pagination."""
+    search = request.args.get('q', '').strip()
+    offset = request.args.get('offset', 0, type=int)
+    limit = request.args.get('limit', 20, type=int)
+    limit = min(limit, 50)  # Cap at 50
+
+    query = ReportingSession.query.filter_by(user_id=current_user.id)
+
+    if search:
+        query = query.filter(
+            ReportingSession.clinical_question.ilike(f'%{search}%')
+        )
+
+    total = query.count()
+    sessions = query.order_by(
+        ReportingSession.created_at.desc()
+    ).offset(offset).limit(limit).all()
 
     return jsonify({
         'sessions': [s.to_summary_dict() for s in sessions],
+        'total': total,
+        'offset': offset,
+        'has_more': (offset + limit) < total,
     })

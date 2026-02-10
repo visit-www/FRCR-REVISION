@@ -68,11 +68,18 @@
                     </div>
                 </div>
 
-                <!-- Recent Sessions -->
-                {% if recent_sessions %}
+                <!-- Saved Sessions (dynamic, searchable) -->
                 <div class="card border-0 shadow-sm mb-4">
                     <div class="card-header bg-white border-0 py-3">
-                        <h6 class="mb-0"><i class="fas fa-history me-2" style="color: #5E899E;"></i>Recent Sessions</h6>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0"><i class="fas fa-history me-2" style="color: #5E899E;"></i>Your Sessions <span id="sessionsCount" class="badge bg-secondary ms-1" style="font-size: 0.7rem;"></span></h6>
+                            <div class="input-group input-group-sm" style="max-width: 250px;">
+                                <input type="text" id="sessionSearchInput" class="form-control" placeholder="Search sessions..." autocomplete="off">
+                                <button class="btn btn-outline-secondary" type="button" onclick="searchSessions()">
+                                    <i class="fas fa-search"></i>
+                                </button>
+                            </div>
+                        </div>
                     </div>
                     <div class="card-body p-0">
                         <div class="table-responsive">
@@ -86,32 +93,22 @@
                                         <th></th>
                                     </tr>
                                 </thead>
-                                <tbody>
-                                    {% for s in recent_sessions %}
-                                    <tr style="cursor: pointer;" onclick="resumeSession({{ s.id }})">
-                                        <td class="small">{{ s.clinical_question[:60] }}{% if s.clinical_question|length > 60 %}...{% endif %}</td>
-                                        <td class="small">{{ s.modality or '—' }}</td>
-                                        <td>
-                                            {% if s.status == 'completed' %}
-                                            <span class="badge bg-success">Completed</span>
-                                            {% elif s.status == 'editing' %}
-                                            <span class="badge bg-primary">Editing</span>
-                                            {% elif s.status == 'walkthrough' %}
-                                            <span class="badge bg-warning text-dark">In Progress</span>
-                                            {% else %}
-                                            <span class="badge bg-secondary">{{ s.status }}</span>
-                                            {% endif %}
-                                        </td>
-                                        <td class="small text-muted">{{ s.created_at.strftime('%d %b %Y %H:%M') if s.created_at else '' }}</td>
-                                        <td><i class="fas fa-chevron-right text-muted small"></i></td>
-                                    </tr>
-                                    {% endfor %}
+                                <tbody id="sessionsTableBody">
+                                    <tr><td colspan="5" class="text-center text-muted py-3"><small>Loading sessions...</small></td></tr>
                                 </tbody>
                             </table>
                         </div>
+                        <div id="sessionsLoadMore" class="d-none text-center py-2">
+                            <button class="btn btn-sm btn-outline-secondary" onclick="loadMoreSessions()">
+                                <i class="fas fa-chevron-down me-1"></i>Load more
+                            </button>
+                        </div>
+                        <div id="sessionsEmpty" class="d-none text-center py-4">
+                            <i class="fas fa-inbox text-muted" style="font-size: 1.5rem;"></i>
+                            <p class="text-muted small mt-2 mb-0">No sessions yet. Start a report to create your first session.</p>
+                        </div>
                     </div>
                 </div>
-                {% endif %}
 
                 <!-- Clinical Disclaimer -->
                 <div class="p-3 rounded" style="background: #f8f9fa; border: 1px solid #e9ecef;">
@@ -267,54 +264,102 @@
             <!-- ==================== SCENE 2: REPORT EDITOR ==================== -->
             <div id="sceneEditor" class="d-none">
                 <!-- Back button -->
-                <button class="btn btn-outline-secondary btn-sm mb-3" onclick="showScene('landing')">
-                    <i class="fas fa-arrow-left me-1"></i>Back to Smart Reporter
-                </button>
-
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h5 class="mb-0"><i class="fas fa-edit me-2" style="color: #5E899E;"></i>Report Editor</h5>
-                    <div>
-                        <button class="btn btn-sm btn-outline-success me-1" onclick="copyFullReport()" id="btnCopyReport">
-                            <i class="fas fa-copy me-1"></i>Copy Full Report
+                <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+                    <div class="d-flex align-items-center gap-2">
+                        <button class="btn btn-outline-secondary btn-sm" onclick="showScene('landing')">
+                            <i class="fas fa-arrow-left me-1"></i>Back
                         </button>
-                        <button class="btn btn-sm btn-outline-primary me-1" onclick="saveSession()">
-                            <i class="fas fa-save me-1"></i>Save
-                        </button>
-                        <button class="btn btn-sm btn-brand-primary" onclick="completeSession()">
-                            <i class="fas fa-check me-1"></i>Complete
+                        <h5 class="mb-0"><i class="fas fa-edit me-2" style="color: #5E899E;"></i>Report Editor</h5>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <small class="text-muted" id="editorSessionInfo"></small>
+                        <span id="editorSaveStatus" class="d-none">
+                            <small class="text-success"><i class="fas fa-check-circle me-1"></i>Saved</small>
+                        </span>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="startNewEditorSession()" title="New session">
+                            <i class="fas fa-plus me-1"></i>New
                         </button>
                     </div>
                 </div>
 
                 <div class="row g-3">
-                    <!-- Report Sections -->
+                    <!-- Left column: Input + Output -->
                     <div class="col-lg-7">
-                        <div class="card border-0 shadow-sm">
-                            <div class="card-body p-3">
-                                {% set sections = [
-                                    ('indication', 'INDICATION', 'Clinical indication and question...'),
-                                    ('technique', 'TECHNIQUE', 'Imaging technique details...'),
-                                    ('comparison', 'COMPARISON', 'Prior studies for comparison...'),
-                                    ('findings', 'FINDINGS', 'Describe imaging findings...'),
-                                    ('impression', 'IMPRESSION', 'Summary impression...'),
-                                    ('recommendation', 'RECOMMENDATION', 'Follow-up recommendations...')
-                                ] %}
-                                {% for key, label, placeholder in sections %}
-                                <div class="mb-3">
-                                    <label class="form-label fw-semibold small text-uppercase" style="color: #5E899E; letter-spacing: 0.5px;">{{ label }}</label>
-                                    <textarea class="form-control report-section" id="section_{{ key }}"
-                                              data-section="{{ key }}"
-                                              rows="{% if key == 'findings' %}6{% elif key == 'impression' %}3{% else %}2{% endif %}"
-                                              placeholder="{{ placeholder }}"
-                                              style="font-family: 'Courier New', monospace; font-size: 0.9rem; line-height: 1.5;"></textarea>
+                        <!-- Input Box -->
+                        <div class="card border-0 shadow-sm mb-3">
+                            <div class="card-header bg-white border-0 py-2">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <small class="fw-semibold"><i class="fas fa-pencil-alt me-1" style="color: #5E899E;"></i>Your Draft Report</small>
+                                    <button class="btn btn-sm btn-brand-primary" id="btnReviewReport" onclick="reviewReport()">
+                                        <i class="fas fa-spell-check me-1"></i>Review &amp; Improve
+                                    </button>
                                 </div>
-                                {% endfor %}
+                            </div>
+                            <div class="card-body p-3">
+                                <textarea class="form-control" id="editorInput" rows="12"
+                                          placeholder="Type or paste your draft report here...&#10;&#10;You can include headings like INDICATION:, TECHNIQUE:, FINDINGS:, IMPRESSION: etc.&#10;Or just write free text — Claude will understand either way."
+                                          style="font-family: 'Courier New', monospace; font-size: 0.9rem; line-height: 1.6;"></textarea>
+                            </div>
+                        </div>
+
+                        <!-- Review Loading -->
+                        <div id="reviewLoading" class="d-none text-center py-3 mb-3">
+                            <div class="spinner-border spinner-border-sm" style="color: #e96304;" role="status"></div>
+                            <small class="text-muted ms-2">Reviewing your report for grammar, spelling, and phrasing...</small>
+                        </div>
+
+                        <!-- Output Box (shown after review) -->
+                        <div id="outputSection" class="d-none">
+                            <div class="card border-0 shadow-sm mb-3">
+                                <div class="card-header bg-white border-0 py-2">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <small class="fw-semibold"><i class="fas fa-file-alt me-1" style="color: #a8d5ba;"></i>Final Report</small>
+                                        <button class="btn btn-sm btn-outline-success" onclick="copyFinalReport()" id="btnCopyReport">
+                                            <i class="fas fa-copy me-1"></i>Copy Report
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="card-body p-3">
+                                    <textarea class="form-control" id="editorOutput" rows="12"
+                                              style="font-family: 'Courier New', monospace; font-size: 0.9rem; line-height: 1.6;"
+                                              readonly></textarea>
+                                    <small class="text-muted mt-1 d-block">
+                                        <i class="fas fa-info-circle me-1"></i>Accept or reject suggestions on the right to update this output. You can also edit the input and re-run review.
+                                    </small>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Ask Claude Panel -->
+                    <!-- Right column: Suggestions + Ask Claude -->
                     <div class="col-lg-5">
+                        <!-- Suggestions Panel -->
+                        <div id="suggestionsPanel" class="d-none mb-3">
+                            <div class="card border-0 shadow-sm">
+                                <div class="card-header bg-white border-0 py-2">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <small class="fw-semibold"><i class="fas fa-magic me-1" style="color: #e96304;"></i>Suggestions</small>
+                                        <div>
+                                            <button class="btn btn-sm btn-outline-success me-1" onclick="acceptAllSuggestions()" title="Accept all">
+                                                <i class="fas fa-check-double me-1"></i><span class="d-none d-xl-inline">Accept All</span>
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-secondary" onclick="rejectAllSuggestions()" title="Reject all">
+                                                <i class="fas fa-times me-1"></i><span class="d-none d-xl-inline">Reject All</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-body p-2" style="max-height: 500px; overflow-y: auto;">
+                                    <div id="suggestionsList"></div>
+                                    <div id="noSuggestions" class="d-none text-center py-3">
+                                        <i class="fas fa-check-circle text-success" style="font-size: 1.5rem;"></i>
+                                        <p class="text-muted small mt-2 mb-0">Report looks good! No suggestions.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Ask Claude Panel -->
                         <div class="card border-0 shadow-sm" style="position: sticky; top: 80px;">
                             <div class="card-header bg-white border-0 py-2">
                                 <div class="d-flex justify-content-between align-items-center">
@@ -328,7 +373,7 @@
                                         <pre id="askClaudeAnswer" class="mb-2" style="white-space: pre-wrap; font-family: 'Courier New', monospace; font-size: 0.85rem; line-height: 1.4;"></pre>
                                         <div class="d-flex gap-2">
                                             <button class="btn btn-sm btn-outline-success" onclick="insertClaudeResponse()">
-                                                <i class="fas fa-plus me-1"></i>Insert into report
+                                                <i class="fas fa-plus me-1"></i>Insert into output
                                             </button>
                                             <button class="btn btn-sm btn-outline-secondary" onclick="dismissClaudeResponse()">
                                                 Dismiss
@@ -347,7 +392,7 @@
                                 </div>
                                 <div class="mt-2">
                                     <small class="text-muted">
-                                        Try: "Help me write the impression" | "Check grammar" | "What am I missing?" | "Suggest recommendations"
+                                        Try: "Help me write the impression" | "What am I missing?" | "Suggest recommendations"
                                     </small>
                                 </div>
 
@@ -394,7 +439,12 @@ document.addEventListener('DOMContentLoaded', function() {
         stepHistory: [],        // Array of step IDs in visit order
         currentHistoryIndex: -1,
         answers: {},            // {step_id: {selected: [indices], report_texts: [strings], free_text: ''}}
-        // Report sections
+        // Editor
+        inputText: '',          // User's draft report text
+        outputText: '',         // Final report with accepted suggestions applied
+        suggestions: [],        // Array of {original, suggested, reason, type, status: 'pending'|'accepted'|'rejected'}
+        improvedReport: '',     // Claude's full improved report
+        // Legacy — kept for compatibility with report assembly from Scene 1
         reportSections: {
             indication: '',
             technique: '',
@@ -405,7 +455,6 @@ document.addEventListener('DOMContentLoaded', function() {
         },
         askClaudeRemaining: 20,
         autoSaveTimer: null,
-        lastFocusedSection: 'findings',
     };
 
     // ==================== SCENE MANAGEMENT ====================
@@ -421,7 +470,7 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('sceneWalkthrough').classList.remove('d-none');
         } else if (scene === 'editor') {
             document.getElementById('sceneEditor').classList.remove('d-none');
-            populateEditorFromState();
+            populateEditorInput();
         }
         state.scene = scene;
     };
@@ -751,14 +800,25 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
 
-        state.reportSections.indication = rt.indication || state.reportSections.indication;
-        state.reportSections.technique = rt.technique || state.reportSections.technique;
-        state.reportSections.comparison = rt.comparison || state.reportSections.comparison;
-        state.reportSections.findings = findingsLines.join('\n\n');
-        state.reportSections.impression = hasAbnormal
+        const indication = rt.indication || '';
+        const technique = rt.technique || '';
+        const comparison = rt.comparison || 'No prior available for comparison.';
+        const findings = findingsLines.join('\n\n');
+        const impression = hasAbnormal
             ? (rt.impression_abnormal || '')
             : (rt.impression_normal || 'No acute abnormality identified.');
-        state.reportSections.recommendation = rt.recommendation || state.reportSections.recommendation;
+        const recommendation = rt.recommendation || '';
+
+        // Assemble into a single plain-text report
+        let parts = [];
+        if (indication) parts.push('INDICATION:\n' + indication);
+        if (technique) parts.push('TECHNIQUE:\n' + technique);
+        if (comparison) parts.push('COMPARISON:\n' + comparison);
+        if (findings) parts.push('FINDINGS:\n' + findings);
+        if (impression) parts.push('IMPRESSION:\n' + impression);
+        if (recommendation) parts.push('RECOMMENDATION:\n' + recommendation);
+
+        state.inputText = parts.join('\n\n');
     }
 
     function updateRunningReport() {
@@ -790,72 +850,251 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // ==================== EDITOR ====================
 
-    function populateEditorFromState() {
-        const sections = ['indication', 'technique', 'comparison', 'findings', 'impression', 'recommendation'];
-        sections.forEach(key => {
-            const el = document.getElementById('section_' + key);
-            if (el) {
-                el.value = state.reportSections[key] || '';
-                autoResizeTextarea(el);
-            }
-        });
+    function populateEditorInput() {
+        const el = document.getElementById('editorInput');
+        if (el && state.inputText) {
+            el.value = state.inputText;
+            autoResizeTextarea(el);
+        }
         updateAskClaudeCounter();
     }
-
-    // Track which section is focused for "Insert" feature
-    document.querySelectorAll('.report-section').forEach(el => {
-        el.addEventListener('focus', function() {
-            state.lastFocusedSection = this.dataset.section;
-        });
-        el.addEventListener('input', function() {
-            state.reportSections[this.dataset.section] = this.value;
-            autoResizeTextarea(this);
-            scheduleAutoSave();
-        });
-    });
 
     function autoResizeTextarea(el) {
         el.style.height = 'auto';
         el.style.height = Math.max(el.scrollHeight, 60) + 'px';
     }
 
-    function assembleFullReportText() {
-        const sections = ['indication', 'technique', 'comparison', 'findings', 'impression', 'recommendation'];
-        let lines = [];
-        sections.forEach(key => {
-            const el = document.getElementById('section_' + key);
-            const value = el ? el.value.trim() : '';
-            if (value) {
-                lines.push(key.toUpperCase() + ':\n' + value);
+    function getCurrentReportText() {
+        // Return output if available, otherwise input
+        const output = document.getElementById('editorOutput');
+        if (output && output.value.trim()) return output.value.trim();
+        const input = document.getElementById('editorInput');
+        return input ? input.value.trim() : '';
+    }
+
+    // ==================== REVIEW REPORT ====================
+
+    function doReviewReport() {
+        const input = document.getElementById('editorInput');
+        const text = input.value.trim();
+
+        const btn = document.getElementById('btnReviewReport');
+        btn.disabled = true;
+        document.getElementById('reviewLoading').classList.remove('d-none');
+        document.getElementById('outputSection').classList.add('d-none');
+        document.getElementById('suggestionsPanel').classList.add('d-none');
+
+        fetch('/api/smart-reporter/review-report', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                session_id: state.sessionId,
+                report_text: text,
+            }),
+        })
+        .then(r => r.json())
+        .then(data => {
+            btn.disabled = false;
+            document.getElementById('reviewLoading').classList.add('d-none');
+
+            if (data.error) {
+                showToast(data.error, 'error');
+                return;
+            }
+
+            state.improvedReport = data.improved_report || text;
+            state.suggestions = (data.suggestions || []).map(s => ({
+                ...s,
+                status: 'pending',
+            }));
+
+            if (data.remaining_questions !== undefined) {
+                state.askClaudeRemaining = data.remaining_questions;
+                updateAskClaudeCounter();
+            }
+
+            // Show output with user's original text (not improved yet — user must accept)
+            state.outputText = text;
+            const output = document.getElementById('editorOutput');
+            output.value = text;
+            autoResizeTextarea(output);
+
+            document.getElementById('outputSection').classList.remove('d-none');
+            document.getElementById('suggestionsPanel').classList.remove('d-none');
+
+            renderSuggestions();
+            scheduleAutoSave();
+        })
+        .catch(() => {
+            btn.disabled = false;
+            document.getElementById('reviewLoading').classList.add('d-none');
+            showToast('Review failed. Please try again.', 'error');
+        });
+    }
+
+    window.reviewReport = function() {
+        const input = document.getElementById('editorInput');
+        const text = input.value.trim();
+        if (!text) {
+            showToast('Please enter your report text first.', 'warning');
+            return;
+        }
+        // Ensure a session exists before calling review
+        if (!state.sessionId) {
+            ensureEditorSession().then(() => doReviewReport());
+        } else {
+            doReviewReport();
+        }
+    };
+
+    function renderSuggestions() {
+        const list = document.getElementById('suggestionsList');
+        const noSuggestions = document.getElementById('noSuggestions');
+
+        const pending = state.suggestions.filter(s => s.status === 'pending');
+
+        if (state.suggestions.length === 0) {
+            list.innerHTML = '';
+            noSuggestions.classList.remove('d-none');
+            return;
+        }
+        noSuggestions.classList.add('d-none');
+
+        let html = '';
+        state.suggestions.forEach((s, i) => {
+            const typeColor = {
+                'spelling': '#dc3545',
+                'grammar': '#e96304',
+                'phrasing': '#5E899E',
+                'structure': '#6b46c1',
+                'completeness': '#198754',
+            }[s.type] || '#6c757d';
+
+            if (s.status === 'accepted') {
+                html += `
+                    <div class="p-2 mb-2 rounded" style="background: #d4edda; border: 1px solid #c3e6cb; opacity: 0.7;">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <span class="badge" style="background: ${typeColor}; font-size: 0.65rem;">${s.type}</span>
+                            <i class="fas fa-check text-success small"></i>
+                        </div>
+                        <small class="text-muted d-block mt-1"><s>${escapeHtml(s.original)}</s></small>
+                        <small class="text-success d-block">${escapeHtml(s.suggested)}</small>
+                    </div>`;
+            } else if (s.status === 'rejected') {
+                html += `
+                    <div class="p-2 mb-2 rounded" style="background: #f8f9fa; border: 1px solid #e9ecef; opacity: 0.5;">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <span class="badge" style="background: ${typeColor}; font-size: 0.65rem;">${s.type}</span>
+                            <i class="fas fa-times text-muted small"></i>
+                        </div>
+                        <small class="text-muted d-block mt-1 text-decoration-line-through">${escapeHtml(s.original)} → ${escapeHtml(s.suggested)}</small>
+                    </div>`;
+            } else {
+                html += `
+                    <div class="p-2 mb-2 rounded suggestion-card" style="background: #fff8e1; border: 1px solid #ffe082; cursor: default;">
+                        <div class="d-flex justify-content-between align-items-start mb-1">
+                            <span class="badge" style="background: ${typeColor}; font-size: 0.65rem;">${s.type}</span>
+                            <small class="text-muted" style="font-size: 0.7rem;">${escapeHtml(s.reason)}</small>
+                        </div>
+                        <div class="mb-2">
+                            <small class="d-block"><span style="background: #ffcdd2; padding: 1px 3px; border-radius: 2px; text-decoration: line-through;">${escapeHtml(s.original)}</span></small>
+                            <small class="d-block mt-1"><span style="background: #c8e6c9; padding: 1px 3px; border-radius: 2px;">${escapeHtml(s.suggested)}</span></small>
+                        </div>
+                        <div class="d-flex gap-1">
+                            <button class="btn btn-sm btn-outline-success py-0 px-2" onclick="acceptSuggestion(${i})" style="font-size: 0.75rem;">
+                                <i class="fas fa-check me-1"></i>Accept
+                            </button>
+                            <button class="btn btn-sm btn-outline-secondary py-0 px-2" onclick="rejectSuggestion(${i})" style="font-size: 0.75rem;">
+                                <i class="fas fa-times me-1"></i>Reject
+                            </button>
+                        </div>
+                    </div>`;
             }
         });
-        return lines.join('\n\n');
+        list.innerHTML = html;
+    }
+
+    function escapeHtml(str) {
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+
+    window.acceptSuggestion = function(index) {
+        const s = state.suggestions[index];
+        if (!s || s.status !== 'pending') return;
+        s.status = 'accepted';
+        applyAcceptedSuggestions();
+        renderSuggestions();
+        scheduleAutoSave();
+    };
+
+    window.rejectSuggestion = function(index) {
+        const s = state.suggestions[index];
+        if (!s || s.status !== 'pending') return;
+        s.status = 'rejected';
+        renderSuggestions();
+    };
+
+    window.acceptAllSuggestions = function() {
+        state.suggestions.forEach(s => {
+            if (s.status === 'pending') s.status = 'accepted';
+        });
+        applyAcceptedSuggestions();
+        renderSuggestions();
+        scheduleAutoSave();
+    };
+
+    window.rejectAllSuggestions = function() {
+        state.suggestions.forEach(s => {
+            if (s.status === 'pending') s.status = 'rejected';
+        });
+        renderSuggestions();
+    };
+
+    function applyAcceptedSuggestions() {
+        // Start from the original input text and apply all accepted suggestions
+        let text = document.getElementById('editorInput').value;
+        state.suggestions.forEach(s => {
+            if (s.status === 'accepted' && s.original && s.suggested) {
+                // Replace first occurrence only
+                const idx = text.indexOf(s.original);
+                if (idx >= 0) {
+                    text = text.substring(0, idx) + s.suggested + text.substring(idx + s.original.length);
+                }
+            }
+        });
+        state.outputText = text;
+        const output = document.getElementById('editorOutput');
+        output.value = text;
+        autoResizeTextarea(output);
     }
 
     // ==================== COPY REPORT ====================
 
-    window.copyFullReport = function() {
-        const text = assembleFullReportText();
+    window.copyFinalReport = function() {
+        const output = document.getElementById('editorOutput');
+        const text = output ? output.value : getCurrentReportText();
         const btn = document.getElementById('btnCopyReport');
         navigator.clipboard.writeText(text).then(() => {
             btn.innerHTML = '<i class="fas fa-check me-1"></i>Copied!';
             btn.classList.remove('btn-outline-success');
             btn.classList.add('btn-success');
             setTimeout(() => {
-                btn.innerHTML = '<i class="fas fa-copy me-1"></i>Copy Full Report';
+                btn.innerHTML = '<i class="fas fa-copy me-1"></i>Copy Report';
                 btn.classList.remove('btn-success');
                 btn.classList.add('btn-outline-success');
             }, 2000);
         }).catch(() => {
-            const textarea = document.createElement('textarea');
-            textarea.value = text;
-            document.body.appendChild(textarea);
-            textarea.select();
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            document.body.appendChild(ta);
+            ta.select();
             document.execCommand('copy');
-            document.body.removeChild(textarea);
+            document.body.removeChild(ta);
             btn.innerHTML = '<i class="fas fa-check me-1"></i>Copied!';
             setTimeout(() => {
-                btn.innerHTML = '<i class="fas fa-copy me-1"></i>Copy Full Report';
+                btn.innerHTML = '<i class="fas fa-copy me-1"></i>Copy Report';
             }, 2000);
         });
     };
@@ -878,7 +1117,7 @@ document.addEventListener('DOMContentLoaded', function() {
             body: JSON.stringify({
                 session_id: state.sessionId,
                 question: question,
-                current_report: assembleFullReportText(),
+                current_report: getCurrentReportText(),
             }),
         })
         .then(r => r.json())
@@ -914,17 +1153,24 @@ document.addEventListener('DOMContentLoaded', function() {
 
     window.insertClaudeResponse = function() {
         const answer = document.getElementById('askClaudeAnswer').textContent;
-        const sectionKey = state.lastFocusedSection || 'findings';
-        const el = document.getElementById('section_' + sectionKey);
-        if (el) {
-            const current = el.value.trim();
-            el.value = current ? current + '\n\n' + answer : answer;
-            state.reportSections[sectionKey] = el.value;
-            autoResizeTextarea(el);
-            scheduleAutoSave();
+        // Insert into the output box (or input if output not visible)
+        const output = document.getElementById('editorOutput');
+        const outputSection = document.getElementById('outputSection');
+        if (outputSection && !outputSection.classList.contains('d-none') && output) {
+            const current = output.value.trim();
+            output.value = current ? current + '\n\n' + answer : answer;
+            state.outputText = output.value;
+            autoResizeTextarea(output);
+        } else {
+            const input = document.getElementById('editorInput');
+            const current = input.value.trim();
+            input.value = current ? current + '\n\n' + answer : answer;
+            state.inputText = input.value;
+            autoResizeTextarea(input);
         }
         dismissClaudeResponse();
-        showToast(`Inserted into ${sectionKey.toUpperCase()} section.`, 'success');
+        scheduleAutoSave();
+        showToast('Inserted into report.', 'success');
     };
 
     window.dismissClaudeResponse = function() {
@@ -942,37 +1188,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // ==================== SESSION PERSISTENCE ====================
 
-    window.saveSession = function() {
-        saveSessionToServer();
-        showToast('Session saved.', 'success');
-    };
-
-    window.completeSession = function() {
-        if (state.sessionId) {
-            const reportText = assembleFullReportText();
-            fetch(`/api/smart-reporter/session/${state.sessionId}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    report_text: reportText,
-                    walkthrough_answers: state.answers,
-                    status: 'completed',
-                }),
-            })
-            .then(r => r.json())
-            .then(data => {
-                if (data.success) {
-                    showToast('Session completed and saved.', 'success');
-                }
-            })
-            .catch(() => {});
-        }
-    };
-
     function saveSessionToServer() {
         if (!state.sessionId) return;
 
-        const reportText = assembleFullReportText();
+        const reportText = getCurrentReportText();
         const newStatus = state.scene === 'editor' ? 'editing' : 'walkthrough';
 
         fetch(`/api/smart-reporter/session/${state.sessionId}`, {
@@ -983,7 +1202,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 walkthrough_answers: state.answers,
                 status: newStatus,
             }),
-        }).catch(() => {});
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                const badge = document.getElementById('editorSaveStatus');
+                if (badge) {
+                    badge.classList.remove('d-none');
+                    setTimeout(() => badge.classList.add('d-none'), 3000);
+                }
+            }
+        })
+        .catch(() => {});
     }
 
     function scheduleAutoSave() {
@@ -1007,14 +1237,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 state.answers = data.walkthrough_answers || {};
                 state.askClaudeRemaining = 20 - (data.ask_claude_count || 0);
 
-                // Restore report sections from saved report_text
+                // Restore input text from saved report_text
                 if (data.report_text) {
-                    parseReportTextIntoSections(data.report_text);
-                } else if (state.algorithmTree && state.algorithmTree.report_template) {
-                    const rt = state.algorithmTree.report_template;
-                    state.reportSections.indication = rt.indication || '';
-                    state.reportSections.technique = rt.technique || '';
-                    state.reportSections.comparison = rt.comparison || '';
+                    state.inputText = data.report_text;
                 }
 
                 if (data.status === 'editing' || data.status === 'completed') {
@@ -1034,7 +1259,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Navigate to the step after the last answered
                     if (state.stepHistory.length > 0) {
                         state.currentHistoryIndex = state.stepHistory.length - 1;
-                        // Find next unanswered step
                         const lastAnswered = state.stepHistory[state.stepHistory.length - 1];
                         const lastIdx = allSteps.findIndex(s => s.id === lastAnswered);
                         if (lastIdx >= 0 && lastIdx < allSteps.length - 1) {
@@ -1053,22 +1277,184 @@ document.addEventListener('DOMContentLoaded', function() {
             .catch(() => showToast('Failed to load session.', 'error'));
     };
 
-    function parseReportTextIntoSections(text) {
-        const sectionKeys = ['indication', 'technique', 'comparison', 'findings', 'impression', 'recommendation'];
-        // Reset
-        sectionKeys.forEach(k => state.reportSections[k] = '');
+    // ==================== SESSION LIST (DYNAMIC) ====================
 
-        // Parse "SECTION:\ncontent" blocks
-        const regex = /^(INDICATION|TECHNIQUE|COMPARISON|FINDINGS|IMPRESSION|RECOMMENDATION):\s*\n?([\s\S]*?)(?=\n(?:INDICATION|TECHNIQUE|COMPARISON|FINDINGS|IMPRESSION|RECOMMENDATION):|$)/gim;
-        let match;
-        while ((match = regex.exec(text)) !== null) {
-            const key = match[1].toLowerCase();
-            const value = match[2].trim();
-            if (sectionKeys.includes(key)) {
-                state.reportSections[key] = value;
+    let sessionsOffset = 0;
+    let sessionsSearch = '';
+
+    function loadSessions(append) {
+        if (!append) sessionsOffset = 0;
+
+        const params = new URLSearchParams({
+            offset: sessionsOffset,
+            limit: 20,
+        });
+        if (sessionsSearch) params.set('q', sessionsSearch);
+
+        fetch('/api/smart-reporter/sessions?' + params.toString())
+            .then(r => r.json())
+            .then(data => {
+                const tbody = document.getElementById('sessionsTableBody');
+                const loadMore = document.getElementById('sessionsLoadMore');
+                const empty = document.getElementById('sessionsEmpty');
+                const countBadge = document.getElementById('sessionsCount');
+
+                countBadge.textContent = data.total || '';
+
+                if (!append) tbody.innerHTML = '';
+
+                if (data.sessions && data.sessions.length > 0) {
+                    empty.classList.add('d-none');
+                    data.sessions.forEach(s => {
+                        const tr = document.createElement('tr');
+                        tr.style.cursor = 'pointer';
+                        tr.onclick = () => resumeSession(s.id);
+
+                        const q = s.clinical_question || '';
+                        const statusMap = {
+                            'completed': '<span class="badge bg-success">Completed</span>',
+                            'editing': '<span class="badge bg-primary">Editing</span>',
+                            'walkthrough': '<span class="badge bg-warning text-dark">In Progress</span>',
+                        };
+                        const statusBadge = statusMap[s.status] || `<span class="badge bg-secondary">${s.status}</span>`;
+                        const date = s.created_at ? new Date(s.created_at).toLocaleDateString('en-GB', {day: 'numeric', month: 'short', year: 'numeric'}) : '';
+
+                        tr.innerHTML = `
+                            <td class="small">${escapeHtmlSafe(q.length > 60 ? q.substring(0, 60) + '...' : q)}</td>
+                            <td class="small">${escapeHtmlSafe(s.modality || '\u2014')}</td>
+                            <td>${statusBadge}</td>
+                            <td class="small text-muted">${date}</td>
+                            <td><i class="fas fa-chevron-right text-muted small"></i></td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+
+                    if (data.has_more) {
+                        loadMore.classList.remove('d-none');
+                    } else {
+                        loadMore.classList.add('d-none');
+                    }
+                } else if (!append) {
+                    tbody.innerHTML = '';
+                    empty.classList.remove('d-none');
+                    loadMore.classList.add('d-none');
+                }
+            })
+            .catch(() => {});
+    }
+
+    function escapeHtmlSafe(str) {
+        const div = document.createElement('div');
+        div.textContent = str || '';
+        return div.innerHTML;
+    }
+
+    window.searchSessions = function() {
+        sessionsSearch = document.getElementById('sessionSearchInput').value.trim();
+        loadSessions(false);
+    };
+
+    // Search on Enter key
+    document.getElementById('sessionSearchInput').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            searchSessions();
+        }
+    });
+
+    // Debounced search on typing
+    let searchTimer = null;
+    document.getElementById('sessionSearchInput').addEventListener('input', function() {
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(() => searchSessions(), 400);
+    });
+
+    window.loadMoreSessions = function() {
+        sessionsOffset += 20;
+        loadSessions(true);
+    };
+
+    // Load sessions on page load
+    loadSessions(false);
+
+    // ==================== SCENE 2 SESSION AUTO-CREATE ====================
+
+    function ensureEditorSession() {
+        // If already have a session, skip
+        if (state.sessionId) return Promise.resolve();
+
+        const inputText = document.getElementById('editorInput').value.trim();
+        // Extract a label from first line or first 60 chars
+        const firstLine = inputText.split('\n')[0].trim();
+        const label = firstLine.length > 60 ? firstLine.substring(0, 60) + '...' : (firstLine || 'Report editing session');
+
+        return fetch('/api/smart-reporter/create-session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ clinical_question: label }),
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) {
+                showToast(data.error, 'error');
+                return;
             }
+            state.sessionId = data.session_id;
+            state.askClaudeRemaining = 20;
+            updateEditorSessionInfo();
+            updateAskClaudeCounter();
+        })
+        .catch(() => {});
+    }
+
+    function updateEditorSessionInfo() {
+        const el = document.getElementById('editorSessionInfo');
+        if (state.sessionId) {
+            el.textContent = `Session #${state.sessionId}`;
+        } else {
+            el.textContent = 'Unsaved';
         }
     }
+
+    // Auto-resize, auto-create session, and auto-save on editor input changes
+    document.getElementById('editorInput').addEventListener('input', function() {
+        state.inputText = this.value;
+        autoResizeTextarea(this);
+        if (!state.sessionId && this.value.trim().length > 10) {
+            ensureEditorSession().then(() => scheduleAutoSave());
+        } else {
+            scheduleAutoSave();
+        }
+    });
+
+    window.startNewEditorSession = function() {
+        state.sessionId = null;
+        state.inputText = '';
+        state.outputText = '';
+        state.suggestions = [];
+        state.improvedReport = '';
+        state.askClaudeRemaining = 20;
+
+        document.getElementById('editorInput').value = '';
+        document.getElementById('editorOutput').value = '';
+        document.getElementById('outputSection').classList.add('d-none');
+        document.getElementById('suggestionsPanel').classList.add('d-none');
+        document.getElementById('askClaudeResponse').classList.add('d-none');
+        updateEditorSessionInfo();
+        updateAskClaudeCounter();
+    };
+
+    // Extend showScene to update session info and reload sessions
+    const origShowScene = window.showScene;
+    window.showScene = function(scene) {
+        origShowScene(scene);
+        if (scene === 'editor') {
+            updateEditorSessionInfo();
+        }
+        if (scene === 'landing') {
+            loadSessions(false);
+        }
+    };
 
 });
 </script>
