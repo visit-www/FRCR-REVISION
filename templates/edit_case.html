@@ -3962,19 +3962,33 @@ async function generateTnmIntelligenceForSite(primarySiteName, forceRegenerate =
         if (!result.tnm_link && selectedPrimarySite) {
             result.tnm_link = selectedPrimarySite.tnm_link || `/tnm/${selectedPrimarySite.section_slug}/${selectedPrimarySite.disease_slug}/student?year=2026`;
         }
-        
-        // Auto-save the generated intelligence for future reuse (only if structured data exists)
-        // Note: AI currently returns Markdown (tnm_intelligence_markdown), not structured fields
-        // Only save if we have structured data fields
+
+        // Update selectedPrimarySite with disease_site_id from API response
+        // (custom candidates from manual entry may not have disease_site_id initially)
+        if (result.ajcc_match && selectedPrimarySite) {
+            if (!selectedPrimarySite.disease_site_id && result.ajcc_match.disease_site_id) {
+                selectedPrimarySite.disease_site_id = result.ajcc_match.disease_site_id;
+            }
+            if (!selectedPrimarySite.section_slug && result.ajcc_match.section_slug) {
+                selectedPrimarySite.section_slug = result.ajcc_match.section_slug;
+            }
+            if (!selectedPrimarySite.disease_slug && result.ajcc_match.disease_slug) {
+                selectedPrimarySite.disease_slug = result.ajcc_match.disease_slug;
+            }
+        }
+
+        // Auto-save the generated intelligence for future reuse
+        // TNM intelligence is stored per disease_site_id (not per case)
         const hasStructuredData = result.tnm_memory_aid || result.radiologist_key_points || result.upstaging_triggers;
-        if (caseId && selectedPrimarySite?.disease_site_id && hasStructuredData) {
+        const effectiveDiseaseId = selectedPrimarySite?.disease_site_id || result.ajcc_match?.disease_site_id;
+        if (effectiveDiseaseId && hasStructuredData) {
             try {
                 const saveResponse = await fetch('/tnm/api/save-intelligence', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        case_id: caseId,
-                        disease_site_id: selectedPrimarySite.disease_site_id,
+                        disease_site_id: effectiveDiseaseId,
+                        source_case_id: caseId || null,
                         tnm_intelligence: {
                             tnm_memory_aid: result.tnm_memory_aid,
                             radiologist_key_points: result.radiologist_key_points,
@@ -3983,19 +3997,21 @@ async function generateTnmIntelligenceForSite(primarySiteName, forceRegenerate =
                             copy_blocks: result.copy_blocks,
                             imaging_checklist: result.imaging_checklist,
                             reference_images: result.reference_images,
-                            warnings: result.warnings
+                            warnings: result.warnings,
+                            essential_tnm: result.essential_tnm || null
                         }
                     })
                 });
                 if (saveResponse.ok) {
-                    console.log('[TNM] Intelligence auto-saved for future use');
+                    console.log('[TNM] Intelligence auto-saved for disease_site_id=' + effectiveDiseaseId);
+                } else {
+                    console.warn('[TNM] Save returned status:', saveResponse.status);
                 }
             } catch (saveErr) {
                 console.warn('[TNM] Could not auto-save intelligence:', saveErr);
-                // Don't block the flow - saving is optional optimization
             }
-        } else if (caseId && selectedPrimarySite?.disease_site_id) {
-            console.log('[TNM] Skipping auto-save: AI returned Markdown only, no structured data');
+        } else {
+            console.log('[TNM] Skipping auto-save: effectiveDiseaseId=' + effectiveDiseaseId + ', hasStructuredData=' + !!hasStructuredData);
         }
         
         // Insert TNM intelligence directly into discussion

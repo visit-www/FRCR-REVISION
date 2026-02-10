@@ -518,6 +518,17 @@ BATCH_LIST = [
     ('bone', 'Primary Bone Tumours', 'Musculoskeletal'),
     # --- CNS ---
     ('brain', 'Brain and Spinal Cord Tumours', 'Neuro'),
+    # --- Round 2: Additional FRCR-relevant sites ---
+    ('nasal-cavity-and-paranasal-sinuses', 'Nasal Cavity and Paranasal Sinuses', 'Head and Neck'),
+    ('anal-canal', 'Anal Canal', 'Abdomen'),
+    ('perihilar-bile-ducts', 'Perihilar Bile Ducts (Klatskin Tumour)', 'Abdomen'),
+    ('distal-bile-duct', 'Distal Bile Duct', 'Abdomen'),
+    ('ampulla-of-vater', 'Ampulla of Vater', 'Abdomen'),
+    ('thymus', 'Thymus', 'Thorax'),
+    ('renal-pelvis-and-ureter', 'Renal Pelvis and Ureter (Urothelial)', 'Abdomen'),
+    ('gist', 'Gastrointestinal Stromal Tumour (GIST)', 'Abdomen'),
+    ('adrenal-cortical-carcinoma', 'Adrenal Cortical Carcinoma', 'Abdomen'),
+    ('thyroid-medullary', 'Thyroid - Medullary Carcinoma', 'Head and Neck'),
 ]
 
 

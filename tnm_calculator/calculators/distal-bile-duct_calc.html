@@ -1,0 +1,1241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Distal Bile Duct Cancer TNM Staging Calculator - AJCC 9th Edition</title>
+    <style>
+        :root {
+            --brand-primary: #e96304;
+            --brand-secondary: #ffc107;
+            --brand-success: #a8d5ba;
+            --brand-neutral: #5E899E;
+            --brand-text-primary: #2c3e50;
+            --brand-text-secondary: #5a6270;
+            --brand-text-light: #8b94a3;
+            --brand-bg-white: #ffffff;
+            --brand-bg-offwhite: #fdfdfb;
+            --brand-border: #c5cad1;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: var(--brand-text-primary);
+            background-color: var(--brand-bg-offwhite);
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+
+        .header {
+            text-align: center;
+            background: linear-gradient(135deg, var(--brand-primary), var(--brand-secondary));
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 8px 25px rgba(233, 99, 4, 0.2);
+        }
+
+        .header h1 {
+            font-size: 2.2em;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.95;
+            margin-bottom: 5px;
+        }
+
+        .calculator-section {
+            background: var(--brand-bg-white);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+            border: 1px solid var(--brand-border);
+        }
+
+        .calculator-form {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+
+        .form-section {
+            border: 1px solid var(--brand-border);
+            border-radius: 10px;
+            padding: 20px;
+            background: var(--brand-bg-offwhite);
+        }
+
+        .section-title {
+            color: var(--brand-primary);
+            font-size: 1.4em;
+            margin-bottom: 15px;
+            font-weight: 600;
+            border-bottom: 2px solid var(--brand-primary);
+            padding-bottom: 8px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--brand-text-primary);
+        }
+
+        .help-text {
+            font-weight: 400;
+            color: var(--brand-text-secondary);
+            font-size: 0.9em;
+            display: block;
+            margin-top: 4px;
+        }
+
+        .checkbox-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .checkbox-option {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .checkbox-option:hover {
+            background-color: rgba(233, 99, 4, 0.05);
+        }
+
+        .checkbox-option input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: var(--brand-primary);
+        }
+
+        .input-with-unit {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .input-with-unit input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid var(--brand-border);
+            border-radius: 5px;
+            font-size: 1em;
+        }
+
+        .unit {
+            font-weight: 600;
+            color: var(--brand-text-secondary);
+        }
+
+        .radio-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 10px;
+        }
+
+        .radio-option {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+        }
+
+        .radio-option input[type="radio"] {
+            width: 18px;
+            height: 18px;
+            accent-color: var(--brand-primary);
+        }
+
+        .calculate-button {
+            background: linear-gradient(135deg, var(--brand-primary), var(--brand-secondary));
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.1em;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            align-self: center;
+            margin-top: 20px;
+        }
+
+        .calculate-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(233, 99, 4, 0.3);
+        }
+
+        .reset-button {
+            background: var(--brand-neutral);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 0.9em;
+            font-weight: 500;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            align-self: center;
+            margin-top: 10px;
+        }
+
+        .reset-button:hover {
+            background: #4a7489;
+        }
+
+        .result-card {
+            background: var(--brand-bg-white);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+            border: 1px solid var(--brand-border);
+            margin-top: 20px;
+        }
+
+        .result-card h2 {
+            color: var(--brand-primary);
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+
+        .result-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .result-item {
+            text-align: center;
+            padding: 15px;
+            background: var(--brand-bg-offwhite);
+            border-radius: 8px;
+            border: 1px solid var(--brand-border);
+        }
+
+        .result-item strong {
+            display: block;
+            color: var(--brand-text-secondary);
+            font-size: 0.9em;
+            margin-bottom: 5px;
+        }
+
+        .result-value {
+            font-size: 1.4em;
+            font-weight: 700;
+            color: var(--brand-primary);
+        }
+
+        .overall-stage {
+            text-align: center;
+            font-size: 1.8em;
+            font-weight: 700;
+            color: var(--brand-primary);
+            margin: 20px 0;
+            padding: 15px;
+            background: var(--brand-bg-offwhite);
+            border-radius: 10px;
+            border: 2px solid var(--brand-primary);
+        }
+
+        .reasoning-section {
+            background: var(--brand-bg-offwhite);
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 4px solid var(--brand-primary);
+            margin-top: 20px;
+        }
+
+        .reasoning-section h3 {
+            color: var(--brand-primary);
+            margin-bottom: 15px;
+        }
+
+        .reasoning-item {
+            margin-bottom: 10px;
+            padding: 10px;
+            background: var(--brand-bg-white);
+            border-radius: 5px;
+            border: 1px solid var(--brand-border);
+        }
+
+        .clinical-implications {
+            background: var(--brand-success);
+            color: var(--brand-text-primary);
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+
+        .clinical-implications h3 {
+            margin-bottom: 15px;
+            color: var(--brand-text-primary);
+        }
+
+        .reference-section {
+            background: var(--brand-bg-white);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.08);
+            border: 1px solid var(--brand-border);
+        }
+
+        .reference-title {
+            color: var(--brand-primary);
+            font-size: 1.8em;
+            margin-bottom: 25px;
+            text-align: center;
+            font-weight: 700;
+        }
+
+        .reference-card {
+            background: var(--brand-bg-offwhite);
+            border-radius: 10px;
+            padding: 25px;
+            margin-bottom: 25px;
+            border: 1px solid var(--brand-border);
+        }
+
+        .reference-subtitle {
+            color: var(--brand-primary);
+            font-size: 1.3em;
+            margin-bottom: 20px;
+            font-weight: 600;
+            border-bottom: 2px solid var(--brand-primary);
+            padding-bottom: 8px;
+        }
+
+        .mnemonic-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .mnemonic-box {
+            background: var(--brand-bg-white);
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid var(--brand-border);
+        }
+
+        .mnemonic-box h4 {
+            color: var(--brand-primary);
+            margin-bottom: 15px;
+            font-size: 1.1em;
+        }
+
+        .mnemonic-detail {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 10px;
+        }
+
+        .mnemonic-letter {
+            background: var(--brand-primary);
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .staging-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        .staging-table th,
+        .staging-table td {
+            border: 1px solid var(--brand-border);
+            padding: 12px;
+            text-align: left;
+        }
+
+        .staging-table th {
+            background: var(--brand-primary);
+            color: white;
+            font-weight: 600;
+        }
+
+        .staging-table tr:nth-child(even) {
+            background: var(--brand-bg-offwhite);
+        }
+
+        .tips-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .tip-card {
+            background: var(--brand-bg-white);
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid var(--brand-border);
+            border-left: 4px solid var(--brand-secondary);
+        }
+
+        .tip-card h4 {
+            color: var(--brand-primary);
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        .tip-detail {
+            color: var(--brand-text-secondary);
+            font-size: 0.95em;
+            margin-top: 10px;
+            font-style: italic;
+        }
+
+        .pitfall-card {
+            background: #fff5f5;
+            border-left: 4px solid #e53e3e;
+        }
+
+        .pitfall-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .pitfall-item {
+            display: flex;
+            gap: 15px;
+            background: var(--brand-bg-white);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid var(--brand-border);
+        }
+
+        .pitfall-number {
+            background: #e53e3e;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .systematic-steps {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .step-item {
+            display: flex;
+            gap: 15px;
+            background: var(--brand-bg-white);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid var(--brand-border);
+        }
+
+        .step-number {
+            background: var(--brand-primary);
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+
+            .header h1 {
+                font-size: 1.8em;
+            }
+
+            .result-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .mnemonic-grid,
+            .tips-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>Distal Bile Duct Cancer TNM Staging Calculator</h1>
+            <p>AJCC 9th Edition - Interactive Staging Tool</p>
+            <p>For Radiology Registrars & FRCR Exam Preparation</p>
+        </div>
+
+        <!-- Calculator Section -->
+        <div class="calculator-section">
+            <div class="calculator-form">
+                <!-- T Stage Section -->
+                <div class="form-section">
+                    <h3 class="section-title">T Stage: Primary Tumor Assessment</h3>
+                    
+                    <!-- T4 Features -->
+                    <div class="form-group">
+                        <label class="form-label">
+                            <strong>T4 Features (Vascular Involvement):</strong>
+                            <span class="help-text">If ANY present = Automatic T4</span>
+                        </label>
+                        <div class="checkbox-group">
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="t4_celiac" onchange="updateCalculator()">
+                                <span>Celiac axis involvement</span>
+                            </label>
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="t4_sma" onchange="updateCalculator()">
+                                <span>Superior mesenteric artery involvement</span>
+                            </label>
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="t4_hepatic" onchange="updateCalculator()">
+                                <span>Common hepatic artery involvement</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Invasion Depth -->
+                    <div class="form-group">
+                        <label class="form-label">
+                            <strong>Bile Duct Wall Invasion Depth:</strong>
+                            <span class="help-text">Measure depth of invasion into bile duct wall</span>
+                        </label>
+                        <div class="input-with-unit">
+                            <input type="number" id="invasionDepth" step="0.1" min="0" placeholder="e.g., 3.5" onchange="updateCalculator()">
+                            <span class="unit">mm</span>
+                        </div>
+                    </div>
+
+                    <!-- Special T Categories -->
+                    <div class="form-group">
+                        <label class="form-label">
+                            <strong>Special Categories:</strong>
+                        </label>
+                        <div class="checkbox-group">
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="tis" onchange="updateCalculator()">
+                                <span>Carcinoma in situ/high-grade dysplasia (Tis)</span>
+                            </label>
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="tx" onchange="updateCalculator()">
+                                <span>Primary tumor cannot be assessed (TX)</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- N Stage Section -->
+                <div class="form-section">
+                    <h3 class="section-title">N Stage: Regional Lymph Nodes</h3>
+                    
+                    <div class="form-group">
+                        <label class="form-label">
+                            <strong>Number of Positive Regional Lymph Nodes:</strong>
+                            <span class="help-text">Count all positive regional nodes</span>
+                        </label>
+                        <div class="input-with-unit">
+                            <input type="number" id="positiveNodes" min="0" placeholder="e.g., 2" onchange="updateCalculator()">
+                            <span class="unit">nodes</span>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">
+                            <strong>Special N Categories:</strong>
+                        </label>
+                        <div class="checkbox-group">
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="nx" onchange="updateCalculator()">
+                                <span>Regional lymph nodes cannot be assessed (NX)</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- M Stage Section -->
+                <div class="form-section">
+                    <h3 class="section-title">M Stage: Distant Metastases</h3>
+                    
+                    <div class="form-group">
+                        <label class="form-label">
+                            <strong>Distant Metastases Present:</strong>
+                            <span class="help-text">Any metastases beyond regional nodes</span>
+                        </label>
+                        <div class="radio-group">
+                            <label class="radio-option">
+                                <input type="radio" name="metastases" value="M0" onchange="updateCalculator()">
+                                <span>No (M0)</span>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="metastases" value="M1" onchange="updateCalculator()">
+                                <span>Yes (M1)</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Calculate Button -->
+                <button class="calculate-button" onclick="updateCalculator()">Calculate TNM Stage</button>
+                <button class="reset-button" onclick="resetCalculator()">Reset All Fields</button>
+            </div>
+
+            <!-- Results Card -->
+            <div class="result-card" id="finalResult" style="display: none;">
+                <h2>Final Staging Result</h2>
+                <div class="result-grid">
+                    <div class="result-item">
+                        <strong>T Stage</strong>
+                        <div class="result-value" id="resultT">-</div>
+                    </div>
+                    <div class="result-item">
+                        <strong>N Stage</strong>
+                        <div class="result-value" id="resultN">-</div>
+                    </div>
+                    <div class="result-item">
+                        <strong>M Stage</strong>
+                        <div class="result-value" id="resultM">-</div>
+                    </div>
+                </div>
+                <div class="overall-stage">
+                    Overall Stage: <span id="resultStage">-</span>
+                </div>
+                
+                <div class="reasoning-section">
+                    <h3>Staging Rationale</h3>
+                    <div id="resultReasoning"></div>
+                </div>
+
+                <div class="clinical-implications">
+                    <h3>Clinical Implications</h3>
+                    <div id="clinicalImplications"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reference Section -->
+        <div class="reference-section">
+            <h2 class="reference-title">Comprehensive Reference Guide</h2>
+
+            <!-- Mnemonics -->
+            <div class="reference-card">
+                <h3 class="reference-subtitle">Mnemonics to Remember</h3>
+                <div class="mnemonic-grid">
+                    <div class="mnemonic-box">
+                        <h4>T4 Vascular Involvement - "CASH"</h4>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">C</div>
+                            <div>Celiac axis involvement</div>
+                        </div>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">A</div>
+                            <div>Artery - superior mesenteric</div>
+                        </div>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">S</div>
+                            <div>Superior mesenteric artery</div>
+                        </div>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">H</div>
+                            <div>Hepatic artery (common)</div>
+                        </div>
+                    </div>
+                    <div class="mnemonic-box">
+                        <h4>Invasion Depth - "FIVE-TWELVE"</h4>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">5</div>
+                            <div>T1 vs T2 cutoff (5mm)</div>
+                        </div>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">12</div>
+                            <div>T2 vs T3 cutoff (12mm)</div>
+                        </div>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">V</div>
+                            <div>Vessels = T4</div>
+                        </div>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">E</div>
+                            <div>Encasement of major arteries</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- T Staging Table -->
+            <div class="reference-card">
+                <h3 class="reference-subtitle">T Stage Reference Table</h3>
+                <table class="staging-table">
+                    <thead>
+                        <tr>
+                            <th>T Stage</th>
+                            <th>Invasion Depth</th>
+                            <th>Key Features</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>TX</strong></td>
+                            <td>-</td>
+                            <td>Primary tumor cannot be assessed</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Tis</strong></td>
+                            <td>-</td>
+                            <td>Carcinoma in situ/high-grade dysplasia</td>
+                        </tr>
+                        <tr>
+                            <td><strong>T1</strong></td>
+                            <td>&lt; 5 mm</td>
+                            <td>Invades bile duct wall, depth less than 5 mm</td>
+                        </tr>
+                        <tr>
+                            <td><strong>T2</strong></td>
+                            <td>5-12 mm</td>
+                            <td>Invades bile duct wall, depth 5-12 mm</td>
+                        </tr>
+                        <tr>
+                            <td><strong>T3</strong></td>
+                            <td>&gt; 12 mm</td>
+                            <td>Invades bile duct wall, depth greater than 12 mm</td>
+                        </tr>
+                        <tr>
+                            <td><strong>T4</strong></td>
+                            <td>Any</td>
+                            <td>Involves celiac axis, SMA, and/or common hepatic artery</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- N Staging Table -->
+            <div class="reference-card">
+                <h3 class="reference-subtitle">N Stage Reference Table</h3>
+                <table class="staging-table">
+                    <thead>
+                        <tr>
+                            <th>N Stage</th>
+                            <th>Node Count</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>NX</strong></td>
+                            <td>-</td>
+                            <td>Regional lymph nodes cannot be assessed</td>
+                        </tr>
+                        <tr>
+                            <td><strong>N0</strong></td>
+                            <td>0</td>
+                            <td>No regional lymph node metastasis</td>
+                        </tr>
+                        <tr>
+                            <td><strong>N1</strong></td>
+                            <td>1-3</td>
+                            <td>Metastasis in one to three regional lymph nodes</td>
+                        </tr>
+                        <tr>
+                            <td><strong>N2</strong></td>
+                            <td>≥4</td>
+                            <td>Metastasis in four or more regional lymph nodes</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Overall Stage Groups -->
+            <div class="reference-card">
+                <h3 class="reference-subtitle">Overall Stage Groups</h3>
+                <table class="staging-table">
+                    <thead>
+                        <tr>
+                            <th>Stage</th>
+                            <th>T</th>
+                            <th>N</th>
+                            <th>M</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Stage 0</strong></td>
+                            <td>Tis</td>
+                            <td>N0</td>
+                            <td>M0</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Stage I</strong></td>
+                            <td>T1</td>
+                            <td>N0</td>
+                            <td>M0</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Stage IIA</strong></td>
+                            <td>T1, T2</td>
+                            <td>N1, N0</td>
+                            <td>M0</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Stage IIB</strong></td>
+                            <td>T2, T3</td>
+                            <td>N1, N0-N1</td>
+                            <td>M0</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Stage IIIA</strong></td>
+                            <td>T1-T3</td>
+                            <td>N2</td>
+                            <td>M0</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Stage IIIB</strong></td>
+                            <td>T4</td>
+                            <td>N0-N2</td>
+                            <td>M0</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Stage IV</strong></td>
+                            <td>Any T</td>
+                            <td>Any N</td>
+                            <td>M1</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Imaging Tips -->
+            <div class="reference-card">
+                <h3 class="reference-subtitle">Key Imaging Tips</h3>
+                <div class="tips-grid">
+                    <div class="tip-card">
+                        <h4>MRCP vs ERCP</h4>
+                        <p>MRCP is non-invasive and excellent for initial assessment of bile duct anatomy and strictures.</p>
+                        <div class="tip-detail">ERCP allows for tissue sampling and therapeutic intervention but carries procedural risks.</div>
+                    </div>
+                    <div class="tip-card">
+                        <h4>Invasion Depth Measurement</h4>
+                        <p>Measure perpendicular to the bile duct wall on high-resolution T2-weighted images.</p>
+                        <div class="tip-detail">Use thin-section imaging (2-3mm) for accurate depth assessment.</div>
+                    </div>
+                    <div class="tip-card">
+                        <h4>Vascular Assessment</h4>
+                        <p>Evaluate celiac axis, SMA, and common hepatic artery on arterial phase imaging.</p>
+                        <div class="tip-detail">Look for >180° encasement or vessel narrowing/occlusion.</div>
+                    </div>
+                    <div class="tip-card">
+                        <h4>Regional Nodes</h4>
+                        <p>Include pancreaticoduodenal, pyloric, hepatic artery, and superior mesenteric nodes.</p>
+                        <div class="tip-detail">Size criteria less reliable than morphology - look for rounded, heterogeneous nodes.</div>
+                    </div>
+                    <div class="tip-card">
+                        <h4>Pancreatic Involvement</h4>
+                        <p>Distinguish distal bile duct tumors from pancreatic head tumors - epicenter is key.</p>
+                        <div class="tip-detail">Distal bile duct tumors center between cystic duct confluence and ampulla.</div>
+                    </div>
+                    <div class="tip-card">
+                        <h4>Liver Metastases</h4>
+                        <p>Best seen on portal venous phase as hypodense lesions against enhanced liver.</p>
+                        <div class="tip-detail">Small metastases may be subtle - use thin sections and compare phases.</div>
+                    </div>
+                    <div class="tip-card">
+                        <h4>Peritoneal Disease</h4>
+                        <p>Look for ascites, omental nodularity, and peritoneal thickening.</p>
+                        <div class="tip-detail">Small volume disease may only manifest as trace ascites.</div>
+                    </div>
+                    <div class="tip-card">
+                        <h4>Post-Stent Imaging</h4>
+                        <p>Stent artifacts can obscure tumor margins - pre-stent imaging preferred for staging.</p>
+                        <div class="tip-detail">If post-stent, use T2-weighted sequences to see through metallic artifacts.</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Common Pitfalls -->
+            <div class="reference-card pitfall-card">
+                <h3 class="reference-subtitle">Common Pitfalls to Avoid</h3>
+                <div class="pitfall-list">
+                    <div class="pitfall-item">
+                        <div class="pitfall-number">1</div>
+                        <div>
+                            <strong>Confusing with Pancreatic Cancer</strong>
+                            <p>Distal bile duct tumors in the pancreatic head can mimic pancreatic adenocarcinoma. The epicenter location is crucial - distal bile duct tumors center between the cystic duct confluence and ampulla, not in pancreatic parenchyma.</p>
+                        </div>
+                    </div>
+                    <div class="pitfall-item">
+                        <div class="pitfall-number">2</div>
+                        <div>
+                            <strong>Incorrect Depth Measurement</strong>
+                            <p>Measuring invasion depth tangentially rather than perpendicular to the bile duct wall leads to overestimation. Always measure the shortest distance through the wall.</p>
+                        </div>
+                    </div>
+                    <div class="pitfall-item">
+                        <div class="pitfall-number">3</div>
+                        <div>
+                            <strong>Missing Vascular Involvement</strong>
+                            <p>Subtle vascular encasement can be missed on single-phase imaging. Always evaluate major arteries on arterial phase with thin sections and multiplanar reconstructions.</p>
+                        </div>
+                    </div>
+                    <div class="pitfall-item">
+                        <div class="pitfall-number">4</div>
+                        <div>
+                            <strong>Overcalling Lymph Nodes</strong>
+                            <p>Size alone is unreliable for nodal staging. Focus on morphology - rounded shape, loss of fatty hilum, and heterogeneous enhancement are more important than size.</p>
+                        </div>
+                    </div>
+                    <div class="pitfall-item">
+                        <div class="pitfall-number">5</div>
+                        <div>
+                            <strong>Inadequate Liver Assessment</strong>
+                        <p>Small liver metastases are easily missed without proper technique. Use portal venous phase imaging with thin sections, and compare with arterial phase for small hypervascular lesions.</p>
+                        </div>
+                    </div>
+                    <div class="pitfall-item">
+                        <div class="pitfall-number">6</div>
+                        <div>
+                            <strong>Ignoring Peritoneal Disease</strong>
+                            <p>Subtle peritoneal metastases may only manifest as small volume ascites or minimal omental thickening. These findings should prompt careful evaluation for M1 disease.</p>
+                        </div>
+                    </div>
+                    <div class="pitfall-item">
+                        <div class="pitfall-number">7</div>
+                        <div>
+                            <strong>Post-Procedure Artifacts</strong>
+                            <p>Imaging after stent placement or biopsy can introduce artifacts and inflammatory changes that obscure tumor margins. Pre-intervention imaging is always preferred for staging.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Systematic Reading Approach -->
+            <div class="reference-card">
+                <h3 class="reference-subtitle">8-Step Systematic Reading Approach</h3>
+                <div class="systematic-steps">
+                    <div class="step-item">
+                        <div class="step-number">1</div>
+                        <div>
+                            <strong>Confirm Tumor Location</strong>
+                            <p>Verify the epicenter is between cystic duct confluence and ampulla. Distinguish from pancreatic head or ampullary tumors.</p>
+                        </div>
+                    </div>
+                    <div class="step-item">
+                        <div class="step-number">2</div>
+                        <div>
+                            <strong>Assess Bile Duct Wall</strong>
+                            <p>Measure invasion depth perpendicular to the wall. Use high-resolution T2-weighted images for best visualization of wall layers.</p>
+                        </div>
+                    </div>
+                    <div class="step-item">
+                        <div class="step-number">3</div>
+                        <div>
+                            <strong>Evaluate Major Arteries</strong>
+                            <p>Systematically assess celiac axis, SMA, and common hepatic artery for encasement or narrowing on arterial phase.</p>
+                        </div>
+                    </div>
+                    <div class="step-item">
+                        <div class="step-number">4</div>
+                        <div>
+                            <strong>Count Regional Nodes</strong>
+                            <p>Identify and count suspicious regional lymph nodes. Include pancreaticoduodenal, pyloric, hepatic artery, and superior mesenteric groups.</p>
+                        </div>
+                    </div>
+                    <div class="step-item">
+                        <div class="step-number">5</div>
+                        <div>
+                            <strong>Screen for Liver Metastases</strong>
+                            <p>Carefully evaluate liver on portal venous phase. Look for hypodense lesions and compare with arterial phase for small lesions.</p>
+                        </div>
+                    </div>
+                    <div class="step-item">
+                        <div class="step-number">6</div>
+                        <div>
+                            <strong>Check Peritoneal Surfaces</strong>
+                            <p>Look for ascites, omental nodularity, peritoneal thickening, or implants. Even trace ascites can be significant.</p>
+                        </div>
+                    </div>
+                    <div class="step-item">
+                        <div class="step-number">7</div>
+                        <div>
+                            <strong>Assess Distant Sites</strong>
+                            <p>Evaluate lungs, bones, and other distant sites for metastatic disease. Include lung bases on abdominal imaging.</p>
+                        </div>
+                    </div>
+                    <div class="step-item">
+                        <div class="step-number">8</div>
+                        <div>
+                            <strong>Synthesize Findings</strong>
+                            <p>Combine all findings to determine T, N, M stages and overall stage group. Consider resectability and treatment implications.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function calculateTStage() {
+            // Check for TX
+            if (document.getElementById('tx').checked) {
+                return { stage: 'TX', reasoning: 'Primary tumor cannot be assessed' };
+            }
+
+            // Check for Tis
+            if (document.getElementById('tis').checked) {
+                return { stage: 'Tis', reasoning: 'Carcinoma in situ/high-grade dysplasia' };
+            }
+
+            // Check for T4 features
+            const t4Features = [
+                { id: 't4_celiac', desc: 'celiac axis involvement' },
+                { id: 't4_sma', desc: 'superior mesenteric artery involvement' },
+                { id: 't4_hepatic', desc: 'common hepatic artery involvement' }
+            ];
+
+            const presentT4Features = t4Features.filter(feature => 
+                document.getElementById(feature.id).checked
+            );
+
+            if (presentT4Features.length > 0) {
+                const featureList = presentT4Features.map(f => f.desc).join(', ');
+                return { 
+                    stage: 'T4', 
+                    reasoning: `T4: Tumor involves major vessels (${featureList})` 
+                };
+            }
+
+            // Check invasion depth
+            const invasionDepth = parseFloat(document.getElementById('invasionDepth').value);
+            
+            if (isNaN(invasionDepth) || invasionDepth < 0) {
+                return { stage: 'T?', reasoning: 'Please specify invasion depth to determine T stage' };
+            }
+
+            if (invasionDepth < 5) {
+                return { 
+                    stage: 'T1', 
+                    reasoning: `T1: Bile duct wall invasion depth ${invasionDepth}mm (< 5mm)` 
+                };
+            } else if (invasionDepth <= 12) {
+                return { 
+                    stage: 'T2', 
+                    reasoning: `T2: Bile duct wall invasion depth ${invasionDepth}mm (5-12mm)` 
+                };
+            } else {
+                return { 
+                    stage: 'T3', 
+                    reasoning: `T3: Bile duct wall invasion depth ${invasionDepth}mm (> 12mm)` 
+                };
+            }
+        }
+
+        function calculateNStage() {
+            // Check for NX
+            if (document.getElementById('nx').checked) {
+                return { stage: 'NX', reasoning: 'Regional lymph nodes cannot be assessed' };
+            }
+
+            const positiveNodes = parseInt(document.getElementById('positiveNodes').value) || 0;
+
+            if (positiveNodes === 0) {
+                return { stage: 'N0', reasoning: 'No regional lymph node metastasis' };
+            } else if (positiveNodes >= 1 && positiveNodes <= 3) {
+                return { 
+                    stage: 'N1', 
+                    reasoning: `N1: Metastasis in ${positiveNodes} regional lymph node${positiveNodes > 1 ? 's' : ''} (1-3 nodes)` 
+                };
+            } else {
+                return { 
+                    stage: 'N2', 
+                    reasoning: `N2: Metastasis in ${positiveNodes} regional lymph nodes (≥4 nodes)` 
+                };
+            }
+        }
+
+        function calculateMStage() {
+            const metastases = document.querySelector('input[name="metastases"]:checked');
+            
+            if (!metastases) {
+                return { stage: 'M?', reasoning: 'Please specify presence of distant metastases' };
+            }
+
+            if (metastases.value === 'M0') {
+                return { stage: 'M0', reasoning: 'No distant metastasis' };
+            } else {
+                return { stage: 'M1', reasoning: 'Distant metastasis present' };
+            }
+        }
+
+        function calculateOverallStage(tStage, nStage, mStage) {
+            // Stage IV - Any M1
+            if (mStage === 'M1') {
+                return 'IV';
+            }
+
+            // Stage 0
+            if (tStage === 'Tis' && nStage === 'N0' && mStage === 'M0') {
+                return '0';
+            }
+
+            // Stage I
+            if (tStage === 'T1' && nStage === 'N0' && mStage === 'M0') {
+                return 'I';
+            }
+
+            // Stage IIA
+            if ((tStage === 'T1' && nStage === 'N1') || 
+                (tStage === 'T2' && nStage === 'N0')) {
+                return 'IIA';
+            }
+
+            // Stage IIB
+            if ((tStage === 'T2' && nStage === 'N1') ||
+                (tStage === 'T3' && (nStage === 'N0' || nStage === 'N1'))) {
+                return 'IIB';
+            }
+
+            // Stage IIIA
+            if ((tStage === 'T1' || tStage === 'T2' || tStage === 'T3') && nStage === 'N2') {
+                return 'IIIA';
+            }
+
+            // Stage IIIB
+            if (tStage === 'T4' && (nStage === 'N0' || nStage === 'N1' || nStage === 'N2')) {
+                return 'IIIB';
+            }
+
+            return 'Cannot determine';
+        }
+
+        function getStageImplications(stage, tStage, nStage, mStage) {
+            const implications = {
+                '0': 'Carcinoma in situ. Excellent prognosis with appropriate local treatment.',
+                'I': 'Early-stage disease confined to bile duct wall. Excellent surgical candidate with good prognosis.',
+                'IIA': 'Locally advanced disease or limited nodal involvement. Good surgical candidate if resectable.',
+                'IIB': 'More extensive local disease or nodal involvement. Surgical resection still possible with good outcomes.',
+                'IIIA': 'Significant nodal disease. Surgical resection may be considered but prognosis is more guarded.',
+                'IIIB': 'Locally advanced with major vascular involvement. Typically unresectable, consider neoadjuvant therapy.',
+                'IV': 'Metastatic disease. Palliative treatment approach. Consider systemic therapy and symptom management.'
+            };
+
+            let baseImplication = implications[stage] || 'Stage-specific implications not available.';
+            
+            // Add specific notes based on T, N, M components
+            let additionalNotes = [];
+            
+            if (tStage === 'T4') {
+                additionalNotes.push('Major vascular involvement typically precludes surgical resection.');
+            }
+            
+            if (nStage === 'N2') {
+                additionalNotes.push('Extensive nodal disease indicates more aggressive tumor biology.');
+            }
+            
+            if (mStage === 'M1') {
+                additionalNotes.push('Focus on palliative care and quality of life measures.');
+            }
+
+            if (additionalNotes.length > 0) {
+                baseImplication += ' ' + additionalNotes.join(' ');
+            }
+
+            return baseImplication;
+        }
+
+        function updateCalculator() {
+            const tResult = calculateTStage();
+            const nResult = calculateNStage();
+            const mResult = calculateMStage();
+
+            const overallStage = calculateOverallStage(tResult.stage, nResult.stage, mResult.stage);
+
+            // Update display
+            document.getElementById('resultT').textContent = tResult.stage;
+            document.getElementById('resultN').textContent = nResult.stage;
+            document.getElementById('resultM').textContent = mResult.stage;
+            document.getElementById('resultStage').textContent = overallStage;
+
+            // Update reasoning
+            const reasoningDiv = document.getElementById('resultReasoning');
+            reasoningDiv.innerHTML = `
+                <div class="reasoning-item"><strong>T Stage (${tResult.stage}):</strong> ${tResult.reasoning}</div>
+                <div class="reasoning-item"><strong>N Stage (${nResult.stage}):</strong> ${nResult.reasoning}</div>
+                <div class="reasoning-item"><strong>M Stage (${mResult.stage}):</strong> ${mResult.reasoning}</div>
+            `;
+
+            // Update clinical implications
+            const implications = getStageImplications(overallStage, tResult.stage, nResult.stage, mResult.stage);
+            document.getElementById('clinicalImplications').innerHTML = `<p>${implications}</p>`;
+
+            // Show results
+            document.getElementById('finalResult').style.display = 'block';
+        }
+
+        function resetCalculator() {
+            // Reset all form inputs
+            const inputs = document.querySelectorAll('input');
+            inputs.forEach(input => {
+                if (input.type === 'checkbox' || input.type === 'radio') {
+                    input.checked = false;
+                } else {
+                    input.value = '';
+                }
+            });
+
+            // Hide results
+            document.getElementById('finalResult').style.display = 'none';
+        }
+
+        // Initialize calculator on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set default M0
+            document.querySelector('input[value="M0"]').checked = true;
+        });
+    </script>
+</body>
+</html>

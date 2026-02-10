@@ -1,0 +1,1413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Adrenal Cortical Carcinoma TNM Staging Calculator - AJCC 9th Edition</title>
+    <style>
+        :root {
+            --brand-primary: #e96304;
+            --brand-secondary: #ffc107;
+            --brand-success: #a8d5ba;
+            --brand-neutral: #5E899E;
+            --brand-text-primary: #2c3e50;
+            --brand-text-secondary: #5a6270;
+            --brand-text-light: #8b94a3;
+            --brand-bg-white: #ffffff;
+            --brand-bg-offwhite: #fdfdfb;
+            --brand-border: #c5cad1;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: var(--brand-text-primary);
+            background: linear-gradient(135deg, var(--brand-bg-offwhite) 0%, #f8f9fa 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+
+        .header {
+            text-align: center;
+            background: var(--brand-bg-white);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            border: 1px solid var(--brand-border);
+        }
+
+        .header h1 {
+            color: var(--brand-primary);
+            font-size: 2.2rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .header .subtitle {
+            color: var(--brand-text-secondary);
+            font-size: 1.1rem;
+            font-weight: 500;
+        }
+
+        .calculator-section {
+            background: var(--brand-bg-white);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            border: 1px solid var(--brand-border);
+        }
+
+        .calculator-form {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+
+        .form-section {
+            border: 2px solid var(--brand-border);
+            border-radius: 12px;
+            padding: 20px;
+            background: var(--brand-bg-offwhite);
+        }
+
+        .section-title {
+            color: var(--brand-primary);
+            font-size: 1.4rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            font-weight: 600;
+            color: var(--brand-text-primary);
+            margin-bottom: 8px;
+        }
+
+        .help-text {
+            font-weight: 400;
+            color: var(--brand-text-light);
+            font-size: 0.9rem;
+            display: block;
+            margin-top: 4px;
+        }
+
+        .checkbox-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .checkbox-option {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 8px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .checkbox-option:hover {
+            background-color: rgba(233, 99, 4, 0.05);
+        }
+
+        .checkbox-option input[type="checkbox"] {
+            margin: 0;
+            transform: scale(1.2);
+        }
+
+        .input-with-unit {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .input-with-unit input {
+            flex: 1;
+            max-width: 150px;
+        }
+
+        .unit {
+            font-weight: 600;
+            color: var(--brand-text-secondary);
+        }
+
+        input[type="number"], input[type="text"], select {
+            padding: 10px 12px;
+            border: 2px solid var(--brand-border);
+            border-radius: 6px;
+            font-size: 1rem;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        input[type="number"]:focus, input[type="text"]:focus, select:focus {
+            outline: none;
+            border-color: var(--brand-primary);
+            box-shadow: 0 0 0 3px rgba(233, 99, 4, 0.1);
+        }
+
+        .radio-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 10px;
+        }
+
+        .radio-option {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+        }
+
+        .radio-option input[type="radio"] {
+            transform: scale(1.2);
+        }
+
+        .calculate-section {
+            text-align: center;
+            margin-top: 30px;
+        }
+
+        .calculate-btn {
+            background: linear-gradient(135deg, var(--brand-primary) 0%, #d55a04 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-right: 15px;
+        }
+
+        .calculate-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(233, 99, 4, 0.3);
+        }
+
+        .reset-btn {
+            background: var(--brand-neutral);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .reset-btn:hover {
+            background: #4a7489;
+        }
+
+        .result-card {
+            background: linear-gradient(135deg, var(--brand-success) 0%, #95c7a8 100%);
+            border-radius: 12px;
+            padding: 25px;
+            margin-top: 25px;
+            border: 2px solid #8bc9a0;
+            display: none;
+        }
+
+        .result-card.show {
+            display: block;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .result-card h2 {
+            color: var(--brand-text-primary);
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .result-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .result-item {
+            background: var(--brand-bg-white);
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid #8bc9a0;
+        }
+
+        .result-item strong {
+            display: block;
+            color: var(--brand-text-secondary);
+            font-size: 0.9rem;
+            margin-bottom: 5px;
+        }
+
+        .result-value {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--brand-primary);
+        }
+
+        .overall-stage {
+            background: var(--brand-bg-white);
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            margin-bottom: 20px;
+            border: 2px solid var(--brand-primary);
+        }
+
+        .overall-stage h3 {
+            font-size: 1.5rem;
+            color: var(--brand-primary);
+        }
+
+        .reasoning-section {
+            background: var(--brand-bg-white);
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #8bc9a0;
+        }
+
+        .reasoning-section h4 {
+            color: var(--brand-text-primary);
+            margin-bottom: 15px;
+        }
+
+        .reasoning-item {
+            margin-bottom: 10px;
+            padding: 10px;
+            background: var(--brand-bg-offwhite);
+            border-radius: 6px;
+            border-left: 4px solid var(--brand-primary);
+        }
+
+        .clinical-implications {
+            background: var(--brand-bg-white);
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 15px;
+            border: 1px solid #8bc9a0;
+        }
+
+        .clinical-implications h4 {
+            color: var(--brand-primary);
+            margin-bottom: 10px;
+        }
+
+        .reference-section {
+            background: var(--brand-bg-white);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            border: 1px solid var(--brand-border);
+        }
+
+        .reference-title {
+            color: var(--brand-primary);
+            font-size: 1.8rem;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .reference-card {
+            background: var(--brand-bg-offwhite);
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 25px;
+            border: 1px solid var(--brand-border);
+        }
+
+        .reference-subtitle {
+            color: var(--brand-primary);
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+            border-bottom: 2px solid var(--brand-primary);
+            padding-bottom: 8px;
+        }
+
+        .mnemonic-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .mnemonic-box {
+            background: var(--brand-bg-white);
+            padding: 20px;
+            border-radius: 8px;
+            border: 2px solid var(--brand-secondary);
+        }
+
+        .mnemonic-box h4 {
+            color: var(--brand-primary);
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+        }
+
+        .mnemonic-detail {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .mnemonic-letter {
+            background: var(--brand-secondary);
+            color: var(--brand-text-primary);
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .staging-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        .staging-table th,
+        .staging-table td {
+            padding: 12px;
+            text-align: left;
+            border: 1px solid var(--brand-border);
+        }
+
+        .staging-table th {
+            background: var(--brand-primary);
+            color: white;
+            font-weight: 600;
+        }
+
+        .staging-table tr:nth-child(even) {
+            background: var(--brand-bg-offwhite);
+        }
+
+        .tips-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .tip-card {
+            background: var(--brand-bg-white);
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid var(--brand-border);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .tip-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+        }
+
+        .tip-card h4 {
+            color: var(--brand-primary);
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+        }
+
+        .tip-detail {
+            color: var(--brand-text-secondary);
+            font-style: italic;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid var(--brand-border);
+        }
+
+        .pitfall-card {
+            background: linear-gradient(135deg, #fff5f5 0%, #fef7f7 100%);
+            border: 1px solid #fed7d7;
+        }
+
+        .pitfall-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .pitfall-item {
+            display: flex;
+            gap: 15px;
+            background: var(--brand-bg-white);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #fed7d7;
+        }
+
+        .pitfall-number {
+            background: #e53e3e;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .systematic-steps {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .step-item {
+            display: flex;
+            gap: 15px;
+            background: var(--brand-bg-white);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid var(--brand-border);
+        }
+
+        .step-number {
+            background: var(--brand-primary);
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .warning-box {
+            background: linear-gradient(135deg, #fff5e6 0%, #fef9f0 100%);
+            border: 2px solid var(--brand-secondary);
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+
+        .warning-box h5 {
+            color: #d69e2e;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+
+            .header h1 {
+                font-size: 1.8rem;
+            }
+
+            .result-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .mnemonic-grid,
+            .tips-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .calculator-section,
+            .reference-section {
+                padding: 20px;
+            }
+        }
+
+        .highlight {
+            background: linear-gradient(135deg, var(--brand-secondary) 0%, #f0c14b 100%);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>Adrenal Cortical Carcinoma TNM Staging Calculator</h1>
+            <div class="subtitle">AJCC 9th Edition • Interactive Clinical Tool for Radiologists</div>
+        </div>
+
+        <!-- Calculator Section -->
+        <div class="calculator-section">
+            <div class="calculator-form">
+                <!-- T Stage Section -->
+                <div class="form-section">
+                    <h3 class="section-title">🎯 T Stage: Primary Tumor Assessment</h3>
+
+                    <!-- T4 Features -->
+                    <div class="form-group">
+                        <label class="form-label">
+                            <strong>T4 Features - Adjacent Organ Invasion:</strong>
+                            <span class="help-text">If ANY present = Automatic T4</span>
+                        </label>
+                        <div class="checkbox-group">
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="t4_kidney" onchange="updateCalculator()">
+                                <span>Kidney invasion</span>
+                            </label>
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="t4_diaphragm" onchange="updateCalculator()">
+                                <span>Diaphragm invasion</span>
+                            </label>
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="t4_pancreas" onchange="updateCalculator()">
+                                <span>Pancreas invasion</span>
+                            </label>
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="t4_spleen" onchange="updateCalculator()">
+                                <span>Spleen invasion</span>
+                            </label>
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="t4_liver" onchange="updateCalculator()">
+                                <span>Liver invasion</span>
+                            </label>
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="t4_renal_vein" onchange="updateCalculator()">
+                                <span>Renal vein invasion</span>
+                            </label>
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="t4_vena_cava" onchange="updateCalculator()">
+                                <span>Vena cava invasion</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- T3 Features -->
+                    <div class="form-group">
+                        <label class="form-label">
+                            <strong>T3 Features - Local Invasion:</strong>
+                            <span class="help-text">Local invasion without adjacent organ involvement</span>
+                        </label>
+                        <div class="checkbox-group">
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="t3_local_invasion" onchange="updateCalculator()">
+                                <span>Local invasion present (not involving adjacent organs)</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Tumor Size -->
+                    <div class="form-group">
+                        <label class="form-label">
+                            <strong>Tumor Size (maximum dimension):</strong>
+                            <span class="help-text">Measure largest dimension on any imaging plane</span>
+                        </label>
+                        <div class="input-with-unit">
+                            <input type="number" id="tumorSize" step="0.1" min="0" placeholder="e.g., 4.5" onchange="updateCalculator()">
+                            <span class="unit">cm</span>
+                        </div>
+                    </div>
+
+                    <!-- Extra-adrenal Invasion -->
+                    <div class="form-group">
+                        <label class="form-label">
+                            <strong>Extra-adrenal Invasion:</strong>
+                            <span class="help-text">Extension beyond adrenal gland capsule</span>
+                        </label>
+                        <div class="radio-group">
+                            <label class="radio-option">
+                                <input type="radio" name="extraAdrenal" value="no" id="extraAdrenal_no" onchange="updateCalculator()" checked>
+                                <span>No extra-adrenal invasion</span>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="extraAdrenal" value="yes" id="extraAdrenal_yes" onchange="updateCalculator()">
+                                <span>Extra-adrenal invasion present</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- N Stage Section -->
+                <div class="form-section">
+                    <h3 class="section-title">🔍 N Stage: Regional Lymph Nodes</h3>
+
+                    <div class="form-group">
+                        <label class="form-label">
+                            <strong>Regional Lymph Node Status:</strong>
+                            <span class="help-text">Regional nodes include para-aortic, paracaval, and renal hilar nodes</span>
+                        </label>
+                        <div class="radio-group">
+                            <label class="radio-option">
+                                <input type="radio" name="nodeStatus" value="nx" id="nodeStatus_nx" onchange="updateCalculator()">
+                                <span>NX - Cannot be assessed</span>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="nodeStatus" value="n0" id="nodeStatus_n0" onchange="updateCalculator()" checked>
+                                <span>N0 - No regional lymph node metastasis</span>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="nodeStatus" value="n1" id="nodeStatus_n1" onchange="updateCalculator()">
+                                <span>N1 - Regional lymph node metastasis</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">
+                            <strong>Largest Regional Node Size:</strong>
+                            <span class="help-text">Short axis measurement of largest suspicious node</span>
+                        </label>
+                        <div class="input-with-unit">
+                            <input type="number" id="largestNode" step="0.1" min="0" placeholder="e.g., 1.2" onchange="updateCalculator()">
+                            <span class="unit">cm</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- M Stage Section -->
+                <div class="form-section">
+                    <h3 class="section-title">🌐 M Stage: Distant Metastasis</h3>
+
+                    <div class="form-group">
+                        <label class="form-label">
+                            <strong>Distant Metastasis:</strong>
+                            <span class="help-text">Metastasis beyond regional lymph nodes</span>
+                        </label>
+                        <div class="radio-group">
+                            <label class="radio-option">
+                                <input type="radio" name="metastasis" value="m0" id="metastasis_m0" onchange="updateCalculator()" checked>
+                                <span>M0 - No distant metastasis</span>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="metastasis" value="m1" id="metastasis_m1" onchange="updateCalculator()">
+                                <span>M1 - Distant metastasis present</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">
+                            <strong>Common Metastatic Sites (if M1):</strong>
+                            <span class="help-text">Check all that apply</span>
+                        </label>
+                        <div class="checkbox-group">
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="met_lung" onchange="updateCalculator()">
+                                <span>Lung metastases</span>
+                            </label>
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="met_liver" onchange="updateCalculator()">
+                                <span>Liver metastases</span>
+                            </label>
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="met_bone" onchange="updateCalculator()">
+                                <span>Bone metastases</span>
+                            </label>
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="met_peritoneum" onchange="updateCalculator()">
+                                <span>Peritoneal metastases</span>
+                            </label>
+                            <label class="checkbox-option">
+                                <input type="checkbox" id="met_other" onchange="updateCalculator()">
+                                <span>Other distant sites</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Calculate Section -->
+                <div class="calculate-section">
+                    <button class="calculate-btn" onclick="calculateStaging()">Calculate TNM Stage</button>
+                    <button class="reset-btn" onclick="resetForm()">Reset Form</button>
+                </div>
+            </div>
+
+            <!-- Results Card -->
+            <div class="result-card" id="finalResult">
+                <h2>🎯 Final Staging Result</h2>
+                <div class="result-grid">
+                    <div class="result-item">
+                        <strong>T Stage</strong>
+                        <div class="result-value" id="resultT">-</div>
+                    </div>
+                    <div class="result-item">
+                        <strong>N Stage</strong>
+                        <div class="result-value" id="resultN">-</div>
+                    </div>
+                    <div class="result-item">
+                        <strong>M Stage</strong>
+                        <div class="result-value" id="resultM">-</div>
+                    </div>
+                </div>
+                
+                <div class="overall-stage">
+                    <h3>Overall Stage: <span id="resultStage">-</span></h3>
+                </div>
+
+                <div class="reasoning-section">
+                    <h4>📋 Staging Reasoning</h4>
+                    <div id="resultReasoning">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                </div>
+
+                <div class="clinical-implications">
+                    <h4>🏥 Clinical Implications</h4>
+                    <div id="clinicalImplications">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reference Section -->
+        <div class="reference-section">
+            <h2 class="reference-title">📚 Comprehensive Reference Guide</h2>
+
+            <!-- Mnemonics -->
+            <div class="reference-card">
+                <h3 class="reference-subtitle">🧠 Mnemonics to Remember</h3>
+                <div class="mnemonic-grid">
+                    <div class="mnemonic-box">
+                        <h4>T4 Adjacent Organs - "KDPSL"</h4>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">K</div>
+                            <div><strong>Kidney</strong> - Direct invasion</div>
+                        </div>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">D</div>
+                            <div><strong>Diaphragm</strong> - Superior extension</div>
+                        </div>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">P</div>
+                            <div><strong>Pancreas</strong> - Medial invasion</div>
+                        </div>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">S</div>
+                            <div><strong>Spleen</strong> - Left adrenal extension</div>
+                        </div>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">L</div>
+                            <div><strong>Liver</strong> - Right adrenal extension</div>
+                        </div>
+                    </div>
+
+                    <div class="mnemonic-box">
+                        <h4>T4 Vascular Invasion - "RV"</h4>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">R</div>
+                            <div><strong>Renal vein</strong> - Major venous invasion</div>
+                        </div>
+                        <div class="mnemonic-detail">
+                            <div class="mnemonic-letter">V</div>
+                            <div><strong>Vena cava</strong> - IVC involvement</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Size-Based T Staging -->
+            <div class="reference-card">
+                <h3 class="reference-subtitle">📏 T Stage Size Criteria</h3>
+                <table class="staging-table">
+                    <thead>
+                        <tr>
+                            <th>T Stage</th>
+                            <th>Size Criteria</th>
+                            <th>Extra-adrenal Invasion</th>
+                            <th>Adjacent Organ Invasion</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>T1</strong></td>
+                            <td>≤ 5 cm</td>
+                            <td>No</td>
+                            <td>No</td>
+                        </tr>
+                        <tr>
+                            <td><strong>T2</strong></td>
+                            <td>> 5 cm</td>
+                            <td>No</td>
+                            <td>No</td>
+                        </tr>
+                        <tr>
+                            <td><strong>T3</strong></td>
+                            <td>Any size</td>
+                            <td>Yes (local invasion)</td>
+                            <td>No</td>
+                        </tr>
+                        <tr>
+                            <td><strong>T4</strong></td>
+                            <td>Any size</td>
+                            <td>Yes</td>
+                            <td>Yes (kidney, diaphragm, pancreas, spleen, liver, or major vessels)</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Stage Grouping -->
+            <div class="reference-card">
+                <h3 class="reference-subtitle">🎯 AJCC Stage Grouping</h3>
+                <table class="staging-table">
+                    <thead>
+                        <tr>
+                            <th>Overall Stage</th>
+                            <th>T Stage</th>
+                            <th>N Stage</th>
+                            <th>M Stage</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Stage I</strong></td>
+                            <td>T1</td>
+                            <td>N0</td>
+                            <td>M0</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Stage II</strong></td>
+                            <td>T2</td>
+                            <td>N0</td>
+                            <td>M0</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Stage III</strong></td>
+                            <td>T1-T2</td>
+                            <td>N1</td>
+                            <td>M0</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Stage III</strong></td>
+                            <td>T3-T4</td>
+                            <td>Any N</td>
+                            <td>M0</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Stage IV</strong></td>
+                            <td>Any T</td>
+                            <td>Any N</td>
+                            <td>M1</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Imaging Tips -->
+            <div class="reference-card">
+                <h3 class="reference-subtitle">🔍 Key Imaging Tips</h3>
+                <div class="tips-grid">
+                    <div class="tip-card">
+                        <h4>Size Measurement</h4>
+                        <p>Measure the largest dimension on any imaging plane (axial, coronal, or sagittal).</p>
+                        <div class="tip-detail">Use soft tissue windows for accurate measurement. Include any solid components but exclude cystic areas.</div>
+                    </div>
+
+                    <div class="tip-card">
+                        <h4>Vascular Invasion Assessment</h4>
+                        <p>Look for tumor thrombus in renal vein or IVC on contrast-enhanced phases.</p>
+                        <div class="tip-detail">Arterial and venous phases are crucial. Look for filling defects, vessel expansion, or enhancement within the vessel lumen.</div>
+                    </div>
+
+                    <div class="tip-card">
+                        <h4>Adjacent Organ Invasion</h4>
+                        <p>Assess for loss of fat planes and direct tumor extension into adjacent structures.</p>
+                        <div class="tip-detail">Complete loss of fat plane + irregular interface + enhancement in adjacent organ suggests invasion.</div>
+                    </div>
+
+                    <div class="tip-card">
+                        <h4>Regional Lymph Nodes</h4>
+                        <p>Evaluate para-aortic, paracaval, and renal hilar lymph nodes for enlargement or abnormal enhancement.</p>
+                        <div class="tip-detail">Size threshold >1 cm short axis, but also consider morphology, enhancement pattern, and clinical context.</div>
+                    </div>
+
+                    <div class="tip-card">
+                        <h4>Metastatic Disease</h4>
+                        <p>Common sites include lungs, liver, bones, and peritoneum. Always include chest imaging.</p>
+                        <div class="tip-detail">ACC has propensity for lung and liver metastases. Bone metastases are typically lytic.</div>
+                    </div>
+
+                    <div class="tip-card">
+                        <h4>Imaging Protocol</h4>
+                        <p>Use dedicated adrenal protocol with pre-contrast, arterial, venous, and delayed phases.</p>
+                        <div class="tip-detail">Thin-section CT (≤3mm) with IV contrast. MRI with chemical shift imaging can help characterize lesions.</div>
+                    </div>
+
+                    <div class="tip-card">
+                        <h4>Functional Assessment</h4>
+                        <p>Consider biochemical correlation for hormone-secreting tumors affecting staging implications.</p>
+                        <div class="tip-detail">Functional status may influence treatment decisions but doesn't directly affect TNM staging.</div>
+                    </div>
+
+                    <div class="tip-card">
+                        <h4>Follow-up Imaging</h4>
+                        <p>Post-treatment surveillance should assess for local recurrence and distant metastases.</p>
+                        <div class="tip-detail">High recurrence rate necessitates long-term follow-up with cross-sectional imaging every 3-6 months initially.</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Common Pitfalls -->
+            <div class="reference-card pitfall-card">
+                <h3 class="reference-subtitle">⚠️ Common Pitfalls to Avoid</h3>
+                <div class="pitfall-list">
+                    <div class="pitfall-item">
+                        <div class="pitfall-number">1</div>
+                        <div>
+                            <strong>Confusing T3 and T4</strong>
+                            <p>T3 is local invasion without adjacent organ involvement, while T4 requires invasion of specific adjacent organs (kidney, diaphragm, pancreas, spleen, liver) or major vessels. Don't upstage T3 to T4 for minor capsular extension.</p>
+                        </div>
+                    </div>
+
+                    <div class="pitfall-item">
+                        <div class="pitfall-number">2</div>
+                        <div>
+                            <strong>Missing Vascular Invasion</strong>
+                            <p>Renal vein or IVC invasion automatically makes it T4, regardless of size. Always carefully evaluate venous phases for tumor thrombus or vessel wall invasion.</p>
+                        </div>
+                    </div>
+
+                    <div class="pitfall-item">
+                        <div class="pitfall-number">3</div>
+                        <div>
+                            <strong>Inadequate Nodal Assessment</strong>
+                            <p>Regional nodes include para-aortic, paracaval, and renal hilar nodes. Don't forget to assess all regional nodal stations, not just the most obvious ones.</p>
+                        </div>
+                    </div>
+
+                    <div class="pitfall-item">
+                        <div class="pitfall-number">4</div>
+                        <div>
+                            <strong>Size Measurement Errors</strong>
+                            <p>Measure the largest dimension on any plane, not just axial. Include solid components only and use consistent measurement techniques across follow-up studies.</p>
+                        </div>
+                    </div>
+
+                    <div class="pitfall-item">
+                        <div class="pitfall-number">5</div>
+                        <div>
+                            <strong>Overlooking Distant Metastases</strong>
+                            <p>Always include chest imaging in staging workup. ACC commonly metastasizes to lungs and liver. Small lung nodules may be the only sign of M1 disease.</p>
+                        </div>
+                    </div>
+
+                    <div class="pitfall-item">
+                        <div class="pitfall-number">6</div>
+                        <div>
+                            <strong>Misinterpreting Stage III vs IV</strong>
+                            <p>Stage IV is reserved exclusively for distant metastatic disease (M1). T4 lesions without distant metastases are Stage III, not Stage IV.</p>
+                        </div>
+                    </div>
+
+                    <div class="pitfall-item">
+                        <div class="pitfall-number">7</div>
+                        <div>
+                            <strong>Inadequate Contrast Timing</strong>
+                            <p>Proper arterial and venous phase timing is crucial for assessing vascular invasion and organ involvement. Poor contrast timing can lead to understaging.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Systematic Approach -->
+            <div class="reference-card">
+                <h3 class="reference-subtitle">📋 8-Step Systematic Reading Approach</h3>
+                <div class="systematic-steps">
+                    <div class="step-item">
+                        <div class="step-number">1</div>
+                        <div>
+                            <strong>Confirm Adrenal Location</strong>
+                            <p>Verify the mass is arising from the adrenal gland and not from adjacent structures like kidney or retroperitoneum.</p>
+                        </div>
+                    </div>
+
+                    <div class="step-item">
+                        <div class="step-number">2</div>
+                        <div>
+                            <strong>Measure Maximum Dimension</strong>
+                            <p>Measure the largest dimension on any imaging plane. Document size for T1 (≤5cm) vs T2 (>5cm) determination.</p>
+                        </div>
+                    </div>
+
+                    <div class="step-item">
+                        <div class="step-number">3</div>
+                        <div>
+                            <strong>Assess Capsular Integrity</strong>
+                            <p>Look for capsular disruption or extension beyond the adrenal gland. This determines T3 vs T1/T2 staging.</p>
+                        </div>
+                    </div>
+
+                    <div class="step-item">
+                        <div class="step-number">4</div>
+                        <div>
+                            <strong>Evaluate Adjacent Organs</strong>
+                            <p>Systematically assess kidney, diaphragm, pancreas, spleen, and liver for direct tumor invasion (T4 criteria).</p>
+                        </div>
+                    </div>
+
+                    <div class="step-item">
+                        <div class="step-number">5</div>
+                        <div>
+                            <strong>Check Vascular Invasion</strong>
+                            <p>Carefully examine renal vein and IVC on venous phase images for tumor thrombus or wall invasion (T4 criteria).</p>
+                        </div>
+                    </div>
+
+                    <div class="step-item">
+                        <div class="step-number">6</div>
+                        <div>
+                            <strong>Survey Regional Nodes</strong>
+                            <p>Evaluate para-aortic, paracaval, and renal hilar lymph nodes for size, morphology, and enhancement pattern.</p>
+                        </div>
+                    </div>
+
+                    <div class="step-item">
+                        <div class="step-number">7</div>
+                        <div>
+                            <strong>Search for Distant Metastases</strong>
+                            <p>Systematically review lungs, liver, bones, and peritoneum for metastatic disease. Include chest imaging in staging.</p>
+                        </div>
+                    </div>
+
+                    <div class="step-item">
+                        <div class="step-number">8</div>
+                        <div>
+                            <strong>Correlate with Clinical Data</strong>
+                            <p>Consider functional status, biochemical markers, and clinical presentation to provide comprehensive staging assessment.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Key Changes in AJCC 8th Edition -->
+            <div class="reference-card">
+                <h3 class="reference-subtitle">📝 Key Changes in AJCC 8th Edition</h3>
+                <div class="warning-box">
+                    <h5>Important Updates</h5>
+                    <p>The AJCC 8th Edition made significant changes to adrenal cortical carcinoma staging based on validation studies:</p>
+                </div>
+                
+                <ul style="margin-left: 20px; margin-top: 15px;">
+                    <li><strong>T4 Redefinition:</strong> Now includes large vessel invasion (renal vein or vena cava) in addition to adjacent organ invasion</li>
+                    <li><strong>Stage IV Restriction:</strong> Stage IV is now reserved exclusively for distant metastatic disease (M1)</li>
+                    <li><strong>Stage III Expansion:</strong> T3 and T4 lesions without distant metastases are now Stage III regardless of nodal status</li>
+                    <li><strong>Validation Basis:</strong> Changes based on large studies from German ACC Registry and SEER database</li>
+                    <li><strong>Improved Discrimination:</strong> Better separation between Stage II and Stage III disease outcomes</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function updateCalculator() {
+            // This function is called whenever form inputs change
+            // It can be used for real-time updates if desired
+        }
+
+        function calculateTStage() {
+            // Check T4 features first (highest priority)
+            const t4Features = [
+                't4_kidney', 't4_diaphragm', 't4_pancreas', 
+                't4_spleen', 't4_liver', 't4_renal_vein', 't4_vena_cava'
+            ];
+            
+            for (let feature of t4Features) {
+                if (document.getElementById(feature).checked) {
+                    let featureName = feature.replace('t4_', '').replace('_', ' ');
+                    return {
+                        stage: 'T4',
+                        reason: `T4: Tumor invades adjacent organ or large vessel (${featureName} invasion present)`
+                    };
+                }
+            }
+
+            // Check T3 features
+            if (document.getElementById('t3_local_invasion').checked) {
+                return {
+                    stage: 'T3',
+                    reason: 'T3: Tumor with local invasion but not invading adjacent organs'
+                };
+            }
+
+            // Check size and extra-adrenal invasion for T1/T2
+            const tumorSize = parseFloat(document.getElementById('tumorSize').value) || 0;
+            const extraAdrenal = document.querySelector('input[name="extraAdrenal"]:checked').value;
+
+            if (extraAdrenal === 'yes') {
+                return {
+                    stage: 'T3',
+                    reason: 'T3: Tumor with extra-adrenal invasion (local invasion present)'
+                };
+            }
+
+            if (tumorSize === 0) {
+                return {
+                    stage: 'TX',
+                    reason: 'TX: Primary tumor cannot be assessed (size not provided)'
+                };
+            }
+
+            if (tumorSize <= 5) {
+                return {
+                    stage: 'T1',
+                    reason: `T1: Tumor ≤5 cm (${tumorSize} cm) with no extra-adrenal invasion`
+                };
+            } else {
+                return {
+                    stage: 'T2',
+                    reason: `T2: Tumor >5 cm (${tumorSize} cm) with no extra-adrenal invasion`
+                };
+            }
+        }
+
+        function calculateNStage() {
+            const nodeStatus = document.querySelector('input[name="nodeStatus"]:checked').value;
+            
+            switch (nodeStatus) {
+                case 'nx':
+                    return {
+                        stage: 'NX',
+                        reason: 'NX: Regional lymph nodes cannot be assessed'
+                    };
+                case 'n0':
+                    return {
+                        stage: 'N0',
+                        reason: 'N0: No regional lymph node metastasis'
+                    };
+                case 'n1':
+                    const nodeSize = parseFloat(document.getElementById('largestNode').value) || 0;
+                    let sizeText = nodeSize > 0 ? ` (largest node ${nodeSize} cm)` : '';
+                    return {
+                        stage: 'N1',
+                        reason: `N1: Regional lymph node metastasis present${sizeText}`
+                    };
+                default:
+                    return {
+                        stage: 'N0',
+                        reason: 'N0: No regional lymph node metastasis'
+                    };
+            }
+        }
+
+        function calculateMStage() {
+            const metastasis = document.querySelector('input[name="metastasis"]:checked').value;
+            
+            if (metastasis === 'm1') {
+                const metSites = [];
+                if (document.getElementById('met_lung').checked) metSites.push('lung');
+                if (document.getElementById('met_liver').checked) metSites.push('liver');
+                if (document.getElementById('met_bone').checked) metSites.push('bone');
+                if (document.getElementById('met_peritoneum').checked) metSites.push('peritoneum');
+                if (document.getElementById('met_other').checked) metSites.push('other sites');
+                
+                let siteText = metSites.length > 0 ? ` (${metSites.join(', ')})` : '';
+                return {
+                    stage: 'M1',
+                    reason: `M1: Distant metastasis present${siteText}`
+                };
+            } else {
+                return {
+                    stage: 'M0',
+                    reason: 'M0: No distant metastasis'
+                };
+            }
+        }
+
+        function calculateOverallStage(tStage, nStage, mStage) {
+            // Stage IV: Any T, Any N, M1
+            if (mStage === 'M1') {
+                return {
+                    stage: 'IV',
+                    reason: 'Stage IV: Distant metastasis present (M1)'
+                };
+            }
+
+            // Stage III: T3-T4 with any N, M0 OR T1-T2 with N1, M0
+            if (tStage === 'T3' || tStage === 'T4') {
+                return {
+                    stage: 'III',
+                    reason: `Stage III: ${tStage} tumor with local/adjacent organ invasion, M0`
+                };
+            }
+
+            if ((tStage === 'T1' || tStage === 'T2') && nStage === 'N1') {
+                return {
+                    stage: 'III',
+                    reason: `Stage III: ${tStage} tumor with regional lymph node metastasis (N1), M0`
+                };
+            }
+
+            // Stage II: T2, N0, M0
+            if (tStage === 'T2' && nStage === 'N0') {
+                return {
+                    stage: 'II',
+                    reason: 'Stage II: T2 tumor (>5 cm), no nodal involvement (N0), no distant metastasis (M0)'
+                };
+            }
+
+            // Stage I: T1, N0, M0
+            if (tStage === 'T1' && nStage === 'N0') {
+                return {
+                    stage: 'I',
+                    reason: 'Stage I: T1 tumor (≤5 cm), no nodal involvement (N0), no distant metastasis (M0)'
+                };
+            }
+
+            // Default case for incomplete staging
+            return {
+                stage: 'Cannot be determined',
+                reason: 'Insufficient information for complete staging'
+            };
+        }
+
+        function getClinicaImplications(overallStage) {
+            switch (overallStage) {
+                case 'I':
+                    return `
+                        <strong>Stage I Implications:</strong>
+                        <ul>
+                            <li>Excellent prognosis with complete surgical resection</li>
+                            <li>5-year survival >90% with R0 resection</li>
+                            <li>Adjuvant therapy generally not recommended</li>
+                            <li>Regular surveillance imaging recommended</li>
+                        </ul>
+                    `;
+                case 'II':
+                    return `
+                        <strong>Stage II Implications:</strong>
+                        <ul>
+                            <li>Good prognosis with complete surgical resection</li>
+                            <li>5-year survival 70-80% with R0 resection</li>
+                            <li>Consider adjuvant mitotane therapy</li>
+                            <li>Close surveillance for recurrence</li>
+                        </ul>
+                    `;
+                case 'III':
+                    return `
+                        <strong>Stage III Implications:</strong>
+                        <ul>
+                            <li>Intermediate prognosis, surgery still potentially curative</li>
+                            <li>5-year survival 40-60% depending on resectability</li>
+                            <li>Adjuvant mitotane therapy recommended</li>
+                            <li>May require multimodal treatment approach</li>
+                            <li>Consider neoadjuvant therapy if borderline resectable</li>
+                        </ul>
+                    `;
+                case 'IV':
+                    return `
+                        <strong>Stage IV Implications:</strong>
+                        <ul>
+                            <li>Poor prognosis, palliative treatment focus</li>
+                            <li>5-year survival <20%</li>
+                            <li>Systemic therapy with mitotane ± cytotoxic chemotherapy</li>
+                            <li>Consider clinical trials</li>
+                            <li>Palliative surgery for symptom control in selected cases</li>
+                            <li>Multidisciplinary team approach essential</li>
+                        </ul>
+                    `;
+                default:
+                    return '<p>Complete staging required for clinical implications assessment.</p>';
+            }
+        }
+
+        function calculateStaging() {
+            const tResult = calculateTStage();
+            const nResult = calculateNStage();
+            const mResult = calculateMStage();
+            const overallResult = calculateOverallStage(tResult.stage, nResult.stage, mResult.stage);
+
+            // Display results
+            document.getElementById('resultT').textContent = tResult.stage;
+            document.getElementById('resultN').textContent = nResult.stage;
+            document.getElementById('resultM').textContent = mResult.stage;
+            document.getElementById('resultStage').textContent = overallResult.stage;
+
+            // Display reasoning
+            const reasoningHtml = `
+                <div class="reasoning-item">
+                    <strong>T Stage (${tResult.stage}):</strong> ${tResult.reason}
+                </div>
+                <div class="reasoning-item">
+                    <strong>N Stage (${nResult.stage}):</strong> ${nResult.reason}
+                </div>
+                <div class="reasoning-item">
+                    <strong>M Stage (${mResult.stage}):</strong> ${mResult.reason}
+                </div>
+                <div class="reasoning-item">
+                    <strong>Overall Stage (${overallResult.stage}):</strong> ${overallResult.reason}
+                </div>
+            `;
+            document.getElementById('resultReasoning').innerHTML = reasoningHtml;
+
+            // Display clinical implications
+            document.getElementById('clinicalImplications').innerHTML = getClinicaImplications(overallResult.stage);
+
+            // Show results card
+            document.getElementById('finalResult').classList.add('show');
+            
+            // Scroll to results
+            document.getElementById('finalResult').scrollIntoView({ 
+                behavior: 'smooth', 
+                block: 'start' 
+            });
+        }
+
+        function resetForm() {
+            // Reset all form inputs
+            document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+            document.querySelectorAll('input[type="number"]').forEach(input => input.value = '');
+            
+            // Reset radio buttons to default values
+            document.getElementById('extraAdrenal_no').checked = true;
+            document.getElementById('nodeStatus_n0').checked = true;
+            document.getElementById('metastasis_m0').checked = true;
+
+            // Hide results
+            document.getElementById('finalResult').classList.remove('show');
+        }
+
+        // Initialize form on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            resetForm();
+        });
+    </script>
+</body>
+</html>

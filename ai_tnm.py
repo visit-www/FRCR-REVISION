@@ -56,6 +56,28 @@ ONCOLOGIC_KEYWORDS = [
     "myeloma",
 ]
 
+# Exclusion keywords — diagnoses containing these are likely benign/non-staging
+ONCOLOGIC_EXCLUSION_KEYWORDS = [
+    "benign",
+    "non-malignant",
+    "nonmalignant",
+    "lipoma",
+    "fibroma",
+    "haemangioma",
+    "hemangioma",
+    "hamartoma",
+    "dermoid",
+    "fibroadenoma",
+    "osteochondroma",
+    "leiomyoma",
+    "meningioma",
+    "schwannoma",
+    "neurofibroma",
+    "enchondroma",
+    "angiomyolipoma",
+    "cyst",
+]
+
 
 # ============================================================================
 # AJCC TNM VERSION MAPPING
@@ -141,21 +163,41 @@ def format_tnm_version(disease_slug: str, year: int = None) -> str:
 def is_oncologic_diagnosis(diagnosis: str) -> bool:
     """
     Determine if a diagnosis requires TNM staging consideration.
-    
+
     This is a deterministic, keyword-based check - no AI involved.
-    Case-insensitive matching.
-    
+    Case-insensitive matching. Excludes common benign entities that
+    contain oncologic keywords (e.g. "benign tumour", "lipoma").
+
     Args:
         diagnosis: The diagnosis text
-        
+
     Returns:
-        True if oncologic keywords detected, False otherwise
+        True if oncologic keywords detected and no exclusion match, False otherwise
     """
     if not diagnosis:
         return False
-    
+
     diagnosis_lower = diagnosis.lower()
-    return any(keyword in diagnosis_lower for keyword in ONCOLOGIC_KEYWORDS)
+
+    # Check for oncologic keywords first
+    has_oncologic = any(keyword in diagnosis_lower for keyword in ONCOLOGIC_KEYWORDS)
+    if not has_oncologic:
+        return False
+
+    # If diagnosis explicitly mentions a strongly oncologic term (carcinoma, metastatic, etc.),
+    # don't exclude — e.g. "cystic carcinoma" or "malignant meningioma" should still trigger
+    strong_oncologic = ["carcinoma", "adenocarcinoma", "malignant", "malignancy",
+                        "metastatic", "metastasis", "metastases", "sarcoma", "lymphoma",
+                        "melanoma", "blastoma", "myeloma", "leukemia", "leukaemia",
+                        "squamous cell", "cancer"]
+    if any(kw in diagnosis_lower for kw in strong_oncologic):
+        return True
+
+    # For weaker oncologic terms (tumor/tumour/neoplasm), check exclusions
+    if any(excl in diagnosis_lower for excl in ONCOLOGIC_EXCLUSION_KEYWORDS):
+        return False
+
+    return True
 
 
 # ============================================================================

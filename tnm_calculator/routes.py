@@ -146,7 +146,9 @@ SLUG_ALIASES = {
     'brain-and-spinal-cord': 'brain',
     # Endocrine
     'thyroid---differentiated-and-anaplastic': 'thyroid',
-    'thyroid---medullary': 'thyroid',
+    'thyroid---medullary': 'thyroid-medullary',
+    # GIST
+    'gastrointestinal-stromal-tumor': 'gist',
 }
 
 
