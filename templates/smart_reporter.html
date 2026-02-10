@@ -16,8 +16,8 @@
                     <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary btn-sm">
                         <i class="fas fa-home me-1"></i>Dashboard
                     </a>
-                    <a href="{{ url_for('reporting.algorithm_finder') }}" class="btn btn-outline-secondary btn-sm">
-                        <i class="fas fa-sitemap me-1"></i>Algorithm Finder
+                    <a href="/tnm" class="btn btn-outline-secondary btn-sm">
+                        <i class="fas fa-dna me-1"></i>TNM Staging
                     </a>
                     <a href="{{ url_for('oncall.oncall_helper') }}" class="btn btn-outline-secondary btn-sm">
                         <i class="fas fa-headset me-1"></i>On-Call Helper
@@ -64,7 +64,6 @@
                                     <a href="/tnm" class="btn btn-sm btn-outline-secondary text-start"><i class="fas fa-dna me-2" style="color: #6b46c1;"></i>TNM Staging</a>
                                     <a href="/incidental-findings" class="btn btn-sm btn-outline-secondary text-start"><i class="fas fa-search-plus me-2" style="color: #5E899E;"></i>Incidental Findings</a>
                                     <a href="/on-call-helper" class="btn btn-sm btn-outline-secondary text-start"><i class="fas fa-headset me-2" style="color: #198754;"></i>Clinical Protocols</a>
-                                    <a href="{{ url_for('reporting.algorithm_finder') }}" class="btn btn-sm btn-outline-secondary text-start"><i class="fas fa-sitemap me-2" style="color: #e96304;"></i>Reporting Templates</a>
                                 </div>
                             </div>
                         </div>
@@ -109,6 +108,48 @@
                         <div id="sessionsEmpty" class="d-none text-center py-4">
                             <i class="fas fa-inbox text-muted" style="font-size: 1.5rem;"></i>
                             <p class="text-muted small mt-2 mb-0">No sessions yet. Start a report to create your first session.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recommended Templates (admin-verified) -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white border-0 py-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0"><i class="fas fa-certificate me-2" style="color: #e96304;"></i>Recommended Templates <span id="adminTemplatesCount" class="badge ms-1" style="font-size: 0.7rem; background: #e96304;"></span></h6>
+                            <div class="input-group input-group-sm" style="max-width: 250px;">
+                                <input type="text" id="adminTemplatesSearchInput" class="form-control" placeholder="Search templates..." autocomplete="off">
+                                <button class="btn btn-outline-secondary" type="button" onclick="searchAdminTemplates()">
+                                    <i class="fas fa-search"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="small">Template</th>
+                                        <th class="small">Body Section</th>
+                                        <th class="small">Category</th>
+                                        <th class="small">Content</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="adminTemplatesTableBody">
+                                    <tr><td colspan="5" class="text-center text-muted py-3"><small>Loading...</small></td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div id="adminTemplatesLoadMore" class="d-none text-center py-2">
+                            <button class="btn btn-sm btn-outline-secondary" onclick="loadMoreAdminTemplates()">
+                                <i class="fas fa-chevron-down me-1"></i>Load more
+                            </button>
+                        </div>
+                        <div id="adminTemplatesEmpty" class="d-none text-center py-4">
+                            <i class="fas fa-clipboard-list text-muted" style="font-size: 1.5rem;"></i>
+                            <p class="text-muted small mt-2 mb-0">No official templates available yet.</p>
                         </div>
                     </div>
                 </div>
@@ -245,9 +286,17 @@
                                     </select>
                                 </div>
                             </div>
-                            <button class="btn btn-brand-primary" id="btnGenerateTree" onclick="generateTree()">
-                                <i class="fas fa-magic me-2"></i>Generate Algorithm
-                            </button>
+                            <div class="d-flex gap-2 flex-wrap">
+                                <button class="btn btn-brand-primary" id="btnGenerateTree" onclick="generateTree()">
+                                    <i class="fas fa-magic me-2"></i>Generate Algorithm
+                                </button>
+                                <button class="btn btn-outline-secondary" id="btnGenerateFullReport" onclick="generateFullReportDirectly()">
+                                    <i class="fas fa-forward me-2"></i>Generate Full Report Directly
+                                </button>
+                            </div>
+                            <small class="text-muted mt-2 d-block">
+                                <i class="fas fa-info-circle me-1"></i>"Generate Full Report Directly" skips the step-by-step walkthrough and creates a normal-findings report template.
+                            </small>
                         </div>
                     </div>
                 </div>
@@ -1743,6 +1792,212 @@ document.addEventListener('DOMContentLoaded', function() {
     // Load community on page load
     loadCommunity(false);
 
+    // ==================== ADMIN TEMPLATES ====================
+
+    let adminTemplatesOffset = 0;
+    let adminTemplatesSearch = '';
+
+    function loadAdminTemplates(append) {
+        if (!append) adminTemplatesOffset = 0;
+        const params = new URLSearchParams({ offset: adminTemplatesOffset, limit: 20 });
+        if (adminTemplatesSearch) params.set('q', adminTemplatesSearch);
+
+        fetch('/api/smart-reporter/admin-templates?' + params.toString())
+            .then(r => r.json())
+            .then(data => {
+                const tbody = document.getElementById('adminTemplatesTableBody');
+                const loadMore = document.getElementById('adminTemplatesLoadMore');
+                const empty = document.getElementById('adminTemplatesEmpty');
+                const countBadge = document.getElementById('adminTemplatesCount');
+
+                countBadge.textContent = data.total || '';
+
+                if (!append) tbody.innerHTML = '';
+
+                if (data.templates && data.templates.length > 0) {
+                    empty.classList.add('d-none');
+                    data.templates.forEach(t => {
+                        const tr = document.createElement('tr');
+                        tr.style.cursor = 'pointer';
+                        tr.onclick = () => loadAdminTemplate(t.id);
+
+                        const badges = [];
+                        if (t.has_pacs_report) badges.push('<span class="badge bg-success me-1" style="font-size:0.65rem;">PACS Report</span>');
+                        if (t.has_algorithm) badges.push('<span class="badge bg-info me-1" style="font-size:0.65rem;">Algorithm</span>');
+
+                        tr.innerHTML =
+                            '<td class="small"><i class="fas fa-certificate me-1" style="color:#e96304;font-size:0.7rem;" title="Official"></i>' +
+                            escapeHtmlSafe(t.title.length > 50 ? t.title.substring(0, 50) + '...' : t.title) + '</td>' +
+                            '<td class="small">' + escapeHtmlSafe(t.body_section || '\u2014') + '</td>' +
+                            '<td class="small">' + escapeHtmlSafe(t.category || '\u2014') + '</td>' +
+                            '<td>' + badges.join('') + '</td>' +
+                            '<td><i class="fas fa-arrow-right text-muted small"></i></td>';
+                        tbody.appendChild(tr);
+                    });
+
+                    loadMore.classList.toggle('d-none', !data.has_more);
+                } else if (!append) {
+                    tbody.innerHTML = '';
+                    empty.classList.remove('d-none');
+                    loadMore.classList.add('d-none');
+                }
+            })
+            .catch(() => {});
+    }
+
+    window.searchAdminTemplates = function() {
+        adminTemplatesSearch = document.getElementById('adminTemplatesSearchInput').value.trim();
+        loadAdminTemplates(false);
+    };
+
+    const adminTemplatesSearchEl = document.getElementById('adminTemplatesSearchInput');
+    if (adminTemplatesSearchEl) {
+        let adminSearchTimer = null;
+        adminTemplatesSearchEl.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') { e.preventDefault(); searchAdminTemplates(); }
+        });
+        adminTemplatesSearchEl.addEventListener('input', function() {
+            clearTimeout(adminSearchTimer);
+            adminSearchTimer = setTimeout(() => searchAdminTemplates(), 400);
+        });
+    }
+
+    window.loadMoreAdminTemplates = function() {
+        adminTemplatesOffset += 20;
+        loadAdminTemplates(true);
+    };
+
+    window.loadAdminTemplate = function(templateId) {
+        fetch('/api/smart-reporter/admin-templates/' + templateId)
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) { showToast(data.error, 'error'); return; }
+                state.sessionId = null;
+                state.inputText = data.pacs_report_text || '';
+                state.outputText = '';
+                state.suggestions = [];
+                state.improvedReport = '';
+                state.askClaudeRemaining = 20;
+
+                showScene('editor');
+                const input = document.getElementById('editorInput');
+                input.value = state.inputText;
+                autoResizeTextarea(input);
+                document.getElementById('outputSection').classList.add('d-none');
+                document.getElementById('suggestionsPanel').classList.add('d-none');
+                document.getElementById('askClaudeResponse').classList.add('d-none');
+                updateEditorSessionInfo();
+                updateAskClaudeCounter();
+
+                showToast('Loaded official template: ' + data.title + '. Edit and save as your own.', 'success');
+            })
+            .catch(() => showToast('Failed to load template.', 'error'));
+    };
+
+    loadAdminTemplates(false);
+
+    // ==================== SKIP WALKTHROUGH (FULL REPORT) ====================
+
+    window.generateFullReportDirectly = function() {
+        const clinicalQuestion = document.getElementById('inputClinicalQuestion').value.trim();
+        const modality = document.getElementById('inputModality').value;
+        const bodySection = document.getElementById('inputBodySection').value;
+
+        if (!clinicalQuestion) { showToast('Please enter a clinical question.', 'warning'); return; }
+        if (!modality) { showToast('Please select a modality.', 'warning'); return; }
+
+        const btn = document.getElementById('btnGenerateFullReport');
+        const btnPrimary = document.getElementById('btnGenerateTree');
+        btn.disabled = true;
+        btnPrimary.disabled = true;
+        document.getElementById('walkthroughSetup').classList.add('d-none');
+        document.getElementById('walkthroughLoading').classList.remove('d-none');
+
+        fetch('/api/smart-reporter/generate-tree', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                clinical_question: clinicalQuestion,
+                modality: modality,
+                body_section: bodySection,
+            }),
+        })
+        .then(r => r.json())
+        .then(data => {
+            btn.disabled = false;
+            btnPrimary.disabled = false;
+            document.getElementById('walkthroughLoading').classList.add('d-none');
+
+            if (data.error) {
+                document.getElementById('walkthroughSetup').classList.remove('d-none');
+                showToast(data.error, 'error');
+                return;
+            }
+
+            state.sessionId = data.session_id;
+            state.algorithmTree = data.algorithm_tree;
+
+            // Auto-select first option (normal finding) for every step
+            state.answers = {};
+            const allSteps = getAllSteps();
+            allSteps.forEach(step => {
+                if (step.options && step.options.length > 0) {
+                    state.answers[step.id] = { selected: [0], free_text: '' };
+                }
+            });
+
+            // Populate report template defaults
+            const rt = state.algorithmTree.report_template || {};
+            state.reportSections = {
+                indication: rt.indication || '',
+                technique: rt.technique || '',
+                comparison: rt.comparison || 'No prior available for comparison.',
+                findings: '',
+                impression: rt.impression_normal || '',
+                recommendation: rt.recommendation || '',
+            };
+
+            // Assemble the full report from auto-selected options
+            assembleReport();
+
+            // Build the full report text for the editor
+            const sections = state.reportSections;
+            const reportText = [
+                'INDICATION:', sections.indication || '',
+                '',
+                'TECHNIQUE:', sections.technique || '',
+                '',
+                'COMPARISON:', sections.comparison || '',
+                '',
+                'FINDINGS:', sections.findings || '',
+                '',
+                'IMPRESSION:', sections.impression || '',
+                '',
+                'RECOMMENDATION:', sections.recommendation || '',
+            ].join('\n');
+
+            state.inputText = reportText.trim();
+
+            showScene('editor');
+            const input = document.getElementById('editorInput');
+            input.value = state.inputText;
+            autoResizeTextarea(input);
+            document.getElementById('outputSection').classList.add('d-none');
+            document.getElementById('suggestionsPanel').classList.add('d-none');
+            updateEditorSessionInfo();
+            saveSessionToServer();
+
+            showToast('Full report generated with normal findings. Edit as needed.', 'success');
+        })
+        .catch(() => {
+            btn.disabled = false;
+            btnPrimary.disabled = false;
+            document.getElementById('walkthroughLoading').classList.add('d-none');
+            document.getElementById('walkthroughSetup').classList.remove('d-none');
+            showToast('Generation failed. Please try again.', 'error');
+        });
+    };
+
     // ==================== RELATED RESOURCES ====================
 
     let relatedContentTimer = null;
@@ -1833,6 +2088,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         if (scene === 'landing') {
             loadSessions(false);
+            loadAdminTemplates(false);
             loadCommunity(false);
         }
     };

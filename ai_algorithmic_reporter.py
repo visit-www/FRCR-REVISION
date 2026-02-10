@@ -1,6 +1,11 @@
 """
 AI Algorithmic Reporter Module
 
+DEPRECATED (Feb 2026): Being phased out in favor of ai_smart_reporter.py.
+Smart Reporter provides interactive walkthrough (Scene 1) and one-shot generation
+(via "Generate Full Report Directly" which auto-selects normal findings).
+Kept for backward compatibility with /api/algorithms/generate cache pipeline.
+
 Generates step-by-step reporting algorithms that mirror how an experienced radiologist
 reads and reports a scan. Produces a practical reporting guide with PACS report,
 differentials, and recommendations — NOT educational material.

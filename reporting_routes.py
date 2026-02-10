@@ -34,39 +34,9 @@ reporting_bp = Blueprint('reporting', __name__)
 @reporting_bp.route('/algorithm-finder')
 @login_required
 def algorithm_finder():
-    """
-    Unified search/browse page for all algorithms:
-    - Existing cases (search by diagnosis — the primary source)
-    - Oncologic (TNM calculators + algorithms)
-    - Incidental findings (IF calculators)
-    - Admin-curated reporting templates
-    """
-    # Get body sections for browse-by-section UI
-    body_sections = AJCCBodySection.query.order_by(AJCCBodySection.display_order).all()
-
-    # Get categories for incidental findings
-    if_categories = db.session.query(
-        IncidentalFindingCalculator.category
-    ).filter(
-        IncidentalFindingCalculator.is_available == True
-    ).distinct().all()
-    if_categories = [c[0] for c in if_categories if c[0]]
-
-    # Count available items per type
-    case_count = Case.query.filter(
-        Case.status == CaseStatus.PUBLISHED,
-        Case.discussion.isnot(None),
-        Case.discussion != '',
-    ).count()
-    oncologic_count = TNMCalculatorContent.query.filter_by(is_available=True).count()
-    if_count = IncidentalFindingCalculator.query.filter_by(is_available=True).count()
-
-    return render_template('algorithm_finder.html',
-                           body_sections=body_sections,
-                           if_categories=if_categories,
-                           case_count=case_count,
-                           oncologic_count=oncologic_count,
-                           if_count=if_count)
+    """Redirect to Smart Reporter — Algorithm Finder is now superseded."""
+    from flask import redirect
+    return redirect('/smart-reporter', code=302)
 
 
 @reporting_bp.route('/api/algorithms/search')
@@ -349,6 +319,11 @@ def generate_algorithmic_approach():
 
     This enriches the case library with every new query.
     """
+    # DEPRECATED (Feb 2026): Use /api/smart-reporter/generate-tree instead.
+    # Kept for backward compatibility — generates ReportingTemplate cache entries.
+    logger.info(f"[DEPRECATED] /api/algorithms/generate called by user {current_user.id}. "
+                "Consider using /api/smart-reporter/generate-tree instead.")
+
     data = request.get_json()
     if not data:
         return jsonify({'error': 'JSON body required.'}), 400
@@ -1012,7 +987,37 @@ def smart_reporter_generate_tree():
     db.session.add(session)
     db.session.flush()
 
-    # Generate algorithm tree
+    # --- Cache lookup: check for existing ReportingTemplate with matching slug ---
+    cache_slug = re.sub(r'[^a-z0-9]+', '-', clinical_question.lower()).strip('-')
+    cached_template = None
+    if cache_slug:
+        cached_template = ReportingTemplate.query.filter_by(
+            slug=cache_slug, is_available=True
+        ).first()
+
+    if cached_template and cached_template.algorithm_html:
+        try:
+            cached_tree = json.loads(cached_template.algorithm_html)
+            if cached_tree and cached_tree.get('steps'):
+                session.algorithm_tree_json = cached_template.algorithm_html
+                session.status = 'walkthrough'
+                session.provider = 'cache'
+                session.model_name = cached_template.generation_model or 'cached'
+                session.generation_tokens = 0
+                db.session.commit()
+
+                logger.info(f"Smart Reporter cache hit for slug '{cache_slug}'")
+                return jsonify({
+                    'success': True,
+                    'session_id': session.id,
+                    'algorithm_tree': cached_tree,
+                    'cached': True,
+                })
+        except (json.JSONDecodeError, TypeError):
+            logger.warning(f"Cache entry '{cache_slug}' has invalid algorithm_html, regenerating.")
+            cached_template = None
+
+    # --- Generate algorithm tree via AI ---
     try:
         from ai_smart_reporter import generate_algorithm_tree, SmartReporterError
         result = generate_algorithm_tree(
@@ -1026,16 +1031,41 @@ def smart_reporter_generate_tree():
         return jsonify({'error': f'Algorithm generation failed: {exc}'}), 500
 
     # Store result in session
-    session.algorithm_tree_json = json.dumps({
+    tree_json = json.dumps({
         'steps': result.get('steps', []),
         'lines_tubes_step': result.get('lines_tubes_step', {}),
         'incidental_findings_step': result.get('incidental_findings_step', {}),
         'report_template': result.get('report_template', {}),
     })
+    session.algorithm_tree_json = tree_json
     session.status = 'walkthrough'
     session.provider = result.get('provider', 'claude')
     session.model_name = result.get('model', '')
     session.generation_tokens = result.get('token_count', 0)
+
+    # --- Cache write: store tree as ReportingTemplate for future reuse ---
+    if cache_slug:
+        existing_cache = ReportingTemplate.query.filter_by(slug=cache_slug).first()
+        if not existing_cache:
+            try:
+                cache_entry = ReportingTemplate(
+                    slug=cache_slug,
+                    title=clinical_question,
+                    category='smart_reporter_cache',
+                    body_section=body_section or None,
+                    description=f'Cached Smart Reporter algorithm for: {clinical_question}',
+                    keywords=f'{clinical_question}, {modality or ""}, {body_section or ""}',
+                    algorithm_html=tree_json,
+                    is_available=True,
+                    is_ai_generated=True,
+                    generation_model=result.get('model', ''),
+                    generated_at=datetime.utcnow(),
+                    created_by_user_id=current_user.id,
+                )
+                db.session.add(cache_entry)
+                logger.info(f"Cached Smart Reporter tree as ReportingTemplate '{cache_slug}'")
+            except Exception as cache_exc:
+                logger.warning(f"Failed to cache tree as ReportingTemplate: {cache_exc}")
 
     try:
         db.session.commit()
@@ -1396,6 +1426,64 @@ def smart_reporter_get_published_report(report_id):
     """Get a single published report (full content) for loading into editor."""
     report = PublishedReport.query.get_or_404(report_id)
     return jsonify(report.to_dict())
+
+
+@reporting_bp.route('/api/smart-reporter/admin-templates', methods=['GET'])
+@login_required
+def smart_reporter_admin_templates():
+    """List verified (admin-curated) ReportingTemplate entries for the Smart Reporter landing page."""
+    search = request.args.get('q', '').strip()
+    offset = request.args.get('offset', 0, type=int)
+    limit = min(request.args.get('limit', 20, type=int), 50)
+
+    query = ReportingTemplate.query.filter(
+        ReportingTemplate.is_available == True,
+        ReportingTemplate.verified_at.isnot(None),
+    )
+
+    if search:
+        query = query.filter(
+            db.or_(
+                ReportingTemplate.title.ilike(f'%{search}%'),
+                ReportingTemplate.keywords.ilike(f'%{search}%'),
+                ReportingTemplate.body_section.ilike(f'%{search}%'),
+            )
+        )
+
+    total = query.count()
+    templates = query.order_by(ReportingTemplate.updated_at.desc()).offset(offset).limit(limit).all()
+
+    return jsonify({
+        'templates': [{
+            'id': t.id,
+            'slug': t.slug,
+            'title': t.title,
+            'category': t.category,
+            'body_section': t.body_section,
+            'description': t.description,
+            'has_algorithm': bool(t.algorithm_html),
+            'has_pacs_report': bool(t.pacs_report_text),
+            'verified_at': t.verified_at.isoformat() if t.verified_at else None,
+            'created_at': t.created_at.isoformat() if t.created_at else None,
+        } for t in templates],
+        'total': total,
+        'offset': offset,
+        'has_more': (offset + limit) < total,
+    })
+
+
+@reporting_bp.route('/api/smart-reporter/admin-templates/<int:template_id>', methods=['GET'])
+@login_required
+def smart_reporter_get_admin_template(template_id):
+    """Get a single admin template (full content) for loading into editor."""
+    template = ReportingTemplate.query.get_or_404(template_id)
+    if not template.is_available or not template.verified_at:
+        return jsonify({'error': 'Template not available.'}), 404
+
+    result = template.to_dict()
+    result['has_algorithm'] = bool(template.algorithm_html)
+    result['has_pacs_report'] = bool(template.pacs_report_text)
+    return jsonify(result)
 
 
 @reporting_bp.route('/api/smart-reporter/relevant-content', methods=['GET'])

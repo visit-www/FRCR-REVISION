@@ -369,7 +369,15 @@
     {% if current_user.is_authenticated %}
     <script src="{{ url_for('static', filename='backup-reminder.js') }}"></script>
     {% endif %}
-    
+
+    <!-- Global PII Guard — intercepts all fetch POST/PUT for patient data -->
+    {% if current_user.is_authenticated %}
+    <script src="{{ url_for('static', filename='pii-guard.js') }}"></script>
+    <script>
+        if (window.PIIGuard) { PIIGuard.attachToFetch(); }
+    </script>
+    {% endif %}
+
     {% block scripts %}{% endblock %}
 </body>
 </html>

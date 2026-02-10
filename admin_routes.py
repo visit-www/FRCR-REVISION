@@ -948,7 +948,7 @@ def get_case(case_id):
 # APP DOCUMENTATION ENDPOINTS
 # ============================================================================
 # Docs in this list are visible and openable by any admin; others are superadmin-only.
-ADMIN_ACCESSIBLE_DOCS = ['USER_ROLES_WORKFLOWS.md', 'CUSTOM_CSS_CLASSES_REFERENCE.md']
+ADMIN_ACCESSIBLE_DOCS = ['USER_ROLES_WORKFLOWS.md', 'CUSTOM_CSS_CLASSES_REFERENCE.md', 'AI_TOOLS_AND_COSTS.md']
 
 
 @admin_bp.route('/docs', methods=['GET'])

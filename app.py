@@ -609,6 +609,10 @@ app.register_blueprint(oncall_bp)  # On-Call Session Helper - curated clinical p
 app.register_blueprint(reporting_bp)  # Algorithm Finder + Non-oncologic reporting templates
 app.register_blueprint(if_bp)  # Incidental Findings Helper - guideline-based calculators
 
+# Global PII guard — blocks patient-identifiable data in all POST/PUT JSON requests
+from pii_guard import create_pii_middleware
+create_pii_middleware(app)
+
 
 # ============================================================================
 # CRON ENDPOINTS (Vercel Cron - 60s timeout even on Hobby plan)
