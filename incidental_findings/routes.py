@@ -193,6 +193,14 @@ def create_calculator():
     return jsonify(calculator.to_dict()), 201
 
 
+@if_bp.route('/admin/api/<int:calc_id>', methods=['GET'])
+@require_admin
+def get_calculator(calc_id):
+    """API: Get a single incidental finding calculator."""
+    calculator = IncidentalFindingCalculator.query.get_or_404(calc_id)
+    return jsonify(calculator.to_dict())
+
+
 @if_bp.route('/admin/api/<int:calc_id>', methods=['PUT'])
 @require_admin
 def update_calculator(calc_id):

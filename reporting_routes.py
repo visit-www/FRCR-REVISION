@@ -873,6 +873,26 @@ def create_reporting_template():
     return jsonify(template.to_dict()), 201
 
 
+@reporting_bp.route('/admin/reporting-templates/api/<int:template_id>', methods=['GET'])
+@require_admin
+def get_reporting_template(template_id):
+    """API: Get a single reporting template."""
+    template = ReportingTemplate.query.get_or_404(template_id)
+    return jsonify(template.to_dict())
+
+
+@reporting_bp.route('/admin/reporting-templates/api/<int:template_id>/verify', methods=['POST'])
+@require_admin
+def verify_reporting_template(template_id):
+    """API: Verify and publish a reporting template."""
+    template = ReportingTemplate.query.get_or_404(template_id)
+    template.verified_by_user_id = current_user.id
+    template.verified_at = datetime.utcnow()
+    template.is_available = True
+    db.session.commit()
+    return jsonify({'success': True, 'message': f'Template "{template.title}" verified and published.'})
+
+
 @reporting_bp.route('/admin/reporting-templates/api/<int:template_id>', methods=['PUT'])
 @require_admin
 def update_reporting_template(template_id):

@@ -77,6 +77,9 @@
                                             <i class="fas fa-eye"></i>
                                         </a>
                                         {% endif %}
+                                        <button class="btn btn-outline-secondary" onclick="editCalc({{ c.id }})" title="Edit">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
                                         {% if not c.verified_at %}
                                         <button class="btn btn-outline-success" onclick="verifyCalc({{ c.id }})" title="Verify">
                                             <i class="fas fa-check"></i>
@@ -130,7 +133,19 @@
                     </div>
                     <div class="col-md-6">
                         <label class="form-label">Body Section</label>
-                        <input type="text" class="form-control" id="genBodySection" placeholder="e.g. Thorax">
+                        <select class="form-select" id="genBodySection">
+                            <option value="">Select body section...</option>
+                            <option value="Thorax">Thorax</option>
+                            <option value="Abdomen">Abdomen</option>
+                            <option value="Pelvis">Pelvis</option>
+                            <option value="Head and Neck">Head and Neck</option>
+                            <option value="Brain">Brain</option>
+                            <option value="Spine">Spine</option>
+                            <option value="Musculoskeletal">Musculoskeletal</option>
+                            <option value="Cardiovascular">Cardiovascular</option>
+                            <option value="Breast">Breast</option>
+                            <option value="Multisystem">Multisystem</option>
+                        </select>
                     </div>
                 </div>
                 <div class="mt-3">
@@ -144,6 +159,79 @@
                 <button type="button" class="btn btn-modal-secondary" data-bs-dismiss="modal">Cancel</button>
                 <button type="button" class="btn btn-modal-primary" id="genBtn" onclick="generateCalc()">
                     <i class="fas fa-magic me-1"></i>Generate
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Calculator Modal -->
+<div class="modal fade app-content-modal" id="editCalcModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-edit"></i> Edit Calculator
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editCalcId">
+                <div class="mb-3">
+                    <label class="form-label">Finding Name</label>
+                    <input type="text" class="form-control" id="editFindingName">
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Guideline Source</label>
+                        <input type="text" class="form-control" id="editGuideline">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Guideline Version</label>
+                        <input type="text" class="form-control" id="editVersion">
+                    </div>
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Category</label>
+                        <input type="text" class="form-control" id="editCategory">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Body Section</label>
+                        <select class="form-select" id="editBodySection">
+                            <option value="">Select...</option>
+                            <option value="Thorax">Thorax</option>
+                            <option value="Abdomen">Abdomen</option>
+                            <option value="Pelvis">Pelvis</option>
+                            <option value="Head and Neck">Head and Neck</option>
+                            <option value="Brain">Brain</option>
+                            <option value="Spine">Spine</option>
+                            <option value="Musculoskeletal">Musculoskeletal</option>
+                            <option value="Cardiovascular">Cardiovascular</option>
+                            <option value="Breast">Breast</option>
+                            <option value="Multisystem">Multisystem</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Keywords</label>
+                    <input type="text" class="form-control" id="editKeywords" placeholder="comma-separated">
+                </div>
+                <div class="mb-3">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="editAvailable">
+                        <label class="form-check-label" for="editAvailable">Available (published)</label>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Edit Note</label>
+                    <input type="text" class="form-control" id="editNote" placeholder="What did you change?">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-modal-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-modal-primary" onclick="saveEditCalc()">
+                    <i class="fas fa-save me-1"></i>Save Changes
                 </button>
             </div>
         </div>
@@ -176,7 +264,19 @@
                     </div>
                     <div class="col-md-4">
                         <label class="form-label">Body Section</label>
-                        <input type="text" class="form-control" id="manBodySection">
+                        <select class="form-select" id="manBodySection">
+                            <option value="">Select...</option>
+                            <option value="Thorax">Thorax</option>
+                            <option value="Abdomen">Abdomen</option>
+                            <option value="Pelvis">Pelvis</option>
+                            <option value="Head and Neck">Head and Neck</option>
+                            <option value="Brain">Brain</option>
+                            <option value="Spine">Spine</option>
+                            <option value="Musculoskeletal">Musculoskeletal</option>
+                            <option value="Cardiovascular">Cardiovascular</option>
+                            <option value="Breast">Breast</option>
+                            <option value="Multisystem">Multisystem</option>
+                        </select>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label">Guideline Version</label>
@@ -255,6 +355,48 @@ function addManual() {
             keywords: document.getElementById('manKeywords').value,
             calculator_html: document.getElementById('manHtml').value,
             is_available: false,
+        }),
+    })
+    .then(r => r.json())
+    .then(result => {
+        if (result.error) { alert(result.error); return; }
+        location.reload();
+    })
+    .catch(err => alert('Error: ' + err));
+}
+
+function editCalc(id) {
+    fetch(`/incidental-findings/admin/api/${id}`)
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('editCalcId').value = data.id;
+            document.getElementById('editFindingName').value = data.finding_name || '';
+            document.getElementById('editGuideline').value = data.guideline_source || '';
+            document.getElementById('editVersion').value = data.guideline_version || '';
+            document.getElementById('editCategory').value = data.category || '';
+            document.getElementById('editBodySection').value = data.body_section || '';
+            document.getElementById('editKeywords').value = data.keywords || '';
+            document.getElementById('editAvailable').checked = data.is_available;
+            document.getElementById('editNote').value = '';
+            new bootstrap.Modal(document.getElementById('editCalcModal')).show();
+        })
+        .catch(err => alert('Failed to load calculator: ' + err));
+}
+
+function saveEditCalc() {
+    const id = document.getElementById('editCalcId').value;
+    fetch(`/incidental-findings/admin/api/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            finding_name: document.getElementById('editFindingName').value,
+            guideline_source: document.getElementById('editGuideline').value,
+            guideline_version: document.getElementById('editVersion').value,
+            category: document.getElementById('editCategory').value,
+            body_section: document.getElementById('editBodySection').value,
+            keywords: document.getElementById('editKeywords').value,
+            is_available: document.getElementById('editAvailable').checked,
+            last_edit_note: document.getElementById('editNote').value,
         }),
     })
     .then(r => r.json())

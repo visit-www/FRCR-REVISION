@@ -402,6 +402,9 @@
                     </div>
                     <div class="d-flex align-items-center gap-2">
                         <small class="text-muted" id="editorSessionInfo"></small>
+                        <button class="btn btn-sm btn-outline-primary" onclick="manualSave()" id="btnManualSave" title="Save session">
+                            <i class="fas fa-save me-1"></i><span class="d-none d-md-inline">Save</span>
+                        </button>
                         <span id="editorSaveStatus" class="d-none">
                             <small class="text-success"><i class="fas fa-check-circle me-1"></i>Saved</small>
                         </span>
@@ -1332,11 +1335,24 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // ==================== SESSION PERSISTENCE ====================
 
+    function manualSave() {
+        if (!state.sessionId) {
+            ensureEditorSession().then(() => saveSessionToServer());
+            return;
+        }
+        clearTimeout(state.autoSaveTimer);
+        saveSessionToServer();
+    }
+
     function saveSessionToServer() {
         if (!state.sessionId) return;
 
         const reportText = getCurrentReportText();
         const newStatus = state.scene === 'editor' ? 'editing' : 'walkthrough';
+
+        // Show saving state on button
+        const saveBtn = document.getElementById('btnManualSave');
+        if (saveBtn) saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i><span class="d-none d-md-inline">Saving...</span>';
 
         fetch(`/api/smart-reporter/session/${state.sessionId}`, {
             method: 'PUT',
@@ -1350,14 +1366,26 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(r => r.json())
         .then(data => {
             if (data.success) {
+                // Update save button with success
+                if (saveBtn) {
+                    saveBtn.innerHTML = '<i class="fas fa-check me-1"></i><span class="d-none d-md-inline">Saved</span>';
+                    setTimeout(() => {
+                        saveBtn.innerHTML = '<i class="fas fa-save me-1"></i><span class="d-none d-md-inline">Save</span>';
+                    }, 2000);
+                }
+                // Also show the badge for auto-save notifications
                 const badge = document.getElementById('editorSaveStatus');
                 if (badge) {
                     badge.classList.remove('d-none');
                     setTimeout(() => badge.classList.add('d-none'), 3000);
                 }
+            } else {
+                if (saveBtn) saveBtn.innerHTML = '<i class="fas fa-save me-1"></i><span class="d-none d-md-inline">Save</span>';
             }
         })
-        .catch(() => {});
+        .catch(() => {
+            if (saveBtn) saveBtn.innerHTML = '<i class="fas fa-save me-1"></i><span class="d-none d-md-inline">Save</span>';
+        });
     }
 
     function scheduleAutoSave() {

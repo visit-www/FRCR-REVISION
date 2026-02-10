@@ -64,6 +64,9 @@
                                     {% else %}
                                     <span class="badge bg-warning text-dark"><i class="fas fa-clock me-1"></i>Draft</span>
                                     {% endif %}
+                                    {% if t.verified_at %}
+                                    <br><small class="text-success"><i class="fas fa-shield-alt me-1"></i>Verified</small>
+                                    {% endif %}
                                 </td>
                                 <td>
                                     <div class="btn-group btn-group-sm">
@@ -72,6 +75,14 @@
                                            class="btn btn-outline-secondary" title="View">
                                             <i class="fas fa-eye"></i>
                                         </a>
+                                        {% endif %}
+                                        <button class="btn btn-outline-secondary" onclick="editTemplate({{ t.id }})" title="Edit">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        {% if not t.verified_at %}
+                                        <button class="btn btn-outline-success" onclick="verifyTemplate({{ t.id }})" title="Verify">
+                                            <i class="fas fa-check"></i>
+                                        </button>
                                         {% endif %}
                                         <button class="btn btn-outline-danger"
                                                 onclick="deleteTemplate({{ t.id }}, '{{ t.title|e }}')" title="Delete">
@@ -114,16 +125,31 @@
                 <div class="row g-3 mb-3">
                     <div class="col-md-6">
                         <label class="form-label">Category</label>
-                        <select class="form-select" id="genCategory">
+                        <select class="form-select" id="genCategory" required>
+                            <option value="">Select category...</option>
+                            <option value="emergency">Emergency</option>
+                            <option value="routine">Routine</option>
+                            <option value="oncology">Oncology</option>
                             <option value="trauma">Trauma</option>
                             <option value="grading">Grading System</option>
-                            <option value="emergency">Emergency</option>
-                            <option value="scoring">Scoring</option>
+                            <option value="scoring">Scoring System</option>
                         </select>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label">Body Section</label>
-                        <input type="text" class="form-control" id="genBodySection" placeholder="e.g. Abdomen">
+                        <select class="form-select" id="genBodySection">
+                            <option value="">Select body section...</option>
+                            <option value="Thorax">Thorax</option>
+                            <option value="Abdomen">Abdomen</option>
+                            <option value="Pelvis">Pelvis</option>
+                            <option value="Head and Neck">Head and Neck</option>
+                            <option value="Brain">Brain</option>
+                            <option value="Spine">Spine</option>
+                            <option value="Musculoskeletal">Musculoskeletal</option>
+                            <option value="Cardiovascular">Cardiovascular</option>
+                            <option value="Breast">Breast</option>
+                            <option value="Multisystem">Multisystem</option>
+                        </select>
                     </div>
                 </div>
                 <div class="mb-3">
@@ -141,6 +167,84 @@
                 <button type="button" class="btn btn-modal-secondary" data-bs-dismiss="modal">Cancel</button>
                 <button type="button" class="btn btn-modal-primary" id="genBtn" onclick="generateTemplate()">
                     <i class="fas fa-magic me-1"></i>Generate
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Edit Template Modal -->
+<div class="modal fade app-content-modal" id="editTemplateModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-edit"></i> Edit Template
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editTemplateId">
+                <div class="mb-3">
+                    <label class="form-label">Title</label>
+                    <input type="text" class="form-control" id="editTitle">
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Category</label>
+                        <select class="form-select" id="editCategory">
+                            <option value="">Select category...</option>
+                            <option value="emergency">Emergency</option>
+                            <option value="routine">Routine</option>
+                            <option value="oncology">Oncology</option>
+                            <option value="trauma">Trauma</option>
+                            <option value="grading">Grading System</option>
+                            <option value="scoring">Scoring System</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Body Section</label>
+                        <select class="form-select" id="editBodySection">
+                            <option value="">Select...</option>
+                            <option value="Thorax">Thorax</option>
+                            <option value="Abdomen">Abdomen</option>
+                            <option value="Pelvis">Pelvis</option>
+                            <option value="Head and Neck">Head and Neck</option>
+                            <option value="Brain">Brain</option>
+                            <option value="Spine">Spine</option>
+                            <option value="Musculoskeletal">Musculoskeletal</option>
+                            <option value="Cardiovascular">Cardiovascular</option>
+                            <option value="Breast">Breast</option>
+                            <option value="Multisystem">Multisystem</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Source Citation</label>
+                    <input type="text" class="form-control" id="editSource">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Keywords</label>
+                    <input type="text" class="form-control" id="editKeywords" placeholder="comma-separated">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Description</label>
+                    <textarea class="form-control" id="editDescription" rows="2"></textarea>
+                </div>
+                <div class="mb-3">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="editAvailable">
+                        <label class="form-check-label" for="editAvailable">Available (published)</label>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Edit Note</label>
+                    <input type="text" class="form-control" id="editNote" placeholder="What did you change?">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-modal-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-modal-primary" onclick="saveEditTemplate()">
+                    <i class="fas fa-save me-1"></i>Save Changes
                 </button>
             </div>
         </div>
@@ -185,6 +289,58 @@ function generateTemplate() {
         btn.innerHTML = '<i class="fas fa-magic me-1"></i>Generate';
         status.innerHTML = '<div class="alert alert-danger py-2">Generation failed.</div>';
     });
+}
+
+function editTemplate(id) {
+    fetch(`/admin/reporting-templates/api/${id}`)
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('editTemplateId').value = data.id;
+            document.getElementById('editTitle').value = data.title || '';
+            document.getElementById('editCategory').value = data.category || '';
+            document.getElementById('editBodySection').value = data.body_section || '';
+            document.getElementById('editSource').value = data.source_citation || '';
+            document.getElementById('editKeywords').value = data.keywords || '';
+            document.getElementById('editDescription').value = data.description || '';
+            document.getElementById('editAvailable').checked = data.is_available;
+            document.getElementById('editNote').value = '';
+            new bootstrap.Modal(document.getElementById('editTemplateModal')).show();
+        })
+        .catch(err => alert('Failed to load template: ' + err));
+}
+
+function saveEditTemplate() {
+    const id = document.getElementById('editTemplateId').value;
+    fetch(`/admin/reporting-templates/api/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            title: document.getElementById('editTitle').value,
+            category: document.getElementById('editCategory').value,
+            body_section: document.getElementById('editBodySection').value,
+            source_citation: document.getElementById('editSource').value,
+            keywords: document.getElementById('editKeywords').value,
+            description: document.getElementById('editDescription').value,
+            is_available: document.getElementById('editAvailable').checked,
+            last_edit_note: document.getElementById('editNote').value,
+        }),
+    })
+    .then(r => r.json())
+    .then(result => {
+        if (result.error) { alert(result.error); return; }
+        location.reload();
+    })
+    .catch(err => alert('Error: ' + err));
+}
+
+function verifyTemplate(id) {
+    if (!confirm('Verify and publish this template?')) return;
+    fetch(`/admin/reporting-templates/api/${id}/verify`, { method: 'POST' })
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) { alert(data.error); return; }
+            location.reload();
+        });
 }
 
 function deleteTemplate(id, title) {
