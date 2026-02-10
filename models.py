@@ -2595,6 +2595,84 @@ class ReportingTemplate(db.Model):
         return f'<ReportingTemplate {self.slug}: {self.title}>'
 
 
+# ==================== SMART REPORTER SESSION ====================
+
+class ReportingSession(db.Model):
+    """
+    Tracks a radiologist's Smart Reporter session from algorithm walkthrough to final report.
+    Each session stores the full algorithm tree JSON, user answers, and assembled report.
+    """
+    __tablename__ = 'reporting_session'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+
+    # What was queried
+    clinical_question = db.Column(db.String(500), nullable=False)
+    modality = db.Column(db.String(100), nullable=True)
+    body_section = db.Column(db.String(100), nullable=True)
+
+    # AI-generated algorithm tree (full JSON from Claude)
+    algorithm_tree_json = db.Column(db.Text, nullable=True)
+
+    # User's walkthrough answers: [{step_id, selected_options: [...], report_text}]
+    walkthrough_answers_json = db.Column(db.Text, nullable=True)
+
+    # Final assembled report (plain text, HL7-aligned sections)
+    report_text = db.Column(db.Text, nullable=True)
+
+    # Session status: generating, walkthrough, editing, completed
+    status = db.Column(db.String(30), nullable=False, default='generating', index=True)
+
+    # AI audit trail
+    provider = db.Column(db.String(50), nullable=True)
+    model_name = db.Column(db.String(100), nullable=True)
+    generation_tokens = db.Column(db.Integer, nullable=True)
+    ask_claude_count = db.Column(db.Integer, default=0)
+
+    # Timestamps
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    completed_at = db.Column(db.DateTime, nullable=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    user = db.relationship('User', backref='reporting_sessions', lazy=True)
+
+    __table_args__ = (
+        db.Index('idx_reporting_session_user_status', 'user_id', 'status'),
+    )
+
+    def get_algorithm_tree(self):
+        if self.algorithm_tree_json:
+            try:
+                return json.loads(self.algorithm_tree_json)
+            except (json.JSONDecodeError, TypeError):
+                return None
+        return None
+
+    def get_walkthrough_answers(self):
+        if self.walkthrough_answers_json:
+            try:
+                return json.loads(self.walkthrough_answers_json)
+            except (json.JSONDecodeError, TypeError):
+                return []
+        return []
+
+    def to_summary_dict(self):
+        return {
+            'id': self.id,
+            'clinical_question': self.clinical_question,
+            'modality': self.modality,
+            'body_section': self.body_section,
+            'status': self.status,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'completed_at': self.completed_at.isoformat() if self.completed_at else None,
+        }
+
+    def __repr__(self):
+        return f'<ReportingSession {self.id} user={self.user_id} status={self.status}>'
+
+
 # ==================== INCIDENTAL FINDING CALCULATOR ====================
 
 class IncidentalFindingCalculator(db.Model):

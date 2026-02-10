@@ -1,0 +1,1075 @@
+{% extends 'base.html' %}
+
+{% block mobile_breadcrumb %}
+<li class="breadcrumb-item active text-white-50">Smart Reporter</li>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-12 col-xl-10">
+
+            <!-- ==================== LANDING SCENE ==================== -->
+            <div id="sceneLanding">
+                <!-- Header -->
+                <div class="d-flex flex-wrap gap-2 mb-3">
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary btn-sm">
+                        <i class="fas fa-home me-1"></i>Dashboard
+                    </a>
+                    <a href="{{ url_for('reporting.algorithm_finder') }}" class="btn btn-outline-secondary btn-sm">
+                        <i class="fas fa-sitemap me-1"></i>Algorithm Finder
+                    </a>
+                    <a href="{{ url_for('oncall.oncall_helper') }}" class="btn btn-outline-secondary btn-sm">
+                        <i class="fas fa-headset me-1"></i>On-Call Helper
+                    </a>
+                </div>
+
+                <div class="text-center mb-4">
+                    <i class="fas fa-file-medical" style="font-size: 2.5rem; color: #e96304;"></i>
+                    <h2 class="mt-2 mb-1">Smart Reporter</h2>
+                    <p class="text-muted">AI-guided scan reporting &mdash; from clinical question to PACS-ready report</p>
+                </div>
+
+                <!-- 3 Entry Cards -->
+                <div class="row g-3 mb-4">
+                    <!-- Scene 1: Guide me through reporting -->
+                    <div class="col-md-4">
+                        <div class="card border-0 shadow-sm h-100 hover-card" style="cursor: pointer; transition: transform 0.2s ease;"
+                             onclick="showScene('walkthrough')">
+                            <div class="card-body text-center py-4">
+                                <i class="fas fa-route mb-3" style="font-size: 2.5rem; color: #e96304;"></i>
+                                <h5 class="mb-2">Guide me through reporting</h5>
+                                <p class="text-muted small mb-0">Enter your clinical question, select modality, and follow a step-by-step scan reading walkthrough</p>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Scene 2: Help me finalize -->
+                    <div class="col-md-4">
+                        <div class="card border-0 shadow-sm h-100 hover-card" style="cursor: pointer; transition: transform 0.2s ease;"
+                             onclick="showScene('editor')">
+                            <div class="card-body text-center py-4">
+                                <i class="fas fa-edit mb-3" style="font-size: 2.5rem; color: #5E899E;"></i>
+                                <h5 class="mb-2">Help me finalize a report</h5>
+                                <p class="text-muted small mb-0">Type or paste your report and ask Claude to help with impressions, grammar, or missing findings</p>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Browse algorithms -->
+                    <div class="col-md-4">
+                        <a href="{{ url_for('reporting.algorithm_finder') }}" class="text-decoration-none">
+                            <div class="card border-0 shadow-sm h-100 hover-card" style="cursor: pointer; transition: transform 0.2s ease;">
+                                <div class="card-body text-center py-4">
+                                    <i class="fas fa-search mb-3" style="font-size: 2.5rem; color: #a8d5ba;"></i>
+                                    <h5 class="mb-2 text-dark">Find existing algorithms</h5>
+                                    <p class="text-muted small mb-0">Search cases, TNM calculators, incidental findings, and reporting templates</p>
+                                </div>
+                            </div>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Recent Sessions -->
+                {% if recent_sessions %}
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-header bg-white border-0 py-3">
+                        <h6 class="mb-0"><i class="fas fa-history me-2" style="color: #5E899E;"></i>Recent Sessions</h6>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="small">Clinical Question</th>
+                                        <th class="small">Modality</th>
+                                        <th class="small">Status</th>
+                                        <th class="small">Date</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for s in recent_sessions %}
+                                    <tr style="cursor: pointer;" onclick="resumeSession({{ s.id }})">
+                                        <td class="small">{{ s.clinical_question[:60] }}{% if s.clinical_question|length > 60 %}...{% endif %}</td>
+                                        <td class="small">{{ s.modality or '—' }}</td>
+                                        <td>
+                                            {% if s.status == 'completed' %}
+                                            <span class="badge bg-success">Completed</span>
+                                            {% elif s.status == 'editing' %}
+                                            <span class="badge bg-primary">Editing</span>
+                                            {% elif s.status == 'walkthrough' %}
+                                            <span class="badge bg-warning text-dark">In Progress</span>
+                                            {% else %}
+                                            <span class="badge bg-secondary">{{ s.status }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="small text-muted">{{ s.created_at.strftime('%d %b %Y %H:%M') if s.created_at else '' }}</td>
+                                        <td><i class="fas fa-chevron-right text-muted small"></i></td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Clinical Disclaimer -->
+                <div class="p-3 rounded" style="background: #f8f9fa; border: 1px solid #e9ecef;">
+                    <small class="text-muted">
+                        <i class="fas fa-shield-alt me-1" style="color: #e96304;"></i>
+                        <strong>Clinical Decision Support Tool</strong> &mdash;
+                        AI-generated content requires clinical verification. Do not use as the sole basis for clinical decisions.
+                        Verify against current guidelines and institutional protocols. Do not enter patient-identifiable information.
+                    </small>
+                </div>
+            </div>
+
+            <!-- ==================== SCENE 1: WALKTHROUGH ==================== -->
+            <div id="sceneWalkthrough" class="d-none">
+                <!-- Back button -->
+                <button class="btn btn-outline-secondary btn-sm mb-3" onclick="showScene('landing')">
+                    <i class="fas fa-arrow-left me-1"></i>Back to Smart Reporter
+                </button>
+
+                <!-- STEP 0: Setup form -->
+                <div id="walkthroughSetup">
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-body p-4">
+                            <h5 class="mb-3"><i class="fas fa-route me-2" style="color: #e96304;"></i>Set Up Your Scan Reading</h5>
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Clinical Question <span class="text-danger">*</span></label>
+                                <input type="text" id="inputClinicalQuestion" class="form-control"
+                                       placeholder="e.g. Rule out acute pancreatitis, headache query SAH, staging lung cancer..."
+                                       maxlength="500" autocomplete="off">
+                                <small class="text-muted">What does the referring clinician want to know?</small>
+                            </div>
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold">Modality <span class="text-danger">*</span></label>
+                                    <select class="form-select" id="inputModality">
+                                        <option value="">Select modality...</option>
+                                        <option value="CT with contrast">CT with contrast</option>
+                                        <option value="CT without contrast">CT without contrast</option>
+                                        <option value="CT with and without contrast">CT with and without contrast</option>
+                                        <option value="MRI with contrast">MRI with contrast</option>
+                                        <option value="MRI without contrast">MRI without contrast</option>
+                                        <option value="MRI with and without contrast">MRI with and without contrast</option>
+                                        <option value="Ultrasound">Ultrasound</option>
+                                        <option value="X-ray">X-ray</option>
+                                        <option value="Fluoroscopy">Fluoroscopy</option>
+                                        <option value="Nuclear Medicine">Nuclear Medicine</option>
+                                        <option value="PET-CT">PET-CT</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-semibold">Body Section</label>
+                                    <select class="form-select" id="inputBodySection">
+                                        <option value="">Infer from question (optional)</option>
+                                        <option value="Head and Neck">Head and Neck</option>
+                                        <option value="Brain">Brain</option>
+                                        <option value="Spine">Spine</option>
+                                        <option value="Thorax">Thorax / Chest</option>
+                                        <option value="Cardiac">Cardiac</option>
+                                        <option value="Abdomen">Abdomen</option>
+                                        <option value="Liver">Liver / HPB</option>
+                                        <option value="Renal">Renal / Urinary</option>
+                                        <option value="Pelvis">Pelvis / Gynaecology</option>
+                                        <option value="Breast">Breast</option>
+                                        <option value="MSK">Musculoskeletal</option>
+                                        <option value="Trauma">Trauma</option>
+                                        <option value="Vascular">Vascular</option>
+                                        <option value="Paediatric">Paediatric</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <button class="btn btn-brand-primary" id="btnGenerateTree" onclick="generateTree()">
+                                <i class="fas fa-magic me-2"></i>Generate Algorithm
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Loading -->
+                <div id="walkthroughLoading" class="d-none text-center py-5">
+                    <div class="spinner-border mb-3" style="color: #e96304; width: 3rem; height: 3rem;" role="status">
+                        <span class="visually-hidden">Generating...</span>
+                    </div>
+                    <h5 class="text-muted">Generating your scan reading algorithm...</h5>
+                    <p class="text-muted small">This may take 15-30 seconds.</p>
+                </div>
+
+                <!-- Step-by-step walkthrough -->
+                <div id="walkthroughSteps" class="d-none">
+                    <!-- Progress -->
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <small class="text-muted" id="progressLabel">Step 1 of 10</small>
+                            <button class="btn btn-sm btn-outline-secondary" id="btnTogglePreview" onclick="toggleReportPreview()">
+                                <i class="fas fa-file-alt me-1"></i>Report Preview
+                            </button>
+                        </div>
+                        <div class="progress" style="height: 6px;">
+                            <div class="progress-bar" id="progressBar" role="progressbar" style="width: 0%; background: #e96304;"></div>
+                        </div>
+                    </div>
+
+                    <div class="row g-3">
+                        <!-- Current Step -->
+                        <div class="col-lg-7">
+                            <div class="card border-0 shadow-sm">
+                                <div class="card-body p-4">
+                                    <div class="d-flex align-items-center mb-3">
+                                        <span class="badge me-2" id="stepOrganBadge" style="background: #5E899E; font-size: 0.85rem;"></span>
+                                        <small class="text-muted" id="stepNumber"></small>
+                                    </div>
+                                    <h5 class="mb-3" id="stepQuestion"></h5>
+                                    <div id="stepOptions"></div>
+
+                                    <!-- Free text area (shown when free text option selected) -->
+                                    <div id="freeTextArea" class="d-none mt-3">
+                                        <textarea class="form-control" id="freeTextInput" rows="2"
+                                                  placeholder="Type your finding..." style="font-family: 'Courier New', monospace;"></textarea>
+                                    </div>
+
+                                    <!-- Navigation -->
+                                    <div class="d-flex justify-content-between mt-4">
+                                        <button class="btn btn-outline-secondary btn-sm" id="btnStepBack" onclick="stepBack()" disabled>
+                                            <i class="fas fa-chevron-left me-1"></i>Back
+                                        </button>
+                                        <div>
+                                            <button class="btn btn-outline-secondary btn-sm me-2" onclick="skipToEditor()">
+                                                Skip to Report <i class="fas fa-forward ms-1"></i>
+                                            </button>
+                                            <button class="btn btn-brand-primary btn-sm" id="btnStepNext" onclick="stepNext()">
+                                                Next <i class="fas fa-chevron-right ms-1"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Running Report Preview (right panel) -->
+                        <div class="col-lg-5" id="reportPreviewPanel">
+                            <div class="card border-0 shadow-sm" style="position: sticky; top: 80px;">
+                                <div class="card-header bg-white border-0 py-2">
+                                    <small class="fw-semibold"><i class="fas fa-file-alt me-1" style="color: #5E899E;"></i>Report Building...</small>
+                                </div>
+                                <div class="card-body p-3" style="max-height: 500px; overflow-y: auto;">
+                                    <pre id="runningReport" class="mb-0" style="white-space: pre-wrap; font-family: 'Courier New', monospace; font-size: 0.8rem; line-height: 1.5; color: #333;"></pre>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ==================== SCENE 2: REPORT EDITOR ==================== -->
+            <div id="sceneEditor" class="d-none">
+                <!-- Back button -->
+                <button class="btn btn-outline-secondary btn-sm mb-3" onclick="showScene('landing')">
+                    <i class="fas fa-arrow-left me-1"></i>Back to Smart Reporter
+                </button>
+
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="mb-0"><i class="fas fa-edit me-2" style="color: #5E899E;"></i>Report Editor</h5>
+                    <div>
+                        <button class="btn btn-sm btn-outline-success me-1" onclick="copyFullReport()" id="btnCopyReport">
+                            <i class="fas fa-copy me-1"></i>Copy Full Report
+                        </button>
+                        <button class="btn btn-sm btn-outline-primary me-1" onclick="saveSession()">
+                            <i class="fas fa-save me-1"></i>Save
+                        </button>
+                        <button class="btn btn-sm btn-brand-primary" onclick="completeSession()">
+                            <i class="fas fa-check me-1"></i>Complete
+                        </button>
+                    </div>
+                </div>
+
+                <div class="row g-3">
+                    <!-- Report Sections -->
+                    <div class="col-lg-7">
+                        <div class="card border-0 shadow-sm">
+                            <div class="card-body p-3">
+                                {% set sections = [
+                                    ('indication', 'INDICATION', 'Clinical indication and question...'),
+                                    ('technique', 'TECHNIQUE', 'Imaging technique details...'),
+                                    ('comparison', 'COMPARISON', 'Prior studies for comparison...'),
+                                    ('findings', 'FINDINGS', 'Describe imaging findings...'),
+                                    ('impression', 'IMPRESSION', 'Summary impression...'),
+                                    ('recommendation', 'RECOMMENDATION', 'Follow-up recommendations...')
+                                ] %}
+                                {% for key, label, placeholder in sections %}
+                                <div class="mb-3">
+                                    <label class="form-label fw-semibold small text-uppercase" style="color: #5E899E; letter-spacing: 0.5px;">{{ label }}</label>
+                                    <textarea class="form-control report-section" id="section_{{ key }}"
+                                              data-section="{{ key }}"
+                                              rows="{% if key == 'findings' %}6{% elif key == 'impression' %}3{% else %}2{% endif %}"
+                                              placeholder="{{ placeholder }}"
+                                              style="font-family: 'Courier New', monospace; font-size: 0.9rem; line-height: 1.5;"></textarea>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Ask Claude Panel -->
+                    <div class="col-lg-5">
+                        <div class="card border-0 shadow-sm" style="position: sticky; top: 80px;">
+                            <div class="card-header bg-white border-0 py-2">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <small class="fw-semibold"><i class="fas fa-robot me-1" style="color: #e96304;"></i>Ask Claude</small>
+                                    <small class="text-muted" id="askClaudeCounter"></small>
+                                </div>
+                            </div>
+                            <div class="card-body p-3">
+                                <div id="askClaudeResponse" class="d-none mb-3">
+                                    <div class="p-3 rounded" style="background: #f8f9fa; border: 1px solid #e9ecef;">
+                                        <pre id="askClaudeAnswer" class="mb-2" style="white-space: pre-wrap; font-family: 'Courier New', monospace; font-size: 0.85rem; line-height: 1.4;"></pre>
+                                        <div class="d-flex gap-2">
+                                            <button class="btn btn-sm btn-outline-success" onclick="insertClaudeResponse()">
+                                                <i class="fas fa-plus me-1"></i>Insert into report
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-secondary" onclick="dismissClaudeResponse()">
+                                                Dismiss
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="input-group">
+                                    <input type="text" id="askClaudeInput" class="form-control form-control-sm"
+                                           placeholder="e.g. Help me write the impression..."
+                                           maxlength="1000">
+                                    <button class="btn btn-sm btn-brand-primary" id="btnAskClaude" onclick="askClaude()">
+                                        <i class="fas fa-paper-plane"></i>
+                                    </button>
+                                </div>
+                                <div class="mt-2">
+                                    <small class="text-muted">
+                                        Try: "Help me write the impression" | "Check grammar" | "What am I missing?" | "Suggest recommendations"
+                                    </small>
+                                </div>
+
+                                <div id="askClaudeLoading" class="d-none text-center py-3">
+                                    <div class="spinner-border spinner-border-sm" style="color: #e96304;" role="status"></div>
+                                    <small class="text-muted ms-2">Thinking...</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- PII Warning -->
+                        <div class="alert alert-warning border-0 py-2 mt-3 small">
+                            <i class="fas fa-exclamation-triangle me-1"></i>
+                            <strong>Do not enter</strong> patient names, dates of birth, hospital numbers, or other identifiable information.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Clinical Disclaimer -->
+                <div class="mt-3 p-3 rounded" style="background: #f8f9fa; border: 1px solid #e9ecef;">
+                    <small class="text-muted">
+                        <i class="fas fa-shield-alt me-1" style="color: #e96304;"></i>
+                        <strong>Clinical Decision Support Tool</strong> &mdash;
+                        This is an AI-generated draft. Review and edit against actual imaging before signing.
+                    </small>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+
+    // ==================== STATE ====================
+    const state = {
+        scene: 'landing',
+        sessionId: null,
+        algorithmTree: null,
+        // Walkthrough tracking
+        stepHistory: [],        // Array of step IDs in visit order
+        currentHistoryIndex: -1,
+        answers: {},            // {step_id: {selected: [indices], report_texts: [strings], free_text: ''}}
+        // Report sections
+        reportSections: {
+            indication: '',
+            technique: '',
+            comparison: '',
+            findings: '',
+            impression: '',
+            recommendation: ''
+        },
+        askClaudeRemaining: 20,
+        autoSaveTimer: null,
+        lastFocusedSection: 'findings',
+    };
+
+    // ==================== SCENE MANAGEMENT ====================
+
+    window.showScene = function(scene) {
+        document.getElementById('sceneLanding').classList.add('d-none');
+        document.getElementById('sceneWalkthrough').classList.add('d-none');
+        document.getElementById('sceneEditor').classList.add('d-none');
+
+        if (scene === 'landing') {
+            document.getElementById('sceneLanding').classList.remove('d-none');
+        } else if (scene === 'walkthrough') {
+            document.getElementById('sceneWalkthrough').classList.remove('d-none');
+        } else if (scene === 'editor') {
+            document.getElementById('sceneEditor').classList.remove('d-none');
+            populateEditorFromState();
+        }
+        state.scene = scene;
+    };
+
+    // ==================== GENERATE ALGORITHM TREE ====================
+
+    window.generateTree = function() {
+        const clinicalQuestion = document.getElementById('inputClinicalQuestion').value.trim();
+        const modality = document.getElementById('inputModality').value;
+        const bodySection = document.getElementById('inputBodySection').value;
+
+        if (!clinicalQuestion) {
+            showToast('Please enter a clinical question.', 'warning');
+            return;
+        }
+        if (!modality) {
+            showToast('Please select a modality.', 'warning');
+            return;
+        }
+
+        const btn = document.getElementById('btnGenerateTree');
+        btn.disabled = true;
+        document.getElementById('walkthroughSetup').classList.add('d-none');
+        document.getElementById('walkthroughLoading').classList.remove('d-none');
+
+        fetch('/api/smart-reporter/generate-tree', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                clinical_question: clinicalQuestion,
+                modality: modality,
+                body_section: bodySection,
+            }),
+        })
+        .then(r => r.json())
+        .then(data => {
+            btn.disabled = false;
+            document.getElementById('walkthroughLoading').classList.add('d-none');
+
+            if (data.error) {
+                document.getElementById('walkthroughSetup').classList.remove('d-none');
+                showToast(data.error, 'error');
+                return;
+            }
+
+            state.sessionId = data.session_id;
+            state.algorithmTree = data.algorithm_tree;
+            state.answers = {};
+            state.stepHistory = [];
+            state.currentHistoryIndex = -1;
+
+            // Populate report template defaults
+            const rt = state.algorithmTree.report_template || {};
+            state.reportSections.indication = rt.indication || '';
+            state.reportSections.technique = rt.technique || '';
+            state.reportSections.comparison = rt.comparison || 'No prior available for comparison.';
+            state.reportSections.findings = '';
+            state.reportSections.impression = '';
+            state.reportSections.recommendation = rt.recommendation || '';
+
+            // Start walkthrough at first step
+            startWalkthrough();
+        })
+        .catch(err => {
+            btn.disabled = false;
+            document.getElementById('walkthroughLoading').classList.add('d-none');
+            document.getElementById('walkthroughSetup').classList.remove('d-none');
+            showToast('Generation failed. Please try again.', 'error');
+        });
+    };
+
+    // ==================== WALKTHROUGH ENGINE ====================
+
+    function getAllSteps() {
+        if (!state.algorithmTree) return [];
+        const steps = [...(state.algorithmTree.steps || [])];
+        if (state.algorithmTree.lines_tubes_step) steps.push(state.algorithmTree.lines_tubes_step);
+        if (state.algorithmTree.incidental_findings_step) steps.push(state.algorithmTree.incidental_findings_step);
+        return steps;
+    }
+
+    function getStepById(id) {
+        return getAllSteps().find(s => s.id === id);
+    }
+
+    function getTotalStepCount() {
+        return getAllSteps().length;
+    }
+
+    function startWalkthrough() {
+        document.getElementById('walkthroughSteps').classList.remove('d-none');
+        const firstStep = state.algorithmTree.steps[0];
+        if (firstStep) {
+            navigateToStep(firstStep.id);
+        }
+    }
+
+    function navigateToStep(stepId) {
+        // Add to history (truncate forward history if going back and then branching)
+        if (state.currentHistoryIndex < state.stepHistory.length - 1) {
+            state.stepHistory = state.stepHistory.slice(0, state.currentHistoryIndex + 1);
+        }
+        state.stepHistory.push(stepId);
+        state.currentHistoryIndex = state.stepHistory.length - 1;
+        renderCurrentStep();
+    }
+
+    function renderCurrentStep() {
+        const stepId = state.stepHistory[state.currentHistoryIndex];
+        const step = getStepById(stepId);
+        if (!step) return;
+
+        const allSteps = getAllSteps();
+        const stepIndex = allSteps.findIndex(s => s.id === stepId);
+        const total = getTotalStepCount();
+
+        // Update progress
+        document.getElementById('progressLabel').textContent = `Step ${state.currentHistoryIndex + 1} of ~${total}`;
+        const pct = Math.round(((state.currentHistoryIndex + 1) / total) * 100);
+        document.getElementById('progressBar').style.width = pct + '%';
+
+        // Update step info
+        document.getElementById('stepOrganBadge').textContent = step.organ || '';
+        document.getElementById('stepNumber').textContent = step.id;
+        document.getElementById('stepQuestion').textContent = step.question || '';
+
+        // Render options
+        const optionsDiv = document.getElementById('stepOptions');
+        const isMulti = step.allow_multiple;
+        const existing = state.answers[stepId] || { selected: [], free_text: '' };
+
+        let html = '';
+        (step.options || []).forEach((opt, i) => {
+            const isSelected = existing.selected.includes(i);
+            const activeClass = isSelected ? 'border-primary bg-light' : '';
+            const icon = isMulti
+                ? (isSelected ? 'fas fa-check-square text-primary' : 'far fa-square text-muted')
+                : (isSelected ? 'fas fa-dot-circle text-primary' : 'far fa-circle text-muted');
+
+            if (opt.is_free_text) {
+                html += `
+                    <div class="p-3 rounded border mb-2 option-btn ${activeClass}" style="cursor: pointer; transition: all 0.15s;"
+                         data-index="${i}" data-free-text="true"
+                         onclick="selectOption(${i}, true)">
+                        <div class="d-flex align-items-center">
+                            <i class="${icon} me-2"></i>
+                            <span class="small">${opt.label}</span>
+                        </div>
+                    </div>`;
+            } else {
+                const flagColor = opt.findings_flag === 'normal' ? '#a8d5ba'
+                    : opt.findings_flag === 'abnormal' ? '#e96304'
+                    : opt.findings_flag === 'equivocal' ? '#ffc107' : '#8b94a3';
+                html += `
+                    <div class="p-3 rounded border mb-2 option-btn ${activeClass}" style="cursor: pointer; transition: all 0.15s;"
+                         data-index="${i}"
+                         onclick="selectOption(${i}, false)">
+                        <div class="d-flex align-items-start">
+                            <i class="${icon} me-2 mt-1"></i>
+                            <div>
+                                <span class="small fw-semibold">${opt.label}</span>
+                                <div class="d-flex align-items-center mt-1">
+                                    <span class="badge" style="background: ${flagColor}; font-size: 0.65rem;">${opt.findings_flag || 'normal'}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>`;
+            }
+        });
+        optionsDiv.innerHTML = html;
+
+        // Free text area
+        const freeTextArea = document.getElementById('freeTextArea');
+        const freeTextInput = document.getElementById('freeTextInput');
+        const hasFreeTextSelected = existing.selected.some(i => {
+            const opt = (step.options || [])[i];
+            return opt && opt.is_free_text;
+        });
+        if (hasFreeTextSelected) {
+            freeTextArea.classList.remove('d-none');
+            freeTextInput.value = existing.free_text || '';
+        } else {
+            freeTextArea.classList.add('d-none');
+        }
+
+        // Navigation buttons
+        document.getElementById('btnStepBack').disabled = state.currentHistoryIndex === 0;
+
+        // Update running report preview
+        updateRunningReport();
+    }
+
+    window.selectOption = function(index, isFreeText) {
+        const stepId = state.stepHistory[state.currentHistoryIndex];
+        const step = getStepById(stepId);
+        if (!step) return;
+
+        if (!state.answers[stepId]) {
+            state.answers[stepId] = { selected: [], free_text: '' };
+        }
+        const answer = state.answers[stepId];
+
+        if (step.allow_multiple) {
+            // Toggle selection
+            const idx = answer.selected.indexOf(index);
+            if (idx >= 0) {
+                answer.selected.splice(idx, 1);
+            } else {
+                answer.selected.push(index);
+            }
+        } else {
+            // Single select — replace
+            answer.selected = [index];
+        }
+
+        // Handle free text visibility
+        const opt = step.options[index];
+        if (isFreeText) {
+            document.getElementById('freeTextArea').classList.remove('d-none');
+            document.getElementById('freeTextInput').focus();
+        }
+
+        renderCurrentStep();
+    };
+
+    window.stepNext = function() {
+        const stepId = state.stepHistory[state.currentHistoryIndex];
+        const step = getStepById(stepId);
+        if (!step) return;
+
+        const answer = state.answers[stepId] || { selected: [], free_text: '' };
+
+        // Save free text if visible
+        const freeTextInput = document.getElementById('freeTextInput');
+        if (!document.getElementById('freeTextArea').classList.contains('d-none')) {
+            answer.free_text = freeTextInput.value.trim();
+            state.answers[stepId] = answer;
+        }
+
+        // Determine next step
+        let nextStepId = null;
+
+        // Check if any selected option specifies a next_step
+        if (answer.selected.length > 0) {
+            // Use the last selected option's next_step (for single select, this is the only one)
+            const lastSelected = answer.selected[answer.selected.length - 1];
+            const selectedOpt = (step.options || [])[lastSelected];
+            if (selectedOpt && selectedOpt.next_step) {
+                nextStepId = selectedOpt.next_step;
+            }
+        }
+
+        // If no explicit next_step, advance sequentially through all steps
+        if (!nextStepId) {
+            const allSteps = getAllSteps();
+            const currentIdx = allSteps.findIndex(s => s.id === stepId);
+            if (currentIdx >= 0 && currentIdx < allSteps.length - 1) {
+                nextStepId = allSteps[currentIdx + 1].id;
+            }
+        }
+
+        if (nextStepId) {
+            const nextStep = getStepById(nextStepId);
+            if (nextStep) {
+                navigateToStep(nextStepId);
+                return;
+            }
+        }
+
+        // No more steps — transition to editor
+        assembleReport();
+        showScene('editor');
+        saveSessionToServer();
+    };
+
+    window.stepBack = function() {
+        if (state.currentHistoryIndex > 0) {
+            state.currentHistoryIndex--;
+            renderCurrentStep();
+        }
+    };
+
+    window.skipToEditor = function() {
+        // Save current free text if visible
+        const stepId = state.stepHistory[state.currentHistoryIndex];
+        if (stepId && state.answers[stepId]) {
+            const freeTextInput = document.getElementById('freeTextInput');
+            if (!document.getElementById('freeTextArea').classList.contains('d-none')) {
+                state.answers[stepId].free_text = freeTextInput.value.trim();
+            }
+        }
+        assembleReport();
+        showScene('editor');
+        saveSessionToServer();
+    };
+
+    // ==================== REPORT ASSEMBLY ====================
+
+    function assembleReport() {
+        if (!state.algorithmTree) return;
+
+        const rt = state.algorithmTree.report_template || {};
+
+        // Build findings from answers
+        let findingsLines = [];
+        let hasAbnormal = false;
+        const allSteps = getAllSteps();
+
+        allSteps.forEach(step => {
+            const answer = state.answers[step.id];
+            if (!answer || answer.selected.length === 0) return;
+
+            answer.selected.forEach(idx => {
+                const opt = (step.options || [])[idx];
+                if (!opt) return;
+
+                if (opt.is_free_text && answer.free_text) {
+                    findingsLines.push(answer.free_text);
+                    hasAbnormal = true;
+                } else if (opt.report_text) {
+                    findingsLines.push(opt.report_text);
+                }
+
+                if (opt.findings_flag === 'abnormal' || opt.findings_flag === 'equivocal') {
+                    hasAbnormal = true;
+                }
+            });
+        });
+
+        state.reportSections.indication = rt.indication || state.reportSections.indication;
+        state.reportSections.technique = rt.technique || state.reportSections.technique;
+        state.reportSections.comparison = rt.comparison || state.reportSections.comparison;
+        state.reportSections.findings = findingsLines.join('\n\n');
+        state.reportSections.impression = hasAbnormal
+            ? (rt.impression_abnormal || '')
+            : (rt.impression_normal || 'No acute abnormality identified.');
+        state.reportSections.recommendation = rt.recommendation || state.reportSections.recommendation;
+    }
+
+    function updateRunningReport() {
+        const allSteps = getAllSteps();
+        let lines = [];
+
+        allSteps.forEach(step => {
+            const answer = state.answers[step.id];
+            if (!answer || answer.selected.length === 0) return;
+
+            answer.selected.forEach(idx => {
+                const opt = (step.options || [])[idx];
+                if (!opt) return;
+                if (opt.is_free_text && answer.free_text) {
+                    lines.push(answer.free_text);
+                } else if (opt.report_text) {
+                    lines.push(opt.report_text);
+                }
+            });
+        });
+
+        document.getElementById('runningReport').textContent = lines.join('\n\n') || 'Select findings to build the report...';
+    }
+
+    window.toggleReportPreview = function() {
+        const panel = document.getElementById('reportPreviewPanel');
+        panel.classList.toggle('d-none');
+    };
+
+    // ==================== EDITOR ====================
+
+    function populateEditorFromState() {
+        const sections = ['indication', 'technique', 'comparison', 'findings', 'impression', 'recommendation'];
+        sections.forEach(key => {
+            const el = document.getElementById('section_' + key);
+            if (el) {
+                el.value = state.reportSections[key] || '';
+                autoResizeTextarea(el);
+            }
+        });
+        updateAskClaudeCounter();
+    }
+
+    // Track which section is focused for "Insert" feature
+    document.querySelectorAll('.report-section').forEach(el => {
+        el.addEventListener('focus', function() {
+            state.lastFocusedSection = this.dataset.section;
+        });
+        el.addEventListener('input', function() {
+            state.reportSections[this.dataset.section] = this.value;
+            autoResizeTextarea(this);
+            scheduleAutoSave();
+        });
+    });
+
+    function autoResizeTextarea(el) {
+        el.style.height = 'auto';
+        el.style.height = Math.max(el.scrollHeight, 60) + 'px';
+    }
+
+    function assembleFullReportText() {
+        const sections = ['indication', 'technique', 'comparison', 'findings', 'impression', 'recommendation'];
+        let lines = [];
+        sections.forEach(key => {
+            const el = document.getElementById('section_' + key);
+            const value = el ? el.value.trim() : '';
+            if (value) {
+                lines.push(key.toUpperCase() + ':\n' + value);
+            }
+        });
+        return lines.join('\n\n');
+    }
+
+    // ==================== COPY REPORT ====================
+
+    window.copyFullReport = function() {
+        const text = assembleFullReportText();
+        const btn = document.getElementById('btnCopyReport');
+        navigator.clipboard.writeText(text).then(() => {
+            btn.innerHTML = '<i class="fas fa-check me-1"></i>Copied!';
+            btn.classList.remove('btn-outline-success');
+            btn.classList.add('btn-success');
+            setTimeout(() => {
+                btn.innerHTML = '<i class="fas fa-copy me-1"></i>Copy Full Report';
+                btn.classList.remove('btn-success');
+                btn.classList.add('btn-outline-success');
+            }, 2000);
+        }).catch(() => {
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            btn.innerHTML = '<i class="fas fa-check me-1"></i>Copied!';
+            setTimeout(() => {
+                btn.innerHTML = '<i class="fas fa-copy me-1"></i>Copy Full Report';
+            }, 2000);
+        });
+    };
+
+    // ==================== ASK CLAUDE ====================
+
+    window.askClaude = function() {
+        const input = document.getElementById('askClaudeInput');
+        const question = input.value.trim();
+        if (!question) return;
+
+        const btn = document.getElementById('btnAskClaude');
+        btn.disabled = true;
+        document.getElementById('askClaudeLoading').classList.remove('d-none');
+        document.getElementById('askClaudeResponse').classList.add('d-none');
+
+        fetch('/api/smart-reporter/ask-claude', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                session_id: state.sessionId,
+                question: question,
+                current_report: assembleFullReportText(),
+            }),
+        })
+        .then(r => r.json())
+        .then(data => {
+            btn.disabled = false;
+            document.getElementById('askClaudeLoading').classList.add('d-none');
+
+            if (data.error) {
+                showToast(data.error, 'error');
+                return;
+            }
+
+            document.getElementById('askClaudeAnswer').textContent = data.answer || '';
+            document.getElementById('askClaudeResponse').classList.remove('d-none');
+            state.askClaudeRemaining = data.remaining_questions || 0;
+            updateAskClaudeCounter();
+            input.value = '';
+        })
+        .catch(() => {
+            btn.disabled = false;
+            document.getElementById('askClaudeLoading').classList.add('d-none');
+            showToast('Failed to get response. Please try again.', 'error');
+        });
+    };
+
+    // Enter key to submit
+    document.getElementById('askClaudeInput').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            askClaude();
+        }
+    });
+
+    window.insertClaudeResponse = function() {
+        const answer = document.getElementById('askClaudeAnswer').textContent;
+        const sectionKey = state.lastFocusedSection || 'findings';
+        const el = document.getElementById('section_' + sectionKey);
+        if (el) {
+            const current = el.value.trim();
+            el.value = current ? current + '\n\n' + answer : answer;
+            state.reportSections[sectionKey] = el.value;
+            autoResizeTextarea(el);
+            scheduleAutoSave();
+        }
+        dismissClaudeResponse();
+        showToast(`Inserted into ${sectionKey.toUpperCase()} section.`, 'success');
+    };
+
+    window.dismissClaudeResponse = function() {
+        document.getElementById('askClaudeResponse').classList.add('d-none');
+    };
+
+    function updateAskClaudeCounter() {
+        const el = document.getElementById('askClaudeCounter');
+        if (state.sessionId) {
+            el.textContent = `${state.askClaudeRemaining}/20 remaining`;
+        } else {
+            el.textContent = '';
+        }
+    }
+
+    // ==================== SESSION PERSISTENCE ====================
+
+    window.saveSession = function() {
+        saveSessionToServer();
+        showToast('Session saved.', 'success');
+    };
+
+    window.completeSession = function() {
+        if (state.sessionId) {
+            const reportText = assembleFullReportText();
+            fetch(`/api/smart-reporter/session/${state.sessionId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    report_text: reportText,
+                    walkthrough_answers: state.answers,
+                    status: 'completed',
+                }),
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    showToast('Session completed and saved.', 'success');
+                }
+            })
+            .catch(() => {});
+        }
+    };
+
+    function saveSessionToServer() {
+        if (!state.sessionId) return;
+
+        const reportText = assembleFullReportText();
+        const newStatus = state.scene === 'editor' ? 'editing' : 'walkthrough';
+
+        fetch(`/api/smart-reporter/session/${state.sessionId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                report_text: reportText,
+                walkthrough_answers: state.answers,
+                status: newStatus,
+            }),
+        }).catch(() => {});
+    }
+
+    function scheduleAutoSave() {
+        clearTimeout(state.autoSaveTimer);
+        state.autoSaveTimer = setTimeout(() => saveSessionToServer(), 10000);
+    }
+
+    // ==================== SESSION RESUME ====================
+
+    window.resumeSession = function(sessionId) {
+        fetch(`/api/smart-reporter/session/${sessionId}`)
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) {
+                    showToast(data.error, 'error');
+                    return;
+                }
+
+                state.sessionId = data.id;
+                state.algorithmTree = data.algorithm_tree;
+                state.answers = data.walkthrough_answers || {};
+                state.askClaudeRemaining = 20 - (data.ask_claude_count || 0);
+
+                // Restore report sections from saved report_text
+                if (data.report_text) {
+                    parseReportTextIntoSections(data.report_text);
+                } else if (state.algorithmTree && state.algorithmTree.report_template) {
+                    const rt = state.algorithmTree.report_template;
+                    state.reportSections.indication = rt.indication || '';
+                    state.reportSections.technique = rt.technique || '';
+                    state.reportSections.comparison = rt.comparison || '';
+                }
+
+                if (data.status === 'editing' || data.status === 'completed') {
+                    showScene('editor');
+                } else if (data.status === 'walkthrough' && state.algorithmTree) {
+                    showScene('walkthrough');
+                    document.getElementById('walkthroughSetup').classList.add('d-none');
+                    // Rebuild step history from answers
+                    state.stepHistory = [];
+                    state.currentHistoryIndex = -1;
+                    const allSteps = getAllSteps();
+                    allSteps.forEach(step => {
+                        if (state.answers[step.id]) {
+                            state.stepHistory.push(step.id);
+                        }
+                    });
+                    // Navigate to the step after the last answered
+                    if (state.stepHistory.length > 0) {
+                        state.currentHistoryIndex = state.stepHistory.length - 1;
+                        // Find next unanswered step
+                        const lastAnswered = state.stepHistory[state.stepHistory.length - 1];
+                        const lastIdx = allSteps.findIndex(s => s.id === lastAnswered);
+                        if (lastIdx >= 0 && lastIdx < allSteps.length - 1) {
+                            navigateToStep(allSteps[lastIdx + 1].id);
+                        } else {
+                            renderCurrentStep();
+                        }
+                    } else {
+                        startWalkthrough();
+                    }
+                    document.getElementById('walkthroughSteps').classList.remove('d-none');
+                } else {
+                    showScene('editor');
+                }
+            })
+            .catch(() => showToast('Failed to load session.', 'error'));
+    };
+
+    function parseReportTextIntoSections(text) {
+        const sectionKeys = ['indication', 'technique', 'comparison', 'findings', 'impression', 'recommendation'];
+        // Reset
+        sectionKeys.forEach(k => state.reportSections[k] = '');
+
+        // Parse "SECTION:\ncontent" blocks
+        const regex = /^(INDICATION|TECHNIQUE|COMPARISON|FINDINGS|IMPRESSION|RECOMMENDATION):\s*\n?([\s\S]*?)(?=\n(?:INDICATION|TECHNIQUE|COMPARISON|FINDINGS|IMPRESSION|RECOMMENDATION):|$)/gim;
+        let match;
+        while ((match = regex.exec(text)) !== null) {
+            const key = match[1].toLowerCase();
+            const value = match[2].trim();
+            if (sectionKeys.includes(key)) {
+                state.reportSections[key] = value;
+            }
+        }
+    }
+
+});
+</script>
+{% endblock %}
