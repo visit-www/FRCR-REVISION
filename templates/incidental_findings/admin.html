@@ -105,43 +105,44 @@
 </div>
 
 <!-- Generate Modal -->
-<div class="modal fade" id="generateModal" tabindex="-1">
+<div class="modal fade app-content-modal" id="generateModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Generate IF Calculator</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <h5 class="modal-title">
+                    <i class="fas fa-magic"></i> Generate IF Calculator
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <div class="mb-3">
-                    <label class="form-label fw-semibold">Finding Name</label>
+                    <label class="form-label">Finding Name</label>
                     <input type="text" class="form-control" id="genFindingName" placeholder="e.g. Pulmonary Nodule">
                 </div>
                 <div class="mb-3">
-                    <label class="form-label fw-semibold">Guideline Source</label>
+                    <label class="form-label">Guideline Source</label>
                     <input type="text" class="form-control" id="genGuideline" placeholder="e.g. Fleischner Society 2017">
                 </div>
                 <div class="row g-3">
                     <div class="col-md-6">
-                        <label class="form-label fw-semibold">Category</label>
+                        <label class="form-label">Category</label>
                         <input type="text" class="form-control" id="genCategory" placeholder="e.g. pulmonary">
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label fw-semibold">Body Section</label>
+                        <label class="form-label">Body Section</label>
                         <input type="text" class="form-control" id="genBodySection" placeholder="e.g. Thorax">
                     </div>
                 </div>
                 <div class="mt-3">
-                    <label class="form-label fw-semibold">Additional Context</label>
+                    <label class="form-label">Additional Context</label>
                     <textarea class="form-control" id="genContext" rows="3"
                               placeholder="Optional: specific criteria, size thresholds, etc."></textarea>
                 </div>
                 <div id="genStatus" class="mt-3 d-none"></div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" id="genBtn" onclick="generateCalc()"
-                        style="background: #e96304; border-color: #e96304;">
+                <button type="button" class="btn btn-modal-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-modal-primary" id="genBtn" onclick="generateCalc()">
                     <i class="fas fa-magic me-1"></i>Generate
                 </button>
             </div>
@@ -150,48 +151,50 @@
 </div>
 
 <!-- Manual Add Modal -->
-<div class="modal fade" id="manualModal" tabindex="-1">
+<div class="modal fade app-content-modal" id="manualModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Add Calculator Manually</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <h5 class="modal-title">
+                    <i class="fas fa-plus-circle"></i> Add Calculator Manually
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <div class="row g-3">
                     <div class="col-md-6">
-                        <label class="form-label fw-semibold">Finding Name</label>
+                        <label class="form-label">Finding Name</label>
                         <input type="text" class="form-control" id="manFindingName">
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label fw-semibold">Guideline Source</label>
+                        <label class="form-label">Guideline Source</label>
                         <input type="text" class="form-control" id="manGuideline">
                     </div>
                     <div class="col-md-4">
-                        <label class="form-label fw-semibold">Category</label>
+                        <label class="form-label">Category</label>
                         <input type="text" class="form-control" id="manCategory">
                     </div>
                     <div class="col-md-4">
-                        <label class="form-label fw-semibold">Body Section</label>
+                        <label class="form-label">Body Section</label>
                         <input type="text" class="form-control" id="manBodySection">
                     </div>
                     <div class="col-md-4">
-                        <label class="form-label fw-semibold">Guideline Version</label>
+                        <label class="form-label">Guideline Version</label>
                         <input type="text" class="form-control" id="manVersion">
                     </div>
                     <div class="col-12">
-                        <label class="form-label fw-semibold">Keywords</label>
+                        <label class="form-label">Keywords</label>
                         <input type="text" class="form-control" id="manKeywords" placeholder="comma-separated">
                     </div>
                     <div class="col-12">
-                        <label class="form-label fw-semibold">Calculator HTML</label>
+                        <label class="form-label">Calculator HTML</label>
                         <textarea class="form-control font-monospace" id="manHtml" rows="10"></textarea>
                     </div>
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" onclick="addManual()" style="background: #5E899E; border-color: #5E899E;">
+                <button type="button" class="btn btn-modal-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-modal-primary" onclick="addManual()">
                     <i class="fas fa-save me-1"></i>Save
                 </button>
             </div>

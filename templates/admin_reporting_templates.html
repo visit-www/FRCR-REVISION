@@ -97,21 +97,23 @@
 </div>
 
 <!-- Generate Modal -->
-<div class="modal fade" id="generateModal" tabindex="-1">
+<div class="modal fade app-content-modal" id="generateModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Generate Reporting Template</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <h5 class="modal-title">
+                    <i class="fas fa-magic"></i> Generate Reporting Template
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <div class="mb-3">
-                    <label class="form-label fw-semibold">Template Title</label>
+                    <label class="form-label">Template Title</label>
                     <input type="text" class="form-control" id="genTitle" placeholder="e.g. AAST Splenic Injury Scale">
                 </div>
                 <div class="row g-3 mb-3">
                     <div class="col-md-6">
-                        <label class="form-label fw-semibold">Category</label>
+                        <label class="form-label">Category</label>
                         <select class="form-select" id="genCategory">
                             <option value="trauma">Trauma</option>
                             <option value="grading">Grading System</option>
@@ -120,25 +122,24 @@
                         </select>
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label fw-semibold">Body Section</label>
+                        <label class="form-label">Body Section</label>
                         <input type="text" class="form-control" id="genBodySection" placeholder="e.g. Abdomen">
                     </div>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label fw-semibold">Source Citation</label>
+                    <label class="form-label">Source Citation</label>
                     <input type="text" class="form-control" id="genSource" placeholder="e.g. AAST 2018 Revised">
                 </div>
                 <div class="mb-3">
-                    <label class="form-label fw-semibold">Additional Context</label>
+                    <label class="form-label">Additional Context</label>
                     <textarea class="form-control" id="genContext" rows="3"
                               placeholder="Optional: specific criteria, grading details..."></textarea>
                 </div>
                 <div id="genStatus" class="d-none"></div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" id="genBtn" onclick="generateTemplate()"
-                        style="background: #e96304; border-color: #e96304;">
+                <button type="button" class="btn btn-modal-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-modal-primary" id="genBtn" onclick="generateTemplate()">
                     <i class="fas fa-magic me-1"></i>Generate
                 </button>
             </div>

@@ -208,11 +208,16 @@
             </div>
 
             <!-- Resume/New Modal -->
-            <div class="modal fade" id="resumeModal" tabindex="-1">
+            <div class="modal fade app-content-modal" id="resumeModal" tabindex="-1">
                 <div class="modal-dialog modal-dialog-centered modal-sm">
-                    <div class="modal-content border-0 shadow">
-                        <div class="modal-body text-center p-4">
-                            <i class="fas fa-folder-open mb-3" style="font-size: 2rem; color: #5E899E;"></i>
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">
+                                <i class="fas fa-folder-open"></i> Session Found
+                            </h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body text-center">
                             <h6 class="mb-1" id="resumeModalTitle">Session found</h6>
                             <p class="text-muted small mb-3" id="resumeModalDesc"></p>
                             <div class="d-grid gap-2">

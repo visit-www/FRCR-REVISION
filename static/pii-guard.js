@@ -186,61 +186,75 @@
     function showPIIModal(matches) {
         return new Promise(function(resolve) {
             // Remove existing modal if any
-            const existing = document.getElementById('piiGuardModal');
-            if (existing) existing.remove();
+            var existing = document.getElementById('piiGuardModal');
+            if (existing) {
+                var oldInstance = bootstrap.Modal.getInstance(existing);
+                if (oldInstance) oldInstance.dispose();
+                existing.remove();
+            }
 
-            const backdrop = document.createElement('div');
-            backdrop.id = 'piiGuardBackdrop';
-            backdrop.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:10000;';
-
-            const modal = document.createElement('div');
-            modal.id = 'piiGuardModal';
-            modal.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);' +
-                'background:#fff;border-radius:12px;padding:24px;max-width:460px;width:90%;z-index:10001;' +
-                'box-shadow:0 8px 32px rgba(0,0,0,0.3);';
-
-            modal.innerHTML =
-                '<div class="text-center mb-3">' +
-                    '<i class="fas fa-shield-alt" style="font-size:2.5rem;color:#dc3545;"></i>' +
-                    '<h5 class="mt-2 mb-1" style="color:#dc3545;">Patient Data Detected</h5>' +
-                    '<p class="text-muted small mb-0">The following patient-identifiable information was found in your input.</p>' +
-                '</div>' +
-                '<div class="p-3 rounded mb-3" style="background:#fff3f3;border:1px solid #f5c6cb;max-height:200px;overflow-y:auto;">' +
-                    getWarningHTML(matches) +
-                '</div>' +
-                '<p class="small text-muted mb-3">' +
-                    '<i class="fas fa-info-circle me-1"></i>' +
-                    'Patient data must not be entered into this application. Choose an action below.' +
-                '</p>' +
-                '<div class="d-flex gap-2">' +
-                    '<button id="piiRedactBtn" class="btn btn-warning flex-fill">' +
-                        '<i class="fas fa-eraser me-1"></i>Remove &amp; Continue' +
-                    '</button>' +
-                    '<button id="piiCancelBtn" class="btn btn-outline-secondary flex-fill">' +
-                        '<i class="fas fa-times me-1"></i>Cancel' +
-                    '</button>' +
+            // Build Bootstrap modal following app design (scoped via .app-content-modal.pii-guard-modal)
+            var wrapper = document.createElement('div');
+            wrapper.innerHTML =
+                '<div class="modal fade app-content-modal pii-guard-modal" id="piiGuardModal" tabindex="-1" data-bs-backdrop="static">' +
+                  '<div class="modal-dialog modal-dialog-centered">' +
+                    '<div class="modal-content">' +
+                      '<div class="modal-header">' +
+                        '<h5 class="modal-title">' +
+                          '<i class="fas fa-shield-alt"></i> Patient Data Detected' +
+                        '</h5>' +
+                        '<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>' +
+                      '</div>' +
+                      '<div class="modal-body">' +
+                        '<p class="text-muted small mb-3">' +
+                          'The following patient-identifiable information was found in your input.' +
+                        '</p>' +
+                        '<div class="pii-matches-list mb-3">' +
+                          getWarningHTML(matches) +
+                        '</div>' +
+                        '<p class="small text-muted mb-0">' +
+                          '<i class="fas fa-info-circle me-1"></i>' +
+                          'Patient data must not be entered into this application. Choose an action below.' +
+                        '</p>' +
+                      '</div>' +
+                      '<div class="modal-footer">' +
+                        '<button type="button" class="btn btn-pii-cancel" id="piiCancelBtn">' +
+                          '<i class="fas fa-times me-1"></i>Cancel' +
+                        '</button>' +
+                        '<button type="button" class="btn btn-pii-redact" id="piiRedactBtn">' +
+                          '<i class="fas fa-eraser me-1"></i>Remove &amp; Continue' +
+                        '</button>' +
+                      '</div>' +
+                    '</div>' +
+                  '</div>' +
                 '</div>';
 
-            document.body.appendChild(backdrop);
-            document.body.appendChild(modal);
+            var modalEl = wrapper.firstChild;
+            document.body.appendChild(modalEl);
+
+            var bsModal = new bootstrap.Modal(modalEl);
+            var resolved = false;
 
             document.getElementById('piiRedactBtn').addEventListener('click', function() {
-                backdrop.remove();
-                modal.remove();
+                resolved = true;
+                bsModal.hide();
                 resolve('redact');
             });
 
             document.getElementById('piiCancelBtn').addEventListener('click', function() {
-                backdrop.remove();
-                modal.remove();
+                resolved = true;
+                bsModal.hide();
                 resolve('cancel');
             });
 
-            backdrop.addEventListener('click', function() {
-                backdrop.remove();
-                modal.remove();
-                resolve('cancel');
+            // Clean up DOM after hidden; resolve as cancel if X button or backdrop clicked
+            modalEl.addEventListener('hidden.bs.modal', function() {
+                bsModal.dispose();
+                modalEl.remove();
+                if (!resolved) resolve('cancel');
             });
+
+            bsModal.show();
         });
     }
 

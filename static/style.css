@@ -4398,6 +4398,143 @@ tbody tr.case-row:hover {
     box-shadow: 0 4px 8px rgba(233, 99, 4, 0.3);
 }
 
+/* ==================== APP CONTENT MODAL ==================== */
+/* Reusable scoped class for content modals — overrides base image-modal styles */
+
+.modal.app-content-modal .modal-content {
+    background: var(--brand-bg-offwhite, #fdfdfb) !important;
+    border: 2px solid var(--brand-success, #a8d5ba) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12) !important;
+    overflow: hidden !important;
+}
+
+.modal.app-content-modal .modal-header {
+    background: linear-gradient(135deg, #5E899E 0%, #4a7285 100%) !important;
+    color: #fff !important;
+    border: none !important;
+    padding: 1rem 1.25rem !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+}
+
+.modal.app-content-modal .modal-header .modal-title {
+    font-weight: 600 !important;
+    font-size: 1.15rem !important;
+    color: #fff !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
+}
+
+.modal.app-content-modal .modal-header .btn-close {
+    filter: brightness(0) invert(1) !important;
+    opacity: 0.9 !important;
+}
+
+.modal.app-content-modal .modal-header .btn-close:hover {
+    opacity: 1 !important;
+}
+
+.modal.app-content-modal .modal-body {
+    background: var(--brand-bg-offwhite, #fdfdfb) !important;
+    padding: 1.5rem 1.25rem !important;
+    color: var(--brand-text-primary, #2c3e50) !important;
+    display: block !important;
+    align-items: unset !important;
+    justify-content: unset !important;
+    min-height: unset !important;
+}
+
+.modal.app-content-modal .modal-body .form-label {
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    color: var(--brand-text-primary, #2c3e50);
+}
+
+.modal.app-content-modal .modal-body .form-control,
+.modal.app-content-modal .modal-body .form-select {
+    border: 2px solid #c5cad1;
+    border-radius: 8px;
+    padding: 0.625rem 0.875rem;
+}
+
+.modal.app-content-modal .modal-body .form-control:focus,
+.modal.app-content-modal .modal-body .form-select:focus {
+    border-color: var(--brand-success, #a8d5ba);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(168, 213, 186, 0.25);
+}
+
+.modal.app-content-modal .modal-footer {
+    background: #f5f5f3 !important;
+    border-top: 1px solid #c5cad1 !important;
+    padding: 1rem 1.25rem !important;
+    border-radius: 0 0 12px 12px !important;
+    display: flex !important;
+    gap: 0.75rem !important;
+}
+
+.modal.app-content-modal .modal-footer .btn {
+    border: none;
+    padding: 0.5rem 1.25rem;
+    border-radius: 0.375rem;
+    font-weight: 500;
+}
+
+.modal.app-content-modal .modal-footer .btn-modal-primary {
+    background-color: var(--brand-primary, #e96304) !important;
+    color: #fff !important;
+}
+
+.modal.app-content-modal .modal-footer .btn-modal-primary:hover {
+    background-color: #c75002 !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(233, 99, 4, 0.3);
+}
+
+.modal.app-content-modal .modal-footer .btn-modal-secondary {
+    background-color: #6c757d !important;
+    color: #fff !important;
+}
+
+.modal.app-content-modal .modal-footer .btn-modal-secondary:hover {
+    background-color: #5a6268 !important;
+}
+
+/* PII Guard modal — red header variant */
+.modal.pii-guard-modal .modal-header {
+    background: linear-gradient(135deg, #dc3545 0%, #b52d3a 100%) !important;
+}
+
+.modal.pii-guard-modal .pii-matches-list {
+    background: rgba(220, 53, 69, 0.06);
+    border: 1px solid rgba(220, 53, 69, 0.2);
+    border-radius: 8px;
+    padding: 0.875rem;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.modal.pii-guard-modal .btn-pii-redact {
+    background-color: var(--brand-primary, #e96304) !important;
+    color: #fff !important;
+}
+
+.modal.pii-guard-modal .btn-pii-redact:hover {
+    background-color: #c75002 !important;
+}
+
+.modal.pii-guard-modal .btn-pii-cancel {
+    background-color: #6c757d !important;
+    color: #fff !important;
+}
+
+.modal.pii-guard-modal .btn-pii-cancel:hover {
+    background-color: #5a6268 !important;
+}
+
 /* AI Cache Info Box - Uses app brand colors */
 .ai-cache-info-box {
     background: linear-gradient(135deg, #f0f8fc 0%, #f5fbff 100%);
