@@ -80,22 +80,27 @@
 <style>
     {{ content.styles | safe }}
 
-    /* Force single-column full-width layout on generated content */
-    .calculator-integrated-wrapper .container {
+    /* Force single-column full-width layout on all generated content */
+    .calculator-integrated-wrapper .container,
+    .calculator-integrated-wrapper .wrapper,
+    .calculator-integrated-wrapper main,
+    .calculator-integrated-wrapper section {
         max-width: 100% !important;
+        width: 100% !important;
         margin: 0 auto;
         padding: 20px;
     }
-    .calculator-integrated-wrapper .container {
-        display: flex !important;
-        flex-direction: column !important;
-    }
-    .calculator-integrated-wrapper .row,
-    .calculator-integrated-wrapper [class*="grid"],
-    .calculator-integrated-wrapper [style*="grid-template-columns"] {
-        display: flex !important;
-        flex-direction: column !important;
+    /* Override ALL grid layouts to single column inside generated content */
+    .calculator-integrated-wrapper div,
+    .calculator-integrated-wrapper section,
+    .calculator-integrated-wrapper main {
         grid-template-columns: 1fr !important;
+        columns: auto !important;
+    }
+    /* Override Bootstrap and custom row/col classes */
+    .calculator-integrated-wrapper .row {
+        display: flex !important;
+        flex-direction: column !important;
     }
     .calculator-integrated-wrapper .col,
     .calculator-integrated-wrapper [class*="col-"] {
