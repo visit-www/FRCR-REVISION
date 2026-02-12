@@ -1944,7 +1944,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 // Admin-curated templates with full interactive HTML: open the template view page
                 if (!treeLoaded && data.slug) {
-                    window.open('/reporting-template/' + data.slug, '_blank');
+                    window.location.href = '/reporting-template/' + data.slug;
                 }
             })
             .catch(() => showToast('Failed to load template.', 'error'));
