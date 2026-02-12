@@ -30,15 +30,25 @@ def extract_calculator_content(full_html: str) -> dict:
     """
     result = {'styles': '', 'body': full_html}
 
-    # Extract <style> content
-    style_match = re.search(r'<style[^>]*>(.*?)</style>', full_html, re.DOTALL | re.IGNORECASE)
-    if style_match:
-        result['styles'] = style_match.group(1)
+    # Extract ALL <style> content
+    style_matches = re.findall(r'<style[^>]*>(.*?)</style>', full_html, re.DOTALL | re.IGNORECASE)
+    if style_matches:
+        result['styles'] = '\n'.join(style_matches)
 
     # Extract <body> content
     body_match = re.search(r'<body[^>]*>(.*?)</body>', full_html, re.DOTALL | re.IGNORECASE)
     if body_match:
         result['body'] = body_match.group(1)
+
+    # Strip <style> blocks from body to prevent them overriding our layout CSS
+    result['body'] = re.sub(r'<style[^>]*>.*?</style>', '', result['body'], flags=re.DOTALL | re.IGNORECASE)
+
+    # Force single-column: replace multi-column grid patterns in extracted styles
+    result['styles'] = re.sub(
+        r'grid-template-columns\s*:\s*(?!1fr\s*[;\}])([^;}\n]+)',
+        'grid-template-columns: 1fr',
+        result['styles'],
+    )
 
     return result
 

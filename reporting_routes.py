@@ -838,6 +838,16 @@ def _extract_template_content(html):
     if body_match:
         body = body_match.group(1)
 
+    # Strip <style> blocks from body to prevent them overriding our layout CSS
+    body = re.sub(r'<style[^>]*>.*?</style>', '', body, flags=re.DOTALL)
+
+    # Force single-column: replace multi-column grid patterns in extracted styles
+    styles = re.sub(
+        r'grid-template-columns\s*:\s*(?!1fr\s*[;\}])([^;}\n]+)',
+        'grid-template-columns: 1fr',
+        styles,
+    )
+
     return {'styles': styles, 'body': body}
 
 
