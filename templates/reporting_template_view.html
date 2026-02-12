@@ -62,11 +62,7 @@
             <div class="alert alert-info border-0 py-2 mb-3">
                 <small>
                     <i class="fas fa-book me-1"></i>
-                    {% if template.source_citation.startswith('http') %}
-                    <a href="{{ template.source_citation }}" target="_blank" rel="noopener"><strong>{{ template.source_citation }}</strong></a>
-                    {% else %}
-                    <strong>{{ template.source_citation }}</strong>
-                    {% endif %}
+                    <strong>{{ template.source_citation | urlize | safe }}</strong>
                     {% if template.guideline_version %} ({{ template.guideline_version }}){% endif %}
                     <span class="badge bg-light text-dark border ms-2">{{ template.category|capitalize }}</span>
                 </small>
@@ -170,8 +166,10 @@
                     <strong>Clinical Decision Support Tool</strong> &mdash;
                     This tool is for educational and reference purposes. Always verify against
                     current guidelines and institutional protocols before clinical use.
-                    {% if template.source_citation %}
-                    Source: {{ template.source_citation }}
+                    {% if resources and resources.references %}
+                    Source: {% for ref in resources.references %}{{ ref.source }}{% if ref.version %} ({{ ref.version }}){% endif %}{% if ref.url %} — <a href="{{ ref.url }}" target="_blank" rel="noopener" class="text-muted">{{ ref.url }}</a>{% endif %}{% if not loop.last %}; {% endif %}{% endfor %}.
+                    {% elif template.source_citation %}
+                    Source: {{ template.source_citation | urlize | safe }}
                     {% if template.guideline_version %}({{ template.guideline_version }}){% endif %}.
                     {% endif %}
                 </small>

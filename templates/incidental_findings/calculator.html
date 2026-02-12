@@ -67,7 +67,7 @@
             <div class="alert alert-info border-0 py-2 mb-3">
                 <small>
                     <i class="fas fa-book me-1"></i>
-                    <strong>{{ calculator.guideline_source }}</strong>
+                    <strong>{{ calculator.guideline_source | urlize | safe }}</strong>
                     {% if calculator.guideline_version %} ({{ calculator.guideline_version }}){% endif %}
                     {% if calculator.guideline_url %}
                     &mdash; <a href="{{ calculator.guideline_url }}" target="_blank" rel="noopener">View guideline</a>
@@ -131,10 +131,9 @@
                     This tool is for educational and reference purposes. Always verify against
                     current guidelines and institutional protocols before clinical use.
                     {% if resources and resources.references %}
-                    Source: {{ resources.references[0].source }}
-                    {% if resources.references[0].version %}({{ resources.references[0].version }}){% endif %}.
+                    Source: {% for ref in resources.references %}{{ ref.source }}{% if ref.version %} ({{ ref.version }}){% endif %}{% if ref.url %} — <a href="{{ ref.url }}" target="_blank" rel="noopener" class="text-muted">{{ ref.url }}</a>{% endif %}{% if not loop.last %}; {% endif %}{% endfor %}.
                     {% elif calculator.guideline_source %}
-                    Source: {{ calculator.guideline_source }}
+                    Source: {{ calculator.guideline_source | urlize | safe }}
                     {% if calculator.guideline_version %}({{ calculator.guideline_version }}){% endif %}.
                     {% endif %}
                 </small>
