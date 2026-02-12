@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% block tool_active_templates %}active{% endblock %}
 
 {% block mobile_breadcrumb %}
 <li class="breadcrumb-item">
@@ -19,8 +20,9 @@
                 <a href="{{ url_for('reporting.smart_reporter') }}" class="btn btn-outline-secondary btn-sm">
                     <i class="fas fa-file-medical me-1"></i>Smart Reporter
                 </a>
-                <a href="{{ url_for('oncall.oncall_helper') }}" class="btn btn-outline-secondary btn-sm">
-                    <i class="fas fa-headset me-1"></i>On-Call Helper
+                <a href="/smart-reporter?context=template&id={{ template.id }}&title={{ template.title|urlencode }}"
+                   class="btn btn-sm btn-brand-primary">
+                    <i class="fas fa-edit me-1"></i>Use to Report
                 </a>
             </div>
 

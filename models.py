@@ -2456,6 +2456,7 @@ class ClinicalProtocol(db.Model):
     source_citation = db.Column(db.String(500), nullable=False)
     guideline_version = db.Column(db.String(100), nullable=True)
     source_url = db.Column(db.String(1000), nullable=True)
+    body_section = db.Column(db.String(100), nullable=True)
     is_published = db.Column(db.Boolean, default=False, nullable=False, index=True)
     verified_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     verified_at = db.Column(db.DateTime, nullable=True)
@@ -2488,6 +2489,7 @@ class ClinicalProtocol(db.Model):
             'source_citation': self.source_citation,
             'guideline_version': self.guideline_version,
             'source_url': self.source_url,
+            'body_section': self.body_section,
             'is_published': self.is_published,
             'verified_by_user_id': self.verified_by_user_id,
             'verified_at': self.verified_at.isoformat() if self.verified_at else None,

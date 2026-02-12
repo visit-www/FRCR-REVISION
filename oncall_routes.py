@@ -119,6 +119,48 @@ def get_query_detail(log_id):
     })
 
 
+@oncall_bp.route('/protocol/<int:protocol_id>')
+@login_required
+def view_protocol(protocol_id):
+    """Individual protocol view page."""
+    protocol = ClinicalProtocol.query.filter_by(
+        id=protocol_id, is_published=True
+    ).first_or_404()
+
+    # Parse resources from source_citation (JSON format)
+    resources = None
+    if protocol.source_citation:
+        try:
+            resources = json.loads(protocol.source_citation)
+            # Resolve linked cases and TNM calculators
+            if resources.get('linked_cases'):
+                from models import Case
+                case_ids = [c.get('id') for c in resources['linked_cases'] if c.get('id')]
+                if case_ids:
+                    cases = Case.query.filter(Case.id.in_(case_ids)).all()
+                    resources['linked_cases'] = [
+                        {'id': c.id, 'case_number': c.case_number, 'diagnosis': c.diagnosis or ''}
+                        for c in cases
+                    ]
+            if resources.get('linked_tnm'):
+                from models import TNMCalculatorContent
+                slugs = [t.get('slug') for t in resources['linked_tnm'] if t.get('slug')]
+                if slugs:
+                    tnms = TNMCalculatorContent.query.filter(
+                        TNMCalculatorContent.slug.in_(slugs)
+                    ).all()
+                    resources['linked_tnm'] = [
+                        {'slug': t.slug, 'cancer_name': t.cancer_name}
+                        for t in tnms
+                    ]
+        except (json.JSONDecodeError, TypeError):
+            resources = None
+
+    return render_template('protocol_view.html',
+                           protocol=protocol,
+                           resources=resources)
+
+
 # ==================== ADMIN: PROTOCOL MANAGEMENT ====================
 
 @oncall_bp.route('/admin/protocols')
@@ -178,6 +220,7 @@ def create_protocol():
         source_citation=data['source_citation'].strip(),
         guideline_version=data.get('guideline_version', '').strip() or None,
         source_url=data.get('source_url', '').strip() or None,
+        body_section=data.get('body_section', '').strip() or None,
         is_published=data.get('is_published', False),
         created_by_user_id=current_user.id,
     )
@@ -221,6 +264,8 @@ def update_protocol(protocol_id):
         protocol.guideline_version = data['guideline_version'].strip() or None
     if 'source_url' in data:
         protocol.source_url = data['source_url'].strip() or None
+    if 'body_section' in data:
+        protocol.body_section = data['body_section'].strip() or None
     if 'is_published' in data:
         protocol.is_published = bool(data['is_published'])
 
@@ -271,6 +316,7 @@ def generate_protocol():
         return jsonify({'error': 'Title and category are required.'}), 400
 
     source_citation = (data.get('source_citation') or '').strip()
+    body_section = (data.get('body_section') or '').strip()
     additional_context = (data.get('additional_context') or '').strip()
 
     try:
@@ -295,6 +341,7 @@ def generate_protocol():
         content_structured=json.dumps(result.get('content_structured')) if result.get('content_structured') else None,
         source_citation=source_citation or 'AI-generated — verify against published guideline',
         guideline_version=result.get('guideline_version') or None,
+        body_section=body_section or None,
         is_published=False,
         created_by_user_id=current_user.id,
     )

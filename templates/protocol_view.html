@@ -1,38 +1,51 @@
 {% extends 'base.html' %}
-{% block tool_active_if %}active{% endblock %}
+{% block tool_active_oncall %}active{% endblock %}
 
 {% block mobile_breadcrumb %}
 <li class="breadcrumb-item">
-    <a href="{{ url_for('incidental_findings.finder') }}" class="text-white text-decoration-none">Incidental Findings</a>
+    <a href="{{ url_for('oncall.oncall_helper') }}" class="text-white text-decoration-none">On-Call Helper</a>
 </li>
-<li class="breadcrumb-item active text-white-50">{{ calculator.finding_name }}</li>
+<li class="breadcrumb-item active text-white-50">{{ protocol.title[:40] }}</li>
 {% endblock %}
 
 {% block content %}
-<!-- Navigation Links -->
 <div class="container-fluid py-3">
     <div class="row">
         <div class="col-12">
+            <!-- Navigation -->
             <div class="d-flex flex-wrap gap-2 mb-3">
                 <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary btn-sm">
                     <i class="fas fa-home me-1"></i>Dashboard
                 </a>
-                <a href="{{ url_for('incidental_findings.finder') }}" class="btn btn-outline-secondary btn-sm">
-                    <i class="fas fa-search-plus me-1"></i>All Incidental Findings
+                <a href="{{ url_for('oncall.oncall_helper') }}" class="btn btn-outline-secondary btn-sm">
+                    <i class="fas fa-headset me-1"></i>On-Call Helper
                 </a>
-                <a href="/smart-reporter?context=if&slug={{ calculator.slug }}&title={{ calculator.finding_name|urlencode }}"
+                <a href="/smart-reporter?context=protocol&id={{ protocol.id }}&title={{ protocol.title|urlencode }}"
                    class="btn btn-sm btn-brand-primary">
                     <i class="fas fa-file-medical me-1"></i>Use in Report
                 </a>
+            </div>
+
+            <!-- Protocol Header -->
+            <div class="mb-3">
+                <h4 class="mb-1">{{ protocol.title }}</h4>
+                <div class="d-flex flex-wrap gap-2 align-items-center">
+                    {% if protocol.category %}
+                    <span class="badge" style="background: #5E899E;">{{ protocol.category }}</span>
+                    {% endif %}
+                    {% if protocol.body_section %}
+                    <span class="badge bg-light text-dark border">{{ protocol.body_section }}</span>
+                    {% endif %}
+                    {% if protocol.verified_at %}
+                    <span class="text-success small"><i class="fas fa-check-circle me-1"></i>Verified</span>
+                    {% endif %}
+                </div>
             </div>
 
             <!-- Resources -->
             {% if resources and (resources.references or resources.linked_cases or resources.linked_tnm or resources.pdfs) %}
             <div class="alert alert-info border-0 py-2 mb-3">
                 <small>
-                    {% if calculator.category %}
-                    <span class="badge bg-light text-dark border me-2">{{ calculator.category }}</span>
-                    {% endif %}
                     {% if resources.references %}
                     <i class="fas fa-book me-1"></i><strong>References:</strong>
                     {% for ref in resources.references %}
@@ -40,9 +53,6 @@
                         {{ ref.source }}{% if ref.version %} ({{ ref.version }}){% endif %}{% if ref.url %} — <a href="{{ ref.url }}" target="_blank" rel="noopener">Link</a>{% endif %}{% if not loop.last %};{% endif %}
                     </span>
                     {% endfor %}
-                    {% endif %}
-                    {% if calculator.verified_at %}
-                    <span class="ms-2 text-success"><i class="fas fa-check-circle me-1"></i>Verified</span>
                     {% endif %}
                 </small>
                 {% if resources.linked_cases or resources.linked_tnm or resources.pdfs %}
@@ -65,17 +75,14 @@
                 </div>
                 {% endif %}
             </div>
-            {% elif calculator.guideline_source %}
+            {% elif protocol.source_citation and not resources %}
             <div class="alert alert-info border-0 py-2 mb-3">
                 <small>
                     <i class="fas fa-book me-1"></i>
-                    <strong>{{ calculator.guideline_source | urlize | safe }}</strong>
-                    {% if calculator.guideline_version %} ({{ calculator.guideline_version }}){% endif %}
-                    {% if calculator.guideline_url %}
-                    &mdash; <a href="{{ calculator.guideline_url }}" target="_blank" rel="noopener">View guideline</a>
-                    {% endif %}
-                    {% if calculator.verified_at %}
-                    <span class="ms-2 text-success"><i class="fas fa-check-circle me-1"></i>Verified</span>
+                    <strong>{{ protocol.source_citation | urlize | safe }}</strong>
+                    {% if protocol.guideline_version %} ({{ protocol.guideline_version }}){% endif %}
+                    {% if protocol.source_url %}
+                    &mdash; <a href="{{ protocol.source_url }}" target="_blank" rel="noopener">View guideline</a>
                     {% endif %}
                 </small>
             </div>
@@ -84,11 +91,9 @@
     </div>
 </div>
 
-{# Inject calculator styles #}
+<!-- Protocol Content -->
+{% if protocol.content_html %}
 <style>
-    {{ content.styles | safe }}
-
-    /* Force full-width on top-level containers */
     .calculator-integrated-wrapper > .container,
     .calculator-integrated-wrapper > div > .container,
     .calculator-integrated-wrapper > .wrapper,
@@ -98,13 +103,11 @@
         width: 100% !important;
         padding: 20px;
     }
-    /* Override top-level grid to single column only */
     .calculator-integrated-wrapper > div,
     .calculator-integrated-wrapper > .container,
     .calculator-integrated-wrapper > div > .container {
         grid-template-columns: 1fr !important;
     }
-    /* Force left-align text in generated content */
     .calculator-integrated-wrapper,
     .calculator-integrated-wrapper div,
     .calculator-integrated-wrapper section,
@@ -117,10 +120,11 @@
 </style>
 
 <div class="calculator-integrated-wrapper">
-    {{ content.body | safe }}
+    {{ protocol.content_html | safe }}
 </div>
+{% endif %}
 
-<!-- Clinical Disclaimer Footer -->
+<!-- Clinical Disclaimer -->
 <div class="container-fluid py-3">
     <div class="row">
         <div class="col-12">
@@ -130,11 +134,9 @@
                     <strong>Clinical Decision Support Tool</strong> &mdash;
                     This tool is for educational and reference purposes. Always verify against
                     current guidelines and institutional protocols before clinical use.
-                    {% if resources and resources.references %}
-                    Source: {% for ref in resources.references %}{{ ref.source }}{% if ref.version %} ({{ ref.version }}){% endif %}{% if ref.url %} — <a href="{{ ref.url }}" target="_blank" rel="noopener" class="text-muted">{{ ref.url }}</a>{% endif %}{% if not loop.last %}; {% endif %}{% endfor %}.
-                    {% elif calculator.guideline_source %}
-                    Source: {{ calculator.guideline_source | urlize | safe }}
-                    {% if calculator.guideline_version %}({{ calculator.guideline_version }}){% endif %}.
+                    {% if protocol.source_citation %}
+                    Source: {{ protocol.source_citation | urlize | safe }}
+                    {% if protocol.guideline_version %}({{ protocol.guideline_version }}){% endif %}.
                     {% endif %}
                 </small>
             </div>

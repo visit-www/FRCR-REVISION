@@ -858,6 +858,28 @@ def _extract_template_content(html):
     return {'styles': styles, 'body': body}
 
 
+# ==================== USER: REPORTING TEMPLATES BROWSE ====================
+
+@reporting_bp.route('/reporting-templates')
+@login_required
+def browse_reporting_templates():
+    """User-facing browse page for all available reporting templates."""
+    templates = ReportingTemplate.query.filter_by(
+        is_available=True
+    ).order_by(
+        ReportingTemplate.category, ReportingTemplate.title
+    ).all()
+
+    grouped = {}
+    for t in templates:
+        cat = t.category or 'Other'
+        if cat == 'smart_reporter_cache':
+            continue  # Skip cached entries, show only curated
+        grouped.setdefault(cat, []).append(t)
+
+    return render_template('reporting_templates_browse.html', grouped=grouped)
+
+
 # ==================== ADMIN: REPORTING TEMPLATE MANAGEMENT ====================
 
 @reporting_bp.route('/admin/reporting-templates')
@@ -1307,6 +1329,130 @@ def smart_reporter_review_report():
     })
 
 
+@reporting_bp.route('/api/smart-reporter/quick-review', methods=['POST'])
+@login_required
+def smart_reporter_quick_review():
+    """Quick Check: lightweight spelling/grammar/phrasing review using Haiku."""
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'JSON body required.'}), 400
+
+    report_text = (data.get('report_text') or '').strip()
+    session_id = data.get('session_id')
+
+    if not report_text:
+        return jsonify({'error': 'Report text is required.'}), 400
+    if len(report_text) > 10000:
+        return jsonify({'error': 'Report text too long (max 10000 characters).'}), 400
+
+    # Rate limit via session if provided
+    session = None
+    if session_id:
+        session = ReportingSession.query.get(session_id)
+        if session and session.user_id != current_user.id:
+            return jsonify({'error': 'Access denied.'}), 403
+        if session and (session.ask_claude_count or 0) >= 20:
+            return jsonify({
+                'error': 'You have reached the maximum number of AI requests for this session (20).'
+            }), 429
+
+    try:
+        from ai_smart_reporter import quick_review, SmartReporterError
+        result = quick_review(report_text=report_text)
+    except Exception as exc:
+        logger.error(f"Smart Reporter quick review failed: {exc}")
+        return jsonify({'error': f'Quick review failed: {exc}'}), 500
+
+    # Increment counter
+    if session:
+        session.ask_claude_count = (session.ask_claude_count or 0) + 1
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+
+    remaining = 20 - (session.ask_claude_count if session else 0)
+
+    return jsonify({
+        'success': True,
+        'improved_report': result.get('improved_report', ''),
+        'suggestions': result.get('suggestions', []),
+        'remaining_questions': max(0, remaining),
+    })
+
+
+@reporting_bp.route('/api/smart-reporter/ai-assist', methods=['POST'])
+@login_required
+def smart_reporter_ai_assist():
+    """Unified AI assistant: corrections + answer + insights in one call."""
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'JSON body required.'}), 400
+
+    question = (data.get('question') or '').strip()
+    report_text = (data.get('report_text') or '').strip()
+    session_id = data.get('session_id')
+
+    if not question:
+        return jsonify({'error': 'Question is required.'}), 400
+    if len(question) > 1000:
+        return jsonify({'error': 'Question too long (max 1000 characters).'}), 400
+
+    # Validate session if provided
+    session = None
+    if session_id:
+        session = ReportingSession.query.get(session_id)
+        if session and session.user_id != current_user.id:
+            return jsonify({'error': 'Access denied.'}), 403
+        if session and (session.ask_claude_count or 0) >= 20:
+            return jsonify({
+                'error': 'You have reached the maximum number of AI requests for this session (20).'
+            }), 429
+
+    # Pull clinical context from session as fallback
+    clinical_question = (data.get('clinical_question') or
+                         (session.clinical_question if session else '') or '')
+    modality = (data.get('modality') or
+                (session.modality if session else '') or '')
+    body_section = (data.get('body_section') or
+                    (session.body_section if session else '') or '')
+
+    # External context from "Use in Report" buttons
+    external_context = data.get('external_context')
+
+    try:
+        from ai_smart_reporter import unified_ai_assist, SmartReporterError
+        result = unified_ai_assist(
+            report_text=report_text,
+            question=question,
+            clinical_question=clinical_question,
+            modality=modality,
+            body_section=body_section,
+            external_context=external_context,
+        )
+    except Exception as exc:
+        logger.error(f"Smart Reporter AI assist failed: {exc}")
+        return jsonify({'error': f'AI assist failed: {exc}'}), 500
+
+    # Increment counter
+    if session:
+        session.ask_claude_count = (session.ask_claude_count or 0) + 1
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+
+    remaining = 20 - (session.ask_claude_count if session else 0)
+
+    return jsonify({
+        'success': True,
+        'corrections': result.get('corrections', []),
+        'answer': result.get('answer', ''),
+        'insights': result.get('insights', {}),
+        'remaining_questions': max(0, remaining),
+    })
+
+
 @reporting_bp.route('/api/smart-reporter/create-session', methods=['POST'])
 @login_required
 def smart_reporter_create_session():
@@ -1678,19 +1824,19 @@ def smart_reporter_relevant_content():
                     ClinicalProtocol.keywords.ilike(f'%{q}%'),
                 )
             )
-        # Protocols don't have body_section, skip if only body_section provided
+        elif body_section:
+            cp_query = cp_query.filter(ClinicalProtocol.body_section.ilike(f'%{body_section}%'))
 
-        if q:  # Only search protocols when there's a text query
-            cps = cp_query.limit(3).all()
-            for p in cps:
-                results.append({
-                    'type': 'protocol',
-                    'icon': 'fa-headset',
-                    'color': '#198754',
-                    'title': p.title,
-                    'subtitle': p.category or '',
-                    'url': f'/on-call-helper',  # Protocols don't have individual pages
-                })
+        cps = cp_query.limit(3).all()
+        for p in cps:
+            results.append({
+                'type': 'protocol',
+                'icon': 'fa-headset',
+                'color': '#198754',
+                'title': p.title,
+                'subtitle': p.category or '',
+                'url': f'/on-call-helper/protocol/{p.id}',
+            })
     except Exception:
         pass
 

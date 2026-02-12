@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% block tool_active_reporter %}active{% endblock %}
 
 {% block mobile_breadcrumb %}
 <li class="breadcrumb-item active text-white-50">Smart Reporter</li>
@@ -426,7 +427,7 @@
                                 <div class="d-flex justify-content-between align-items-center">
                                     <small class="fw-semibold"><i class="fas fa-pencil-alt me-1" style="color: #5E899E;"></i>Your Draft Report</small>
                                     <button class="btn btn-sm btn-brand-primary" id="btnReviewReport" onclick="reviewReport()">
-                                        <i class="fas fa-spell-check me-1"></i>Review &amp; Improve
+                                        <i class="fas fa-spell-check me-1"></i>Quick Check
                                     </button>
                                 </div>
                             </div>
@@ -440,7 +441,7 @@
                         <!-- Review Loading -->
                         <div id="reviewLoading" class="d-none text-center py-3 mb-3">
                             <div class="spinner-border spinner-border-sm" style="color: #e96304;" role="status"></div>
-                            <small class="text-muted ms-2">Reviewing your report for grammar, spelling, and phrasing...</small>
+                            <small class="text-muted ms-2">Quick check: spelling, grammar, and phrasing...</small>
                         </div>
 
                         <!-- Output Box (shown after review) -->
@@ -466,14 +467,14 @@
                         </div>
                     </div>
 
-                    <!-- Right column: Suggestions + Ask Claude -->
+                    <!-- Right column: Quick Check Suggestions + AI Assistant -->
                     <div class="col-lg-5">
-                        <!-- Suggestions Panel -->
+                        <!-- Quick Check Suggestions Panel (shown after Quick Check) -->
                         <div id="suggestionsPanel" class="d-none mb-3">
                             <div class="card border-0 shadow-sm">
                                 <div class="card-header bg-white border-0 py-2">
                                     <div class="d-flex justify-content-between align-items-center">
-                                        <small class="fw-semibold"><i class="fas fa-magic me-1" style="color: #e96304;"></i>Suggestions</small>
+                                        <small class="fw-semibold"><i class="fas fa-spell-check me-1" style="color: #e96304;"></i>Quick Check</small>
                                         <div>
                                             <button class="btn btn-sm btn-outline-success me-1" onclick="acceptAllSuggestions()" title="Accept all">
                                                 <i class="fas fa-check-double me-1"></i><span class="d-none d-xl-inline">Accept All</span>
@@ -484,7 +485,7 @@
                                         </div>
                                     </div>
                                 </div>
-                                <div class="card-body p-2" style="max-height: 500px; overflow-y: auto;">
+                                <div class="card-body p-2" style="max-height: 400px; overflow-y: auto;">
                                     <div id="suggestionsList"></div>
                                     <div id="noSuggestions" class="d-none text-center py-3">
                                         <i class="fas fa-check-circle text-success" style="font-size: 1.5rem;"></i>
@@ -494,15 +495,122 @@
                             </div>
                         </div>
 
-                        <!-- Ask Claude Panel -->
-                        <div class="card border-0 shadow-sm" style="position: sticky; top: 80px;">
+                        <!-- AI Assistant Panel -->
+                        <div class="card border-0 shadow-sm mb-3">
                             <div class="card-header bg-white border-0 py-2">
                                 <div class="d-flex justify-content-between align-items-center">
-                                    <small class="fw-semibold"><i class="fas fa-robot me-1" style="color: #e96304;"></i>Ask Claude</small>
+                                    <small class="fw-semibold"><i class="fas fa-user-md me-1" style="color: #e96304;"></i>AI Assistant</small>
                                     <small class="text-muted" id="askClaudeCounter"></small>
                                 </div>
                             </div>
                             <div class="card-body p-3">
+                                <!-- Input -->
+                                <div class="input-group mb-2">
+                                    <input type="text" id="askClaudeInput" class="form-control form-control-sm"
+                                           placeholder="e.g. Help me write the impression..."
+                                           maxlength="1000">
+                                    <button class="btn btn-sm btn-brand-primary" id="btnAskClaude" onclick="askClaude()">
+                                        <i class="fas fa-paper-plane"></i>
+                                    </button>
+                                </div>
+                                <div class="mb-2">
+                                    <small class="text-muted">
+                                        Try: "Write the impression" | "What am I missing?" | "Check for differentials" | "Add recommendations"
+                                    </small>
+                                </div>
+
+                                <!-- Loading spinner -->
+                                <div id="askClaudeLoading" class="d-none text-center py-3">
+                                    <div class="spinner-border spinner-border-sm" style="color: #e96304;" role="status"></div>
+                                    <small class="text-muted ms-2">Reviewing your report and preparing response...</small>
+                                </div>
+
+                                <!-- AI Assist Response: 3 layers -->
+                                <div id="aiAssistResponse" class="d-none">
+
+                                    <!-- Layer 2: Answer -->
+                                    <div id="aiAssistAnswerSection" class="mb-3 d-none">
+                                        <div class="d-flex justify-content-between align-items-center mb-1">
+                                            <small class="fw-semibold text-muted" style="cursor: pointer;" onclick="toggleSection('aiAssistAnswerBody')">
+                                                <i class="fas fa-chevron-down me-1" id="aiAssistAnswerChevron"></i>Answer
+                                            </small>
+                                        </div>
+                                        <div id="aiAssistAnswerBody">
+                                            <div class="p-2 rounded" style="background: #f0f9f4; border: 1px solid #c3e6cb;">
+                                                <pre id="aiAssistAnswer" class="mb-2" style="white-space: pre-wrap; font-family: 'Courier New', monospace; font-size: 0.85rem; line-height: 1.4; margin: 0;"></pre>
+                                                <div class="d-flex gap-2 mt-2">
+                                                    <button class="btn btn-sm btn-outline-success" onclick="insertClaudeResponse()">
+                                                        <i class="fas fa-plus me-1"></i>Insert into report
+                                                    </button>
+                                                    <button class="btn btn-sm btn-outline-secondary" onclick="dismissAiAssist()">
+                                                        Dismiss
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Layer 1: Corrections -->
+                                    <div id="aiAssistCorrectionsSection" class="mb-3 d-none">
+                                        <div class="d-flex justify-content-between align-items-center mb-1">
+                                            <small class="fw-semibold text-muted" style="cursor: pointer;" onclick="toggleSection('aiAssistCorrectionsBody')">
+                                                <i class="fas fa-chevron-down me-1" id="aiAssistCorrectionsChevron"></i>Corrections
+                                            </small>
+                                            <div>
+                                                <button class="btn btn-sm btn-outline-success py-0 px-1" onclick="acceptAllCorrections()" style="font-size: 0.7rem;">Accept All</button>
+                                                <button class="btn btn-sm btn-outline-secondary py-0 px-1" onclick="rejectAllCorrections()" style="font-size: 0.7rem;">Reject All</button>
+                                            </div>
+                                        </div>
+                                        <div id="aiAssistCorrectionsBody" style="max-height: 300px; overflow-y: auto;">
+                                            <div id="aiAssistCorrectionsList"></div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Layer 3: Insights -->
+                                    <div id="aiAssistInsightsSection" class="d-none">
+                                        <div class="d-flex align-items-center mb-1">
+                                            <small class="fw-semibold text-muted" style="cursor: pointer;" onclick="toggleSection('aiAssistInsightsBody')">
+                                                <i class="fas fa-chevron-right me-1" id="aiAssistInsightsChevron"></i>Clinical Insights
+                                            </small>
+                                        </div>
+                                        <div id="aiAssistInsightsBody" class="d-none">
+                                            <div class="p-2 rounded" style="background: #f8f4ff; border: 1px solid #d4c5f9; font-size: 0.8rem;">
+                                                <div id="insightCoverage" class="mb-2 d-none">
+                                                    <div class="d-flex align-items-start">
+                                                        <i class="fas fa-bullseye me-2 mt-1" style="color: #6b46c1; font-size: 0.7rem;"></i>
+                                                        <div><strong>Clinical Question:</strong> <span id="insightCoverageText"></span></div>
+                                                    </div>
+                                                </div>
+                                                <div id="insightQuality" class="mb-2 d-none">
+                                                    <div class="d-flex align-items-start">
+                                                        <i class="fas fa-award me-2 mt-1" style="color: #6b46c1; font-size: 0.7rem;"></i>
+                                                        <div><strong>Quality:</strong> <span id="insightQualityText"></span></div>
+                                                    </div>
+                                                </div>
+                                                <div id="insightDifferentials" class="mb-2 d-none">
+                                                    <div class="d-flex align-items-start">
+                                                        <i class="fas fa-list-ul me-2 mt-1" style="color: #6b46c1; font-size: 0.7rem;"></i>
+                                                        <div><strong>Consider:</strong> <span id="insightDifferentialsText"></span></div>
+                                                    </div>
+                                                </div>
+                                                <div id="insightRecommendation" class="mb-2 d-none">
+                                                    <div class="d-flex align-items-start">
+                                                        <i class="fas fa-clipboard-check me-2 mt-1" style="color: #6b46c1; font-size: 0.7rem;"></i>
+                                                        <div><strong>Recommendations:</strong> <span id="insightRecommendationText"></span></div>
+                                                    </div>
+                                                </div>
+                                                <div id="insightTeaching" class="d-none">
+                                                    <div class="d-flex align-items-start">
+                                                        <i class="fas fa-lightbulb me-2 mt-1" style="color: #e96304; font-size: 0.7rem;"></i>
+                                                        <div><strong>Teaching Point:</strong> <span id="insightTeachingText"></span></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Legacy Ask Claude Response (kept for backward compat) -->
                                 <div id="askClaudeResponse" class="d-none mb-3">
                                     <div class="p-3 rounded" style="background: #f8f9fa; border: 1px solid #e9ecef;">
                                         <pre id="askClaudeAnswer" class="mb-2" style="white-space: pre-wrap; font-family: 'Courier New', monospace; font-size: 0.85rem; line-height: 1.4;"></pre>
@@ -516,30 +624,11 @@
                                         </div>
                                     </div>
                                 </div>
-
-                                <div class="input-group">
-                                    <input type="text" id="askClaudeInput" class="form-control form-control-sm"
-                                           placeholder="e.g. Help me write the impression..."
-                                           maxlength="1000">
-                                    <button class="btn btn-sm btn-brand-primary" id="btnAskClaude" onclick="askClaude()">
-                                        <i class="fas fa-paper-plane"></i>
-                                    </button>
-                                </div>
-                                <div class="mt-2">
-                                    <small class="text-muted">
-                                        Try: "Help me write the impression" | "What am I missing?" | "Suggest recommendations"
-                                    </small>
-                                </div>
-
-                                <div id="askClaudeLoading" class="d-none text-center py-3">
-                                    <div class="spinner-border spinner-border-sm" style="color: #e96304;" role="status"></div>
-                                    <small class="text-muted ms-2">Thinking...</small>
-                                </div>
                             </div>
                         </div>
 
                         <!-- PII Warning -->
-                        <div class="alert alert-warning border-0 py-2 mt-3 small">
+                        <div class="alert alert-warning border-0 py-2 small">
                             <i class="fas fa-exclamation-triangle me-1"></i>
                             <strong>Do not enter</strong> patient names, dates of birth, hospital numbers, or other identifiable information.
                         </div>
@@ -600,6 +689,12 @@ document.addEventListener('DOMContentLoaded', function() {
         },
         askClaudeRemaining: 20,
         autoSaveTimer: null,
+        // AI Assist state (3-layer response)
+        aiAssistAnswer: '',
+        aiAssistCorrections: [],  // Same format as suggestions: {original, suggested, reason, type, status}
+        aiAssistInsights: {},
+        // External context from "Use in Report" buttons
+        externalContext: null,
     };
 
     // ==================== SCENE MANAGEMENT ====================
@@ -1031,7 +1126,7 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('outputSection').classList.add('d-none');
         document.getElementById('suggestionsPanel').classList.add('d-none');
 
-        fetch('/api/smart-reporter/review-report', {
+        fetch('/api/smart-reporter/quick-review', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -1115,6 +1210,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 'phrasing': '#5E899E',
                 'structure': '#6b46c1',
                 'completeness': '#198754',
+                'terminology': '#6b46c1',
+                'gender_check': '#dc3545',
+                'anatomy_check': '#dc3545',
+                'consistency': '#e96304',
             }[s.type] || '#6c757d';
 
             if (s.status === 'accepted') {
@@ -1256,16 +1355,23 @@ document.addEventListener('DOMContentLoaded', function() {
         const btn = document.getElementById('btnAskClaude');
         btn.disabled = true;
         document.getElementById('askClaudeLoading').classList.remove('d-none');
+        document.getElementById('aiAssistResponse').classList.add('d-none');
         document.getElementById('askClaudeResponse').classList.add('d-none');
 
-        fetch('/api/smart-reporter/ask-claude', {
+        const assistPayload = {
+            session_id: state.sessionId,
+            question: question,
+            report_text: getCurrentReportText(),
+        };
+        // Include external context if user arrived from another tool
+        if (state.externalContext) {
+            assistPayload.external_context = state.externalContext;
+        }
+
+        fetch('/api/smart-reporter/ai-assist', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                session_id: state.sessionId,
-                question: question,
-                current_report: getCurrentReportText(),
-            }),
+            body: JSON.stringify(assistPayload),
         })
         .then(r => r.json())
         .then(data => {
@@ -1277,11 +1383,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
 
-            document.getElementById('askClaudeAnswer').textContent = data.answer || '';
-            document.getElementById('askClaudeResponse').classList.remove('d-none');
             state.askClaudeRemaining = data.remaining_questions || 0;
             updateAskClaudeCounter();
             input.value = '';
+
+            // Store AI assist state
+            state.aiAssistAnswer = data.answer || '';
+            state.aiAssistCorrections = (data.corrections || []).map(c => ({ ...c, status: 'pending' }));
+            state.aiAssistInsights = data.insights || {};
+
+            // Render 3 layers
+            renderAiAssistResponse();
         })
         .catch(() => {
             btn.disabled = false;
@@ -1299,7 +1411,12 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     window.insertClaudeResponse = function() {
-        const answer = document.getElementById('askClaudeAnswer').textContent;
+        // Get answer from AI assist (new) or legacy ask claude panel
+        const aiAssistAnswer = document.getElementById('aiAssistAnswer');
+        const legacyAnswer = document.getElementById('askClaudeAnswer');
+        const answer = (aiAssistAnswer && aiAssistAnswer.textContent) || (legacyAnswer && legacyAnswer.textContent) || '';
+        if (!answer.trim()) return;
+
         // Insert into the output box (or input if output not visible)
         const output = document.getElementById('editorOutput');
         const outputSection = document.getElementById('outputSection');
@@ -1315,6 +1432,7 @@ document.addEventListener('DOMContentLoaded', function() {
             state.inputText = input.value;
             autoResizeTextarea(input);
         }
+        dismissAiAssist();
         dismissClaudeResponse();
         scheduleAutoSave();
         showToast('Inserted into report.', 'success');
@@ -1322,6 +1440,188 @@ document.addEventListener('DOMContentLoaded', function() {
 
     window.dismissClaudeResponse = function() {
         document.getElementById('askClaudeResponse').classList.add('d-none');
+    };
+
+    // ==================== AI ASSIST 3-LAYER RENDERING ====================
+
+    function renderAiAssistResponse() {
+        const container = document.getElementById('aiAssistResponse');
+        container.classList.remove('d-none');
+
+        // Layer 2: Answer
+        const answerSection = document.getElementById('aiAssistAnswerSection');
+        if (state.aiAssistAnswer) {
+            document.getElementById('aiAssistAnswer').textContent = state.aiAssistAnswer;
+            answerSection.classList.remove('d-none');
+        } else {
+            answerSection.classList.add('d-none');
+        }
+
+        // Layer 1: Corrections
+        const correctionsSection = document.getElementById('aiAssistCorrectionsSection');
+        if (state.aiAssistCorrections.length > 0) {
+            renderAiAssistCorrections();
+            correctionsSection.classList.remove('d-none');
+        } else {
+            correctionsSection.classList.add('d-none');
+        }
+
+        // Layer 3: Insights
+        const insightsSection = document.getElementById('aiAssistInsightsSection');
+        const ins = state.aiAssistInsights;
+        const hasInsights = ins.clinical_question_coverage || ins.quality_assessment ||
+            (ins.differentials_to_consider && ins.differentials_to_consider.length) ||
+            ins.recommendation_check || ins.teaching_point;
+
+        if (hasInsights) {
+            renderInsight('insightCoverage', 'insightCoverageText', ins.clinical_question_coverage);
+            renderInsight('insightQuality', 'insightQualityText', ins.quality_assessment);
+            renderInsight('insightRecommendation', 'insightRecommendationText', ins.recommendation_check);
+            renderInsight('insightTeaching', 'insightTeachingText', ins.teaching_point);
+
+            // Differentials as comma-separated list
+            const diffEl = document.getElementById('insightDifferentials');
+            const diffText = document.getElementById('insightDifferentialsText');
+            if (ins.differentials_to_consider && ins.differentials_to_consider.length > 0) {
+                diffText.textContent = ins.differentials_to_consider.join(', ');
+                diffEl.classList.remove('d-none');
+            } else {
+                diffEl.classList.add('d-none');
+            }
+
+            insightsSection.classList.remove('d-none');
+        } else {
+            insightsSection.classList.add('d-none');
+        }
+    }
+
+    function renderInsight(containerId, textId, value) {
+        const el = document.getElementById(containerId);
+        const textEl = document.getElementById(textId);
+        if (value && value.trim()) {
+            textEl.textContent = value;
+            el.classList.remove('d-none');
+        } else {
+            el.classList.add('d-none');
+        }
+    }
+
+    function renderAiAssistCorrections() {
+        const list = document.getElementById('aiAssistCorrectionsList');
+        const typeColor = {
+            'terminology': '#6b46c1',
+            'gender_check': '#dc3545',
+            'anatomy_check': '#dc3545',
+            'consistency': '#e96304',
+            'phrasing': '#5E899E',
+            'spelling': '#dc3545',
+            'grammar': '#e96304',
+        };
+
+        let html = '';
+        state.aiAssistCorrections.forEach((c, i) => {
+            const color = typeColor[c.type] || '#6c757d';
+            const typeLabel = (c.type || 'phrasing').replace('_', ' ');
+
+            if (c.status === 'accepted') {
+                html += `<div class="p-2 mb-2 rounded" style="background: #d4edda; border: 1px solid #c3e6cb; opacity: 0.7;">
+                    <div class="d-flex justify-content-between"><span class="badge" style="background: ${color}; font-size: 0.65rem;">${typeLabel}</span><i class="fas fa-check text-success small"></i></div>
+                    <small class="text-muted d-block mt-1"><s>${escapeHtml(c.original)}</s></small>
+                    <small class="text-success d-block">${escapeHtml(c.suggested)}</small>
+                </div>`;
+            } else if (c.status === 'rejected') {
+                html += `<div class="p-2 mb-2 rounded" style="background: #f8f9fa; border: 1px solid #e9ecef; opacity: 0.5;">
+                    <div class="d-flex justify-content-between"><span class="badge" style="background: ${color}; font-size: 0.65rem;">${typeLabel}</span><i class="fas fa-times text-muted small"></i></div>
+                    <small class="text-muted d-block mt-1 text-decoration-line-through">${escapeHtml(c.original)} → ${escapeHtml(c.suggested)}</small>
+                </div>`;
+            } else {
+                html += `<div class="p-2 mb-2 rounded" style="background: #fff8e1; border: 1px solid #ffe082;">
+                    <div class="d-flex justify-content-between align-items-start mb-1">
+                        <span class="badge" style="background: ${color}; font-size: 0.65rem;">${typeLabel}</span>
+                        <small class="text-muted" style="font-size: 0.7rem;">${escapeHtml(c.reason)}</small>
+                    </div>
+                    <div class="mb-2">
+                        <small class="d-block"><span style="background: #ffcdd2; padding: 1px 3px; border-radius: 2px; text-decoration: line-through;">${escapeHtml(c.original)}</span></small>
+                        <small class="d-block mt-1"><span style="background: #c8e6c9; padding: 1px 3px; border-radius: 2px;">${escapeHtml(c.suggested)}</span></small>
+                    </div>
+                    <div class="d-flex gap-1">
+                        <button class="btn btn-sm btn-outline-success py-0 px-2" onclick="acceptCorrection(${i})" style="font-size: 0.75rem;"><i class="fas fa-check me-1"></i>Accept</button>
+                        <button class="btn btn-sm btn-outline-secondary py-0 px-2" onclick="rejectCorrection(${i})" style="font-size: 0.75rem;"><i class="fas fa-times me-1"></i>Reject</button>
+                    </div>
+                </div>`;
+            }
+        });
+        list.innerHTML = html;
+    }
+
+    window.acceptCorrection = function(index) {
+        const c = state.aiAssistCorrections[index];
+        if (!c || c.status !== 'pending') return;
+        c.status = 'accepted';
+        applyAiAssistCorrections();
+        renderAiAssistCorrections();
+        scheduleAutoSave();
+    };
+
+    window.rejectCorrection = function(index) {
+        const c = state.aiAssistCorrections[index];
+        if (!c || c.status !== 'pending') return;
+        c.status = 'rejected';
+        renderAiAssistCorrections();
+    };
+
+    window.acceptAllCorrections = function() {
+        state.aiAssistCorrections.forEach(c => {
+            if (c.status === 'pending') c.status = 'accepted';
+        });
+        applyAiAssistCorrections();
+        renderAiAssistCorrections();
+        scheduleAutoSave();
+    };
+
+    window.rejectAllCorrections = function() {
+        state.aiAssistCorrections.forEach(c => {
+            if (c.status === 'pending') c.status = 'rejected';
+        });
+        renderAiAssistCorrections();
+    };
+
+    function applyAiAssistCorrections() {
+        // Apply accepted corrections to the editor input text
+        let text = document.getElementById('editorInput').value;
+        state.aiAssistCorrections.forEach(c => {
+            if (c.status === 'accepted' && c.original && c.suggested) {
+                const idx = text.indexOf(c.original);
+                if (idx >= 0) {
+                    text = text.substring(0, idx) + c.suggested + text.substring(idx + c.original.length);
+                }
+            }
+        });
+        // Update the input directly (corrections apply to draft)
+        document.getElementById('editorInput').value = text;
+        state.inputText = text;
+        // Also update output if visible
+        const outputSection = document.getElementById('outputSection');
+        if (outputSection && !outputSection.classList.contains('d-none')) {
+            document.getElementById('editorOutput').value = text;
+            state.outputText = text;
+        }
+    }
+
+    window.dismissAiAssist = function() {
+        document.getElementById('aiAssistResponse').classList.add('d-none');
+    };
+
+    window.toggleSection = function(bodyId) {
+        const body = document.getElementById(bodyId);
+        const chevron = document.getElementById(bodyId.replace('Body', 'Chevron'));
+        if (body.classList.contains('d-none')) {
+            body.classList.remove('d-none');
+            if (chevron) { chevron.classList.remove('fa-chevron-right'); chevron.classList.add('fa-chevron-down'); }
+        } else {
+            body.classList.add('d-none');
+            if (chevron) { chevron.classList.remove('fa-chevron-down'); chevron.classList.add('fa-chevron-right'); }
+        }
     };
 
     function updateAskClaudeCounter() {
@@ -2148,6 +2448,44 @@ document.addEventListener('DOMContentLoaded', function() {
             loadCommunity(false);
         }
     };
+
+    // ==================== EXTERNAL CONTEXT HANDLER ====================
+    // Handle URL params from "Use in Report" buttons on other tool pages
+    (function handleExternalContext() {
+        const params = new URLSearchParams(window.location.search);
+        const contextType = params.get('context');
+        if (!contextType) return;
+
+        const title = params.get('title') || '';
+        const slug = params.get('slug') || '';
+        const id = params.get('id') || '';
+
+        // Clean URL without reloading
+        window.history.replaceState({}, '', window.location.pathname);
+
+        if (contextType === 'template' && id) {
+            // Load the template via existing handler
+            loadAdminTemplate(parseInt(id));
+            return;
+        }
+
+        // For IF, TNM, protocol: open editor with context
+        showScene('editor');
+
+        // Store context for AI Assist calls
+        state.externalContext = { type: contextType, title: title, slug: slug, id: id };
+
+        // Set editor placeholder hint
+        const editor = document.getElementById('editorInput');
+        if (editor && title) {
+            editor.placeholder = 'Type or paste your draft report here...\n\nContext: ' + title;
+        }
+
+        // Trigger related content search with context title
+        if (title) {
+            fetchRelatedContent(title, '', 'relatedResourcesScene2', 'relatedContentScene2');
+        }
+    })();
 
 });
 </script>

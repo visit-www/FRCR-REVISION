@@ -1,6 +1,37 @@
 /* RadInsights - "Confident Calm" Theme */
 /* Matte pastel palette for medical professionalism */
 
+/* ==================== TOOL NAVIGATION BAR ==================== */
+.tool-nav-bar {
+    background: #f0f4f7;
+    border-bottom: 1px solid #dce4ea;
+    padding: 5px 0;
+}
+.tool-nav-link {
+    color: #5E899E;
+    text-decoration: none;
+    padding: 4px 12px;
+    border-radius: 16px;
+    font-size: 0.78rem;
+    font-weight: 500;
+    transition: all 0.15s;
+    white-space: nowrap;
+}
+.tool-nav-link:hover {
+    background: #dce4ea;
+    color: #4D7A8D;
+}
+.tool-nav-link.active {
+    background: #5E899E;
+    color: #fff !important;
+}
+@media (max-width: 575px) {
+    .tool-nav-link {
+        font-size: 0.7rem;
+        padding: 3px 8px;
+    }
+}
+
 /* ==================== GLOBAL LINK STYLES ==================== */
 /* Remove underline on hover for all links */
 a {

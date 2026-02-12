@@ -316,6 +316,7 @@ def calculator(disease: str):
     return render_template(
         'tnm_calculator_v3/calculator_wrapper.html',
         disease_name=disease_name,
+        disease_slug=disease,
         calculator_styles=content['styles'],
         calculator_body=content['body'],
         embed_mode=False

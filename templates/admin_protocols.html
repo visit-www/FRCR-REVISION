@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% block tool_active_oncall %}active{% endblock %}
 
 {% block mobile_breadcrumb %}
 <li class="breadcrumb-item">
@@ -158,6 +159,22 @@
                             <option value="safety">Safety</option>
                         </select>
                     </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Body Section</label>
+                        <select class="form-select" id="protocolBodySection">
+                            <option value="">— None —</option>
+                            <option value="Thorax">Thorax</option>
+                            <option value="Abdomen">Abdomen</option>
+                            <option value="Pelvis">Pelvis</option>
+                            <option value="Head and Neck">Head and Neck</option>
+                            <option value="Brain">Brain</option>
+                            <option value="Spine">Spine</option>
+                            <option value="Musculoskeletal">Musculoskeletal</option>
+                            <option value="Cardiovascular">Cardiovascular</option>
+                            <option value="Breast">Breast</option>
+                            <option value="Multisystem">Multisystem</option>
+                        </select>
+                    </div>
                     <div class="col-12">
                         <label class="form-label">Keywords <span class="text-danger">*</span></label>
                         <input type="text" class="form-control" id="protocolKeywords"
@@ -280,6 +297,22 @@
                             <option value="dose">Dose</option>
                             <option value="safety">Safety</option>
                             <option value="anatomy">Anatomy</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">Body Section</label>
+                        <select class="form-select" id="aiBodySection">
+                            <option value="">— None —</option>
+                            <option value="Thorax">Thorax</option>
+                            <option value="Abdomen">Abdomen</option>
+                            <option value="Pelvis">Pelvis</option>
+                            <option value="Head and Neck">Head and Neck</option>
+                            <option value="Brain">Brain</option>
+                            <option value="Spine">Spine</option>
+                            <option value="Musculoskeletal">Musculoskeletal</option>
+                            <option value="Cardiovascular">Cardiovascular</option>
+                            <option value="Breast">Breast</option>
+                            <option value="Multisystem">Multisystem</option>
                         </select>
                     </div>
                     <div class="col-12">
@@ -545,6 +578,7 @@ function resetModal() {
     document.getElementById('protocolKeywords').value = '';
     document.getElementById('protocolContentHtml').value = '';
     document.getElementById('protocolContentStructured').value = '';
+    document.getElementById('protocolBodySection').value = '';
     document.getElementById('protocolPublished').checked = false;
     // Reset resources
     loadAllResources('proto', null);
@@ -562,6 +596,7 @@ function editProtocol(id) {
             document.getElementById('protocolContentHtml').value = p.content_html || '';
             document.getElementById('protocolContentStructured').value =
                 p.content_structured ? JSON.stringify(p.content_structured, null, 2) : '';
+            document.getElementById('protocolBodySection').value = p.body_section || '';
             document.getElementById('protocolPublished').checked = p.is_published;
 
             // Load resources from source_citation
@@ -589,6 +624,7 @@ function saveProtocol() {
         source_citation: JSON.stringify(resources),
         content_html: document.getElementById('protocolContentHtml').value,
         content_structured: structured,
+        body_section: document.getElementById('protocolBodySection').value,
         is_published: document.getElementById('protocolPublished').checked,
     };
 
@@ -632,6 +668,7 @@ function deleteProtocol(id, title) {
 function generateProtocolAI() {
     var title = document.getElementById('aiTitle').value.trim();
     var category = document.getElementById('aiCategory').value;
+    var bodySection = document.getElementById('aiBodySection').value;
     var context = document.getElementById('aiContext').value.trim();
     var btn = document.getElementById('aiGenerateBtn');
     var warningsDiv = document.getElementById('aiGenerateWarnings');
@@ -650,6 +687,7 @@ function generateProtocolAI() {
         body: JSON.stringify({
             title: title,
             category: category,
+            body_section: bodySection,
             source_citation: JSON.stringify(resources),
             additional_context: context,
         }),

@@ -5,6 +5,7 @@
 {% else %}
 {# Full mode: integrated with app base template #}
 {% extends 'base.html' %}
+{% block tool_active_tnm %}active{% endblock %}
 
 {% block mobile_breadcrumb %}
 <li class="breadcrumb-item">
@@ -27,6 +28,10 @@
                 </a>
                 <a href="{{ url_for('tnm.browse') }}" class="btn btn-outline-secondary btn-sm">
                     <i class="fas fa-book-medical me-1"></i>TNM Browser
+                </a>
+                <a href="/smart-reporter?context=tnm&slug={{ disease_slug }}&title={{ disease_name|urlencode }}"
+                   class="btn btn-sm btn-brand-primary">
+                    <i class="fas fa-file-medical me-1"></i>Use in Report
                 </a>
             </div>
         </div>

@@ -150,6 +150,31 @@
         </div>
     </div>
 
+    {% if current_user.is_authenticated %}
+    <!-- Tool Navigation Bar -->
+    <div class="tool-nav-bar">
+        <div class="container-fluid">
+            <div class="d-flex flex-wrap justify-content-center gap-1 gap-md-2">
+                <a href="/smart-reporter" class="tool-nav-link {% block tool_active_reporter %}{% endblock %}">
+                    <i class="fas fa-file-medical me-1"></i><span class="d-none d-sm-inline">Smart Reporter</span><span class="d-sm-none">Reporter</span>
+                </a>
+                <a href="/on-call-helper" class="tool-nav-link {% block tool_active_oncall %}{% endblock %}">
+                    <i class="fas fa-headset me-1"></i><span class="d-none d-sm-inline">On-Call Helper</span><span class="d-sm-none">On-Call</span>
+                </a>
+                <a href="/incidental-findings" class="tool-nav-link {% block tool_active_if %}{% endblock %}">
+                    <i class="fas fa-search-plus me-1"></i><span class="d-none d-sm-inline">Incidental Findings</span><span class="d-sm-none">IF</span>
+                </a>
+                <a href="/tnm-calculator" class="tool-nav-link {% block tool_active_tnm %}{% endblock %}">
+                    <i class="fas fa-dna me-1"></i><span class="d-none d-sm-inline">TNM Staging</span><span class="d-sm-none">TNM</span>
+                </a>
+                <a href="/reporting-templates" class="tool-nav-link {% block tool_active_templates %}{% endblock %}">
+                    <i class="fas fa-clipboard-list me-1"></i><span class="d-none d-sm-inline">Templates</span><span class="d-sm-none">Templates</span>
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Toast Notification Container -->
     <div id="toast-container" style="position: fixed; top: 20px; right: 20px; z-index: 9999; max-width: 400px;"></div>
 
