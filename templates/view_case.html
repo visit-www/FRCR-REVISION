@@ -8776,6 +8776,13 @@
                 if (useCornerstone && viewportEl && imgEl) {
                     viewportEl.style.display = '';
                     imgEl.style.display = 'none';
+                    // Ensure canvas gets correct dimensions after layout (fixes black canvas on some machines)
+                    requestAnimationFrame(function() {
+                        if (window.CaseDicomViewer) window.CaseDicomViewer.resize();
+                    });
+                    setTimeout(function() {
+                        if (window.CaseDicomViewer) window.CaseDicomViewer.resize();
+                    }, 100);
                     window.CaseDicomViewer.onSliceChange(function (current, total) {
                         if (sliceInfoEl) sliceInfoEl.textContent = current + ' / ' + total;
                         var fsSlice = document.getElementById('imageStackFullscreenSliceInfo');
