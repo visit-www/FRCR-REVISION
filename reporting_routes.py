@@ -848,6 +848,13 @@ def _extract_template_content(html):
         styles,
     )
 
+    # Force left-align: replace centered text alignment
+    styles = re.sub(
+        r'text-align\s*:\s*center',
+        'text-align: left',
+        styles,
+    )
+
     return {'styles': styles, 'body': body}
 
 

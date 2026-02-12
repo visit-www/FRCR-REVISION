@@ -50,6 +50,13 @@ def extract_calculator_content(full_html: str) -> dict:
         result['styles'],
     )
 
+    # Force left-align: replace centered text alignment
+    result['styles'] = re.sub(
+        r'text-align\s*:\s*center',
+        'text-align: left',
+        result['styles'],
+    )
+
     return result
 
 # Create blueprint - using main app templates folder for v3 templates
