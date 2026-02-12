@@ -594,6 +594,54 @@ QUALITY CHECK — verify before responding:
 If any answer is no, revise before output."""
 
 
+def _format_resources_for_prompt(resources_json):
+    """Parse unified resources JSON and format for AI prompt context."""
+    if not resources_json or not resources_json.strip():
+        return 'Not specified'
+
+    try:
+        parsed = json.loads(resources_json)
+    except (json.JSONDecodeError, TypeError):
+        return resources_json.strip() or 'Not specified'
+
+    if isinstance(parsed, str):
+        return parsed
+
+    if not isinstance(parsed, dict):
+        return 'Not specified'
+
+    parts = []
+
+    refs = parsed.get('references', [])
+    if refs:
+        parts.append('REFERENCES:')
+        for i, ref in enumerate(refs, 1):
+            line = f"  {i}. {ref.get('source', 'Unknown')}"
+            if ref.get('version'):
+                line += f" ({ref['version']})"
+            if ref.get('url'):
+                line += f" — {ref['url']}"
+            parts.append(line)
+
+    cases = parsed.get('linked_cases', [])
+    if cases:
+        parts.append('\nLINKED CASES (for context):')
+        for c in cases:
+            parts.append(f"  - Case {c.get('case_number', '')}: {c.get('diagnosis', '')}")
+
+    tnm = parsed.get('linked_tnm', [])
+    if tnm:
+        parts.append('\nLINKED TNM CALCULATORS:')
+        for t in tnm:
+            parts.append(f"  - {t.get('cancer_name', t.get('slug', ''))}")
+
+    pdfs = parsed.get('pdfs', [])
+    if pdfs:
+        parts.append(f'\nREFERENCE PDFs: {len(pdfs)} PDF document(s) provided as additional context')
+
+    return '\n'.join(parts) if parts else 'Not specified'
+
+
 def generate_protocol_content(title, category, source_citation='', additional_context=''):
     """
     Generate structured clinical protocol content using Claude API.
@@ -607,10 +655,12 @@ def generate_protocol_content(title, category, source_citation='', additional_co
 
     effective_model = os.getenv("CLAUDE_MODEL", "claude-sonnet-4-20250514")
 
+    formatted_resources = _format_resources_for_prompt(source_citation)
+
     user_prompt = PROTOCOL_GENERATION_PROMPT.format(
         title=title,
         category=category,
-        source_citation=source_citation or 'Not specified',
+        source_citation=formatted_resources,
         additional_context=additional_context or 'None',
     )
 

@@ -19,6 +19,55 @@ import requests
 logger = logging.getLogger(__name__)
 
 
+def _format_resources_for_prompt(resources_json):
+    """Parse unified resources JSON and format for AI prompt context."""
+    if not resources_json or not resources_json.strip():
+        return 'Use established radiology guidelines'
+
+    try:
+        parsed = json.loads(resources_json)
+    except (json.JSONDecodeError, TypeError):
+        # Plain string — treat as single reference
+        return resources_json.strip() or 'Use established radiology guidelines'
+
+    if isinstance(parsed, str):
+        return parsed
+
+    if not isinstance(parsed, dict):
+        return 'Use established radiology guidelines'
+
+    parts = []
+
+    refs = parsed.get('references', [])
+    if refs:
+        parts.append('REFERENCES:')
+        for i, ref in enumerate(refs, 1):
+            line = f"  {i}. {ref.get('source', 'Unknown')}"
+            if ref.get('version'):
+                line += f" ({ref['version']})"
+            if ref.get('url'):
+                line += f" — {ref['url']}"
+            parts.append(line)
+
+    cases = parsed.get('linked_cases', [])
+    if cases:
+        parts.append('\nLINKED CASES (for context):')
+        for c in cases:
+            parts.append(f"  - Case {c.get('case_number', '')}: {c.get('diagnosis', '')}")
+
+    tnm = parsed.get('linked_tnm', [])
+    if tnm:
+        parts.append('\nLINKED TNM CALCULATORS:')
+        for t in tnm:
+            parts.append(f"  - {t.get('cancer_name', t.get('slug', ''))}")
+
+    pdfs = parsed.get('pdfs', [])
+    if pdfs:
+        parts.append(f'\nREFERENCE PDFs: {len(pdfs)} PDF document(s) provided as additional context')
+
+    return '\n'.join(parts) if parts else 'Use established radiology guidelines'
+
+
 # ==================== PROMPT TEMPLATE ====================
 
 REPORTING_TEMPLATE_PROMPT = """You are an expert radiology consultant creating an interactive reporting decision tree.
@@ -140,11 +189,13 @@ def generate_reporting_template_html(title, category, body_section='', source_ci
 
     effective_model = model or os.getenv("CLAUDE_MODEL", "claude-sonnet-4-20250514")
 
+    formatted_resources = _format_resources_for_prompt(source_citation)
+
     prompt = REPORTING_TEMPLATE_PROMPT.format(
         title=title,
         category=category or 'reporting',
         body_section=body_section or 'Not specified',
-        source_citation=source_citation or 'Use established radiology guidelines',
+        source_citation=formatted_resources,
         additional_context=additional_context or '',
     )
 

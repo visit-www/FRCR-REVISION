@@ -22,6 +22,54 @@ import requests
 logger = logging.getLogger(__name__)
 
 
+def _format_resources_for_prompt(resources_json):
+    """Parse unified resources JSON and format for AI prompt context."""
+    if not resources_json or not resources_json.strip():
+        return 'Use the most widely accepted published guideline'
+
+    try:
+        parsed = json.loads(resources_json)
+    except (json.JSONDecodeError, TypeError):
+        return resources_json.strip() or 'Use the most widely accepted published guideline'
+
+    if isinstance(parsed, str):
+        return parsed
+
+    if not isinstance(parsed, dict):
+        return 'Use the most widely accepted published guideline'
+
+    parts = []
+
+    refs = parsed.get('references', [])
+    if refs:
+        parts.append('REFERENCES:')
+        for i, ref in enumerate(refs, 1):
+            line = f"  {i}. {ref.get('source', 'Unknown')}"
+            if ref.get('version'):
+                line += f" ({ref['version']})"
+            if ref.get('url'):
+                line += f" — {ref['url']}"
+            parts.append(line)
+
+    cases = parsed.get('linked_cases', [])
+    if cases:
+        parts.append('\nLINKED CASES (for context):')
+        for c in cases:
+            parts.append(f"  - Case {c.get('case_number', '')}: {c.get('diagnosis', '')}")
+
+    tnm = parsed.get('linked_tnm', [])
+    if tnm:
+        parts.append('\nLINKED TNM CALCULATORS:')
+        for t in tnm:
+            parts.append(f"  - {t.get('cancer_name', t.get('slug', ''))}")
+
+    pdfs = parsed.get('pdfs', [])
+    if pdfs:
+        parts.append(f'\nREFERENCE PDFs: {len(pdfs)} PDF document(s) provided as additional context')
+
+    return '\n'.join(parts) if parts else 'Use the most widely accepted published guideline'
+
+
 # ==================== PROMPT TEMPLATE ====================
 
 IF_CALCULATOR_PROMPT = """You are an expert radiology consultant creating an interactive incidental finding calculator.
@@ -138,9 +186,11 @@ def generate_if_calculator_html(finding_name, guideline_source='', category='',
     effective_model = model or os.getenv("CLAUDE_MODEL", "claude-sonnet-4-20250514")
 
     # Build prompt
+    formatted_resources = _format_resources_for_prompt(guideline_source)
+
     prompt = IF_CALCULATOR_PROMPT.format(
         finding_name=finding_name,
-        guideline_source=guideline_source or 'Use the most widely accepted published guideline',
+        guideline_source=formatted_resources,
         category=category or 'incidental',
         body_section=body_section or 'Not specified',
         additional_context=additional_context or '',

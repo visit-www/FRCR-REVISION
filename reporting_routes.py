@@ -13,6 +13,7 @@ from flask import Blueprint, request, render_template, jsonify, url_for
 from flask_login import login_required, current_user
 from datetime import datetime
 import json
+import os
 import re
 import logging
 
@@ -800,9 +801,28 @@ def view_reporting_template(slug):
     if not template.template_html and template.algorithm_html:
         content['body'] = template.algorithm_html
 
+    # Parse resources from source_citation JSON
+    resources = {'references': [], 'linked_cases': [], 'linked_tnm': [], 'pdfs': []}
+    if template.source_citation:
+        try:
+            parsed = json.loads(template.source_citation)
+            if isinstance(parsed, dict):
+                resources = {
+                    'references': parsed.get('references', []),
+                    'linked_cases': parsed.get('linked_cases', []),
+                    'linked_tnm': parsed.get('linked_tnm', []),
+                    'pdfs': parsed.get('pdfs', []),
+                }
+            elif isinstance(parsed, list):
+                resources['references'] = parsed
+        except (json.JSONDecodeError, TypeError):
+            if template.source_citation.strip():
+                resources['references'] = [{'source': template.source_citation.strip(), 'version': '', 'url': ''}]
+
     return render_template('reporting_template_view.html',
                            template=template,
-                           content=content)
+                           content=content,
+                           resources=resources)
 
 
 def _extract_template_content(html):
@@ -830,7 +850,9 @@ def admin_reporting_templates():
     templates = ReportingTemplate.query.order_by(
         ReportingTemplate.category, ReportingTemplate.title
     ).all()
-    return render_template('admin_reporting_templates.html', templates=templates)
+    return render_template('admin_reporting_templates.html', templates=templates,
+                           cloudinary_cloud_name=os.environ.get('CLOUDINARY_CLOUD_NAME', ''),
+                           cloudinary_upload_preset=os.environ.get('CLOUDINARY_UPLOAD_PRESET', ''))
 
 
 @reporting_bp.route('/admin/reporting-templates/api', methods=['POST'])

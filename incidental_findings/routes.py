@@ -8,6 +8,7 @@ Provides finder UI, individual calculator views, and admin management.
 from flask import Blueprint, request, render_template, jsonify
 from flask_login import login_required, current_user
 from datetime import datetime
+import os
 import re
 import logging
 
@@ -56,9 +57,30 @@ def view_calculator(slug):
     if calculator.calculator_html:
         content = _extract_content(calculator.calculator_html)
 
+    # Parse resources from guideline_source JSON
+    import json as _json
+    resources = {'references': [], 'linked_cases': [], 'linked_tnm': [], 'pdfs': []}
+    source_field = calculator.guideline_source
+    if source_field:
+        try:
+            parsed = _json.loads(source_field)
+            if isinstance(parsed, dict):
+                resources = {
+                    'references': parsed.get('references', []),
+                    'linked_cases': parsed.get('linked_cases', []),
+                    'linked_tnm': parsed.get('linked_tnm', []),
+                    'pdfs': parsed.get('pdfs', []),
+                }
+            elif isinstance(parsed, list):
+                resources['references'] = parsed
+        except (_json.JSONDecodeError, TypeError):
+            if source_field.strip():
+                resources['references'] = [{'source': source_field.strip(), 'version': '', 'url': ''}]
+
     return render_template('incidental_findings/calculator.html',
                            calculator=calculator,
-                           content=content)
+                           content=content,
+                           resources=resources)
 
 
 @if_bp.route('/api/search')
@@ -150,7 +172,9 @@ def admin_list():
         IncidentalFindingCalculator.category,
         IncidentalFindingCalculator.finding_name
     ).all()
-    return render_template('incidental_findings/admin.html', calculators=calculators)
+    return render_template('incidental_findings/admin.html', calculators=calculators,
+                           cloudinary_cloud_name=os.environ.get('CLOUDINARY_CLOUD_NAME', ''),
+                           cloudinary_upload_preset=os.environ.get('CLOUDINARY_UPLOAD_PRESET', ''))
 
 
 @if_bp.route('/admin/api', methods=['POST'])

@@ -10,8 +10,8 @@
 {% block content %}
 <!-- Navigation Links -->
 <div class="container-fluid py-3">
-    <div class="row justify-content-center">
-        <div class="col-12 col-xl-10">
+    <div class="row">
+        <div class="col-12">
             <div class="d-flex flex-wrap gap-2 mb-3">
                 <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary btn-sm">
                     <i class="fas fa-home me-1"></i>Dashboard
@@ -24,8 +24,46 @@
                 </a>
             </div>
 
-            <!-- Guideline Citation -->
-            {% if calculator.guideline_source %}
+            <!-- Resources -->
+            {% if resources and (resources.references or resources.linked_cases or resources.linked_tnm or resources.pdfs) %}
+            <div class="alert alert-info border-0 py-2 mb-3">
+                <small>
+                    {% if calculator.category %}
+                    <span class="badge bg-light text-dark border me-2">{{ calculator.category }}</span>
+                    {% endif %}
+                    {% if resources.references %}
+                    <i class="fas fa-book me-1"></i><strong>References:</strong>
+                    {% for ref in resources.references %}
+                    <span class="d-inline-block me-2">
+                        {{ ref.source }}{% if ref.version %} ({{ ref.version }}){% endif %}{% if ref.url %} — <a href="{{ ref.url }}" target="_blank" rel="noopener">Link</a>{% endif %}{% if not loop.last %};{% endif %}
+                    </span>
+                    {% endfor %}
+                    {% endif %}
+                    {% if calculator.verified_at %}
+                    <span class="ms-2 text-success"><i class="fas fa-check-circle me-1"></i>Verified</span>
+                    {% endif %}
+                </small>
+                {% if resources.linked_cases or resources.linked_tnm or resources.pdfs %}
+                <div class="mt-1 d-flex flex-wrap gap-2">
+                    {% for c in resources.linked_cases %}
+                    <a href="/view-case/{{ c.id }}" class="badge bg-light text-dark border text-decoration-none">
+                        <i class="fas fa-book-medical me-1" style="color: #5E899E;"></i>{{ c.case_number }}: {{ c.diagnosis[:40] }}
+                    </a>
+                    {% endfor %}
+                    {% for t in resources.linked_tnm %}
+                    <a href="/tnm-calculator/{{ t.slug }}" class="badge bg-light text-dark border text-decoration-none">
+                        <i class="fas fa-sitemap me-1" style="color: #e96304;"></i>{{ t.cancer_name or t.slug }}
+                    </a>
+                    {% endfor %}
+                    {% for p in resources.pdfs %}
+                    <a href="{{ p.url }}" target="_blank" rel="noopener" class="badge bg-light text-dark border text-decoration-none">
+                        <i class="fas fa-file-pdf me-1" style="color: #dc3545;"></i>{{ p.name }}
+                    </a>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+            {% elif calculator.guideline_source %}
             <div class="alert alert-info border-0 py-2 mb-3">
                 <small>
                     <i class="fas fa-book me-1"></i>
@@ -61,15 +99,18 @@
 
 <!-- Clinical Disclaimer Footer -->
 <div class="container-fluid py-3">
-    <div class="row justify-content-center">
-        <div class="col-12 col-xl-10">
+    <div class="row">
+        <div class="col-12">
             <div class="p-3 rounded" style="background: #f8f9fa; border: 1px solid #e9ecef;">
                 <small class="text-muted">
                     <i class="fas fa-shield-alt me-1" style="color: #e96304;"></i>
                     <strong>Clinical Decision Support Tool</strong> &mdash;
                     This tool is for educational and reference purposes. Always verify against
                     current guidelines and institutional protocols before clinical use.
-                    {% if calculator.guideline_source %}
+                    {% if resources and resources.references %}
+                    Source: {{ resources.references[0].source }}
+                    {% if resources.references[0].version %}({{ resources.references[0].version }}){% endif %}.
+                    {% elif calculator.guideline_source %}
                     Source: {{ calculator.guideline_source }}
                     {% if calculator.guideline_version %}({{ calculator.guideline_version }}){% endif %}.
                     {% endif %}

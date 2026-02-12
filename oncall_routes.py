@@ -9,6 +9,7 @@ from flask import Blueprint, request, render_template, jsonify
 from flask_login import login_required, current_user
 from datetime import datetime
 import json
+import os
 import logging
 
 from models import db, ClinicalProtocol, OnCallQueryLog
@@ -136,7 +137,9 @@ def admin_protocols():
 
     return render_template('admin_protocols.html',
                            protocols=protocols,
-                           categories=categories)
+                           categories=categories,
+                           cloudinary_cloud_name=os.environ.get('CLOUDINARY_CLOUD_NAME', ''),
+                           cloudinary_upload_preset=os.environ.get('CLOUDINARY_UPLOAD_PRESET', ''))
 
 
 @oncall_bp.route('/admin/protocols/api', methods=['GET'])
