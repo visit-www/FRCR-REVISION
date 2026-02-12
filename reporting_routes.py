@@ -1523,6 +1523,8 @@ def smart_reporter_get_admin_template(template_id):
         return jsonify({'error': 'Template not available.'}), 404
 
     result = template.to_dict()
+    result['algorithm_html'] = template.algorithm_html
+    result['template_html'] = template.template_html
     result['has_algorithm'] = bool(template.algorithm_html)
     result['has_pacs_report'] = bool(template.pacs_report_text)
     return jsonify(result)

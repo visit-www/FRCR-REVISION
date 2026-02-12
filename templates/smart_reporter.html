@@ -1906,23 +1906,59 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(data => {
                 if (data.error) { showToast(data.error, 'error'); return; }
                 state.sessionId = null;
-                state.inputText = data.pacs_report_text || '';
                 state.outputText = '';
                 state.suggestions = [];
                 state.improvedReport = '';
                 state.askClaudeRemaining = 20;
 
-                showScene('editor');
-                const input = document.getElementById('editorInput');
-                input.value = state.inputText;
-                autoResizeTextarea(input);
-                document.getElementById('outputSection').classList.add('d-none');
-                document.getElementById('suggestionsPanel').classList.add('d-none');
-                document.getElementById('askClaudeResponse').classList.add('d-none');
-                updateEditorSessionInfo();
-                updateAskClaudeCounter();
+                // Try to load algorithm tree from algorithm_html (JSON walkthrough)
+                let treeLoaded = false;
+                if (data.algorithm_html) {
+                    try {
+                        const tree = JSON.parse(data.algorithm_html);
+                        if (tree && tree.steps && tree.steps.length > 0) {
+                            state.algorithmTree = tree;
+                            state.answers = {};
+                            state.stepHistory = [];
+                            state.currentHistoryIndex = -1;
 
-                showToast('Loaded official template: ' + data.title + '. Edit and save as your own.', 'success');
+                            // Populate report template defaults
+                            const rt = tree.report_template || {};
+                            state.reportSections.indication = rt.indication || '';
+                            state.reportSections.technique = rt.technique || '';
+                            state.reportSections.comparison = rt.comparison || 'No prior available for comparison.';
+                            state.reportSections.findings = '';
+                            state.reportSections.impression = '';
+                            state.reportSections.recommendation = rt.recommendation || '';
+
+                            // Pre-fill input text with PACS report if available
+                            state.inputText = data.pacs_report_text || '';
+
+                            showScene('walkthrough');
+                            document.getElementById('walkthroughSetup').classList.add('d-none');
+                            startWalkthrough();
+                            treeLoaded = true;
+                            showToast('Loaded algorithm: ' + data.title, 'success');
+                        }
+                    } catch (e) {
+                        // Not valid JSON — fall through to editor mode
+                    }
+                }
+
+                // Fallback: open in editor with PACS report text
+                if (!treeLoaded) {
+                    state.inputText = data.pacs_report_text || '';
+                    showScene('editor');
+                    const input = document.getElementById('editorInput');
+                    input.value = state.inputText;
+                    autoResizeTextarea(input);
+                    document.getElementById('outputSection').classList.add('d-none');
+                    document.getElementById('suggestionsPanel').classList.add('d-none');
+                    document.getElementById('askClaudeResponse').classList.add('d-none');
+                    updateEditorSessionInfo();
+                    updateAskClaudeCounter();
+                    showToast('Loaded official template: ' + data.title + '. Edit and save as your own.', 'success');
+                }
             })
             .catch(() => showToast('Failed to load template.', 'error'));
     };
