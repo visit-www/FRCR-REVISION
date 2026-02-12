@@ -62,7 +62,11 @@
             <div class="alert alert-info border-0 py-2 mb-3">
                 <small>
                     <i class="fas fa-book me-1"></i>
+                    {% if template.source_citation.startswith('http') %}
+                    <a href="{{ template.source_citation }}" target="_blank" rel="noopener"><strong>{{ template.source_citation }}</strong></a>
+                    {% else %}
                     <strong>{{ template.source_citation }}</strong>
+                    {% endif %}
                     {% if template.guideline_version %} ({{ template.guideline_version }}){% endif %}
                     <span class="badge bg-light text-dark border ms-2">{{ template.category|capitalize }}</span>
                 </small>
@@ -76,10 +80,28 @@
 <style>
     {{ content.styles | safe }}
 
+    /* Force single-column full-width layout on generated content */
     .calculator-integrated-wrapper .container {
         max-width: 100% !important;
         margin: 0 auto;
         padding: 20px;
+    }
+    .calculator-integrated-wrapper .container {
+        display: flex !important;
+        flex-direction: column !important;
+    }
+    .calculator-integrated-wrapper .row,
+    .calculator-integrated-wrapper [class*="grid"],
+    .calculator-integrated-wrapper [style*="grid-template-columns"] {
+        display: flex !important;
+        flex-direction: column !important;
+        grid-template-columns: 1fr !important;
+    }
+    .calculator-integrated-wrapper .col,
+    .calculator-integrated-wrapper [class*="col-"] {
+        flex: 0 0 100% !important;
+        max-width: 100% !important;
+        width: 100% !important;
     }
 </style>
 
