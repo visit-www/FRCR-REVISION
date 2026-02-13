@@ -888,6 +888,34 @@ def get_radiology_template_text(template_id):
     })
 
 
+@reporting_bp.route('/radiology-template/view/<int:template_id>')
+@login_required
+def view_radiology_template(template_id):
+    """Full-page view for a radiology template with resources and Smart Reporter integration."""
+    t = RadiologyTemplate.query.get_or_404(template_id)
+    if not t.is_available or t.origin not in ('admin', 'personal'):
+        from flask import abort
+        abort(404)
+
+    # Parse resources from source_citation JSON
+    resources = {'references': [], 'pdfs': []}
+    if t.source_citation:
+        try:
+            parsed = json.loads(t.source_citation)
+            if isinstance(parsed, dict):
+                resources = {
+                    'references': parsed.get('references', []),
+                    'pdfs': parsed.get('pdfs', []),
+                }
+            elif isinstance(parsed, list):
+                resources['references'] = parsed
+        except (json.JSONDecodeError, TypeError):
+            if t.source_citation.strip():
+                resources['references'] = [{'source': t.source_citation.strip(), 'version': '', 'url': ''}]
+
+    return render_template('radiology_template_view.html', template=t, resources=resources)
+
+
 # ==================== ADMIN: REPORTING ALGORITHM MANAGEMENT ====================
 
 @reporting_bp.route('/admin/reporting-algorithms')

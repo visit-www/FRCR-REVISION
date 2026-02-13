@@ -21,9 +21,6 @@
                 <a href="{{ url_for('reporting.smart_reporter') }}" class="btn btn-outline-secondary btn-sm">
                     <i class="fas fa-file-medical me-1"></i>Smart Reporter
                 </a>
-                <button class="btn btn-sm btn-brand-primary" onclick="sendToSmartReporter()">
-                    <i class="fas fa-paper-plane me-1"></i>Use in Smart Reporter
-                </button>
             </div>
 
             <!-- Resources -->
@@ -120,7 +117,7 @@
                     <h5 class="mb-0"><i class="fas fa-file-medical me-2" style="color: #5E899E;"></i>Draft PACS Report</h5>
                     <div class="d-flex gap-2">
                         <button class="btn btn-sm btn-outline-primary" id="copyPacsBtn" onclick="copyPacsReport()">
-                            <i class="fas fa-copy me-1"></i>Copy to Clipboard
+                            <i class="fas fa-copy me-1"></i>Copy
                         </button>
                         <button class="btn btn-sm btn-brand-primary" onclick="sendToSmartReporter()">
                             <i class="fas fa-paper-plane me-1"></i>Edit in Smart Reporter
@@ -134,6 +131,19 @@
                     <small class="text-muted"><i class="fas fa-exclamation-triangle me-1 text-warning"></i>
                     This is a draft framework. Review and edit against actual imaging before signing.</small>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% else %}
+<!-- Action bar for algorithms without PACS report -->
+<div class="container-fluid py-3">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-center">
+                <button class="btn btn-brand-primary" onclick="sendToSmartReporter()">
+                    <i class="fas fa-paper-plane me-1"></i>Open in Smart Reporter
+                </button>
             </div>
         </div>
     </div>
