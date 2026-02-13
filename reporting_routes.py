@@ -19,7 +19,8 @@ import logging
 
 from models import (
     db, Case, CaseStatus, Question, Answer, CaseApprovalQueue,
-    ReportingTemplate, TNMCalculatorContent, ClinicalProtocol,
+    RadiologyTemplate, ReportingAlgorithm,
+    TNMCalculatorContent, ClinicalProtocol,
     IncidentalFindingCalculator, AJCCDiseaseSite, AJCCBodySection,
     User, AiPrelimCaseData, ReportingSession, PublishedReport,
 )
@@ -175,20 +176,20 @@ def unified_search():
         # Search reporting templates (admin-curated + AI-generated cached)
         if filter_type in ('', 'reporting'):
             rt_sql = text("""
-                SELECT rt.id, rt.slug, rt.title, rt.category, rt.body_section,
-                       rt.description, rt.source_citation,
-                       COALESCE(rt.is_ai_generated, FALSE) AS is_ai_generated,
+                SELECT ra.id, ra.slug, ra.title, ra.category, ra.body_section,
+                       ra.description, ra.source_citation,
+                       COALESCE(ra.is_ai_generated, FALSE) AS is_ai_generated,
                        GREATEST(
-                           similarity(rt.title, :query),
-                           COALESCE(similarity(rt.keywords, :query), 0)
+                           similarity(ra.title, :query),
+                           COALESCE(similarity(ra.keywords, :query), 0)
                        ) AS sim
-                FROM reporting_template rt
-                WHERE rt.is_available = TRUE
+                FROM reporting_algorithm ra
+                WHERE ra.is_available = TRUE
                   AND (
-                      similarity(rt.title, :query) > 0.1
-                      OR similarity(rt.keywords, :query) > 0.1
-                      OR rt.title ILIKE :like_query
-                      OR rt.keywords ILIKE :like_query
+                      similarity(ra.title, :query) > 0.1
+                      OR similarity(ra.keywords, :query) > 0.1
+                      OR ra.title ILIKE :like_query
+                      OR ra.keywords ILIKE :like_query
                   )
                 ORDER BY sim DESC
                 LIMIT :limit
@@ -283,11 +284,11 @@ def _fallback_search(query, filter_type, limit):
             })
 
     if filter_type in ('', 'reporting'):
-        templates = ReportingTemplate.query.filter(
-            ReportingTemplate.is_available == True,
+        templates = ReportingAlgorithm.query.filter(
+            ReportingAlgorithm.is_available == True,
             db.or_(
-                ReportingTemplate.title.ilike(like),
-                ReportingTemplate.keywords.ilike(like),
+                ReportingAlgorithm.title.ilike(like),
+                ReportingAlgorithm.keywords.ilike(like),
             ),
         ).limit(limit).all()
         for t in templates:
@@ -322,7 +323,7 @@ def generate_algorithmic_approach():
     This enriches the case library with every new query.
     """
     # DEPRECATED (Feb 2026): Use /api/smart-reporter/generate-tree instead.
-    # Kept for backward compatibility — generates ReportingTemplate cache entries.
+    # Kept for backward compatibility — generates ReportingAlgorithm cache entries.
     logger.info(f"[DEPRECATED] /api/algorithms/generate called by user {current_user.id}. "
                 "Consider using /api/smart-reporter/generate-tree instead.")
 
@@ -427,7 +428,7 @@ def generate_algorithmic_approach():
         )
         db.session.add(audit)
 
-        # Cache as ReportingTemplate
+        # Cache as ReportingAlgorithm
         _create_reporting_template_from_algorithm(
             diagnosis=diagnosis,
             body_section=body_section,
@@ -695,16 +696,16 @@ def _generate_case_number(body_part_enum):
 
 def _create_reporting_template_from_algorithm(diagnosis, body_section, algorithmic_result, user_id):
     """
-    Cache an AI-generated algorithm as a ReportingTemplate for instant future search hits.
-    If a template with the same slug already exists, skip (no overwrite).
+    Cache an AI-generated algorithm as a ReportingAlgorithm for instant future search hits.
+    If an entry with the same slug already exists, skip (no overwrite).
     """
     slug = re.sub(r'[^a-z0-9]+', '-', diagnosis.lower()).strip('-')
     if not slug:
         return None
 
-    existing = ReportingTemplate.query.filter_by(slug=slug).first()
+    existing = ReportingAlgorithm.query.filter_by(slug=slug).first()
     if existing:
-        logger.info(f"ReportingTemplate slug '{slug}' already exists, skipping cache creation.")
+        logger.info(f"ReportingAlgorithm slug '{slug}' already exists, skipping cache creation.")
         return None
 
     # Build keywords from diagnosis + differentials
@@ -716,15 +717,15 @@ def _create_reporting_template_from_algorithm(diagnosis, body_section, algorithm
     keywords_parts.extend(algorithmic_result.get('suggested_keywords', []))
     keywords = ', '.join(dict.fromkeys(keywords_parts))  # dedupe preserving order
 
-    template = ReportingTemplate(
+    entry = ReportingAlgorithm(
         slug=slug,
         title=diagnosis,
+        origin='ai_generated',
         category='ai_generated',
         body_section=body_section or None,
         description=f'AI-generated reporting algorithm for {diagnosis}',
         keywords=keywords,
         algorithm_html=algorithmic_result.get('algorithmic_approach_html', ''),
-        pacs_report_text=algorithmic_result.get('pacs_report', ''),
         source_citation='AI-generated — verify against published guidelines',
         is_available=True,
         is_ai_generated=True,
@@ -733,9 +734,9 @@ def _create_reporting_template_from_algorithm(diagnosis, body_section, algorithm
         created_by_user_id=user_id,
     )
 
-    db.session.add(template)
-    logger.info(f"Cached ReportingTemplate '{slug}' from algorithm generation.")
-    return template
+    db.session.add(entry)
+    logger.info(f"Cached ReportingAlgorithm '{slug}' from algorithm generation.")
+    return entry
 
 
 @reporting_bp.route('/api/algorithms/browse')
@@ -792,7 +793,7 @@ def browse_algorithms():
 @login_required
 def view_reporting_template(slug):
     """View a specific admin-curated reporting template."""
-    template = ReportingTemplate.query.filter_by(slug=slug, is_available=True).first_or_404()
+    template = ReportingAlgorithm.query.filter_by(slug=slug, is_available=True).first_or_404()
 
     content = {'styles': '', 'body': ''}
     if template.template_html:
@@ -830,7 +831,7 @@ def view_reporting_template(slug):
 @login_required
 def embed_reporting_template(slug):
     """Render a reporting template in embed mode (for Smart Reporter Tool Panel)."""
-    template = ReportingTemplate.query.filter_by(slug=slug, is_available=True).first_or_404()
+    template = ReportingAlgorithm.query.filter_by(slug=slug, is_available=True).first_or_404()
 
     if template.template_html:
         return template.template_html
@@ -846,22 +847,23 @@ def embed_reporting_template(slug):
 @login_required
 def browse_reporting_templates():
     """User-facing browse page for all available reporting templates."""
-    templates = ReportingTemplate.query.filter_by(
+    templates = ReportingAlgorithm.query.filter_by(
         is_available=True
     ).order_by(
-        ReportingTemplate.category, ReportingTemplate.title
+        ReportingAlgorithm.category, ReportingAlgorithm.title
     ).all()
 
     grouped = {}
-    radiology_templates = []
     for t in templates:
         cat = t.category or 'Other'
         if cat == 'smart_reporter_cache':
             continue  # Skip cached entries, show only curated
-        if cat == 'radiology_template':
-            radiology_templates.append(t)
-            continue
         grouped.setdefault(cat, []).append(t)
+
+    # Radiology templates now come from RadiologyTemplate model
+    radiology_templates = RadiologyTemplate.query.filter_by(
+        origin='admin', is_available=True
+    ).order_by(RadiologyTemplate.title).all()
 
     return render_template('reporting_templates_browse.html',
                            grouped=grouped,
@@ -872,12 +874,12 @@ def browse_reporting_templates():
 @login_required
 def get_radiology_template_text(template_id):
     """User-facing endpoint to fetch radiology template text for preview/copy."""
-    t = ReportingTemplate.query.get_or_404(template_id)
-    if not t.is_available or t.category != 'radiology_template':
+    t = RadiologyTemplate.query.get_or_404(template_id)
+    if not t.is_available or t.origin not in ('admin', 'personal'):
         return jsonify({'error': 'Template not available'}), 404
     return jsonify({
         'title': t.title,
-        'pacs_report_text': t.pacs_report_text or '',
+        'pacs_report_text': t.template_text or '',
     })
 
 
@@ -886,9 +888,11 @@ def get_radiology_template_text(template_id):
 @reporting_bp.route('/admin/reporting-templates')
 @require_admin
 def admin_reporting_templates():
-    """Admin page for managing reporting templates."""
-    templates = ReportingTemplate.query.order_by(
-        ReportingTemplate.category, ReportingTemplate.title
+    """Admin page for managing reporting algorithm templates (excludes radiology templates and caches)."""
+    templates = ReportingAlgorithm.query.filter_by(
+        origin='admin'
+    ).order_by(
+        ReportingAlgorithm.category, ReportingAlgorithm.title
     ).all()
     return render_template('admin_reporting_templates.html', templates=templates,
                            cloudinary_cloud_name=os.environ.get('CLOUDINARY_CLOUD_NAME', ''),
@@ -910,13 +914,14 @@ def create_reporting_template():
 
     slug = re.sub(r'[^a-z0-9]+', '-', title.lower()).strip('-')
 
-    existing = ReportingTemplate.query.filter_by(slug=slug).first()
+    existing = ReportingAlgorithm.query.filter_by(slug=slug).first()
     if existing:
         return jsonify({'error': f'Template with slug "{slug}" already exists.'}), 409
 
-    template = ReportingTemplate(
+    template = ReportingAlgorithm(
         slug=slug,
         title=title,
+        origin='admin',
         category=category,
         body_section=data.get('body_section', '').strip() or None,
         description=data.get('description', '').strip() or None,
@@ -939,7 +944,7 @@ def create_reporting_template():
 @require_admin
 def get_reporting_template(template_id):
     """API: Get a single reporting template."""
-    template = ReportingTemplate.query.get_or_404(template_id)
+    template = ReportingAlgorithm.query.get_or_404(template_id)
     return jsonify(template.to_dict())
 
 
@@ -947,7 +952,7 @@ def get_reporting_template(template_id):
 @require_admin
 def verify_reporting_template(template_id):
     """API: Verify and publish a reporting template."""
-    template = ReportingTemplate.query.get_or_404(template_id)
+    template = ReportingAlgorithm.query.get_or_404(template_id)
     template.verified_by_user_id = current_user.id
     template.verified_at = datetime.utcnow()
     template.is_available = True
@@ -959,7 +964,7 @@ def verify_reporting_template(template_id):
 @require_admin
 def update_reporting_template(template_id):
     """API: Update a reporting template."""
-    template = ReportingTemplate.query.get_or_404(template_id)
+    template = ReportingAlgorithm.query.get_or_404(template_id)
     data = request.get_json()
     if not data:
         return jsonify({'error': 'JSON body required.'}), 400
@@ -983,7 +988,7 @@ def update_reporting_template(template_id):
 @require_admin
 def delete_reporting_template(template_id):
     """API: Delete a reporting template."""
-    template = ReportingTemplate.query.get_or_404(template_id)
+    template = ReportingAlgorithm.query.get_or_404(template_id)
     title = template.title
     db.session.delete(template)
     db.session.commit()
@@ -1027,9 +1032,9 @@ def generate_reporting_template():
 @require_admin
 def admin_radiology_templates():
     """Admin page for managing plain-text radiology report templates."""
-    templates = ReportingTemplate.query.filter(
-        ReportingTemplate.category == 'radiology_template'
-    ).order_by(ReportingTemplate.created_at.desc()).all()
+    templates = RadiologyTemplate.query.filter(
+        RadiologyTemplate.origin == 'admin'
+    ).order_by(RadiologyTemplate.created_at.desc()).all()
     return render_template('admin_radiology_templates.html', templates=templates)
 
 
@@ -1075,17 +1080,18 @@ def generate_radiology_template_route():
     # Handle slug collisions
     base_slug = slug
     counter = 1
-    while ReportingTemplate.query.filter_by(slug=slug).first():
+    while RadiologyTemplate.query.filter_by(slug=slug).first():
         slug = f"{base_slug}-{counter}"
         counter += 1
 
-    template = ReportingTemplate(
+    template = RadiologyTemplate(
         slug=slug,
         title=clinical_scenario,
-        category='radiology_template',
+        origin='admin',
+        category=None,
         body_section=body_section,
         description=f"{modality} — {clinical_scenario}" if modality else clinical_scenario,
-        pacs_report_text=result['template_text'],
+        template_text=result['template_text'],
         is_available=False,
         is_ai_generated=True,
         generation_model=result.get('model', ''),
@@ -1108,7 +1114,7 @@ def generate_radiology_template_route():
 @require_admin
 def get_radiology_template(template_id):
     """Fetch a single radiology template for editing."""
-    t = ReportingTemplate.query.get_or_404(template_id)
+    t = RadiologyTemplate.query.get_or_404(template_id)
     return jsonify({
         'id': t.id,
         'title': t.title,
@@ -1117,7 +1123,7 @@ def get_radiology_template(template_id):
         'body_section': t.body_section or '',
         'description': t.description or '',
         'keywords': t.keywords or '',
-        'pacs_report_text': t.pacs_report_text or '',
+        'pacs_report_text': t.template_text or '',
         'is_available': t.is_available,
         'is_ai_generated': t.is_ai_generated,
         'verified_at': t.verified_at.isoformat() if t.verified_at else None,
@@ -1129,7 +1135,7 @@ def get_radiology_template(template_id):
 @require_admin
 def update_radiology_template(template_id):
     """Update a radiology template's text and metadata."""
-    t = ReportingTemplate.query.get_or_404(template_id)
+    t = RadiologyTemplate.query.get_or_404(template_id)
     data = request.get_json()
     if not data:
         return jsonify({'error': 'JSON body required.'}), 400
@@ -1143,7 +1149,7 @@ def update_radiology_template(template_id):
     if 'description' in data:
         t.description = data['description'].strip()
     if 'pacs_report_text' in data:
-        t.pacs_report_text = data['pacs_report_text']
+        t.template_text = data['pacs_report_text']
     if 'is_available' in data:
         t.is_available = bool(data['is_available'])
     if 'last_edit_note' in data:
@@ -1159,7 +1165,7 @@ def update_radiology_template(template_id):
 @require_admin
 def verify_radiology_template(template_id):
     """Verify and publish a radiology template."""
-    t = ReportingTemplate.query.get_or_404(template_id)
+    t = RadiologyTemplate.query.get_or_404(template_id)
     t.verified_by_user_id = current_user.id
     t.verified_at = datetime.utcnow()
     t.is_available = True
@@ -1171,7 +1177,7 @@ def verify_radiology_template(template_id):
 @require_admin
 def delete_radiology_template(template_id):
     """Delete a radiology template."""
-    t = ReportingTemplate.query.get_or_404(template_id)
+    t = RadiologyTemplate.query.get_or_404(template_id)
     title = t.title
     db.session.delete(t)
     db.session.commit()
@@ -1227,11 +1233,11 @@ def smart_reporter_generate_tree():
     db.session.add(session)
     db.session.flush()
 
-    # --- Cache lookup: check for existing ReportingTemplate with matching slug ---
+    # --- Cache lookup: check for existing ReportingAlgorithm with matching slug ---
     cache_slug = re.sub(r'[^a-z0-9]+', '-', clinical_question.lower()).strip('-')
     cached_template = None
     if cache_slug:
-        cached_template = ReportingTemplate.query.filter_by(
+        cached_template = ReportingAlgorithm.query.filter_by(
             slug=cache_slug, is_available=True
         ).first()
 
@@ -1283,14 +1289,15 @@ def smart_reporter_generate_tree():
     session.model_name = result.get('model', '')
     session.generation_tokens = result.get('token_count', 0)
 
-    # --- Cache write: store tree as ReportingTemplate for future reuse ---
+    # --- Cache write: store tree as ReportingAlgorithm for future reuse ---
     if cache_slug:
-        existing_cache = ReportingTemplate.query.filter_by(slug=cache_slug).first()
+        existing_cache = ReportingAlgorithm.query.filter_by(slug=cache_slug).first()
         if not existing_cache:
             try:
-                cache_entry = ReportingTemplate(
+                cache_entry = ReportingAlgorithm(
                     slug=cache_slug,
                     title=clinical_question,
+                    origin='smart_reporter_cache',
                     category='smart_reporter_cache',
                     body_section=body_section or None,
                     description=f'Cached Smart Reporter algorithm for: {clinical_question}',
@@ -1303,9 +1310,9 @@ def smart_reporter_generate_tree():
                     created_by_user_id=current_user.id,
                 )
                 db.session.add(cache_entry)
-                logger.info(f"Cached Smart Reporter tree as ReportingTemplate '{cache_slug}'")
+                logger.info(f"Cached Smart Reporter tree as ReportingAlgorithm '{cache_slug}'")
             except Exception as cache_exc:
-                logger.warning(f"Failed to cache tree as ReportingTemplate: {cache_exc}")
+                logger.warning(f"Failed to cache tree as ReportingAlgorithm: {cache_exc}")
 
     try:
         db.session.commit()
@@ -1680,11 +1687,11 @@ def smart_reporter_route_intent():
     if result.get('intent') == 'walkthrough' and result.get('canonical_topic'):
         slug = result['canonical_topic']
         # Check admin-verified templates first, then unverified, then user cache
-        cached = ReportingTemplate.query.filter(
-            ReportingTemplate.slug == slug,
-            ReportingTemplate.is_available == True,
+        cached = ReportingAlgorithm.query.filter(
+            ReportingAlgorithm.slug == slug,
+            ReportingAlgorithm.is_available == True,
         ).order_by(
-            ReportingTemplate.verified_at.desc().nullslast(),
+            ReportingAlgorithm.verified_at.desc().nullslast(),
         ).first()
         if cached and cached.algorithm_html:
             cached_tree = {
@@ -1848,23 +1855,23 @@ def smart_reporter_list_personal_templates():
     limit = request.args.get('limit', 20, type=int)
     limit = min(limit, 50)
 
-    query = ReportingTemplate.query.filter(
-        ReportingTemplate.category == 'personal_template',
-        ReportingTemplate.created_by_user_id == current_user.id,
+    query = RadiologyTemplate.query.filter_by(
+        origin='personal',
+        created_by_user_id=current_user.id,
     )
 
     if search:
         query = query.filter(
             db.or_(
-                ReportingTemplate.title.ilike(f'%{search}%'),
-                ReportingTemplate.body_section.ilike(f'%{search}%'),
-                ReportingTemplate.keywords.ilike(f'%{search}%'),
+                RadiologyTemplate.title.ilike(f'%{search}%'),
+                RadiologyTemplate.body_section.ilike(f'%{search}%'),
+                RadiologyTemplate.keywords.ilike(f'%{search}%'),
             )
         )
 
     total = query.count()
     templates = query.order_by(
-        ReportingTemplate.updated_at.desc()
+        RadiologyTemplate.updated_at.desc()
     ).offset(offset).limit(limit).all()
 
     return jsonify({
@@ -1875,7 +1882,7 @@ def smart_reporter_list_personal_templates():
             'body_section': t.body_section,
             'description': t.description,
             'updated_at': t.updated_at.isoformat() if t.updated_at else None,
-            'has_content': bool(t.pacs_report_text),
+            'has_content': bool(t.template_text),
         } for t in templates],
         'total': total,
         'offset': offset,
@@ -1897,9 +1904,9 @@ def smart_reporter_create_personal_template():
         return jsonify({'error': 'Report text is required.'}), 400
 
     # Rate limit: max 50 personal templates per user
-    count = ReportingTemplate.query.filter(
-        ReportingTemplate.category == 'personal_template',
-        ReportingTemplate.created_by_user_id == current_user.id,
+    count = RadiologyTemplate.query.filter_by(
+        origin='personal',
+        created_by_user_id=current_user.id,
     ).count()
     if count >= 50:
         return jsonify({
@@ -1913,12 +1920,12 @@ def smart_reporter_create_personal_template():
     slug = f'pt-{current_user.id}-{base_slug}'
 
     # Handle slug collision (shouldn't happen often with user prefix)
-    existing = ReportingTemplate.query.filter_by(slug=slug).first()
+    existing = RadiologyTemplate.query.filter_by(slug=slug).first()
     if existing:
         # If same user owns it, update instead
-        if existing.created_by_user_id == current_user.id and existing.category == 'personal_template':
+        if existing.created_by_user_id == current_user.id and existing.origin == 'personal':
             existing.title = title
-            existing.pacs_report_text = report_text
+            existing.template_text = report_text
             existing.body_section = (data.get('body_section') or '').strip() or None
             existing.description = (data.get('description') or '').strip() or None
             existing.updated_at = datetime.utcnow()
@@ -1930,17 +1937,17 @@ def smart_reporter_create_personal_template():
             })
         # Different owner — append counter
         counter = 1
-        while ReportingTemplate.query.filter_by(slug=f'{slug}-{counter}').first():
+        while RadiologyTemplate.query.filter_by(slug=f'{slug}-{counter}').first():
             counter += 1
         slug = f'{slug}-{counter}'
 
-    template = ReportingTemplate(
+    template = RadiologyTemplate(
         slug=slug,
         title=title,
-        category='personal_template',
+        origin='personal',
         body_section=(data.get('body_section') or '').strip() or None,
         description=(data.get('description') or '').strip() or None,
-        pacs_report_text=report_text,
+        template_text=report_text,
         is_available=True,
         created_by_user_id=current_user.id,
     )
@@ -1964,8 +1971,8 @@ def smart_reporter_create_personal_template():
 @login_required
 def smart_reporter_get_personal_template(template_id):
     """Get a personal template's content."""
-    template = ReportingTemplate.query.get_or_404(template_id)
-    if template.created_by_user_id != current_user.id or template.category != 'personal_template':
+    template = RadiologyTemplate.query.get_or_404(template_id)
+    if template.created_by_user_id != current_user.id or template.origin != 'personal':
         return jsonify({'error': 'Access denied.'}), 403
 
     return jsonify({
@@ -1974,7 +1981,7 @@ def smart_reporter_get_personal_template(template_id):
         'slug': template.slug,
         'body_section': template.body_section,
         'description': template.description,
-        'report_text': template.pacs_report_text or '',
+        'pacs_report_text': template.template_text or '',
         'updated_at': template.updated_at.isoformat() if template.updated_at else None,
     })
 
@@ -1983,8 +1990,8 @@ def smart_reporter_get_personal_template(template_id):
 @login_required
 def smart_reporter_update_personal_template(template_id):
     """Update a personal template (rename, change content)."""
-    template = ReportingTemplate.query.get_or_404(template_id)
-    if template.created_by_user_id != current_user.id or template.category != 'personal_template':
+    template = RadiologyTemplate.query.get_or_404(template_id)
+    if template.created_by_user_id != current_user.id or template.origin != 'personal':
         return jsonify({'error': 'Access denied.'}), 403
 
     data = request.get_json() or {}
@@ -1994,7 +2001,7 @@ def smart_reporter_update_personal_template(template_id):
         if title:
             template.title = title
     if 'report_text' in data:
-        template.pacs_report_text = (data['report_text'] or '').strip()
+        template.template_text = (data['report_text'] or '').strip()
     if 'body_section' in data:
         template.body_section = (data['body_section'] or '').strip() or None
     if 'description' in data:
@@ -2016,8 +2023,8 @@ def smart_reporter_update_personal_template(template_id):
 @login_required
 def smart_reporter_delete_personal_template(template_id):
     """Delete a personal template."""
-    template = ReportingTemplate.query.get_or_404(template_id)
-    if template.created_by_user_id != current_user.id or template.category != 'personal_template':
+    template = RadiologyTemplate.query.get_or_404(template_id)
+    if template.created_by_user_id != current_user.id or template.origin != 'personal':
         return jsonify({'error': 'Access denied.'}), 403
 
     title = template.title
@@ -2077,41 +2084,85 @@ def smart_reporter_get_published_report(report_id):
 @reporting_bp.route('/api/smart-reporter/admin-templates', methods=['GET'])
 @login_required
 def smart_reporter_admin_templates():
-    """List verified (admin-curated) ReportingTemplate entries for the Smart Reporter landing page."""
+    """List verified (admin-curated) templates for the Smart Reporter landing page.
+
+    Merges results from RadiologyTemplate (plain-text PACS reports) and
+    ReportingAlgorithm (interactive decision trees).
+    """
     search = request.args.get('q', '').strip()
     offset = request.args.get('offset', 0, type=int)
     limit = min(request.args.get('limit', 20, type=int), 50)
 
-    query = ReportingTemplate.query.filter(
-        ReportingTemplate.is_available == True,
-        ReportingTemplate.verified_at.isnot(None),
+    # --- RadiologyTemplate (admin, verified) ---
+    rt_query = RadiologyTemplate.query.filter(
+        RadiologyTemplate.is_available == True,
+        RadiologyTemplate.verified_at.isnot(None),
+        RadiologyTemplate.origin == 'admin',
     )
-
     if search:
-        query = query.filter(
+        rt_query = rt_query.filter(
             db.or_(
-                ReportingTemplate.title.ilike(f'%{search}%'),
-                ReportingTemplate.keywords.ilike(f'%{search}%'),
-                ReportingTemplate.body_section.ilike(f'%{search}%'),
+                RadiologyTemplate.title.ilike(f'%{search}%'),
+                RadiologyTemplate.keywords.ilike(f'%{search}%'),
+                RadiologyTemplate.body_section.ilike(f'%{search}%'),
             )
         )
 
-    total = query.count()
-    templates = query.order_by(ReportingTemplate.updated_at.desc()).offset(offset).limit(limit).all()
+    # --- ReportingAlgorithm (verified) ---
+    ra_query = ReportingAlgorithm.query.filter(
+        ReportingAlgorithm.is_available == True,
+        ReportingAlgorithm.verified_at.isnot(None),
+    )
+    if search:
+        ra_query = ra_query.filter(
+            db.or_(
+                ReportingAlgorithm.title.ilike(f'%{search}%'),
+                ReportingAlgorithm.keywords.ilike(f'%{search}%'),
+                ReportingAlgorithm.body_section.ilike(f'%{search}%'),
+            )
+        )
 
-    return jsonify({
-        'templates': [{
+    rt_results = rt_query.all()
+    ra_results = ra_query.all()
+
+    combined = []
+    for t in rt_results:
+        combined.append({
             'id': t.id,
             'slug': t.slug,
             'title': t.title,
             'category': t.category,
             'body_section': t.body_section,
             'description': t.description,
-            'has_algorithm': bool(t.algorithm_html),
-            'has_pacs_report': bool(t.pacs_report_text),
+            'source_table': 'radiology_template',
+            'has_algorithm': False,
+            'has_pacs_report': bool(t.template_text),
             'verified_at': t.verified_at.isoformat() if t.verified_at else None,
             'created_at': t.created_at.isoformat() if t.created_at else None,
-        } for t in templates],
+        })
+    for t in ra_results:
+        combined.append({
+            'id': t.id,
+            'slug': t.slug,
+            'title': t.title,
+            'category': t.category,
+            'body_section': t.body_section,
+            'description': t.description,
+            'source_table': 'reporting_algorithm',
+            'has_algorithm': bool(t.algorithm_html),
+            'has_pacs_report': False,
+            'verified_at': t.verified_at.isoformat() if t.verified_at else None,
+            'created_at': t.created_at.isoformat() if t.created_at else None,
+        })
+
+    # Sort by verified_at descending
+    combined.sort(key=lambda x: x.get('verified_at') or '', reverse=True)
+
+    total = len(combined)
+    page = combined[offset:offset + limit]
+
+    return jsonify({
+        'templates': page,
         'total': total,
         'offset': offset,
         'has_more': (offset + limit) < total,
@@ -2121,8 +2172,26 @@ def smart_reporter_admin_templates():
 @reporting_bp.route('/api/smart-reporter/admin-templates/<int:template_id>', methods=['GET'])
 @login_required
 def smart_reporter_get_admin_template(template_id):
-    """Get a single admin template (full content) for loading into editor."""
-    template = ReportingTemplate.query.get_or_404(template_id)
+    """Get a single admin template (full content) for loading into editor.
+
+    Checks both RadiologyTemplate and ReportingAlgorithm tables.
+    The source_table query param indicates which table to look in.
+    """
+    source_table = request.args.get('source_table', 'reporting_algorithm')
+
+    if source_table == 'radiology_template':
+        template = RadiologyTemplate.query.get_or_404(template_id)
+        if not template.is_available or not template.verified_at:
+            return jsonify({'error': 'Template not available.'}), 404
+        result = template.to_dict()
+        result['pacs_report_text'] = template.template_text or ''
+        result['has_pacs_report'] = bool(template.template_text)
+        result['has_algorithm'] = False
+        result['source_table'] = 'radiology_template'
+        return jsonify(result)
+
+    # Default: ReportingAlgorithm
+    template = ReportingAlgorithm.query.get_or_404(template_id)
     if not template.is_available or not template.verified_at:
         return jsonify({'error': 'Template not available.'}), 404
 
@@ -2130,7 +2199,8 @@ def smart_reporter_get_admin_template(template_id):
     result['algorithm_html'] = template.algorithm_html
     result['template_html'] = template.template_html
     result['has_algorithm'] = bool(template.algorithm_html)
-    result['has_pacs_report'] = bool(template.pacs_report_text)
+    result['has_pacs_report'] = False
+    result['source_table'] = 'reporting_algorithm'
     return jsonify(result)
 
 
@@ -2229,18 +2299,18 @@ def smart_reporter_relevant_content():
     except Exception:
         pass
 
-    # --- Reporting Templates ---
+    # --- Reporting Algorithms ---
     try:
-        rt_query = ReportingTemplate.query.filter_by(is_available=True)
+        rt_query = ReportingAlgorithm.query.filter_by(is_available=True)
         if q:
             rt_query = rt_query.filter(
                 db.or_(
-                    ReportingTemplate.title.ilike(f'%{q}%'),
-                    ReportingTemplate.keywords.ilike(f'%{q}%'),
+                    ReportingAlgorithm.title.ilike(f'%{q}%'),
+                    ReportingAlgorithm.keywords.ilike(f'%{q}%'),
                 )
             )
         elif body_section:
-            rt_query = rt_query.filter(ReportingTemplate.body_section.ilike(f'%{body_section}%'))
+            rt_query = rt_query.filter(ReportingAlgorithm.body_section.ilike(f'%{body_section}%'))
 
         rts = rt_query.limit(3).all()
         for t in rts:
@@ -2294,12 +2364,12 @@ def smart_reporter_anatomy():
         return jsonify({'error': 'Anatomy topic is required.'}), 400
 
     # DB-first: check for cached anatomy content
-    cached = ReportingTemplate.query.filter(
-        ReportingTemplate.category == 'anatomy',
-        ReportingTemplate.is_available == True,
+    cached = ReportingAlgorithm.query.filter(
+        ReportingAlgorithm.category == 'anatomy',
+        ReportingAlgorithm.is_available == True,
         db.or_(
-            ReportingTemplate.title.ilike(f'%{topic}%'),
-            ReportingTemplate.keywords.ilike(f'%{topic}%'),
+            ReportingAlgorithm.title.ilike(f'%{topic}%'),
+            ReportingAlgorithm.keywords.ilike(f'%{topic}%'),
         ),
     ).first()
 

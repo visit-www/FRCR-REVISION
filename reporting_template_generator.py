@@ -2,7 +2,7 @@
 Reporting Template Generator — Thin Wrapper
 
 Delegates to clinical_tool_generator.py for actual generation.
-Handles RT-specific database operations (create/update ReportingTemplate).
+Handles RT-specific database operations (create/update ReportingAlgorithm).
 """
 
 import re
@@ -34,11 +34,11 @@ def generate_reporting_template_html(title, category, body_section='', source_ci
     Returns:
         dict with success, message, and metadata
     """
-    from models import db, ReportingTemplate
+    from models import db, ReportingAlgorithm
 
     slug = re.sub(r'[^a-z0-9]+', '-', title.lower()).strip('-')
 
-    existing = ReportingTemplate.query.filter_by(slug=slug).first()
+    existing = ReportingAlgorithm.query.filter_by(slug=slug).first()
     if existing and not overwrite:
         return {
             'success': False,
@@ -81,9 +81,10 @@ def generate_reporting_template_html(title, category, body_section='', source_ci
         db.session.commit()
         template_id = existing.id
     else:
-        template = ReportingTemplate(
+        template = ReportingAlgorithm(
             slug=slug,
             title=title,
+            origin='admin',
             category=category,
             body_section=body_section or None,
             keywords=f"{title}, {category}, {body_section}, reporting",
@@ -91,6 +92,7 @@ def generate_reporting_template_html(title, category, body_section='', source_ci
             algorithm_html=algorithm_html,
             source_citation=source_citation or None,
             is_available=False,
+            is_ai_generated=True,
             generation_prompt=result['prompt'],
             generation_model=result['model'],
             generated_at=datetime.utcnow(),

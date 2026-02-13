@@ -28,7 +28,8 @@ from models import (
     # TNM Calculator Content (AI-generated calculators and algorithms)
     TNMCalculatorContent,
     # Clinical Tools (On-Call Helper, Reporting Templates, Incidental Findings)
-    ClinicalProtocol, OnCallQueryLog, ReportingTemplate,
+    ClinicalProtocol, OnCallQueryLog,
+    RadiologyTemplate, ReportingAlgorithm,
     IncidentalFindingCalculator,
 )
 from datetime import datetime, timedelta
@@ -136,7 +137,9 @@ def download_backup():
             # Clinical Tools
             'clinical_protocols': [],
             'oncall_query_logs': [],
-            'reporting_templates': [],
+            'reporting_templates': [],  # Legacy — kept for backward compat
+            'radiology_templates': [],
+            'reporting_algorithms': [],
             'incidental_finding_calculators': [],
         }
         
@@ -706,32 +709,43 @@ def download_backup():
                 'created_at': log.created_at.isoformat() if log.created_at else None,
             })
 
-        # Export Reporting Templates (admin-curated + AI-generated cached algorithms)
-        for rt in ReportingTemplate.query.all():
-            backup_data['reporting_templates'].append({
-                'id': rt.id,
-                'slug': rt.slug,
-                'title': rt.title,
-                'category': rt.category,
-                'body_section': rt.body_section,
-                'description': rt.description,
-                'keywords': rt.keywords,
-                'template_html': rt.template_html,
-                'algorithm_html': rt.algorithm_html,
-                'source_citation': rt.source_citation,
-                'guideline_version': rt.guideline_version,
-                'is_available': rt.is_available,
-                'is_ai_generated': rt.is_ai_generated,
+        # Export Radiology Templates (plain-text PACS reports)
+        for rt in RadiologyTemplate.query.all():
+            backup_data['radiology_templates'].append({
+                'id': rt.id, 'slug': rt.slug, 'title': rt.title,
+                'origin': rt.origin, 'category': rt.category,
+                'body_section': rt.body_section, 'description': rt.description,
+                'keywords': rt.keywords, 'template_text': rt.template_text,
+                'source_citation': rt.source_citation, 'guideline_version': rt.guideline_version,
+                'is_available': rt.is_available, 'is_ai_generated': rt.is_ai_generated,
                 'verified_by_user_id': rt.verified_by_user_id,
                 'verified_at': rt.verified_at.isoformat() if rt.verified_at else None,
-                'pacs_report_text': rt.pacs_report_text,
-                'generation_prompt': rt.generation_prompt,
-                'generation_model': rt.generation_model,
+                'generation_prompt': rt.generation_prompt, 'generation_model': rt.generation_model,
                 'generated_at': rt.generated_at.isoformat() if rt.generated_at else None,
                 'created_by_user_id': rt.created_by_user_id,
                 'last_edit_note': rt.last_edit_note,
                 'created_at': rt.created_at.isoformat() if rt.created_at else None,
                 'updated_at': rt.updated_at.isoformat() if rt.updated_at else None,
+            })
+
+        # Export Reporting Algorithms (interactive decision trees)
+        for ra in ReportingAlgorithm.query.all():
+            backup_data['reporting_algorithms'].append({
+                'id': ra.id, 'slug': ra.slug, 'title': ra.title,
+                'origin': ra.origin, 'category': ra.category,
+                'body_section': ra.body_section, 'description': ra.description,
+                'keywords': ra.keywords,
+                'template_html': ra.template_html, 'algorithm_html': ra.algorithm_html,
+                'source_citation': ra.source_citation, 'guideline_version': ra.guideline_version,
+                'is_available': ra.is_available, 'is_ai_generated': ra.is_ai_generated,
+                'verified_by_user_id': ra.verified_by_user_id,
+                'verified_at': ra.verified_at.isoformat() if ra.verified_at else None,
+                'generation_prompt': ra.generation_prompt, 'generation_model': ra.generation_model,
+                'generated_at': ra.generated_at.isoformat() if ra.generated_at else None,
+                'created_by_user_id': ra.created_by_user_id,
+                'last_edit_note': ra.last_edit_note,
+                'created_at': ra.created_at.isoformat() if ra.created_at else None,
+                'updated_at': ra.updated_at.isoformat() if ra.updated_at else None,
             })
 
         # Export Incidental Finding Calculators
@@ -3167,37 +3181,33 @@ def restore_backup():
             db.session.add(log_entry)
             stats['oncall_query_logs']['added'] += 1
 
-        # Import Reporting Templates
-        stats['reporting_templates'] = {'added': 0, 'skipped': 0}
-        for rt_data in backup_data.get('reporting_templates', []):
+        # Import Radiology Templates (new format)
+        stats['radiology_templates'] = {'added': 0, 'skipped': 0}
+        for rt_data in backup_data.get('radiology_templates', []):
             if not isinstance(rt_data, dict):
                 continue
             slug = rt_data.get('slug', '')
             if not slug:
-                stats['reporting_templates']['skipped'] += 1
+                stats['radiology_templates']['skipped'] += 1
                 continue
-            existing = ReportingTemplate.query.filter_by(slug=slug).first()
-            if existing:
-                stats['reporting_templates']['skipped'] += 1
+            if RadiologyTemplate.query.filter_by(slug=slug).first():
+                stats['radiology_templates']['skipped'] += 1
                 continue
             old_created_by = rt_data.get('created_by_user_id')
             old_verified_by = rt_data.get('verified_by_user_id')
-            rt = ReportingTemplate(
-                slug=slug,
-                title=rt_data.get('title', ''),
-                category=rt_data.get('category', ''),
+            rt = RadiologyTemplate(
+                slug=slug, title=rt_data.get('title', ''),
+                origin=rt_data.get('origin', 'admin'),
+                category=rt_data.get('category'),
                 body_section=rt_data.get('body_section'),
-                description=rt_data.get('description'),
-                keywords=rt_data.get('keywords'),
-                template_html=rt_data.get('template_html'),
-                algorithm_html=rt_data.get('algorithm_html'),
+                description=rt_data.get('description'), keywords=rt_data.get('keywords'),
+                template_text=rt_data.get('template_text', rt_data.get('pacs_report_text')),
                 source_citation=rt_data.get('source_citation'),
                 guideline_version=rt_data.get('guideline_version'),
                 is_available=rt_data.get('is_available', False),
                 is_ai_generated=rt_data.get('is_ai_generated', False),
                 verified_by_user_id=user_id_map.get(old_verified_by) if old_verified_by else None,
                 verified_at=_parse_datetime_for_sqlite(rt_data.get('verified_at')),
-                pacs_report_text=rt_data.get('pacs_report_text'),
                 generation_prompt=rt_data.get('generation_prompt'),
                 generation_model=rt_data.get('generation_model'),
                 generated_at=_parse_datetime_for_sqlite(rt_data.get('generated_at')),
@@ -3209,7 +3219,118 @@ def restore_backup():
             if rt_data.get('updated_at'):
                 rt.updated_at = _parse_datetime_for_sqlite(rt_data['updated_at']) or datetime.utcnow()
             db.session.add(rt)
-            stats['reporting_templates']['added'] += 1
+            stats['radiology_templates']['added'] += 1
+
+        # Import Reporting Algorithms (new format)
+        stats['reporting_algorithms'] = {'added': 0, 'skipped': 0}
+        for ra_data in backup_data.get('reporting_algorithms', []):
+            if not isinstance(ra_data, dict):
+                continue
+            slug = ra_data.get('slug', '')
+            if not slug:
+                stats['reporting_algorithms']['skipped'] += 1
+                continue
+            if ReportingAlgorithm.query.filter_by(slug=slug).first():
+                stats['reporting_algorithms']['skipped'] += 1
+                continue
+            old_created_by = ra_data.get('created_by_user_id')
+            old_verified_by = ra_data.get('verified_by_user_id')
+            ra = ReportingAlgorithm(
+                slug=slug, title=ra_data.get('title', ''),
+                origin=ra_data.get('origin', 'admin'),
+                category=ra_data.get('category', ''),
+                body_section=ra_data.get('body_section'),
+                description=ra_data.get('description'), keywords=ra_data.get('keywords'),
+                template_html=ra_data.get('template_html'),
+                algorithm_html=ra_data.get('algorithm_html'),
+                source_citation=ra_data.get('source_citation'),
+                guideline_version=ra_data.get('guideline_version'),
+                is_available=ra_data.get('is_available', False),
+                is_ai_generated=ra_data.get('is_ai_generated', False),
+                verified_by_user_id=user_id_map.get(old_verified_by) if old_verified_by else None,
+                verified_at=_parse_datetime_for_sqlite(ra_data.get('verified_at')),
+                generation_prompt=ra_data.get('generation_prompt'),
+                generation_model=ra_data.get('generation_model'),
+                generated_at=_parse_datetime_for_sqlite(ra_data.get('generated_at')),
+                created_by_user_id=user_id_map.get(old_created_by) if old_created_by else None,
+                last_edit_note=ra_data.get('last_edit_note'),
+            )
+            if ra_data.get('created_at'):
+                ra.created_at = _parse_datetime_for_sqlite(ra_data['created_at']) or datetime.utcnow()
+            if ra_data.get('updated_at'):
+                ra.updated_at = _parse_datetime_for_sqlite(ra_data['updated_at']) or datetime.utcnow()
+            db.session.add(ra)
+            stats['reporting_algorithms']['added'] += 1
+
+        # Import legacy reporting_templates (backward compat — route by category)
+        RADIOLOGY_CATS = {'radiology_template', 'personal_template'}
+        for rt_data in backup_data.get('reporting_templates', []):
+            if not isinstance(rt_data, dict):
+                continue
+            slug = rt_data.get('slug', '')
+            if not slug:
+                continue
+            cat = rt_data.get('category', '')
+            old_created_by = rt_data.get('created_by_user_id')
+            old_verified_by = rt_data.get('verified_by_user_id')
+            if cat in RADIOLOGY_CATS:
+                if RadiologyTemplate.query.filter_by(slug=slug).first():
+                    continue
+                origin = 'personal' if cat == 'personal_template' else 'admin'
+                rt = RadiologyTemplate(
+                    slug=slug, title=rt_data.get('title', ''), origin=origin,
+                    body_section=rt_data.get('body_section'),
+                    description=rt_data.get('description'), keywords=rt_data.get('keywords'),
+                    template_text=rt_data.get('pacs_report_text'),
+                    source_citation=rt_data.get('source_citation'),
+                    guideline_version=rt_data.get('guideline_version'),
+                    is_available=rt_data.get('is_available', False),
+                    is_ai_generated=rt_data.get('is_ai_generated', False),
+                    verified_by_user_id=user_id_map.get(old_verified_by) if old_verified_by else None,
+                    verified_at=_parse_datetime_for_sqlite(rt_data.get('verified_at')),
+                    generation_prompt=rt_data.get('generation_prompt'),
+                    generation_model=rt_data.get('generation_model'),
+                    generated_at=_parse_datetime_for_sqlite(rt_data.get('generated_at')),
+                    created_by_user_id=user_id_map.get(old_created_by) if old_created_by else None,
+                    last_edit_note=rt_data.get('last_edit_note'),
+                )
+                if rt_data.get('created_at'):
+                    rt.created_at = _parse_datetime_for_sqlite(rt_data['created_at']) or datetime.utcnow()
+                db.session.add(rt)
+                stats['radiology_templates']['added'] += 1
+            else:
+                if ReportingAlgorithm.query.filter_by(slug=slug).first():
+                    continue
+                if cat == 'smart_reporter_cache':
+                    origin = 'smart_reporter_cache'
+                elif cat == 'ai_generated':
+                    origin = 'ai_generated'
+                elif cat == 'anatomy':
+                    origin = 'anatomy_cache'
+                else:
+                    origin = 'admin'
+                ra = ReportingAlgorithm(
+                    slug=slug, title=rt_data.get('title', ''), origin=origin,
+                    category=cat, body_section=rt_data.get('body_section'),
+                    description=rt_data.get('description'), keywords=rt_data.get('keywords'),
+                    template_html=rt_data.get('template_html'),
+                    algorithm_html=rt_data.get('algorithm_html'),
+                    source_citation=rt_data.get('source_citation'),
+                    guideline_version=rt_data.get('guideline_version'),
+                    is_available=rt_data.get('is_available', False),
+                    is_ai_generated=rt_data.get('is_ai_generated', False),
+                    verified_by_user_id=user_id_map.get(old_verified_by) if old_verified_by else None,
+                    verified_at=_parse_datetime_for_sqlite(rt_data.get('verified_at')),
+                    generation_prompt=rt_data.get('generation_prompt'),
+                    generation_model=rt_data.get('generation_model'),
+                    generated_at=_parse_datetime_for_sqlite(rt_data.get('generated_at')),
+                    created_by_user_id=user_id_map.get(old_created_by) if old_created_by else None,
+                    last_edit_note=rt_data.get('last_edit_note'),
+                )
+                if rt_data.get('created_at'):
+                    ra.created_at = _parse_datetime_for_sqlite(rt_data['created_at']) or datetime.utcnow()
+                db.session.add(ra)
+                stats['reporting_algorithms']['added'] += 1
 
         # Import Incidental Finding Calculators
         stats['incidental_finding_calculators'] = {'added': 0, 'skipped': 0}
@@ -3376,7 +3497,8 @@ def backup_status():
         # Clinical Tools
         'clinical_protocols': ClinicalProtocol.query.count(),
         'oncall_query_logs': OnCallQueryLog.query.count(),
-        'reporting_templates': ReportingTemplate.query.count(),
+        'radiology_templates': RadiologyTemplate.query.count(),
+        'reporting_algorithms': ReportingAlgorithm.query.count(),
         'incidental_finding_calculators': IncidentalFindingCalculator.query.count(),
     }
     

@@ -307,8 +307,8 @@ def fetch_db_references(db_refs):
                 if calc and calc.algorithm_html:
                     content = _html_to_text(calc.algorithm_html)
             elif ref_type == 'rt':
-                from models import ReportingTemplate
-                tmpl = ReportingTemplate.query.filter_by(slug=slug).first()
+                from models import ReportingAlgorithm
+                tmpl = ReportingAlgorithm.query.filter_by(slug=slug).first()
                 if tmpl and tmpl.algorithm_html:
                     content = _html_to_text(tmpl.algorithm_html)
             elif ref_type == 'protocol':

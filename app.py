@@ -22,6 +22,7 @@ from models import RevisionSession, RevisionHistory  # STUDENT REVISION: New mod
 from models import UserQAProgress  # STUDY MODE: SM-2 spaced repetition
 from models import ForumMessage, ForumMessageVote, ForumMessageFlag  # Forum models
 from models import ClinicalProtocol, OnCallQueryLog, ReportingTemplate, IncidentalFindingCalculator  # Clinical tools
+from models import RadiologyTemplate, ReportingAlgorithm  # New split tables (Feb 2026)
 from auth import auth_bp
 from backup_routes import backup_bp
 from admin_routes import admin_bp
@@ -573,6 +574,79 @@ def _seed_ajcc_data_if_needed():
         print(f"[SEED] Error seeding AJCC data: {e}")
 
 
+def _migrate_reporting_templates_if_needed():
+    """One-time migration: copy rows from legacy reporting_template to new tables.
+    Idempotent — only runs if new tables are empty AND old table has data."""
+    from sqlalchemy import text
+    try:
+        old_count = db.session.execute(text('SELECT COUNT(*) FROM reporting_template')).scalar()
+        if old_count == 0:
+            return
+
+        rad_count = db.session.execute(text('SELECT COUNT(*) FROM radiology_template')).scalar()
+        alg_count = db.session.execute(text('SELECT COUNT(*) FROM reporting_algorithm')).scalar()
+        if rad_count > 0 or alg_count > 0:
+            return  # Already migrated
+
+        print(f'[MIGRATE] Copying {old_count} rows from legacy reporting_template...')
+
+        RADIOLOGY_CATEGORIES = {'radiology_template', 'personal_template'}
+        rad_added = alg_added = 0
+
+        for old in ReportingTemplate.query.all():
+            if old.category in RADIOLOGY_CATEGORIES:
+                origin = 'personal' if old.category == 'personal_template' else 'admin'
+                new = RadiologyTemplate(
+                    slug=old.slug, title=old.title, origin=origin,
+                    category=None if origin == 'personal' else None,
+                    body_section=old.body_section, description=old.description,
+                    keywords=old.keywords, template_text=old.pacs_report_text,
+                    source_citation=old.source_citation, guideline_version=old.guideline_version,
+                    is_available=old.is_available, is_ai_generated=getattr(old, 'is_ai_generated', False),
+                    verified_by_user_id=getattr(old, 'verified_by_user_id', None),
+                    verified_at=getattr(old, 'verified_at', None),
+                    generation_prompt=old.generation_prompt, generation_model=old.generation_model,
+                    generated_at=old.generated_at, created_by_user_id=old.created_by_user_id,
+                    last_edit_note=old.last_edit_note, legacy_id=old.id,
+                )
+                new.created_at = old.created_at
+                new.updated_at = old.updated_at
+                db.session.add(new)
+                rad_added += 1
+            else:
+                if old.category == 'smart_reporter_cache':
+                    origin = 'smart_reporter_cache'
+                elif old.category == 'ai_generated':
+                    origin = 'ai_generated'
+                elif old.category == 'anatomy':
+                    origin = 'anatomy_cache'
+                else:
+                    origin = 'admin'
+                new = ReportingAlgorithm(
+                    slug=old.slug, title=old.title, origin=origin,
+                    category=old.category, body_section=old.body_section,
+                    description=old.description, keywords=old.keywords,
+                    template_html=old.template_html, algorithm_html=old.algorithm_html,
+                    source_citation=old.source_citation, guideline_version=old.guideline_version,
+                    is_available=old.is_available, is_ai_generated=getattr(old, 'is_ai_generated', False),
+                    verified_by_user_id=getattr(old, 'verified_by_user_id', None),
+                    verified_at=getattr(old, 'verified_at', None),
+                    generation_prompt=old.generation_prompt, generation_model=old.generation_model,
+                    generated_at=old.generated_at, created_by_user_id=old.created_by_user_id,
+                    last_edit_note=old.last_edit_note, legacy_id=old.id,
+                )
+                new.created_at = old.created_at
+                new.updated_at = old.updated_at
+                db.session.add(new)
+                alg_added += 1
+
+        db.session.commit()
+        print(f'[MIGRATE] Done: {rad_added} → radiology_template, {alg_added} → reporting_algorithm')
+    except Exception as e:
+        db.session.rollback()
+        print(f'[MIGRATE] Error migrating reporting_template: {e}')
+
+
 # ==================== DATABASE INITIALIZATION ====================
 
 with app.app_context():
@@ -591,10 +665,41 @@ with app.app_context():
                         conn.commit()
                     print(f'[MIGRATE] Added {table}.{column}')
 
+        # -- reporting_template (legacy — keep columns for migration) --
         _add_col_if_missing('reporting_template', 'pacs_report_text', 'pacs_report_text TEXT')
         _add_col_if_missing('reporting_template', 'is_ai_generated', 'is_ai_generated BOOLEAN DEFAULT false NOT NULL')
         _add_col_if_missing('reporting_template', 'verified_by_user_id', 'verified_by_user_id INTEGER')
         _add_col_if_missing('reporting_template', 'verified_at', 'verified_at TIMESTAMP')
+
+        # -- Migrate legacy reporting_template → new tables --
+        _migrate_reporting_templates_if_needed()
+
+        # -- clinical_protocol --
+        _add_col_if_missing('clinical_protocol', 'body_section', 'body_section VARCHAR(100)')
+        _add_col_if_missing('clinical_protocol', 'source_url', 'source_url VARCHAR(1000)')
+        _add_col_if_missing('clinical_protocol', 'is_published', 'is_published BOOLEAN DEFAULT false NOT NULL')
+        _add_col_if_missing('clinical_protocol', 'verified_by_user_id', 'verified_by_user_id INTEGER')
+        _add_col_if_missing('clinical_protocol', 'verified_at', 'verified_at TIMESTAMP')
+        _add_col_if_missing('clinical_protocol', 'created_by_user_id', 'created_by_user_id INTEGER')
+        _add_col_if_missing('clinical_protocol', 'updated_at', 'updated_at TIMESTAMP')
+
+        # -- incidental_finding_calculator --
+        _add_col_if_missing('incidental_finding_calculator', 'body_section', 'body_section VARCHAR(100)')
+        _add_col_if_missing('incidental_finding_calculator', 'category', 'category VARCHAR(100)')
+        _add_col_if_missing('incidental_finding_calculator', 'description', 'description VARCHAR(500)')
+        _add_col_if_missing('incidental_finding_calculator', 'algorithm_html', 'algorithm_html TEXT')
+        _add_col_if_missing('incidental_finding_calculator', 'guideline_url', 'guideline_url VARCHAR(1000)')
+        _add_col_if_missing('incidental_finding_calculator', 'verified_by_user_id', 'verified_by_user_id INTEGER')
+        _add_col_if_missing('incidental_finding_calculator', 'verified_at', 'verified_at TIMESTAMP')
+        _add_col_if_missing('incidental_finding_calculator', 'created_by_user_id', 'created_by_user_id INTEGER')
+        _add_col_if_missing('incidental_finding_calculator', 'last_edit_note', 'last_edit_note VARCHAR(500)')
+
+        # -- reporting_session --
+        _add_col_if_missing('reporting_session', 'ask_claude_count', 'ask_claude_count INTEGER DEFAULT 0')
+        _add_col_if_missing('reporting_session', 'updated_at', 'updated_at TIMESTAMP')
+
+        # -- published_report --
+        _add_col_if_missing('published_report', 'algorithm_tree_json', 'algorithm_tree_json TEXT')
 
         # Auto-seed AJCC body sections and disease sites if not present
         _seed_ajcc_data_if_needed()
