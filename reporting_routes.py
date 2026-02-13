@@ -948,9 +948,9 @@ def create_reporting_template():
 @reporting_bp.route('/admin/reporting-algorithms/api/<int:template_id>', methods=['GET'])
 @require_admin
 def get_reporting_template(template_id):
-    """API: Get a single reporting template."""
+    """API: Get a single reporting template (includes HTML for admin edit/preview)."""
     template = ReportingAlgorithm.query.get_or_404(template_id)
-    return jsonify(template.to_dict())
+    return jsonify(template.to_dict(include_html=True))
 
 
 @reporting_bp.route('/admin/reporting-algorithms/api/<int:template_id>/verify', methods=['POST'])

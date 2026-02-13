@@ -2688,8 +2688,8 @@ class ReportingAlgorithm(db.Model):
     verified_by = db.relationship('User', foreign_keys=[verified_by_user_id], backref='verified_reporting_algorithms', lazy=True)
     created_by = db.relationship('User', foreign_keys=[created_by_user_id], backref='created_reporting_algorithms', lazy=True)
 
-    def to_dict(self):
-        return {
+    def to_dict(self, include_html=False):
+        d = {
             'id': self.id, 'slug': self.slug, 'title': self.title,
             'origin': self.origin, 'category': self.category,
             'body_section': self.body_section, 'description': self.description,
@@ -2702,6 +2702,10 @@ class ReportingAlgorithm(db.Model):
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
         }
+        if include_html:
+            d['template_html'] = self.template_html
+            d['algorithm_html'] = self.algorithm_html
+        return d
 
     def __repr__(self):
         return f'<ReportingAlgorithm {self.slug}: {self.title}>'
