@@ -256,7 +256,7 @@ function generateTemplate() {
 
     var resources = collectResources('gen');
 
-    fetch('/admin/reporting-templates/generate', {
+    fetch('/admin/reporting-algorithms/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -286,7 +286,7 @@ function generateTemplate() {
 }
 
 function editTemplate(id) {
-    fetch('/admin/reporting-templates/api/' + id)
+    fetch('/admin/reporting-algorithms/api/' + id)
         .then(function(r) { return r.json(); })
         .then(function(data) {
             document.getElementById('editTemplateId').value = data.id;
@@ -307,7 +307,7 @@ function saveEditTemplate() {
     var id = document.getElementById('editTemplateId').value;
     var resources = collectResources('edit');
 
-    fetch('/admin/reporting-templates/api/' + id, {
+    fetch('/admin/reporting-algorithms/api/' + id, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -331,7 +331,7 @@ function saveEditTemplate() {
 
 function verifyTemplate(id) {
     if (!confirm('Verify and publish this template?')) return;
-    fetch('/admin/reporting-templates/api/' + id + '/verify', { method: 'POST' })
+    fetch('/admin/reporting-algorithms/api/' + id + '/verify', { method: 'POST' })
         .then(function(r) { return r.json(); })
         .then(function(data) {
             if (data.error) { alert(data.error); return; }
@@ -341,7 +341,7 @@ function verifyTemplate(id) {
 
 function deleteTemplate(id, title) {
     if (!confirm('Delete template "' + title + '"?')) return;
-    fetch('/admin/reporting-templates/api/' + id, { method: 'DELETE' })
+    fetch('/admin/reporting-algorithms/api/' + id, { method: 'DELETE' })
         .then(function(r) { return r.json(); })
         .then(function() { location.reload(); });
 }

@@ -46,7 +46,7 @@ SKIP_ROUTE_PREFIXES = (
     '/api/backup',
     '/on-call-helper/admin/',
     '/incidental-findings/admin/',
-    '/admin/reporting-templates/',
+    '/admin/reporting-algorithms/',
 )
 
 

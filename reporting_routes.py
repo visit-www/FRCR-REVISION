@@ -841,12 +841,12 @@ def embed_reporting_template(slug):
         return "Template content not available", 404
 
 
-# ==================== USER: REPORTING TEMPLATES BROWSE ====================
+# ==================== USER: REPORTING ALGORITHMS BROWSE ====================
 
-@reporting_bp.route('/reporting-templates')
+@reporting_bp.route('/reporting-algorithms')
 @login_required
-def browse_reporting_templates():
-    """User-facing browse page for all available reporting templates."""
+def browse_reporting_algorithms():
+    """User-facing browse page for reporting algorithms (interactive decision trees)."""
     templates = ReportingAlgorithm.query.filter_by(
         is_available=True
     ).order_by(
@@ -860,13 +860,20 @@ def browse_reporting_templates():
             continue  # Skip cached entries, show only curated
         grouped.setdefault(cat, []).append(t)
 
-    # Radiology templates now come from RadiologyTemplate model
+    return render_template('reporting_algorithms_browse.html', grouped=grouped)
+
+
+# ==================== USER: RADIOLOGY TEMPLATES BROWSE ====================
+
+@reporting_bp.route('/reporting-templates')
+@login_required
+def browse_reporting_templates():
+    """User-facing browse page for radiology templates (plain-text PACS reports)."""
     radiology_templates = RadiologyTemplate.query.filter_by(
         origin='admin', is_available=True
     ).order_by(RadiologyTemplate.title).all()
 
     return render_template('reporting_templates_browse.html',
-                           grouped=grouped,
                            radiology_templates=radiology_templates)
 
 
@@ -883,12 +890,12 @@ def get_radiology_template_text(template_id):
     })
 
 
-# ==================== ADMIN: REPORTING TEMPLATE MANAGEMENT ====================
+# ==================== ADMIN: REPORTING ALGORITHM MANAGEMENT ====================
 
-@reporting_bp.route('/admin/reporting-templates')
+@reporting_bp.route('/admin/reporting-algorithms')
 @require_admin
-def admin_reporting_templates():
-    """Admin page for managing reporting algorithm templates (excludes radiology templates and caches)."""
+def admin_reporting_algorithms():
+    """Admin page for managing reporting algorithms (interactive decision trees)."""
     templates = ReportingAlgorithm.query.filter_by(
         origin='admin'
     ).order_by(
@@ -899,7 +906,7 @@ def admin_reporting_templates():
                            cloudinary_upload_preset=os.environ.get('CLOUDINARY_UPLOAD_PRESET', ''))
 
 
-@reporting_bp.route('/admin/reporting-templates/api', methods=['POST'])
+@reporting_bp.route('/admin/reporting-algorithms/api', methods=['POST'])
 @require_admin
 def create_reporting_template():
     """API: Create a new reporting template."""
@@ -940,7 +947,7 @@ def create_reporting_template():
     return jsonify(template.to_dict()), 201
 
 
-@reporting_bp.route('/admin/reporting-templates/api/<int:template_id>', methods=['GET'])
+@reporting_bp.route('/admin/reporting-algorithms/api/<int:template_id>', methods=['GET'])
 @require_admin
 def get_reporting_template(template_id):
     """API: Get a single reporting template."""
@@ -948,7 +955,7 @@ def get_reporting_template(template_id):
     return jsonify(template.to_dict())
 
 
-@reporting_bp.route('/admin/reporting-templates/api/<int:template_id>/verify', methods=['POST'])
+@reporting_bp.route('/admin/reporting-algorithms/api/<int:template_id>/verify', methods=['POST'])
 @require_admin
 def verify_reporting_template(template_id):
     """API: Verify and publish a reporting template."""
@@ -960,7 +967,7 @@ def verify_reporting_template(template_id):
     return jsonify({'success': True, 'message': f'Template "{template.title}" verified and published.'})
 
 
-@reporting_bp.route('/admin/reporting-templates/api/<int:template_id>', methods=['PUT'])
+@reporting_bp.route('/admin/reporting-algorithms/api/<int:template_id>', methods=['PUT'])
 @require_admin
 def update_reporting_template(template_id):
     """API: Update a reporting template."""
@@ -984,7 +991,7 @@ def update_reporting_template(template_id):
     return jsonify(template.to_dict())
 
 
-@reporting_bp.route('/admin/reporting-templates/api/<int:template_id>', methods=['DELETE'])
+@reporting_bp.route('/admin/reporting-algorithms/api/<int:template_id>', methods=['DELETE'])
 @require_admin
 def delete_reporting_template(template_id):
     """API: Delete a reporting template."""
@@ -995,7 +1002,7 @@ def delete_reporting_template(template_id):
     return jsonify({'success': True, 'message': f'Template "{title}" deleted.'})
 
 
-@reporting_bp.route('/admin/reporting-templates/generate', methods=['POST'])
+@reporting_bp.route('/admin/reporting-algorithms/generate', methods=['POST'])
 @require_admin
 def generate_reporting_template():
     """API: Generate a reporting template using Claude (mirrors TNM generator pattern)."""

@@ -3,7 +3,7 @@
 {% block mobile_active_templates %}active{% endblock %}
 
 {% block mobile_breadcrumb %}
-<li class="breadcrumb-item active text-white-50">Reporting Templates</li>
+<li class="breadcrumb-item active text-white-50">Radiology Templates</li>
 {% endblock %}
 
 {% block content %}
@@ -13,8 +13,8 @@
             <!-- Header -->
             <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
                 <div>
-                    <h4 class="mb-1"><i class="fas fa-clipboard-list me-2" style="color: #5E899E;"></i>Reporting Templates</h4>
-                    <small class="text-muted">Structured reporting decision trees for systematic scan reading</small>
+                    <h4 class="mb-1"><i class="fas fa-file-alt me-2" style="color: #5E899E;"></i>Radiology Templates</h4>
+                    <small class="text-muted">Plain-text report templates ready to copy into PACS</small>
                 </div>
                 <a href="/smart-reporter" class="btn btn-sm btn-brand-primary">
                     <i class="fas fa-file-medical me-1"></i>Open Smart Reporter
@@ -31,82 +31,37 @@
                 </div>
             </div>
 
-            <!-- Templates grouped by category -->
-            {% for category, templates in grouped.items() %}
-            <div class="template-category-group mb-4" data-category="{{ category }}">
-                <h6 class="text-uppercase fw-semibold text-muted mb-3" style="font-size: 0.8rem; letter-spacing: 0.5px;">
-                    <span class="badge" style="background: #5E899E;">{{ category }}</span>
-                    <small class="ms-1">({{ templates|length }})</small>
-                </h6>
-                <div class="row g-3">
-                    {% for t in templates %}
-                    <div class="col-12 col-md-6 col-lg-4 template-card-wrapper" data-title="{{ t.title|lower }}" data-keywords="{{ (t.keywords or '')|lower }}">
-                        <a href="/reporting-template/{{ t.slug }}" class="text-decoration-none">
-                            <div class="card border-0 shadow-sm h-100" style="transition: transform 0.15s;">
-                                <div class="card-body p-3">
-                                    <div class="d-flex justify-content-between align-items-start mb-2">
-                                        <h6 class="card-title mb-0" style="color: #333; font-size: 0.95rem;">{{ t.title }}</h6>
-                                        {% if t.verified_at %}
-                                        <span class="badge bg-success" style="font-size: 0.6rem;">Verified</span>
-                                        {% endif %}
-                                    </div>
-                                    {% if t.body_section %}
-                                    <small class="badge bg-light text-dark border mb-2">{{ t.body_section }}</small>
-                                    {% endif %}
-                                    {% if t.description %}
-                                    <p class="card-text text-muted mb-0" style="font-size: 0.8rem; line-height: 1.4;">
-                                        {{ t.description[:120] }}{% if t.description|length > 120 %}...{% endif %}
-                                    </p>
-                                    {% endif %}
-                                </div>
-                            </div>
-                        </a>
-                    </div>
-                    {% endfor %}
-                </div>
-            </div>
-            {% endfor %}
-
-            {% if not grouped and not radiology_templates %}
-            <div class="text-center py-5 text-muted">
-                <i class="fas fa-clipboard-list" style="font-size: 3rem; opacity: 0.3;"></i>
-                <p class="mt-3">No reporting templates available yet.</p>
-            </div>
-            {% endif %}
-
-            <!-- Radiology Templates (plain-text PACS-ready) -->
+            <!-- Radiology Templates -->
             {% if radiology_templates %}
-            <div class="mb-4 mt-4">
-                <div class="d-flex align-items-center mb-3">
-                    <h5 class="mb-0"><i class="fas fa-file-alt me-2" style="color: #5E899E;"></i>PACS Report Templates</h5>
-                    <small class="text-muted ms-2">({{ radiology_templates|length }})</small>
-                </div>
-                <p class="text-muted small mb-3">Plain-text report templates ready to copy into PACS. Click a template to preview and copy.</p>
-                <div class="row g-3">
-                    {% for t in radiology_templates %}
-                    <div class="col-12 col-md-6 col-lg-4 template-card-wrapper" data-title="{{ t.title|lower }}" data-keywords="{{ (t.keywords or '')|lower }}">
-                        <div class="card border-0 shadow-sm h-100" style="cursor: pointer; transition: transform 0.15s;"
-                             onclick="showRadTemplate({{ t.id }}, '{{ t.title|e }}')">
-                            <div class="card-body p-3">
-                                <div class="d-flex justify-content-between align-items-start mb-2">
-                                    <h6 class="card-title mb-0" style="color: #333; font-size: 0.95rem;">{{ t.title }}</h6>
-                                    {% if t.verified_at %}
-                                    <span class="badge bg-success" style="font-size: 0.6rem;">Verified</span>
-                                    {% endif %}
-                                </div>
-                                {% if t.body_section %}
-                                <small class="badge bg-light text-dark border mb-2">{{ t.body_section }}</small>
-                                {% endif %}
-                                {% if t.description %}
-                                <p class="card-text text-muted mb-0" style="font-size: 0.8rem; line-height: 1.4;">
-                                    {{ t.description[:120] }}{% if t.description|length > 120 %}...{% endif %}
-                                </p>
+            <div class="row g-3">
+                {% for t in radiology_templates %}
+                <div class="col-12 col-md-6 col-lg-4 template-card-wrapper" data-title="{{ t.title|lower }}" data-keywords="{{ (t.keywords or '')|lower }}">
+                    <div class="card border-0 shadow-sm h-100" style="cursor: pointer; transition: transform 0.15s;"
+                         onclick="showRadTemplate({{ t.id }}, '{{ t.title|e }}')">
+                        <div class="card-body p-3">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <h6 class="card-title mb-0" style="color: #333; font-size: 0.95rem;">{{ t.title }}</h6>
+                                {% if t.verified_at %}
+                                <span class="badge bg-success" style="font-size: 0.6rem;">Verified</span>
                                 {% endif %}
                             </div>
+                            {% if t.body_section %}
+                            <small class="badge bg-light text-dark border mb-2">{{ t.body_section }}</small>
+                            {% endif %}
+                            {% if t.description %}
+                            <p class="card-text text-muted mb-0" style="font-size: 0.8rem; line-height: 1.4;">
+                                {{ t.description[:120] }}{% if t.description|length > 120 %}...{% endif %}
+                            </p>
+                            {% endif %}
                         </div>
                     </div>
-                    {% endfor %}
                 </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-5 text-muted">
+                <i class="fas fa-file-alt" style="font-size: 3rem; opacity: 0.3;"></i>
+                <p class="mt-3">No radiology templates available yet.</p>
             </div>
             {% endif %}
         </div>
@@ -146,11 +101,6 @@ function filterTemplates(query) {
         const keywords = card.dataset.keywords || '';
         const match = !query || title.includes(query) || keywords.includes(query);
         card.style.display = match ? '' : 'none';
-    });
-    // Hide empty category groups
-    document.querySelectorAll('.template-category-group').forEach(group => {
-        const visibleCards = group.querySelectorAll('.template-card-wrapper[style=""], .template-card-wrapper:not([style])');
-        group.style.display = visibleCards.length > 0 ? '' : 'none';
     });
 }
 

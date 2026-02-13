@@ -866,12 +866,6 @@ def essential_tnm_concepts():
     return render_template('essential_tnm_concepts.html')
 
 
-@app.route('/reporting-algorithms')
-@login_required
-def reporting_algorithms():
-    """Reporting Algorithms - placeholder page"""
-    return render_template('reporting_algorithms.html')
-
 
 @app.route('/cv')
 def cv():
