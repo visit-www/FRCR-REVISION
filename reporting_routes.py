@@ -870,7 +870,7 @@ def browse_reporting_algorithms():
 def browse_reporting_templates():
     """User-facing browse page for radiology templates (plain-text PACS reports)."""
     radiology_templates = RadiologyTemplate.query.filter_by(
-        origin='admin', is_available=True
+        is_available=True
     ).order_by(RadiologyTemplate.title).all()
 
     return render_template('reporting_templates_browse.html',
