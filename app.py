@@ -672,6 +672,20 @@ with app.app_context():
         # -- Migrate legacy reporting_template → new tables --
         _migrate_reporting_templates_if_needed()
 
+        # -- Widen String(500) columns to TEXT on both new tables --
+        def _widen_col_to_text(table, column):
+            """ALTER VARCHAR(500) → TEXT. Idempotent on PostgreSQL (safe to re-run)."""
+            try:
+                db.session.execute(db.text(
+                    f'ALTER TABLE "{table}" ALTER COLUMN {column} TYPE TEXT'
+                ))
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+        for _tbl in ['radiology_template', 'reporting_algorithm']:
+            for _col in ['description', 'source_citation', 'last_edit_note']:
+                _widen_col_to_text(_tbl, _col)
+
         # -- clinical_protocol --
         _add_col_if_missing('clinical_protocol', 'body_section', 'body_section VARCHAR(100)')
         _add_col_if_missing('clinical_protocol', 'source_url', 'source_url VARCHAR(1000)')
