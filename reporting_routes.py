@@ -896,9 +896,7 @@ def get_radiology_template_text(template_id):
 @require_admin
 def admin_reporting_algorithms():
     """Admin page for managing reporting algorithms (interactive decision trees)."""
-    templates = ReportingAlgorithm.query.filter_by(
-        origin='admin'
-    ).order_by(
+    templates = ReportingAlgorithm.query.order_by(
         ReportingAlgorithm.category, ReportingAlgorithm.title
     ).all()
     return render_template('admin_reporting_algorithms.html', templates=templates,
@@ -1039,9 +1037,9 @@ def generate_reporting_template():
 @require_admin
 def admin_radiology_templates():
     """Admin page for managing plain-text radiology report templates."""
-    templates = RadiologyTemplate.query.filter(
-        RadiologyTemplate.origin == 'admin'
-    ).order_by(RadiologyTemplate.created_at.desc()).all()
+    templates = RadiologyTemplate.query.order_by(
+        RadiologyTemplate.created_at.desc()
+    ).all()
     return render_template('admin_radiology_templates.html', templates=templates,
                            cloudinary_cloud_name=os.environ.get('CLOUDINARY_CLOUD_NAME', ''),
                            cloudinary_upload_preset=os.environ.get('CLOUDINARY_UPLOAD_PRESET', ''))

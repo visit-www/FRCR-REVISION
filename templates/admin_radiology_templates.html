@@ -30,19 +30,20 @@
                     <p class="text-muted mb-0">Plain-text PACS-ready report templates for common clinical scenarios</p>
                 </div>
                 <div class="d-flex gap-2">
-                    <button class="btn btn-brand-primary" data-bs-toggle="modal" data-bs-target="#generateModal">
+                    <button class="btn btn-brand-neutral" data-bs-toggle="modal" data-bs-target="#generateModal">
                         <i class="fas fa-magic me-1"></i>Generate New
                     </button>
                 </div>
             </div>
 
             <!-- Templates List -->
-            <div class="card shadow-sm border-0">
+            <div class="card shadow-sm border-0" style="border-top: 3px solid #5E899E !important;">
                 <div class="table-responsive">
                     <table class="table table-hover mb-0">
-                        <thead class="table-light">
+                        <thead style="background: #e8f2f6;">
                             <tr>
                                 <th>Title</th>
+                                <th>Origin</th>
                                 <th>Body Section</th>
                                 <th>Status</th>
                                 <th>Actions</th>
@@ -54,6 +55,15 @@
                                 <td>
                                     <div class="fw-semibold">{{ t.title }}</div>
                                     <small class="text-muted">{{ t.description or t.slug }}</small>
+                                </td>
+                                <td>
+                                    {% if t.origin == 'admin' %}
+                                    <span class="badge" style="background: #5E899E;">Admin</span>
+                                    {% elif t.origin == 'personal' %}
+                                    <span class="badge bg-info">Personal</span>
+                                    {% else %}
+                                    <span class="badge bg-light text-dark border">{{ t.origin }}</span>
+                                    {% endif %}
                                 </td>
                                 <td>{{ t.body_section or '—' }}</td>
                                 <td>
@@ -88,7 +98,7 @@
                             {% endfor %}
                             {% if not templates %}
                             <tr>
-                                <td colspan="4" class="text-center py-4 text-muted">
+                                <td colspan="5" class="text-center py-4 text-muted">
                                     No radiology templates yet. Click "Generate New" to create one.
                                 </td>
                             </tr>

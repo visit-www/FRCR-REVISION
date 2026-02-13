@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
-{% block tool_active_templates %}active{% endblock %}
-{% block mobile_active_templates %}active{% endblock %}
+{% block tool_active_algorithms %}active{% endblock %}
+{% block mobile_active_algorithms %}active{% endblock %}
 {% from 'partials/resource_fields.html' import resource_fields, resource_styles %}
 
 {% block mobile_breadcrumb %}
@@ -40,16 +40,16 @@
                 </div>
             </div>
 
-            <!-- Templates List -->
-            <div class="card shadow-sm border-0">
+            <!-- Algorithms List -->
+            <div class="card shadow-sm border-0" style="border-top: 3px solid #e96304 !important;">
                 <div class="table-responsive">
                     <table class="table table-hover mb-0">
-                        <thead class="table-light">
+                        <thead style="background: #fff3e8;">
                             <tr>
                                 <th>Title</th>
                                 <th>Category</th>
+                                <th>Origin</th>
                                 <th>Body Section</th>
-                                <th>Source</th>
                                 <th>Status</th>
                                 <th>Actions</th>
                             </tr>
@@ -62,8 +62,20 @@
                                     <small class="text-muted">{{ t.slug }}</small>
                                 </td>
                                 <td><span class="badge bg-light text-dark border">{{ t.category }}</span></td>
+                                <td>
+                                    {% if t.origin == 'admin' %}
+                                    <span class="badge" style="background: #e96304;">Admin</span>
+                                    {% elif t.origin == 'smart_reporter_cache' %}
+                                    <span class="badge bg-info">Smart Reporter</span>
+                                    {% elif t.origin == 'ai_generated' %}
+                                    <span class="badge bg-secondary">AI Generated</span>
+                                    {% elif t.origin == 'anatomy_cache' %}
+                                    <span class="badge bg-secondary">Anatomy</span>
+                                    {% else %}
+                                    <span class="badge bg-light text-dark border">{{ t.origin }}</span>
+                                    {% endif %}
+                                </td>
                                 <td>{{ t.body_section or '—' }}</td>
-                                <td><small>{{ t.source_citation or '—' }}</small></td>
                                 <td>
                                     {% if t.is_available %}
                                     <span class="badge bg-success"><i class="fas fa-check me-1"></i>Available</span>
@@ -119,7 +131,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">
-                    <i class="fas fa-magic"></i> Generate Reporting Template
+                    <i class="fas fa-magic"></i> Generate Reporting Algorithm
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>

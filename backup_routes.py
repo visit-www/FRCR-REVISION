@@ -3378,7 +3378,7 @@ def restore_backup():
         # Final commit for new tables
         try:
             db.session.commit()
-            print(f"[IMPORT] New tables imported: {stats.get('related_cases_links', {}).get('added', 0)} related links, {stats.get('case_audit_logs', {}).get('added', 0)} audit logs, {stats.get('case_view_logs', {}).get('added', 0)} view logs, {stats.get('user_qa_progress', {}).get('added', 0)} QA progress, {stats.get('ai_diagnosis_cache', {}).get('added', 0)} AI cache, {stats.get('clinical_protocols', {}).get('added', 0)} protocols, {stats.get('reporting_templates', {}).get('added', 0)} reporting templates, {stats.get('incidental_finding_calculators', {}).get('added', 0)} IF calculators")
+            print(f"[IMPORT] New tables imported: {stats.get('related_cases_links', {}).get('added', 0)} related links, {stats.get('case_audit_logs', {}).get('added', 0)} audit logs, {stats.get('case_view_logs', {}).get('added', 0)} view logs, {stats.get('user_qa_progress', {}).get('added', 0)} QA progress, {stats.get('ai_diagnosis_cache', {}).get('added', 0)} AI cache, {stats.get('clinical_protocols', {}).get('added', 0)} protocols, {stats.get('radiology_templates', {}).get('added', 0)} radiology templates, {stats.get('reporting_algorithms', {}).get('added', 0)} reporting algorithms, {stats.get('incidental_finding_calculators', {}).get('added', 0)} IF calculators")
         except Exception as new_tables_error:
             db.session.rollback()
             print(f"[IMPORT] ERROR during new tables commit: {new_tables_error}")
