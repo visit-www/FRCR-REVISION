@@ -41,6 +41,22 @@ import uuid
 
 backup_bp = Blueprint('backup', __name__, url_prefix='/api/backup')
 
+
+def _sanitize_backup_data(backup_data):
+    """Convert dict values and non-nested list values to JSON strings for SQLite compat.
+    PostgreSQL Text columns silently accept Python dicts; SQLite does not.
+    Skips lists-of-dicts (nested records) and lists-of-ints (ID arrays) which
+    are processed by import logic, not stored directly in Text columns.
+    Must run AFTER json.loads() but BEFORE any import loops."""
+    for key, records in backup_data.items():
+        if isinstance(records, list):
+            for record in records:
+                if isinstance(record, dict):
+                    for field, val in record.items():
+                        if isinstance(val, dict):
+                            record[field] = json.dumps(val)
+
+
 def check_admin():
     """Check if current user is admin (Content Managers do NOT have backup access)"""
     try:
@@ -885,7 +901,10 @@ def restore_backup():
         # Validate backup structure
         if 'metadata' not in backup_data:
             return jsonify({'error': 'Invalid backup file format: missing metadata'}), 400
-        
+
+        # Sanitize all records: convert dict/list values to JSON strings (SQLite compat)
+        _sanitize_backup_data(backup_data)
+
         # Detect source system (FRCR Examiner vs FRCR Revision)
         metadata = backup_data.get('metadata', {})
         app_name = metadata.get('app_name', '').upper()
@@ -2700,6 +2719,7 @@ def restore_backup():
                 continue
             new_user_id = user_id_map.get(stack_data.get('created_by_user_id')) if stack_data.get('created_by_user_id') else None
             old_stack_id = stack_data.get('id')
+
             stack = CaseImageStack(
                 case_id=new_case_id,
                 study_label=stack_data.get('study_label'),
