@@ -16,9 +16,16 @@
                     <h4 class="mb-1"><i class="fas fa-project-diagram me-2" style="color: #5E899E;"></i>Reporting Algorithms</h4>
                     <small class="text-muted">Structured decision-tree algorithms for systematic scan reading</small>
                 </div>
-                <a href="/smart-reporter" class="btn btn-sm btn-brand-primary">
-                    <i class="fas fa-file-medical me-1"></i>Open Smart Reporter
-                </a>
+                <div class="d-flex gap-2">
+                    <a href="/smart-reporter" class="btn btn-sm btn-brand-primary">
+                        <i class="fas fa-file-medical me-1"></i>Open Smart Reporter
+                    </a>
+                    {% if current_user.is_authenticated and current_user.role and current_user.role.value == 'admin' %}
+                    <a href="/admin/reporting-algorithms" class="btn btn-sm btn-brand-neutral">
+                        <i class="fas fa-cog me-1"></i>Manage
+                    </a>
+                    {% endif %}
+                </div>
             </div>
 
             <!-- Search -->

@@ -901,7 +901,7 @@ def admin_reporting_algorithms():
     ).order_by(
         ReportingAlgorithm.category, ReportingAlgorithm.title
     ).all()
-    return render_template('admin_reporting_templates.html', templates=templates,
+    return render_template('admin_reporting_algorithms.html', templates=templates,
                            cloudinary_cloud_name=os.environ.get('CLOUDINARY_CLOUD_NAME', ''),
                            cloudinary_upload_preset=os.environ.get('CLOUDINARY_UPLOAD_PRESET', ''))
 
@@ -1042,7 +1042,9 @@ def admin_radiology_templates():
     templates = RadiologyTemplate.query.filter(
         RadiologyTemplate.origin == 'admin'
     ).order_by(RadiologyTemplate.created_at.desc()).all()
-    return render_template('admin_radiology_templates.html', templates=templates)
+    return render_template('admin_radiology_templates.html', templates=templates,
+                           cloudinary_cloud_name=os.environ.get('CLOUDINARY_CLOUD_NAME', ''),
+                           cloudinary_upload_preset=os.environ.get('CLOUDINARY_UPLOAD_PRESET', ''))
 
 
 @reporting_bp.route('/admin/radiology-templates/generate', methods=['POST'])

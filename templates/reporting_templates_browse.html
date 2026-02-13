@@ -16,9 +16,16 @@
                     <h4 class="mb-1"><i class="fas fa-file-alt me-2" style="color: #5E899E;"></i>Radiology Templates</h4>
                     <small class="text-muted">Plain-text report templates ready to copy into PACS</small>
                 </div>
-                <a href="/smart-reporter" class="btn btn-sm btn-brand-primary">
-                    <i class="fas fa-file-medical me-1"></i>Open Smart Reporter
-                </a>
+                <div class="d-flex gap-2">
+                    <a href="/smart-reporter" class="btn btn-sm btn-brand-primary">
+                        <i class="fas fa-file-medical me-1"></i>Open Smart Reporter
+                    </a>
+                    {% if current_user.is_authenticated and current_user.role and current_user.role.value == 'admin' %}
+                    <a href="/admin/radiology-templates" class="btn btn-sm btn-brand-neutral">
+                        <i class="fas fa-cog me-1"></i>Manage
+                    </a>
+                    {% endif %}
+                </div>
             </div>
 
             <!-- Search -->
