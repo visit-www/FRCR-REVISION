@@ -166,7 +166,7 @@
                     <small class="text-muted">
                         <i class="fas fa-shield-alt me-1" style="color: #e96304;"></i>
                         <strong>Clinical Decision Support Tool</strong> &mdash;
-                        AI-generated content requires clinical verification. Do not use as the sole basis for clinical decisions.
+                        Generated content requires clinical verification. Do not use as the sole basis for clinical decisions.
                         Verify against current guidelines and institutional protocols. Do not enter patient-identifiable information.
                     </small>
                 </div>
@@ -373,7 +373,7 @@
                             </div>
                             <div class="card-body p-3">
                                 <textarea class="form-control" id="editorInput" rows="12"
-                                          placeholder="Type or paste your draft report here...&#10;&#10;You can include headings like INDICATION:, TECHNIQUE:, FINDINGS:, IMPRESSION: etc.&#10;Or just write free text — Claude will understand either way."
+                                          placeholder="Type or paste your draft report here...&#10;&#10;You can include headings like INDICATION:, TECHNIQUE:, FINDINGS:, IMPRESSION: etc.&#10;Or just write free text — RadInsight Intelligence will understand either way."
                                           style="font-family: 'Courier New', monospace; font-size: 0.9rem; line-height: 1.6;"></textarea>
                             </div>
                         </div>
@@ -427,7 +427,7 @@
                         </div>
                     </div>
 
-                    <!-- Right column: Quick Check Suggestions + AI Assistant -->
+                    <!-- Right column: Quick Check Suggestions + RadInsight Intelligence -->
                     <div class="col-lg-5">
                         <!-- Quick Check Suggestions Panel (shown after Quick Check) -->
                         <div id="suggestionsPanel" class="d-none mb-3">
@@ -455,11 +455,11 @@
                             </div>
                         </div>
 
-                        <!-- AI Assistant Panel -->
+                        <!-- RadInsight Intelligence Panel -->
                         <div class="card border-0 shadow-sm mb-3">
                             <div class="card-header bg-white border-0 py-2">
                                 <div class="d-flex justify-content-between align-items-center">
-                                    <small class="fw-semibold"><i class="fas fa-user-md me-1" style="color: #e96304;"></i>AI Assistant</small>
+                                    <small class="fw-semibold"><i class="fas fa-user-md me-1" style="color: #e96304;"></i>RadInsight Intelligence</small>
                                     <small class="text-muted" id="askClaudeCounter"></small>
                                 </div>
                             </div>
@@ -582,7 +582,7 @@
                                     </div>
                                 </div>
 
-                                <!-- Legacy Ask Claude Response (kept for backward compat) -->
+                                <!-- Legacy Ask RadInsight Response (kept for backward compat) -->
                                 <div id="askClaudeResponse" class="d-none mb-3">
                                     <div class="p-3 rounded" style="background: #f8f9fa; border: 1px solid #e9ecef;">
                                         <pre id="askClaudeAnswer" class="mb-2" style="white-space: pre-wrap; font-family: 'Courier New', monospace; font-size: 0.85rem; line-height: 1.4;"></pre>
@@ -697,7 +697,7 @@
                     <small class="text-muted">
                         <i class="fas fa-shield-alt me-1" style="color: #e96304;"></i>
                         <strong>Clinical Decision Support Tool</strong> &mdash;
-                        This is an AI-generated draft. Review and edit against actual imaging before signing.
+                        This is a generated draft. Review and edit against actual imaging before signing.
                     </small>
                 </div>
             </div>
@@ -723,7 +723,7 @@ document.addEventListener('DOMContentLoaded', function() {
         inputText: '',          // User's draft report text
         outputText: '',         // Final report with accepted suggestions applied
         suggestions: [],        // Array of {original, suggested, reason, type, status: 'pending'|'accepted'|'rejected'}
-        improvedReport: '',     // Claude's full improved report
+        improvedReport: '',     // AI's full improved report
         // Legacy — kept for compatibility with report assembly from Scene 1
         reportSections: {
             indication: '',
@@ -1491,7 +1491,7 @@ document.addEventListener('DOMContentLoaded', function() {
             content.innerHTML = data.content_html || '<p class="text-muted">No anatomy content available.</p>';
             content.classList.remove('d-none');
 
-            var sourceText = data.source === 'database' ? 'From verified database' : 'AI-generated reference';
+            var sourceText = data.source === 'database' ? 'From verified database' : 'RadInsight Intelligence reference';
             if (data.model) sourceText += ' (' + data.model + ')';
             document.getElementById('anatomySourceText').textContent = sourceText;
             source.classList.remove('d-none');
@@ -1508,7 +1508,7 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     window.promptAndShowPanel = function(panelType) {
-        // Use the AI assistant input as a quick search, or use the clinical question
+        // Use the RadInsight input as a quick search, or use the clinical question
         var query = document.getElementById('askClaudeInput').value.trim();
         if (!query) {
             query = document.getElementById('inputClinicalQuestion') ?
@@ -1860,7 +1860,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     };
 
-    // ==================== ASK CLAUDE ====================
+    // ==================== ASK RADINSIGHT ====================
 
     window.askClaude = function() {
         const input = document.getElementById('askClaudeInput');
