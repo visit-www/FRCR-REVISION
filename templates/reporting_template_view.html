@@ -135,27 +135,6 @@
         </div>
     </div>
 </div>
-{% else %}
-<!-- Report actions bar for algorithms without PACS report -->
-<div class="container-fluid py-3">
-    <div class="row">
-        <div class="col-12">
-            <div class="card border-0 shadow-sm">
-                <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center py-3">
-                    <h5 class="mb-0"><i class="fas fa-file-medical me-2" style="color: #5E899E;"></i>Report Actions</h5>
-                    <div class="d-flex gap-2">
-                        <button class="btn btn-sm btn-outline-secondary" onclick="window.print()" title="Print">
-                            <i class="fas fa-print me-1"></i>Print
-                        </button>
-                        <button class="btn btn-sm btn-brand-primary" onclick="sendToSmartReporter()">
-                            <i class="fas fa-paper-plane me-1"></i>Edit in Smart Reporter
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
 {% endif %}
 
 <!-- AI Generated Badge -->
@@ -211,13 +190,82 @@
 
 {% block scripts %}
 <script>
-function sendToSmartReporter() {
+function sendToSmartReporter(textOverride) {
+    var text = textOverride || '';
     {% if template.pacs_report_text %}
-    // Store PACS report text for pre-filling the Smart Reporter editor
-    try { sessionStorage.setItem('smartReporterPrefill', document.getElementById('pacsReportText').textContent); } catch(e) {}
+    if (!text) {
+        try { text = document.getElementById('pacsReportText').textContent; } catch(e) {}
+    }
     {% endif %}
+    if (text) {
+        try { sessionStorage.setItem('smartReporterPrefill', text); } catch(e) {}
+    }
     window.location.href = '/smart-reporter?context=prefill&title=' + encodeURIComponent({{ template.title|tojson }});
 }
+
+// Inject "Edit in Smart Reporter" button into the generated algorithm's report button bar
+document.addEventListener('DOMContentLoaded', function() {
+    var wrapper = document.querySelector('.calculator-integrated-wrapper');
+    if (!wrapper) return;
+
+    // Find buttons with text like "Copy", "Print", "Clear" inside the generated content
+    var allBtns = wrapper.querySelectorAll('button');
+    var targetContainer = null;
+    var reportOutputEl = null;
+
+    for (var i = 0; i < allBtns.length; i++) {
+        var btnText = allBtns[i].textContent.toLowerCase();
+        if (btnText.indexOf('copy') !== -1 && btnText.indexOf('report') !== -1) {
+            targetContainer = allBtns[i].parentElement;
+            break;
+        }
+    }
+    // Fallback: look for any button group near a "copy" button
+    if (!targetContainer) {
+        for (var i = 0; i < allBtns.length; i++) {
+            if (allBtns[i].textContent.toLowerCase().indexOf('copy') !== -1) {
+                targetContainer = allBtns[i].parentElement;
+                break;
+            }
+        }
+    }
+
+    if (!targetContainer) return;
+
+    // Find the report output element (pre, textarea, or div with report content)
+    var candidates = wrapper.querySelectorAll('pre, textarea, [id*="report"], [id*="output"], [class*="report"], [class*="output"]');
+    for (var j = 0; j < candidates.length; j++) {
+        var el = candidates[j];
+        var txt = (el.value || el.textContent || '').trim();
+        if (txt.length > 30 && (txt.indexOf('FINDINGS') !== -1 || txt.indexOf('INDICATION') !== -1 || txt.indexOf('IMPRESSION') !== -1 || el.tagName === 'PRE' || el.tagName === 'TEXTAREA')) {
+            reportOutputEl = el;
+            break;
+        }
+    }
+
+    // Create and inject the Smart Reporter button
+    var srBtn = document.createElement('button');
+    srBtn.className = targetContainer.querySelector('button').className;
+    srBtn.style.cssText = 'background:#e96304;border-color:#e96304;color:#fff;';
+    srBtn.innerHTML = '<i class="fas fa-paper-plane" style="margin-right:4px;"></i>Smart Reporter';
+    srBtn.title = 'Send report to Smart Reporter editor';
+    srBtn.onclick = function() {
+        var text = '';
+        if (reportOutputEl) {
+            text = reportOutputEl.value || reportOutputEl.textContent || '';
+        }
+        // Fallback: scan all pre/textarea for report-like content
+        if (!text.trim()) {
+            var els = wrapper.querySelectorAll('pre, textarea');
+            for (var k = 0; k < els.length; k++) {
+                var t = els[k].value || els[k].textContent || '';
+                if (t.trim().length > 30) { text = t; break; }
+            }
+        }
+        sendToSmartReporter(text.trim());
+    };
+    targetContainer.appendChild(srBtn);
+});
 </script>
 {% if template.pacs_report_text %}
 <script>
