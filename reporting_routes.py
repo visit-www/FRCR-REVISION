@@ -853,13 +853,32 @@ def browse_reporting_templates():
     ).all()
 
     grouped = {}
+    radiology_templates = []
     for t in templates:
         cat = t.category or 'Other'
         if cat == 'smart_reporter_cache':
             continue  # Skip cached entries, show only curated
+        if cat == 'radiology_template':
+            radiology_templates.append(t)
+            continue
         grouped.setdefault(cat, []).append(t)
 
-    return render_template('reporting_templates_browse.html', grouped=grouped)
+    return render_template('reporting_templates_browse.html',
+                           grouped=grouped,
+                           radiology_templates=radiology_templates)
+
+
+@reporting_bp.route('/radiology-template/text/<int:template_id>')
+@login_required
+def get_radiology_template_text(template_id):
+    """User-facing endpoint to fetch radiology template text for preview/copy."""
+    t = ReportingTemplate.query.get_or_404(template_id)
+    if not t.is_available or t.category != 'radiology_template':
+        return jsonify({'error': 'Template not available'}), 404
+    return jsonify({
+        'title': t.title,
+        'pacs_report_text': t.pacs_report_text or '',
+    })
 
 
 # ==================== ADMIN: REPORTING TEMPLATE MANAGEMENT ====================
@@ -999,6 +1018,164 @@ def generate_reporting_template():
     except Exception as exc:
         logger.error(f"Reporting template generation failed: {exc}")
         return jsonify({'error': str(exc)}), 500
+
+
+# ==================== RADIOLOGY TEMPLATES (ADMIN) ====================
+
+
+@reporting_bp.route('/admin/radiology-templates')
+@require_admin
+def admin_radiology_templates():
+    """Admin page for managing plain-text radiology report templates."""
+    templates = ReportingTemplate.query.filter(
+        ReportingTemplate.category == 'radiology_template'
+    ).order_by(ReportingTemplate.created_at.desc()).all()
+    return render_template('admin_radiology_templates.html', templates=templates)
+
+
+@reporting_bp.route('/admin/radiology-templates/generate', methods=['POST'])
+@require_admin
+def generate_radiology_template_route():
+    """Generate a radiology report template via AI from clinical scenario."""
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'JSON body required.'}), 400
+
+    clinical_scenario = (data.get('clinical_scenario') or '').strip()
+    if not clinical_scenario:
+        return jsonify({'error': 'clinical_scenario is required.'}), 400
+
+    modality = (data.get('modality') or '').strip()
+    body_section = (data.get('body_section') or '').strip()
+
+    # Extract resources if provided
+    resources = None
+    source_citation = data.get('source_citation', '')
+    if source_citation:
+        try:
+            from clinical_tool_generator import format_resources_for_prompt
+            resources = {'raw_citation': source_citation}
+        except ImportError:
+            pass
+
+    try:
+        from ai_smart_reporter import generate_radiology_template
+        result = generate_radiology_template(
+            clinical_scenario=clinical_scenario,
+            modality=modality,
+            body_section=body_section,
+            resources=resources,
+        )
+    except Exception as exc:
+        logger.error(f"Radiology template generation failed: {exc}")
+        return jsonify({'error': str(exc)}), 500
+
+    # Save to DB
+    slug = re.sub(r'[^a-z0-9]+', '-', clinical_scenario.lower()).strip('-')
+    # Handle slug collisions
+    base_slug = slug
+    counter = 1
+    while ReportingTemplate.query.filter_by(slug=slug).first():
+        slug = f"{base_slug}-{counter}"
+        counter += 1
+
+    template = ReportingTemplate(
+        slug=slug,
+        title=clinical_scenario,
+        category='radiology_template',
+        body_section=body_section,
+        description=f"{modality} — {clinical_scenario}" if modality else clinical_scenario,
+        pacs_report_text=result['template_text'],
+        is_available=False,
+        is_ai_generated=True,
+        generation_model=result.get('model', ''),
+        generation_prompt=clinical_scenario,
+        generated_at=datetime.utcnow(),
+        created_by_user_id=current_user.id,
+    )
+    db.session.add(template)
+    db.session.commit()
+
+    return jsonify({
+        'success': True,
+        'id': template.id,
+        'slug': slug,
+        'message': f'Template "{clinical_scenario}" generated successfully.',
+    })
+
+
+@reporting_bp.route('/admin/radiology-templates/api/<int:template_id>', methods=['GET'])
+@require_admin
+def get_radiology_template(template_id):
+    """Fetch a single radiology template for editing."""
+    t = ReportingTemplate.query.get_or_404(template_id)
+    return jsonify({
+        'id': t.id,
+        'title': t.title,
+        'slug': t.slug,
+        'category': t.category,
+        'body_section': t.body_section or '',
+        'description': t.description or '',
+        'keywords': t.keywords or '',
+        'pacs_report_text': t.pacs_report_text or '',
+        'is_available': t.is_available,
+        'is_ai_generated': t.is_ai_generated,
+        'verified_at': t.verified_at.isoformat() if t.verified_at else None,
+        'created_at': t.created_at.isoformat() if t.created_at else None,
+    })
+
+
+@reporting_bp.route('/admin/radiology-templates/api/<int:template_id>', methods=['PUT'])
+@require_admin
+def update_radiology_template(template_id):
+    """Update a radiology template's text and metadata."""
+    t = ReportingTemplate.query.get_or_404(template_id)
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'JSON body required.'}), 400
+
+    if 'title' in data:
+        t.title = data['title'].strip()
+    if 'body_section' in data:
+        t.body_section = data['body_section'].strip()
+    if 'keywords' in data:
+        t.keywords = data['keywords'].strip()
+    if 'description' in data:
+        t.description = data['description'].strip()
+    if 'pacs_report_text' in data:
+        t.pacs_report_text = data['pacs_report_text']
+    if 'is_available' in data:
+        t.is_available = bool(data['is_available'])
+    if 'last_edit_note' in data:
+        t.last_edit_note = data['last_edit_note'].strip()
+
+    t.updated_at = datetime.utcnow()
+    db.session.commit()
+
+    return jsonify({'success': True, 'message': 'Template updated.'})
+
+
+@reporting_bp.route('/admin/radiology-templates/api/<int:template_id>/verify', methods=['POST'])
+@require_admin
+def verify_radiology_template(template_id):
+    """Verify and publish a radiology template."""
+    t = ReportingTemplate.query.get_or_404(template_id)
+    t.verified_by_user_id = current_user.id
+    t.verified_at = datetime.utcnow()
+    t.is_available = True
+    db.session.commit()
+    return jsonify({'success': True, 'message': f'Template "{t.title}" verified and published.'})
+
+
+@reporting_bp.route('/admin/radiology-templates/api/<int:template_id>', methods=['DELETE'])
+@require_admin
+def delete_radiology_template(template_id):
+    """Delete a radiology template."""
+    t = ReportingTemplate.query.get_or_404(template_id)
+    title = t.title
+    db.session.delete(t)
+    db.session.commit()
+    return jsonify({'success': True, 'message': f'Template "{title}" deleted.'})
 
 
 # ==================== SMART REPORTER ROUTES ====================

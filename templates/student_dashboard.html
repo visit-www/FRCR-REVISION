@@ -6,18 +6,18 @@
     <div class="row g-4">
         <!-- FEATURED: Balanced Revision Card -->
         <div class="col-lg-6">
-            <div class="card h-100 shadow-sm border-0 hover-card" 
+            <div class="card h-100 shadow-sm border-0 hover-card"
                  style="transition: transform 0.2s ease; cursor: pointer;"
                  onclick="window.location.href='/revision/start-balanced'">
                 <div class="card-body d-flex flex-column p-4">
                     <div class="mb-3 text-center">
-                        <i class="fas fa-shuffle" style="font-size: 3rem; color: #a8d5ba;"></i>
+                        <i class="fas fa-shuffle" style="font-size: 3rem; color: #e96304;"></i>
                         <h3 class="mt-2 mb-1 text-card-title">Balanced Revision</h3>
                         <p class="mb-0 text-muted small">Smart case selection</p>
                     </div>
                     <p class="small text-muted flex-grow-1">
                         <i class="fas fa-check-circle me-1" style="color: #a8d5ba;"></i>6 cases - one from each module<br>
-                        <i class="fas fa-check-circle me-1" style="color: #a8d5ba;"></i>Prioritizes unseen cases<br>
+                        <i class="fas fa-check-circle me-1" style="color: #a8d5ba;"></i>Prioritises unseen cases<br>
                         <i class="fas fa-check-circle me-1" style="color: #a8d5ba;"></i>Balanced coverage
                     </p>
                     <a href="/revision/start-balanced" class="btn btn-brand-primary w-100 mt-auto">
@@ -28,7 +28,7 @@
         </div>
         <!-- Module Selection Card -->
         <div class="col-lg-6">
-            <div class="card h-100 shadow-sm border-0 hover-card" 
+            <div class="card h-100 shadow-sm border-0 hover-card"
                  style="transition: transform 0.2s ease; cursor: pointer;"
                  onclick="window.location.href='{{ url_for('modules_view') }}'">
                 <div class="card-body d-flex flex-column p-4">
@@ -37,12 +37,12 @@
                         <h3 class="mt-2 mb-1 text-card-title">Select Module to Revise</h3>
                         <p class="mb-0 text-muted small">Practice by specialty</p>
                     </div>
-                    
+
                     <p class="small text-muted flex-grow-1">
-                        Choose from 6 core specialties: Cardiothoracic, Musculoskeletal, 
+                        Choose from 6 core specialties: Cardiothoracic, Musculoskeletal,
                         Gastrointestinal, Genitourinary, Paediatric, or CNS & Head & Neck.
                     </p>
-                    
+
                     <a href="{{ url_for('modules_view') }}" class="btn btn-brand-success w-100 mt-auto">
                         <i class="fas fa-layer-group me-2"></i>Browse Modules
                     </a>
@@ -52,21 +52,21 @@
 
         <!-- All Cases Card -->
         <div class="col-lg-6">
-            <div class="card h-100 shadow-sm border-0 hover-card" 
+            <div class="card h-100 shadow-sm border-0 hover-card"
                  style="transition: transform 0.2s ease; cursor: pointer;"
                  onclick="window.location.href='{{ url_for('all_cases_view') }}'">
                 <div class="card-body d-flex flex-column p-4">
                     <div class="mb-3 text-center">
-                        <i class="fas fa-folder-open" style="font-size: 3rem; color: #6c757d;"></i>
+                        <i class="fas fa-folder-open" style="font-size: 3rem; color: #5E899E;"></i>
                         <h3 class="mt-2 mb-1 text-card-title">Browse All Cases</h3>
                         <p class="mb-0 text-muted small">Search and filter the complete case library</p>
                     </div>
-                    
+
                     <p class="small text-muted flex-grow-1">
-                        Access all available cases with advanced search by diagnosis, 
+                        Access all available cases with advanced search by diagnosis,
                         keywords, body part, and module. Track your progress with notes and highlights.
                     </p>
-                    
+
                     <a href="{{ url_for('all_cases_view') }}" class="btn btn-brand-neutral w-100 mt-auto">
                         <i class="fas fa-book-medical me-2"></i>View All Cases
                     </a>
@@ -81,13 +81,13 @@
                  onclick="window.location.href='/tnm'">
                 <div class="card-body d-flex flex-column p-4">
                     <div class="mb-3 text-center">
-                        <i class="fas fa-dna" style="font-size: 3rem; color: #6b46c1;"></i>
+                        <i class="fas fa-dna" style="font-size: 3rem; color: #ffc107;"></i>
                         <h3 class="mt-2 mb-1 text-card-title">TNM Staging Browser</h3>
                         <p class="mb-0 text-muted small">AJCC cancer staging reference</p>
                     </div>
 
                     <p class="small text-muted flex-grow-1">
-                        Browse AJCC TNM cancer staging data organized by body section and disease.
+                        Browse AJCC TNM cancer staging data organised by body section and disease.
                         Quick reference tables, staging criteria, and explanatory notes.
                     </p>
 
@@ -105,7 +105,7 @@
                  onclick="window.location.href='/study'">
                 <div class="card-body d-flex flex-column p-4">
                     <div class="mb-3 text-center">
-                        <i class="fas fa-brain" style="font-size: 3rem; color: #e96304;"></i>
+                        <i class="fas fa-brain" style="font-size: 3rem; color: #a8d5ba;"></i>
                         <h3 class="mt-2 mb-1 text-card-title">Study Mode</h3>
                         <p class="mb-0 text-muted small" id="studySubtitle">Spaced repetition</p>
                     </div>
@@ -114,7 +114,7 @@
                         <i class="fas fa-check-circle me-1" style="color: #a8d5ba;"></i>SM-2 spaced repetition algorithm<br>
                         <i class="fas fa-check-circle me-1" style="color: #a8d5ba;"></i>Track mastery by module
                     </p>
-                    <a href="/study" class="btn btn-brand-primary w-100 mt-auto">
+                    <a href="/study" class="btn btn-brand-success w-100 mt-auto">
                         <i class="fas fa-play me-2"></i>Start Studying
                     </a>
                 </div>
@@ -128,7 +128,7 @@
                  onclick="window.location.href='/suggest-case'">
                 <div class="card-body d-flex flex-column p-4">
                     <div class="mb-3 text-center">
-                        <i class="fas fa-lightbulb" style="font-size: 3rem; color: #e96304;"></i>
+                        <i class="fas fa-lightbulb" style="font-size: 3rem; color: #ffc107;"></i>
                         <h3 class="mt-2 mb-1 text-card-title">Suggest a Case</h3>
                         <p class="mb-0 text-muted small">Contribute to the case library</p>
                     </div>
@@ -137,7 +137,7 @@
                         <i class="fas fa-check-circle me-1" style="color: #a8d5ba;"></i>RadInsights Intelligence generates discussion and Q&amp;A<br>
                         <i class="fas fa-check-circle me-1" style="color: #a8d5ba;"></i>Upload images and submit for review
                     </p>
-                    <a href="/suggest-case" class="btn btn-brand-primary w-100 mt-auto">
+                    <a href="/suggest-case" class="btn btn-brand-secondary w-100 mt-auto">
                         <i class="fas fa-plus-circle me-2"></i>Suggest a Case
                     </a>
                 </div>
@@ -145,7 +145,7 @@
         </div>
 
         <!-- Smart Reporter Card -->
-        <div class="col-lg-6">
+        <div class="col-lg-12">
             <div class="card h-100 shadow-sm border-0 hover-card"
                  style="transition: transform 0.2s ease; cursor: pointer;"
                  onclick="window.location.href='/smart-reporter'">
@@ -153,12 +153,12 @@
                     <div class="mb-3 text-center">
                         <i class="fas fa-file-medical" style="font-size: 3rem; color: #e96304;"></i>
                         <h3 class="mt-2 mb-1 text-card-title">Smart Reporter</h3>
-                        <p class="mb-0 text-muted small">AI-guided scan reporting</p>
+                        <p class="mb-0 text-muted small">RadInsight Intelligence powered scan reporting</p>
                     </div>
                     <p class="small text-muted flex-grow-1">
                         <i class="fas fa-check-circle me-1" style="color: #a8d5ba;"></i>Step-by-step guided scan reading<br>
                         <i class="fas fa-check-circle me-1" style="color: #a8d5ba;"></i>Auto-generated PACS-ready reports<br>
-                        <i class="fas fa-check-circle me-1" style="color: #a8d5ba;"></i>Ask Claude to refine your report
+                        <i class="fas fa-check-circle me-1" style="color: #a8d5ba;"></i>Ask RadInsight Intelligence to refine your report
                     </p>
                     <a href="/smart-reporter" class="btn btn-brand-primary w-100 mt-auto">
                         <i class="fas fa-file-medical me-2"></i>Start Reporting
@@ -167,51 +167,6 @@
             </div>
         </div>
 
-        <!-- On-Call Helper Card -->
-        <div class="col-lg-6">
-            <div class="card h-100 shadow-sm border-0 hover-card"
-                 style="transition: transform 0.2s ease; cursor: pointer;"
-                 onclick="window.location.href='/on-call-helper'">
-                <div class="card-body d-flex flex-column p-4">
-                    <div class="mb-3 text-center">
-                        <i class="fas fa-headset" style="font-size: 3rem; color: #5E899E;"></i>
-                        <h3 class="mt-2 mb-1 text-card-title">On-Call Helper</h3>
-                        <p class="mb-0 text-muted small">Curated clinical protocols</p>
-                    </div>
-                    <p class="small text-muted flex-grow-1">
-                        <i class="fas fa-check-circle me-1" style="color: #a8d5ba;"></i>Verified protocol knowledge base<br>
-                        <i class="fas fa-check-circle me-1" style="color: #a8d5ba;"></i>Source-traceable answers with citations<br>
-                        <i class="fas fa-check-circle me-1" style="color: #a8d5ba;"></i>Scoring systems and contrast protocols
-                    </p>
-                    <a href="/on-call-helper" class="btn btn-brand-neutral w-100 mt-auto">
-                        <i class="fas fa-headset me-2"></i>Open Helper
-                    </a>
-                </div>
-            </div>
-        </div>
-
-        <!-- Incidental Findings Card -->
-        <div class="col-lg-6">
-            <div class="card h-100 shadow-sm border-0 hover-card"
-                 style="transition: transform 0.2s ease; cursor: pointer;"
-                 onclick="window.location.href='/incidental-findings'">
-                <div class="card-body d-flex flex-column p-4">
-                    <div class="mb-3 text-center">
-                        <i class="fas fa-search-plus" style="font-size: 3rem; color: #5E899E;"></i>
-                        <h3 class="mt-2 mb-1 text-card-title">Incidental Findings</h3>
-                        <p class="mb-0 text-muted small">Guideline-based management</p>
-                    </div>
-                    <p class="small text-muted flex-grow-1">
-                        <i class="fas fa-check-circle me-1" style="color: #a8d5ba;"></i>Fleischner, ACR, Bosniak, TI-RADS<br>
-                        <i class="fas fa-check-circle me-1" style="color: #a8d5ba;"></i>Deterministic decision trees<br>
-                        <i class="fas fa-check-circle me-1" style="color: #a8d5ba;"></i>Copy-paste report language
-                    </p>
-                    <a href="/incidental-findings" class="btn btn-brand-neutral w-100 mt-auto">
-                        <i class="fas fa-search-plus me-2"></i>Find Recommendation
-                    </a>
-                </div>
-            </div>
-        </div>
     </div>
 
     <!-- Recent Activity / Quick Stats -->

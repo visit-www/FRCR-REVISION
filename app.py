@@ -158,8 +158,8 @@ if DATABASE_URL:
         }
 else:
     # SQLite for local development
-    print(f"[DB] Using SQLite: {instance_path}/frcr_examiner.db")
-    app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(instance_path, "frcr_examiner.db")}'
+    print(f"[DB] Using SQLite: {instance_path}/RadInsights_db.db")
+    app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(instance_path, "RadInsights_db.db")}'
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-secret-key-change-in-production')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 # R2 stack upload: allow large multipart (1000+ images × ~1MB ≈ 1GB)
@@ -578,7 +578,24 @@ def _seed_ajcc_data_if_needed():
 with app.app_context():
     try:
         db.create_all()
-        
+
+        # Add columns that db.create_all() won't add to existing tables
+        from sqlalchemy import text, inspect as sa_inspect
+        insp = sa_inspect(db.engine)
+        def _add_col_if_missing(table, column, col_sql):
+            if table in insp.get_table_names():
+                existing = [c['name'] for c in insp.get_columns(table)]
+                if column not in existing:
+                    with db.engine.connect() as conn:
+                        conn.execute(text(f'ALTER TABLE {table} ADD COLUMN {col_sql}'))
+                        conn.commit()
+                    print(f'[MIGRATE] Added {table}.{column}')
+
+        _add_col_if_missing('reporting_template', 'pacs_report_text', 'pacs_report_text TEXT')
+        _add_col_if_missing('reporting_template', 'is_ai_generated', 'is_ai_generated BOOLEAN DEFAULT false NOT NULL')
+        _add_col_if_missing('reporting_template', 'verified_by_user_id', 'verified_by_user_id INTEGER')
+        _add_col_if_missing('reporting_template', 'verified_at', 'verified_at TIMESTAMP')
+
         # Auto-seed AJCC body sections and disease sites if not present
         _seed_ajcc_data_if_needed()
         
@@ -742,6 +759,13 @@ def about():
 def essential_tnm_concepts():
     """Essential TNM Concepts for Registrars - IARC guide embedded in iframe"""
     return render_template('essential_tnm_concepts.html')
+
+
+@app.route('/reporting-algorithms')
+@login_required
+def reporting_algorithms():
+    """Reporting Algorithms - placeholder page"""
+    return render_template('reporting_algorithms.html')
 
 
 @app.route('/cv')

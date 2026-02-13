@@ -766,6 +766,113 @@ def generate_blank_template(modality='', body_section='', clinical_question=''):
     }
 
 
+# ==================== RADIOLOGY TEMPLATE GENERATOR ====================
+
+RADIOLOGY_TEMPLATE_SYSTEM_PROMPT = (
+    "You are an expert consultant radiologist writing structured PACS report templates. "
+    "You produce clinically accurate, scenario-specific radiology report templates that are "
+    "ready for copy-paste into a PACS reporting system. Templates must follow standard "
+    "radiology reporting conventions with appropriate normal findings boilerplate and "
+    "key positive/negative findings relevant to the clinical scenario. "
+    "Output plain text only. No markdown formatting. No HTML tags."
+)
+
+RADIOLOGY_TEMPLATE_PROMPT = """Generate a structured radiology report template for the following clinical scenario:
+
+CLINICAL SCENARIO: {clinical_scenario}
+MODALITY: {modality}
+BODY SECTION: {body_section}
+
+{resources_section}
+
+Output the template with EXACTLY these section headings (each on its own line, followed by a colon):
+
+STUDY:
+(Full study title, e.g. "CT Abdomen and Pelvis with IV Contrast")
+
+INDICATION:
+(Pre-fill with the clinical context for this scenario. Be specific but concise.)
+
+COMPARISON:
+No prior available for comparison.
+
+TECHNIQUE:
+(Standard technique for this modality/region. Keep concise — 2-3 lines max. Include key parameters like contrast, sequences, or views.)
+
+FINDINGS:
+(Systematic organ-by-organ or structure-by-structure assessment in standard reading order for this modality/region. For each structure:
+- Include normal boilerplate text as default
+- For structures relevant to the clinical scenario, include both normal and abnormal descriptors that a radiologist might select/edit
+- Use standard radiology terminology and measurements where appropriate
+- Include 8-12 subheadings appropriate to the body region
+- Each subheading should be on its own line followed by a colon, then the finding text on the next line)
+
+IMPRESSION:
+(Numbered impression points. Include 2-4 key findings relevant to this clinical scenario. Use standard impression language.)
+
+RECOMMENDATIONS:
+(Follow-up recommendations if clinically appropriate for this scenario. If none needed, write "Clinical correlation recommended.")
+
+RULES:
+- Use standard radiology abbreviations where appropriate
+- Include measurement placeholders where relevant (e.g. "[x.x cm]")
+- Write findings in present tense, third person
+- Be specific to the clinical scenario — this is NOT a blank template
+- If reference materials are provided, incorporate their guidance into findings and recommendations"""
+
+
+def generate_radiology_template(clinical_scenario, modality='', body_section='', resources=None):
+    """
+    Generate a clinical-scenario-specific radiology report template.
+    Unlike generate_blank_template() which produces empty scaffolding,
+    this produces a filled template with standard normal findings and
+    key positive/negative findings relevant to the clinical scenario.
+
+    Uses Sonnet for quality. Accepts resources (URLs, PDFs, DB refs).
+
+    Args:
+        clinical_scenario: e.g. "CT Abdomen — Acute Pancreatitis"
+        modality: e.g. "CT", "MRI", "US"
+        body_section: e.g. "Abdomen", "Brain"
+        resources: Optional dict with urls, db_refs, pdf_texts, tnm_refs
+
+    Returns:
+        dict with: template_text, model, token_count
+    """
+    # Format resources for prompt injection if provided
+    resources_section = ''
+    if resources:
+        try:
+            from clinical_tool_generator import format_resources_for_prompt
+            resources_section = format_resources_for_prompt(resources)
+        except ImportError:
+            logger.warning("clinical_tool_generator not available for resource formatting")
+
+    prompt = RADIOLOGY_TEMPLATE_PROMPT.format(
+        clinical_scenario=clinical_scenario or 'Not specified',
+        modality=modality or 'Not specified',
+        body_section=body_section or 'Not specified',
+        resources_section=resources_section,
+    )
+
+    sonnet_model = os.getenv("CLAUDE_MODEL", "claude-sonnet-4-5-20250929")
+
+    text, model, tokens = _call_claude(
+        system_prompt=RADIOLOGY_TEMPLATE_SYSTEM_PROMPT,
+        user_prompt=prompt,
+        model=sonnet_model,
+        max_tokens=3000,
+        temperature=0.3,
+        timeout=60,
+    )
+
+    return {
+        'template_text': text,
+        'model': model,
+        'token_count': tokens,
+    }
+
+
 # ==================== MAIN GENERATOR ====================
 
 def generate_algorithm_tree(clinical_question, modality, body_section='', resources=None):

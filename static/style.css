@@ -31,6 +31,32 @@
         padding: 3px 8px;
     }
 }
+/* Hide horizontal tool bar on mobile — side menu handles it */
+@media (max-width: 991px) {
+    .tool-nav-bar { display: none !important; }
+}
+/* Mobile side menu nav links */
+.mobile-tool-nav {
+    background: transparent;
+}
+.mobile-tool-nav .list-group-item {
+    background: transparent;
+    color: rgba(255,255,255,0.85);
+    font-size: 0.95rem;
+    font-weight: 500;
+    border-radius: 6px !important;
+    margin-bottom: 1px;
+}
+.mobile-tool-nav .list-group-item:hover,
+.mobile-tool-nav .list-group-item:focus {
+    background: rgba(255,255,255,0.1);
+    color: #fff;
+}
+.mobile-tool-nav .list-group-item.active {
+    background: rgba(255,255,255,0.15);
+    color: #fff;
+    font-weight: 600;
+}
 
 /* ==================== GLOBAL LINK STYLES ==================== */
 /* Remove underline on hover for all links */

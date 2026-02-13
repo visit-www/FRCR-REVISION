@@ -5,9 +5,9 @@
 
 {% block mobile_breadcrumb %}
 <li class="breadcrumb-item">
-    <a href="{{ url_for('reporting.smart_reporter') }}" class="text-white text-decoration-none">Smart Reporter</a>
+    <a href="{{ url_for('dashboard') }}" class="text-white text-decoration-none">Admin</a>
 </li>
-<li class="breadcrumb-item active text-white-50">Manage Templates</li>
+<li class="breadcrumb-item active text-white-50">Radiology Templates</li>
 {% endblock %}
 
 {% block content %}
@@ -19,19 +19,18 @@
                 <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary btn-sm">
                     <i class="fas fa-home me-1"></i>Dashboard
                 </a>
-                <a href="{{ url_for('reporting.smart_reporter') }}" class="btn btn-outline-secondary btn-sm">
-                    <i class="fas fa-file-medical me-1"></i>Smart Reporter
+                <a href="{{ url_for('reporting.admin_reporting_templates') }}" class="btn btn-outline-secondary btn-sm">
+                    <i class="fas fa-project-diagram me-1"></i>Reporting Algorithms
                 </a>
             </div>
 
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <div>
-                    <h2 class="mb-1"><i class="fas fa-clipboard-list me-2" style="color: #e96304;"></i>Reporting Templates</h2>
-                    <p class="text-muted mb-0">Manage non-oncologic reporting decision trees</p>
+                    <h2 class="mb-1"><i class="fas fa-file-alt me-2" style="color: #5E899E;"></i>Radiology Templates</h2>
+                    <p class="text-muted mb-0">Plain-text PACS-ready report templates for common clinical scenarios</p>
                 </div>
                 <div class="d-flex gap-2">
-                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#generateModal"
-                            style="background: #e96304; border-color: #e96304;">
+                    <button class="btn btn-brand-primary" data-bs-toggle="modal" data-bs-target="#generateModal">
                         <i class="fas fa-magic me-1"></i>Generate New
                     </button>
                 </div>
@@ -44,9 +43,7 @@
                         <thead class="table-light">
                             <tr>
                                 <th>Title</th>
-                                <th>Category</th>
                                 <th>Body Section</th>
-                                <th>Source</th>
                                 <th>Status</th>
                                 <th>Actions</th>
                             </tr>
@@ -56,29 +53,23 @@
                             <tr>
                                 <td>
                                     <div class="fw-semibold">{{ t.title }}</div>
-                                    <small class="text-muted">{{ t.slug }}</small>
+                                    <small class="text-muted">{{ t.description or t.slug }}</small>
                                 </td>
-                                <td><span class="badge bg-light text-dark border">{{ t.category }}</span></td>
                                 <td>{{ t.body_section or '—' }}</td>
-                                <td><small>{{ t.source_citation or '—' }}</small></td>
                                 <td>
-                                    {% if t.is_available %}
-                                    <span class="badge bg-success"><i class="fas fa-check me-1"></i>Available</span>
+                                    {% if t.verified_at %}
+                                    <span class="badge bg-success"><i class="fas fa-shield-alt me-1"></i>Verified</span>
+                                    {% elif t.is_available %}
+                                    <span class="badge bg-info"><i class="fas fa-check me-1"></i>Available</span>
                                     {% else %}
                                     <span class="badge bg-warning text-dark"><i class="fas fa-clock me-1"></i>Draft</span>
-                                    {% endif %}
-                                    {% if t.verified_at %}
-                                    <br><small class="text-success"><i class="fas fa-shield-alt me-1"></i>Verified</small>
                                     {% endif %}
                                 </td>
                                 <td>
                                     <div class="btn-group btn-group-sm">
-                                        {% if t.is_available %}
-                                        <a href="{{ url_for('reporting.view_reporting_template', slug=t.slug) }}"
-                                           class="btn btn-outline-secondary" title="View">
+                                        <button class="btn btn-outline-secondary" onclick="viewTemplate({{ t.id }})" title="View">
                                             <i class="fas fa-eye"></i>
-                                        </a>
-                                        {% endif %}
+                                        </button>
                                         <button class="btn btn-outline-secondary" onclick="editTemplate({{ t.id }})" title="Edit">
                                             <i class="fas fa-edit"></i>
                                         </button>
@@ -97,8 +88,8 @@
                             {% endfor %}
                             {% if not templates %}
                             <tr>
-                                <td colspan="6" class="text-center py-4 text-muted">
-                                    No templates yet. Click "Generate New" to create one.
+                                <td colspan="4" class="text-center py-4 text-muted">
+                                    No radiology templates yet. Click "Generate New" to create one.
                                 </td>
                             </tr>
                             {% endif %}
@@ -116,26 +107,29 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">
-                    <i class="fas fa-magic"></i> Generate Reporting Template
+                    <i class="fas fa-magic"></i> Generate Radiology Template
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <div class="mb-3">
-                    <label class="form-label">Template Title</label>
-                    <input type="text" class="form-control" id="genTitle" placeholder="e.g. AAST Splenic Injury Scale">
+                    <label class="form-label fw-semibold">Clinical Scenario</label>
+                    <input type="text" class="form-control" id="genScenario"
+                           placeholder="e.g. CT Abdomen — Acute Pancreatitis">
+                    <small class="text-muted">Describe the clinical diagnosis or scenario for this template</small>
                 </div>
                 <div class="row g-3 mb-3">
                     <div class="col-md-6">
-                        <label class="form-label">Category</label>
-                        <select class="form-select" id="genCategory" required>
-                            <option value="">Select category...</option>
-                            <option value="emergency">Emergency</option>
-                            <option value="routine">Routine</option>
-                            <option value="oncology">Oncology</option>
-                            <option value="trauma">Trauma</option>
-                            <option value="grading">Grading System</option>
-                            <option value="scoring">Scoring System</option>
+                        <label class="form-label">Modality</label>
+                        <select class="form-select" id="genModality">
+                            <option value="">Select modality...</option>
+                            <option value="CT">CT</option>
+                            <option value="MRI">MRI</option>
+                            <option value="US">Ultrasound</option>
+                            <option value="XR">X-Ray</option>
+                            <option value="NM">Nuclear Medicine</option>
+                            <option value="Fluoroscopy">Fluoroscopy</option>
+                            <option value="Mammography">Mammography</option>
                         </select>
                     </div>
                     <div class="col-md-6">
@@ -149,9 +143,9 @@
                     </div>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label">Additional Context</label>
-                    <textarea class="form-control" id="genContext" rows="3"
-                              placeholder="Optional: specific criteria, grading details..."></textarea>
+                    <label class="form-label">Additional Context <small class="text-muted">(optional)</small></label>
+                    <textarea class="form-control" id="genContext" rows="2"
+                              placeholder="Specific guidelines, key findings to emphasise..."></textarea>
                 </div>
                 {{ resource_fields('gen') }}
                 <div id="genStatus" class="mt-3 d-none"></div>
@@ -166,34 +160,45 @@
     </div>
 </div>
 
-<!-- Edit Template Modal -->
-<div class="modal fade app-content-modal" id="editTemplateModal" tabindex="-1">
+<!-- View Template Modal -->
+<div class="modal fade app-content-modal" id="viewTemplateModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
+                <h5 class="modal-title" id="viewTitle">
+                    <i class="fas fa-file-alt"></i> Template Preview
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <pre id="viewTemplateText" style="background: #f8f9fa; padding: 16px; border-radius: 8px; white-space: pre-wrap; word-wrap: break-word; font-family: 'Courier New', monospace; font-size: 0.9rem; line-height: 1.5; max-height: 60vh; overflow-y: auto;"></pre>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-brand-success" onclick="copyTemplateText()">
+                    <i class="fas fa-copy me-1"></i>Copy to Clipboard
+                </button>
+                <button type="button" class="btn btn-modal-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Template Modal -->
+<div class="modal fade app-content-modal" id="editTemplateModal" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
                 <h5 class="modal-title">
-                    <i class="fas fa-edit"></i> Edit Template
+                    <i class="fas fa-edit"></i> Edit Radiology Template
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <input type="hidden" id="editTemplateId">
-                <div class="mb-3">
-                    <label class="form-label">Title</label>
-                    <input type="text" class="form-control" id="editTitle">
-                </div>
                 <div class="row g-3 mb-3">
                     <div class="col-md-6">
-                        <label class="form-label">Category</label>
-                        <select class="form-select" id="editCategory">
-                            <option value="">Select category...</option>
-                            <option value="emergency">Emergency</option>
-                            <option value="routine">Routine</option>
-                            <option value="oncology">Oncology</option>
-                            <option value="trauma">Trauma</option>
-                            <option value="grading">Grading System</option>
-                            <option value="scoring">Scoring System</option>
-                        </select>
+                        <label class="form-label">Title</label>
+                        <input type="text" class="form-control" id="editTitle">
                     </div>
                     <div class="col-md-6">
                         <label class="form-label">Body Section</label>
@@ -205,24 +210,32 @@
                         </select>
                     </div>
                 </div>
-                <div class="mb-3">
-                    <label class="form-label">Keywords</label>
-                    <input type="text" class="form-control" id="editKeywords" placeholder="comma-separated">
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Description</label>
-                    <textarea class="form-control" id="editDescription" rows="2"></textarea>
-                </div>
-                <div class="mb-3">
-                    <div class="form-check form-switch">
-                        <input class="form-check-input" type="checkbox" id="editAvailable">
-                        <label class="form-check-label" for="editAvailable">Available (published)</label>
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Keywords</label>
+                        <input type="text" class="form-control" id="editKeywords" placeholder="comma-separated">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Description</label>
+                        <input type="text" class="form-control" id="editDescription">
                     </div>
                 </div>
-                {{ resource_fields('edit') }}
                 <div class="mb-3">
-                    <label class="form-label">Edit Note</label>
-                    <input type="text" class="form-control" id="editNote" placeholder="What did you change?">
+                    <label class="form-label fw-semibold">Template Text</label>
+                    <textarea class="form-control" id="editTemplateText" rows="18"
+                              style="font-family: 'Courier New', monospace; font-size: 0.9rem; line-height: 1.5;"></textarea>
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="editAvailable">
+                            <label class="form-check-label" for="editAvailable">Available (published)</label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Edit Note</label>
+                        <input type="text" class="form-control" id="editNote" placeholder="What did you change?">
+                    </div>
                 </div>
             </div>
             <div class="modal-footer">
@@ -244,24 +257,27 @@
 {{ resource_styles() }}
 <script src="{{ url_for('static', filename='js/admin-resource-helpers.js') }}"></script>
 <script>
-// ==================== REPORTING TEMPLATE CRUD ====================
+// ==================== RADIOLOGY TEMPLATE CRUD ====================
 
 function generateTemplate() {
     var btn = document.getElementById('genBtn');
     var status = document.getElementById('genStatus');
+    var scenario = document.getElementById('genScenario').value.trim();
+    if (!scenario) { alert('Please enter a clinical scenario.'); return; }
+
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Generating...';
     status.classList.remove('d-none');
-    status.innerHTML = '<div class="alert alert-info py-2"><i class="fas fa-spinner fa-spin me-1"></i>Generating template...</div>';
+    status.innerHTML = '<div class="alert alert-info py-2"><i class="fas fa-spinner fa-spin me-1"></i>Generating template... this may take up to 60 seconds.</div>';
 
-    var resources = collectResources('gen');
+    var resources = typeof collectResources === 'function' ? collectResources('gen') : {};
 
-    fetch('/admin/reporting-templates/generate', {
+    fetch('/admin/radiology-templates/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-            title: document.getElementById('genTitle').value,
-            category: document.getElementById('genCategory').value,
+            clinical_scenario: scenario,
+            modality: document.getElementById('genModality').value,
             body_section: document.getElementById('genBodySection').value,
             source_citation: JSON.stringify(resources),
             additional_context: document.getElementById('genContext').value,
@@ -278,26 +294,46 @@ function generateTemplate() {
             status.innerHTML = '<div class="alert alert-danger py-2">' + (result.message || result.error) + '</div>';
         }
     })
-    .catch(function() {
+    .catch(function(err) {
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-magic me-1"></i>Generate';
-        status.innerHTML = '<div class="alert alert-danger py-2">Generation failed.</div>';
+        status.innerHTML = '<div class="alert alert-danger py-2">Generation failed: ' + err + '</div>';
+    });
+}
+
+function viewTemplate(id) {
+    fetch('/admin/radiology-templates/api/' + id)
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            document.getElementById('viewTitle').innerHTML = '<i class="fas fa-file-alt"></i> ' + (data.title || 'Template Preview');
+            document.getElementById('viewTemplateText').textContent = data.pacs_report_text || '(No template text)';
+            new bootstrap.Modal(document.getElementById('viewTemplateModal')).show();
+        })
+        .catch(function(err) { alert('Failed to load template: ' + err); });
+}
+
+function copyTemplateText() {
+    var text = document.getElementById('viewTemplateText').textContent;
+    navigator.clipboard.writeText(text).then(function() {
+        var btn = event.target.closest('button');
+        var original = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-check me-1"></i>Copied!';
+        setTimeout(function() { btn.innerHTML = original; }, 2000);
     });
 }
 
 function editTemplate(id) {
-    fetch('/admin/reporting-templates/api/' + id)
+    fetch('/admin/radiology-templates/api/' + id)
         .then(function(r) { return r.json(); })
         .then(function(data) {
             document.getElementById('editTemplateId').value = data.id;
             document.getElementById('editTitle').value = data.title || '';
-            document.getElementById('editCategory').value = data.category || '';
             document.getElementById('editBodySection').value = data.body_section || '';
             document.getElementById('editKeywords').value = data.keywords || '';
             document.getElementById('editDescription').value = data.description || '';
+            document.getElementById('editTemplateText').value = data.pacs_report_text || '';
             document.getElementById('editAvailable').checked = data.is_available;
             document.getElementById('editNote').value = '';
-            loadAllResources('edit', data.source_citation);
             new bootstrap.Modal(document.getElementById('editTemplateModal')).show();
         })
         .catch(function(err) { alert('Failed to load template: ' + err); });
@@ -305,18 +341,16 @@ function editTemplate(id) {
 
 function saveEditTemplate() {
     var id = document.getElementById('editTemplateId').value;
-    var resources = collectResources('edit');
 
-    fetch('/admin/reporting-templates/api/' + id, {
+    fetch('/admin/radiology-templates/api/' + id, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
             title: document.getElementById('editTitle').value,
-            category: document.getElementById('editCategory').value,
             body_section: document.getElementById('editBodySection').value,
-            source_citation: JSON.stringify(resources),
             keywords: document.getElementById('editKeywords').value,
             description: document.getElementById('editDescription').value,
+            pacs_report_text: document.getElementById('editTemplateText').value,
             is_available: document.getElementById('editAvailable').checked,
             last_edit_note: document.getElementById('editNote').value,
         }),
@@ -331,7 +365,7 @@ function saveEditTemplate() {
 
 function verifyTemplate(id) {
     if (!confirm('Verify and publish this template?')) return;
-    fetch('/admin/reporting-templates/api/' + id + '/verify', { method: 'POST' })
+    fetch('/admin/radiology-templates/api/' + id + '/verify', { method: 'POST' })
         .then(function(r) { return r.json(); })
         .then(function(data) {
             if (data.error) { alert(data.error); return; }
@@ -341,7 +375,7 @@ function verifyTemplate(id) {
 
 function deleteTemplate(id, title) {
     if (!confirm('Delete template "' + title + '"?')) return;
-    fetch('/admin/reporting-templates/api/' + id, { method: 'DELETE' })
+    fetch('/admin/radiology-templates/api/' + id, { method: 'DELETE' })
         .then(function(r) { return r.json(); })
         .then(function() { location.reload(); });
 }

@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% block tool_active_templates %}active{% endblock %}
+{% block mobile_active_templates %}active{% endblock %}
 
 {% block mobile_breadcrumb %}
 <li class="breadcrumb-item active text-white-50">Reporting Templates</li>
@@ -66,12 +67,71 @@
             </div>
             {% endfor %}
 
-            {% if not grouped %}
+            {% if not grouped and not radiology_templates %}
             <div class="text-center py-5 text-muted">
                 <i class="fas fa-clipboard-list" style="font-size: 3rem; opacity: 0.3;"></i>
                 <p class="mt-3">No reporting templates available yet.</p>
             </div>
             {% endif %}
+
+            <!-- Radiology Templates (plain-text PACS-ready) -->
+            {% if radiology_templates %}
+            <div class="mb-4 mt-4">
+                <div class="d-flex align-items-center mb-3">
+                    <h5 class="mb-0"><i class="fas fa-file-alt me-2" style="color: #5E899E;"></i>PACS Report Templates</h5>
+                    <small class="text-muted ms-2">({{ radiology_templates|length }})</small>
+                </div>
+                <p class="text-muted small mb-3">Plain-text report templates ready to copy into PACS. Click a template to preview and copy.</p>
+                <div class="row g-3">
+                    {% for t in radiology_templates %}
+                    <div class="col-12 col-md-6 col-lg-4 template-card-wrapper" data-title="{{ t.title|lower }}" data-keywords="{{ (t.keywords or '')|lower }}">
+                        <div class="card border-0 shadow-sm h-100" style="cursor: pointer; transition: transform 0.15s;"
+                             onclick="showRadTemplate({{ t.id }}, '{{ t.title|e }}')">
+                            <div class="card-body p-3">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <h6 class="card-title mb-0" style="color: #333; font-size: 0.95rem;">{{ t.title }}</h6>
+                                    {% if t.verified_at %}
+                                    <span class="badge bg-success" style="font-size: 0.6rem;">Verified</span>
+                                    {% endif %}
+                                </div>
+                                {% if t.body_section %}
+                                <small class="badge bg-light text-dark border mb-2">{{ t.body_section }}</small>
+                                {% endif %}
+                                {% if t.description %}
+                                <p class="card-text text-muted mb-0" style="font-size: 0.8rem; line-height: 1.4;">
+                                    {{ t.description[:120] }}{% if t.description|length > 120 %}...{% endif %}
+                                </p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Radiology Template Preview Modal -->
+<div class="modal fade app-content-modal" id="radTemplateModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="radTemplateTitle">
+                    <i class="fas fa-file-alt"></i> Template Preview
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <pre id="radTemplateText" style="background: #f8f9fa; padding: 16px; border-radius: 8px; white-space: pre-wrap; word-wrap: break-word; font-family: 'Courier New', monospace; font-size: 0.9rem; line-height: 1.5; max-height: 60vh; overflow-y: auto;"></pre>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-brand-success" onclick="copyRadTemplate()">
+                    <i class="fas fa-copy me-1"></i>Copy to Clipboard
+                </button>
+                <button type="button" class="btn btn-modal-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
         </div>
     </div>
 </div>
@@ -91,6 +151,31 @@ function filterTemplates(query) {
     document.querySelectorAll('.template-category-group').forEach(group => {
         const visibleCards = group.querySelectorAll('.template-card-wrapper[style=""], .template-card-wrapper:not([style])');
         group.style.display = visibleCards.length > 0 ? '' : 'none';
+    });
+}
+
+function showRadTemplate(id, title) {
+    document.getElementById('radTemplateTitle').innerHTML = '<i class="fas fa-file-alt"></i> ' + title;
+    document.getElementById('radTemplateText').textContent = 'Loading...';
+    new bootstrap.Modal(document.getElementById('radTemplateModal')).show();
+
+    fetch('/radiology-template/text/' + id)
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            document.getElementById('radTemplateText').textContent = data.pacs_report_text || '(No template text)';
+        })
+        .catch(function(err) {
+            document.getElementById('radTemplateText').textContent = 'Failed to load template: ' + err;
+        });
+}
+
+function copyRadTemplate() {
+    var text = document.getElementById('radTemplateText').textContent;
+    navigator.clipboard.writeText(text).then(function() {
+        var btn = event.target.closest('button');
+        var original = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-check me-1"></i>Copied!';
+        setTimeout(function() { btn.innerHTML = original; }, 2000);
     });
 }
 </script>
