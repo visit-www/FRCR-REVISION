@@ -1436,7 +1436,10 @@
                 docLink.className = 'list-group-item list-group-item-action doc-link';
                 docLink.style.paddingLeft = `${12 + (level * 16)}px`;
                 docLink.dataset.path = item.path;
-                docLink.innerHTML = `<i class="fas fa-file-alt text-secondary me-2"></i>${item.title}`;
+                const ext = (item.name || '').split('.').pop();
+                const iconMap = { 'py': 'fa-file-code text-success', 'pdf': 'fa-file-pdf text-danger', 'md': 'fa-file-alt text-secondary' };
+                const iconCls = iconMap[ext] || 'fa-file-alt text-secondary';
+                docLink.innerHTML = `<i class="fas ${iconCls} me-2"></i>${item.title}`;
                 docLink.addEventListener('click', (e) => {
                     e.preventDefault();
                     loadDocument(item.path);
@@ -1453,7 +1456,7 @@
         const titleEl = document.getElementById('docTitle');
         const contentEl = document.getElementById('docContent');
         const toggleBtn = document.getElementById('toggleRawBtn');
-        
+
         titleEl.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Loading...';
         contentEl.innerHTML = `
             <div class="text-center py-5">
@@ -1462,21 +1465,46 @@
                 </div>
             </div>
         `;
-        
+
+        // PDF files: the endpoint returns binary, so open directly
+        if (path.endsWith('.pdf')) {
+            const title = path.replace('.pdf', '').replace(/_/g, ' ').replace(/-/g, ' ');
+            currentDocPath = path;
+            currentRawContent = '';
+            titleEl.innerHTML = `<i class="fas fa-file-pdf me-2 text-danger"></i><span>${title}</span>`;
+            contentEl.innerHTML = `
+                <div class="text-center py-4">
+                    <i class="fas fa-file-pdf" style="font-size: 3rem; color: #dc3545;"></i>
+                    <p class="mt-3">This is a PDF document.</p>
+                    <a href="/api/admin/docs/${encodeURIComponent(path)}" class="btn btn-primary" target="_blank">
+                        <i class="fas fa-external-link-alt me-1"></i>Open PDF
+                    </a>
+                    <a href="/api/admin/docs/${encodeURIComponent(path)}" class="btn btn-outline-secondary ms-2" download>
+                        <i class="fas fa-download me-1"></i>Download
+                    </a>
+                </div>`;
+            toggleBtn.style.display = 'none';
+            return;
+        }
+
         try {
             const response = await fetch(`/api/admin/docs/${encodeURIComponent(path)}`);
             const data = await response.json();
-            
+
             if (data.success) {
                 currentDocPath = path;
-                currentRawContent = data.raw_content;
+                currentRawContent = data.raw_content || '';
                 showingRaw = false;
-                
-                titleEl.innerHTML = `<i class="fas fa-file-alt me-2 text-primary"></i><span>${data.title}</span>`;
+
+                const ext = (path.split('.').pop() || 'md');
+                const iconMap = { 'py': 'fa-file-code text-success', 'pdf': 'fa-file-pdf text-danger', 'md': 'fa-file-alt text-primary' };
+                const iconCls = iconMap[ext] || 'fa-file-alt text-primary';
+
+                titleEl.innerHTML = `<i class="fas ${iconCls} me-2"></i><span>${data.title}</span>`;
                 contentEl.innerHTML = `<div class="markdown-body">${data.content_html}</div>`;
-                toggleBtn.style.display = 'inline-block';
+                toggleBtn.style.display = data.raw_content ? 'inline-block' : 'none';
                 toggleBtn.innerHTML = '<i class="fas fa-code me-1"></i>View Raw';
-                
+
                 // Style the markdown content
                 styleMarkdownContent();
             } else {

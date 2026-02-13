@@ -948,7 +948,13 @@ def get_case(case_id):
 # APP DOCUMENTATION ENDPOINTS
 # ============================================================================
 # Docs in this list are visible and openable by any admin; others are superadmin-only.
-ADMIN_ACCESSIBLE_DOCS = ['USER_ROLES_WORKFLOWS.md', 'CUSTOM_CSS_CLASSES_REFERENCE.md', 'AI_TOOLS_AND_COSTS.md']
+ADMIN_ACCESSIBLE_DOCS = [
+    'USER_ROLES_WORKFLOWS.md',
+    'CUSTOM_CSS_CLASSES_REFERENCE.md',
+    'AI_TOOLS_AND_COSTS.md',
+    'ai_smart_reporter_improved.py',
+    'smart_reporter_plan_revised.pdf',
+]
 
 
 @admin_bp.route('/docs', methods=['GET'])
@@ -965,7 +971,7 @@ def list_docs():
         # Return flat list of admin-accessible docs only
         docs = []
         for name in sorted(ADMIN_ACCESSIBLE_DOCS):
-            title = name.replace('.md', '').replace('_', ' ').replace('-', ' ')
+            title = name.rsplit('.', 1)[0].replace('_', ' ').replace('-', ' ')
             docs.append({
                 'name': name,
                 'path': name,
@@ -1035,33 +1041,47 @@ def get_doc(doc_path):
     
     if not os.path.exists(file_path):
         return jsonify({'success': False, 'error': 'Document not found'}), 404
-    
-    if not file_path.endswith('.md'):
+
+    allowed_extensions = ('.md', '.py', '.pdf')
+    if not any(file_path.endswith(ext) for ext in allowed_extensions):
         return jsonify({'success': False, 'error': 'Invalid file type'}), 400
-    
+
     try:
+        # Generate title from filename
+        basename = os.path.basename(doc_path)
+        title = basename.rsplit('.', 1)[0].replace('_', ' ').replace('-', ' ')
+
+        # PDF: serve as binary download
+        if file_path.endswith('.pdf'):
+            from flask import send_file
+            return send_file(file_path, mimetype='application/pdf', as_attachment=False, download_name=basename)
+
         with open(file_path, 'r', encoding='utf-8') as f:
             raw_content = f.read()
-        
-        # Convert markdown to HTML with extensions
-        md = markdown.Markdown(extensions=[
-            'tables',
-            'fenced_code',
-            'codehilite',
-            'toc',
-            'nl2br'
-        ])
-        content_html = md.convert(raw_content)
-        
-        # Generate title from filename
-        title = os.path.basename(doc_path).replace('.md', '').replace('_', ' ').replace('-', ' ')
-        
+
+        if file_path.endswith('.py'):
+            # Python files: render as syntax-highlighted code block
+            import html as html_module
+            escaped = html_module.escape(raw_content)
+            content_html = f'<pre style="background:#f8f9fa;padding:15px;border-radius:8px;overflow-x:auto;font-size:0.85rem;line-height:1.5;"><code class="language-python">{escaped}</code></pre>'
+        else:
+            # Markdown files: convert to HTML with extensions
+            md = markdown.Markdown(extensions=[
+                'tables',
+                'fenced_code',
+                'codehilite',
+                'toc',
+                'nl2br'
+            ])
+            content_html = md.convert(raw_content)
+
         return jsonify({
             'success': True,
             'title': title,
             'path': doc_path,
             'content_html': content_html,
-            'raw_content': raw_content
+            'raw_content': raw_content,
+            'file_type': basename.rsplit('.', 1)[-1],
         })
     except Exception as e:
         logger.error(f"Error reading doc {doc_path}: {e}")
@@ -1101,31 +1121,45 @@ def get_doc_content():
     
     if not os.path.exists(file_path):
         return jsonify({'success': False, 'error': 'Document not found'}), 404
-    
-    if not file_path.endswith('.md'):
+
+    allowed_extensions = ('.md', '.py', '.pdf')
+    if not any(file_path.endswith(ext) for ext in allowed_extensions):
         return jsonify({'success': False, 'error': 'Invalid file type'}), 400
-    
+
     try:
+        basename = os.path.basename(doc_path)
+        title = basename.rsplit('.', 1)[0].replace('_', ' ').replace('-', ' ')
+
+        # PDF: return a link to the direct download endpoint
+        if file_path.endswith('.pdf'):
+            return jsonify({
+                'success': True,
+                'title': title,
+                'html': f'<div class="text-center py-4"><p>This is a PDF document.</p><a href="/api/admin/docs/{doc_path}" class="btn btn-primary" target="_blank"><i class="fas fa-file-pdf me-2"></i>Open PDF</a></div>',
+                'file_type': 'pdf',
+            })
+
         with open(file_path, 'r', encoding='utf-8') as f:
             raw_content = f.read()
-        
-        # Convert markdown to HTML with extensions
-        md = markdown.Markdown(extensions=[
-            'tables',
-            'fenced_code',
-            'codehilite',
-            'toc',
-            'nl2br'
-        ])
-        html = md.convert(raw_content)
-        
-        # Generate title from filename
-        title = os.path.basename(doc_path).replace('.md', '').replace('_', ' ').replace('-', ' ')
-        
+
+        if file_path.endswith('.py'):
+            import html as html_module
+            escaped = html_module.escape(raw_content)
+            html_out = f'<pre style="background:#f8f9fa;padding:15px;border-radius:8px;overflow-x:auto;font-size:0.85rem;line-height:1.5;"><code class="language-python">{escaped}</code></pre>'
+        else:
+            md = markdown.Markdown(extensions=[
+                'tables',
+                'fenced_code',
+                'codehilite',
+                'toc',
+                'nl2br'
+            ])
+            html_out = md.convert(raw_content)
+
         return jsonify({
             'success': True,
             'title': title,
-            'html': html
+            'html': html_out,
         })
     except Exception as e:
         logger.error(f"Error reading doc {doc_path}: {e}")
