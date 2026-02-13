@@ -806,48 +806,63 @@ def restore_backup():
     
     if 'backup_file' not in request.files:
         return jsonify({'error': 'No backup file provided'}), 400
-    
+
     file = request.files['backup_file']
-    
+
     if file.filename == '':
         return jsonify({'error': 'No file selected'}), 400
-    
-    if not file.filename.endswith('.json'):
+
+    if not file.filename.endswith('.json') and not file.filename.endswith('.json.gz'):
         return jsonify({'error': 'Only JSON backup files are supported'}), 400
-    
-    # FRESH APPROACH: Handle large files (26MB+) by processing in chunks
-    # Vercel has a 4.5MB limit, but we can work around it by processing the file stream
+
+    # Handle both compressed and uncompressed uploads
+    # Client compresses large files (>4MB) with gzip to fit under Vercel's 4.5MB body limit
+    is_compressed = (
+        request.form.get('compressed') == 'true'
+        or file.filename.endswith('.gz')
+    )
+
     try:
         # Get file size (seek to end, get position, then reset)
         file.seek(0, 2)  # Seek to end
         file_size = file.tell()
         file.seek(0)  # Reset to beginning
-        
-        print(f"[IMPORT] Backup file size: {file_size} bytes ({file_size / 1024 / 1024:.2f} MB)")
-        
-        # For very large files, we need to process them differently
-        # Read the file content - Flask's file object handles streaming
-        # Read in chunks to avoid memory issues
+
+        print(f"[IMPORT] Backup file size: {file_size} bytes ({file_size / 1024 / 1024:.2f} MB) {'(gzip compressed)' if is_compressed else ''}")
+
+        # Read file content in chunks
         file_content_parts = []
         chunk_size = 1024 * 1024  # 1MB chunks
         total_read = 0
-        
+
         while True:
             chunk = file.read(chunk_size)
             if not chunk:
                 break
             file_content_parts.append(chunk)
             total_read += len(chunk)
-            print(f"[IMPORT] Read chunk: {total_read / 1024 / 1024:.2f} MB / {file_size / 1024 / 1024:.2f} MB")
-        
-        # Combine chunks and decode
-        file_content = b''.join(file_content_parts).decode('utf-8')
-        
-        # Clear references to free memory
+
+        raw_bytes = b''.join(file_content_parts)
         file = None
         file_content_parts = None
-        
-        print(f"[IMPORT] Successfully read {len(file_content)} characters from backup file ({file_size / 1024 / 1024:.2f} MB)")
+
+        # Decompress if gzip-compressed
+        if is_compressed:
+            import gzip
+            try:
+                decompressed = gzip.decompress(raw_bytes)
+                print(f"[IMPORT] Decompressed {len(raw_bytes)} → {len(decompressed)} bytes ({len(decompressed) / 1024 / 1024:.2f} MB)")
+                file_content = decompressed.decode('utf-8')
+                raw_bytes = None
+                decompressed = None
+            except Exception as gz_err:
+                print(f"[IMPORT] Gzip decompression failed: {gz_err}")
+                return jsonify({'error': f'Failed to decompress backup file: {gz_err}'}), 400
+        else:
+            file_content = raw_bytes.decode('utf-8')
+            raw_bytes = None
+
+        print(f"[IMPORT] Successfully read {len(file_content)} characters from backup file")
         
         # Handle case where file might already be a string (double-encoded)
         if isinstance(file_content, str):
@@ -3301,10 +3316,8 @@ def restore_backup():
             else:
                 if ReportingAlgorithm.query.filter_by(slug=slug).first():
                     continue
-                if cat == 'smart_reporter_cache':
-                    origin = 'smart_reporter_cache'
-                elif cat == 'ai_generated':
-                    origin = 'ai_generated'
+                if cat in ('smart_reporter_cache', 'ai_generated'):
+                    origin = 'user'
                 elif cat == 'anatomy':
                     origin = 'anatomy_cache'
                 else:

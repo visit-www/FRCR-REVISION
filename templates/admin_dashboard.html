@@ -617,14 +617,37 @@
     }
     }
 
+    async function compressData(data) {
+        /* Gzip-compress a Uint8Array using the browser CompressionStream API */
+        if (typeof CompressionStream === 'undefined') return null;
+        try {
+            const cs = new CompressionStream('gzip');
+            const writer = cs.writable.getWriter();
+            writer.write(data);
+            writer.close();
+            const reader = cs.readable.getReader();
+            const chunks = [];
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                chunks.push(value);
+            }
+            const totalLen = chunks.reduce((a, c) => a + c.length, 0);
+            const result = new Uint8Array(totalLen);
+            let offset = 0;
+            for (const c of chunks) { result.set(c, offset); offset += c.length; }
+            return result;
+        } catch (e) { console.warn('CompressionStream failed:', e); return null; }
+    }
+
     async function restoreBackup(event) {
         event.preventDefault();
-        
+
         const fileInput = document.getElementById('backup-file');
         const overwriteCheck = document.getElementById('overwrite-existing');
         const confirmCheck = document.getElementById('confirm-import');
         const statusDiv = document.getElementById('restore-status');
-        
+
         if (!fileInput || !fileInput.files[0]) {
             if (statusDiv) {
                 statusDiv.innerHTML = '<div class="alert alert-danger">Please select a backup file</div>';
@@ -638,22 +661,76 @@
             }
             return;
         }
-        
+
         if (statusDiv) {
-            statusDiv.innerHTML = '<div class="alert alert-info"><span class="spinner-border spinner-border-sm"></span> Importing database...</div>';
+            statusDiv.innerHTML = '<div class="alert alert-info"><span class="spinner-border spinner-border-sm"></span> Reading backup file...</div>';
         }
-        
+
         try {
-            const formData = new FormData();
-            formData.append('backup_file', fileInput.files[0]);
-            formData.append('overwrite_existing', overwriteCheck ? overwriteCheck.checked ? 'true' : 'false' : 'false');
-            formData.append('confirm_overwrite', 'true');
-            
-            const response = await fetch('/api/backup/restore', {
-                method: 'POST',
-                credentials: 'include',
-                body: formData
-            });
+            const file = fileInput.files[0];
+            const overwrite = overwriteCheck ? overwriteCheck.checked : false;
+            const fileSizeMB = (file.size / 1024 / 1024).toFixed(1);
+
+            /* If file > 4MB, compress client-side and send as JSON body */
+            if (file.size > 4 * 1024 * 1024) {
+                if (statusDiv) {
+                    statusDiv.innerHTML = '<div class="alert alert-info"><span class="spinner-border spinner-border-sm"></span> Large file (' + fileSizeMB + ' MB) — compressing before upload...</div>';
+                }
+
+                const rawBytes = new Uint8Array(await file.arrayBuffer());
+                const compressed = await compressData(rawBytes);
+
+                if (compressed && compressed.length < 4 * 1024 * 1024) {
+                    const compressedMB = (compressed.length / 1024 / 1024).toFixed(1);
+                    if (statusDiv) {
+                        statusDiv.innerHTML = '<div class="alert alert-info"><span class="spinner-border spinner-border-sm"></span> Compressed ' + fileSizeMB + ' MB → ' + compressedMB + ' MB. Uploading...</div>';
+                    }
+
+                    /* Send compressed payload with Content-Encoding header */
+                    const formData = new FormData();
+                    const compressedBlob = new Blob([compressed], { type: 'application/gzip' });
+                    formData.append('backup_file', compressedBlob, file.name + '.gz');
+                    formData.append('overwrite_existing', overwrite ? 'true' : 'false');
+                    formData.append('confirm_overwrite', 'true');
+                    formData.append('compressed', 'true');
+
+                    var response = await fetch('/api/backup/restore', {
+                        method: 'POST',
+                        credentials: 'include',
+                        body: formData
+                    });
+                } else {
+                    /* Compression didn't help enough — try sending raw anyway */
+                    if (statusDiv) {
+                        statusDiv.innerHTML = '<div class="alert alert-info"><span class="spinner-border spinner-border-sm"></span> Uploading ' + fileSizeMB + ' MB...</div>';
+                    }
+                    const formData = new FormData();
+                    formData.append('backup_file', file);
+                    formData.append('overwrite_existing', overwrite ? 'true' : 'false');
+                    formData.append('confirm_overwrite', 'true');
+
+                    var response = await fetch('/api/backup/restore', {
+                        method: 'POST',
+                        credentials: 'include',
+                        body: formData
+                    });
+                }
+            } else {
+                /* Small file — send normally */
+                if (statusDiv) {
+                    statusDiv.innerHTML = '<div class="alert alert-info"><span class="spinner-border spinner-border-sm"></span> Importing database...</div>';
+                }
+                const formData = new FormData();
+                formData.append('backup_file', file);
+                formData.append('overwrite_existing', overwrite ? 'true' : 'false');
+                formData.append('confirm_overwrite', 'true');
+
+                var response = await fetch('/api/backup/restore', {
+                    method: 'POST',
+                    credentials: 'include',
+                    body: formData
+                });
+            }
             
             const data = await response.json();
             

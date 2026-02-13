@@ -65,12 +65,10 @@
                                 <td>
                                     {% if t.origin == 'admin' %}
                                     <span class="badge" style="background: #e96304;">Admin</span>
-                                    {% elif t.origin == 'smart_reporter_cache' %}
-                                    <span class="badge bg-info">Smart Reporter</span>
-                                    {% elif t.origin == 'ai_generated' %}
-                                    <span class="badge bg-secondary">AI Generated</span>
-                                    {% elif t.origin == 'anatomy_cache' %}
-                                    <span class="badge bg-secondary">Anatomy</span>
+                                    {% elif t.origin == 'user' %}
+                                    <span class="badge bg-info">
+                                        <i class="fas fa-user me-1"></i>User
+                                    </span>
                                     {% else %}
                                     <span class="badge bg-light text-dark border">{{ t.origin }}</span>
                                     {% endif %}

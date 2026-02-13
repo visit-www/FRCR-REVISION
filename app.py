@@ -614,10 +614,8 @@ def _migrate_reporting_templates_if_needed():
                 db.session.add(new)
                 rad_added += 1
             else:
-                if old.category == 'smart_reporter_cache':
-                    origin = 'smart_reporter_cache'
-                elif old.category == 'ai_generated':
-                    origin = 'ai_generated'
+                if old.category in ('smart_reporter_cache', 'ai_generated'):
+                    origin = 'user'
                 elif old.category == 'anatomy':
                     origin = 'anatomy_cache'
                 else:

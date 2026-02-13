@@ -856,8 +856,6 @@ def browse_reporting_algorithms():
     grouped = {}
     for t in templates:
         cat = t.category or 'Other'
-        if cat == 'smart_reporter_cache':
-            continue  # Skip cached entries, show only curated
         grouped.setdefault(cat, []).append(t)
 
     return render_template('reporting_algorithms_browse.html', grouped=grouped)
@@ -896,7 +894,9 @@ def get_radiology_template_text(template_id):
 @require_admin
 def admin_reporting_algorithms():
     """Admin page for managing reporting algorithms (interactive decision trees)."""
-    templates = ReportingAlgorithm.query.order_by(
+    templates = ReportingAlgorithm.query.filter(
+        ReportingAlgorithm.origin.in_(['admin', 'user'])
+    ).order_by(
         ReportingAlgorithm.category, ReportingAlgorithm.title
     ).all()
     return render_template('admin_reporting_algorithms.html', templates=templates,
@@ -1244,9 +1244,14 @@ def smart_reporter_generate_tree():
     cache_slug = re.sub(r'[^a-z0-9]+', '-', clinical_question.lower()).strip('-')
     cached_template = None
     if cache_slug:
+        # Try published algorithms first, then user's own unpublished
         cached_template = ReportingAlgorithm.query.filter_by(
             slug=cache_slug, is_available=True
         ).first()
+        if not cached_template:
+            cached_template = ReportingAlgorithm.query.filter_by(
+                slug=cache_slug, created_by_user_id=current_user.id
+            ).first()
 
     if cached_template and cached_template.algorithm_html:
         try:
@@ -1304,13 +1309,13 @@ def smart_reporter_generate_tree():
                 cache_entry = ReportingAlgorithm(
                     slug=cache_slug,
                     title=clinical_question,
-                    origin='smart_reporter_cache',
-                    category='smart_reporter_cache',
+                    origin='user',
+                    category='uncategorized',
                     body_section=body_section or None,
-                    description=f'Cached Smart Reporter algorithm for: {clinical_question}',
+                    description=f'AI-generated algorithm for: {clinical_question}',
                     keywords=f'{clinical_question}, {modality or ""}, {body_section or ""}',
                     algorithm_html=tree_json,
-                    is_available=True,
+                    is_available=False,
                     is_ai_generated=True,
                     generation_model=result.get('model', ''),
                     generated_at=datetime.utcnow(),
