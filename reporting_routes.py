@@ -22,7 +22,7 @@ from models import (
     RadiologyTemplate, ReportingAlgorithm,
     TNMCalculatorContent, ClinicalProtocol,
     IncidentalFindingCalculator, AJCCDiseaseSite, AJCCBodySection,
-    User, AiPrelimCaseData,
+    User, AiPrelimCaseData, ContentRequest,
 )
 from access_control import require_admin
 from clinical_tool_generator import extract_html_content
@@ -2119,11 +2119,114 @@ def smart_reporter_anatomy():
         logger.error(f"Anatomy reference generation failed: {exc}")
         return jsonify({'error': f'Failed to generate anatomy reference: {exc}'}), 500
 
+    # Auto-save to cache for future lookups
+    content_html = result.get('content_html', '')
+    if content_html:
+        try:
+            import re
+            slug = re.sub(r'[^a-z0-9]+', '-', topic.lower()).strip('-')[:200]
+            cache_entry = ReportingAlgorithm(
+                title=result.get('title', topic.title()),
+                slug=f'anatomy-{slug}',
+                category='anatomy',
+                origin='anatomy_cache',
+                template_html=content_html,
+                keywords=topic.lower(),
+                is_available=True,
+                is_ai_generated=True,
+            )
+            db.session.add(cache_entry)
+            db.session.commit()
+            logger.info(f"Cached anatomy reference: {topic}")
+        except Exception as cache_exc:
+            db.session.rollback()
+            logger.warning(f"Failed to cache anatomy reference: {cache_exc}")
+
     return jsonify({
         'success': True,
         'title': result.get('title', topic.title()),
-        'content_html': result.get('content_html', ''),
+        'content_html': content_html,
         'source': result.get('source', 'ai'),
         'model': result.get('model', ''),
         'token_count': result.get('token_count', 0),
     })
+
+
+# ==================== CONTENT REQUESTS ====================
+
+@reporting_bp.route('/api/smart-reporter/content-request', methods=['POST'])
+@login_required
+def submit_content_request():
+    """User submits a request for new content (template, algorithm, resource)."""
+    data = request.get_json() or {}
+    request_type = (data.get('request_type') or '').strip()
+    title = (data.get('title') or '').strip()
+    description = (data.get('description') or '').strip()
+    body_section = (data.get('body_section') or '').strip()
+
+    if not request_type or request_type not in ('template', 'algorithm', 'resource'):
+        return jsonify({'error': 'Please select a request type.'}), 400
+    if not title or len(title) < 3:
+        return jsonify({'error': 'Please provide a title (at least 3 characters).'}), 400
+
+    # Rate limit: max 5 pending requests per user
+    pending_count = ContentRequest.query.filter_by(
+        user_id=current_user.id, status='pending'
+    ).count()
+    if pending_count >= 5:
+        return jsonify({'error': 'You already have 5 pending requests. Please wait for them to be reviewed.'}), 429
+
+    cr = ContentRequest(
+        user_id=current_user.id,
+        request_type=request_type,
+        title=title[:300],
+        description=description[:2000] if description else None,
+        body_section=body_section[:100] if body_section else None,
+        status='pending',
+    )
+    db.session.add(cr)
+    db.session.commit()
+
+    return jsonify({'success': True, 'message': 'Content request submitted. Thank you!'})
+
+
+@reporting_bp.route('/api/admin/content-requests', methods=['GET'])
+@login_required
+@require_admin
+def list_content_requests():
+    """Admin: list all content requests."""
+    status_filter = request.args.get('status', '')
+    query = ContentRequest.query.order_by(ContentRequest.created_at.desc())
+    if status_filter:
+        query = query.filter_by(status=status_filter)
+
+    requests_list = query.limit(100).all()
+    return jsonify({'requests': [{
+        'id': r.id,
+        'user_id': r.user_id,
+        'username': r.user.username if r.user else 'Unknown',
+        'request_type': r.request_type,
+        'title': r.title,
+        'description': r.description,
+        'body_section': r.body_section,
+        'status': r.status,
+        'admin_notes': r.admin_notes,
+        'created_at': r.created_at.isoformat() if r.created_at else None,
+    } for r in requests_list]})
+
+
+@reporting_bp.route('/api/admin/content-requests/<int:request_id>', methods=['PUT'])
+@login_required
+@require_admin
+def update_content_request(request_id):
+    """Admin: update content request status/notes."""
+    cr = ContentRequest.query.get_or_404(request_id)
+    data = request.get_json() or {}
+
+    if 'status' in data and data['status'] in ('pending', 'completed', 'declined'):
+        cr.status = data['status']
+    if 'admin_notes' in data:
+        cr.admin_notes = (data['admin_notes'] or '')[:2000]
+
+    db.session.commit()
+    return jsonify({'success': True, 'message': f'Request updated to {cr.status}.'})

@@ -2849,6 +2849,28 @@ class PublishedReport(db.Model):
         return f'<PublishedReport {self.id} by={self.contributor_name}>'
 
 
+# ==================== CONTENT REQUEST ====================
+
+class ContentRequest(db.Model):
+    """User-submitted requests for new templates, algorithms, or resources."""
+    __tablename__ = 'content_request'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    request_type = db.Column(db.String(50), nullable=False)  # template, algorithm, resource
+    title = db.Column(db.String(300), nullable=False)
+    description = db.Column(db.Text)
+    body_section = db.Column(db.String(100))
+    status = db.Column(db.String(30), default='pending')  # pending, completed, declined
+    admin_notes = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    user = db.relationship('User', backref=db.backref('content_requests', lazy='dynamic'))
+
+    def __repr__(self):
+        return f'<ContentRequest {self.id} type={self.request_type} status={self.status}>'
+
+
 # ==================== INCIDENTAL FINDING CALCULATOR ====================
 
 class IncidentalFindingCalculator(db.Model):

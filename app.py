@@ -23,6 +23,7 @@ from models import UserQAProgress  # STUDY MODE: SM-2 spaced repetition
 from models import ForumMessage, ForumMessageVote, ForumMessageFlag  # Forum models
 from models import ClinicalProtocol, OnCallQueryLog, ReportingTemplate, IncidentalFindingCalculator  # Clinical tools
 from models import RadiologyTemplate, ReportingAlgorithm  # New split tables (Feb 2026)
+from models import ContentRequest  # User content requests (Feb 2026)
 from auth import auth_bp
 from backup_routes import backup_bp
 from admin_routes import admin_bp
