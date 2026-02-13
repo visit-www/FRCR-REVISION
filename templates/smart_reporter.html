@@ -3343,15 +3343,28 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        // For IF, TNM, protocol: open editor with context
+        // For IF, TNM, protocol, prefill: open editor with context
         showScene('editor');
 
         // Store context for AI Assist calls
         state.externalContext = { type: contextType, title: title, slug: slug, id: id };
 
-        // Set editor placeholder hint
+        // Check sessionStorage for pre-filled content (from "Send to Smart Reporter" buttons)
         const editor = document.getElementById('editorInput');
-        if (editor && title) {
+        try {
+            const prefilled = sessionStorage.getItem('smartReporterPrefill');
+            if (prefilled) {
+                sessionStorage.removeItem('smartReporterPrefill');
+                if (editor) {
+                    editor.value = prefilled;
+                    state.inputText = prefilled;
+                    autoResizeTextarea(editor);
+                }
+            }
+        } catch(e) {}
+
+        // Set editor placeholder hint (only if editor is still empty)
+        if (editor && title && !editor.value) {
             editor.placeholder = 'Type or paste your draft report here...\n\nContext: ' + title;
         }
 

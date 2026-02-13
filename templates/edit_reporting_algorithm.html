@@ -99,26 +99,28 @@
         </div>
     </div>
 
+    <!-- Layout Toggle (always visible) -->
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <span class="fw-semibold small text-muted" id="editorModeLabel">
+            <i class="fas fa-columns me-1"></i>Split View
+        </span>
+        <div class="btn-group btn-group-sm" id="layoutToggle">
+            <button class="btn btn-outline-secondary btn-sm active" onclick="setEditorLayout('split')" title="Split view">
+                <i class="fas fa-columns me-1"></i><span class="d-none d-md-inline">Split</span>
+            </button>
+            <button class="btn btn-outline-secondary btn-sm" onclick="setEditorLayout('editor')" title="Editor only">
+                <i class="fas fa-code me-1"></i><span class="d-none d-md-inline">Editor</span>
+            </button>
+            <button class="btn btn-outline-secondary btn-sm" onclick="setEditorLayout('preview')" title="Preview only">
+                <i class="fas fa-eye me-1"></i><span class="d-none d-md-inline">Preview</span>
+            </button>
+        </div>
+    </div>
+
     <!-- Editor + Preview (side by side) -->
-    <div class="row g-3" style="height: calc(100vh - 260px);">
+    <div class="row g-3" style="height: calc(100vh - 290px);">
         <!-- Code Editor -->
         <div class="col-md-6 d-flex flex-column" id="editorCol">
-            <div class="d-flex justify-content-between align-items-center mb-2">
-                <span class="fw-semibold small text-muted">
-                    <i class="fas fa-code me-1"></i>HTML Editor
-                </span>
-                <div class="btn-group btn-group-sm">
-                    <button class="btn btn-outline-secondary btn-sm active" onclick="setEditorLayout('split')" title="Split view">
-                        <i class="fas fa-columns"></i>
-                    </button>
-                    <button class="btn btn-outline-secondary btn-sm" onclick="setEditorLayout('editor')" title="Editor only">
-                        <i class="fas fa-code"></i>
-                    </button>
-                    <button class="btn btn-outline-secondary btn-sm" onclick="setEditorLayout('preview')" title="Preview only">
-                        <i class="fas fa-eye"></i>
-                    </button>
-                </div>
-            </div>
             <textarea id="htmlEditor" class="flex-grow-1 form-control"
                       style="font-family: 'Fira Code', 'SF Mono', 'Consolas', monospace;
                              font-size: 0.82rem; line-height: 1.5; resize: none;
@@ -128,16 +130,8 @@
 
         <!-- Live Preview -->
         <div class="col-md-6 d-flex flex-column" id="previewCol">
-            <div class="d-flex justify-content-between align-items-center mb-2">
-                <span class="fw-semibold small text-muted">
-                    <i class="fas fa-eye me-1"></i>Live Preview
-                </span>
-                <button class="btn btn-outline-secondary btn-sm" onclick="refreshPreview()" title="Refresh">
-                    <i class="fas fa-sync-alt"></i>
-                </button>
-            </div>
-            <iframe id="previewFrame"
-                    style="flex: 1; border: 1px solid #dee2e6; border-radius: 8px; background: #fff;"></iframe>
+            <iframe id="previewFrame" scrolling="yes"
+                    style="flex: 1; border: 1px solid #dee2e6; border-radius: 8px; background: #fff; overflow: auto;"></iframe>
         </div>
     </div>
 </div>
@@ -159,7 +153,10 @@ var _isDirty = false;
 
 function refreshPreview() {
     var html = document.getElementById('htmlEditor').value;
-    document.getElementById('previewFrame').srcdoc = html;
+    // Wrap in a base document that allows proper scrolling
+    var wrapper = '<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width, initial-scale=1">'
+        + '<style>html,body{margin:0;padding:0;overflow:auto;}</style></head><body>' + html + '</body></html>';
+    document.getElementById('previewFrame').srcdoc = wrapper;
 }
 
 document.getElementById('htmlEditor').addEventListener('input', function() {
@@ -189,26 +186,32 @@ document.getElementById('htmlEditor').addEventListener('keydown', function(e) {
 function setEditorLayout(mode) {
     var editorCol = document.getElementById('editorCol');
     var previewCol = document.getElementById('previewCol');
-    // Reset active state
-    document.querySelectorAll('.btn-group .btn').forEach(function(b) { b.classList.remove('active'); });
+    var label = document.getElementById('editorModeLabel');
+    // Reset active state on layout toggle buttons
+    document.querySelectorAll('#layoutToggle .btn').forEach(function(b) { b.classList.remove('active'); });
 
     if (mode === 'editor') {
         editorCol.className = 'col-12 d-flex flex-column';
+        editorCol.classList.remove('d-none');
         previewCol.classList.add('d-none');
-        event.target.closest('.btn').classList.add('active');
+        label.innerHTML = '<i class="fas fa-code me-1"></i>Editor Only';
     } else if (mode === 'preview') {
         editorCol.classList.add('d-none');
         previewCol.className = 'col-12 d-flex flex-column';
         previewCol.classList.remove('d-none');
-        event.target.closest('.btn').classList.add('active');
+        label.innerHTML = '<i class="fas fa-eye me-1"></i>Preview Only';
         refreshPreview();
     } else {
         editorCol.className = 'col-md-6 d-flex flex-column';
         editorCol.classList.remove('d-none');
         previewCol.className = 'col-md-6 d-flex flex-column';
         previewCol.classList.remove('d-none');
-        event.target.closest('.btn').classList.add('active');
+        label.innerHTML = '<i class="fas fa-columns me-1"></i>Split View';
     }
+    // Set active button by matching mode
+    var btns = document.querySelectorAll('#layoutToggle .btn');
+    var idx = mode === 'split' ? 0 : (mode === 'editor' ? 1 : 2);
+    btns[idx].classList.add('active');
 }
 
 // ==================== SAVE ====================

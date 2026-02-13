@@ -21,10 +21,9 @@
                 <a href="{{ url_for('reporting.smart_reporter') }}" class="btn btn-outline-secondary btn-sm">
                     <i class="fas fa-file-medical me-1"></i>Smart Reporter
                 </a>
-                <a href="/smart-reporter?context=template&id={{ template.id }}&title={{ template.title|urlencode }}"
-                   class="btn btn-sm btn-brand-primary">
-                    <i class="fas fa-edit me-1"></i>Use to Report
-                </a>
+                <button class="btn btn-sm btn-brand-primary" onclick="sendToSmartReporter()">
+                    <i class="fas fa-paper-plane me-1"></i>Use in Smart Reporter
+                </button>
             </div>
 
             <!-- Resources -->
@@ -119,9 +118,14 @@
             <div class="card border-0 shadow-sm">
                 <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center py-3">
                     <h5 class="mb-0"><i class="fas fa-file-medical me-2" style="color: #5E899E;"></i>Draft PACS Report</h5>
-                    <button class="btn btn-sm btn-outline-primary" id="copyPacsBtn" onclick="copyPacsReport()">
-                        <i class="fas fa-copy me-1"></i>Copy to Clipboard
-                    </button>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-sm btn-outline-primary" id="copyPacsBtn" onclick="copyPacsReport()">
+                            <i class="fas fa-copy me-1"></i>Copy to Clipboard
+                        </button>
+                        <button class="btn btn-sm btn-brand-primary" onclick="sendToSmartReporter()">
+                            <i class="fas fa-paper-plane me-1"></i>Edit in Smart Reporter
+                        </button>
+                    </div>
                 </div>
                 <div class="card-body p-0">
                     <pre id="pacsReportText" class="p-4 mb-0" style="white-space: pre-wrap; background: #f8f9fa; border: none; font-family: 'Courier New', monospace; font-size: 0.9rem; line-height: 1.6;">{{ template.pacs_report_text }}</pre>
@@ -168,10 +172,17 @@
                     This tool is for educational and reference purposes. Always verify against
                     current guidelines and institutional protocols before clinical use.
                     {% if resources and resources.references %}
-                    Source: {% for ref in resources.references %}{{ ref.source }}{% if ref.version %} ({{ ref.version }}){% endif %}{% if ref.url %} — <a href="{{ ref.url }}" target="_blank" rel="noopener" class="text-muted">{{ ref.url }}</a>{% endif %}{% if not loop.last %}; {% endif %}{% endfor %}.
+                    <br><strong>Sources:</strong>
+                    <ul class="list-unstyled mb-0 mt-1 ms-3">
+                    {% for ref in resources.references %}
+                        <li class="mb-1">
+                            {{ ref.source }}{% if ref.version %} <span class="text-muted">({{ ref.version }})</span>{% endif %}{% if ref.url %} &mdash; <a href="{{ ref.url }}" target="_blank" rel="noopener" style="color: #e96304; text-decoration: underline;">{{ ref.url|truncate(60, True) }}</a>{% endif %}
+                        </li>
+                    {% endfor %}
+                    </ul>
                     {% elif template.source_citation %}
-                    Source: {{ template.source_citation | urlize | safe }}
-                    {% if template.guideline_version %}({{ template.guideline_version }}){% endif %}.
+                    <br><strong>Source:</strong> {{ template.source_citation | urlize | safe }}
+                    {% if template.guideline_version %} ({{ template.guideline_version }}){% endif %}.
                     {% endif %}
                 </small>
             </div>
@@ -181,6 +192,15 @@
 {% endblock %}
 
 {% block scripts %}
+<script>
+function sendToSmartReporter() {
+    {% if template.pacs_report_text %}
+    // Store PACS report text for pre-filling the Smart Reporter editor
+    try { sessionStorage.setItem('smartReporterPrefill', document.getElementById('pacsReportText').textContent); } catch(e) {}
+    {% endif %}
+    window.location.href = '/smart-reporter?context=prefill&title=' + encodeURIComponent({{ template.title|tojson }});
+}
+</script>
 {% if template.pacs_report_text %}
 <script>
 function copyPacsReport() {
