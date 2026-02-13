@@ -190,10 +190,14 @@ class User(UserMixin, db.Model):
     sciencedirect_session_cookies = db.Column(db.Text, nullable=True)  # Serialized session cookies (JSON)
     sciencedirect_connected_at = db.Column(db.DateTime, nullable=True)  # When ScienceDirect was connected
     
+    # === AI USAGE RATE LIMITING ===
+    ai_usage_date = db.Column(db.Date, nullable=True)  # Date of last AI usage
+    ai_usage_count = db.Column(db.Integer, default=0)   # Number of AI requests today
+
     # Password recovery
     recovery_token = db.Column(db.String(255), unique=True, nullable=True)
     recovery_token_expires = db.Column(db.DateTime, nullable=True)
-    
+
     # Timestamps
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     last_login = db.Column(db.DateTime, nullable=True)

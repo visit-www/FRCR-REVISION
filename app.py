@@ -706,11 +706,15 @@ with app.app_context():
         _add_col_if_missing('incidental_finding_calculator', 'created_by_user_id', 'created_by_user_id INTEGER')
         _add_col_if_missing('incidental_finding_calculator', 'last_edit_note', 'last_edit_note VARCHAR(500)')
 
-        # -- reporting_session --
+        # -- user: AI rate limiting --
+        _add_col_if_missing('user', 'ai_usage_date', 'ai_usage_date DATE')
+        _add_col_if_missing('user', 'ai_usage_count', 'ai_usage_count INTEGER DEFAULT 0')
+
+        # -- reporting_session (legacy) --
         _add_col_if_missing('reporting_session', 'ask_claude_count', 'ask_claude_count INTEGER DEFAULT 0')
         _add_col_if_missing('reporting_session', 'updated_at', 'updated_at TIMESTAMP')
 
-        # -- published_report --
+        # -- published_report (legacy) --
         _add_col_if_missing('published_report', 'algorithm_tree_json', 'algorithm_tree_json TEXT')
 
         # Auto-seed AJCC body sections and disease sites if not present

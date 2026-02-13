@@ -22,7 +22,7 @@ from models import (
     RadiologyTemplate, ReportingAlgorithm,
     TNMCalculatorContent, ClinicalProtocol,
     IncidentalFindingCalculator, AJCCDiseaseSite, AJCCBodySection,
-    User, AiPrelimCaseData, ReportingSession, PublishedReport,
+    User, AiPrelimCaseData,
 )
 from access_control import require_admin
 from clinical_tool_generator import extract_html_content
@@ -30,6 +30,29 @@ from clinical_tool_generator import extract_html_content
 logger = logging.getLogger(__name__)
 
 reporting_bp = Blueprint('reporting', __name__)
+
+AI_DAILY_LIMIT = 50  # Max AI requests per user per day
+
+
+def _check_ai_rate_limit():
+    """Check and increment per-user daily AI usage. Returns (ok, remaining, error_response)."""
+    from datetime import date
+    today = date.today()
+    if current_user.ai_usage_date != today:
+        current_user.ai_usage_date = today
+        current_user.ai_usage_count = 0
+    if (current_user.ai_usage_count or 0) >= AI_DAILY_LIMIT:
+        return False, 0, jsonify({
+            'error': f'You have reached the daily limit of {AI_DAILY_LIMIT} AI requests. '
+                     'Please try again tomorrow.'
+        }), 429
+    current_user.ai_usage_count = (current_user.ai_usage_count or 0) + 1
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+    remaining = AI_DAILY_LIMIT - current_user.ai_usage_count
+    return True, remaining, None
 
 
 # ==================== ALGORITHM FINDER (Unified Search) ====================
@@ -1265,33 +1288,10 @@ def smart_reporter_generate_tree():
     modality = (data.get('modality') or '').strip()
     body_section = (data.get('body_section') or '').strip()
 
-    # Rate limit: max 5 active sessions per user
-    active_count = ReportingSession.query.filter(
-        ReportingSession.user_id == current_user.id,
-        ReportingSession.status.in_(['generating', 'walkthrough', 'editing']),
-    ).count()
-    if active_count >= 5:
-        return jsonify({
-            'error': 'You have too many active reporting sessions. '
-                     'Please complete or close existing sessions before starting a new one.'
-        }), 429
-
-    # Create session in generating state
-    session = ReportingSession(
-        user_id=current_user.id,
-        clinical_question=clinical_question,
-        modality=modality or None,
-        body_section=body_section or None,
-        status='generating',
-    )
-    db.session.add(session)
-    db.session.flush()
-
     # --- Cache lookup: check for existing ReportingAlgorithm with matching slug ---
     cache_slug = re.sub(r'[^a-z0-9]+', '-', clinical_question.lower()).strip('-')
     cached_template = None
     if cache_slug:
-        # Try published algorithms first, then user's own unpublished
         cached_template = ReportingAlgorithm.query.filter_by(
             slug=cache_slug, is_available=True
         ).first()
@@ -1304,23 +1304,20 @@ def smart_reporter_generate_tree():
         try:
             cached_tree = json.loads(cached_template.algorithm_html)
             if cached_tree and cached_tree.get('steps'):
-                session.algorithm_tree_json = cached_template.algorithm_html
-                session.status = 'walkthrough'
-                session.provider = 'cache'
-                session.model_name = cached_template.generation_model or 'cached'
-                session.generation_tokens = 0
-                db.session.commit()
-
                 logger.info(f"Smart Reporter cache hit for slug '{cache_slug}'")
                 return jsonify({
                     'success': True,
-                    'session_id': session.id,
                     'algorithm_tree': cached_tree,
                     'cached': True,
                 })
         except (json.JSONDecodeError, TypeError):
             logger.warning(f"Cache entry '{cache_slug}' has invalid algorithm_html, regenerating.")
             cached_template = None
+
+    # Per-user daily rate limit (only for AI generation, not cache hits)
+    ok, remaining, err = _check_ai_rate_limit()
+    if not ok:
+        return err
 
     # --- Generate algorithm tree via AI ---
     try:
@@ -1331,22 +1328,15 @@ def smart_reporter_generate_tree():
             body_section=body_section,
         )
     except Exception as exc:
-        db.session.rollback()
         logger.error(f"Smart Reporter tree generation failed: {exc}")
         return jsonify({'error': f'Algorithm generation failed: {exc}'}), 500
 
-    # Store result in session
     tree_json = json.dumps({
         'steps': result.get('steps', []),
         'lines_tubes_step': result.get('lines_tubes_step', {}),
         'incidental_findings_step': result.get('incidental_findings_step', {}),
         'report_template': result.get('report_template', {}),
     })
-    session.algorithm_tree_json = tree_json
-    session.status = 'walkthrough'
-    session.provider = result.get('provider', 'claude')
-    session.model_name = result.get('model', '')
-    session.generation_tokens = result.get('token_count', 0)
 
     # --- Cache write: store tree as ReportingAlgorithm for future reuse ---
     if cache_slug:
@@ -1369,91 +1359,27 @@ def smart_reporter_generate_tree():
                     created_by_user_id=current_user.id,
                 )
                 db.session.add(cache_entry)
+                db.session.commit()
                 logger.info(f"Cached Smart Reporter tree as ReportingAlgorithm '{cache_slug}'")
             except Exception as cache_exc:
+                db.session.rollback()
                 logger.warning(f"Failed to cache tree as ReportingAlgorithm: {cache_exc}")
-
-    try:
-        db.session.commit()
-    except Exception as exc:
-        db.session.rollback()
-        logger.error(f"Failed to save Smart Reporter session: {exc}")
-        return jsonify({'error': 'Failed to save session.'}), 500
 
     return jsonify({
         'success': True,
-        'session_id': session.id,
-        'algorithm_tree': session.get_algorithm_tree(),
+        'algorithm_tree': json.loads(tree_json),
+        'remaining_requests': remaining,
     })
-
-
-@reporting_bp.route('/api/smart-reporter/session/<int:session_id>', methods=['GET'])
-@login_required
-def smart_reporter_get_session(session_id):
-    """Get a Smart Reporter session for resume/reload."""
-    session = ReportingSession.query.get_or_404(session_id)
-    if session.user_id != current_user.id:
-        return jsonify({'error': 'Access denied.'}), 403
-
-    return jsonify({
-        'id': session.id,
-        'clinical_question': session.clinical_question,
-        'modality': session.modality,
-        'body_section': session.body_section,
-        'algorithm_tree': session.get_algorithm_tree(),
-        'walkthrough_answers': session.get_walkthrough_answers(),
-        'report_text': session.report_text,
-        'status': session.status,
-        'ask_claude_count': session.ask_claude_count or 0,
-        'created_at': session.created_at.isoformat() if session.created_at else None,
-    })
-
-
-@reporting_bp.route('/api/smart-reporter/session/<int:session_id>', methods=['PUT'])
-@login_required
-def smart_reporter_save_session(session_id):
-    """Save walkthrough progress, report text, or status update."""
-    session = ReportingSession.query.get_or_404(session_id)
-    if session.user_id != current_user.id:
-        return jsonify({'error': 'Access denied.'}), 403
-
-    data = request.get_json()
-    if not data:
-        return jsonify({'error': 'JSON body required.'}), 400
-
-    # Update walkthrough answers if provided
-    if 'walkthrough_answers' in data:
-        session.walkthrough_answers_json = json.dumps(data['walkthrough_answers'])
-
-    # Update report text if provided
-    if 'report_text' in data:
-        session.report_text = data['report_text']
-
-    # Update status if provided
-    if 'status' in data and data['status'] in ('walkthrough', 'editing', 'completed'):
-        session.status = data['status']
-        if data['status'] == 'completed':
-            session.completed_at = datetime.utcnow()
-
-    try:
-        db.session.commit()
-    except Exception as exc:
-        db.session.rollback()
-        logger.error(f"Failed to save Smart Reporter session {session_id}: {exc}")
-        return jsonify({'error': 'Failed to save.'}), 500
-
-    return jsonify({'success': True, 'status': session.status})
 
 
 @reporting_bp.route('/api/smart-reporter/ask-claude', methods=['POST'])
 @login_required
 def smart_reporter_ask_claude():
-    """Ask Claude a question about the current report (Scene 2)."""
+    """Ask Claude a question about the current report."""
     data = request.get_json()
     if not data:
         return jsonify({'error': 'JSON body required.'}), 400
 
-    session_id = data.get('session_id')
     question = (data.get('question') or '').strip()
     current_report = (data.get('current_report') or '').strip()
 
@@ -1462,19 +1388,10 @@ def smart_reporter_ask_claude():
     if len(question) > 1000:
         return jsonify({'error': 'Question too long (max 1000 characters).'}), 400
 
-    # Validate session if provided
-    session = None
-    if session_id:
-        session = ReportingSession.query.get(session_id)
-        if session and session.user_id != current_user.id:
-            return jsonify({'error': 'Access denied.'}), 403
-        if session and (session.ask_claude_count or 0) >= 20:
-            return jsonify({
-                'error': 'You have reached the maximum number of questions for this session (20). '
-                         'Please use the remaining suggestions to finalize your report.'
-            }), 429
+    ok, remaining, err = _check_ai_rate_limit()
+    if not ok:
+        return err
 
-    # Call Claude
     try:
         from ai_smart_reporter import ask_claude_about_report, SmartReporterError
         result = ask_claude_about_report(
@@ -1485,20 +1402,10 @@ def smart_reporter_ask_claude():
         logger.error(f"Smart Reporter ask-claude failed: {exc}")
         return jsonify({'error': f'Failed to get response: {exc}'}), 500
 
-    # Increment counter
-    if session:
-        session.ask_claude_count = (session.ask_claude_count or 0) + 1
-        try:
-            db.session.commit()
-        except Exception:
-            db.session.rollback()
-
-    remaining = 20 - (session.ask_claude_count if session else 0)
-
     return jsonify({
         'success': True,
         'answer': result.get('answer', ''),
-        'remaining_questions': max(0, remaining),
+        'remaining_requests': remaining,
     })
 
 
@@ -1511,23 +1418,15 @@ def smart_reporter_review_report():
         return jsonify({'error': 'JSON body required.'}), 400
 
     report_text = (data.get('report_text') or '').strip()
-    session_id = data.get('session_id')
 
     if not report_text:
         return jsonify({'error': 'Report text is required.'}), 400
     if len(report_text) > 10000:
         return jsonify({'error': 'Report text too long (max 10000 characters).'}), 400
 
-    # Rate limit via session if provided
-    session = None
-    if session_id:
-        session = ReportingSession.query.get(session_id)
-        if session and session.user_id != current_user.id:
-            return jsonify({'error': 'Access denied.'}), 403
-        if session and (session.ask_claude_count or 0) >= 20:
-            return jsonify({
-                'error': 'You have reached the maximum number of AI requests for this session (20).'
-            }), 429
+    ok, remaining, err = _check_ai_rate_limit()
+    if not ok:
+        return err
 
     try:
         from ai_smart_reporter import review_report, SmartReporterError
@@ -1536,21 +1435,11 @@ def smart_reporter_review_report():
         logger.error(f"Smart Reporter review failed: {exc}")
         return jsonify({'error': f'Review failed: {exc}'}), 500
 
-    # Increment counter
-    if session:
-        session.ask_claude_count = (session.ask_claude_count or 0) + 1
-        try:
-            db.session.commit()
-        except Exception:
-            db.session.rollback()
-
-    remaining = 20 - (session.ask_claude_count if session else 0)
-
     return jsonify({
         'success': True,
         'improved_report': result.get('improved_report', ''),
         'suggestions': result.get('suggestions', []),
-        'remaining_questions': max(0, remaining),
+        'remaining_requests': remaining,
     })
 
 
@@ -1563,23 +1452,15 @@ def smart_reporter_quick_review():
         return jsonify({'error': 'JSON body required.'}), 400
 
     report_text = (data.get('report_text') or '').strip()
-    session_id = data.get('session_id')
 
     if not report_text:
         return jsonify({'error': 'Report text is required.'}), 400
     if len(report_text) > 10000:
         return jsonify({'error': 'Report text too long (max 10000 characters).'}), 400
 
-    # Rate limit via session if provided
-    session = None
-    if session_id:
-        session = ReportingSession.query.get(session_id)
-        if session and session.user_id != current_user.id:
-            return jsonify({'error': 'Access denied.'}), 403
-        if session and (session.ask_claude_count or 0) >= 20:
-            return jsonify({
-                'error': 'You have reached the maximum number of AI requests for this session (20).'
-            }), 429
+    ok, remaining, err = _check_ai_rate_limit()
+    if not ok:
+        return err
 
     try:
         from ai_smart_reporter import quick_review, SmartReporterError
@@ -1588,21 +1469,11 @@ def smart_reporter_quick_review():
         logger.error(f"Smart Reporter quick review failed: {exc}")
         return jsonify({'error': f'Quick review failed: {exc}'}), 500
 
-    # Increment counter
-    if session:
-        session.ask_claude_count = (session.ask_claude_count or 0) + 1
-        try:
-            db.session.commit()
-        except Exception:
-            db.session.rollback()
-
-    remaining = 20 - (session.ask_claude_count if session else 0)
-
     return jsonify({
         'success': True,
         'improved_report': result.get('improved_report', ''),
         'suggestions': result.get('suggestions', []),
-        'remaining_questions': max(0, remaining),
+        'remaining_requests': remaining,
     })
 
 
@@ -1616,33 +1487,19 @@ def smart_reporter_ai_assist():
 
     question = (data.get('question') or '').strip()
     report_text = (data.get('report_text') or '').strip()
-    session_id = data.get('session_id')
 
     if not question:
         return jsonify({'error': 'Question is required.'}), 400
     if len(question) > 1000:
         return jsonify({'error': 'Question too long (max 1000 characters).'}), 400
 
-    # Validate session if provided
-    session = None
-    if session_id:
-        session = ReportingSession.query.get(session_id)
-        if session and session.user_id != current_user.id:
-            return jsonify({'error': 'Access denied.'}), 403
-        if session and (session.ask_claude_count or 0) >= 20:
-            return jsonify({
-                'error': 'You have reached the maximum number of AI requests for this session (20).'
-            }), 429
+    ok, remaining, err = _check_ai_rate_limit()
+    if not ok:
+        return err
 
-    # Pull clinical context from session as fallback
-    clinical_question = (data.get('clinical_question') or
-                         (session.clinical_question if session else '') or '')
-    modality = (data.get('modality') or
-                (session.modality if session else '') or '')
-    body_section = (data.get('body_section') or
-                    (session.body_section if session else '') or '')
-
-    # External context from "Use in Report" buttons
+    clinical_question = (data.get('clinical_question') or '')
+    modality = (data.get('modality') or '')
+    body_section = (data.get('body_section') or '')
     external_context = data.get('external_context')
 
     try:
@@ -1659,61 +1516,12 @@ def smart_reporter_ai_assist():
         logger.error(f"Smart Reporter AI assist failed: {exc}")
         return jsonify({'error': f'AI assist failed: {exc}'}), 500
 
-    # Increment counter
-    if session:
-        session.ask_claude_count = (session.ask_claude_count or 0) + 1
-        try:
-            db.session.commit()
-        except Exception:
-            db.session.rollback()
-
-    remaining = 20 - (session.ask_claude_count if session else 0)
-
     return jsonify({
         'success': True,
         'corrections': result.get('corrections', []),
         'answer': result.get('answer', ''),
         'insights': result.get('insights', {}),
-        'remaining_questions': max(0, remaining),
-    })
-
-
-@reporting_bp.route('/api/smart-reporter/create-session', methods=['POST'])
-@login_required
-def smart_reporter_create_session():
-    """Create a blank session for Scene 2 direct entry (no algorithm tree)."""
-    data = request.get_json() or {}
-
-    clinical_question = (data.get('clinical_question') or 'Report editing session').strip()[:500]
-
-    # Rate limit: max 5 active sessions per user
-    active_count = ReportingSession.query.filter(
-        ReportingSession.user_id == current_user.id,
-        ReportingSession.status.in_(['generating', 'walkthrough', 'editing']),
-    ).count()
-    if active_count >= 5:
-        return jsonify({
-            'error': 'You have too many active sessions. '
-                     'Please complete or close existing sessions before starting a new one.'
-        }), 429
-
-    session = ReportingSession(
-        user_id=current_user.id,
-        clinical_question=clinical_question,
-        status='editing',
-    )
-    db.session.add(session)
-
-    try:
-        db.session.commit()
-    except Exception as exc:
-        db.session.rollback()
-        logger.error(f"Failed to create Smart Reporter session: {exc}")
-        return jsonify({'error': 'Failed to create session.'}), 500
-
-    return jsonify({
-        'success': True,
-        'session_id': session.id,
+        'remaining_requests': remaining,
     })
 
 
@@ -1804,103 +1612,6 @@ def smart_reporter_blank_template():
     })
 
 
-@reporting_bp.route('/api/smart-reporter/sessions', methods=['GET'])
-@login_required
-def smart_reporter_list_sessions():
-    """List the current user's Smart Reporter sessions with search + pagination."""
-    search = request.args.get('q', '').strip()
-    offset = request.args.get('offset', 0, type=int)
-    limit = request.args.get('limit', 20, type=int)
-    limit = min(limit, 50)  # Cap at 50
-
-    query = ReportingSession.query.filter_by(user_id=current_user.id)
-
-    if search:
-        query = query.filter(
-            ReportingSession.clinical_question.ilike(f'%{search}%')
-        )
-
-    total = query.count()
-    sessions = query.order_by(
-        ReportingSession.created_at.desc()
-    ).offset(offset).limit(limit).all()
-
-    return jsonify({
-        'sessions': [s.to_summary_dict() for s in sessions],
-        'total': total,
-        'offset': offset,
-        'has_more': (offset + limit) < total,
-    })
-
-
-@reporting_bp.route('/api/smart-reporter/session/<int:session_id>', methods=['DELETE'])
-@login_required
-def smart_reporter_delete_session(session_id):
-    """Delete a Smart Reporter session."""
-    session = ReportingSession.query.get_or_404(session_id)
-    if session.user_id != current_user.id:
-        return jsonify({'error': 'Access denied.'}), 403
-
-    try:
-        db.session.delete(session)
-        db.session.commit()
-    except Exception as exc:
-        db.session.rollback()
-        logger.error(f"Failed to delete Smart Reporter session {session_id}: {exc}")
-        return jsonify({'error': 'Failed to delete session.'}), 500
-
-    return jsonify({'success': True})
-
-
-@reporting_bp.route('/api/smart-reporter/session/<int:session_id>/publish', methods=['POST'])
-@login_required
-def smart_reporter_publish_session(session_id):
-    """Publish a session to the community library."""
-    session = ReportingSession.query.get_or_404(session_id)
-    if session.user_id != current_user.id:
-        return jsonify({'error': 'Access denied.'}), 403
-
-    if not session.report_text or not session.report_text.strip():
-        return jsonify({'error': 'Cannot publish an empty report. Add content first.'}), 400
-
-    # Check if already published
-    existing = PublishedReport.query.filter_by(
-        session_id=session_id, user_id=current_user.id
-    ).first()
-    if existing:
-        return jsonify({'error': 'This session has already been published.'}), 409
-
-    # Determine contributor name
-    contributor_name = (
-        current_user.public_display_name
-        or current_user.full_name
-        or 'Anonymous'
-    )
-
-    published = PublishedReport(
-        session_id=session.id,
-        user_id=current_user.id,
-        clinical_question=session.clinical_question,
-        modality=session.modality,
-        body_section=session.body_section,
-        report_text=session.report_text,
-        algorithm_tree_json=session.algorithm_tree_json,
-        contributor_name=contributor_name,
-    )
-    db.session.add(published)
-
-    try:
-        db.session.commit()
-    except Exception as exc:
-        db.session.rollback()
-        logger.error(f"Failed to publish session {session_id}: {exc}")
-        return jsonify({'error': 'Failed to publish.'}), 500
-
-    return jsonify({
-        'success': True,
-        'published_id': published.id,
-        'message': f'Report published to community library as "{contributor_name}".',
-    })
 
 
 ## ==================== PERSONAL TEMPLATES (Phase 4, Gap 4) ====================
@@ -2098,46 +1809,6 @@ def smart_reporter_delete_personal_template(template_id):
     return jsonify({'success': True, 'message': f'Template "{title}" deleted.'})
 
 
-@reporting_bp.route('/api/smart-reporter/community', methods=['GET'])
-@login_required
-def smart_reporter_community_library():
-    """List published reports from all users (community library)."""
-    search = request.args.get('q', '').strip()
-    offset = request.args.get('offset', 0, type=int)
-    limit = request.args.get('limit', 20, type=int)
-    limit = min(limit, 50)
-
-    query = PublishedReport.query
-
-    if search:
-        query = query.filter(
-            db.or_(
-                PublishedReport.clinical_question.ilike(f'%{search}%'),
-                PublishedReport.modality.ilike(f'%{search}%'),
-                PublishedReport.body_section.ilike(f'%{search}%'),
-                PublishedReport.contributor_name.ilike(f'%{search}%'),
-            )
-        )
-
-    total = query.count()
-    reports = query.order_by(
-        PublishedReport.published_at.desc()
-    ).offset(offset).limit(limit).all()
-
-    return jsonify({
-        'reports': [r.to_summary_dict() for r in reports],
-        'total': total,
-        'offset': offset,
-        'has_more': (offset + limit) < total,
-    })
-
-
-@reporting_bp.route('/api/smart-reporter/community/<int:report_id>', methods=['GET'])
-@login_required
-def smart_reporter_get_published_report(report_id):
-    """Get a single published report (full content) for loading into editor."""
-    report = PublishedReport.query.get_or_404(report_id)
-    return jsonify(report.to_dict())
 
 
 @reporting_bp.route('/api/smart-reporter/admin-templates', methods=['GET'])
