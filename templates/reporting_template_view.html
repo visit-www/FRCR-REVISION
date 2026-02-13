@@ -232,17 +232,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (!targetContainer) return;
 
-    // Find the report output element (pre, textarea, or div with report content)
-    var candidates = wrapper.querySelectorAll('pre, textarea, [id*="report"], [id*="output"], [class*="report"], [class*="output"]');
-    for (var j = 0; j < candidates.length; j++) {
-        var el = candidates[j];
-        var txt = (el.value || el.textContent || '').trim();
-        if (txt.length > 30 && (txt.indexOf('FINDINGS') !== -1 || txt.indexOf('INDICATION') !== -1 || txt.indexOf('IMPRESSION') !== -1 || el.tagName === 'PRE' || el.tagName === 'TEXTAREA')) {
-            reportOutputEl = el;
-            break;
-        }
-    }
-
     // Create and inject the Smart Reporter button
     var srBtn = document.createElement('button');
     srBtn.className = targetContainer.querySelector('button').className;
@@ -250,19 +239,27 @@ document.addEventListener('DOMContentLoaded', function() {
     srBtn.innerHTML = '<i class="fas fa-paper-plane" style="margin-right:4px;"></i>Smart Reporter';
     srBtn.title = 'Send report to Smart Reporter editor';
     srBtn.onclick = function() {
+        // Search for report text AT CLICK TIME (content is generated dynamically)
         var text = '';
-        if (reportOutputEl) {
-            text = reportOutputEl.value || reportOutputEl.textContent || '';
+        // 1. Look for textarea/pre with report-like content
+        var els = wrapper.querySelectorAll('textarea, pre');
+        for (var k = 0; k < els.length; k++) {
+            var t = (els[k].value || els[k].textContent || '').trim();
+            if (t.length > 20) { text = t; break; }
         }
-        // Fallback: scan all pre/textarea for report-like content
-        if (!text.trim()) {
-            var els = wrapper.querySelectorAll('pre, textarea');
-            for (var k = 0; k < els.length; k++) {
-                var t = els[k].value || els[k].textContent || '';
-                if (t.trim().length > 30) { text = t; break; }
+        // 2. Try elements with report/output in id or class
+        if (!text) {
+            var candidates = wrapper.querySelectorAll('[id*="report" i], [id*="output" i], [class*="report" i], [class*="output" i]');
+            for (var j = 0; j < candidates.length; j++) {
+                var t = (candidates[j].value || candidates[j].innerText || '').trim();
+                if (t.length > 20) { text = t; break; }
             }
         }
-        sendToSmartReporter(text.trim());
+        if (!text) {
+            alert('Please generate a report first, then click Smart Reporter to send it.');
+            return;
+        }
+        sendToSmartReporter(text);
     };
     targetContainer.appendChild(srBtn);
 });
