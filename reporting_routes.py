@@ -24,6 +24,7 @@ from models import (
     User, AiPrelimCaseData, ReportingSession, PublishedReport,
 )
 from access_control import require_admin
+from clinical_tool_generator import extract_html_content
 
 logger = logging.getLogger(__name__)
 
@@ -795,7 +796,7 @@ def view_reporting_template(slug):
 
     content = {'styles': '', 'body': ''}
     if template.template_html:
-        content = _extract_template_content(template.template_html)
+        content = extract_html_content(template.template_html)
 
     # For AI-generated templates, use algorithm_html as body if no template_html
     if not template.template_html and template.algorithm_html:
@@ -825,37 +826,18 @@ def view_reporting_template(slug):
                            resources=resources)
 
 
-def _extract_template_content(html):
-    """Extract style and body from self-contained HTML."""
-    styles = ''
-    body = html
+@reporting_bp.route('/reporting-template/embed/<slug>')
+@login_required
+def embed_reporting_template(slug):
+    """Render a reporting template in embed mode (for Smart Reporter Tool Panel)."""
+    template = ReportingTemplate.query.filter_by(slug=slug, is_available=True).first_or_404()
 
-    style_matches = re.findall(r'<style[^>]*>(.*?)</style>', html, re.DOTALL)
-    if style_matches:
-        styles = '\n'.join(style_matches)
-
-    body_match = re.search(r'<body[^>]*>(.*?)</body>', html, re.DOTALL)
-    if body_match:
-        body = body_match.group(1)
-
-    # Strip <style> blocks from body to prevent them overriding our layout CSS
-    body = re.sub(r'<style[^>]*>.*?</style>', '', body, flags=re.DOTALL)
-
-    # Force single-column: replace multi-column grid patterns in extracted styles
-    styles = re.sub(
-        r'grid-template-columns\s*:\s*(?!1fr\s*[;\}])([^;}\n]+)',
-        'grid-template-columns: 1fr',
-        styles,
-    )
-
-    # Force left-align: replace centered text alignment
-    styles = re.sub(
-        r'text-align\s*:\s*center',
-        'text-align: left',
-        styles,
-    )
-
-    return {'styles': styles, 'body': body}
+    if template.template_html:
+        return template.template_html
+    elif template.algorithm_html:
+        return template.algorithm_html
+    else:
+        return "Template content not available", 404
 
 
 # ==================== USER: REPORTING TEMPLATES BROWSE ====================
@@ -1492,6 +1474,93 @@ def smart_reporter_create_session():
     })
 
 
+@reporting_bp.route('/api/smart-reporter/route-intent', methods=['POST'])
+@login_required
+def smart_reporter_route_intent():
+    """Classify user input into an intent category for Smart Reporter routing."""
+    data = request.get_json() or {}
+    user_input = (data.get('query') or '').strip()
+    if not user_input:
+        return jsonify({'error': 'Query is required.'}), 400
+
+    try:
+        from ai_smart_reporter import classify_intent, SmartReporterError
+        result = classify_intent(user_input)
+    except Exception as exc:
+        logger.error(f"Smart Reporter intent classification failed: {exc}")
+        # Fallback: default to walkthrough intent
+        result = {
+            'intent': 'walkthrough',
+            'canonical_topic': '',
+            'display_title': user_input,
+            'modality': None,
+            'body_section': None,
+            'category': None,
+        }
+
+    # Check cache for walkthrough intent
+    cached_tree = None
+    if result.get('intent') == 'walkthrough' and result.get('canonical_topic'):
+        slug = result['canonical_topic']
+        # Check admin-verified templates first, then unverified, then user cache
+        cached = ReportingTemplate.query.filter(
+            ReportingTemplate.slug == slug,
+            ReportingTemplate.is_available == True,
+        ).order_by(
+            ReportingTemplate.verified_at.desc().nullslast(),
+        ).first()
+        if cached and cached.algorithm_html:
+            cached_tree = {
+                'source': 'cache',
+                'template_id': cached.id,
+                'title': cached.title,
+                'verified': cached.verified_at is not None,
+            }
+
+    return jsonify({
+        'success': True,
+        'intent': result.get('intent', 'walkthrough'),
+        'canonical_topic': result.get('canonical_topic', ''),
+        'display_title': result.get('display_title', user_input),
+        'modality': result.get('modality'),
+        'body_section': result.get('body_section'),
+        'category': result.get('category'),
+        'cached_tree': cached_tree,
+    })
+
+
+@reporting_bp.route('/api/smart-reporter/blank-template', methods=['POST'])
+@login_required
+def smart_reporter_blank_template():
+    """Generate a blank structured reporting template (Gap 3 abort flow)."""
+    data = request.get_json() or {}
+
+    modality = (data.get('modality') or '').strip()
+    body_section = (data.get('body_section') or '').strip()
+    clinical_question = (data.get('clinical_question') or '').strip()
+
+    if not modality and not body_section and not clinical_question:
+        return jsonify({'error': 'At least one of modality, body_section, or clinical_question is required.'}), 400
+
+    try:
+        from ai_smart_reporter import generate_blank_template, SmartReporterError
+        result = generate_blank_template(
+            modality=modality,
+            body_section=body_section,
+            clinical_question=clinical_question,
+        )
+    except Exception as exc:
+        logger.error(f"Smart Reporter blank template generation failed: {exc}")
+        return jsonify({'error': f'Template generation failed: {exc}'}), 500
+
+    return jsonify({
+        'success': True,
+        'template_text': result.get('template_text', ''),
+        'model': result.get('model', ''),
+        'token_count': result.get('token_count', 0),
+    })
+
+
 @reporting_bp.route('/api/smart-reporter/sessions', methods=['GET'])
 @login_required
 def smart_reporter_list_sessions():
@@ -1589,6 +1658,201 @@ def smart_reporter_publish_session(session_id):
         'published_id': published.id,
         'message': f'Report published to community library as "{contributor_name}".',
     })
+
+
+## ==================== PERSONAL TEMPLATES (Phase 4, Gap 4) ====================
+
+@reporting_bp.route('/api/smart-reporter/personal-templates', methods=['GET'])
+@login_required
+def smart_reporter_list_personal_templates():
+    """List the current user's personal templates."""
+    search = request.args.get('q', '').strip()
+    offset = request.args.get('offset', 0, type=int)
+    limit = request.args.get('limit', 20, type=int)
+    limit = min(limit, 50)
+
+    query = ReportingTemplate.query.filter(
+        ReportingTemplate.category == 'personal_template',
+        ReportingTemplate.created_by_user_id == current_user.id,
+    )
+
+    if search:
+        query = query.filter(
+            db.or_(
+                ReportingTemplate.title.ilike(f'%{search}%'),
+                ReportingTemplate.body_section.ilike(f'%{search}%'),
+                ReportingTemplate.keywords.ilike(f'%{search}%'),
+            )
+        )
+
+    total = query.count()
+    templates = query.order_by(
+        ReportingTemplate.updated_at.desc()
+    ).offset(offset).limit(limit).all()
+
+    return jsonify({
+        'templates': [{
+            'id': t.id,
+            'title': t.title,
+            'slug': t.slug,
+            'body_section': t.body_section,
+            'description': t.description,
+            'updated_at': t.updated_at.isoformat() if t.updated_at else None,
+            'has_content': bool(t.pacs_report_text),
+        } for t in templates],
+        'total': total,
+        'offset': offset,
+        'has_more': (offset + limit) < total,
+    })
+
+
+@reporting_bp.route('/api/smart-reporter/personal-templates', methods=['POST'])
+@login_required
+def smart_reporter_create_personal_template():
+    """Save a report as a personal template (Gap 4)."""
+    data = request.get_json() or {}
+    title = (data.get('title') or '').strip()
+    report_text = (data.get('report_text') or '').strip()
+
+    if not title:
+        return jsonify({'error': 'Template title is required.'}), 400
+    if not report_text:
+        return jsonify({'error': 'Report text is required.'}), 400
+
+    # Rate limit: max 50 personal templates per user
+    count = ReportingTemplate.query.filter(
+        ReportingTemplate.category == 'personal_template',
+        ReportingTemplate.created_by_user_id == current_user.id,
+    ).count()
+    if count >= 50:
+        return jsonify({
+            'error': 'You have reached the maximum of 50 personal templates. '
+                     'Please delete some before creating new ones.'
+        }), 429
+
+    # Generate unique slug: pt-{user_id}-{normalized-title}
+    import re as _re
+    base_slug = _re.sub(r'[^a-z0-9]+', '-', title.lower()).strip('-')
+    slug = f'pt-{current_user.id}-{base_slug}'
+
+    # Handle slug collision (shouldn't happen often with user prefix)
+    existing = ReportingTemplate.query.filter_by(slug=slug).first()
+    if existing:
+        # If same user owns it, update instead
+        if existing.created_by_user_id == current_user.id and existing.category == 'personal_template':
+            existing.title = title
+            existing.pacs_report_text = report_text
+            existing.body_section = (data.get('body_section') or '').strip() or None
+            existing.description = (data.get('description') or '').strip() or None
+            existing.updated_at = datetime.utcnow()
+            db.session.commit()
+            return jsonify({
+                'success': True,
+                'template_id': existing.id,
+                'message': f'Template "{title}" updated.',
+            })
+        # Different owner — append counter
+        counter = 1
+        while ReportingTemplate.query.filter_by(slug=f'{slug}-{counter}').first():
+            counter += 1
+        slug = f'{slug}-{counter}'
+
+    template = ReportingTemplate(
+        slug=slug,
+        title=title,
+        category='personal_template',
+        body_section=(data.get('body_section') or '').strip() or None,
+        description=(data.get('description') or '').strip() or None,
+        pacs_report_text=report_text,
+        is_available=True,
+        created_by_user_id=current_user.id,
+    )
+    db.session.add(template)
+
+    try:
+        db.session.commit()
+    except Exception as exc:
+        db.session.rollback()
+        logger.error(f"Failed to save personal template: {exc}")
+        return jsonify({'error': 'Failed to save template.'}), 500
+
+    return jsonify({
+        'success': True,
+        'template_id': template.id,
+        'message': f'Template "{title}" saved.',
+    }), 201
+
+
+@reporting_bp.route('/api/smart-reporter/personal-templates/<int:template_id>', methods=['GET'])
+@login_required
+def smart_reporter_get_personal_template(template_id):
+    """Get a personal template's content."""
+    template = ReportingTemplate.query.get_or_404(template_id)
+    if template.created_by_user_id != current_user.id or template.category != 'personal_template':
+        return jsonify({'error': 'Access denied.'}), 403
+
+    return jsonify({
+        'id': template.id,
+        'title': template.title,
+        'slug': template.slug,
+        'body_section': template.body_section,
+        'description': template.description,
+        'report_text': template.pacs_report_text or '',
+        'updated_at': template.updated_at.isoformat() if template.updated_at else None,
+    })
+
+
+@reporting_bp.route('/api/smart-reporter/personal-templates/<int:template_id>', methods=['PUT'])
+@login_required
+def smart_reporter_update_personal_template(template_id):
+    """Update a personal template (rename, change content)."""
+    template = ReportingTemplate.query.get_or_404(template_id)
+    if template.created_by_user_id != current_user.id or template.category != 'personal_template':
+        return jsonify({'error': 'Access denied.'}), 403
+
+    data = request.get_json() or {}
+
+    if 'title' in data:
+        title = (data['title'] or '').strip()
+        if title:
+            template.title = title
+    if 'report_text' in data:
+        template.pacs_report_text = (data['report_text'] or '').strip()
+    if 'body_section' in data:
+        template.body_section = (data['body_section'] or '').strip() or None
+    if 'description' in data:
+        template.description = (data['description'] or '').strip() or None
+
+    template.updated_at = datetime.utcnow()
+
+    try:
+        db.session.commit()
+    except Exception as exc:
+        db.session.rollback()
+        logger.error(f"Failed to update personal template {template_id}: {exc}")
+        return jsonify({'error': 'Failed to update template.'}), 500
+
+    return jsonify({'success': True, 'message': f'Template "{template.title}" updated.'})
+
+
+@reporting_bp.route('/api/smart-reporter/personal-templates/<int:template_id>', methods=['DELETE'])
+@login_required
+def smart_reporter_delete_personal_template(template_id):
+    """Delete a personal template."""
+    template = ReportingTemplate.query.get_or_404(template_id)
+    if template.created_by_user_id != current_user.id or template.category != 'personal_template':
+        return jsonify({'error': 'Access denied.'}), 403
+
+    title = template.title
+    try:
+        db.session.delete(template)
+        db.session.commit()
+    except Exception as exc:
+        db.session.rollback()
+        logger.error(f"Failed to delete personal template {template_id}: {exc}")
+        return jsonify({'error': 'Failed to delete template.'}), 500
+
+    return jsonify({'success': True, 'message': f'Template "{title}" deleted.'})
 
 
 @reporting_bp.route('/api/smart-reporter/community', methods=['GET'])
@@ -1841,3 +2105,48 @@ def smart_reporter_relevant_content():
         pass
 
     return jsonify({'results': results[:15]})
+
+
+@reporting_bp.route('/api/smart-reporter/anatomy', methods=['POST'])
+@login_required
+def smart_reporter_anatomy():
+    """Generate or retrieve anatomy reference content for the Anatomy Panel."""
+    data = request.get_json() or {}
+    topic = (data.get('topic') or '').strip()
+    if not topic:
+        return jsonify({'error': 'Anatomy topic is required.'}), 400
+
+    # DB-first: check for cached anatomy content
+    cached = ReportingTemplate.query.filter(
+        ReportingTemplate.category == 'anatomy',
+        ReportingTemplate.is_available == True,
+        db.or_(
+            ReportingTemplate.title.ilike(f'%{topic}%'),
+            ReportingTemplate.keywords.ilike(f'%{topic}%'),
+        ),
+    ).first()
+
+    if cached and cached.template_html:
+        return jsonify({
+            'success': True,
+            'title': cached.title,
+            'content_html': cached.template_html,
+            'source': 'database',
+        })
+
+    # AI fallback: generate anatomy reference
+    try:
+        from ai_smart_reporter import generate_anatomy_reference, SmartReporterError
+        result = generate_anatomy_reference(topic)
+    except Exception as exc:
+        logger.error(f"Anatomy reference generation failed: {exc}")
+        return jsonify({'error': f'Failed to generate anatomy reference: {exc}'}), 500
+
+    return jsonify({
+        'success': True,
+        'title': result.get('title', topic.title()),
+        'content_html': result.get('content_html', ''),
+        'source': result.get('source', 'ai'),
+        'model': result.get('model', ''),
+        'token_count': result.get('token_count', 0),
+    })

@@ -1,0 +1,71 @@
+{#
+  Shared resource fields macro for admin modals (IF calculators + Reporting Templates).
+  Usage: {% from 'partials/resource_fields.html' import resource_fields %}
+         {{ resource_fields('gen') }}  — for generate modal
+         {{ resource_fields('edit') }} — for edit modal
+         {{ resource_fields('man') }}  — for manual add modal
+#}
+
+{% macro resource_fields(prefix) %}
+<!-- Supporting Resources -->
+<hr class="my-3">
+<h6 class="fw-semibold mb-3"><i class="fas fa-paperclip me-1" style="color: #5E899E;"></i>Supporting Resources</h6>
+
+<div class="mb-3">
+    <label class="form-label small fw-semibold">References</label>
+    <div id="{{ prefix }}RefsContainer"></div>
+    <button type="button" class="btn btn-sm btn-outline-secondary mt-1" onclick="addReferenceRow('{{ prefix }}RefsContainer')">
+        <i class="fas fa-plus me-1"></i>Add Reference
+    </button>
+</div>
+
+<div class="mb-3">
+    <label class="form-label small fw-semibold">Linked Cases</label>
+    <div class="input-group input-group-sm mb-2">
+        <input type="text" class="form-control" id="{{ prefix }}CaseSearch" placeholder="Search cases..." autocomplete="off">
+        <button class="btn btn-outline-secondary" type="button" onclick="searchItems('{{ prefix }}CaseSearch', '{{ prefix }}CaseResults', 'case')">
+            <i class="fas fa-search"></i>
+        </button>
+    </div>
+    <div id="{{ prefix }}CaseResults" class="search-results-dropdown d-none"></div>
+    <div id="{{ prefix }}LinkedCases" class="d-flex flex-wrap gap-1"></div>
+</div>
+
+<div class="mb-3">
+    <label class="form-label small fw-semibold">Linked TNM Calculators</label>
+    <div class="input-group input-group-sm mb-2">
+        <input type="text" class="form-control" id="{{ prefix }}TnmSearch" placeholder="Search TNM calculators..." autocomplete="off">
+        <button class="btn btn-outline-secondary" type="button" onclick="searchItems('{{ prefix }}TnmSearch', '{{ prefix }}TnmResults', 'algorithm')">
+            <i class="fas fa-search"></i>
+        </button>
+    </div>
+    <div id="{{ prefix }}TnmResults" class="search-results-dropdown d-none"></div>
+    <div id="{{ prefix }}LinkedTnm" class="d-flex flex-wrap gap-1"></div>
+</div>
+
+<div class="mb-3">
+    <label class="form-label small fw-semibold">Reference PDFs</label>
+    <div class="mb-2">
+        <input type="file" class="form-control form-control-sm" id="{{ prefix }}PdfUpload" accept=".pdf" onchange="uploadPDF(this, '{{ prefix }}LinkedPdfs', '{{ prefix }}PdfProgress')">
+        <div id="{{ prefix }}PdfProgress" class="d-none">
+            <div class="progress mt-1" style="height: 4px;">
+                <div class="progress-bar bg-warning" style="width: 0%"></div>
+            </div>
+        </div>
+    </div>
+    <div id="{{ prefix }}LinkedPdfs" class="d-flex flex-wrap gap-1"></div>
+</div>
+{% endmacro %}
+
+{% macro resource_styles() %}
+<style>
+    .search-results-dropdown { position: relative; z-index: 10; max-height: 200px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 0.375rem; background: #fff; margin-top: -0.5rem; margin-bottom: 0.5rem; }
+    .search-results-dropdown .search-result-item { padding: 0.4rem 0.75rem; cursor: pointer; font-size: 0.85rem; border-bottom: 1px solid #f0f0f0; }
+    .search-results-dropdown .search-result-item:hover { background: #f0f7ff; }
+    .resource-chip { display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.2rem 0.5rem; border-radius: 1rem; font-size: 0.78rem; border: 1px solid #dee2e6; background: #f8f9fa; }
+    .resource-chip .remove-chip { cursor: pointer; color: #dc3545; font-size: 0.7rem; }
+    .resource-chip .remove-chip:hover { color: #a71d2a; }
+    .reference-row { animation: fadeIn 0.15s ease-in; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+</style>
+{% endmacro %}

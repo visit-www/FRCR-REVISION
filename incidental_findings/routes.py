@@ -14,6 +14,7 @@ import logging
 
 from models import db, IncidentalFindingCalculator
 from access_control import require_admin
+from clinical_tool_generator import extract_html_content
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +56,7 @@ def view_calculator(slug):
     # Extract calculator content for rendering (same pattern as TNM calculator)
     content = {'styles': '', 'body': ''}
     if calculator.calculator_html:
-        content = _extract_content(calculator.calculator_html)
+        content = extract_html_content(calculator.calculator_html)
 
     # Parse resources from guideline_source JSON
     import json as _json
@@ -146,37 +147,18 @@ def search_calculators():
         ])
 
 
-def _extract_content(html):
-    """Extract style and body from self-contained HTML."""
-    styles = ''
-    body = html
+@if_bp.route('/embed/<slug>')
+@login_required
+def embed_calculator(slug):
+    """Render a calculator in embed mode (for Smart Reporter Tool Panel)."""
+    calculator = IncidentalFindingCalculator.query.filter_by(
+        slug=slug, is_available=True
+    ).first_or_404()
 
-    style_matches = re.findall(r'<style[^>]*>(.*?)</style>', html, re.DOTALL)
-    if style_matches:
-        styles = '\n'.join(style_matches)
+    if not calculator.calculator_html:
+        return "Calculator content not available", 404
 
-    body_match = re.search(r'<body[^>]*>(.*?)</body>', html, re.DOTALL)
-    if body_match:
-        body = body_match.group(1)
-
-    # Strip <style> blocks from body to prevent them overriding our layout CSS
-    body = re.sub(r'<style[^>]*>.*?</style>', '', body, flags=re.DOTALL)
-
-    # Force single-column: replace multi-column grid patterns in extracted styles
-    styles = re.sub(
-        r'grid-template-columns\s*:\s*(?!1fr\s*[;\}])([^;}\n]+)',
-        'grid-template-columns: 1fr',
-        styles,
-    )
-
-    # Force left-align: replace centered text alignment
-    styles = re.sub(
-        r'text-align\s*:\s*center',
-        'text-align: left',
-        styles,
-    )
-
-    return {'styles': styles, 'body': body}
+    return calculator.calculator_html
 
 
 # ==================== ADMIN ROUTES ====================

@@ -1,11 +1,53 @@
 """
-AI Smart Reporter Module
+AI Smart Reporter Module (Revised)
 
 Generates structured algorithm trees for interactive scan reading walkthrough,
-and provides lightweight "Ask Claude" for report editing assistance.
+provides unified AI assist for report editing, intent classification for routing,
+anatomy references, and blank template generation.
 
-Separate from ai_algorithmic_reporter.py (which generates HTML + flat PACS text).
-This module generates structured JSON with branching logic for client-side rendering.
+CHANGELOG from original:
+────────────────────────────────────────────────────────────────
+1. DRY: Extracted shared API call boilerplate into _call_claude() helper
+   - Eliminates ~150 lines of duplicated request/error-handling code
+   - Single place to update headers, timeout logic, error messages
+
+2. PROMPTS FIXED:
+   - Fixed typos: "subspeciality" → "subspecialty", "whihc ocpy" → "which is copy",
+     "Consistense" → "Consistency", missing period after "demographic factors in mind"
+   - TREE_PROMPT: Added resource injection slot, improved sub-step branching rules,
+     added explicit normal-variant handling, tightened report_text quality bar
+   - UNIFIED_ASSIST: Better handling of empty reports (Gap 2 paste flow),
+     added resource context injection (Gap 1), clarified PACS-ready output rules
+   - QUICK_REVIEW: Added instruction to preserve section headings
+
+3. PLAN ALIGNMENT — NEW FUNCTIONS:
+   - classify_intent()         → Haiku-based intent router (Phase 3)
+   - generate_anatomy_reference() → Anatomy panel content (Phase 5)
+   - generate_blank_template()    → Structured empty template for abort flow (Gap 3)
+   - format_resources_for_prompt() → Resource injection for Gap 1
+
+4. COST OPTIMISATION:
+   - generate_algorithm_tree: max_tokens 10000 → 6000 (trees rarely exceed 4k tokens)
+   - classify_intent: Uses Haiku (~0.25$/M input) with max_tokens=500
+   - generate_blank_template: Uses Haiku, max_tokens=1500
+   - generate_anatomy_reference: Uses Haiku, max_tokens=1000
+   - quick_review: Already Haiku ✓
+   - unified_ai_assist: Stays on Sonnet (quality-critical) ✓
+   - ask_claude_about_report: Marked as DEPRECATED, kept for backward compat
+
+5. RESOURCE-AWARE GENERATION (Gap 1):
+   - generate_algorithm_tree() now accepts optional `resources` dict
+   - format_resources_for_prompt() converts URLs, DB refs, PDF text, TNM data
+     into a structured prompt section injected before the JSON schema
+   - If no resources provided, AI uses own knowledge (unchanged behaviour)
+
+6. QUALITY IMPROVEMENTS:
+   - Tree generation: Added rule for normal variants that mimic pathology
+   - Tree generation: Added measurement thresholds where applicable
+   - Unified assist: Better empty-report handling for paste-first workflow
+   - Unified assist: Explicit instruction not to hallucinate image findings
+   - JSON parsing: More robust fallback with detailed error logging
+────────────────────────────────────────────────────────────────
 """
 
 import json
@@ -23,17 +65,215 @@ class SmartReporterError(Exception):
     pass
 
 
+# ==================== SHARED API HELPER ====================
+
+def _call_claude(system_prompt, user_prompt, model=None, max_tokens=4000,
+                 temperature=0.3, timeout=60):
+    """
+    Shared helper for all Claude API calls.
+    Eliminates duplicated request/error-handling boilerplate.
+
+    Args:
+        system_prompt: System message string
+        user_prompt: User message string
+        model: Override model (defaults to CLAUDE_MODEL env var)
+        max_tokens: Max response tokens
+        temperature: Sampling temperature
+        timeout: Request timeout in seconds
+
+    Returns:
+        tuple: (response_text: str, model_used: str, token_count: int)
+
+    Raises:
+        SmartReporterError on any failure
+    """
+    api_key = os.getenv("CLAUDE_API_KEY")
+    if not api_key:
+        raise SmartReporterError("RadInsight Intelligence API key not configured.")
+
+    effective_model = model or os.getenv("CLAUDE_MODEL", "claude-sonnet-4-20250514")
+
+    payload = {
+        "model": effective_model,
+        "max_tokens": max_tokens,
+        "temperature": temperature,
+        "system": system_prompt,
+        "messages": [{"role": "user", "content": user_prompt}],
+    }
+
+    try:
+        response = requests.post(
+            "https://api.anthropic.com/v1/messages",
+            headers={
+                "Content-Type": "application/json",
+                "x-api-key": api_key,
+                "anthropic-version": "2023-06-01",
+            },
+            json=payload,
+            timeout=timeout,
+        )
+    except requests.exceptions.Timeout:
+        raise SmartReporterError("Request timed out. Please try again.")
+    except requests.exceptions.RequestException as exc:
+        raise SmartReporterError(f"Failed to connect to RadInsight Intelligence: {exc}")
+
+    if response.status_code >= 300:
+        detail = response.text[:500]
+        raise SmartReporterError(
+            f"RadInsight Intelligence error (HTTP {response.status_code}): {detail}"
+        )
+
+    result = response.json()
+    content = result.get("content", [])
+    if not content:
+        raise SmartReporterError("Empty response from RadInsight Intelligence.")
+
+    text = content[0].get("text", "").strip()
+    if not text:
+        raise SmartReporterError("No text in RadInsight Intelligence response.")
+
+    token_count = result.get("usage", {}).get("output_tokens", 0)
+    return text, effective_model, token_count
+
+
+def _parse_json_response(text):
+    """
+    Shared JSON parser with markdown fence stripping and regex fallback.
+
+    Returns parsed dict or raises SmartReporterError.
+    """
+    cleaned = text.strip()
+
+    # Strip markdown code fences
+    if cleaned.startswith("```"):
+        lines = cleaned.split("\n")
+        if lines[0].startswith("```"):
+            lines = lines[1:]
+        if lines and lines[-1].strip() == "```":
+            lines = lines[:-1]
+        cleaned = "\n".join(lines)
+
+    try:
+        return json.loads(cleaned)
+    except json.JSONDecodeError:
+        # Fallback: find the outermost JSON object
+        match = re.search(r'\{[\s\S]*\}', cleaned)
+        if match:
+            try:
+                return json.loads(match.group())
+            except json.JSONDecodeError:
+                logger.warning("JSON fallback parse also failed. Raw text: %s", cleaned[:500])
+                raise SmartReporterError("Failed to parse AI response as JSON.")
+        raise SmartReporterError("AI response was not valid JSON.")
+
+
+# ==================== RESOURCE FORMATTING (Gap 1) ====================
+
+def format_resources_for_prompt(resources):
+    """
+    Convert user-supplied resources into a structured prompt section.
+
+    Args:
+        resources: dict with optional keys:
+            - urls: list of reference article URLs
+            - db_refs: list of {type: 'if'|'rt'|'protocol'|'tnm', slug: str, content: str}
+            - pdf_texts: list of {filename: str, text: str}
+            - tnm_refs: list of {system: str, content: str}
+
+    Returns:
+        str: Formatted prompt section, or empty string if no resources
+    """
+    if not resources or not isinstance(resources, dict):
+        return ""
+
+    sections = []
+
+    # Reference URLs
+    urls = resources.get('urls', [])
+    if urls:
+        url_list = "\n".join(f"  - {u}" for u in urls if u)
+        sections.append(
+            f"REFERENCE ARTICLES (use these as evidence sources):\n{url_list}"
+        )
+
+    # Database references (pre-fetched content from IF calcs, templates, protocols)
+    db_refs = resources.get('db_refs', [])
+    if db_refs:
+        ref_parts = []
+        type_labels = {
+            'if': 'Incidental Findings Calculator',
+            'rt': 'Reporting Template',
+            'protocol': 'Clinical Protocol',
+            'tnm': 'TNM Staging System',
+        }
+        for ref in db_refs:
+            if not isinstance(ref, dict):
+                continue
+            label = type_labels.get(ref.get('type', ''), ref.get('type', 'Reference'))
+            content = ref.get('content', '')
+            slug = ref.get('slug', '')
+            if content:
+                ref_parts.append(f"  [{label}: {slug}]\n  {content[:3000]}")
+        if ref_parts:
+            sections.append(
+                "EXISTING DATABASE CONTENT (incorporate into your output):\n"
+                + "\n\n".join(ref_parts)
+            )
+
+    # TNM staging data
+    tnm_refs = resources.get('tnm_refs', [])
+    if tnm_refs:
+        tnm_parts = []
+        for ref in tnm_refs:
+            if isinstance(ref, dict) and ref.get('content'):
+                tnm_parts.append(f"  [{ref.get('system', 'TNM')}]\n  {ref['content'][:2000]}")
+        if tnm_parts:
+            sections.append(
+                "TNM STAGING DATA (use for staging-related steps):\n"
+                + "\n\n".join(tnm_parts)
+            )
+
+    # Uploaded PDF text
+    pdf_texts = resources.get('pdf_texts', [])
+    if pdf_texts:
+        pdf_parts = []
+        for pdf in pdf_texts:
+            if isinstance(pdf, dict) and pdf.get('text'):
+                fname = pdf.get('filename', 'uploaded document')
+                # Truncate long PDFs to stay within token budget
+                pdf_parts.append(f"  [PDF: {fname}]\n  {pdf['text'][:4000]}")
+        if pdf_parts:
+            sections.append(
+                "UPLOADED REFERENCE DOCUMENTS (use as evidence):\n"
+                + "\n\n".join(pdf_parts)
+            )
+
+    if not sections:
+        return ""
+
+    return (
+        "\n\n═══ REFERENCE MATERIALS PROVIDED ═══\n"
+        "Use the following references to ground your output in evidence. "
+        "Where references conflict with general knowledge, prefer the references. "
+        "If references are incomplete for certain steps, supplement with your own knowledge.\n\n"
+        + "\n\n".join(sections)
+        + "\n═══ END REFERENCES ═══\n\n"
+    )
+
+
 # ==================== SYSTEM PROMPTS ====================
 
 TREE_SYSTEM_PROMPT = (
-    "You are a consultant radiologist with extensive daily PACS reporting experience. "
-    "You generate structured algorithm decision trees for scan reading. "
+    "You are a consultant radiologist with extensive daily subspecialty radiology reporting experience. "
+    "You generate structured algorithm decision trees for systematic scan reading. "
+    "Your trees reflect real-world reading order, not textbook chapter order. "
     "Output valid JSON only. No markdown fences. No text outside the JSON object."
 )
 
 ASK_CLAUDE_SYSTEM_PROMPT = (
-    "You are a consultant radiologist reviewing a trainee's draft PACS report. "
+    "You are a consultant radiologist reviewing a trainee's draft radiology report. "
     "Answer their question concisely using standard radiology phrasing. "
+    "While responding, keep the entire report findings, clinical context, and patient demographic factors in mind. "
     "If suggesting report text, make it ready to paste directly into a PACS report. "
     "Keep answers under 200 words. Plain text only — no markdown or HTML."
 )
@@ -75,13 +315,14 @@ Return a JSON object with this EXACT structure:
 }}
 
 RULES:
-1. Fix genuine spelling errors, including radiology-specific terms (e.g. "referral thyroid" should be "retrosternal thyroid", "heptaic" should be "hepatic").
+1. Fix genuine spelling errors, including radiology-specific terms (e.g. "referral thyroid" → "retrosternal thyroid", "heptaic" → "hepatic").
 2. Fix grammar errors.
-3. Improve phrasing to match standard radiology conventions (e.g. "There is no evidence of" to "No evidence of", "The liver appears normal" to "The liver is unremarkable").
-4. Do NOT assess clinical correctness. Do NOT add content. Do NOT change clinical meaning.
-5. Each suggestion must quote the EXACT original text so the frontend can locate it.
-6. Max 10 suggestions. Prioritise: spelling > grammar > phrasing.
-7. If the report is already well-written, return an empty suggestions array and the original text as improved_report.
+3. Improve phrasing to match standard radiology conventions (e.g. "There is no evidence of" → "No evidence of", "The liver appears normal" → "The liver is unremarkable").
+4. Preserve all section headings (INDICATION, TECHNIQUE, FINDINGS, IMPRESSION, etc.) exactly as they appear.
+5. Do NOT assess clinical correctness. Do NOT add content. Do NOT change clinical meaning.
+6. Each suggestion must quote the EXACT original text so the frontend can locate it.
+7. Max 10 suggestions. Prioritise: spelling > grammar > phrasing.
+8. If the report is already well-written, return an empty suggestions array and the original text as improved_report.
 
 Output ONLY the JSON object. No markdown. No explanation."""
 
@@ -95,8 +336,9 @@ UNIFIED_ASSIST_SYSTEM_PROMPT = (
     "- Correct without condescension — just fix it, don't lecture\n"
     "- Give actionable report text ready to paste into PACS\n"
     "- Flag clinically important gaps the referring clinician would notice\n"
-    "- Teach through the report — brief why when suggesting additions\n"
-    "- NEVER add findings the trainee didn't describe — the images aren't available to you\n\n"
+    "- Teach through the report — brief rationale when suggesting additions\n"
+    "- NEVER add findings the trainee didn't describe — the images aren't available to you\n"
+    "- NEVER fabricate or hallucinate imaging findings\n\n"
     "Output valid JSON only. No markdown fences. No text outside the JSON object."
 )
 
@@ -113,7 +355,7 @@ DRAFT REPORT:
 ---
 
 TRAINEE'S QUESTION: {question}
-
+{resource_section}
 Return a JSON object with EXACTLY this structure:
 
 {{
@@ -122,10 +364,10 @@ Return a JSON object with EXACTLY this structure:
       "original": "exact phrase from the report",
       "suggested": "corrected/improved phrase",
       "reason": "Brief explanation (5-10 words)",
-      "type": "terminology|gender_check|anatomy_check|consistency|phrasing"
+      "type": "terminology|gender_check|anatomy_check|consistency|phrasing|sidedness"
     }}
   ],
-  "answer": "Direct answer to the trainee's question. PACS-ready text where applicable. No preamble like 'Here is...' or 'I suggest...'. No markdown. Ready to paste into the report without editing.",
+  "answer": "Direct answer to the trainee's question. PACS-ready text where applicable. No preamble, no commentary on the report beyond what was asked. Copy-paste ready.",
   "insights": {{
     "clinical_question_coverage": "Does the report adequately address the referring clinician's question? 1-2 sentences.",
     "quality_assessment": "Would a subspecialist consultant be satisfied with this report? What would they want added or changed? 1-2 sentences.",
@@ -140,21 +382,24 @@ RULES FOR CORRECTIONS:
 2. Cross-check gender/anatomy: if clinical context mentions female patient, flag prostate references; if male, flag uterine references.
 3. Check section consistency: impression must not mention findings absent from the FINDINGS section, and vice versa.
 4. Each correction must quote EXACT original text so the frontend can locate it.
-5. Max 8 corrections. Prioritise clinically significant errors over stylistic ones.
-6. If the report has no issues, return an empty corrections array.
+5. Consistency in sidedness: e.g. if clinical details say "right sided pain abdomen" but report says "left iliac fossa diverticulitis", flag this sidedness inconsistency.
+6. Max 8 corrections. Prioritise clinically significant errors over stylistic ones.
+7. If the report has no issues, return an empty corrections array.
+8. If the report is empty or very short, return empty corrections and note this in quality_assessment.
 
 RULES FOR ANSWER:
 1. Write as a consultant would dictate at a workstation. No hedging beyond standard conventions.
 2. If the trainee asks for specific report text (e.g. "write the impression"), give complete PACS-ready sentences. Do NOT wrap in quotes or add labels.
 3. Keep the answer under 250 words. Plain text only — no markdown, no HTML, no bullet lists.
 4. If the trainee asks a knowledge question (e.g. "what's the differential?"), answer directly and concisely.
+5. Do NOT add commentary about the report quality or your reasoning — only answer the question asked.
 
 RULES FOR INSIGHTS:
 1. Be specific and actionable, not generic platitudes.
 2. differentials_to_consider: only list if genuinely relevant and not already covered in the report. Empty array if not applicable.
 3. teaching_point: one actionable pearl, not a textbook paragraph. Relevant to this specific report.
 4. If the report is excellent, say so — do not invent criticisms.
-5. If the report is empty or too short for meaningful assessment, say so briefly in quality_assessment and skip the rest.
+5. If the report is empty or too short for meaningful assessment, say so briefly in quality_assessment and leave other insight fields minimal.
 
 Output ONLY the JSON object. No markdown. No explanation."""
 
@@ -201,7 +446,7 @@ through reading a {modality} scan step by step.
 CLINICAL QUESTION: {clinical_question}
 MODALITY: {modality}
 BODY SECTION: {body_section}
-
+{resource_section}
 The algorithm tree is a JSON object with this EXACT structure:
 
 {{
@@ -277,123 +522,301 @@ RULES:
 1. Generate 8-15 steps covering the systematic scan reading order for this modality and clinical question.
 2. Every step must assess ONE anatomical structure or compartment.
 3. Steps must follow the actual order a radiologist reads the scan (not textbook order).
-   For example, CT abdomen: start with the organ of interest based on the clinical question,
-   then systematically cover remaining solid organs, bowel, vasculature, bones, soft tissues.
+   For example, CT abdomen with clinical question about appendicitis:
+   start with the appendix (target organ), then systematically cover remaining bowel,
+   solid organs, vasculature, peritoneum, bones, soft tissues.
 4. Each option's report_text must be a complete, standalone PACS-ready sentence.
-   Write as a radiologist would in a formal report — no hedging beyond standard conventions.
+   Write as a radiologist would in a formal report — use standard conventions.
+   Include specific measurements or thresholds where applicable
+   (e.g. "aortic diameter measures X cm" rather than just "aortic dilatation").
 5. Use next_step for conditional branching:
-   - If a finding is abnormal, next_step should point to a sub-step that characterises it further.
-   - If a finding is normal, next_step should skip ahead to the next organ (or null to continue sequentially).
-   - If next_step is null, the engine advances to the next step in array order.
+   - If a finding is abnormal, next_step should point to a sub-step that characterises it further
+     (e.g. abnormal liver → sub-step asking about number, segment, enhancement pattern).
+   - If a finding is normal, next_step should be null (engine advances sequentially).
+   - Sub-steps for characterisation should eventually rejoin the main sequence via next_step.
 6. Include both normal and abnormal options for EVERY step. The normal option should always be first.
-7. Each step should have 3-5 options (including one free-text option for unusual findings).
-8. The last option in each step should be a free-text entry:
+7. For normal options, include common normal variants that mimic pathology where relevant
+   (e.g. "Prominent peri-portal cuffing — likely normal variant" for liver, or
+   "Prominent hilar lymph nodes, within normal limits" for chest).
+8. Each step should have 3-6 options (including one free-text option for unusual findings).
+9. The last option in each step should be a free-text entry:
    {{"label": "Other (free text)", "report_text": "", "findings_flag": "abnormal", "is_free_text": true}}
-9. lines_tubes_step should have 5-8 common options relevant to this modality and body region.
-10. incidental_findings_step should have 4-6 common incidental findings for this body region.
-11. report_template.indication must include the modality and clinical question.
-12. report_template.technique should be specific to this modality (e.g., include contrast phase for CT).
-13. Do NOT include pathophysiology, epidemiology, or teaching content.
-14. findings_flag values: "normal", "abnormal", "equivocal", "incidental"
+10. lines_tubes_step should have 5-8 common options relevant to this modality and body region.
+11. incidental_findings_step should have 4-6 common incidental findings for this body region.
+12. report_template.indication must include the modality and clinical question.
+13. report_template.technique should be specific to this modality (e.g., include contrast phase for CT,
+    sequences for MRI, probe frequency for US).
+14. Do NOT include pathophysiology, epidemiology, or teaching content in report_text.
+15. findings_flag values: "normal", "abnormal", "equivocal", "incidental"
 
 Output ONLY the JSON object. No markdown. No explanation."""
 
 
+# ==================== INTENT CLASSIFIER (Phase 3) ====================
+
+CLASSIFY_INTENT_SYSTEM_PROMPT = (
+    "You classify radiology workstation queries into intent categories. "
+    "Output valid JSON only. No markdown. No text outside the JSON object."
+)
+
+CLASSIFY_INTENT_PROMPT = """Classify this radiology user query into an intent category.
+
+USER QUERY: {user_input}
+
+Return a JSON object:
+{{
+  "intent": "walkthrough|report_help|tool_request|reference|protocol|anatomy|paste_report",
+  "canonical_topic": "lowercase-hyphenated-slug",
+  "display_title": "Human Readable Title",
+  "modality": "CT|MRI|US|XR|NM|PET-CT|Fluoroscopy|null",
+  "body_section": "Head|Neck|Chest|Abdomen|Pelvis|MSK|Spine|Vascular|Whole Body|null",
+  "category": "emergency|oncology|vascular|msk|neuro|general|paediatric|null"
+}}
+
+INTENT DEFINITIONS:
+- walkthrough: User wants step-by-step guidance reading a scan (e.g. "CT abdomen pancreatitis", "MRI brain headache", "rule out PE")
+- report_help: User wants help with an existing report (e.g. "check my report", "write the impression", "fix spelling")
+- tool_request: User wants a specific scoring/classification tool (e.g. "Li-RADS", "Bosniak classification", "PI-RADS scoring")
+- reference: User wants reference material about a topic (e.g. "Fleischner criteria", "adrenal washout protocol")
+- protocol: User wants imaging protocol information (e.g. "CT angiography protocol", "MRI liver protocol")
+- anatomy: User wants anatomical reference (e.g. "Circle of Willis anatomy", "brachial plexus")
+- paste_report: User indicates they have a report to paste (e.g. "I have a report", "paste my report", "review my report")
+
+CANONICAL TOPIC:
+- Normalise to the underlying clinical entity, not the user's exact words
+- "Pain in RIF" → "right-iliac-fossa-pain"
+- "Rule out PE" → "pulmonary-embolism"
+- "CT abdomen, known pancreatic mass" → "pancreatic-mass-staging"
+- "CT abdomen" (no clinical context) → "ct-abdomen-systematic"
+- "Li-RADS scoring" → "li-rads"
+
+Output ONLY the JSON object."""
+
+
+def classify_intent(user_input):
+    """
+    Classify user input into an intent category for routing.
+    Uses Haiku for speed and cost efficiency (~200ms, minimal cost).
+
+    Args:
+        user_input: Raw text from the Smart Reporter search bar
+
+    Returns:
+        dict with: intent, canonical_topic, display_title, modality, body_section, category
+    """
+    haiku_model = os.getenv("CLAUDE_QUICK_MODEL", "claude-haiku-4-5-20251001")
+
+    prompt = CLASSIFY_INTENT_PROMPT.format(user_input=user_input)
+
+    text, model, tokens = _call_claude(
+        system_prompt=CLASSIFY_INTENT_SYSTEM_PROMPT,
+        user_prompt=prompt,
+        model=haiku_model,
+        max_tokens=500,
+        temperature=0.1,
+        timeout=10,
+    )
+
+    parsed = _parse_json_response(text)
+
+    # Ensure all expected keys exist with defaults
+    parsed.setdefault('intent', 'walkthrough')
+    parsed.setdefault('canonical_topic', '')
+    parsed.setdefault('display_title', user_input)
+    parsed.setdefault('modality', None)
+    parsed.setdefault('body_section', None)
+    parsed.setdefault('category', None)
+
+    # Validate intent is one of the allowed values
+    valid_intents = {'walkthrough', 'report_help', 'tool_request', 'reference',
+                     'protocol', 'anatomy', 'paste_report'}
+    if parsed['intent'] not in valid_intents:
+        parsed['intent'] = 'walkthrough'
+
+    parsed['model'] = model
+    parsed['token_count'] = tokens
+
+    return parsed
+
+
+# ==================== ANATOMY REFERENCE (Phase 5) ====================
+
+ANATOMY_SYSTEM_PROMPT = (
+    "You are a radiology anatomy reference. Provide diagnostically relevant anatomy, "
+    "not full textbook anatomy. Focus on what radiologists need at the workstation. "
+    "Output valid HTML. No markdown. Use <h4>, <p>, <ul>, <li> tags only."
+)
+
+ANATOMY_PROMPT = """Provide a concise radiology-focused anatomy reference for: {topic}
+
+Structure your response as HTML with these sections:
+1. <h4>Key Structures</h4> — List the main anatomical components with imaging landmarks
+2. <h4>Imaging Appearance</h4> — Normal appearance on common modalities (CT, MRI, US as applicable)
+3. <h4>Normal Variants</h4> — Variants that mimic pathology (critical for avoiding false positives)
+4. <h4>Key Measurements</h4> — Normal measurement ranges relevant to reporting
+
+Keep it under 250 words total. Focus on practical reporting utility.
+Use HTML tags: <h4>, <p>, <ul>, <li>, <strong>. No markdown."""
+
+
+def generate_anatomy_reference(topic):
+    """
+    Generate a concise anatomy reference for the editor Anatomy Panel.
+    Uses Haiku for speed. DB lookup should be attempted first (in routes).
+
+    Args:
+        topic: Anatomical topic (e.g. "Circle of Willis", "brachial plexus")
+
+    Returns:
+        dict with: title, content_html, source ('ai'), model, token_count
+    """
+    haiku_model = os.getenv("CLAUDE_QUICK_MODEL", "claude-haiku-4-5-20251001")
+
+    prompt = ANATOMY_PROMPT.format(topic=topic)
+
+    text, model, tokens = _call_claude(
+        system_prompt=ANATOMY_SYSTEM_PROMPT,
+        user_prompt=prompt,
+        model=haiku_model,
+        max_tokens=1000,
+        temperature=0.2,
+        timeout=15,
+    )
+
+    return {
+        'title': topic.title(),
+        'content_html': text,
+        'source': 'ai',
+        'model': model,
+        'token_count': tokens,
+    }
+
+
+# ==================== BLANK TEMPLATE (Gap 3) ====================
+
+BLANK_TEMPLATE_SYSTEM_PROMPT = (
+    "You generate structured but empty radiology reporting templates. "
+    "The template has section headings and placeholder guidance but NO findings. "
+    "The radiologist will fill in their own findings. "
+    "Output plain text only. No markdown. No HTML."
+)
+
+BLANK_TEMPLATE_PROMPT = """Generate a blank structured PACS reporting template for:
+
+MODALITY: {modality}
+BODY SECTION: {body_section}
+CLINICAL QUESTION: {clinical_question}
+
+Output a template with these sections:
+INDICATION:
+(Pre-fill with the modality and clinical question)
+
+TECHNIQUE:
+(Pre-fill with standard technique for this modality and body region)
+
+COMPARISON:
+No prior available for comparison.
+
+FINDINGS:
+(List the organ/structure subheadings a radiologist should systematically assess,
+each followed by an empty line for the radiologist to fill in. Order them in standard
+reading order for this modality/region. Include 6-10 subheadings.)
+
+IMPRESSION:
+(Leave empty — radiologist will write after completing findings)
+
+Output the template as plain text. Each section heading on its own line followed by a colon.
+Subheadings under FINDINGS should be indented or numbered."""
+
+
+def generate_blank_template(modality='', body_section='', clinical_question=''):
+    """
+    Generate a structured blank reporting template for the abort-walkthrough flow (Gap 3).
+    Uses Haiku for speed (~3-5s).
+
+    Args:
+        modality: e.g. "CT", "MRI"
+        body_section: e.g. "Abdomen", "Brain"
+        clinical_question: e.g. "Rule out appendicitis"
+
+    Returns:
+        dict with: template_text, model, token_count
+    """
+    haiku_model = os.getenv("CLAUDE_QUICK_MODEL", "claude-haiku-4-5-20251001")
+
+    prompt = BLANK_TEMPLATE_PROMPT.format(
+        modality=modality or 'Not specified',
+        body_section=body_section or 'Not specified',
+        clinical_question=clinical_question or 'Not specified',
+    )
+
+    text, model, tokens = _call_claude(
+        system_prompt=BLANK_TEMPLATE_SYSTEM_PROMPT,
+        user_prompt=prompt,
+        model=haiku_model,
+        max_tokens=1500,
+        temperature=0.2,
+        timeout=15,
+    )
+
+    return {
+        'template_text': text,
+        'model': model,
+        'token_count': tokens,
+    }
+
+
 # ==================== MAIN GENERATOR ====================
 
-def generate_algorithm_tree(clinical_question, modality, body_section=''):
+def generate_algorithm_tree(clinical_question, modality, body_section='', resources=None):
     """
     Generate a structured algorithm tree for interactive scan reading walkthrough.
 
     Args:
-        clinical_question: The clinical question to answer (e.g. "Rule out acute pancreatitis")
+        clinical_question: The clinical question (e.g. "Rule out acute pancreatitis")
         modality: Imaging modality (e.g. "CT", "MRI", "US")
         body_section: Anatomical region (optional)
+        resources: Optional dict with urls, db_refs, pdf_texts, tnm_refs (Gap 1)
 
     Returns:
         dict with: steps, lines_tubes_step, incidental_findings_step, report_template,
         model, token_count, provider
     """
-    api_key = os.getenv("CLAUDE_API_KEY")
-    if not api_key:
-        raise SmartReporterError("RadInsight Intelligence API key not configured.")
-
-    effective_model = os.getenv("CLAUDE_MODEL", "claude-sonnet-4-20250514")
+    resource_section = format_resources_for_prompt(resources)
 
     user_prompt = TREE_PROMPT_TEMPLATE.format(
         clinical_question=clinical_question,
         modality=modality or 'Not specified',
         body_section=body_section or 'Infer from clinical question',
+        resource_section=resource_section,
     )
 
-    payload = {
-        "model": effective_model,
-        "max_tokens": 10000,
-        "temperature": 0.3,
-        "system": TREE_SYSTEM_PROMPT,
-        "messages": [
-            {"role": "user", "content": user_prompt}
-        ],
-    }
-
-    try:
-        response = requests.post(
-            "https://api.anthropic.com/v1/messages",
-            headers={
-                "Content-Type": "application/json",
-                "x-api-key": api_key,
-                "anthropic-version": "2023-06-01",
-            },
-            json=payload,
-            timeout=150,
-        )
-    except requests.exceptions.Timeout:
-        raise SmartReporterError("Algorithm tree generation timed out. Please try again.")
-    except requests.exceptions.RequestException as exc:
-        raise SmartReporterError(f"Failed to connect to RadInsight Intelligence: {exc}")
-
-    if response.status_code >= 300:
-        detail = response.text[:500]
-        raise SmartReporterError(
-            f"RadInsight Intelligence error (HTTP {response.status_code}): {detail}"
-        )
-
-    result = response.json()
-    content = result.get("content", [])
-    if not content:
-        raise SmartReporterError("Empty response from RadInsight Intelligence.")
-
-    text = content[0].get("text", "")
-    if not text:
-        raise SmartReporterError("No text in RadInsight Intelligence response.")
+    text, model, tokens = _call_claude(
+        system_prompt=TREE_SYSTEM_PROMPT,
+        user_prompt=user_prompt,
+        max_tokens=6000,
+        temperature=0.3,
+        timeout=150,
+    )
 
     parsed = _parse_tree_response(text)
-
-    parsed['model'] = effective_model
-    parsed['token_count'] = result.get("usage", {}).get("output_tokens", 0)
+    parsed['model'] = model
+    parsed['token_count'] = tokens
     parsed['provider'] = 'claude'
 
     return parsed
 
 
-# ==================== ASK CLAUDE HELPER ====================
+# ==================== ASK CLAUDE HELPER (DEPRECATED) ====================
 
 def ask_claude_about_report(current_report, question):
     """
+    DEPRECATED: Use unified_ai_assist() instead.
+    Kept for backward compatibility with existing routes.
+
     Lightweight Q&A for Scene 2 report editing.
-
-    Args:
-        current_report: The current plain-text PACS report
-        question: The trainee's question
-
-    Returns:
-        dict with: answer, model, token_count
     """
-    api_key = os.getenv("CLAUDE_API_KEY")
-    if not api_key:
-        raise SmartReporterError("RadInsight Intelligence API key not configured.")
-
-    effective_model = os.getenv("CLAUDE_MODEL", "claude-sonnet-4-20250514")
+    logger.warning("ask_claude_about_report() is deprecated. Use unified_ai_assist() instead.")
 
     user_message = f"""Here is the current draft PACS report:
 
@@ -403,47 +826,18 @@ def ask_claude_about_report(current_report, question):
 
 Trainee's question: {question}"""
 
-    payload = {
-        "model": effective_model,
-        "max_tokens": 1500,
-        "temperature": 0.3,
-        "system": ASK_CLAUDE_SYSTEM_PROMPT,
-        "messages": [
-            {"role": "user", "content": user_message}
-        ],
-    }
-
-    try:
-        response = requests.post(
-            "https://api.anthropic.com/v1/messages",
-            headers={
-                "Content-Type": "application/json",
-                "x-api-key": api_key,
-                "anthropic-version": "2023-06-01",
-            },
-            json=payload,
-            timeout=30,
-        )
-    except requests.exceptions.Timeout:
-        raise SmartReporterError("Request timed out. Please try again.")
-    except requests.exceptions.RequestException as exc:
-        raise SmartReporterError(f"Connection failed: {exc}")
-
-    if response.status_code >= 300:
-        detail = response.text[:500]
-        raise SmartReporterError(f"Error (HTTP {response.status_code}): {detail}")
-
-    result = response.json()
-    content = result.get("content", [])
-    if not content:
-        raise SmartReporterError("Empty response.")
-
-    answer = content[0].get("text", "").strip()
+    text, model, tokens = _call_claude(
+        system_prompt=ASK_CLAUDE_SYSTEM_PROMPT,
+        user_prompt=user_message,
+        max_tokens=1500,
+        temperature=0.3,
+        timeout=30,
+    )
 
     return {
-        'answer': answer,
-        'model': effective_model,
-        'token_count': result.get("usage", {}).get("output_tokens", 0),
+        'answer': text,
+        'model': model,
+        'token_count': tokens,
     }
 
 
@@ -453,62 +847,22 @@ def review_report(report_text):
     """
     Review a report for spelling, grammar, phrasing, and structure.
 
-    Args:
-        report_text: The draft PACS report text
-
     Returns:
         dict with: improved_report, suggestions[], model, token_count
     """
-    api_key = os.getenv("CLAUDE_API_KEY")
-    if not api_key:
-        raise SmartReporterError("RadInsight Intelligence API key not configured.")
-
-    effective_model = os.getenv("CLAUDE_MODEL", "claude-sonnet-4-20250514")
-
     user_prompt = REVIEW_REPORT_PROMPT.format(report_text=report_text)
 
-    payload = {
-        "model": effective_model,
-        "max_tokens": 4000,
-        "temperature": 0.2,
-        "system": REVIEW_REPORT_SYSTEM_PROMPT,
-        "messages": [
-            {"role": "user", "content": user_prompt}
-        ],
-    }
-
-    try:
-        response = requests.post(
-            "https://api.anthropic.com/v1/messages",
-            headers={
-                "Content-Type": "application/json",
-                "x-api-key": api_key,
-                "anthropic-version": "2023-06-01",
-            },
-            json=payload,
-            timeout=60,
-        )
-    except requests.exceptions.Timeout:
-        raise SmartReporterError("Review timed out. Please try again.")
-    except requests.exceptions.RequestException as exc:
-        raise SmartReporterError(f"Connection failed: {exc}")
-
-    if response.status_code >= 300:
-        detail = response.text[:500]
-        raise SmartReporterError(f"Error (HTTP {response.status_code}): {detail}")
-
-    result = response.json()
-    content = result.get("content", [])
-    if not content:
-        raise SmartReporterError("Empty response.")
-
-    text = content[0].get("text", "").strip()
-    if not text:
-        raise SmartReporterError("No text in response.")
+    text, model, tokens = _call_claude(
+        system_prompt=REVIEW_REPORT_SYSTEM_PROMPT,
+        user_prompt=user_prompt,
+        max_tokens=4000,
+        temperature=0.2,
+        timeout=60,
+    )
 
     parsed = _parse_review_response(text)
-    parsed['model'] = effective_model
-    parsed['token_count'] = result.get("usage", {}).get("output_tokens", 0)
+    parsed['model'] = model
+    parsed['token_count'] = tokens
 
     return parsed
 
@@ -523,63 +877,30 @@ def quick_review(report_text):
     Returns:
         dict with: improved_report, suggestions[], model, token_count
     """
-    api_key = os.getenv("CLAUDE_API_KEY")
-    if not api_key:
-        raise SmartReporterError("RadInsight Intelligence API key not configured.")
-
-    effective_model = os.getenv("CLAUDE_QUICK_MODEL", "claude-haiku-4-5-20251001")
+    haiku_model = os.getenv("CLAUDE_QUICK_MODEL", "claude-haiku-4-5-20251001")
 
     user_prompt = QUICK_REVIEW_PROMPT.format(report_text=report_text)
 
-    payload = {
-        "model": effective_model,
-        "max_tokens": 2000,
-        "temperature": 0.2,
-        "system": QUICK_REVIEW_SYSTEM_PROMPT,
-        "messages": [
-            {"role": "user", "content": user_prompt}
-        ],
-    }
-
-    try:
-        response = requests.post(
-            "https://api.anthropic.com/v1/messages",
-            headers={
-                "Content-Type": "application/json",
-                "x-api-key": api_key,
-                "anthropic-version": "2023-06-01",
-            },
-            json=payload,
-            timeout=20,
-        )
-    except requests.exceptions.Timeout:
-        raise SmartReporterError("Quick review timed out. Please try again.")
-    except requests.exceptions.RequestException as exc:
-        raise SmartReporterError(f"Connection failed: {exc}")
-
-    if response.status_code >= 300:
-        detail = response.text[:500]
-        raise SmartReporterError(f"Error (HTTP {response.status_code}): {detail}")
-
-    result = response.json()
-    content = result.get("content", [])
-    if not content:
-        raise SmartReporterError("Empty response.")
-
-    text = content[0].get("text", "").strip()
-    if not text:
-        raise SmartReporterError("No text in response.")
+    text, model, tokens = _call_claude(
+        system_prompt=QUICK_REVIEW_SYSTEM_PROMPT,
+        user_prompt=user_prompt,
+        model=haiku_model,
+        max_tokens=2000,
+        temperature=0.2,
+        timeout=20,
+    )
 
     parsed = _parse_review_response(text)
-    parsed['model'] = effective_model
-    parsed['token_count'] = result.get("usage", {}).get("output_tokens", 0)
+    parsed['model'] = model
+    parsed['token_count'] = tokens
 
     return parsed
 
 
 # ==================== UNIFIED AI ASSIST (Layers 1+2+3) ====================
 
-def unified_ai_assist(report_text, question, clinical_question='', modality='', body_section='', external_context=None):
+def unified_ai_assist(report_text, question, clinical_question='', modality='',
+                      body_section='', external_context=None, resources=None):
     """
     Unified AI assistant: corrections + direct answer + clinical insights.
     Single API call returns all three layers.
@@ -591,23 +912,13 @@ def unified_ai_assist(report_text, question, clinical_question='', modality='', 
         modality: Imaging modality (from session)
         body_section: Anatomical region (from session)
         external_context: Optional dict with {type, title, slug, id} from "Use in Report" buttons
+        resources: Optional dict with urls, db_refs, pdf_texts, tnm_refs (Gap 1)
 
     Returns:
         dict with: corrections[], answer, insights{}, model, token_count
     """
-    api_key = os.getenv("CLAUDE_API_KEY")
-    if not api_key:
-        raise SmartReporterError("RadInsight Intelligence API key not configured.")
-
-    effective_model = os.getenv("CLAUDE_MODEL", "claude-sonnet-4-5-20250929")
-
-    user_prompt = UNIFIED_ASSIST_PROMPT.format(
-        report_text=report_text or '(empty report)',
-        question=question,
-        clinical_question=clinical_question or 'Not specified',
-        modality=modality or 'Not specified',
-        body_section=body_section or 'Not specified',
-    )
+    # Build resource section from explicit resources AND external context
+    resource_section = format_resources_for_prompt(resources)
 
     # Append external context if user arrived from another tool
     if external_context and isinstance(external_context, dict):
@@ -621,88 +932,52 @@ def unified_ai_assist(report_text, question, clinical_question='', modality='', 
                 'protocol': 'Clinical Protocol',
             }
             label = context_labels.get(ctx_type, ctx_type)
-            user_prompt += (
-                f"\n\nADDITIONAL CONTEXT: The user is reporting on a case related to "
-                f"{label}: \"{ctx_title}\". Factor this into your corrections, answer, and insights."
+            resource_section += (
+                f"\nADDITIONAL CONTEXT: The user is reporting on a case related to "
+                f"{label}: \"{ctx_title}\". Factor this into your corrections, answer, and insights.\n"
             )
 
-    payload = {
-        "model": effective_model,
-        "max_tokens": 4000,
-        "temperature": 0.3,
-        "system": UNIFIED_ASSIST_SYSTEM_PROMPT,
-        "messages": [
-            {"role": "user", "content": user_prompt}
-        ],
-    }
+    user_prompt = UNIFIED_ASSIST_PROMPT.format(
+        report_text=report_text or '(empty report — user may be starting fresh or about to paste their report)',
+        question=question,
+        clinical_question=clinical_question or 'Not specified',
+        modality=modality or 'Not specified',
+        body_section=body_section or 'Not specified',
+        resource_section=resource_section,
+    )
 
-    try:
-        response = requests.post(
-            "https://api.anthropic.com/v1/messages",
-            headers={
-                "Content-Type": "application/json",
-                "x-api-key": api_key,
-                "anthropic-version": "2023-06-01",
-            },
-            json=payload,
-            timeout=45,
-        )
-    except requests.exceptions.Timeout:
-        raise SmartReporterError("AI assist timed out. Please try again.")
-    except requests.exceptions.RequestException as exc:
-        raise SmartReporterError(f"Connection failed: {exc}")
+    effective_model = os.getenv("CLAUDE_MODEL", "claude-sonnet-4-5-20250929")
 
-    if response.status_code >= 300:
-        detail = response.text[:500]
-        raise SmartReporterError(f"Error (HTTP {response.status_code}): {detail}")
-
-    result = response.json()
-    content_blocks = result.get("content", [])
-    if not content_blocks:
-        raise SmartReporterError("Empty response.")
-
-    text = content_blocks[0].get("text", "").strip()
-    if not text:
-        raise SmartReporterError("No text in response.")
+    text, model, tokens = _call_claude(
+        system_prompt=UNIFIED_ASSIST_SYSTEM_PROMPT,
+        user_prompt=user_prompt,
+        model=effective_model,
+        max_tokens=4000,
+        temperature=0.3,
+        timeout=45,
+    )
 
     parsed = _parse_assist_response(text, question)
-    parsed['model'] = effective_model
-    parsed['token_count'] = result.get("usage", {}).get("output_tokens", 0)
+    parsed['model'] = model
+    parsed['token_count'] = tokens
 
     return parsed
 
 
+# ==================== RESPONSE PARSERS ====================
+
 def _parse_assist_response(text, original_question):
     """Parse unified AI assist JSON response with graceful fallbacks."""
-    # Strip markdown code fences
-    if text.strip().startswith("```"):
-        lines = text.strip().split("\n")
-        if lines[0].startswith("```"):
-            lines = lines[1:]
-        if lines and lines[-1].strip() == "```":
-            lines = lines[:-1]
-        text = "\n".join(lines)
-
     try:
-        parsed = json.loads(text)
-    except json.JSONDecodeError:
-        match = re.search(r'\{[\s\S]*\}', text)
-        if match:
-            try:
-                parsed = json.loads(match.group())
-            except json.JSONDecodeError:
-                # Graceful fallback: return the raw text as the answer
-                return {
-                    'corrections': [],
-                    'answer': text,
-                    'insights': {},
-                }
-        else:
-            return {
-                'corrections': [],
-                'answer': text,
-                'insights': {},
-            }
+        parsed = _parse_json_response(text)
+    except SmartReporterError:
+        # Graceful fallback: return the raw text as the answer
+        logger.warning("AI assist response was not valid JSON; returning raw text as answer.")
+        return {
+            'corrections': [],
+            'answer': text,
+            'insights': {},
+        }
 
     # Extract and validate corrections
     corrections = []
@@ -745,26 +1020,7 @@ def _parse_assist_response(text, original_question):
 
 def _parse_review_response(text):
     """Parse review report JSON response."""
-    # Strip markdown code fences
-    if text.strip().startswith("```"):
-        lines = text.strip().split("\n")
-        if lines[0].startswith("```"):
-            lines = lines[1:]
-        if lines and lines[-1].strip() == "```":
-            lines = lines[:-1]
-        text = "\n".join(lines)
-
-    try:
-        parsed = json.loads(text)
-    except json.JSONDecodeError:
-        match = re.search(r'\{[\s\S]*\}', text)
-        if match:
-            try:
-                parsed = json.loads(match.group())
-            except json.JSONDecodeError:
-                raise SmartReporterError("Failed to parse review response as JSON.")
-        else:
-            raise SmartReporterError("Review response was not valid JSON.")
+    parsed = _parse_json_response(text)
 
     parsed.setdefault('improved_report', '')
     parsed.setdefault('suggestions', [])
@@ -789,26 +1045,7 @@ def _parse_review_response(text):
 
 def _parse_tree_response(text):
     """Parse algorithm tree JSON response with validation and fallbacks."""
-    # Strip markdown code fences
-    if text.strip().startswith("```"):
-        lines = text.strip().split("\n")
-        if lines[0].startswith("```"):
-            lines = lines[1:]
-        if lines and lines[-1].strip() == "```":
-            lines = lines[:-1]
-        text = "\n".join(lines)
-
-    try:
-        parsed = json.loads(text)
-    except json.JSONDecodeError:
-        match = re.search(r'\{[\s\S]*\}', text)
-        if match:
-            try:
-                parsed = json.loads(match.group())
-            except json.JSONDecodeError:
-                raise SmartReporterError("Failed to parse algorithm tree response as JSON.")
-        else:
-            raise SmartReporterError("Algorithm tree response was not valid JSON.")
+    parsed = _parse_json_response(text)
 
     # Validate required top-level keys
     parsed.setdefault('steps', [])
@@ -817,7 +1054,9 @@ def _parse_tree_response(text):
         'organ': 'Lines and devices',
         'question': 'Are there any lines, tubes, or surgical devices?',
         'options': [
-            {'label': 'No lines or tubes', 'report_text': 'No lines, tubes, or surgical devices are identified.', 'findings_flag': 'normal'},
+            {'label': 'No lines or tubes',
+             'report_text': 'No lines, tubes, or surgical devices are identified.',
+             'findings_flag': 'normal'},
         ],
         'allow_multiple': True,
     })
@@ -826,8 +1065,10 @@ def _parse_tree_response(text):
         'organ': 'Incidental findings',
         'question': 'Any incidental findings to note?',
         'options': [
-            {'label': 'No incidental findings', 'report_text': '', 'findings_flag': 'normal'},
-            {'label': 'Other (free text)', 'report_text': '', 'findings_flag': 'incidental', 'is_free_text': True},
+            {'label': 'No incidental findings', 'report_text': '',
+             'findings_flag': 'normal'},
+            {'label': 'Other (free text)', 'report_text': '',
+             'findings_flag': 'incidental', 'is_free_text': True},
         ],
         'allow_multiple': True,
     })
