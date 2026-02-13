@@ -188,13 +188,21 @@ def format_resources_for_prompt(resources):
 
     sections = []
 
-    # Reference URLs
+    # Reference URLs (fetch content)
     urls = resources.get('urls', [])
     if urls:
-        url_list = "\n".join(f"  - {u}" for u in urls if u)
-        sections.append(
-            f"REFERENCE ARTICLES (use these as evidence sources):\n{url_list}"
-        )
+        from clinical_tool_generator import fetch_url_content
+        url_parts = []
+        for u in urls:
+            if not u:
+                continue
+            fetched = fetch_url_content(u)
+            if fetched:
+                url_parts.append(f"  - {u}\n    Content:\n    {fetched[:4000]}")
+            else:
+                url_parts.append(f"  - {u}")
+        if url_parts:
+            sections.append("REFERENCE ARTICLES (use these as evidence sources):\n" + "\n".join(url_parts))
 
     # Database references (pre-fetched content from IF calcs, templates, protocols)
     db_refs = resources.get('db_refs', [])

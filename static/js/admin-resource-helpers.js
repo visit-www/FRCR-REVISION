@@ -196,19 +196,10 @@ function searchItems(inputId, resultsId, type) {
 
 // ==================== PDF UPLOAD ====================
 
-function uploadPDF(input, chipsContainerId, progressId) {
-    var file = input.files[0];
-    if (!file) return;
-    if (!file.name.toLowerCase().endsWith('.pdf')) {
-        alert('Only PDF files are allowed.');
-        input.value = '';
-        return;
-    }
-    if (file.size > 10 * 1024 * 1024) {
-        alert('PDF must be under 10 MB.');
-        input.value = '';
-        return;
-    }
+function uploadPDFs(input, chipsContainerId, progressId) {
+    var files = Array.from(input.files);
+    if (!files.length) return;
+
     if (typeof CLOUDINARY_CLOUD_NAME === 'undefined' || !CLOUDINARY_CLOUD_NAME ||
         typeof CLOUDINARY_UPLOAD_PRESET === 'undefined' || !CLOUDINARY_UPLOAD_PRESET) {
         alert('PDF upload not configured. Please set Cloudinary environment variables.');
@@ -216,44 +207,71 @@ function uploadPDF(input, chipsContainerId, progressId) {
         return;
     }
 
+    // Validate all files first
+    for (var i = 0; i < files.length; i++) {
+        if (!files[i].name.toLowerCase().endsWith('.pdf')) {
+            alert(files[i].name + ' is not a PDF. Only PDF files are allowed.');
+            input.value = '';
+            return;
+        }
+        if (files[i].size > 10 * 1024 * 1024) {
+            alert(files[i].name + ' exceeds 10 MB limit.');
+            input.value = '';
+            return;
+        }
+    }
+
     var progressDiv = document.getElementById(progressId);
     var progressBar = progressDiv.querySelector('.progress-bar');
-    progressDiv.classList.remove('d-none');
-    progressBar.style.width = '0%';
 
-    var formData = new FormData();
-    formData.append('file', file);
-    formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
-    formData.append('folder', 'frcr_revision/admin_pdfs');
+    // Upload files sequentially
+    var idx = 0;
+    function uploadNext() {
+        if (idx >= files.length) {
+            progressDiv.classList.add('d-none');
+            input.value = '';
+            return;
+        }
+        var file = files[idx];
+        progressDiv.classList.remove('d-none');
+        progressBar.style.width = '0%';
+        progressBar.textContent = (idx + 1) + '/' + files.length;
 
-    var xhr = new XMLHttpRequest();
-    xhr.upload.onprogress = function(e) {
-        if (e.lengthComputable) {
-            progressBar.style.width = Math.round((e.loaded / e.total) * 100) + '%';
-        }
-    };
-    xhr.onload = function() {
-        progressDiv.classList.add('d-none');
-        input.value = '';
-        if (xhr.status >= 200 && xhr.status < 300) {
-            var data = JSON.parse(xhr.responseText);
-            addChip(chipsContainerId, {
-                url: data.secure_url,
-                name: file.name,
-                public_id: data.public_id,
-                size: file.size
-            }, 'pdf');
-        } else {
-            alert('PDF upload failed. Please try again.');
-        }
-    };
-    xhr.onerror = function() {
-        progressDiv.classList.add('d-none');
-        input.value = '';
-        alert('PDF upload failed. Check your connection.');
-    };
-    xhr.open('POST', 'https://api.cloudinary.com/v1_1/' + CLOUDINARY_CLOUD_NAME + '/raw/upload');
-    xhr.send(formData);
+        var formData = new FormData();
+        formData.append('file', file);
+        formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+        formData.append('folder', 'frcr_revision/admin_pdfs');
+
+        var xhr = new XMLHttpRequest();
+        xhr.upload.onprogress = function(e) {
+            if (e.lengthComputable) {
+                progressBar.style.width = Math.round((e.loaded / e.total) * 100) + '%';
+            }
+        };
+        xhr.onload = function() {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                var data = JSON.parse(xhr.responseText);
+                addChip(chipsContainerId, {
+                    url: data.secure_url,
+                    name: file.name,
+                    public_id: data.public_id,
+                    size: file.size
+                }, 'pdf');
+            } else {
+                alert('Upload failed for ' + file.name);
+            }
+            idx++;
+            uploadNext();
+        };
+        xhr.onerror = function() {
+            alert('Upload failed for ' + file.name);
+            idx++;
+            uploadNext();
+        };
+        xhr.open('POST', 'https://api.cloudinary.com/v1_1/' + CLOUDINARY_CLOUD_NAME + '/raw/upload');
+        xhr.send(formData);
+    }
+    uploadNext();
 }
 
 // ==================== UTILITY ====================

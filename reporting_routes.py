@@ -1013,15 +1013,25 @@ def generate_reporting_template():
     if not title or not category:
         return jsonify({'error': 'title and category are required.'}), 400
 
+    # Parse source_citation JSON into resources dict for URL fetching
+    source_citation = data.get('source_citation', '')
+    resources = None
+    if source_citation:
+        try:
+            resources = json.loads(source_citation) if isinstance(source_citation, str) else source_citation
+        except (json.JSONDecodeError, TypeError):
+            pass
+
     try:
         from reporting_template_generator import generate_reporting_template_html
         result = generate_reporting_template_html(
             title=title,
             category=category,
             body_section=data.get('body_section', ''),
-            source_citation=data.get('source_citation', ''),
+            source_citation=source_citation,
             additional_context=data.get('additional_context', ''),
             user_id=current_user.id,
+            resources=resources,
         )
         return jsonify(result)
 
@@ -1060,14 +1070,13 @@ def generate_radiology_template_route():
     modality = (data.get('modality') or '').strip()
     body_section = (data.get('body_section') or '').strip()
 
-    # Extract resources if provided
+    # Parse source_citation JSON into resources dict for URL fetching
     resources = None
     source_citation = data.get('source_citation', '')
     if source_citation:
         try:
-            from clinical_tool_generator import format_resources_for_prompt
-            resources = {'raw_citation': source_citation}
-        except ImportError:
+            resources = json.loads(source_citation) if isinstance(source_citation, str) else source_citation
+        except (json.JSONDecodeError, TypeError):
             pass
 
     try:

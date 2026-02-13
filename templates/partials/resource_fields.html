@@ -46,7 +46,7 @@
 <div class="mb-3">
     <label class="form-label small fw-semibold">Reference PDFs</label>
     <div class="mb-2">
-        <input type="file" class="form-control form-control-sm" id="{{ prefix }}PdfUpload" accept=".pdf" onchange="uploadPDF(this, '{{ prefix }}LinkedPdfs', '{{ prefix }}PdfProgress')">
+        <input type="file" class="form-control form-control-sm" id="{{ prefix }}PdfUpload" accept=".pdf" multiple onchange="uploadPDFs(this, '{{ prefix }}LinkedPdfs', '{{ prefix }}PdfProgress')">
         <div id="{{ prefix }}PdfProgress" class="d-none">
             <div class="progress mt-1" style="height: 4px;">
                 <div class="progress-bar bg-warning" style="width: 0%"></div>

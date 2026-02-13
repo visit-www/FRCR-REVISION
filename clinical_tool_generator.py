@@ -99,6 +99,47 @@ def _strip_markdown_fences(text):
     return cleaned
 
 
+# ==================== URL CONTENT FETCHING ====================
+
+def fetch_url_content(url, max_chars=4000):
+    """Fetch a URL and return plain text content for prompt injection.
+    Returns extracted text or empty string on failure."""
+    import requests
+    import re as _re
+    try:
+        resp = requests.get(url, timeout=10, headers={
+            'User-Agent': 'Mozilla/5.0 (RadInsights/1.0; +educational)',
+        }, allow_redirects=True)
+        resp.raise_for_status()
+        content_type = resp.headers.get('Content-Type', '')
+        # Only process text/html or text/plain
+        if 'html' in content_type:
+            html = resp.text[:200000]
+            # Try BeautifulSoup if available
+            try:
+                from bs4 import BeautifulSoup
+                soup = BeautifulSoup(html, 'html.parser')
+                # Remove script/style
+                for tag in soup(['script', 'style', 'nav', 'footer', 'header']):
+                    tag.decompose()
+                text = soup.get_text(separator='\n', strip=True)
+            except ImportError:
+                # Fallback: strip HTML tags with regex
+                text = _re.sub(r'<[^>]+>', ' ', html)
+                text = _re.sub(r'\s+', ' ', text).strip()
+        elif 'text/plain' in content_type:
+            text = resp.text
+        else:
+            print(f"[URL FETCH] Skipped {url}: unsupported content type {content_type}")
+            return ''
+        result = text[:max_chars].strip()
+        print(f"[URL FETCH] OK {url} → {len(result)} chars")
+        return result
+    except Exception as exc:
+        print(f"[URL FETCH] Failed {url}: {exc}")
+        return ''
+
+
 # ==================== RESOURCE FORMATTING (Gap 1) ====================
 
 def format_resources_for_prompt(resources):
@@ -137,7 +178,7 @@ def format_resources_for_prompt(resources):
 
     sections = []
 
-    # Admin-format references
+    # Admin-format references (with URL content fetching)
     refs = resources.get('references', [])
     if refs:
         ref_lines = []
@@ -148,17 +189,29 @@ def format_resources_for_prompt(resources):
                     line += f" ({ref['version']})"
                 if ref.get('url'):
                     line += f" — {ref['url']}"
+                    fetched = fetch_url_content(ref['url'])
+                    if fetched:
+                        line += f"\n     Content:\n     {fetched[:4000]}"
                 ref_lines.append(line)
             elif isinstance(ref, str):
                 ref_lines.append(f"  {i}. {ref}")
         if ref_lines:
             sections.append("REFERENCES:\n" + "\n".join(ref_lines))
 
-    # Gap 1: Reference URLs
+    # Gap 1: Reference URLs (fetch content)
     urls = resources.get('urls', [])
     if urls:
-        url_list = "\n".join(f"  - {u}" for u in urls if u)
-        sections.append(f"REFERENCE ARTICLES:\n{url_list}")
+        url_parts = []
+        for u in urls:
+            if not u:
+                continue
+            fetched = fetch_url_content(u)
+            if fetched:
+                url_parts.append(f"  - {u}\n    Content:\n    {fetched[:4000]}")
+            else:
+                url_parts.append(f"  - {u}")
+        if url_parts:
+            sections.append("REFERENCE ARTICLES:\n" + "\n".join(url_parts))
 
     # Admin-format linked cases
     cases = resources.get('linked_cases', [])
