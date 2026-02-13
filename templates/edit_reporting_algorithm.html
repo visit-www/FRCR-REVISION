@@ -1,0 +1,298 @@
+{% extends 'base.html' %}
+{% block tool_active_algorithms %}active{% endblock %}
+{% block mobile_active_algorithms %}active{% endblock %}
+{% from 'partials/resource_fields.html' import resource_fields, resource_styles %}
+
+{% block mobile_breadcrumb %}
+<li class="breadcrumb-item">
+    <a href="{{ url_for('reporting.admin_reporting_algorithms') }}" class="text-white text-decoration-none">Algorithms</a>
+</li>
+<li class="breadcrumb-item active text-white-50">Edit</li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3 px-4">
+    <!-- Top Bar -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="d-flex align-items-center gap-3">
+            <a href="{{ url_for('reporting.admin_reporting_algorithms') }}" class="btn btn-outline-secondary btn-sm">
+                <i class="fas fa-arrow-left me-1"></i>Back
+            </a>
+            <div>
+                <h5 class="mb-0" id="pageTitle">{{ algorithm.title }}</h5>
+                <small class="text-muted">{{ algorithm.slug }}</small>
+            </div>
+        </div>
+        <div class="d-flex gap-2 align-items-center">
+            <span id="saveStatus" class="text-muted small"></span>
+            {% if not algorithm.verified_at %}
+            <button class="btn btn-outline-success btn-sm" onclick="verifyAlgorithm()">
+                <i class="fas fa-check me-1"></i>Verify & Publish
+            </button>
+            {% endif %}
+            <button class="btn btn-sm" id="saveBtn" onclick="saveAll()"
+                    style="background: #e96304; border-color: #e96304; color: #fff;">
+                <i class="fas fa-save me-1"></i>Save
+            </button>
+        </div>
+    </div>
+
+    <!-- Metadata (collapsible) -->
+    <div class="card border-0 shadow-sm mb-3">
+        <div class="card-header bg-white py-2 d-flex justify-content-between align-items-center"
+             data-bs-toggle="collapse" data-bs-target="#metadataPanel" role="button"
+             style="cursor: pointer;">
+            <span class="fw-semibold small">
+                <i class="fas fa-cog me-1 text-muted"></i>Metadata & Resources
+            </span>
+            <i class="fas fa-chevron-down small text-muted" id="metaChevron"></i>
+        </div>
+        <div class="collapse" id="metadataPanel">
+            <div class="card-body py-3">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label small fw-semibold">Title</label>
+                        <input type="text" class="form-control form-control-sm" id="editTitle"
+                               value="{{ algorithm.title }}">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small fw-semibold">Category</label>
+                        <select class="form-select form-select-sm" id="editCategory">
+                            {% for cat in ['emergency','routine','oncology','trauma','grading','scoring'] %}
+                            <option value="{{ cat }}" {{ 'selected' if algorithm.category == cat }}>{{ cat|title }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small fw-semibold">Body Section</label>
+                        <select class="form-select form-select-sm" id="editBodySection">
+                            <option value="">Select...</option>
+                            {% for bs in ['Thorax','Abdomen','Pelvis','Head and Neck','Brain','Spine','Musculoskeletal','Cardiovascular','Breast','Multisystem'] %}
+                            <option value="{{ bs }}" {{ 'selected' if algorithm.body_section == bs }}>{{ bs }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small fw-semibold">Keywords</label>
+                        <input type="text" class="form-control form-control-sm" id="editKeywords"
+                               value="{{ algorithm.keywords or '' }}" placeholder="comma-separated">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small fw-semibold">Status</label>
+                        <div class="form-check form-switch mt-1">
+                            <input class="form-check-input" type="checkbox" id="editAvailable"
+                                   {{ 'checked' if algorithm.is_available }}>
+                            <label class="form-check-label small" for="editAvailable">Published</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="row g-3 mt-1">
+                    <div class="col-md-6">
+                        <label class="form-label small fw-semibold">Description</label>
+                        <textarea class="form-control form-control-sm" id="editDescription" rows="2">{{ algorithm.description or '' }}</textarea>
+                    </div>
+                    <div class="col-md-6">
+                        {{ resource_fields('edit') }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Editor + Preview (side by side) -->
+    <div class="row g-3" style="height: calc(100vh - 260px);">
+        <!-- Code Editor -->
+        <div class="col-md-6 d-flex flex-column" id="editorCol">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="fw-semibold small text-muted">
+                    <i class="fas fa-code me-1"></i>HTML Editor
+                </span>
+                <div class="btn-group btn-group-sm">
+                    <button class="btn btn-outline-secondary btn-sm active" onclick="setEditorLayout('split')" title="Split view">
+                        <i class="fas fa-columns"></i>
+                    </button>
+                    <button class="btn btn-outline-secondary btn-sm" onclick="setEditorLayout('editor')" title="Editor only">
+                        <i class="fas fa-code"></i>
+                    </button>
+                    <button class="btn btn-outline-secondary btn-sm" onclick="setEditorLayout('preview')" title="Preview only">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </div>
+            </div>
+            <textarea id="htmlEditor" class="flex-grow-1 form-control"
+                      style="font-family: 'Fira Code', 'SF Mono', 'Consolas', monospace;
+                             font-size: 0.82rem; line-height: 1.5; resize: none;
+                             background: #1e1e2e; color: #cdd6f4; border: 1px solid #45475a;
+                             border-radius: 8px; padding: 12px; tab-size: 2;">{{ algorithm.template_html or '' }}</textarea>
+        </div>
+
+        <!-- Live Preview -->
+        <div class="col-md-6 d-flex flex-column" id="previewCol">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="fw-semibold small text-muted">
+                    <i class="fas fa-eye me-1"></i>Live Preview
+                </span>
+                <button class="btn btn-outline-secondary btn-sm" onclick="refreshPreview()" title="Refresh">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+            </div>
+            <iframe id="previewFrame"
+                    style="flex: 1; border: 1px solid #dee2e6; border-radius: 8px; background: #fff;"></iframe>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    var CLOUDINARY_CLOUD_NAME = {{ cloudinary_cloud_name|default('', true)|tojson }};
+    var CLOUDINARY_UPLOAD_PRESET = {{ cloudinary_upload_preset|default('', true)|tojson }};
+</script>
+{{ resource_styles() }}
+<script src="{{ url_for('static', filename='js/admin-resource-helpers.js') }}"></script>
+<script>
+var ALGORITHM_ID = {{ algorithm.id }};
+var _previewTimeout = null;
+var _isDirty = false;
+
+// ==================== LIVE PREVIEW ====================
+
+function refreshPreview() {
+    var html = document.getElementById('htmlEditor').value;
+    document.getElementById('previewFrame').srcdoc = html;
+}
+
+document.getElementById('htmlEditor').addEventListener('input', function() {
+    _isDirty = true;
+    clearTimeout(_previewTimeout);
+    _previewTimeout = setTimeout(refreshPreview, 600);
+});
+
+// Tab key inserts spaces in editor
+document.getElementById('htmlEditor').addEventListener('keydown', function(e) {
+    if (e.key === 'Tab') {
+        e.preventDefault();
+        var start = this.selectionStart;
+        var end = this.selectionEnd;
+        this.value = this.value.substring(0, start) + '  ' + this.value.substring(end);
+        this.selectionStart = this.selectionEnd = start + 2;
+    }
+    // Ctrl/Cmd+S to save
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        saveAll();
+    }
+});
+
+// ==================== LAYOUT TOGGLE ====================
+
+function setEditorLayout(mode) {
+    var editorCol = document.getElementById('editorCol');
+    var previewCol = document.getElementById('previewCol');
+    // Reset active state
+    document.querySelectorAll('.btn-group .btn').forEach(function(b) { b.classList.remove('active'); });
+
+    if (mode === 'editor') {
+        editorCol.className = 'col-12 d-flex flex-column';
+        previewCol.classList.add('d-none');
+        event.target.closest('.btn').classList.add('active');
+    } else if (mode === 'preview') {
+        editorCol.classList.add('d-none');
+        previewCol.className = 'col-12 d-flex flex-column';
+        previewCol.classList.remove('d-none');
+        event.target.closest('.btn').classList.add('active');
+        refreshPreview();
+    } else {
+        editorCol.className = 'col-md-6 d-flex flex-column';
+        editorCol.classList.remove('d-none');
+        previewCol.className = 'col-md-6 d-flex flex-column';
+        previewCol.classList.remove('d-none');
+        event.target.closest('.btn').classList.add('active');
+    }
+}
+
+// ==================== SAVE ====================
+
+function saveAll() {
+    var btn = document.getElementById('saveBtn');
+    var status = document.getElementById('saveStatus');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Saving...';
+
+    var resources = typeof collectResources === 'function' ? collectResources('edit') : {};
+
+    fetch('/admin/reporting-algorithms/api/' + ALGORITHM_ID, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            title: document.getElementById('editTitle').value,
+            category: document.getElementById('editCategory').value,
+            body_section: document.getElementById('editBodySection').value,
+            keywords: document.getElementById('editKeywords').value,
+            description: document.getElementById('editDescription').value,
+            source_citation: JSON.stringify(resources),
+            template_html: document.getElementById('htmlEditor').value,
+            is_available: document.getElementById('editAvailable').checked,
+        }),
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(result) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-save me-1"></i>Save';
+        if (result.error) {
+            status.innerHTML = '<span class="text-danger"><i class="fas fa-exclamation-circle me-1"></i>' + result.error + '</span>';
+        } else {
+            _isDirty = false;
+            status.innerHTML = '<span class="text-success"><i class="fas fa-check me-1"></i>Saved</span>';
+            document.getElementById('pageTitle').textContent = document.getElementById('editTitle').value;
+            setTimeout(function() { status.innerHTML = ''; }, 3000);
+        }
+    })
+    .catch(function(err) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-save me-1"></i>Save';
+        status.innerHTML = '<span class="text-danger">Save failed</span>';
+    });
+}
+
+// ==================== VERIFY ====================
+
+function verifyAlgorithm() {
+    if (!confirm('Verify and publish this algorithm?')) return;
+    fetch('/admin/reporting-algorithms/api/' + ALGORITHM_ID + '/verify', { method: 'POST' })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.error) { alert(data.error); return; }
+            location.reload();
+        });
+}
+
+// ==================== INIT ====================
+
+window.addEventListener('beforeunload', function(e) {
+    if (_isDirty) {
+        e.preventDefault();
+        e.returnValue = '';
+    }
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Load resources
+    loadAllResources('edit', {{ algorithm.source_citation|default('', true)|tojson }});
+    // Initial preview
+    refreshPreview();
+    // Collapse chevron animation
+    var panel = document.getElementById('metadataPanel');
+    panel.addEventListener('show.bs.collapse', function() {
+        document.getElementById('metaChevron').style.transform = 'rotate(180deg)';
+    });
+    panel.addEventListener('hide.bs.collapse', function() {
+        document.getElementById('metaChevron').style.transform = 'rotate(0deg)';
+    });
+});
+</script>
+<style>
+    #metaChevron { transition: transform 0.2s ease; }
+    #htmlEditor:focus { outline: none; box-shadow: 0 0 0 2px rgba(233, 99, 4, 0.3); }
+</style>
+{% endblock %}

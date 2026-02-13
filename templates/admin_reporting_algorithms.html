@@ -89,9 +89,10 @@
                                         <button class="btn btn-outline-secondary" onclick="previewAlgorithm({{ t.id }})" title="Preview">
                                             <i class="fas fa-eye"></i>
                                         </button>
-                                        <button class="btn btn-outline-secondary" onclick="editTemplate({{ t.id }})" title="Edit">
+                                        <a href="{{ url_for('reporting.edit_reporting_algorithm', algorithm_id=t.id) }}"
+                                           class="btn btn-outline-secondary" title="Edit">
                                             <i class="fas fa-edit"></i>
-                                        </button>
+                                        </a>
                                         {% if not t.verified_at %}
                                         <button class="btn btn-outline-success" onclick="verifyTemplate({{ t.id }})" title="Verify">
                                             <i class="fas fa-check"></i>
@@ -176,81 +177,6 @@
     </div>
 </div>
 
-<!-- Edit Template Modal -->
-<div class="modal fade app-content-modal" id="editTemplateModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">
-                    <i class="fas fa-edit"></i> Edit Template
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <input type="hidden" id="editTemplateId">
-                <div class="mb-3">
-                    <label class="form-label">Title</label>
-                    <input type="text" class="form-control" id="editTitle">
-                </div>
-                <div class="row g-3 mb-3">
-                    <div class="col-md-6">
-                        <label class="form-label">Category</label>
-                        <select class="form-select" id="editCategory">
-                            <option value="">Select category...</option>
-                            <option value="emergency">Emergency</option>
-                            <option value="routine">Routine</option>
-                            <option value="oncology">Oncology</option>
-                            <option value="trauma">Trauma</option>
-                            <option value="grading">Grading System</option>
-                            <option value="scoring">Scoring System</option>
-                        </select>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Body Section</label>
-                        <select class="form-select" id="editBodySection">
-                            <option value="">Select...</option>
-                            {% for bs in ['Thorax','Abdomen','Pelvis','Head and Neck','Brain','Spine','Musculoskeletal','Cardiovascular','Breast','Multisystem'] %}
-                            <option value="{{ bs }}">{{ bs }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Keywords</label>
-                    <input type="text" class="form-control" id="editKeywords" placeholder="comma-separated">
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Description</label>
-                    <textarea class="form-control" id="editDescription" rows="2"></textarea>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label fw-semibold">Algorithm HTML <small class="text-muted">(generated content)</small></label>
-                    <textarea class="form-control" id="editTemplateHtml" rows="12"
-                              style="font-family: 'Courier New', monospace; font-size: 0.8rem; line-height: 1.4;"></textarea>
-                </div>
-                <div class="row g-3 mb-3">
-                    <div class="col-md-6">
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" id="editAvailable">
-                            <label class="form-check-label" for="editAvailable">Available (published)</label>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Edit Note</label>
-                        <input type="text" class="form-control" id="editNote" placeholder="What did you change?">
-                    </div>
-                </div>
-                {{ resource_fields('edit') }}
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-modal-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-modal-primary" onclick="saveEditTemplate()">
-                    <i class="fas fa-save me-1"></i>Save Changes
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
 
 <!-- Preview Algorithm Modal -->
 <div class="modal fade" id="previewModal" tabindex="-1">
@@ -341,52 +267,6 @@ function generateTemplate() {
         btn.innerHTML = '<i class="fas fa-magic me-1"></i>Generate';
         status.innerHTML = '<div class="alert alert-danger py-2">Generation failed.</div>';
     });
-}
-
-function editTemplate(id) {
-    fetch('/admin/reporting-algorithms/api/' + id)
-        .then(function(r) { return r.json(); })
-        .then(function(data) {
-            document.getElementById('editTemplateId').value = data.id;
-            document.getElementById('editTitle').value = data.title || '';
-            document.getElementById('editCategory').value = data.category || '';
-            document.getElementById('editBodySection').value = data.body_section || '';
-            document.getElementById('editKeywords').value = data.keywords || '';
-            document.getElementById('editDescription').value = data.description || '';
-            document.getElementById('editTemplateHtml').value = data.template_html || '';
-            document.getElementById('editAvailable').checked = data.is_available;
-            document.getElementById('editNote').value = '';
-            loadAllResources('edit', data.source_citation);
-            new bootstrap.Modal(document.getElementById('editTemplateModal')).show();
-        })
-        .catch(function(err) { alert('Failed to load template: ' + err); });
-}
-
-function saveEditTemplate() {
-    var id = document.getElementById('editTemplateId').value;
-    var resources = collectResources('edit');
-
-    fetch('/admin/reporting-algorithms/api/' + id, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            title: document.getElementById('editTitle').value,
-            category: document.getElementById('editCategory').value,
-            body_section: document.getElementById('editBodySection').value,
-            source_citation: JSON.stringify(resources),
-            keywords: document.getElementById('editKeywords').value,
-            description: document.getElementById('editDescription').value,
-            template_html: document.getElementById('editTemplateHtml').value,
-            is_available: document.getElementById('editAvailable').checked,
-            last_edit_note: document.getElementById('editNote').value,
-        }),
-    })
-    .then(function(r) { return r.json(); })
-    .then(function(result) {
-        if (result.error) { alert(result.error); return; }
-        location.reload();
-    })
-    .catch(function(err) { alert('Error: ' + err); });
 }
 
 function verifyTemplate(id) {

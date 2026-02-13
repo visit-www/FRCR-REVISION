@@ -904,6 +904,16 @@ def admin_reporting_algorithms():
                            cloudinary_upload_preset=os.environ.get('CLOUDINARY_UPLOAD_PRESET', ''))
 
 
+@reporting_bp.route('/admin/reporting-algorithms/edit/<int:algorithm_id>')
+@require_admin
+def edit_reporting_algorithm(algorithm_id):
+    """Full-page editor for reporting algorithm content + metadata."""
+    algorithm = ReportingAlgorithm.query.get_or_404(algorithm_id)
+    return render_template('edit_reporting_algorithm.html', algorithm=algorithm,
+                           cloudinary_cloud_name=os.environ.get('CLOUDINARY_CLOUD_NAME', ''),
+                           cloudinary_upload_preset=os.environ.get('CLOUDINARY_UPLOAD_PRESET', ''))
+
+
 @reporting_bp.route('/admin/reporting-algorithms/api', methods=['POST'])
 @require_admin
 def create_reporting_template():
