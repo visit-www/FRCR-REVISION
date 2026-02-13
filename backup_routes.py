@@ -43,11 +43,14 @@ backup_bp = Blueprint('backup', __name__, url_prefix='/api/backup')
 
 
 def _sanitize_backup_data(backup_data):
-    """Convert dict values and non-nested list values to JSON strings for SQLite compat.
-    PostgreSQL Text columns silently accept Python dicts; SQLite does not.
-    Skips lists-of-dicts (nested records) and lists-of-ints (ID arrays) which
-    are processed by import logic, not stored directly in Text columns.
+    """Sanitize all backup records for SQLite compatibility.
+    1. Convert dict values to JSON strings (SQLite Text columns reject Python dicts)
+    2. Convert ISO datetime strings to Python datetime objects (SQLite DateTime
+       columns reject strings; PostgreSQL silently handles both)
     Must run AFTER json.loads() but BEFORE any import loops."""
+    import re
+    # Match ISO 8601 datetime: 2026-02-06T20:10:33 with optional fractional seconds and timezone
+    _iso_re = re.compile(r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}')
     for key, records in backup_data.items():
         if isinstance(records, list):
             for record in records:
@@ -55,6 +58,15 @@ def _sanitize_backup_data(backup_data):
                     for field, val in record.items():
                         if isinstance(val, dict):
                             record[field] = json.dumps(val)
+                        elif isinstance(val, str) and _iso_re.match(val) and (
+                            field.endswith('_at') or field.endswith('_date') or field == 'last_login'
+                        ):
+                            try:
+                                s = val.replace('Z', '+00:00')
+                                dt = datetime.fromisoformat(s)
+                                record[field] = dt.replace(tzinfo=None) if dt.tzinfo else dt
+                            except (ValueError, TypeError):
+                                pass
 
 
 def check_admin():
@@ -3469,9 +3481,8 @@ def restore_backup():
             error_message = 'Database connection timeout. The import operation may be too large or taking too long. Please try importing in smaller batches or contact support.'
         elif 'deadlock' in error_lower or ('lock' in error_lower and 'waiting' in error_lower):
             error_message = 'Database transaction conflict. Another operation may be in progress. Please try again in a few moments.'
-        elif 'disturbed' in error_lower or 'body' in error_lower or 'request entity too large' in error_lower:
-            # This might be a request body size issue or connection issue
-            error_message = 'Request body error. The backup file may be too large (Vercel limit: 4.5MB) or the connection was interrupted. Please try a smaller backup file or split the import.'
+        elif 'disturbed' in error_lower or 'request entity too large' in error_lower or 'request body' in error_lower:
+            error_message = 'Request body error. The backup file may be too large (Vercel limit: 4.5MB) or the connection was interrupted.'
         elif 'violates' in error_lower and 'constraint' in error_lower:
             error_message = 'Data integrity error. The backup file may contain invalid data or duplicate entries. Please verify the backup file.'
         elif 'syntax error' in error_lower or 'invalid' in error_lower or 'malformed' in error_lower:
@@ -3489,6 +3500,7 @@ def restore_backup():
         sys.stderr.write(f"[IMPORT] TRACEBACK:\n{error_traceback}\n")
         return jsonify({
             'error': f'Import failed: {error_message}',
+            'original_error': str(e)[:500],
             'details': error_traceback.split('\n')[-5:] if len(error_traceback) > 0 else []
         }), 500
 
