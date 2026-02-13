@@ -3389,7 +3389,10 @@
 
 <!-- Case DICOM Viewer: Self-hosted Cornerstone.js v4.x libraries -->
 <link rel="stylesheet" href="{{ url_for('case_dicom_viewer.static', filename='case_dicom_viewer/viewer.css') }}">
-<!-- Patch canvas.getContext for willReadFrequently before Cornerstone loads (fixes getImageData perf warning) -->
+<!-- Patch canvas.getContext before Cornerstone loads:
+     1. willReadFrequently=true — fixes getImageData perf warning
+     2. delete desynchronized — fixes black canvas on Windows (desynchronized buffers
+        bypass the DOM compositor; many Windows GPU drivers never composite them back) -->
 <script>
 (function() {
   var orig = HTMLCanvasElement.prototype.getContext;
@@ -3397,6 +3400,7 @@
     if (type === '2d') {
       var attrs = (attributes && typeof attributes === 'object') ? Object.assign({}, attributes) : {};
       if (attrs.willReadFrequently === undefined) attrs.willReadFrequently = true;
+      delete attrs.desynchronized;
       return orig.call(this, type, attrs);
     }
     return orig.call(this, type, attributes);
