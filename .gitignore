@@ -42,6 +42,7 @@ wheels/
 # Instance folder - contains local database
 instance/frcr_examiner.db
 instance/*.db
+instance/RadInsights_db
 
 # Backup files - keep structure but not content
 backups/*.db
