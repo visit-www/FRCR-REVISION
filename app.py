@@ -660,7 +660,7 @@ with app.app_context():
                 existing = [c['name'] for c in insp.get_columns(table)]
                 if column not in existing:
                     with db.engine.connect() as conn:
-                        conn.execute(text(f'ALTER TABLE {table} ADD COLUMN {col_sql}'))
+                        conn.execute(text(f'ALTER TABLE "{table}" ADD COLUMN {col_sql}'))
                         conn.commit()
                     print(f'[MIGRATE] Added {table}.{column}')
 
