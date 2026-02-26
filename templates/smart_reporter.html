@@ -2057,10 +2057,12 @@ document.addEventListener('DOMContentLoaded', function() {
             // Use the AI-improved report (all corrections auto-applied)
             var finalizedText = data.improved_report || text;
             var finalizeEl = document.getElementById('finalizeInput');
-            finalizeEl.value = finalizedText;
+            if (finalizeEl) {
+                finalizeEl.value = finalizedText;
+                finalizeEl.focus();
+            }
             document.getElementById('finalizeSection').classList.remove('d-none');
             state.finalizeActive = true;
-            finalizeEl.focus();
 
             var numSuggestions = (data.suggestions || []).length;
             if (numSuggestions > 0) {
@@ -2076,7 +2078,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             // Fallback: show raw text without AI polish
             var finalizeEl = document.getElementById('finalizeInput');
-            finalizeEl.value = text;
+            if (finalizeEl) finalizeEl.value = text;
             document.getElementById('finalizeSection').classList.remove('d-none');
             state.finalizeActive = true;
             showToast('Could not reach AI. Report shown without corrections.', 'warning');
