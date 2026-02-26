@@ -1021,15 +1021,16 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             if (adminData.templates && adminData.templates.length > 0) {
                 adminData.templates.forEach(function(t) {
-                    // Only show radiology templates, not algorithms
-                    if (t.source_table === 'reporting_algorithm') return;
+                    var isAlgo = t.source_table === 'reporting_algorithm';
+                    var icon = isAlgo ? 'fa-sitemap' : 'fa-certificate';
+                    var iconColor = isAlgo ? 'var(--brand-primary)' : 'var(--brand-neutral)';
+                    var label = isAlgo ? 'Algorithm' : (t.body_section ? escapeHtmlSafe(t.body_section) : '');
                     html += '<div class="p-2 mb-1 rounded" style="border: 1px solid #e9ecef; cursor: pointer; transition: all 0.15s;" ' +
                         'onclick="loadAdminTemplate(' + t.id + ', \'' + escapeHtmlSafe(t.source_table || '') + '\')" onmouseenter="this.style.background=\'#fff5ee\'" onmouseleave="this.style.background=\'\'">' +
                         '<div class="d-flex align-items-center">' +
-                        '<i class="fas fa-certificate me-2" style="color: var(--brand-primary); font-size: 0.8rem;"></i>' +
+                        '<i class="fas ' + icon + ' me-2" style="color: ' + iconColor + '; font-size: 0.8rem;"></i>' +
                         '<div style="min-width:0;"><small class="fw-semibold text-dark d-block text-truncate">' + escapeHtmlSafe(t.title) + '</small>' +
-                        '<small class="text-muted" style="font-size:0.7rem;">' +
-                        (t.body_section ? escapeHtmlSafe(t.body_section) : '') + '</small></div>' +
+                        '<small class="text-muted" style="font-size:0.7rem;">' + label + '</small></div>' +
                         '</div></div>';
                 });
             }
@@ -1195,17 +1196,13 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     window.pasteMyReport = function(contextQuery) {
-        // Go directly to editor for paste/type
-        // Returns a resolved Promise so callers can chain .then() for panel activation
-        state.inputText = '';
+        // Fully reset AI state and open a fresh editor
+        resetEditorSession();
         showScene('editor');
-        hideAllAdaptivePanels();
         const input = document.getElementById('editorInput');
         input.value = '';
         input.placeholder = 'Paste or type your report here...';
         input.focus();
-        document.getElementById('outputSection').classList.add('d-none');
-        document.getElementById('suggestionsPanel').classList.add('d-none');
         return Promise.resolve();
     };
 
@@ -1581,14 +1578,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
 
+            resetEditorSession();
             state.inputText = data.template_text || '';
             showScene('editor');
 
             const input = document.getElementById('editorInput');
             input.value = state.inputText;
             autoResizeTextarea(input);
-            document.getElementById('outputSection').classList.add('d-none');
-            document.getElementById('suggestionsPanel').classList.add('d-none');
 
             showToast('Blank template generated. Fill in your findings.', 'success');
         })
@@ -1605,15 +1601,13 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!confirm('This will leave the walkthrough. Continue?')) return;
         }
 
-        state.inputText = '';
+        resetEditorSession();
         showScene('editor');
 
         const input = document.getElementById('editorInput');
         input.value = '';
         input.placeholder = 'Paste or type your report here...';
         input.focus();
-        document.getElementById('outputSection').classList.add('d-none');
-        document.getElementById('suggestionsPanel').classList.add('d-none');
     };
 
     // ==================== ADAPTIVE EDITOR PANELS (Phase 6) ====================
@@ -1966,6 +1960,34 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // ==================== EDITOR ====================
 
+    // Fully reset all AI/session state for a fresh report
+    function resetEditorSession() {
+        state.inputText = '';
+        state.outputText = '';
+        state.suggestions = [];
+        state.improvedReport = '';
+        state.algorithmTree = null;
+        state.stepHistory = [];
+        state.currentHistoryIndex = -1;
+        state.answers = {};
+        state.reportSections = { indication: '', technique: '', comparison: '', findings: '', impression: '', recommendation: '' };
+        state.aiAssistResponseType = 'advisory';
+        state.aiAssistAnswer = '';
+        state.aiAssistReportText = '';
+        state.aiAssistCorrections = [];
+        state.aiAssistInsights = {};
+        state.externalContext = null;
+
+        // Clear UI
+        var output = document.getElementById('editorOutput');
+        if (output) output.value = '';
+        document.getElementById('outputSection').classList.add('d-none');
+        document.getElementById('suggestionsPanel').classList.add('d-none');
+        document.getElementById('aiAssistResponse').classList.add('d-none');
+        document.getElementById('aiAssistInsightsSection').classList.add('d-none');
+        hideAllAdaptivePanels();
+    }
+
     function populateEditorInput() {
         const el = document.getElementById('editorInput');
         if (el && state.inputText) {
@@ -2097,13 +2119,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 if (adminData.templates && adminData.templates.length > 0) {
                     adminData.templates.forEach(function(t) {
-                        if (t.source_table === 'reporting_algorithm') return;
+                        var isAlgo = t.source_table === 'reporting_algorithm';
+                        var icon = isAlgo ? 'fa-sitemap' : 'fa-certificate';
+                        var iconColor = isAlgo ? 'var(--brand-primary)' : 'var(--brand-neutral)';
+                        var suffix = isAlgo ? 'algorithm' : (t.body_section ? escapeHtmlSafe(t.body_section) : '');
                         html += '<div class="px-3 py-2" style="cursor: pointer; font-size: 0.8rem; border-bottom: 1px solid #f0f0f0;" ' +
                             'onmouseover="this.style.background=\'#fff5ee\'" onmouseout="this.style.background=\'#fff\'" ' +
                             'onclick="document.getElementById(\'editorTemplateDropdown\').classList.add(\'d-none\'); loadAdminTemplate(' + t.id + ', \'' + escapeHtmlSafe(t.source_table || '') + '\')">' +
-                            '<i class="fas fa-certificate me-1" style="color: var(--brand-primary);"></i>' +
+                            '<i class="fas ' + icon + ' me-1" style="color: ' + iconColor + ';"></i>' +
                             escapeHtmlSafe(t.title) +
-                            (t.body_section ? ' <span class="text-muted" style="font-size: 0.7rem;">— ' + escapeHtmlSafe(t.body_section) + '</span>' : '') +
+                            (suffix ? ' <span class="text-muted" style="font-size: 0.7rem;">— ' + suffix + '</span>' : '') +
                             '</div>';
                     });
                 }
@@ -2889,6 +2914,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(data => {
                 if (data.error) { showToast(data.error, 'error'); return; }
 
+                resetEditorSession();
                 state.inputText = data.pacs_report_text || '';
                 showScene('editor');
                 const input = document.getElementById('editorInput');
@@ -2975,14 +3001,23 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     // Auto-show save prompt when user pastes into editor (Gap 4)
+    // Also warn if pasting into an active session with existing AI results
     const editorInputEl = document.getElementById('editorInput');
     if (editorInputEl) {
         editorInputEl.addEventListener('paste', function() {
-            if (saveTemplatePromptDismissed) return;
-            // Delay to let paste content populate
             setTimeout(function() {
                 const text = editorInputEl.value.trim();
-                if (text.length > 50) {
+                // Warn if session has existing AI results and user pastes new content
+                var hasAIState = state.aiAssistAnswer || state.aiAssistReportText ||
+                    (state.aiAssistInsights && Object.values(state.aiAssistInsights).some(function(v) {
+                        return Array.isArray(v) ? v.length > 0 : (v && v.trim());
+                    })) ||
+                    state.outputText || state.suggestions.length > 0;
+                if (hasAIState && text.length > 20) {
+                    showToast('You pasted into an active session. Use "New Blank" or load a template to start fresh with a clean session.', 'info', 6000);
+                }
+                // Save template prompt
+                if (!saveTemplatePromptDismissed && text.length > 50) {
                     showSaveTemplatePrompt();
                 }
             }, 300);
@@ -3004,13 +3039,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 // Radiology template (plain text) — load into editor
                 if (data.source_table === 'radiology_template' || sourceTable === 'radiology_template') {
+                    resetEditorSession();
                     state.inputText = data.pacs_report_text || '';
                     showScene('editor');
                     const input = document.getElementById('editorInput');
                     input.value = state.inputText;
                     autoResizeTextarea(input);
-                    document.getElementById('outputSection').classList.add('d-none');
-                    document.getElementById('suggestionsPanel').classList.add('d-none');
                     showToast('Loaded template: ' + data.title, 'success');
                     return;
                 }
@@ -3021,14 +3055,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     try {
                         const tree = JSON.parse(data.algorithm_html);
                         if (tree && tree.steps && tree.steps.length > 0) {
-                            state.outputText = '';
-                            state.suggestions = [];
-                            state.improvedReport = '';
-                            state.askClaudeRemaining = 50;
+                            resetEditorSession();
                             state.algorithmTree = tree;
-                            state.answers = {};
-                            state.stepHistory = [];
-                            state.currentHistoryIndex = -1;
 
                             const rt = tree.report_template || {};
                             state.reportSections.indication = rt.indication || '';
@@ -3096,6 +3124,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
 
+            resetEditorSession();
             state.algorithmTree = data.algorithm_tree;
 
             // Auto-select first option (normal finding) for every step
