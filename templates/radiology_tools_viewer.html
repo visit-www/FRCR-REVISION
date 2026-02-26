@@ -4,7 +4,7 @@
 
 {% block mobile_breadcrumb %}
 <li class="breadcrumb-item">
-    <a href="{{ url_for('incidental_findings.finder') }}" class="text-white text-decoration-none">Incidental Findings</a>
+    <a href="{{ url_for('radiology_tools.finder') }}" class="text-white text-decoration-none">Incidental Findings</a>
 </li>
 <li class="breadcrumb-item active text-white-50">{{ calculator.finding_name }}</li>
 {% endblock %}
@@ -18,7 +18,7 @@
                 <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary btn-sm">
                     <i class="fas fa-home me-1"></i>Dashboard
                 </a>
-                <a href="{{ url_for('incidental_findings.finder') }}" class="btn btn-outline-secondary btn-sm">
+                <a href="{{ url_for('radiology_tools.finder') }}" class="btn btn-outline-secondary btn-sm">
                     <i class="fas fa-search-plus me-1"></i>All Incidental Findings
                 </a>
                 <a href="/smart-reporter?context=if&slug={{ calculator.slug }}&title={{ calculator.finding_name|urlencode }}"

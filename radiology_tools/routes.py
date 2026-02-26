@@ -1,8 +1,9 @@
 """
-Incidental Findings Routes
+Radiology Tools Routes
 
-Flask blueprint for incidental findings calculators.
+Flask blueprint for radiology tools (incidental findings calculators etc.).
 Provides finder UI, individual calculator views, and admin management.
+URL prefix: /incidental-findings (kept for backward compatibility).
 """
 
 from flask import Blueprint, request, render_template, jsonify
@@ -18,7 +19,7 @@ from clinical_tool_generator import extract_html_content
 
 logger = logging.getLogger(__name__)
 
-if_bp = Blueprint('incidental_findings', __name__, url_prefix='/incidental-findings')
+if_bp = Blueprint('radiology_tools', __name__, url_prefix='/incidental-findings')
 
 
 # ==================== PUBLIC ROUTES ====================
@@ -40,7 +41,7 @@ def finder():
         cat = calc.category or 'Other'
         grouped.setdefault(cat, []).append(calc)
 
-    return render_template('incidental_findings/finder.html',
+    return render_template('radiology_tools_user.html',
                            calculators=calculators,
                            grouped=grouped)
 
@@ -78,7 +79,7 @@ def view_calculator(slug):
             if source_field.strip():
                 resources['references'] = [{'source': source_field.strip(), 'version': '', 'url': ''}]
 
-    return render_template('incidental_findings/calculator.html',
+    return render_template('radiology_tools_viewer.html',
                            calculator=calculator,
                            content=content,
                            resources=resources)
@@ -171,7 +172,7 @@ def admin_list():
         IncidentalFindingCalculator.category,
         IncidentalFindingCalculator.finding_name
     ).all()
-    return render_template('incidental_findings/admin.html', calculators=calculators,
+    return render_template('radiology_tools_admin.html', calculators=calculators,
                            cloudinary_cloud_name=os.environ.get('CLOUDINARY_CLOUD_NAME', ''),
                            cloudinary_upload_preset=os.environ.get('CLOUDINARY_UPLOAD_PRESET', ''))
 

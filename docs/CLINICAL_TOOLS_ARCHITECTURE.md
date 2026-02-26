@@ -45,14 +45,14 @@ Every interaction logged for audit trail
 |-----------|----------|------------|------|
 | On-Call Helper | `oncall_bp` | `/on-call-helper` | `oncall_routes.py` |
 | Algorithm Finder / Reporting | `reporting_bp` | (none — root level) | `reporting_routes.py` |
-| Incidental Findings | `if_bp` | `/incidental-findings` | `incidental_findings/routes.py` |
+| Radiology Tools | `if_bp` | `/incidental-findings` | `radiology_tools/routes.py` |
 
 All three are imported and registered in `app.py`:
 
 ```python
 from oncall_routes import oncall_bp
 from reporting_routes import reporting_bp
-from incidental_findings import if_bp
+from radiology_tools import if_bp
 
 app.register_blueprint(oncall_bp)
 app.register_blueprint(reporting_bp)
@@ -462,7 +462,7 @@ On success, shows generated content:
 
 ---
 
-## Feature 3: Incidental Findings Helper
+## Feature 3: Radiology Tools (Incidental Findings Helper)
 
 ### Purpose
 
@@ -470,7 +470,7 @@ Deterministic decision trees based on published guidelines (Fleischner, ACR, Bos
 
 ### Backend Flow
 
-**Files:** `incidental_findings/routes.py`, `incidental_findings/generator.py`
+**Files:** `radiology_tools/routes.py`, `radiology_tools/generator.py`
 
 #### Public Routes
 
@@ -542,7 +542,7 @@ Return: {success, message, slug, calculator_id}
 
 ### Frontend Flow
 
-**Templates:** `templates/incidental_findings/finder.html`, `templates/incidental_findings/calculator.html`
+**Templates:** `templates/radiology_tools_user.html`, `templates/radiology_tools_viewer.html`
 
 #### Finder Page
 
@@ -720,18 +720,18 @@ All three features display a clinical disclaimer:
 | `oncall_routes.py` | On-Call Helper Flask blueprint — 13 routes (public + admin) |
 | `reporting_routes.py` | Algorithm Finder + Reporting Templates blueprint — 10 routes |
 | `reporting_template_generator.py` | Claude-powered reporting template generator |
-| `incidental_findings/__init__.py` | IF module init, exports `if_bp` |
-| `incidental_findings/routes.py` | IF Flask blueprint — 9 routes (public + admin) |
-| `incidental_findings/generator.py` | Claude-powered IF calculator generator |
+| `radiology_tools/__init__.py` | Radiology Tools module init, exports `if_bp` |
+| `radiology_tools/routes.py` | Radiology Tools Flask blueprint — 9 routes (public + admin) |
+| `radiology_tools/generator.py` | Claude-powered radiology tool calculator generator |
 | `migrations/add_clinical_tools_tables.sql` | Migration for 4 new tables + 16 indexes |
 | `templates/oncall_helper.html` | On-Call Helper search + response UI |
 | `templates/admin_protocols.html` | Admin protocol CRUD management page |
 | `templates/algorithm_finder.html` | Unified algorithm search/browse + generate UI |
 | `templates/admin_reporting_templates.html` | Admin reporting template management page |
 | `templates/reporting_template_view.html` | Reporting template calculator wrapper |
-| `templates/incidental_findings/finder.html` | IF search + browse by category |
-| `templates/incidental_findings/calculator.html` | IF calculator wrapper |
-| `templates/incidental_findings/admin.html` | IF admin management page |
+| `templates/radiology_tools_user.html` | Radiology Tools search + browse by category |
+| `templates/radiology_tools_viewer.html` | Radiology Tools calculator wrapper |
+| `templates/radiology_tools_admin.html` | Radiology Tools admin management page |
 
 ### Modified Files
 

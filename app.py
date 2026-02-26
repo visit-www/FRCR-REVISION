@@ -39,7 +39,7 @@ from tnm_calculator.routes import tnm_calc_bp
 from case_dicom_viewer import init_app as init_case_dicom, get_blueprint as get_case_dicom_bp
 from oncall_routes import oncall_bp
 from reporting_routes import reporting_bp
-from incidental_findings import if_bp
+from radiology_tools import if_bp
 from ai_prelim import AiPrelimError, generate_prelim_case_data
 from datetime import datetime
 from sqlalchemy.pool import NullPool
@@ -746,7 +746,7 @@ init_case_dicom(app)
 app.register_blueprint(get_case_dicom_bp())  # Case DICOM Viewer - OneDrive image stacks
 app.register_blueprint(oncall_bp)  # On-Call Session Helper - curated clinical protocols
 app.register_blueprint(reporting_bp)  # Algorithm Finder + Non-oncologic reporting templates
-app.register_blueprint(if_bp)  # Incidental Findings Helper - guideline-based calculators
+app.register_blueprint(if_bp)  # Radiology Tools - guideline-based calculators (URL: /incidental-findings)
 
 # Global PII guard — blocks patient-identifiable data in all POST/PUT JSON requests
 from pii_guard import create_pii_middleware

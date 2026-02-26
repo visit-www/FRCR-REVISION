@@ -116,7 +116,7 @@ These tools are triggered exclusively by administrators to create reusable conte
 
 | Property | Value |
 |----------|-------|
-| **File** | `incidental_findings/generator.py` |
+| **File** | `radiology_tools/generator.py` |
 | **Function** | `generate_if_calculator_html()` |
 | **Purpose** | Generates interactive HTML calculators for incidental finding management (Fleischner, Bosniak, ACR guidelines) with decision trees and report language |
 | **Trigger** | Admin clicks "Generate Calculator" in IF management |
