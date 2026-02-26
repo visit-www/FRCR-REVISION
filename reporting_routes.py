@@ -1561,6 +1561,7 @@ def smart_reporter_ai_assist():
         'response_type': result.get('response_type', 'advisory'),
         'corrections': result.get('corrections', []),
         'answer': result.get('answer', ''),
+        'report_text': result.get('report_text', ''),
         'insights': result.get('insights', {}),
         'remaining_requests': remaining,
     })

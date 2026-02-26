@@ -368,6 +368,8 @@ Return a JSON object with EXACTLY this structure:
 
 {{
   "response_type": "full_report|advisory",
+  "answer": "Advisory response: explanation, advice, knowledge answer, or brief guidance. Empty string if the question only asks for report text.",
+  "report_text": "Complete PACS-ready report or section text (impression, findings, full report). Empty string if response_type is advisory.",
   "corrections": [
     {{
       "original": "exact phrase from the report",
@@ -376,7 +378,6 @@ Return a JSON object with EXACTLY this structure:
       "type": "terminology|gender_check|anatomy_check|consistency|phrasing|sidedness"
     }}
   ],
-  "answer": "Direct answer to the trainee's question. PACS-ready text where applicable. No preamble, no commentary on the report beyond what was asked. Copy-paste ready.",
   "insights": {{
     "clinical_question_coverage": "Does the report adequately address the referring clinician's question? 1-2 sentences.",
     "quality_assessment": "Would a subspecialist consultant be satisfied with this report? What would they want added or changed? 1-2 sentences.",
@@ -387,8 +388,8 @@ Return a JSON object with EXACTLY this structure:
 }}
 
 RULES FOR RESPONSE_TYPE:
-1. "full_report" — use when your answer contains a complete report, a complete section rewrite (full impression, full findings), or a full report rewrite/finalization. The user will REPLACE their draft with your answer.
-2. "advisory" — use when your answer is advice, a short suggestion, a knowledge answer, a differential list, or a partial addition. The user will keep their draft and optionally insert your answer.
+1. "full_report" — use when you provide complete report text in report_text (a full report, full impression, full findings rewrite, or finalization). The user will REPLACE their draft with report_text.
+2. "advisory" — use when you only provide advice, a short suggestion, a knowledge answer, or a partial addition in answer. report_text must be empty string.
 
 RULES FOR CORRECTIONS:
 1. Focus on radiology-specific terminology (e.g. "hepatic hemangioma" not "liver hemangioma", "retrosternal" not "referral").
@@ -400,12 +401,15 @@ RULES FOR CORRECTIONS:
 7. If the report has no issues, return an empty corrections array.
 8. If the report is empty or very short, return empty corrections and note this in quality_assessment.
 
-RULES FOR ANSWER:
-1. Write as a consultant would dictate at a workstation. No hedging beyond standard conventions.
-2. If the trainee asks for specific report text (e.g. "write the impression"), give complete PACS-ready sentences. Do NOT wrap in quotes or add labels.
-3. Keep the answer under 250 words. Plain text only — no markdown, no HTML, no bullet lists.
-4. If the trainee asks a knowledge question (e.g. "what's the differential?"), answer directly and concisely.
-5. Do NOT add commentary about the report quality or your reasoning — only answer the question asked.
+RULES FOR ANSWER AND REPORT_TEXT:
+1. "answer" is for advisory/explanatory text ONLY. Never put complete report sections in answer.
+2. "report_text" is for complete PACS-ready report text ONLY. Put full impressions, findings rewrites, or finalized reports here.
+3. If the trainee asks BOTH a question AND for report text (e.g. "write the impression and explain why"), put the explanation in answer and the PACS-ready text in report_text.
+4. If the trainee only asks a knowledge question (e.g. "what's the differential?"), put the answer in answer and leave report_text as empty string.
+5. If the trainee only asks for report text (e.g. "finalize this report"), put the report in report_text. answer can be empty string or a brief note.
+6. Write report_text as a consultant would dictate at a workstation. No hedging beyond standard conventions. Plain text only — no markdown, no HTML, no bullet lists.
+7. Keep answer under 250 words. report_text has no word limit — write complete sections.
+8. Do NOT add commentary about the report quality in answer — only answer the question asked.
 
 RULES FOR INSIGHTS:
 1. Be specific and actionable, not generic platitudes.
@@ -1098,6 +1102,7 @@ def _parse_assist_response(text, original_question):
             'response_type': 'advisory',
             'corrections': [],
             'answer': text,
+            'report_text': '',
             'insights': {},
         }
 
@@ -1113,8 +1118,9 @@ def _parse_assist_response(text, original_question):
         if c['original'] and c['suggested'] and c['original'] != c['suggested']:
             corrections.append(c)
 
-    # Extract answer
+    # Extract answer and report_text
     answer = parsed.get('answer', '').strip()
+    report_text = parsed.get('report_text', '').strip()
 
     # Extract insights with defaults
     raw_insights = parsed.get('insights', {})
@@ -1142,6 +1148,7 @@ def _parse_assist_response(text, original_question):
         'response_type': response_type,
         'corrections': corrections,
         'answer': answer,
+        'report_text': report_text,
         'insights': insights,
     }
 
