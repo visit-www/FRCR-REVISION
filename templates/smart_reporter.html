@@ -2016,18 +2016,71 @@ document.addEventListener('DOMContentLoaded', function() {
     state.finalizeActive = false;
 
     window.finalizeReport = function() {
-        var input = document.getElementById('editorInput');
-        var text = input ? input.value.trim() : '';
+        // Use output text if available (has accepted corrections), else draft input
+        var outputEl = document.getElementById('editorOutput');
+        var inputEl = document.getElementById('editorInput');
+        var text = (outputEl && outputEl.value.trim()) ? outputEl.value.trim() : (inputEl ? inputEl.value.trim() : '');
         if (!text) {
             showToast('Write or paste a report first.', 'warning');
             return;
         }
-        var finalizeEl = document.getElementById('finalizeInput');
-        finalizeEl.value = text;
-        document.getElementById('finalizeSection').classList.remove('d-none');
-        state.finalizeActive = true;
-        finalizeEl.focus();
-        showToast('Report finalized. Edit below, then copy or save.', 'success');
+
+        var btn = document.querySelector('[onclick="finalizeReport()"]');
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Finalizing...';
+        }
+
+        // Call Quick Check API to polish spelling, grammar, phrasing, and organization
+        fetch('/api/smart-reporter/quick-review', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ report_text: text }),
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-check-circle me-1"></i>Finalize Report';
+            }
+
+            if (data.error) {
+                showToast(data.error, 'error');
+                return;
+            }
+
+            if (data.remaining_requests !== undefined) {
+                state.askClaudeRemaining = data.remaining_requests;
+                updateAskClaudeCounter();
+            }
+
+            // Use the AI-improved report (all corrections auto-applied)
+            var finalizedText = data.improved_report || text;
+            var finalizeEl = document.getElementById('finalizeInput');
+            finalizeEl.value = finalizedText;
+            document.getElementById('finalizeSection').classList.remove('d-none');
+            state.finalizeActive = true;
+            finalizeEl.focus();
+
+            var numSuggestions = (data.suggestions || []).length;
+            if (numSuggestions > 0) {
+                showToast('Report finalized with ' + numSuggestions + ' correction' + (numSuggestions > 1 ? 's' : '') + ' applied. Review below.', 'success');
+            } else {
+                showToast('Report looks good! No corrections needed.', 'success');
+            }
+        })
+        .catch(function() {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-check-circle me-1"></i>Finalize Report';
+            }
+            // Fallback: show raw text without AI polish
+            var finalizeEl = document.getElementById('finalizeInput');
+            finalizeEl.value = text;
+            document.getElementById('finalizeSection').classList.remove('d-none');
+            state.finalizeActive = true;
+            showToast('Could not reach AI. Report shown without corrections.', 'warning');
+        });
     };
 
     window.copyFinalizedReport = function() {
