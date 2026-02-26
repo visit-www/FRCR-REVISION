@@ -41,13 +41,14 @@
                 <div id="routeIntentLoading" class="d-none"></div>
                 <button id="btnRouteQuery" class="d-none"></button>
 
-                <!-- 4-Option Grid -->
+                <!-- 5-Option Grid -->
                 <div class="row g-3 mb-4">
                     <!-- Card 1: Choose a Template -->
                     <div class="col-12 col-md-6">
-                        <div class="card border-0 shadow-sm h-100">
+                        <div class="card border-0 shadow-sm h-100" style="border-left: 3px solid var(--brand-neutral) !important;">
                             <div class="card-body p-3">
-                                <h6 class="mb-2"><i class="fas fa-file-alt me-2" style="color: #5E899E;"></i>Choose a Template</h6>
+                                <h6 class="mb-2"><i class="fas fa-file-alt me-2" style="color: var(--brand-neutral);"></i>Report Templates</h6>
+                                <p class="text-muted small mb-2">Pre-formatted PACS report templates you can copy and customise</p>
                                 <div class="input-group input-group-sm mb-2">
                                     <input type="text" id="landingTemplateSearch" class="form-control"
                                            placeholder="Search templates..." autocomplete="off"
@@ -56,85 +57,74 @@
                                         <i class="fas fa-search"></i>
                                     </button>
                                 </div>
-                                <div id="landingTemplateResults" style="max-height: 220px; overflow-y: auto;">
+                                <div id="landingTemplateResults" style="max-height: 180px; overflow-y: auto;">
                                     <div class="text-center py-3 text-muted">
                                         <small>Search for radiology report templates</small>
                                     </div>
                                 </div>
-                                <div class="mt-2 d-flex gap-2">
-                                    <a href="/reporting-templates" class="btn btn-sm btn-outline-secondary flex-fill">
-                                        <i class="fas fa-file-alt me-1"></i>View All Templates
-                                    </a>
-                                    <a href="/reporting-algorithms" class="btn btn-sm btn-outline-secondary flex-fill">
-                                        <i class="fas fa-sitemap me-1"></i>View All Algorithms
-                                    </a>
-                                </div>
+                                <a href="/reporting-templates" class="btn btn-sm btn-outline-secondary w-100 mt-2">
+                                    <i class="fas fa-file-alt me-1"></i>Browse All Templates
+                                </a>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Card 2: Choose an Algorithm -->
+                    <!-- Card 2: Reporting Algorithms -->
                     <div class="col-12 col-md-6">
-                        <div class="card border-0 shadow-sm h-100">
+                        <div class="card border-0 shadow-sm h-100" style="border-left: 3px solid var(--brand-primary) !important;">
                             <div class="card-body p-3">
-                                <h6 class="mb-2"><i class="fas fa-sitemap me-2" style="color: #e96304;"></i>Reporting Algorithm</h6>
+                                <h6 class="mb-2"><i class="fas fa-sitemap me-2" style="color: var(--brand-primary);"></i>Reporting Algorithms</h6>
+                                <p class="text-muted small mb-2">Interactive decision trees for structured reporting</p>
                                 <div class="input-group input-group-sm mb-2">
                                     <input type="text" id="landingAlgoSearch" class="form-control"
-                                           placeholder="e.g. CT abdomen pancreatitis, CXR pneumonia..."
-                                           autocomplete="off" maxlength="500"
+                                           placeholder="Search algorithms..." autocomplete="off"
                                            onkeydown="if(event.key==='Enter') searchLandingAlgorithm()">
                                     <button class="btn btn-brand-primary" onclick="searchLandingAlgorithm()">
-                                        <i class="fas fa-magic me-1"></i>Go
+                                        <i class="fas fa-search"></i>
                                     </button>
                                 </div>
-                                <div id="landingAlgoLoading" class="d-none text-center py-2">
-                                    <span class="spinner-border spinner-border-sm me-2" style="color: #e96304;"></span>
-                                    <small class="text-muted">Routing your request...</small>
+                                <div id="landingAlgoResults" style="max-height: 180px; overflow-y: auto;">
+                                    <div class="d-flex flex-wrap gap-1" id="quickPickChips">
+                                        <span class="badge bg-light text-dark border" style="cursor: pointer; font-size: 0.75rem;" onclick="quickPick('pancreatitis')">Pancreatitis</span>
+                                        <span class="badge bg-light text-dark border" style="cursor: pointer; font-size: 0.75rem;" onclick="quickPick('pneumonia')">Pneumonia</span>
+                                        <span class="badge bg-light text-dark border" style="cursor: pointer; font-size: 0.75rem;" onclick="quickPick('PE')">PE</span>
+                                        <span class="badge bg-light text-dark border" style="cursor: pointer; font-size: 0.75rem;" onclick="quickPick('Li-RADS')">Li-RADS</span>
+                                        <span class="badge bg-light text-dark border" style="cursor: pointer; font-size: 0.75rem;" onclick="quickPick('Fleischner')">Fleischner</span>
+                                        <span class="badge bg-light text-dark border" style="cursor: pointer; font-size: 0.75rem;" onclick="quickPick('trauma')">Trauma</span>
+                                        <span class="badge bg-light text-dark border" style="cursor: pointer; font-size: 0.75rem;" onclick="quickPick('stroke')">Stroke</span>
+                                    </div>
                                 </div>
-                                <div class="d-flex flex-wrap gap-1 mb-2" id="quickPickChips">
-                                    <span class="badge bg-light text-dark border" style="cursor: pointer; font-size: 0.75rem;" onclick="quickPick('CT abdomen pancreatitis')">CT abdomen pancreatitis</span>
-                                    <span class="badge bg-light text-dark border" style="cursor: pointer; font-size: 0.75rem;" onclick="quickPick('CXR pneumonia')">CXR pneumonia</span>
-                                    <span class="badge bg-light text-dark border" style="cursor: pointer; font-size: 0.75rem;" onclick="quickPick('MRI brain headache')">MRI brain headache</span>
-                                    <span class="badge bg-light text-dark border" style="cursor: pointer; font-size: 0.75rem;" onclick="quickPick('CT PE study')">CT PE study</span>
-                                    <span class="badge bg-light text-dark border" style="cursor: pointer; font-size: 0.75rem;" onclick="quickPick('US abdomen RUQ pain')">US abdomen RUQ</span>
-                                    <span class="badge bg-light text-dark border" style="cursor: pointer; font-size: 0.75rem;" onclick="quickPick('Li-RADS scoring')">Li-RADS</span>
-                                    <span class="badge bg-light text-dark border" style="cursor: pointer; font-size: 0.75rem;" onclick="quickPick('Fleischner criteria')">Fleischner</span>
-                                </div>
-                                <button class="btn btn-sm btn-outline-secondary w-100" onclick="showScene('walkthrough')">
-                                    <i class="fas fa-route me-1"></i>Manual Walkthrough Setup
-                                </button>
+                                <a href="/reporting-algorithms" class="btn btn-sm btn-outline-secondary w-100 mt-2">
+                                    <i class="fas fa-sitemap me-1"></i>Browse All Algorithms
+                                </a>
                             </div>
                         </div>
                     </div>
 
                     <!-- Card 3: Blank Report -->
-                    <div class="col-12 col-md-6">
+                    <div class="col-12 col-md-4">
                         <div class="card border-0 shadow-sm h-100" style="cursor: pointer; transition: transform 0.15s;"
                              onmouseenter="this.style.transform='translateY(-2px)'" onmouseleave="this.style.transform=''"
                              onclick="pasteMyReport()">
-                            <div class="card-body p-3 d-flex align-items-center">
-                                <div class="me-3">
-                                    <div class="rounded-circle d-flex align-items-center justify-content-center"
-                                         style="width: 48px; height: 48px; background: linear-gradient(135deg, #e96304 0%, #ff8c42 100%);">
-                                        <i class="fas fa-edit text-white" style="font-size: 1.2rem;"></i>
-                                    </div>
+                            <div class="card-body p-3 text-center d-flex flex-column align-items-center justify-content-center">
+                                <div class="rounded-circle d-flex align-items-center justify-content-center mb-2"
+                                     style="width: 48px; height: 48px; background: linear-gradient(135deg, #e96304 0%, #ff8c42 100%);">
+                                    <i class="fas fa-edit text-white" style="font-size: 1.2rem;"></i>
                                 </div>
-                                <div>
-                                    <h6 class="mb-1">Blank Report</h6>
-                                    <small class="text-muted">Start from scratch &mdash; paste or type your report and use RadInsight Intelligence to refine it</small>
-                                </div>
+                                <h6 class="mb-1">Blank Report</h6>
+                                <small class="text-muted">Start from scratch</small>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Card 4: Search RadInsights Resources -->
-                    <div class="col-12 col-md-6">
+                    <!-- Card 4: Search Resources -->
+                    <div class="col-12 col-md-8">
                         <div class="card border-0 shadow-sm h-100">
                             <div class="card-body p-3">
-                                <h6 class="mb-2"><i class="fas fa-search me-2" style="color: #6b46c1;"></i>Search Resources</h6>
+                                <h6 class="mb-2"><i class="fas fa-search me-2" style="color: #6b46c1;"></i>Search All Resources</h6>
                                 <div class="input-group input-group-sm mb-2">
                                     <input type="text" id="landingResourceSearch" class="form-control"
-                                           placeholder="Cases, calculators, protocols..."
+                                           placeholder="Search everything..."
                                            autocomplete="off"
                                            onkeydown="if(event.key==='Enter') searchLandingResources()">
                                     <button class="btn btn-outline-secondary" onclick="searchLandingResources()">
@@ -143,7 +133,7 @@
                                 </div>
                                 <div id="landingResourceResults" style="max-height: 220px; overflow-y: auto;">
                                     <div class="text-center py-3 text-muted">
-                                        <small>Search across cases, TNM calculators, IF calculators, and protocols</small>
+                                        <small>Cases, TNM calculators, TNM cases, radiology tools, anatomy</small>
                                     </div>
                                 </div>
                             </div>
@@ -188,48 +178,6 @@
                         <div id="personalTemplatesEmpty" class="d-none text-center py-4">
                             <i class="fas fa-bookmark text-muted" style="font-size: 1.5rem;"></i>
                             <p class="text-muted small mt-2 mb-0">No personal templates yet. Paste a report and save it as a template to get started.</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Recommended Templates (admin-verified) -->
-                <div class="card border-0 shadow-sm mb-4">
-                    <div class="card-header bg-white border-0 py-3">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <h6 class="mb-0"><i class="fas fa-certificate me-2" style="color: #e96304;"></i>Recommended Templates <span id="adminTemplatesCount" class="badge ms-1" style="font-size: 0.7rem; background: #e96304;"></span></h6>
-                            <div class="input-group input-group-sm" style="max-width: 250px;">
-                                <input type="text" id="adminTemplatesSearchInput" class="form-control" placeholder="Search templates..." autocomplete="off">
-                                <button class="btn btn-outline-secondary" type="button" onclick="searchAdminTemplates()">
-                                    <i class="fas fa-search"></i>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="card-body p-0">
-                        <div class="table-responsive">
-                            <table class="table table-hover mb-0">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th class="small">Template</th>
-                                        <th class="small">Body Section</th>
-                                        <th class="small">Category</th>
-                                        <th class="small">Content</th>
-                                        <th></th>
-                                    </tr>
-                                </thead>
-                                <tbody id="adminTemplatesTableBody">
-                                    <tr><td colspan="5" class="text-center text-muted py-3"><small>Loading...</small></td></tr>
-                                </tbody>
-                            </table>
-                        </div>
-                        <div id="adminTemplatesLoadMore" class="d-none text-center py-2">
-                            <button class="btn btn-sm btn-outline-secondary" onclick="loadMoreAdminTemplates()">
-                                <i class="fas fa-chevron-down me-1"></i>Load more
-                            </button>
-                        </div>
-                        <div id="adminTemplatesEmpty" class="d-none text-center py-4">
-                            <i class="fas fa-clipboard-list text-muted" style="font-size: 1.5rem;"></i>
-                            <p class="text-muted small mt-2 mb-0">No official templates available yet.</p>
                         </div>
                     </div>
                 </div>
@@ -461,6 +409,19 @@
                     </div>
                 </div>
 
+                <!-- Quick navigation row -->
+                <div class="d-flex flex-wrap gap-2 mb-3">
+                    <button class="btn btn-sm btn-outline-secondary" onclick="pasteMyReport(); return false;">
+                        <i class="fas fa-plus me-1"></i>New Blank Report
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="showScene('landing'); setTimeout(function(){ document.getElementById('landingTemplateSearch').focus(); }, 200); return false;">
+                        <i class="fas fa-file-alt me-1"></i>Report Templates
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="showScene('landing'); setTimeout(function(){ document.getElementById('landingAlgoSearch').focus(); }, 200); return false;">
+                        <i class="fas fa-sitemap me-1"></i>Algorithms
+                    </button>
+                </div>
+
                 <div class="row g-3">
                     <!-- Left column: Input + Output -->
                     <div class="col-lg-7">
@@ -627,11 +588,26 @@
                                         Try: "Write the impression" | "What am I missing?" | "Check for differentials" | "Add recommendations"
                                     </small>
                                 </div>
-                                <!-- Panel quick-access button -->
-                                <div class="d-flex flex-wrap gap-1 mb-2">
-                                    <button class="btn btn-outline-secondary py-0 px-2" style="font-size: 0.7rem;" onclick="promptAndShowPanel('anatomy')" title="Anatomy reference">
-                                        <i class="fas fa-bone me-1"></i>Anatomy
-                                    </button>
+                                <!-- Anatomy quick-access with typeahead -->
+                                <div class="mb-2" style="position: relative;">
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text py-0 px-2" style="font-size: 0.7rem; background: #fff;">
+                                            <i class="fas fa-bone me-1" style="color: #e96304;"></i>Anatomy
+                                        </span>
+                                        <input type="text" id="anatomyTypeahead" class="form-control form-control-sm py-0"
+                                               placeholder="e.g. circle of Willis, hepatic segments..."
+                                               autocomplete="off" style="font-size: 0.8rem;">
+                                        <button class="btn btn-outline-secondary py-0 px-2" style="font-size: 0.7rem;"
+                                                onclick="submitAnatomyTypeahead()" title="Load anatomy">
+                                            <i class="fas fa-arrow-right"></i>
+                                        </button>
+                                    </div>
+                                    <div id="anatomySuggestDropdown" class="d-none"
+                                         style="position: absolute; z-index: 1050; top: 100%; left: 0; right: 0;
+                                                background: #fff; border: 1px solid #dee2e6; border-top: 0;
+                                                border-radius: 0 0 0.375rem 0.375rem; box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+                                                max-height: 200px; overflow-y: auto;">
+                                    </div>
                                 </div>
 
                                 <!-- Loading spinner -->
@@ -768,12 +744,12 @@
                             </div>
                         </div>
 
-                        <!-- Anatomy Panel (Phase 6: anatomy reference from DB or AI) -->
+                        <!-- Anatomy Panel (Phase 6: anatomy snippet from DB or AI) -->
                         <div id="anatomyPanel" class="d-none mb-3">
                             <div class="card border-0 shadow-sm">
                                 <div class="card-header bg-white border-0 py-2">
                                     <div class="d-flex justify-content-between align-items-center">
-                                        <small class="fw-semibold"><i class="fas fa-bone me-1" style="color: #e96304;"></i><span id="anatomyPanelTitle">Anatomy Reference</span></small>
+                                        <small class="fw-semibold"><i class="fas fa-bone me-1" style="color: #e96304;"></i><span id="anatomyPanelTitle">Anatomy Snippet</span></small>
                                         <button class="btn btn-sm btn-outline-secondary py-0 px-1" onclick="hideAnatomyPanel()" title="Close" style="font-size: 0.7rem;">
                                             <i class="fas fa-times"></i>
                                         </button>
@@ -782,7 +758,7 @@
                                 <div class="card-body p-3" style="max-height: 500px; overflow-y: auto;">
                                     <div id="anatomyPanelLoading" class="text-center py-4">
                                         <div class="spinner-border spinner-border-sm" style="color: #e96304;" role="status"></div>
-                                        <small class="text-muted ms-2">Loading anatomy reference...</small>
+                                        <small class="text-muted ms-2">Loading anatomy snippet...</small>
                                     </div>
                                     <div id="anatomyPanelContent" class="d-none" style="font-size: 0.85rem; line-height: 1.5;"></div>
                                     <div id="anatomyPanelSource" class="d-none mt-2">
@@ -961,17 +937,45 @@ document.addEventListener('DOMContentLoaded', function() {
     window.quickPick = function(text) {
         var algoInput = document.getElementById('landingAlgoSearch');
         if (algoInput) algoInput.value = text;
-        document.getElementById('smartInputBar').value = text;
         searchLandingAlgorithm();
     };
 
-    // Landing page: algorithm search (Card 2)
+    // Landing page: algorithm search (Card 2) — searches existing algorithms, no AI
     window.searchLandingAlgorithm = function() {
         var algoInput = document.getElementById('landingAlgoSearch');
         var query = algoInput ? algoInput.value.trim() : '';
-        if (!query) { showToast('Please enter what you\'re reporting on.', 'warning'); return; }
-        document.getElementById('smartInputBar').value = query;
-        routeQuery();
+        if (!query) return;
+        var container = document.getElementById('landingAlgoResults');
+        container.innerHTML = '<div class="text-center py-2"><span class="spinner-border spinner-border-sm" style="color:var(--brand-primary);"></span></div>';
+
+        fetch('/api/algorithms/search?type=reporting&q=' + encodeURIComponent(query) + '&limit=8')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                var results = data.results || [];
+                var html = '';
+                results.forEach(function(r) {
+                    html += '<div class="p-2 mb-1 rounded" style="border: 1px solid #e9ecef; cursor: pointer; transition: all 0.15s;" ' +
+                        'onclick="window.location.href=\'' + escapeHtmlSafe(r.url) + '\'" ' +
+                        'onmouseenter="this.style.background=\'#fff5ee\'" onmouseleave="this.style.background=\'\'">' +
+                        '<div class="d-flex align-items-center">' +
+                        '<i class="fas fa-sitemap me-2" style="color: var(--brand-primary); font-size: 0.8rem;"></i>' +
+                        '<div style="min-width:0;"><small class="fw-semibold text-dark d-block text-truncate">' + escapeHtmlSafe(r.title) + '</small>' +
+                        '<small class="text-muted" style="font-size:0.7rem;">' +
+                        (r.body_section ? escapeHtmlSafe(r.body_section) : '') +
+                        (r.subtitle ? (r.body_section ? ' &middot; ' : '') + escapeHtmlSafe(r.subtitle) : '') +
+                        '</small></div></div></div>';
+                });
+                if (!html) {
+                    html = '<div class="text-center py-3 text-muted">' +
+                        '<small>No algorithms found for "' + escapeHtmlSafe(query) + '"</small><br>' +
+                        '<button class="btn btn-sm btn-outline-primary mt-2" onclick="openContentRequestModal(\'algorithm\', \'' + escapeHtmlSafe(query) + '\')">' +
+                        '<i class="fas fa-plus-circle me-1"></i>Request this algorithm</button></div>';
+                }
+                container.innerHTML = html;
+            })
+            .catch(function() {
+                container.innerHTML = '<div class="text-center py-2 text-muted"><small>Search failed</small></div>';
+            });
     };
 
     // Landing page: template search (Card 1)
@@ -1004,14 +1008,14 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             if (adminData.templates && adminData.templates.length > 0) {
                 adminData.templates.forEach(function(t) {
+                    // Only show radiology templates, not algorithms
+                    if (t.source_table === 'reporting_algorithm') return;
                     html += '<div class="p-2 mb-1 rounded" style="border: 1px solid #e9ecef; cursor: pointer; transition: all 0.15s;" ' +
-                        'onclick="loadAdminTemplate(' + t.id + ')" onmouseenter="this.style.background=\'#fff5ee\'" onmouseleave="this.style.background=\'\'">' +
+                        'onclick="loadAdminTemplate(' + t.id + ', \'' + escapeHtmlSafe(t.source_table || '') + '\')" onmouseenter="this.style.background=\'#fff5ee\'" onmouseleave="this.style.background=\'\'">' +
                         '<div class="d-flex align-items-center">' +
-                        '<i class="fas fa-certificate me-2" style="color: #e96304; font-size: 0.8rem;"></i>' +
+                        '<i class="fas fa-certificate me-2" style="color: var(--brand-primary); font-size: 0.8rem;"></i>' +
                         '<div style="min-width:0;"><small class="fw-semibold text-dark d-block text-truncate">' + escapeHtmlSafe(t.title) + '</small>' +
                         '<small class="text-muted" style="font-size:0.7rem;">' +
-                        (t.has_algorithm ? '<span class="badge bg-info me-1" style="font-size:0.6rem;">Algorithm</span>' : '') +
-                        (t.has_pacs_report ? '<span class="badge bg-success me-1" style="font-size:0.6rem;">PACS</span>' : '') +
                         (t.body_section ? escapeHtmlSafe(t.body_section) : '') + '</small></div>' +
                         '</div></div>';
                 });
@@ -1063,7 +1067,7 @@ document.addEventListener('DOMContentLoaded', function() {
         var templateInput = document.getElementById('landingTemplateSearch');
         var resourceInput = document.getElementById('landingResourceSearch');
         var algoInput = document.getElementById('landingAlgoSearch');
-        var tTimer, rTimer;
+        var tTimer, rTimer, aTimer;
 
         if (templateInput) {
             templateInput.addEventListener('input', function() {
@@ -1075,6 +1079,12 @@ document.addEventListener('DOMContentLoaded', function() {
             resourceInput.addEventListener('input', function() {
                 clearTimeout(rTimer);
                 rTimer = setTimeout(function() { if (resourceInput.value.trim().length >= 2) searchLandingResources(); }, 500);
+            });
+        }
+        if (algoInput) {
+            algoInput.addEventListener('input', function() {
+                clearTimeout(aTimer);
+                aTimer = setTimeout(function() { if (algoInput.value.trim().length >= 2) searchLandingAlgorithm(); }, 400);
             });
         }
     })();
@@ -1711,7 +1721,7 @@ document.addEventListener('DOMContentLoaded', function() {
     window.hideReferencePanel = function() { /* no-op, panel removed */ };
 
     window.showAnatomyPanel = function(topic) {
-        // Load anatomy reference from DB or AI
+        // Load anatomy snippet from DB or AI
         hideAllAdaptivePanels();
 
         var panel = document.getElementById('anatomyPanel');
@@ -1736,7 +1746,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             if (data.error) {
                 panel.classList.add('d-none');
-                showToast('Could not load anatomy reference: ' + data.error, 'warning');
+                showToast('Could not load anatomy snippet: ' + data.error, 'warning');
                 return;
             }
 
@@ -1744,19 +1754,84 @@ document.addEventListener('DOMContentLoaded', function() {
             content.classList.remove('d-none');
 
             var sourceText = data.source === 'database' ? 'From verified database' : 'RadInsight Intelligence reference';
-            if (data.model) sourceText += ' (' + data.model + ')';
             document.getElementById('anatomySourceText').textContent = sourceText;
             source.classList.remove('d-none');
         })
         .catch(function() {
             loading.classList.add('d-none');
             panel.classList.add('d-none');
-            showToast('Error loading anatomy reference.', 'error');
+            showToast('Error loading anatomy snippet.', 'error');
         });
     };
 
     window.hideAnatomyPanel = function() {
         document.getElementById('anatomyPanel').classList.add('d-none');
+    };
+
+    // ==================== ANATOMY TYPEAHEAD ====================
+
+    var _anatomySuggestTimer = null;
+
+    window.submitAnatomyTypeahead = function() {
+        var input = document.getElementById('anatomyTypeahead');
+        var query = input.value.trim();
+        if (!query) { showToast('Enter an anatomy topic first.', 'warning'); return; }
+        document.getElementById('anatomySuggestDropdown').classList.add('d-none');
+        showAnatomyPanel(query);
+    };
+
+    (function initAnatomyTypeahead() {
+        var input = document.getElementById('anatomyTypeahead');
+        var dropdown = document.getElementById('anatomySuggestDropdown');
+        if (!input || !dropdown) return;
+
+        input.addEventListener('input', function() {
+            clearTimeout(_anatomySuggestTimer);
+            var q = input.value.trim();
+            if (q.length < 2) { dropdown.classList.add('d-none'); return; }
+            _anatomySuggestTimer = setTimeout(function() {
+                fetch('/api/smart-reporter/anatomy-suggest?q=' + encodeURIComponent(q))
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    var results = data.results || [];
+                    if (results.length === 0) {
+                        dropdown.innerHTML = '<div class="px-3 py-2 text-muted" style="font-size: 0.8rem;">' +
+                            '<i class="fas fa-magic me-1" style="color: #e96304;"></i>No cached match — will generate with AI</div>';
+                        dropdown.classList.remove('d-none');
+                        return;
+                    }
+                    var html = '';
+                    results.forEach(function(r) {
+                        html += '<div class="anatomy-suggest-item px-3 py-2" style="cursor: pointer; font-size: 0.8rem; border-bottom: 1px solid #f0f0f0;" ' +
+                                'onmouseover="this.style.background=\'#f0f7ff\'" onmouseout="this.style.background=\'#fff\'" ' +
+                                'onclick="pickAnatomySuggestion(\'' + r.title.replace(/'/g, "\\'") + '\')">' +
+                                '<i class="fas fa-database me-1" style="color: var(--brand-neutral);"></i>' +
+                                r.title + ' <span class="text-muted" style="font-size: 0.7rem;">— cached</span></div>';
+                    });
+                    dropdown.innerHTML = html;
+                    dropdown.classList.remove('d-none');
+                })
+                .catch(function() { dropdown.classList.add('d-none'); });
+            }, 250);
+        });
+
+        input.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') { e.preventDefault(); submitAnatomyTypeahead(); }
+            if (e.key === 'Escape') { dropdown.classList.add('d-none'); }
+        });
+
+        // Close dropdown on outside click
+        document.addEventListener('click', function(e) {
+            if (!input.contains(e.target) && !dropdown.contains(e.target)) {
+                dropdown.classList.add('d-none');
+            }
+        });
+    })();
+
+    window.pickAnatomySuggestion = function(title) {
+        document.getElementById('anatomyTypeahead').value = title;
+        document.getElementById('anatomySuggestDropdown').classList.add('d-none');
+        showAnatomyPanel(title);
     };
 
     window.promptAndShowPanel = function(panelType) {
@@ -1766,11 +1841,23 @@ document.addEventListener('DOMContentLoaded', function() {
             query = document.getElementById('inputClinicalQuestion') ?
                     document.getElementById('inputClinicalQuestion').value.trim() : '';
         }
+
+        if (panelType === 'anatomy') {
+            // Focus the anatomy typeahead input instead of using prompt()
+            var anatomyInput = document.getElementById('anatomyTypeahead');
+            if (query) {
+                anatomyInput.value = query;
+                showAnatomyPanel(query);
+            } else {
+                anatomyInput.focus();
+            }
+            return;
+        }
+
         if (!query) {
             var prompts = {
                 'tool': 'Enter a topic to search tools (e.g. "adrenal nodule", "liver lesion"):',
                 'reference': 'Enter a topic to search references (e.g. "splenic injury", "stroke protocol"):',
-                'anatomy': 'Enter anatomy topic (e.g. "circle of Willis", "hepatic segments"):',
             };
             query = prompt(prompts[panelType] || 'Enter search topic:');
             if (!query) return;
@@ -1780,8 +1867,6 @@ document.addEventListener('DOMContentLoaded', function() {
             showToolPanel(query, 'auto');
         } else if (panelType === 'reference') {
             showReferencePanel(query);
-        } else if (panelType === 'anatomy') {
-            showAnatomyPanel(query);
         }
     };
 
@@ -2308,6 +2393,20 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    // Helper: ensure the output box is visible and editable, populating from draft if first time
+    function ensureOutputBoxVisible() {
+        const output = document.getElementById('editorOutput');
+        const outputSection = document.getElementById('outputSection');
+        if (outputSection.classList.contains('d-none')) {
+            const inputText = document.getElementById('editorInput').value;
+            output.value = inputText;
+            state.outputText = inputText;
+            outputSection.classList.remove('d-none');
+        }
+        output.removeAttribute('readonly');
+        return output;
+    }
+
     window.insertClaudeResponse = function() {
         // Get answer from AI assist (new) or legacy ask claude panel
         const aiAssistAnswer = document.getElementById('aiAssistAnswer');
@@ -2315,21 +2414,24 @@ document.addEventListener('DOMContentLoaded', function() {
         const answer = (aiAssistAnswer && aiAssistAnswer.textContent) || (legacyAnswer && legacyAnswer.textContent) || '';
         if (!answer.trim()) return;
 
-        // Insert into the output box (or input if output not visible)
-        const output = document.getElementById('editorOutput');
-        const outputSection = document.getElementById('outputSection');
-        if (outputSection && !outputSection.classList.contains('d-none') && output) {
+        // Always insert into the output box (never the draft)
+        const output = ensureOutputBoxVisible();
+
+        // Insert at cursor position if user has placed cursor, otherwise append to end
+        if (document.activeElement === output && output.selectionStart !== undefined) {
+            const pos = output.selectionStart;
+            const before = output.value.substring(0, pos);
+            const after = output.value.substring(pos);
+            output.value = before + answer + after;
+            output.selectionStart = output.selectionEnd = pos + answer.length;
+        } else {
             const current = output.value.trim();
             output.value = current ? current + '\n\n' + answer : answer;
-            state.outputText = output.value;
-            autoResizeTextarea(output);
-        } else {
-            const input = document.getElementById('editorInput');
-            const current = input.value.trim();
-            input.value = current ? current + '\n\n' + answer : answer;
-            state.inputText = input.value;
-            autoResizeTextarea(input);
         }
+
+        state.outputText = output.value;
+        autoResizeTextarea(output);
+        output.focus();
         dismissAiAssist();
         dismissClaudeResponse();
         showToast('Inserted into report.', 'success');
@@ -2482,8 +2584,9 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     function applyAiAssistCorrections() {
-        // Apply accepted corrections to the editor input text
-        let text = document.getElementById('editorInput').value;
+        // Apply accepted corrections to the output box (never the draft)
+        const output = ensureOutputBoxVisible();
+        let text = output.value;
         state.aiAssistCorrections.forEach(c => {
             if (c.status === 'accepted' && c.original && c.suggested) {
                 const idx = text.indexOf(c.original);
@@ -2492,15 +2595,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
         });
-        // Update the input directly (corrections apply to draft)
-        document.getElementById('editorInput').value = text;
-        state.inputText = text;
-        // Also update output if visible
-        const outputSection = document.getElementById('outputSection');
-        if (outputSection && !outputSection.classList.contains('d-none')) {
-            document.getElementById('editorOutput').value = text;
-            state.outputText = text;
-        }
+        output.value = text;
+        state.outputText = text;
+        autoResizeTextarea(output);
     }
 
     window.dismissAiAssist = function() {
@@ -2618,7 +2715,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(data => {
                 if (data.error) { showToast(data.error, 'error'); return; }
 
-                state.inputText = data.report_text || '';
+                state.inputText = data.pacs_report_text || '';
                 showScene('editor');
                 const input = document.getElementById('editorInput');
                 input.value = state.inputText;
@@ -2720,86 +2817,29 @@ document.addEventListener('DOMContentLoaded', function() {
 
     loadPersonalTemplates(false);
 
-    // ==================== ADMIN TEMPLATES ====================
+    // ==================== ADMIN TEMPLATE LOADER ====================
 
-    let adminTemplatesOffset = 0;
-    let adminTemplatesSearch = '';
+    window.loadAdminTemplate = function(templateId, sourceTable) {
+        var url = '/api/smart-reporter/admin-templates/' + templateId;
+        if (sourceTable) url += '?source_table=' + encodeURIComponent(sourceTable);
 
-    function loadAdminTemplates(append) {
-        if (!append) adminTemplatesOffset = 0;
-        const params = new URLSearchParams({ offset: adminTemplatesOffset, limit: 20 });
-        if (adminTemplatesSearch) params.set('q', adminTemplatesSearch);
-
-        fetch('/api/smart-reporter/admin-templates?' + params.toString())
-            .then(r => r.json())
-            .then(data => {
-                const tbody = document.getElementById('adminTemplatesTableBody');
-                const loadMore = document.getElementById('adminTemplatesLoadMore');
-                const empty = document.getElementById('adminTemplatesEmpty');
-                const countBadge = document.getElementById('adminTemplatesCount');
-
-                countBadge.textContent = data.total || '';
-
-                if (!append) tbody.innerHTML = '';
-
-                if (data.templates && data.templates.length > 0) {
-                    empty.classList.add('d-none');
-                    data.templates.forEach(t => {
-                        const tr = document.createElement('tr');
-                        tr.style.cursor = 'pointer';
-                        tr.onclick = () => loadAdminTemplate(t.id);
-
-                        const badges = [];
-                        if (t.has_pacs_report) badges.push('<span class="badge bg-success me-1" style="font-size:0.65rem;">PACS Report</span>');
-                        if (t.has_algorithm) badges.push('<span class="badge bg-info me-1" style="font-size:0.65rem;">Algorithm</span>');
-
-                        tr.innerHTML =
-                            '<td class="small"><i class="fas fa-certificate me-1" style="color:#e96304;font-size:0.7rem;" title="Official"></i>' +
-                            escapeHtmlSafe(t.title.length > 50 ? t.title.substring(0, 50) + '...' : t.title) + '</td>' +
-                            '<td class="small">' + escapeHtmlSafe(t.body_section || '\u2014') + '</td>' +
-                            '<td class="small">' + escapeHtmlSafe(t.category || '\u2014') + '</td>' +
-                            '<td>' + badges.join('') + '</td>' +
-                            '<td><i class="fas fa-arrow-right text-muted small"></i></td>';
-                        tbody.appendChild(tr);
-                    });
-
-                    loadMore.classList.toggle('d-none', !data.has_more);
-                } else if (!append) {
-                    tbody.innerHTML = '';
-                    empty.classList.remove('d-none');
-                    loadMore.classList.add('d-none');
-                }
-            })
-            .catch(() => {});
-    }
-
-    window.searchAdminTemplates = function() {
-        adminTemplatesSearch = document.getElementById('adminTemplatesSearchInput').value.trim();
-        loadAdminTemplates(false);
-    };
-
-    const adminTemplatesSearchEl = document.getElementById('adminTemplatesSearchInput');
-    if (adminTemplatesSearchEl) {
-        let adminSearchTimer = null;
-        adminTemplatesSearchEl.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter') { e.preventDefault(); searchAdminTemplates(); }
-        });
-        adminTemplatesSearchEl.addEventListener('input', function() {
-            clearTimeout(adminSearchTimer);
-            adminSearchTimer = setTimeout(() => searchAdminTemplates(), 400);
-        });
-    }
-
-    window.loadMoreAdminTemplates = function() {
-        adminTemplatesOffset += 20;
-        loadAdminTemplates(true);
-    };
-
-    window.loadAdminTemplate = function(templateId) {
-        fetch('/api/smart-reporter/admin-templates/' + templateId)
+        fetch(url)
             .then(r => r.json())
             .then(data => {
                 if (data.error) { showToast(data.error, 'error'); return; }
+
+                // Radiology template (plain text) — load into editor
+                if (data.source_table === 'radiology_template' || sourceTable === 'radiology_template') {
+                    state.inputText = data.pacs_report_text || '';
+                    showScene('editor');
+                    const input = document.getElementById('editorInput');
+                    input.value = state.inputText;
+                    autoResizeTextarea(input);
+                    document.getElementById('outputSection').classList.add('d-none');
+                    document.getElementById('suggestionsPanel').classList.add('d-none');
+                    showToast('Loaded template: ' + data.title, 'success');
+                    return;
+                }
 
                 // Try to load algorithm tree from algorithm_html (Smart Reporter cache entries store JSON)
                 let treeLoaded = false;
@@ -2843,8 +2883,6 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .catch(() => showToast('Failed to load template.', 'error'));
     };
-
-    loadAdminTemplates(false);
 
     // ==================== SKIP WALKTHROUGH (FULL REPORT) ====================
 
@@ -3024,6 +3062,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // ==================== CONTENT REQUEST ====================
 
+    window.openContentRequestModal = function(type, title) {
+        var typeEl = document.getElementById('crRequestType');
+        var titleEl = document.getElementById('crTitle');
+        if (typeEl && type) typeEl.value = type;
+        if (titleEl && title) titleEl.value = title;
+        document.getElementById('crError').classList.add('d-none');
+        document.getElementById('crSuccess').classList.add('d-none');
+        new bootstrap.Modal(document.getElementById('contentRequestModal')).show();
+    };
+
     window.submitContentRequest = function() {
         var requestType = document.getElementById('crRequestType').value;
         var title = document.getElementById('crTitle').value.trim();
@@ -3095,7 +3143,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         if (scene === 'landing') {
             loadPersonalTemplates(false);
-            loadAdminTemplates(false);
         }
     };
 

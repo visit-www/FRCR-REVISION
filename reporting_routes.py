@@ -196,7 +196,7 @@ def unified_search():
                     'similarity': float(r.sim) if r.sim else 0,
                 })
 
-        # Search reporting templates (admin-curated + AI-generated cached)
+        # Search reporting algorithms (admin-curated only, exclude anatomy_cache/user drafts)
         if filter_type in ('', 'reporting'):
             rt_sql = text("""
                 SELECT ra.id, ra.slug, ra.title, ra.category, ra.body_section,
@@ -208,6 +208,7 @@ def unified_search():
                        ) AS sim
                 FROM reporting_algorithm ra
                 WHERE ra.is_available = TRUE
+                  AND ra.origin = 'admin'
                   AND (
                       similarity(ra.title, :query) > 0.1
                       OR similarity(ra.keywords, :query) > 0.1
@@ -222,6 +223,10 @@ def unified_search():
             }).fetchall()
 
             for r in rt_results:
+                # source_citation may contain JSON — use category as subtitle instead
+                subtitle = r.category or ''
+                if r.source_citation and not r.source_citation.strip().startswith('{'):
+                    subtitle = r.source_citation
                 results.append({
                     'type': 'reporting',
                     'id': r.id,
@@ -229,7 +234,7 @@ def unified_search():
                     'title': r.title,
                     'body_section': r.body_section,
                     'description': r.description,
-                    'subtitle': r.source_citation or r.category,
+                    'subtitle': subtitle,
                     'url': f'/reporting-template/{r.slug}',
                     'similarity': float(r.sim) if r.sim else 0,
                     'is_ai_generated': bool(r.is_ai_generated),
@@ -309,17 +314,21 @@ def _fallback_search(query, filter_type, limit):
     if filter_type in ('', 'reporting'):
         templates = ReportingAlgorithm.query.filter(
             ReportingAlgorithm.is_available == True,
+            ReportingAlgorithm.origin == 'admin',
             db.or_(
                 ReportingAlgorithm.title.ilike(like),
                 ReportingAlgorithm.keywords.ilike(like),
             ),
         ).limit(limit).all()
         for t in templates:
+            sub = t.category or ''
+            if t.source_citation and not t.source_citation.strip().startswith('{'):
+                sub = t.source_citation
             results.append({
                 'type': 'reporting', 'id': t.id, 'slug': t.slug,
                 'title': t.title, 'body_section': t.body_section,
                 'description': t.description,
-                'subtitle': t.source_citation or t.category,
+                'subtitle': sub,
                 'url': f'/reporting-template/{t.slug}',
                 'similarity': 0.5,
             })
@@ -870,8 +879,9 @@ def embed_reporting_template(slug):
 @login_required
 def browse_reporting_algorithms():
     """User-facing browse page for reporting algorithms (interactive decision trees)."""
-    templates = ReportingAlgorithm.query.filter_by(
-        is_available=True
+    templates = ReportingAlgorithm.query.filter(
+        ReportingAlgorithm.is_available == True,
+        ReportingAlgorithm.origin == 'admin',
     ).order_by(
         ReportingAlgorithm.category, ReportingAlgorithm.title
     ).all()
@@ -885,6 +895,36 @@ def browse_reporting_algorithms():
 
 
 # ==================== USER: RADIOLOGY TEMPLATES BROWSE ====================
+
+@reporting_bp.route('/anatomy-snippets')
+@login_required
+def browse_anatomy_snippets():
+    """User-facing browse page for cached anatomy snippets."""
+    snippets = ReportingAlgorithm.query.filter(
+        ReportingAlgorithm.origin == 'anatomy_cache',
+        ReportingAlgorithm.is_available == True,
+    ).order_by(ReportingAlgorithm.title).all()
+
+    grouped = {}
+    for s in snippets:
+        section = s.body_section or 'General'
+        grouped.setdefault(section, []).append(s)
+
+    return render_template('anatomy_snippets_browse.html', grouped=grouped)
+
+
+@reporting_bp.route('/anatomy-snippets/<slug>')
+@login_required
+def view_anatomy_snippet(slug):
+    """View a single anatomy snippet in styled layout."""
+    snippet = ReportingAlgorithm.query.filter(
+        ReportingAlgorithm.slug == slug,
+        ReportingAlgorithm.origin == 'anatomy_cache',
+        ReportingAlgorithm.is_available == True,
+    ).first_or_404()
+
+    return render_template('anatomy_snippet_view.html', snippet=snippet)
+
 
 @reporting_bp.route('/reporting-templates')
 @login_required
@@ -1939,8 +1979,9 @@ def smart_reporter_get_admin_template(template_id):
 def smart_reporter_relevant_content():
     """Search across DB for content relevant to the current report context.
 
-    Searches: Cases, TNM calculators, IF calculators, Reporting templates, Clinical protocols.
-    Returns top results per category as clickable cards.
+    Searches: Cases, TNM calculators, TNM cases (AJCC disease sites),
+    Radiology tools (IF calculators + clinical protocols), Anatomy references.
+    Does NOT include radiology templates or algorithms (those have dedicated cards).
     """
     q = request.args.get('q', '').strip()
     body_section = request.args.get('body_section', '').strip()
@@ -1955,23 +1996,27 @@ def smart_reporter_relevant_content():
     try:
         case_query = Case.query.filter(Case.status == CaseStatus.PUBLISHED)
         if q:
+            # body_part is an Enum — cast to text for ILIKE
             case_query = case_query.filter(
                 db.or_(
                     Case.diagnosis.ilike(f'%{q}%'),
-                    Case.body_part.ilike(f'%{q}%'),
+                    db.cast(Case.body_part, db.String).ilike(f'%{q}%'),
                 )
             )
         elif body_section:
-            case_query = case_query.filter(Case.body_part.ilike(f'%{body_section}%'))
+            case_query = case_query.filter(
+                db.cast(Case.body_part, db.String).ilike(f'%{body_section}%')
+            )
 
         cases = case_query.order_by(Case.diagnosis).limit(4).all()
         for c in cases:
+            bp = c.body_part.value if hasattr(c.body_part, 'value') else str(c.body_part) if c.body_part else ''
             results.append({
                 'type': 'case',
                 'icon': 'fa-book-medical',
                 'color': '#e96304',
                 'title': c.diagnosis or 'Case',
-                'subtitle': c.body_part or '',
+                'subtitle': bp,
                 'url': f'/view-case/{c.id}',
             })
     except Exception:
@@ -2003,7 +2048,34 @@ def smart_reporter_relevant_content():
     except Exception:
         pass
 
-    # --- Incidental Findings Calculators ---
+    # --- TNM Cases (AJCC disease site staging data) ---
+    try:
+        ds_query = AJCCDiseaseSite.query.join(AJCCBodySection)
+        if q:
+            ds_query = ds_query.filter(
+                db.or_(
+                    AJCCDiseaseSite.disease_name.ilike(f'%{q}%'),
+                    AJCCBodySection.section_name.ilike(f'%{q}%'),
+                )
+            )
+        elif body_section:
+            ds_query = ds_query.filter(AJCCBodySection.section_name.ilike(f'%{body_section}%'))
+
+        disease_sites = ds_query.limit(4).all()
+        for ds in disease_sites:
+            section_slug = ds.body_section.slug if ds.body_section else ''
+            results.append({
+                'type': 'tnm_case',
+                'icon': 'fa-disease',
+                'color': '#d63384',
+                'title': ds.disease_name,
+                'subtitle': ds.body_section.section_name if ds.body_section else '',
+                'url': f'/tnm/{section_slug}/{ds.slug}',
+            })
+    except Exception:
+        pass
+
+    # --- Radiology Tools (IF calculators + Clinical protocols) ---
     try:
         if_query = IncidentalFindingCalculator.query.filter_by(is_available=True)
         if q:
@@ -2016,11 +2088,11 @@ def smart_reporter_relevant_content():
         elif body_section:
             if_query = if_query.filter(IncidentalFindingCalculator.body_section.ilike(f'%{body_section}%'))
 
-        ifs = if_query.limit(4).all()
+        ifs = if_query.limit(3).all()
         for f in ifs:
             results.append({
-                'type': 'incidental',
-                'icon': 'fa-search-plus',
+                'type': 'radiology_tool',
+                'icon': 'fa-tools',
                 'color': '#5E899E',
                 'title': f.finding_name,
                 'subtitle': f.guideline_source or f.body_section or '',
@@ -2029,33 +2101,6 @@ def smart_reporter_relevant_content():
     except Exception:
         pass
 
-    # --- Reporting Algorithms ---
-    try:
-        rt_query = ReportingAlgorithm.query.filter_by(is_available=True)
-        if q:
-            rt_query = rt_query.filter(
-                db.or_(
-                    ReportingAlgorithm.title.ilike(f'%{q}%'),
-                    ReportingAlgorithm.keywords.ilike(f'%{q}%'),
-                )
-            )
-        elif body_section:
-            rt_query = rt_query.filter(ReportingAlgorithm.body_section.ilike(f'%{body_section}%'))
-
-        rts = rt_query.limit(3).all()
-        for t in rts:
-            results.append({
-                'type': 'template',
-                'icon': 'fa-clipboard-list',
-                'color': '#a8d5ba',
-                'title': t.title,
-                'subtitle': t.category or t.body_section or '',
-                'url': f'/reporting-template/{t.slug}',
-            })
-    except Exception:
-        pass
-
-    # --- Clinical Protocols ---
     try:
         cp_query = ClinicalProtocol.query.filter_by(is_published=True)
         if q:
@@ -2071,9 +2116,9 @@ def smart_reporter_relevant_content():
         cps = cp_query.limit(3).all()
         for p in cps:
             results.append({
-                'type': 'protocol',
-                'icon': 'fa-headset',
-                'color': '#198754',
+                'type': 'radiology_tool',
+                'icon': 'fa-tools',
+                'color': '#5E899E',
                 'title': p.title,
                 'subtitle': p.category or '',
                 'url': f'/on-call-helper/protocol/{p.id}',
@@ -2081,7 +2126,59 @@ def smart_reporter_relevant_content():
     except Exception:
         pass
 
-    return jsonify({'results': results[:15]})
+    # --- Anatomy References (cached) ---
+    try:
+        anat_query = ReportingAlgorithm.query.filter(
+            ReportingAlgorithm.is_available == True,
+            ReportingAlgorithm.origin == 'anatomy_cache',
+        )
+        if q:
+            anat_query = anat_query.filter(
+                db.or_(
+                    ReportingAlgorithm.title.ilike(f'%{q}%'),
+                    ReportingAlgorithm.keywords.ilike(f'%{q}%'),
+                )
+            )
+        elif body_section:
+            anat_query = anat_query.filter(ReportingAlgorithm.body_section.ilike(f'%{body_section}%'))
+
+        anats = anat_query.limit(3).all()
+        for a in anats:
+            results.append({
+                'type': 'anatomy',
+                'icon': 'fa-bone',
+                'color': '#6f42c1',
+                'title': a.title,
+                'subtitle': 'Anatomy Snippet',
+                'url': f'/anatomy-snippets/{a.slug}',
+            })
+    except Exception:
+        pass
+
+    return jsonify({'results': results[:20]})
+
+
+@reporting_bp.route('/api/smart-reporter/anatomy-suggest')
+@login_required
+def smart_reporter_anatomy_suggest():
+    """Return cached anatomy topics matching a query (for typeahead)."""
+    q = (request.args.get('q') or '').strip()
+    if len(q) < 2:
+        return jsonify({'results': []})
+
+    matches = ReportingAlgorithm.query.filter(
+        ReportingAlgorithm.category == 'anatomy',
+        ReportingAlgorithm.origin == 'anatomy_cache',
+        ReportingAlgorithm.is_available == True,
+        db.or_(
+            ReportingAlgorithm.title.ilike(f'%{q}%'),
+            ReportingAlgorithm.keywords.ilike(f'%{q}%'),
+        ),
+    ).order_by(ReportingAlgorithm.title).limit(8).all()
+
+    return jsonify({
+        'results': [{'title': m.title, 'slug': m.slug} for m in matches],
+    })
 
 
 @reporting_bp.route('/api/smart-reporter/anatomy', methods=['POST'])
@@ -2147,7 +2244,6 @@ def smart_reporter_anatomy():
         'title': result.get('title', topic.title()),
         'content_html': content_html,
         'source': result.get('source', 'ai'),
-        'model': result.get('model', ''),
         'token_count': result.get('token_count', 0),
     })
 
