@@ -2426,6 +2426,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const input = document.getElementById('askClaudeInput');
         const question = input.value.trim();
         if (!question) return;
+        if (!getCurrentReportText()) {
+            showToast('Please enter your report text first.', 'warning');
+            return;
+        }
 
         const btn = document.getElementById('btnAskClaude');
         btn.disabled = true;
@@ -2578,8 +2582,9 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     window.quickAsk = function(question) {
-        document.getElementById('askClaudeInput').value = question;
-        askClaude();
+        const input = document.getElementById('askClaudeInput');
+        input.value = question;
+        input.focus();
     };
 
     // ==================== AI ASSIST RENDERING ====================
