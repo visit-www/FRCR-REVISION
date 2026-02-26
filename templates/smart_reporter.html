@@ -634,16 +634,29 @@
                                     <!-- Layer 2: Answer -->
                                     <div id="aiAssistAnswerSection" class="mb-3 d-none">
                                         <div class="d-flex justify-content-between align-items-center mb-1">
-                                            <small class="fw-semibold text-muted" style="cursor: pointer;" onclick="toggleSection('aiAssistAnswerBody')">
-                                                <i class="fas fa-chevron-down me-1" id="aiAssistAnswerChevron"></i>Answer
+                                            <small class="fw-semibold text-muted" id="aiAssistAnswerLabel">
+                                                <i class="fas fa-comment-medical me-1"></i>Answer
                                             </small>
                                         </div>
                                         <div id="aiAssistAnswerBody">
-                                            <div class="p-2 rounded" style="background: #f0f9f4; border: 1px solid #c3e6cb;">
+                                            <div id="aiAssistAnswerBox" class="p-2 rounded" style="background: #f0f9f4; border: 1px solid #c3e6cb;">
                                                 <pre id="aiAssistAnswer" class="mb-2" style="white-space: pre-wrap; font-family: 'Courier New', monospace; font-size: 0.85rem; line-height: 1.4; margin: 0;"></pre>
-                                                <div class="d-flex gap-2 mt-2">
+                                                <!-- Advisory mode buttons -->
+                                                <div id="aiAssistAdvisoryButtons" class="d-flex gap-2 mt-2">
                                                     <button class="btn btn-sm btn-outline-success" onclick="insertClaudeResponse()">
                                                         <i class="fas fa-plus me-1"></i>Insert into report
+                                                    </button>
+                                                    <button class="btn btn-sm btn-outline-secondary" onclick="dismissAiAssist()">
+                                                        Dismiss
+                                                    </button>
+                                                </div>
+                                                <!-- Full report mode buttons -->
+                                                <div id="aiAssistFullReportButtons" class="d-none mt-2">
+                                                    <button class="btn btn-sm btn-brand-primary me-2" onclick="replaceWithFinalReport()">
+                                                        <i class="fas fa-exchange-alt me-1"></i>Replace Draft With This Report
+                                                    </button>
+                                                    <button class="btn btn-sm btn-outline-success" onclick="insertClaudeResponse()">
+                                                        <i class="fas fa-plus me-1"></i>Insert instead
                                                     </button>
                                                     <button class="btn btn-sm btn-outline-secondary" onclick="dismissAiAssist()">
                                                         Dismiss
@@ -655,6 +668,11 @@
 
                                     <!-- Layer 1: Corrections -->
                                     <div id="aiAssistCorrectionsSection" class="mb-3 d-none">
+                                        <div id="aiAssistCorrectionsNote" class="d-none mb-2">
+                                            <small class="text-muted fst-italic">
+                                                <i class="fas fa-info-circle me-1"></i>These corrections were for your original draft. Since a finalized report is provided above, you may not need these.
+                                            </small>
+                                        </div>
                                         <div class="d-flex justify-content-between align-items-center mb-1">
                                             <small class="fw-semibold text-muted" style="cursor: pointer;" onclick="toggleSection('aiAssistCorrectionsBody')">
                                                 <i class="fas fa-chevron-down me-1" id="aiAssistCorrectionsChevron"></i>Corrections
@@ -669,14 +687,14 @@
                                         </div>
                                     </div>
 
-                                    <!-- Layer 3: Insights -->
+                                    <!-- Layer 3: Clinical Insights (always visible, not collapsible) -->
                                     <div id="aiAssistInsightsSection" class="d-none">
                                         <div class="d-flex align-items-center mb-1">
-                                            <small class="fw-semibold text-muted" style="cursor: pointer;" onclick="toggleSection('aiAssistInsightsBody')">
-                                                <i class="fas fa-chevron-right me-1" id="aiAssistInsightsChevron"></i>Clinical Insights
+                                            <small class="fw-semibold" style="color: #6b46c1;">
+                                                <i class="fas fa-brain me-1"></i>Clinical Insights
                                             </small>
                                         </div>
-                                        <div id="aiAssistInsightsBody" class="d-none">
+                                        <div id="aiAssistInsightsBody">
                                             <div class="p-2 rounded" style="background: #f8f4ff; border: 1px solid #d4c5f9; font-size: 0.8rem;">
                                                 <div id="insightCoverage" class="mb-2 d-none">
                                                     <div class="d-flex align-items-start">
@@ -919,6 +937,7 @@ document.addEventListener('DOMContentLoaded', function() {
         },
         askClaudeRemaining: 50,
         // AI Assist state (3-layer response)
+        aiAssistResponseType: 'advisory',  // 'advisory' or 'full_report'
         aiAssistAnswer: '',
         aiAssistCorrections: [],  // Same format as suggestions: {original, suggested, reason, type, status}
         aiAssistInsights: {},
@@ -2513,6 +2532,7 @@ document.addEventListener('DOMContentLoaded', function() {
             input.value = '';
 
             // Store AI assist state
+            state.aiAssistResponseType = data.response_type || 'advisory';
             state.aiAssistAnswer = data.answer || '';
             state.aiAssistCorrections = (data.corrections || []).map(c => ({ ...c, status: 'pending' }));
             state.aiAssistInsights = data.insights || {};
@@ -2579,6 +2599,20 @@ document.addEventListener('DOMContentLoaded', function() {
         showToast('Inserted into report.', 'success');
     };
 
+    window.replaceWithFinalReport = function() {
+        const answer = document.getElementById('aiAssistAnswer').textContent;
+        if (!answer.trim()) return;
+        const output = ensureOutputBoxVisible();
+        output.value = answer;
+        state.outputText = answer;
+        // Clear stale corrections since they applied to old draft
+        state.aiAssistCorrections = [];
+        renderAiAssistCorrections();
+        autoResizeTextarea(output);
+        dismissAiAssist();
+        showToast('Report replaced with finalized version.', 'success');
+    };
+
     window.dismissClaudeResponse = function() {
         document.getElementById('askClaudeResponse').classList.add('d-none');
     };
@@ -2588,26 +2622,59 @@ document.addEventListener('DOMContentLoaded', function() {
     function renderAiAssistResponse() {
         const container = document.getElementById('aiAssistResponse');
         container.classList.remove('d-none');
+        const isFullReport = state.aiAssistResponseType === 'full_report';
 
         // Layer 2: Answer
         const answerSection = document.getElementById('aiAssistAnswerSection');
+        const answerLabel = document.getElementById('aiAssistAnswerLabel');
+        const answerBox = document.getElementById('aiAssistAnswerBox');
+        const advisoryBtns = document.getElementById('aiAssistAdvisoryButtons');
+        const fullReportBtns = document.getElementById('aiAssistFullReportButtons');
+
         if (state.aiAssistAnswer) {
             document.getElementById('aiAssistAnswer').textContent = state.aiAssistAnswer;
             answerSection.classList.remove('d-none');
+
+            if (isFullReport) {
+                answerLabel.innerHTML = '<i class="fas fa-file-medical me-1"></i>Finalized Report';
+                answerBox.style.background = '#e8f5e9';
+                answerBox.style.borderColor = '#81c784';
+                advisoryBtns.classList.add('d-none');
+                fullReportBtns.classList.remove('d-none');
+            } else {
+                answerLabel.innerHTML = '<i class="fas fa-comment-medical me-1"></i>Answer';
+                answerBox.style.background = '#f0f9f4';
+                answerBox.style.borderColor = '#c3e6cb';
+                advisoryBtns.classList.remove('d-none');
+                fullReportBtns.classList.add('d-none');
+            }
         } else {
             answerSection.classList.add('d-none');
         }
 
         // Layer 1: Corrections
         const correctionsSection = document.getElementById('aiAssistCorrectionsSection');
+        const correctionsNote = document.getElementById('aiAssistCorrectionsNote');
         if (state.aiAssistCorrections.length > 0) {
             renderAiAssistCorrections();
             correctionsSection.classList.remove('d-none');
+            // In full_report mode, show note and collapse corrections by default
+            if (isFullReport) {
+                correctionsNote.classList.remove('d-none');
+                document.getElementById('aiAssistCorrectionsBody').classList.add('d-none');
+                const chevron = document.getElementById('aiAssistCorrectionsChevron');
+                if (chevron) chevron.classList.replace('fa-chevron-down', 'fa-chevron-right');
+            } else {
+                correctionsNote.classList.add('d-none');
+                document.getElementById('aiAssistCorrectionsBody').classList.remove('d-none');
+                const chevron = document.getElementById('aiAssistCorrectionsChevron');
+                if (chevron) chevron.classList.replace('fa-chevron-right', 'fa-chevron-down');
+            }
         } else {
             correctionsSection.classList.add('d-none');
         }
 
-        // Layer 3: Insights
+        // Layer 3: Insights (always visible when present)
         const insightsSection = document.getElementById('aiAssistInsightsSection');
         const ins = state.aiAssistInsights;
         const hasInsights = ins.clinical_question_coverage || ins.quality_assessment ||

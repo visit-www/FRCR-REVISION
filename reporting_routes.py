@@ -1558,6 +1558,7 @@ def smart_reporter_ai_assist():
 
     return jsonify({
         'success': True,
+        'response_type': result.get('response_type', 'advisory'),
         'corrections': result.get('corrections', []),
         'answer': result.get('answer', ''),
         'insights': result.get('insights', {}),

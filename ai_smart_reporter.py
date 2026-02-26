@@ -367,6 +367,7 @@ TRAINEE'S QUESTION: {question}
 Return a JSON object with EXACTLY this structure:
 
 {{
+  "response_type": "full_report|advisory",
   "corrections": [
     {{
       "original": "exact phrase from the report",
@@ -384,6 +385,10 @@ Return a JSON object with EXACTLY this structure:
     "teaching_point": "One brief clinical pearl relevant to this report. 1-2 sentences."
   }}
 }}
+
+RULES FOR RESPONSE_TYPE:
+1. "full_report" — use when your answer contains a complete report, a complete section rewrite (full impression, full findings), or a full report rewrite/finalization. The user will REPLACE their draft with your answer.
+2. "advisory" — use when your answer is advice, a short suggestion, a knowledge answer, a differential list, or a partial addition. The user will keep their draft and optionally insert your answer.
 
 RULES FOR CORRECTIONS:
 1. Focus on radiology-specific terminology (e.g. "hepatic hemangioma" not "liver hemangioma", "retrosternal" not "referral").
@@ -407,7 +412,8 @@ RULES FOR INSIGHTS:
 2. differentials_to_consider: only list if genuinely relevant and not already covered in the report. Empty array if not applicable.
 3. teaching_point: one actionable pearl, not a textbook paragraph. Relevant to this specific report.
 4. If the report is excellent, say so — do not invent criticisms.
-5. If the report is empty or too short for meaningful assessment, say so briefly in quality_assessment and leave other insight fields minimal.
+5. If the report is empty or too short for meaningful assessment, say so briefly in each field (e.g. "Report too short for assessment").
+6. You MUST always populate ALL five insight fields with meaningful text. NEVER leave any field empty or blank — always provide at least one sentence per field.
 
 Output ONLY the JSON object. No markdown. No explanation."""
 
@@ -1089,6 +1095,7 @@ def _parse_assist_response(text, original_question):
         # Graceful fallback: return the raw text as the answer
         logger.warning("AI assist response was not valid JSON; returning raw text as answer.")
         return {
+            'response_type': 'advisory',
             'corrections': [],
             'answer': text,
             'insights': {},
@@ -1126,7 +1133,13 @@ def _parse_assist_response(text, original_question):
     if not isinstance(insights['differentials_to_consider'], list):
         insights['differentials_to_consider'] = []
 
+    # Extract response_type
+    response_type = parsed.get('response_type', 'advisory')
+    if response_type not in ('full_report', 'advisory'):
+        response_type = 'advisory'
+
     return {
+        'response_type': response_type,
         'corrections': corrections,
         'answer': answer,
         'insights': insights,
