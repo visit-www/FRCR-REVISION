@@ -392,10 +392,10 @@
                                 <li><a class="dropdown-item" href="#" onclick="showScene('landing'); return false;">
                                     <i class="fas fa-home me-2 text-muted"></i>Back to Smart Reporter
                                 </a></li>
-                                <li><a class="dropdown-item" href="#" onclick="showScene('landing'); setTimeout(function(){ document.getElementById('landingTemplateSearch').focus(); }, 200); return false;">
+                                <li><a class="dropdown-item" href="#" onclick="document.getElementById('editorTemplateSearch').focus(); return false;">
                                     <i class="fas fa-file-alt me-2 text-muted"></i>Choose a Template
                                 </a></li>
-                                <li><a class="dropdown-item" href="#" onclick="showScene('landing'); setTimeout(function(){ document.getElementById('landingAlgoSearch').focus(); }, 200); return false;">
+                                <li><a class="dropdown-item" href="#" onclick="document.getElementById('editorAlgoSearch').focus(); return false;">
                                     <i class="fas fa-sitemap me-2 text-muted"></i>Choose an Algorithm
                                 </a></li>
                                 <li><a class="dropdown-item" href="#" onclick="pasteMyReport(); return false;">
@@ -410,16 +410,44 @@
                 </div>
 
                 <!-- Quick navigation row -->
-                <div class="d-flex flex-wrap gap-2 mb-3">
+                <div class="d-flex flex-wrap gap-2 mb-3 align-items-start">
                     <button class="btn btn-sm btn-outline-secondary" onclick="pasteMyReport(); return false;">
-                        <i class="fas fa-plus me-1"></i>New Blank Report
+                        <i class="fas fa-plus me-1"></i>New Blank
                     </button>
-                    <button class="btn btn-sm btn-outline-secondary" onclick="showScene('landing'); setTimeout(function(){ document.getElementById('landingTemplateSearch').focus(); }, 200); return false;">
-                        <i class="fas fa-file-alt me-1"></i>Report Templates
-                    </button>
-                    <button class="btn btn-sm btn-outline-secondary" onclick="showScene('landing'); setTimeout(function(){ document.getElementById('landingAlgoSearch').focus(); }, 200); return false;">
-                        <i class="fas fa-sitemap me-1"></i>Algorithms
-                    </button>
+                    <!-- Template search -->
+                    <div style="position: relative; min-width: 200px; flex: 1; max-width: 280px;">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text py-0 px-2" style="font-size: 0.75rem; background: #fff;">
+                                <i class="fas fa-file-alt me-1" style="color: var(--brand-neutral);"></i>Templates
+                            </span>
+                            <input type="text" id="editorTemplateSearch" class="form-control form-control-sm py-0"
+                                   placeholder="Search templates..." autocomplete="off" style="font-size: 0.8rem;"
+                                   onkeydown="if(event.key==='Escape') document.getElementById('editorTemplateDropdown').classList.add('d-none')">
+                        </div>
+                        <div id="editorTemplateDropdown" class="d-none"
+                             style="position: absolute; z-index: 1050; top: 100%; left: 0; right: 0;
+                                    background: #fff; border: 1px solid #dee2e6; border-top: 0;
+                                    border-radius: 0 0 0.375rem 0.375rem; box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+                                    max-height: 250px; overflow-y: auto;">
+                        </div>
+                    </div>
+                    <!-- Algorithm search -->
+                    <div style="position: relative; min-width: 200px; flex: 1; max-width: 280px;">
+                        <div class="input-group input-group-sm">
+                            <span class="input-group-text py-0 px-2" style="font-size: 0.75rem; background: #fff;">
+                                <i class="fas fa-sitemap me-1" style="color: var(--brand-primary);"></i>Algorithms
+                            </span>
+                            <input type="text" id="editorAlgoSearch" class="form-control form-control-sm py-0"
+                                   placeholder="Search algorithms..." autocomplete="off" style="font-size: 0.8rem;"
+                                   onkeydown="if(event.key==='Escape') document.getElementById('editorAlgoDropdown').classList.add('d-none')">
+                        </div>
+                        <div id="editorAlgoDropdown" class="d-none"
+                             style="position: absolute; z-index: 1050; top: 100%; left: 0; right: 0;
+                                    background: #fff; border: 1px solid #dee2e6; border-top: 0;
+                                    border-radius: 0 0 0.375rem 0.375rem; box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+                                    max-height: 250px; overflow-y: auto;">
+                        </div>
+                    </div>
                 </div>
 
                 <div class="row g-3">
@@ -566,14 +594,14 @@
                         </div>
 
                         <!-- RadInsight Intelligence Panel -->
-                        <div class="card border-0 shadow-sm mb-3">
+                        <div class="card border-0 shadow-sm mb-3" style="overflow: visible;">
                             <div class="card-header bg-white border-0 py-2">
                                 <div class="d-flex justify-content-between align-items-center">
                                     <small class="fw-semibold"><i class="fas fa-user-md me-1" style="color: #e96304;"></i>RadInsight Intelligence</small>
                                     <small class="text-muted" id="askClaudeCounter"></small>
                                 </div>
                             </div>
-                            <div class="card-body p-3">
+                            <div class="card-body p-3" style="overflow: visible;">
                                 <!-- Input -->
                                 <div class="input-group mb-2">
                                     <input type="text" id="askClaudeInput" class="form-control form-control-sm"
@@ -602,7 +630,7 @@
                                             <i class="fas fa-arrow-right"></i>
                                         </button>
                                     </div>
-                                    <div id="anatomySuggestDropdown" class="d-none"
+                                    <div id="anatomySuggestDropdown" class="d-none mb-3"
                                          style="position: absolute; z-index: 1050; top: 100%; left: 0; right: 0;
                                                 background: #fff; border: 1px solid #dee2e6; border-top: 0;
                                                 border-radius: 0 0 0.375rem 0.375rem; box-shadow: 0 4px 8px rgba(0,0,0,0.1);
@@ -2086,6 +2114,136 @@ document.addEventListener('DOMContentLoaded', function() {
                 container.innerHTML = '<div class="text-center py-2 text-muted"><small>Search failed</small></div>';
             });
     };
+
+    // Debounced auto-search for editor resource input (matches landing page behavior)
+    (function() {
+        var editorResInput = document.getElementById('editorResourceSearch');
+        var erTimer;
+        if (editorResInput) {
+            editorResInput.addEventListener('input', function() {
+                clearTimeout(erTimer);
+                erTimer = setTimeout(function() {
+                    if (editorResInput.value.trim().length >= 2) searchEditorResources();
+                }, 500);
+            });
+        }
+    })();
+
+    // ==================== EDITOR INLINE TEMPLATE & ALGORITHM SEARCH ====================
+
+    (function() {
+        var tplInput = document.getElementById('editorTemplateSearch');
+        var tplDrop = document.getElementById('editorTemplateDropdown');
+        var algoInput = document.getElementById('editorAlgoSearch');
+        var algoDrop = document.getElementById('editorAlgoDropdown');
+        var tplTimer, algoTimer;
+
+        // -- Template search --
+        function searchEditorTemplates() {
+            var query = tplInput.value.trim();
+            if (query.length < 2) { tplDrop.classList.add('d-none'); return; }
+            tplDrop.innerHTML = '<div class="text-center py-2"><span class="spinner-border spinner-border-sm" style="color:var(--brand-neutral);"></span></div>';
+            tplDrop.classList.remove('d-none');
+
+            var adminParams = new URLSearchParams({ q: query, offset: 0, limit: 5 });
+            var personalParams = new URLSearchParams({ q: query, offset: 0, limit: 5 });
+            Promise.all([
+                fetch('/api/smart-reporter/admin-templates?' + adminParams).then(function(r) { return r.json(); }),
+                fetch('/api/smart-reporter/personal-templates?' + personalParams).then(function(r) { return r.json(); }),
+            ]).then(function(results) {
+                var adminData = results[0], personalData = results[1];
+                var html = '';
+                if (personalData.templates && personalData.templates.length > 0) {
+                    personalData.templates.forEach(function(t) {
+                        html += '<div class="px-3 py-2" style="cursor: pointer; font-size: 0.8rem; border-bottom: 1px solid #f0f0f0;" ' +
+                            'onmouseover="this.style.background=\'#f0f7fa\'" onmouseout="this.style.background=\'#fff\'" ' +
+                            'onclick="document.getElementById(\'editorTemplateDropdown\').classList.add(\'d-none\'); loadPersonalTemplate(' + t.id + ')">' +
+                            '<i class="fas fa-bookmark me-1" style="color: var(--brand-neutral);"></i>' +
+                            escapeHtmlSafe(t.title) + ' <span class="text-muted" style="font-size: 0.7rem;">— personal</span></div>';
+                    });
+                }
+                if (adminData.templates && adminData.templates.length > 0) {
+                    adminData.templates.forEach(function(t) {
+                        if (t.source_table === 'reporting_algorithm') return;
+                        html += '<div class="px-3 py-2" style="cursor: pointer; font-size: 0.8rem; border-bottom: 1px solid #f0f0f0;" ' +
+                            'onmouseover="this.style.background=\'#fff5ee\'" onmouseout="this.style.background=\'#fff\'" ' +
+                            'onclick="document.getElementById(\'editorTemplateDropdown\').classList.add(\'d-none\'); loadAdminTemplate(' + t.id + ', \'' + escapeHtmlSafe(t.source_table || '') + '\')">' +
+                            '<i class="fas fa-certificate me-1" style="color: var(--brand-primary);"></i>' +
+                            escapeHtmlSafe(t.title) +
+                            (t.body_section ? ' <span class="text-muted" style="font-size: 0.7rem;">— ' + escapeHtmlSafe(t.body_section) + '</span>' : '') +
+                            '</div>';
+                    });
+                }
+                if (!html) {
+                    html = '<div class="px-3 py-2 text-muted" style="font-size: 0.8rem;">No templates found</div>';
+                }
+                tplDrop.innerHTML = html;
+            }).catch(function() {
+                tplDrop.innerHTML = '<div class="px-3 py-2 text-muted" style="font-size: 0.8rem;">Search failed</div>';
+            });
+        }
+
+        if (tplInput) {
+            tplInput.addEventListener('input', function() {
+                clearTimeout(tplTimer);
+                tplTimer = setTimeout(searchEditorTemplates, 350);
+            });
+            tplInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') { e.preventDefault(); searchEditorTemplates(); }
+            });
+        }
+
+        // -- Algorithm search --
+        function searchEditorAlgorithms() {
+            var query = algoInput.value.trim();
+            if (query.length < 2) { algoDrop.classList.add('d-none'); return; }
+            algoDrop.innerHTML = '<div class="text-center py-2"><span class="spinner-border spinner-border-sm" style="color:var(--brand-primary);"></span></div>';
+            algoDrop.classList.remove('d-none');
+
+            fetch('/api/algorithms/search?type=reporting&q=' + encodeURIComponent(query) + '&limit=8')
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    var results = data.results || [];
+                    var html = '';
+                    results.forEach(function(r) {
+                        html += '<div class="px-3 py-2" style="cursor: pointer; font-size: 0.8rem; border-bottom: 1px solid #f0f0f0;" ' +
+                            'onmouseover="this.style.background=\'#fff5ee\'" onmouseout="this.style.background=\'#fff\'" ' +
+                            'onclick="document.getElementById(\'editorAlgoDropdown\').classList.add(\'d-none\'); window.location.href=\'' + escapeHtmlSafe(r.url) + '\'">' +
+                            '<i class="fas fa-sitemap me-1" style="color: var(--brand-primary);"></i>' +
+                            escapeHtmlSafe(r.title) +
+                            (r.body_section ? ' <span class="text-muted" style="font-size: 0.7rem;">— ' + escapeHtmlSafe(r.body_section) + '</span>' : '') +
+                            '</div>';
+                    });
+                    if (!html) {
+                        html = '<div class="px-3 py-2 text-muted" style="font-size: 0.8rem;">No algorithms found</div>';
+                    }
+                    algoDrop.innerHTML = html;
+                })
+                .catch(function() {
+                    algoDrop.innerHTML = '<div class="px-3 py-2 text-muted" style="font-size: 0.8rem;">Search failed</div>';
+                });
+        }
+
+        if (algoInput) {
+            algoInput.addEventListener('input', function() {
+                clearTimeout(algoTimer);
+                algoTimer = setTimeout(searchEditorAlgorithms, 350);
+            });
+            algoInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') { e.preventDefault(); searchEditorAlgorithms(); }
+            });
+        }
+
+        // Close dropdowns on outside click
+        document.addEventListener('click', function(e) {
+            if (tplInput && tplDrop && !tplInput.contains(e.target) && !tplDrop.contains(e.target)) {
+                tplDrop.classList.add('d-none');
+            }
+            if (algoInput && algoDrop && !algoInput.contains(e.target) && !algoDrop.contains(e.target)) {
+                algoDrop.classList.add('d-none');
+            }
+        });
+    })();
 
     window.autoSearchEditorResources = function() {
         var input = document.getElementById('editorInput');
