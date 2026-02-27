@@ -10,6 +10,14 @@ load_dotenv(_env_dir / '.env.local', override=True)  # Local overrides (e.g. USE
 if os.getenv('ENV') == 'production' or os.getenv('FLASK_ENV') == 'production':
     load_dotenv(_env_dir / '.env.production', override=True)
 
+# Configure logging (before any module imports that use logging)
+import logging
+logging.basicConfig(
+    level=logging.INFO if not os.getenv('FLASK_DEBUG') else logging.DEBUG,
+    format='%(asctime)s [%(name)s] %(levelname)s: %(message)s',
+)
+logger = logging.getLogger(__name__)
+
 # ==================== STUDENT CASE BROWSER ====================
 # (Moved below app initialization)
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session, send_file, send_from_directory, flash
@@ -63,10 +71,17 @@ app = Flask(__name__,
     static_folder=os.path.join(os.path.dirname(__file__), 'static')
 )
 
-# Enable CORS for Vercel frontend access
+# CORS: restrict to production domain; allow all in local dev
+if os.getenv('CORS_ORIGINS'):
+    _cors_origins = [o.strip() for o in os.getenv('CORS_ORIGINS').split(',')]
+elif os.getenv('VERCEL_ENV') == 'production':
+    _cors_origins = ["https://www.radinsights.xyz", "https://radinsights.xyz"]
+else:
+    _cors_origins = ["*"]  # Local dev: allow all
+
 CORS(app, resources={
     r"/api/*": {
-        "origins": ["*"],
+        "origins": _cors_origins,
         "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
         "allow_headers": ["Content-Type"]
     }
@@ -77,7 +92,7 @@ instance_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'instan
 try:
     os.makedirs(instance_path, exist_ok=True)
 except Exception as e:
-    print(f"Warning: Could not create instance folder: {e}")
+    logger.warning(f"Could not create instance folder: {e}")
     instance_path = '/tmp'
 
 # Configuration
@@ -115,7 +130,7 @@ if DATABASE_URL:
     # Sanitize: strip embedded newlines and literal \n (common when loading from .env)
     DATABASE_URL = DATABASE_URL.strip().replace('\n', '').replace('\r', '').replace('\\n', '')
     # PostgreSQL on Vercel or external
-    print(f"[DB] Using PostgreSQL: {DATABASE_URL[:60]}...")
+    logger.info(f"Using PostgreSQL: {DATABASE_URL[:60]}...")
     # Handle both postgres:// and postgresql:// schemes
     db_uri = DATABASE_URL.replace('postgres://', 'postgresql://')
     
@@ -153,26 +168,34 @@ if DATABASE_URL:
     # For serverless environments (Vercel), disable connection pooling
     # Each function invocation should create and close its own connection
     if os.getenv('VERCEL'):
-        print("[DB] Serverless environment detected - using NullPool")
+        logger.info("Serverless environment detected - using NullPool")
         app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
             'poolclass': NullPool,  # No connection pooling for serverless
             'pool_pre_ping': True,  # Verify connections before using
         }
 else:
     # SQLite for local development
-    print(f"[DB] Using SQLite: {instance_path}/RadInsights_db.db")
+    logger.info(f"Using SQLite: {instance_path}/RadInsights_db.db")
     app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(instance_path, "RadInsights_db.db")}'
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-secret-key-change-in-production')
+# SECURITY: SECRET_KEY hardening — no insecure defaults
+_secret_key = os.getenv('SECRET_KEY')
+if not _secret_key:
+    if os.getenv('VERCEL') or os.getenv('VERCEL_ENV'):
+        raise RuntimeError(
+            "FATAL: SECRET_KEY environment variable is not set. "
+            "This is required in production. Set it in Vercel environment variables."
+        )
+    else:
+        # Local dev only: generate random ephemeral key (sessions won't persist across restarts)
+        import secrets as _secrets
+        _secret_key = _secrets.token_hex(32)
+        print("[WARNING] SECRET_KEY not set — using random ephemeral key (local dev only)")
+else:
+    logger.info("SECRET_KEY is set")
+app.config['SECRET_KEY'] = _secret_key
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 # R2 stack upload: allow large multipart (1000+ images × ~1MB ≈ 1GB)
 app.config['MAX_CONTENT_LENGTH'] = int(os.getenv('MAX_UPLOAD_MB', '1024')) * 1024 * 1024
-
-# Session configuration
-# Check if SECRET_KEY is set
-if not os.getenv('SECRET_KEY'):
-    print("[WARNING] SECRET_KEY not set! Using default insecure key")
-else:
-    print("[OK] SECRET_KEY is set")
 
 # Only set SECURE in production (HTTPS). For localhost/HTTP, must be False or cookies won't be sent.
 app_url = os.getenv('APP_URL', '') or os.getenv('VERCEL_URL', '')
@@ -195,7 +218,7 @@ app.config['REMEMBER_COOKIE_HTTPONLY'] = True  # No JavaScript access
 app.config['REMEMBER_COOKIE_SAMESITE'] = 'Lax'  # CSRF protection
 app.config['REMEMBER_COOKIE_NAME'] = 'frcr_remember'  # Explicit name
 
-print(f"[SESSION] SECURE={app.config['SESSION_COOKIE_SECURE']} (local_http={is_local_http}), REMEMBER_DAYS={app.config['REMEMBER_COOKIE_DURATION'].days}")
+logger.info(f"SECURE={app.config['SESSION_COOKIE_SECURE']} (local_http={is_local_http}), REMEMBER_DAYS={app.config['REMEMBER_COOKIE_DURATION'].days}")
 
 # Initialize database
 db.init_app(app)
@@ -269,11 +292,11 @@ def _ensure_superadmin_exists():
                 db.session.commit()
             except Exception:
                 db.session.rollback()  # Clear failed transaction
-            print(f"[ADMIN] Superadmin exists: {SUPERADMIN_EMAIL}")
+            logger.info(f"Superadmin exists: {SUPERADMIN_EMAIL}")
             return
     except Exception as e:
         # Table doesn't exist yet or other error
-        print(f"[ADMIN] Check superadmin error (may be normal): {e}")
+        logger.warning(f"Check superadmin error (may be normal): {e}")
         db.session.rollback()
         return  # Don't try to create if we can't even check
     
@@ -297,21 +320,23 @@ def _ensure_superadmin_exists():
         db.session.add(superadmin)
         db.session.commit()
         
-        # Print password ONCE - this is the only time it will be visible
-        print("\n" + "=" * 60)
-        print("[ADMIN] SUPERADMIN ACCOUNT CREATED")
-        print("=" * 60)
-        print(f"  Email:    {SUPERADMIN_EMAIL}")
-        print(f"  Password: {password}")
-        print(f"  Role:     SUPERADMIN (highest privileges)")
-        print("=" * 60)
-        print("  ⚠️  SAVE THIS PASSWORD NOW - IT WILL NOT BE SHOWN AGAIN!")
-        print("  ⚠️  Change this password immediately after first login.")
-        print("=" * 60 + "\n")
+        # Log password ONCE - this is the only time it will be visible
+        logger.info(
+            "\n" + "=" * 60 +
+            "\nSUPERADMIN ACCOUNT CREATED" +
+            "\n" + "=" * 60 +
+            f"\n  Email:    {SUPERADMIN_EMAIL}" +
+            f"\n  Password: {password}" +
+            f"\n  Role:     SUPERADMIN (highest privileges)" +
+            "\n" + "=" * 60 +
+            "\n  SAVE THIS PASSWORD NOW - IT WILL NOT BE SHOWN AGAIN!" +
+            "\n  Change this password immediately after first login." +
+            "\n" + "=" * 60
+        )
         
     except Exception as e:
         db.session.rollback()
-        print(f"[ADMIN] Error creating superadmin: {e}")
+        logger.error(f"Error creating superadmin: {e}")
 
 
 def _seed_ajcc_data_if_needed():
@@ -489,7 +514,7 @@ def _seed_ajcc_data_if_needed():
         existing_sites = db.session.execute(text("SELECT COUNT(*) FROM ajcc_disease_site")).scalar() or 0
     except Exception as e:
         # Tables don't exist yet
-        print(f"[SEED] AJCC tables check error (may be normal): {e}")
+        logger.warning(f"AJCC tables check error (may be normal): {e}")
         db.session.rollback()
         existing_sections = 0
         existing_sites = 0
@@ -500,10 +525,10 @@ def _seed_ajcc_data_if_needed():
     # Check if we need to add missing entries or cleanup duplicates
     # Always run if counts don't match exactly (duplicates can inflate count)
     if existing_sections == len(BODY_SECTIONS) and existing_sites == expected_sites:
-        print(f"[SEED] AJCC data complete: {existing_sections} sections, {existing_sites} sites")
+        logger.info(f"AJCC data complete: {existing_sections} sections, {existing_sites} sites")
         return
     
-    print(f"[SEED] Syncing AJCC data (have {existing_sections}/{len(BODY_SECTIONS)} sections, {existing_sites}/{expected_sites} sites)...")
+    logger.info(f"Syncing AJCC data (have {existing_sections}/{len(BODY_SECTIONS)} sections, {existing_sites}/{expected_sites} sites)...")
     
     try:
         # Seed body sections
@@ -558,7 +583,7 @@ def _seed_ajcc_data_if_needed():
                 if not site.staging_data:
                     db.session.delete(site)
                     removed_sites += 1
-                    print(f"[SEED] Removed orphaned disease site: {site.disease_name} (slug: {site.slug})")
+                    logger.info(f"Removed orphaned disease site: {site.disease_name} (slug: {site.slug})")
         
         if removed_sites > 0:
             db.session.commit()
@@ -566,13 +591,13 @@ def _seed_ajcc_data_if_needed():
         final_sections = AJCCBodySection.query.count()
         final_sites = AJCCDiseaseSite.query.count()
         if added_sites > 0 or removed_sites > 0:
-            print(f"[SEED] Updated: +{added_sites} added, -{removed_sites} removed. Total: {final_sections} sections, {final_sites} disease sites")
+            logger.info(f"AJCC updated: +{added_sites} added, -{removed_sites} removed. Total: {final_sections} sections, {final_sites} disease sites")
         else:
-            print(f"[SEED] Complete: {final_sections} sections, {final_sites} disease sites")
+            logger.info(f"AJCC complete: {final_sections} sections, {final_sites} disease sites")
         
     except Exception as e:
         db.session.rollback()
-        print(f"[SEED] Error seeding AJCC data: {e}")
+        logger.error(f"Error seeding AJCC data: {e}")
 
 
 def _migrate_reporting_templates_if_needed():
@@ -589,7 +614,7 @@ def _migrate_reporting_templates_if_needed():
         if rad_count > 0 or alg_count > 0:
             return  # Already migrated
 
-        print(f'[MIGRATE] Copying {old_count} rows from legacy reporting_template...')
+        logger.info(f'Copying {old_count} rows from legacy reporting_template...')
 
         RADIOLOGY_CATEGORIES = {'radiology_template', 'personal_template'}
         rad_added = alg_added = 0
@@ -640,10 +665,10 @@ def _migrate_reporting_templates_if_needed():
                 alg_added += 1
 
         db.session.commit()
-        print(f'[MIGRATE] Done: {rad_added} → radiology_template, {alg_added} → reporting_algorithm')
+        logger.info(f'Migration done: {rad_added} → radiology_template, {alg_added} → reporting_algorithm')
     except Exception as e:
         db.session.rollback()
-        print(f'[MIGRATE] Error migrating reporting_template: {e}')
+        logger.error(f'Error migrating reporting_template: {e}')
 
 
 # ==================== DATABASE INITIALIZATION ====================
@@ -662,7 +687,7 @@ with app.app_context():
                     with db.engine.connect() as conn:
                         conn.execute(text(f'ALTER TABLE "{table}" ADD COLUMN {col_sql}'))
                         conn.commit()
-                    print(f'[MIGRATE] Added {table}.{column}')
+                    logger.info(f'Added column {table}.{column}')
 
         # -- reporting_template (legacy — keep columns for migration) --
         _add_col_if_missing('reporting_template', 'pacs_report_text', 'pacs_report_text TEXT')
@@ -711,6 +736,11 @@ with app.app_context():
         _add_col_if_missing('user', 'ai_usage_date', 'ai_usage_date DATE')
         _add_col_if_missing('user', 'ai_usage_count', 'ai_usage_count INTEGER DEFAULT 0')
 
+        # -- user: Login rate limiting (brute force protection) --
+        _add_col_if_missing('user', 'failed_login_count', 'failed_login_count INTEGER DEFAULT 0')
+        _add_col_if_missing('user', 'failed_login_last', 'failed_login_last TIMESTAMP')
+        _add_col_if_missing('user', 'locked_until', 'locked_until TIMESTAMP')
+
         # -- reporting_session (legacy) --
         _add_col_if_missing('reporting_session', 'ask_claude_count', 'ask_claude_count INTEGER DEFAULT 0')
         _add_col_if_missing('reporting_session', 'updated_at', 'updated_at TIMESTAMP')
@@ -725,8 +755,112 @@ with app.app_context():
         _ensure_superadmin_exists()
         
     except Exception as e:
-        print(f"Error initializing database: {e}")
+        logger.error(f"Error initializing database: {e}")
         raise
+
+
+# ============================================================================
+# SECURITY HELPERS
+# ============================================================================
+
+import bleach as _bleach
+
+# HTML sanitization for admin/AI-generated clinical content
+_SANITIZE_ALLOWED_TAGS = list(_bleach.ALLOWED_TAGS) + [
+    'div', 'span', 'p', 'br', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+    'table', 'thead', 'tbody', 'tfoot', 'tr', 'th', 'td', 'caption', 'colgroup', 'col',
+    'ul', 'ol', 'li', 'dl', 'dt', 'dd',
+    'img', 'figure', 'figcaption',
+    'input', 'select', 'option', 'optgroup', 'label', 'button', 'form', 'textarea', 'fieldset', 'legend',
+    'details', 'summary', 'section', 'article', 'nav', 'header', 'footer', 'aside', 'main',
+    'style', 'hr', 'pre', 'code', 'sup', 'sub', 'mark', 'small', 'del', 'ins',
+    'abbr', 'cite', 'dfn', 'kbd', 'samp', 'var', 'time', 'data',
+    'svg', 'path', 'circle', 'rect', 'line', 'polyline', 'polygon', 'g', 'text', 'use', 'defs',
+]
+
+_SANITIZE_ALLOWED_ATTRS = {
+    '*': ['class', 'id', 'style', 'role', 'aria-label', 'aria-hidden', 'aria-expanded',
+          'aria-controls', 'aria-selected', 'aria-describedby', 'title', 'tabindex',
+          'data-value', 'data-stage', 'data-type', 'data-target', 'data-toggle',
+          'data-dismiss', 'data-parent', 'data-slide', 'data-slide-to', 'data-bs-toggle',
+          'data-bs-target', 'data-bs-dismiss', 'data-bs-parent', 'data-category',
+          'data-field', 'data-index', 'data-key', 'data-node', 'data-step'],
+    'a': ['href', 'target', 'rel', 'download'],
+    'img': ['src', 'alt', 'width', 'height', 'loading'],
+    'input': ['type', 'name', 'value', 'checked', 'placeholder', 'disabled', 'readonly',
+              'min', 'max', 'step', 'required', 'pattern', 'autocomplete'],
+    'select': ['name', 'disabled', 'required', 'multiple'],
+    'option': ['value', 'selected', 'disabled'],
+    'textarea': ['name', 'rows', 'cols', 'placeholder', 'disabled', 'readonly'],
+    'button': ['type', 'disabled', 'name', 'value'],
+    'form': ['action', 'method'],
+    'td': ['colspan', 'rowspan'],
+    'th': ['colspan', 'rowspan', 'scope'],
+    'col': ['span'],
+    'colgroup': ['span'],
+    'label': ['for'],
+    'time': ['datetime'],
+    'svg': ['viewBox', 'xmlns', 'width', 'height', 'fill', 'stroke'],
+    'path': ['d', 'fill', 'stroke', 'stroke-width', 'stroke-linecap', 'stroke-linejoin'],
+    'circle': ['cx', 'cy', 'r', 'fill', 'stroke'],
+    'rect': ['x', 'y', 'width', 'height', 'rx', 'ry', 'fill', 'stroke'],
+    'line': ['x1', 'y1', 'x2', 'y2', 'stroke', 'stroke-width'],
+}
+
+
+def sanitize_clinical_html(html_content):
+    """Sanitize admin/AI-generated clinical HTML, stripping script tags and event handlers.
+    Allows a wide range of tags needed for interactive calculators and decision trees."""
+    if not html_content:
+        return html_content
+    return _bleach.clean(
+        html_content,
+        tags=_SANITIZE_ALLOWED_TAGS,
+        attributes=_SANITIZE_ALLOWED_ATTRS,
+        strip=True,
+    )
+
+
+# Image magic byte validation (defense-in-depth alongside extension check + Cloudinary)
+_IMAGE_MAGIC_BYTES = {
+    b'\xff\xd8\xff': 'image/jpeg',
+    b'\x89PNG': 'image/png',
+    b'GIF87a': 'image/gif',
+    b'GIF89a': 'image/gif',
+}
+
+
+def _validate_image_magic(file_stream, allowed_types=None):
+    """Check file header matches claimed image type. Returns detected MIME type or None."""
+    if allowed_types is None:
+        allowed_types = {'image/jpeg', 'image/png', 'image/gif', 'image/webp'}
+    header = file_stream.read(12)
+    file_stream.seek(0)
+    for magic, mime in _IMAGE_MAGIC_BYTES.items():
+        if header.startswith(magic):
+            return mime if mime in allowed_types else None
+    # WebP: RIFF....WEBP
+    if header[:4] == b'RIFF' and header[8:12] == b'WEBP':
+        return 'image/webp' if 'image/webp' in allowed_types else None
+    return None
+
+
+def _validate_return_url(url, default='/dashboard'):
+    """Validate that a return URL is a safe local path (no open redirect)."""
+    if not url:
+        return default
+    from urllib.parse import urlparse
+    parsed = urlparse(url)
+    # Reject absolute URLs with a scheme or netloc (external redirect)
+    if parsed.scheme or parsed.netloc:
+        return default
+    # Reject protocol-relative URLs (//evil.com)
+    if url.startswith('//'):
+        return default
+    # Must start with /
+    if not url.startswith('/'):
+        return default
+    return url
 
 
 # Register blueprints
@@ -751,6 +885,19 @@ app.register_blueprint(if_bp)  # Radiology Tools - guideline-based calculators (
 # Global PII guard — blocks patient-identifiable data in all POST/PUT JSON requests
 from pii_guard import create_pii_middleware
 create_pii_middleware(app)
+
+# Security headers — applied to every response
+@app.after_request
+def add_security_headers(response):
+    """Add security headers to every response."""
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'SAMEORIGIN'  # Allow same-origin iframes (TNM calc embeds)
+    response.headers['X-XSS-Protection'] = '1; mode=block'
+    response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+    response.headers['Permissions-Policy'] = 'camera=(), microphone=(), geolocation=()'
+    if is_production:
+        response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+    return response
 
 
 # ============================================================================
@@ -1012,7 +1159,7 @@ def get_similar_diagnoses():
         return jsonify(results)
     except Exception as e:
         # pg_trgm extension may not be enabled
-        print(f"Similar diagnoses query failed: {e}")
+        logger.error(f"Similar diagnoses query failed: {e}")
         return jsonify([])
 
 
@@ -1159,7 +1306,7 @@ def submit_case_for_review(case_id):
         from auth import send_case_review_notification
         send_case_review_notification(case, current_user)
     except Exception as e:
-        print(f"[SUGGEST] Email notification failed: {e}")
+        logger.warning(f"Email notification failed: {e}")
 
     return jsonify({'success': True, 'message': 'Case submitted for review. Thank you!'})
 
@@ -2630,7 +2777,7 @@ def edit_case():
     case_id = request.args.get('id', type=int)
     staging_id = request.args.get('staging_id', type=int)
     is_new = request.args.get('new', 'false').lower() == 'true'
-    return_to = request.args.get('returnTo', url_for('dashboard'))
+    return_to = _validate_return_url(request.args.get('returnTo'))
     status_filter = request.args.get('status', '')
     
     case = None
@@ -2816,7 +2963,7 @@ def delete_case(case_id):
                 try:
                     cloudinary.uploader.destroy(msg.image_public_id)
                 except Exception as e:
-                    print(f"Warning: Failed to delete Cloudinary image {msg.image_public_id}: {e}")
+                    logger.warning(f"Failed to delete Cloudinary image {msg.image_public_id}: {e}")
         
         # 6. Delete the case (cascade will handle: Questions, Answers, Images, Notes, Highlights, AuditLogs, ViewLogs, ApprovalQueue, ForumMessages)
         db.session.delete(case)
@@ -2859,12 +3006,17 @@ def upload_case_image(case_id):
     if file_size > 10 * 1024 * 1024:  # 10MB
         return jsonify({'error': 'File size exceeds 10MB limit'}), 400
     
-    # Check file type
+    # Check file type by extension
     allowed_types = {'image/jpeg', 'image/png', 'image/gif', 'image/webp'}
     file_type = mimetypes.guess_type(file.filename)[0]
-    
+
     if file_type not in allowed_types:
         return jsonify({'error': 'Only image files (JPEG, PNG, GIF, WebP) are allowed'}), 400
+
+    # Verify actual content matches claimed type (magic byte check)
+    actual_type = _validate_image_magic(file, allowed_types)
+    if not actual_type:
+        return jsonify({'error': 'File content does not match an allowed image format'}), 400
     
     # Get description from form data
     description = request.form.get('description', '')
@@ -3024,7 +3176,7 @@ def delete_case_image(image_id):
         try:
             cloudinary.uploader.destroy(image.image_public_id)
         except Exception as e:
-            print(f"Warning: Failed to delete Cloudinary image {image.image_public_id}: {e}")
+            logger.warning(f"Failed to delete Cloudinary image {image.image_public_id}: {e}")
     
     db.session.delete(image)
     db.session.commit()
@@ -4682,7 +4834,7 @@ def delete_forum_message(message_id):
             cloudinary.uploader.destroy(message.image_public_id)
         except Exception as e:
             # Log but don't fail the delete operation
-            print(f"Warning: Failed to delete Cloudinary image {message.image_public_id}: {e}")
+            logger.warning(f"Failed to delete Cloudinary image {message.image_public_id}: {e}")
     
     message.is_deleted = True
     message.image_url = None
@@ -4999,9 +5151,9 @@ def admin_resolve_all_flags(message_id):
 def migrate_db():
     """Create database tables if they don't exist"""
     try:
-        print("[ADMIN] Running database migration...")
+        logger.info("Running database migration...")
         db.create_all()
-        print("[ADMIN] Database migration complete")
+        logger.info("Database migration complete")
         return jsonify({'success': True, 'message': 'Database tables created'}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -5021,5 +5173,5 @@ if __name__ == '__main__':
     if sys.platform == 'darwin':
         show_macos_gatekeeper_popup()
     port = find_free_port(5000, 20)
-    print(f"Starting server on http://127.0.0.1:{port}")
+    logger.info(f"Starting server on http://127.0.0.1:{port}")
     app.run(debug=True, host='127.0.0.1', port=port)

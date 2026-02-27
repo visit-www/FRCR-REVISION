@@ -194,6 +194,11 @@ class User(UserMixin, db.Model):
     ai_usage_date = db.Column(db.Date, nullable=True)  # Date of last AI usage
     ai_usage_count = db.Column(db.Integer, default=0)   # Number of AI requests today
 
+    # === LOGIN RATE LIMITING (brute force protection) ===
+    failed_login_count = db.Column(db.Integer, default=0)
+    failed_login_last = db.Column(db.DateTime, nullable=True)
+    locked_until = db.Column(db.DateTime, nullable=True)
+
     # Password recovery
     recovery_token = db.Column(db.String(255), unique=True, nullable=True)
     recovery_token_expires = db.Column(db.DateTime, nullable=True)
@@ -2716,9 +2721,12 @@ class ReportingAlgorithm(db.Model):
 
 
 # ==================== SMART REPORTER SESSION ====================
+# DEPRECATED: Scheduled for removal. No active code references these models.
+# Kept only to avoid dropping database tables unexpectedly.
 
 class ReportingSession(db.Model):
     """
+    DEPRECATED — No longer used by Smart Reporter (redesign Feb 2026).
     Tracks a radiologist's Smart Reporter session from algorithm walkthrough to final report.
     Each session stores the full algorithm tree JSON, user answers, and assembled report.
     """
@@ -2797,6 +2805,7 @@ class ReportingSession(db.Model):
 
 class PublishedReport(db.Model):
     """
+    DEPRECATED — No longer used by Smart Reporter (redesign Feb 2026).
     Snapshot of a reporting session submitted for community publication.
     Independent of the original session — deleting the session does not remove the publication.
     """
@@ -2869,6 +2878,61 @@ class ContentRequest(db.Model):
 
     def __repr__(self):
         return f'<ContentRequest {self.id} type={self.request_type} status={self.status}>'
+
+
+# ==================== AI AUDIT LOG ====================
+
+class AIAuditLog(db.Model):
+    """Audit trail for all AI generation requests (compliance + cost tracking)."""
+    __tablename__ = 'ai_audit_log'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True, index=True)
+    action = db.Column(db.String(100), nullable=False)  # e.g. 'generate_tree', 'review_report', 'ask_claude'
+    provider = db.Column(db.String(50), nullable=True)   # e.g. 'anthropic'
+    model = db.Column(db.String(100), nullable=True)      # e.g. 'claude-sonnet-4-20250514'
+    input_tokens = db.Column(db.Integer, nullable=True)
+    output_tokens = db.Column(db.Integer, nullable=True)
+    input_summary = db.Column(db.String(500), nullable=True)  # Truncated input for context
+    status = db.Column(db.String(20), default='success')       # 'success', 'error', 'rate_limited'
+    error_message = db.Column(db.Text, nullable=True)
+    duration_ms = db.Column(db.Integer, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
+    user = db.relationship('User', backref='ai_audit_logs', lazy=True)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'action': self.action,
+            'provider': self.provider,
+            'model': self.model,
+            'input_tokens': self.input_tokens,
+            'output_tokens': self.output_tokens,
+            'input_summary': self.input_summary,
+            'status': self.status,
+            'error_message': self.error_message,
+            'duration_ms': self.duration_ms,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+def log_ai_usage(user_id, action, provider=None, model=None,
+                 input_tokens=None, output_tokens=None,
+                 input_summary=None, status='success', error_message=None, duration_ms=None):
+    """Log an AI generation request. Wrapped in try/except — audit logging never breaks main flow."""
+    try:
+        log = AIAuditLog(
+            user_id=user_id, action=action, provider=provider, model=model,
+            input_tokens=input_tokens, output_tokens=output_tokens,
+            input_summary=input_summary[:500] if input_summary else None,
+            status=status, error_message=error_message, duration_ms=duration_ms,
+        )
+        db.session.add(log)
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
 
 
 # ==================== INCIDENTAL FINDING CALCULATOR ====================

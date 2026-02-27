@@ -211,12 +211,13 @@ def create_protocol():
         if not data.get(field, '').strip():
             return jsonify({'error': f'{field} is required.'}), 400
 
+    from app import sanitize_clinical_html
     protocol = ClinicalProtocol(
         title=data['title'].strip(),
         category=data['category'].strip(),
         keywords=data['keywords'].strip(),
         content_structured=json.dumps(data.get('content_structured')) if data.get('content_structured') else None,
-        content_html=data.get('content_html', '').strip() or None,
+        content_html=sanitize_clinical_html(data.get('content_html', '').strip() or None),
         source_citation=data['source_citation'].strip(),
         guideline_version=data.get('guideline_version', '').strip() or None,
         source_url=data.get('source_url', '').strip() or None,
@@ -257,7 +258,8 @@ def update_protocol(protocol_id):
     if 'content_structured' in data:
         protocol.content_structured = json.dumps(data['content_structured']) if data['content_structured'] else None
     if 'content_html' in data:
-        protocol.content_html = data['content_html'].strip() or None
+        from app import sanitize_clinical_html
+        protocol.content_html = sanitize_clinical_html(data['content_html'].strip() or None)
     if 'source_citation' in data:
         protocol.source_citation = data['source_citation'].strip()
     if 'guideline_version' in data:
@@ -332,12 +334,13 @@ def generate_protocol():
         return jsonify({'error': str(exc)}), 500
 
     # Create protocol as DRAFT (is_published=False) — admin must review
+    from app import sanitize_clinical_html
     keywords = ', '.join(result.get('suggested_keywords', []))
     protocol = ClinicalProtocol(
         title=title,
         category=category,
         keywords=keywords or title,
-        content_html=result.get('content_html') or None,
+        content_html=sanitize_clinical_html(result.get('content_html') or None),
         content_structured=json.dumps(result.get('content_structured')) if result.get('content_structured') else None,
         source_citation=source_citation or 'AI-generated — verify against published guideline',
         guideline_version=result.get('guideline_version') or None,

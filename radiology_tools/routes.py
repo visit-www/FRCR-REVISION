@@ -195,6 +195,7 @@ def create_calculator():
     if existing:
         return jsonify({'error': f'Calculator with slug "{slug}" already exists.'}), 409
 
+    from app import sanitize_clinical_html
     calculator = IncidentalFindingCalculator(
         slug=slug,
         finding_name=finding_name,
@@ -202,8 +203,8 @@ def create_calculator():
         category=data.get('category', '').strip() or None,
         description=data.get('description', '').strip() or None,
         keywords=data.get('keywords', '').strip() or None,
-        calculator_html=data.get('calculator_html', '').strip() or None,
-        algorithm_html=data.get('algorithm_html', '').strip() or None,
+        calculator_html=sanitize_clinical_html(data.get('calculator_html', '').strip() or None),
+        algorithm_html=sanitize_clinical_html(data.get('algorithm_html', '').strip() or None),
         guideline_source=data.get('guideline_source', '').strip() or None,
         guideline_version=data.get('guideline_version', '').strip() or None,
         guideline_url=data.get('guideline_url', '').strip() or None,
@@ -234,12 +235,17 @@ def update_calculator(calc_id):
     if not data:
         return jsonify({'error': 'JSON body required.'}), 400
 
+    from app import sanitize_clinical_html
+    _html_fields = {'calculator_html', 'algorithm_html'}
     for field in ['finding_name', 'body_section', 'category', 'description', 'keywords',
                   'calculator_html', 'algorithm_html', 'guideline_source', 'guideline_version',
                   'guideline_url', 'last_edit_note']:
         if field in data:
             val = data[field]
-            setattr(calculator, field, val.strip() if isinstance(val, str) else val)
+            val = val.strip() if isinstance(val, str) else val
+            if field in _html_fields and isinstance(val, str):
+                val = sanitize_clinical_html(val)
+            setattr(calculator, field, val)
 
     if 'is_available' in data:
         calculator.is_available = bool(data['is_available'])

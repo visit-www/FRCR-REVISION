@@ -8,13 +8,20 @@ from models import db, User, UserRole
 from datetime import datetime, timedelta
 import os
 import secrets
+import logging
 import cloudinary
 import cloudinary.uploader
+
+logger = logging.getLogger(__name__)
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
 
 # Account recovery period (days after soft delete during which account can be recovered)
 RECOVERY_PERIOD_DAYS = 31  # 30 days + 1 day grace period
+
+# Login rate limiting (brute force protection)
+MAX_FAILED_LOGINS = 5
+LOCKOUT_MINUTES = 15
 
 def send_recovery_email(email, token):
     """
@@ -27,13 +34,13 @@ def send_recovery_email(email, token):
     app_url = os.getenv('APP_URL', 'https://www.radinsights.xyz').rstrip('/')
     reset_path = url_for('auth.reset_password', token=token, _external=False)
     recovery_url = f"{app_url}{reset_path}"
-    print(f"[EMAIL] Recovery URL generated: {recovery_url}")
+    logger.info(f"Recovery URL generated: {recovery_url}")
     
     # Get API key from environment
     resend_key = os.getenv('RESEND_API_KEY')
     
     if not resend_key:
-        print("[EMAIL] RESEND_API_KEY not configured - cannot send recovery email")
+        logger.warning("RESEND_API_KEY not configured - cannot send recovery email")
         return False
     
     resend.api_key = resend_key
@@ -62,11 +69,11 @@ def send_recovery_email(email, token):
         }
         
         response = resend.Emails.send(params)
-        print(f"[EMAIL] Recovery email sent to {email}: {response}")
+        logger.info(f"Recovery email sent to {email}: {response}")
         return True
-        
+
     except Exception as e:
-        print(f"[EMAIL] Failed to send recovery email to {email}: {e}")
+        logger.error(f"Failed to send recovery email to {email}: {e}")
         return False
 
 
@@ -99,7 +106,7 @@ def send_admin_approval_email(requesting_admin_email, requesting_admin_name, tar
     
     if not resend_key:
         error_msg = "RESEND_API_KEY not configured"
-        print(f"[EMAIL] {error_msg} - cannot send approval email")
+        logger.warning(f"{error_msg} - cannot send approval email")
         return {'success': False, 'error': error_msg, 'email_id': None}
     
     resend.api_key = resend_key
@@ -215,14 +222,12 @@ def send_admin_approval_email(requesting_admin_email, requesting_admin_name, tar
         
         response = resend.Emails.send(params)
         email_id = response.get('id') if isinstance(response, dict) else str(response)
-        print(f"[EMAIL] ✅ Approval email sent to superadmin for '{action}': ID={email_id}")
+        logger.info(f"Approval email sent to superadmin for '{action}': ID={email_id}")
         return {'success': True, 'error': None, 'email_id': email_id}
         
     except Exception as e:
         error_msg = str(e)
-        print(f"[EMAIL] ❌ Failed to send approval email: {error_msg}")
-        import traceback
-        traceback.print_exc()
+        logger.error(f"Failed to send approval email: {error_msg}", exc_info=True)
         return {'success': False, 'error': error_msg, 'email_id': None}
 
 
@@ -230,7 +235,7 @@ def send_case_review_notification(case, submitter):
     """Send email to admin when a student submits a case for review."""
     resend_key = os.getenv('RESEND_API_KEY')
     if not resend_key:
-        print("[EMAIL] RESEND_API_KEY not configured — skipping review notification")
+        logger.warning("RESEND_API_KEY not configured — skipping review notification")
         return False
 
     import resend
@@ -270,10 +275,10 @@ def send_case_review_notification(case, submitter):
             </div>"""
         }
         response = resend.Emails.send(params)
-        print(f"[EMAIL] Case review notification sent for case {case.id}: {response}")
+        logger.info(f"Case review notification sent for case {case.id}: {response}")
         return True
     except Exception as e:
-        print(f"[EMAIL] Failed to send case review notification: {e}")
+        logger.error(f"Failed to send case review notification: {e}")
         return False
 
 
@@ -391,7 +396,12 @@ def login():
         
         if not user:
             return jsonify({'error': 'Invalid email or password'}), 401
-        
+
+        # Brute force protection: check account lockout
+        if user.locked_until and user.locked_until > datetime.utcnow():
+            remaining = int((user.locked_until - datetime.utcnow()).total_seconds() / 60) + 1
+            return jsonify({'error': f'Account temporarily locked. Try again in {remaining} minutes.'}), 429
+
         # Ensure password_hash is loaded
         if not user.password_hash:
             db.session.refresh(user)
@@ -404,8 +414,17 @@ def login():
             return jsonify({'error': 'Authentication error. Please contact administrator.'}), 500
         
         if not password_valid:
+            # Increment failed login counter
+            user.failed_login_count = (user.failed_login_count or 0) + 1
+            user.failed_login_last = datetime.utcnow()
+            if user.failed_login_count >= MAX_FAILED_LOGINS:
+                user.locked_until = datetime.utcnow() + timedelta(minutes=LOCKOUT_MINUTES)
+            try:
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
             return jsonify({'error': 'Invalid email or password'}), 401
-        
+
         if not user.is_active:
             return jsonify({'error': 'Account is disabled'}), 403
         
@@ -437,8 +456,10 @@ def login():
             }), 403
         
         try:
-            # Update last login
+            # Update last login and reset failed login counters
             user.last_login = datetime.utcnow()
+            user.failed_login_count = 0
+            user.locked_until = None
             db.session.commit()
             
             # Mark session as permanent for session timeout tracking
@@ -558,46 +579,42 @@ def forgot_password():
     """Request password recovery"""
     if request.method == 'POST':
         try:
-            print("[AUTH] Forgot password - processing request")
+            logger.debug("Forgot password - processing request")
             data = request.get_json() if request.is_json else request.form
             email = data.get('email', '').strip().lower()
-            print(f"[AUTH] Forgot password - email: {email}")
+            logger.debug(f"Forgot password - email: {email}")
             
             if not email:
                 return jsonify({'error': 'Email required'}), 400
             
             user = User.query.filter_by(email=email).first()
-            print(f"[AUTH] Forgot password - user found: {user is not None}")
+            logger.debug(f"Forgot password - user found: {user is not None}")
             
             if user:
                 # Generate recovery token
-                print("[AUTH] Generating recovery token...")
+                logger.debug("Generating recovery token...")
                 token = user.generate_recovery_token()
-                print(f"[AUTH] Token generated, committing to DB...")
+                logger.debug("Token generated, committing to DB...")
                 db.session.commit()
-                print("[AUTH] Token saved to DB")
+                logger.debug("Token saved to DB")
                 
                 # Send email
                 try:
-                    print("[AUTH] Attempting to send recovery email...")
+                    logger.debug("Attempting to send recovery email...")
                     email_sent = send_recovery_email(email, token)
-                    print(f"[AUTH] Email sent result: {email_sent}")
-                    
+                    logger.debug(f"Email sent result: {email_sent}")
+
                     if not email_sent:
-                        print(f"[AUTH] Recovery email failed to send for {email}")
+                        logger.warning(f"Recovery email failed to send for {email}")
                 except Exception as email_error:
-                    print(f"[AUTH] Email sending exception for {email}: {email_error}")
-                    import traceback
-                    traceback.print_exc()
+                    logger.error(f"Email sending exception for {email}: {email_error}", exc_info=True)
             
             # Always return success (don't reveal if email exists or not)
-            print("[AUTH] Returning success response")
+            logger.debug("Returning success response")
             return jsonify({'success': True, 'message': 'If an account with that email exists, you will receive a recovery link shortly.'}), 200
             
         except Exception as e:
-            print(f"[AUTH] Forgot password error: {e}")
-            import traceback
-            traceback.print_exc()
+            logger.error(f"Forgot password error: {e}", exc_info=True)
             db.session.rollback()
             return jsonify({'error': 'An error occurred. Please try again.'}), 500
     
@@ -607,23 +624,21 @@ def forgot_password():
 @auth_bp.route('/reset-password-test', methods=['GET'])
 def reset_password_test():
     """Test route to verify reset password template works"""
-    print("[AUTH] Reset password TEST page accessed - starting")
+    logger.debug("Reset password TEST page accessed - starting")
     try:
-        print("[AUTH] About to render template...")
+        logger.debug("About to render template...")
         result = render_template('reset_password.html', token='test-token-12345')
-        print("[AUTH] Template rendered successfully")
+        logger.debug("Template rendered successfully")
         return result
     except Exception as e:
-        print(f"[AUTH] Template render error: {e}")
-        import traceback
-        traceback.print_exc()
+        logger.error(f"Template render error: {e}", exc_info=True)
         return f"<h1>Template Error</h1><pre>{e}</pre>", 500
 
 
 @auth_bp.route('/reset-password-simple', methods=['GET'])
 def reset_password_simple():
     """Minimal test route"""
-    print("[AUTH] Simple test accessed")
+    logger.debug("Simple test accessed")
     return "<h1>Reset Password</h1><p>This is a simple test page.</p>", 200
 
 
@@ -631,22 +646,22 @@ def reset_password_simple():
 def reset_password(token):
     """Reset password with token"""
     try:
-        print(f"[AUTH] Reset password page accessed with token: {token[:20]}...")
-        
+        logger.debug(f"Reset password page accessed with token: {token[:20]}...")
+
         user = User.query.filter_by(recovery_token=token).first()
-        
+
         if not user:
-            print(f"[AUTH] Reset password: No user found for token")
+            logger.debug("Reset password: No user found for token")
             return render_template('reset_password_expired.html'), 401
-        
-        print(f"[AUTH] Reset password: User found - {user.email}")
-        
+
+        logger.debug(f"Reset password: User found - {user.email}")
+
         if not user.verify_recovery_token(token):
-            print(f"[AUTH] Reset password: Token verification failed for {user.email}")
-            print(f"[AUTH] Token expires: {user.recovery_token_expires}, Now: {datetime.utcnow()}")
+            logger.debug(f"Reset password: Token verification failed for {user.email}")
+            logger.debug(f"Token expires: {user.recovery_token_expires}, Now: {datetime.utcnow()}")
             return render_template('reset_password_expired.html'), 401
-        
-        print(f"[AUTH] Reset password: Token valid, showing reset form")
+
+        logger.debug("Reset password: Token valid, showing reset form")
         
         if request.method == 'POST':
             data = request.get_json() if request.is_json else request.form
@@ -666,9 +681,7 @@ def reset_password(token):
         return render_template('reset_password.html', token=token)
         
     except Exception as e:
-        print(f"[AUTH] Reset password error: {e}")
-        import traceback
-        traceback.print_exc()
+        logger.error(f"Reset password error: {e}", exc_info=True)
         return render_template('reset_password_expired.html'), 500
 
 
@@ -802,7 +815,7 @@ def soft_delete_account():
         db.session.commit()
         
         # Log the deletion
-        print(f"[AUTH] User {current_user.email} soft-deleted their account")
+        logger.info(f"User {current_user.email} soft-deleted their account")
         
         return jsonify({
             'success': True,
@@ -812,7 +825,7 @@ def soft_delete_account():
         
     except Exception as e:
         db.session.rollback()
-        print(f"[AUTH] Soft delete error: {e}")
+        logger.error(f"Soft delete error: {e}")
         return jsonify({'error': 'Failed to delete account'}), 500
 
 
@@ -822,7 +835,7 @@ def send_recovery_code_email(email, code, request_metadata=None):
     
     resend_key = os.getenv('RESEND_API_KEY')
     if not resend_key:
-        print("[EMAIL] RESEND_API_KEY not configured")
+        logger.warning("RESEND_API_KEY not configured")
         return False
     
     resend.api_key = resend_key
@@ -866,11 +879,11 @@ def send_recovery_code_email(email, code, request_metadata=None):
         }
         
         response = resend.Emails.send(params)
-        print(f"[EMAIL] Recovery code sent to {email}: {response}")
+        logger.info(f"Recovery code sent to {email}: {response}")
         return True
-        
+
     except Exception as e:
-        print(f"[EMAIL] Failed to send recovery code: {e}")
+        logger.error(f"Failed to send recovery code: {e}")
         return False
 
 
@@ -950,9 +963,7 @@ def request_account_recovery():
         }), 200
         
     except Exception as e:
-        print(f"[AUTH] Request recovery error: {e}")
-        import traceback
-        traceback.print_exc()
+        logger.error(f"Request recovery error: {e}", exc_info=True)
         return jsonify({'error': 'An error occurred'}), 500
 
 
@@ -1006,7 +1017,7 @@ def verify_recovery_code():
         
         db.session.commit()
         
-        print(f"[AUTH] Recovery code verified for {email}")
+        logger.info(f"Recovery code verified for {email}")
         
         return jsonify({
             'success': True,
@@ -1015,7 +1026,7 @@ def verify_recovery_code():
         }), 200
         
     except Exception as e:
-        print(f"[AUTH] Verify recovery error: {e}")
+        logger.error(f"Verify recovery error: {e}")
         return jsonify({'error': 'An error occurred'}), 500
 
 
@@ -1066,7 +1077,7 @@ def complete_account_recovery():
         
         db.session.commit()
         
-        print(f"[AUTH] Account recovered successfully for {user.email}")
+        logger.info(f"Account recovered successfully for {user.email}")
         
         # Log the user in
         login_user(user)
@@ -1079,7 +1090,7 @@ def complete_account_recovery():
         
     except Exception as e:
         db.session.rollback()
-        print(f"[AUTH] Complete recovery error: {e}")
+        logger.error(f"Complete recovery error: {e}")
         return jsonify({'error': 'An error occurred'}), 500
 
 

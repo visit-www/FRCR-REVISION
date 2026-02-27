@@ -117,6 +117,17 @@
     }
 </style>
 
+{% if calculator.generation_model %}
+<div class="container-fluid px-3">
+    <div class="alert alert-warning border-0 py-2 mb-2" style="background: #fff8e1;">
+        <small>
+            <i class="fas fa-robot me-1"></i>
+            <strong>RadInsight Artificial Intelligence generated content</strong> — verify against current guidelines for any clinical use.
+        </small>
+    </div>
+</div>
+{% endif %}
+
 <div class="calculator-integrated-wrapper">
     {{ content.body | safe }}
 </div>

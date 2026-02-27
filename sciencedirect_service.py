@@ -13,7 +13,8 @@ import os
 from urllib.parse import quote
 
 # API Key from environment (for server-side use only - passed to frontend securely)
-SCIDIRECT_API_KEY = os.getenv('SCIDIRECT_API_KEY', 'ebd7f645469e104b6326952959e1cde6')
+# SECURITY: No hardcoded fallback — key must be set via SCIDIRECT_API_KEY env var
+SCIDIRECT_API_KEY = os.getenv('SCIDIRECT_API_KEY', '')
 
 # ScienceDirect Website URLs
 SCIDIRECT_BASE = "https://www.sciencedirect.com"
@@ -60,10 +61,12 @@ def get_api_key() -> str:
     """
     Get API key for client-side use.
     This should only be called from authenticated server endpoints.
-    
+
     Returns:
-        API key string
+        API key string, or empty string if not configured
     """
+    if not SCIDIRECT_API_KEY:
+        return ''
     return SCIDIRECT_API_KEY
 
 

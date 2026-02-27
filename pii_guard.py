@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 PII_PATTERNS = [
     ('NHS Number', re.compile(r'\b\d{3}[-\s]?\d{3}[-\s]?\d{4}\b')),
+    ('US SSN', re.compile(r'\b\d{3}-\d{2}-\d{4}\b')),
     ('MRN / Hospital ID', re.compile(
         r'\b(?:MRN|mrn|Mrn|hospital\s*(?:id|no|number|#)|hosp\s*id)[:\s#]*\d{4,10}\b', re.IGNORECASE)),
     ('Date of Birth', re.compile(

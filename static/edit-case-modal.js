@@ -3,6 +3,8 @@
  * Handles: Case details, Q&A pairs, images with descriptions
  */
 
+const DEBUG = (window.location.hostname === 'localhost');
+
 // Get API base URL from config.js
 const getAPIUrl = (path) => {
     const baseUrl = (typeof API_BASE_URL !== 'undefined') ? API_BASE_URL : 'http://localhost:5000';
@@ -127,7 +129,7 @@ function initializeTinyMCE(elementId, retryCount = 0) {
     
     if (typeof tinymce === 'undefined' || !tinymce.init) {
         if (retryCount < MAX_RETRIES) {
-            console.log(`TinyMCE not loaded yet for ${elementId}, retrying... (${retryCount + 1}/${MAX_RETRIES})`);
+            if (DEBUG) console.log(`TinyMCE not loaded yet for ${elementId}, retrying... (${retryCount + 1}/${MAX_RETRIES})`);
             setTimeout(() => initializeTinyMCE(elementId, retryCount + 1), 500);
             return;
         } else {
@@ -145,11 +147,11 @@ function initializeTinyMCE(elementId, retryCount = 0) {
     
     // Check if already initialized
     if (tinymce.get(elementId)) {
-        console.log(`TinyMCE already initialized for ${elementId}`);
+        if (DEBUG) console.log(`TinyMCE already initialized for ${elementId}`);
         return;
     }
     
-    console.log(`Initializing TinyMCE for ${elementId}`);
+    if (DEBUG) console.log(`Initializing TinyMCE for ${elementId}`);
     tinymce.init({
         selector: '#' + elementId,
         height: 300,
@@ -238,7 +240,7 @@ function addNewQAPair() {
 
 // Populate images with improved UI
 function populateImages(images) {
-    console.log('[populateImages] Called with', images ? images.length : 0, 'images');
+    if (DEBUG) console.log('[populateImages] Called with', images ? images.length : 0, 'images');
     const container = document.getElementById('editImagesContainer');
     if (!container) {
         console.error('[populateImages] Container editImagesContainer not found!');
@@ -247,12 +249,12 @@ function populateImages(images) {
     container.innerHTML = '';
     
     if (!images || images.length === 0) {
-        console.log('[populateImages] No images provided');
+        if (DEBUG) console.log('[populateImages] No images provided');
         container.innerHTML = '<p class="text-muted text-center py-3">No images uploaded yet</p>';
         return;
     }
     
-    console.log('[populateImages] Processing', images.length, 'images');
+    if (DEBUG) console.log('[populateImages] Processing', images.length, 'images');
     
     const grid = document.createElement('div');
     grid.className = 'row g-3';
@@ -593,7 +595,7 @@ function saveImageDescription(imageId) {
             descElement.innerHTML = savedDescription ? savedDescription : '<em class="text-muted">No description</em>';
         }
         
-        console.log('Image description saved successfully');
+        if (DEBUG) console.log('Image description saved successfully');
     })
     .catch(error => {
         console.error('Error updating description:', error);
@@ -763,7 +765,7 @@ function compressImage(file, maxWidthPx, maxSizeMB) {
                     if (blob.size <= maxSizeBytes || quality <= minQuality) {
                         var compressedName = file.name.replace(/\.[^.]+$/, '') + '.jpg';
                         var compressedFile = new File([blob], compressedName, { type: mimeType });
-                        console.log('[IMAGE] Compressed: ' + (file.size / 1024 / 1024).toFixed(1) + 'MB -> ' + (blob.size / 1024 / 1024).toFixed(1) + 'MB (quality=' + quality.toFixed(2) + ', ' + width + 'x' + height + ')');
+                        if (DEBUG) console.log('[IMAGE] Compressed: ' + (file.size / 1024 / 1024).toFixed(1) + 'MB -> ' + (blob.size / 1024 / 1024).toFixed(1) + 'MB (quality=' + quality.toFixed(2) + ', ' + width + 'x' + height + ')');
                         resolve(compressedFile);
                     } else {
                         quality -= 0.1;
@@ -808,17 +810,17 @@ function uploadImage() {
     }
     
     const caseId = document.getElementById('editCaseId').value;
-    console.log('[IMAGE] Upload attempt - caseId:', caseId, 'file:', file.name);
+    if (DEBUG) console.log('[IMAGE] Upload attempt - caseId:', caseId, 'file:', file.name);
     
     // For new cases, store images temporarily and upload after case is saved
     if (!caseId || caseId === 'new' || caseId.startsWith('new-')) {
-        console.log('[IMAGE] New case detected - storing image as pending');
+        if (DEBUG) console.log('[IMAGE] New case detected - storing image as pending');
         // Store image in temporary storage for upload after case creation
         if (!window.pendingImages) {
             window.pendingImages = [];
         }
         window.pendingImages.push(file);
-        console.log('[IMAGE] Pending images count:', window.pendingImages.length);
+        if (DEBUG) console.log('[IMAGE] Pending images count:', window.pendingImages.length);
         
         // Show preview of pending image
         const container = document.getElementById('editImagesContainer');
@@ -865,7 +867,7 @@ function uploadImage() {
     }
 
     function onUploadSuccess(data) {
-        console.log('[IMAGE] Upload response:', data);
+        if (DEBUG) console.log('[IMAGE] Upload response:', data);
         if (data.image_id || data.success) {
             input.value = '';
             setTimeout(function() { reloadImages(caseId); }, 300);
@@ -1126,7 +1128,7 @@ function saveEditedCase(event) {
     // Check if this is a new case - either from URL parameter OR caseIdField is 'new' or starts with 'new-'
     const isNew = urlIsNew || !caseIdField || caseIdField === 'new' || caseIdField.toString().startsWith('new-');
     
-    console.log('[SAVE] Case state check - caseIdField:', caseIdField, 'urlIsNew:', urlIsNew, 'isNew:', isNew);
+    if (DEBUG) console.log('[SAVE] Case state check - caseIdField:', caseIdField, 'urlIsNew:', urlIsNew, 'isNew:', isNew);
     
     // Determine endpoint and method
     let endpoint = '';
@@ -1152,7 +1154,7 @@ function saveEditedCase(event) {
     }
     
     // Send request to server
-    console.log('[SAVE] Sending request to:', endpoint, 'Method:', method, 'Payload:', payload);
+    if (DEBUG) console.log('[SAVE] Sending request to:', endpoint, 'Method:', method, 'Payload:', payload);
     
     fetch(endpoint, {
         method: method,
@@ -1161,7 +1163,7 @@ function saveEditedCase(event) {
     })
     .then(async r => {
         const responseText = await r.text();
-        console.log('[SAVE] Response status:', r.status, 'Response:', responseText);
+        if (DEBUG) console.log('[SAVE] Response status:', r.status, 'Response:', responseText);
         
         let responseData;
         try {
@@ -1200,37 +1202,37 @@ function saveEditedCase(event) {
             return;
         }
         
-        console.log('[SAVE] Parsed response data:', data);
+        if (DEBUG) console.log('[SAVE] Parsed response data:', data);
         
         if (data.success || data.id || data.case_id) {
-            console.log('[SAVE] Case save successful. isNew:', isNew, 'data:', data);
-            console.log('[SAVE] window.pendingImages:', window.pendingImages ? window.pendingImages.length : 'undefined');
+            if (DEBUG) console.log('[SAVE] Case save successful. isNew:', isNew, 'data:', data);
+            if (DEBUG) console.log('[SAVE] window.pendingImages:', window.pendingImages ? window.pendingImages.length : 'undefined');
             
             // If this was a new case, update the caseId field and upload pending images
             if (isNew && (data.id || data.case_id)) {
                 const newCaseId = data.id || data.case_id;
                 document.getElementById('editCaseId').value = newCaseId;
-                console.log('[SAVE] Updated caseId to:', newCaseId, 'for image uploads');
+                if (DEBUG) console.log('[SAVE] Updated caseId to:', newCaseId, 'for image uploads');
                 
                 // Upload any pending images that were added before saving
                 const pendingCount = window.pendingImages ? window.pendingImages.length : 0;
-                console.log('[SAVE] Checking for pending images. Count:', pendingCount);
+                if (DEBUG) console.log('[SAVE] Checking for pending images. Count:', pendingCount);
                 
                 // Set uploadsInProgress flag EARLY if we have pending images
                 // This must be set before any redirect logic runs
                 if (window.pendingImages && window.pendingImages.length > 0) {
                     window.uploadsInProgress = true;
-                    console.log('[SAVE] Set uploadsInProgress flag to true (early)');
+                    if (DEBUG) console.log('[SAVE] Set uploadsInProgress flag to true (early)');
                 }
                 
                 if (window.pendingImages && window.pendingImages.length > 0) {
-                    console.log('[SAVE] Uploading', window.pendingImages.length, 'pending images for case', newCaseId);
+                    if (DEBUG) console.log('[SAVE] Uploading', window.pendingImages.length, 'pending images for case', newCaseId);
                     // Flag already set above, just copy array
                     const pendingImages = [...window.pendingImages]; // Copy array
                     // Don't clear window.pendingImages yet - we need it for the redirect check
                     
                     // Wait a moment after case creation to ensure case is fully committed
-                    console.log('[SAVE] Waiting 500ms before starting image uploads...');
+                    if (DEBUG) console.log('[SAVE] Waiting 500ms before starting image uploads...');
                     setTimeout(() => {
                         // Upload all images and wait for them to complete before redirecting
                         const uploadPromises = pendingImages.map((file, index) => {
@@ -1262,7 +1264,7 @@ function saveEditedCase(event) {
                                     
                                     const controller = new AbortController();
                                     const timeoutId = setTimeout(() => controller.abort(), 30000);
-                                    console.log('[SAVE] Uploading pending image:', file.name, 'size:', file.size, 'type:', file.type, 'isFile:', isFile, 'isBlob:', isBlob, 'to case', newCaseId);
+                                    if (DEBUG) console.log('[SAVE] Uploading pending image:', file.name, 'size:', file.size, 'type:', file.type, 'isFile:', isFile, 'isBlob:', isBlob, 'to case', newCaseId);
                                     
                                     // Direct Cloudinary upload when configured (avoids 413 for large files)
                                     if (window.CLOUDINARY_CLOUD_NAME && window.CLOUDINARY_UPLOAD_PRESET) {
@@ -1287,7 +1289,7 @@ function saveEditedCase(event) {
                                             return r.json();
                                         }).then(function(data) {
                                             clearTimeout(timeoutId);
-                                            console.log('[SAVE] Pending image uploaded successfully (direct):', file.name, data);
+                                            if (DEBUG) console.log('[SAVE] Pending image uploaded successfully (direct):', file.name, data);
                                             var idx = window.pendingImages.indexOf(file);
                                             if (idx > -1) window.pendingImages.splice(idx, 1);
                                             resolve(data);
@@ -1307,7 +1309,7 @@ function saveEditedCase(event) {
                                     const maxRetries = 2;
                                     
                                     function attemptUpload() {
-                                        console.log('[SAVE] Starting fetch request for ' + file.name + ' to /api/case/' + newCaseId + '/image');
+                                        if (DEBUG) console.log('[SAVE] Starting fetch request for ' + file.name + ' to /api/case/' + newCaseId + '/image');
                                         fetch('/api/case/' + newCaseId + '/image', {
                                             method: 'POST',
                                             body: formData,
@@ -1318,7 +1320,7 @@ function saveEditedCase(event) {
                                             }
                                         })
                                         .then(async r => {
-                                            console.log('[SAVE] Upload response status:', r.status, 'for', file.name);
+                                            if (DEBUG) console.log('[SAVE] Upload response status:', r.status, 'for', file.name);
                                             if (!r.ok) {
                                                 let errorMessage = r.statusText;
                                                 try {
@@ -1346,7 +1348,7 @@ function saveEditedCase(event) {
     })
     .then(data => {
                                             clearTimeout(timeoutId);
-                                            console.log('[SAVE] Pending image uploaded successfully:', file.name, data);
+                                            if (DEBUG) console.log('[SAVE] Pending image uploaded successfully:', file.name, data);
                                             // Clear the pending image from the array after successful upload
                                             const index = window.pendingImages.indexOf(file);
                                             if (index > -1) {
@@ -1361,7 +1363,7 @@ function saveEditedCase(event) {
                                             // Retry on network errors
                                             if ((error.message.includes('Load failed') || error.message.includes('Failed to fetch') || error.name === 'TypeError') && retryCount < maxRetries) {
                                                 retryCount++;
-                                                console.log('[SAVE] Retrying upload for', file.name, '- attempt', retryCount + 1);
+                                                if (DEBUG) console.log('[SAVE] Retrying upload for', file.name, '- attempt', retryCount + 1);
                                                 setTimeout(() => {
                                                     attemptUpload();
                                                 }, 1000 * retryCount); // Exponential backoff
@@ -1394,7 +1396,7 @@ function saveEditedCase(event) {
                         // Wait for all uploads to complete before showing success message or redirecting
                         Promise.all(uploadPromises)
                         .then(results => {
-                            console.log('[SAVE] All pending images uploaded successfully:', results);
+                            if (DEBUG) console.log('[SAVE] All pending images uploaded successfully:', results);
                             
                             // Clear the pending images array and upload flag
                             window.pendingImages = [];
@@ -1412,14 +1414,14 @@ function saveEditedCase(event) {
                             setTimeout(() => {
                                 // Redirect if there's a pending redirect URL
                                 if (window.pendingRedirectUrl) {
-                                    console.log('[SAVE] Redirecting to:', window.pendingRedirectUrl);
+                                    if (DEBUG) console.log('[SAVE] Redirecting to:', window.pendingRedirectUrl);
                                     const redirectUrl = window.pendingRedirectUrl;
                                     window.pendingRedirectUrl = null;
                                     // Add timestamp to force fresh load
                                     window.location.href = redirectUrl + (redirectUrl.includes('?') ? '&' : '?') + '_t=' + Date.now();
                                 } else {
                                     // Default: redirect to view the new case with timestamp to force fresh load
-                                    console.log('[SAVE] Redirecting to view case:', newCaseId);
+                                    if (DEBUG) console.log('[SAVE] Redirecting to view case:', newCaseId);
                                     window.location.href = `/view-case/${newCaseId}?_t=${Date.now()}`;
                                 }
                             }, 1000); // Wait 1 second for database to fully commit
@@ -1439,12 +1441,12 @@ function saveEditedCase(event) {
                         });
                     }, 500); // Wait 500ms after case creation before starting uploads
                 } else {
-                    console.log('[SAVE] No pending images to upload. window.pendingImages:', window.pendingImages);
-                    console.log('[SAVE] isNew:', isNew, 'newCaseId:', data.id || data.case_id);
+                    if (DEBUG) console.log('[SAVE] No pending images to upload. window.pendingImages:', window.pendingImages);
+                    if (DEBUG) console.log('[SAVE] isNew:', isNew, 'newCaseId:', data.id || data.case_id);
                 }
             } else {
-                console.log('[SAVE] Not a new case or no case ID. isNew:', isNew, 'case_id:', data.id || data.case_id);
-                console.log('[SAVE] caseIdField:', caseIdField);
+                if (DEBUG) console.log('[SAVE] Not a new case or no case ID. isNew:', isNew, 'case_id:', data.id || data.case_id);
+                if (DEBUG) console.log('[SAVE] caseIdField:', caseIdField);
             }
             
             // Determine redirect destination
@@ -1456,7 +1458,7 @@ function saveEditedCase(event) {
             const uploadsInProgress = window.uploadsInProgress === true;
             const shouldWaitForImages = isNew && (hasPendingImages || uploadsInProgress);
             
-            console.log('[SAVE] Redirect check - hasPendingImages:', hasPendingImages, 'uploadsInProgress:', uploadsInProgress, 'shouldWaitForImages:', shouldWaitForImages);
+            if (DEBUG) console.log('[SAVE] Redirect check - hasPendingImages:', hasPendingImages, 'uploadsInProgress:', uploadsInProgress, 'shouldWaitForImages:', shouldWaitForImages);
             
             if (!shouldWaitForImages) {
                 if (isStagingCase) {
@@ -1467,7 +1469,7 @@ function saveEditedCase(event) {
                     alert('Case saved successfully!');
                 }
             } else {
-                console.log('[SAVE] Deferring alert and redirect - waiting for pending images to upload');
+                if (DEBUG) console.log('[SAVE] Deferring alert and redirect - waiting for pending images to upload');
             }
             
             // Priority: For staging cases, always go to view case (ignore returnTo if it's staging list)
@@ -1475,7 +1477,7 @@ function saveEditedCase(event) {
                 // Redirect to the promoted case view with from_staging parameter
                 // Try multiple possible field names from the response
                 const promotedId = data.case_id || data.id || data.promoted_case_id;
-                console.log('[SAVE] Staging case - promoted ID:', promotedId, 'from data:', data);
+                if (DEBUG) console.log('[SAVE] Staging case - promoted ID:', promotedId, 'from data:', data);
                 if (promotedId) {
                     redirectUrl = `/view-case/${promotedId}?from_staging=true`;
                 } else {
@@ -1501,10 +1503,10 @@ function saveEditedCase(event) {
             
             // Only redirect if we're not waiting for pending images
             if (!shouldWaitForImages) {
-                console.log('[SAVE] Redirecting to:', redirectUrl);
+                if (DEBUG) console.log('[SAVE] Redirecting to:', redirectUrl);
             window.location.href = redirectUrl;
         } else {
-                console.log('[SAVE] Deferring redirect - waiting for pending images to upload');
+                if (DEBUG) console.log('[SAVE] Deferring redirect - waiting for pending images to upload');
                 // Store redirect URL to use after images are uploaded
                 window.pendingRedirectUrl = redirectUrl;
             }
@@ -1519,7 +1521,7 @@ function saveEditedCase(event) {
     .catch(error => {
         // Don't show error alert for duplicate detection (handled by modal)
         if (error.message === 'DUPLICATE_DETECTED') {
-            console.log('[SAVE] Duplicate detected, handled by modal');
+            if (DEBUG) console.log('[SAVE] Duplicate detected, handled by modal');
             return;
         }
         
@@ -2272,7 +2274,7 @@ function createPrelimCaseData(forceRegenerate = false) {
             }
             // Hide cancel button
             cancelBtn.style.display = 'none';
-            console.log('[AI PRELIM] Generation cancelled by user');
+            if (DEBUG) console.log('[AI PRELIM] Generation cancelled by user');
         };
     }
 
@@ -2330,7 +2332,7 @@ function createPrelimCaseData(forceRegenerate = false) {
     .catch(error => {
         // Don't show error if user cancelled
         if (error.name === 'AbortError') {
-            console.log('[AI PRELIM] Generation cancelled by user');
+            if (DEBUG) console.log('[AI PRELIM] Generation cancelled by user');
             return;
         }
         console.error('[AI PRELIM] Error:', error);
@@ -2448,17 +2450,13 @@ function cancelAiGeneration() {
             btn.innerHTML = btn.dataset.originalText || '<i class="fas fa-wand-magic-sparkles me-2"></i>Create Preliminary Case Data';
         }
         
-        console.log('[AI PRELIM] Generation cancelled by user');
+        if (DEBUG) console.log('[AI PRELIM] Generation cancelled by user');
     }
 }
 
 
 // Helper function to escape HTML
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
+// escapeHtml() — duplicate removed; using definition at line ~662
 
 /**
  * Show flash message for AI generation success

@@ -419,21 +419,10 @@ def generate_algorithmic_approach():
         logger.error(f"Failed to create draft case: {exc}")
         return jsonify({'error': f'Failed to create case: {exc}'}), 500
 
-    # Step 4: Try new algorithmic reporter first, fallback to ai_prelim
+    # Step 4: Generate content using ai_prelim
+    # (ai_algorithmic_reporter was removed in production hardening — Feb 2026)
     algorithmic_result = None
     used_new_reporter = False
-
-    try:
-        from ai_algorithmic_reporter import generate_algorithmic_report, AlgorithmicReporterError
-        algorithmic_result = generate_algorithmic_report(
-            diagnosis=diagnosis,
-            body_section=body_section,
-            notes=notes,
-        )
-        used_new_reporter = True
-        logger.info(f"Algorithmic reporter succeeded for: {diagnosis}")
-    except Exception as exc:
-        logger.warning(f"Algorithmic reporter failed, falling back to ai_prelim: {exc}")
 
     if used_new_reporter and algorithmic_result:
         # New reporter path: use algorithmic_approach_html as discussion
@@ -1024,6 +1013,11 @@ def create_reporting_template():
     if existing:
         return jsonify({'error': f'Template with slug "{slug}" already exists.'}), 409
 
+    # Sanitize HTML content to strip script tags and event handlers
+    from app import sanitize_clinical_html
+    _raw_template_html = data.get('template_html', '').strip() or None
+    _raw_algorithm_html = data.get('algorithm_html', '').strip() or None
+
     template = ReportingAlgorithm(
         slug=slug,
         title=title,
@@ -1032,8 +1026,8 @@ def create_reporting_template():
         body_section=data.get('body_section', '').strip() or None,
         description=data.get('description', '').strip() or None,
         keywords=data.get('keywords', '').strip() or None,
-        template_html=data.get('template_html', '').strip() or None,
-        algorithm_html=data.get('algorithm_html', '').strip() or None,
+        template_html=sanitize_clinical_html(_raw_template_html),
+        algorithm_html=sanitize_clinical_html(_raw_algorithm_html),
         source_citation=data.get('source_citation', '').strip() or None,
         guideline_version=data.get('guideline_version', '').strip() or None,
         is_available=data.get('is_available', False),
@@ -1075,11 +1069,16 @@ def update_reporting_template(template_id):
     if not data:
         return jsonify({'error': 'JSON body required.'}), 400
 
+    from app import sanitize_clinical_html
+    _html_fields = {'template_html', 'algorithm_html'}
     for field in ['title', 'category', 'body_section', 'description', 'keywords',
                   'template_html', 'algorithm_html', 'source_citation', 'guideline_version',
                   'last_edit_note']:
         if field in data:
-            setattr(template, field, data[field].strip() if isinstance(data[field], str) else data[field])
+            val = data[field].strip() if isinstance(data[field], str) else data[field]
+            if field in _html_fields and isinstance(val, str):
+                val = sanitize_clinical_html(val)
+            setattr(template, field, val)
 
     if 'is_available' in data:
         template.is_available = bool(data['is_available'])
@@ -1369,7 +1368,16 @@ def smart_reporter_generate_tree():
         )
     except Exception as exc:
         logger.error(f"Smart Reporter tree generation failed: {exc}")
+        from models import log_ai_usage
+        log_ai_usage(current_user.id, 'generate_tree', provider='anthropic',
+                     input_summary=clinical_question, status='error', error_message=str(exc))
         return jsonify({'error': f'Algorithm generation failed: {exc}'}), 500
+
+    # Audit log for successful generation
+    from models import log_ai_usage
+    log_ai_usage(current_user.id, 'generate_tree', provider='anthropic',
+                 model=result.get('model', ''), input_summary=clinical_question,
+                 input_tokens=result.get('input_tokens'), output_tokens=result.get('output_tokens'))
 
     tree_json = json.dumps({
         'steps': result.get('steps', []),
@@ -1440,7 +1448,15 @@ def smart_reporter_ask_claude():
         )
     except Exception as exc:
         logger.error(f"Smart Reporter ask-claude failed: {exc}")
+        from models import log_ai_usage
+        log_ai_usage(current_user.id, 'ask_claude', provider='anthropic',
+                     input_summary=question[:500], status='error', error_message=str(exc))
         return jsonify({'error': f'Failed to get response: {exc}'}), 500
+
+    from models import log_ai_usage
+    log_ai_usage(current_user.id, 'ask_claude', provider='anthropic',
+                 model=result.get('model', ''), input_summary=question[:500],
+                 input_tokens=result.get('input_tokens'), output_tokens=result.get('output_tokens'))
 
     return jsonify({
         'success': True,
@@ -1473,7 +1489,15 @@ def smart_reporter_review_report():
         result = review_report(report_text=report_text)
     except Exception as exc:
         logger.error(f"Smart Reporter review failed: {exc}")
+        from models import log_ai_usage
+        log_ai_usage(current_user.id, 'review_report', provider='anthropic',
+                     input_summary=report_text[:200], status='error', error_message=str(exc))
         return jsonify({'error': f'Review failed: {exc}'}), 500
+
+    from models import log_ai_usage
+    log_ai_usage(current_user.id, 'review_report', provider='anthropic',
+                 model=result.get('model', ''), input_summary=report_text[:200],
+                 input_tokens=result.get('input_tokens'), output_tokens=result.get('output_tokens'))
 
     return jsonify({
         'success': True,
@@ -1554,7 +1578,15 @@ def smart_reporter_ai_assist():
         )
     except Exception as exc:
         logger.error(f"Smart Reporter AI assist failed: {exc}")
+        from models import log_ai_usage
+        log_ai_usage(current_user.id, 'ai_assist', provider='anthropic',
+                     input_summary=question[:500], status='error', error_message=str(exc))
         return jsonify({'error': f'AI assist failed: {exc}'}), 500
+
+    from models import log_ai_usage
+    log_ai_usage(current_user.id, 'ai_assist', provider='anthropic',
+                 model=result.get('model', ''), input_summary=question[:500],
+                 input_tokens=result.get('input_tokens'), output_tokens=result.get('output_tokens'))
 
     return jsonify({
         'success': True,

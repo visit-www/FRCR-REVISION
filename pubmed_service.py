@@ -13,18 +13,21 @@ Exam Relevance: Supports FRCR 2B candidates by providing:
 
 import os
 import time
+import logging
 import requests
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional
 import json
 import hashlib
 
+logger = logging.getLogger(__name__)
+
 try:
     from Bio import Entrez
     BIOPYTHON_AVAILABLE = True
 except ImportError:
     BIOPYTHON_AVAILABLE = False
-    print("Warning: Bio.Entrez not available. Install biopython for better PubMed integration.")
+    logger.warning("Bio.Entrez not available. Install biopython for better PubMed integration.")
 
 
 # Preferred radiology journals for FRCR exam preparation
@@ -73,7 +76,7 @@ def get_cached_result(cache_key: str) -> Optional[List[Dict]]:
         if datetime.now() - cache_time < timedelta(hours=CACHE_DURATION_HOURS):
             return cached_data.get('results')
     except Exception as e:
-        print(f"Cache read error: {e}")
+        logger.error("Cache read error: %s", e)
     
     return None
 
@@ -90,7 +93,7 @@ def cache_result(cache_key: str, results: List[Dict]):
                 'results': results
             }, f)
     except Exception as e:
-        print(f"Cache write error: {e}")
+        logger.error("Cache write error: %s", e)
 
 
 def clear_pubmed_cache() -> int:
@@ -103,7 +106,7 @@ def clear_pubmed_cache() -> int:
                     os.remove(os.path.join(CACHE_DIR, f))
                     count += 1
     except Exception as e:
-        print(f"Cache clear error: {e}")
+        logger.error("Cache clear error: %s", e)
     return count
 
 
@@ -173,7 +176,7 @@ def search_pubmed(topic: str, max_results: int = 20, filters: Optional[Dict] = N
     
     # Build query
     query = build_pubmed_query(topic, filters)
-    print(f"[DEBUG] PubMed query: {query}")
+    logger.debug("PubMed query: %s", query)
     
     results = []
     
@@ -195,11 +198,11 @@ def search_pubmed(topic: str, max_results: int = 20, filters: Optional[Dict] = N
             handle.close()
             
             pmids = search_results['IdList']
-            print(f"[DEBUG] PubMed found {len(pmids)} results")
+            logger.debug("PubMed found %d results", len(pmids))
             
             if not pmids:
                 # Try simpler query as fallback
-                print(f"[DEBUG] No results, trying simpler query: {topic} radiology")
+                logger.debug("No results, trying simpler query: %s radiology", topic)
                 simple_query = f"{topic} radiology"
                 handle = Entrez.esearch(
                     db="pubmed",
@@ -211,7 +214,7 @@ def search_pubmed(topic: str, max_results: int = 20, filters: Optional[Dict] = N
                 search_results = Entrez.read(handle)
                 handle.close()
                 pmids = search_results['IdList']
-                print(f"[DEBUG] Fallback query found {len(pmids)} results")
+                logger.debug("Fallback query found %d results", len(pmids))
                 
                 if not pmids:
                     return []
@@ -314,16 +317,14 @@ def search_pubmed(topic: str, max_results: int = 20, filters: Optional[Dict] = N
                         results.append(article_dict)
                     
                 except Exception as e:
-                    print(f"Error parsing article: {e}")
-                    import traceback
-                    traceback.print_exc()
+                    logger.error("Error parsing article: %s", e, exc_info=True)
                     continue
             
             # Rate limiting (NCBI requires delays)
             time.sleep(0.34)  # ~3 requests per second
             
         except Exception as e:
-            print(f"Bio.Entrez error: {e}")
+            logger.error("Bio.Entrez error: %s", e)
             # Fallback to requests-based method
             results = _search_pubmed_requests(query, max_results)
     else:
@@ -347,7 +348,7 @@ def _search_pubmed_requests(query: str, max_results: int) -> List[Dict]:
     other_articles = []
     
     try:
-        print(f"[DEBUG] Using requests fallback for query: {query}")
+        logger.debug("Using requests fallback for query: %s", query)
         # Search using E-utilities
         search_url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi"
         params = {
@@ -359,23 +360,23 @@ def _search_pubmed_requests(query: str, max_results: int) -> List[Dict]:
         }
         
         response = requests.get(search_url, params=params, timeout=10)
-        print(f"[DEBUG] PubMed search response status: {response.status_code}")
+        logger.debug("PubMed search response status: %s", response.status_code)
         
         if response.status_code == 200:
             data = response.json()
             pmids = data.get('esearchresult', {}).get('idlist', [])
-            print(f"[DEBUG] PubMed found {len(pmids)} PMIDs")
+            logger.debug("PubMed found %d PMIDs", len(pmids))
             
             if not pmids:
                 # Try even simpler query
                 simple_query = query.split(' AND ')[0] + ' radiology'
-                print(f"[DEBUG] Trying simpler query: {simple_query}")
+                logger.debug("Trying simpler query: %s", simple_query)
                 params['term'] = simple_query
                 response = requests.get(search_url, params=params, timeout=10)
                 if response.status_code == 200:
                     data = response.json()
                     pmids = data.get('esearchresult', {}).get('idlist', [])
-                    print(f"[DEBUG] Simpler query found {len(pmids)} PMIDs")
+                    logger.debug("Simpler query found %d PMIDs", len(pmids))
             
             if pmids:
                 # Fetch summaries
@@ -431,9 +432,7 @@ def _search_pubmed_requests(query: str, max_results: int) -> List[Dict]:
         time.sleep(0.34)
         
     except Exception as e:
-        print(f"Requests-based PubMed search error: {e}")
-        import traceback
-        traceback.print_exc()
+        logger.error("Requests-based PubMed search error: %s", e, exc_info=True)
     
     # Combine: free full-text first
     return free_text_articles + other_articles

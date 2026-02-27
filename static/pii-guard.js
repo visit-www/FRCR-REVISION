@@ -14,6 +14,11 @@
             description: 'NHS number detected'
         },
         {
+            type: 'US SSN',
+            regex: /\b\d{3}-\d{2}-\d{4}\b/g,
+            description: 'US Social Security Number detected'
+        },
+        {
             type: 'MRN / Hospital ID',
             regex: /\b(?:MRN|mrn|Mrn|hospital\s*(?:id|no|number|#)|hosp\s*id)[:\s#]*\d{4,10}\b/gi,
             description: 'Medical Record Number detected'
@@ -165,6 +170,7 @@
 
         const typeColors = {
             'NHS Number': '#dc3545',
+            'US SSN': '#dc3545',
             'MRN / Hospital ID': '#dc3545',
             'Date of Birth': '#e96304',
             'UK Postcode': '#6b46c1',

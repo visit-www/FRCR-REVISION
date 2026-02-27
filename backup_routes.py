@@ -31,6 +31,8 @@ from models import (
     ClinicalProtocol, OnCallQueryLog,
     RadiologyTemplate, ReportingAlgorithm,
     IncidentalFindingCalculator,
+    # AI audit trail
+    AIAuditLog,
 )
 from datetime import datetime, timedelta
 from sqlalchemy import inspect
@@ -169,14 +171,18 @@ def download_backup():
             'radiology_templates': [],
             'reporting_algorithms': [],
             'incidental_finding_calculators': [],
+            # AI audit trail
+            'ai_audit_logs': [],
         }
         
-        # Export users (with passwords for sync purposes)
+        # Export users (with password hashes for sync purposes)
+        # SECURITY: Intentionally excludes recovery_token, notion_access_token,
+        # anki_api_key, sciencedirect_session_cookies to prevent credential leakage
         for user in User.query.all():
             user_data = {
                 'id': user.id,  # Include ID for proper mapping
                 'email': user.email,
-                'password_hash': user.password_hash,
+                'password_hash': user.password_hash,  # Salted hash, needed for DB sync
                 'full_name': user.full_name,
                 'profile_picture': user.profile_picture,  # Cloudinary URL or base64
                 'profile_picture_public_id': user.profile_picture_public_id,  # For Cloudinary cleanup
@@ -803,6 +809,10 @@ def download_backup():
                 'updated_at': ifc.updated_at.isoformat() if ifc.updated_at else None,
             })
 
+        # Export AI audit logs
+        for log in AIAuditLog.query.order_by(AIAuditLog.created_at.desc()).all():
+            backup_data['ai_audit_logs'].append(log.to_dict())
+
         # Create JSON file in memory
         json_data = json.dumps(backup_data, indent=2)
         json_bytes = io.BytesIO(json_data.encode('utf-8'))
@@ -993,8 +1003,13 @@ def restore_backup():
                     print(f"[IMPORT] Warning: Skipping invalid user data (not a dict): {type(user_data).__name__}")
                     continue
                 
-                # Filter out unknown fields
-                filtered_data = {k: v for k, v in user_data.items() if k in valid_user_fields or k in ['email', 'password_hash', 'full_name', 'role', 'is_active', 'subscription_status', 'payment_status']}
+                # Filter out unknown fields + sensitive credentials that should never be imported from backup
+                _EXCLUDED_IMPORT_FIELDS = {'recovery_token', 'recovery_token_expires', 'notion_access_token',
+                                           'anki_api_key', 'sciencedirect_session_cookies', 'locked_until',
+                                           'failed_login_count', 'failed_login_last'}
+                filtered_data = {k: v for k, v in user_data.items()
+                                 if k not in _EXCLUDED_IMPORT_FIELDS and
+                                 (k in valid_user_fields or k in ['email', 'password_hash', 'full_name', 'role', 'is_active', 'subscription_status', 'payment_status'])}
                 
                 existing_user = User.query.filter_by(email=user_data.get('email')).first()
                 
