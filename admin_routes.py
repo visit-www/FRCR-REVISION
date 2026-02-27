@@ -952,6 +952,7 @@ ADMIN_ACCESSIBLE_DOCS = [
     'USER_ROLES_WORKFLOWS.md',
     'CUSTOM_CSS_CLASSES_REFERENCE.md',
     'AI_TOOLS_AND_COSTS.md',
+    'content-creation-plan.md',
     'ai_smart_reporter_improved.py',
     'smart_reporter_plan_revised.pdf',
 ]
