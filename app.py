@@ -773,7 +773,7 @@ _SANITIZE_ALLOWED_TAGS = list(_bleach.ALLOWED_TAGS) + [
     'img', 'figure', 'figcaption',
     'input', 'select', 'option', 'optgroup', 'label', 'button', 'form', 'textarea', 'fieldset', 'legend',
     'details', 'summary', 'section', 'article', 'nav', 'header', 'footer', 'aside', 'main',
-    'style', 'hr', 'pre', 'code', 'sup', 'sub', 'mark', 'small', 'del', 'ins',
+    'style', 'script', 'hr', 'pre', 'code', 'sup', 'sub', 'mark', 'small', 'del', 'ins',
     'abbr', 'cite', 'dfn', 'kbd', 'samp', 'var', 'time', 'data',
     'svg', 'path', 'circle', 'rect', 'line', 'polyline', 'polygon', 'g', 'text', 'use', 'defs',
 ]
