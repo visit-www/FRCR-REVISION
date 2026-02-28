@@ -213,18 +213,32 @@ def batch_generate(skip_existing=True, only_indices=None, phase=None):
         print(f"\n[{i}/{len(todo)}] Generating: {title}")
         print(f"{'-'*50}")
         t0 = time.time()
-        try:
-            generate_and_sync(title, category, source)
-            elapsed = time.time() - t0
-            results['success'].append((title, elapsed))
-            print(f"  Completed in {elapsed:.0f}s")
-        except Exception as e:
-            elapsed = time.time() - t0
-            results['failed'].append((title, str(e)))
-            print(f"  FAILED after {elapsed:.0f}s: {e}")
+        success = False
+        for attempt in range(3):
+            try:
+                if attempt > 0:
+                    wait = 60 * attempt
+                    print(f"  Retry {attempt}/2 — waiting {wait}s for rate limit...")
+                    time.sleep(wait)
+                generate_and_sync(title, category, source)
+                elapsed = time.time() - t0
+                results['success'].append((title, elapsed))
+                print(f"  Completed in {elapsed:.0f}s")
+                success = True
+                break
+            except Exception as e:
+                if '429' in str(e) or 'rate_limit' in str(e):
+                    print(f"  Rate limited (attempt {attempt+1}/3)")
+                    continue
+                elapsed = time.time() - t0
+                results['failed'].append((title, str(e)))
+                print(f"  FAILED after {elapsed:.0f}s: {e}")
+                break
+        if not success and title not in [t for t, _ in results['failed']]:
+            results['failed'].append((title, 'Rate limit exceeded after 3 retries'))
 
         if i < len(todo):
-            time.sleep(2)
+            time.sleep(5)
 
     total_time = time.time() - start_time
     print(f"\n{'='*60}")
