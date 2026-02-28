@@ -101,6 +101,9 @@ BATCH_LIST = [
     ('bi-rads-density', 'BI-RADS Breast Density (a-d)', 'scoring', 'Breast', 'ACR BI-RADS 5th Edition'),
     ('parks-fistula', 'Parks Classification (Perianal Fistula)', 'routine', 'Pelvis', 'Parks Classification 1976'),
     ('figo-staging', 'FIGO Staging (Cervical/Endometrial/Ovarian)', 'oncology', 'Pelvis', 'FIGO 2018'),
+    # === PHASE 3: Hepatic Scoring (moved from tools) (2) ===
+    ('child-pugh', 'Child-Pugh Score (Liver Cirrhosis)', 'scoring', 'Abdomen', 'Child-Pugh Classification'),
+    ('meld-score', 'MELD Score (Liver Disease Severity)', 'scoring', 'Abdomen', 'MELD Score'),
 ]
 
 
@@ -217,7 +220,7 @@ def batch_generate(skip_existing=True, only_slugs=None, phase=None):
         existing_slugs = {r[0] for r in rows}
         session.close()
 
-    phase_ranges = {1: (0, 15), 2: (15, 40), 3: (40, 60)}
+    phase_ranges = {1: (0, 15), 2: (15, 40), 3: (40, 62)}
 
     todo = []
     for i, (slug, title, category, body_section, source) in enumerate(BATCH_LIST):

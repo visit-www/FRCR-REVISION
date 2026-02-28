@@ -26,7 +26,7 @@ NEON_URL = os.getenv('DATABASE_URL') or os.getenv('NEON_URL') or \
 
 # (slug, finding_name, body_section, category, guideline_source)
 BATCH_LIST = [
-    # === PHASE 1: ACR White Papers + Scoring (10) ===
+    # === PHASE 1: ACR White Papers + Calculators (10) ===
     ('thyroid-nodule-incidental', 'Thyroid Nodule (Incidental on CT)', 'Head and Neck', 'thyroid', 'ACR White Paper 2015'),
     ('renal-mass-incidental', 'Renal Mass (Incidental)', 'Abdomen', 'renal', 'ACR White Paper 2017'),
     ('liver-lesion-incidental', 'Liver Lesion (Incidental)', 'Abdomen', 'hepatic', 'ACR White Paper 2017'),
@@ -37,25 +37,14 @@ BATCH_LIST = [
     ('wells-score-pe', 'Wells Score - Pulmonary Embolism', 'Thorax', 'scoring', 'Wells PE Score'),
     ('wells-score-dvt', 'Wells Score - DVT', 'Cardiovascular', 'scoring', 'Wells DVT Score'),
     ('nascet-calculator', 'NASCET Calculator (Carotid Stenosis %)', 'Cardiovascular', 'vascular', 'NASCET Method'),
-    # === PHASE 2: Expanded IF + Scoring (10) ===
+    # === PHASE 2: Expanded IF + References (6) ===
     ('splenic-lesion-incidental', 'Splenic Lesion (Incidental)', 'Abdomen', 'splenic', 'ACR White Paper'),
     ('gallbladder-polyp', 'Gallbladder Polyp Management', 'Abdomen', 'hepatobiliary', 'European Guidelines'),
     ('mediastinal-lymph-node', 'Mediastinal Lymph Node (Incidental)', 'Thorax', 'mediastinal', 'ACR White Paper 2020'),
-    ('ti-rads-calculator', 'ACR TI-RADS Point Calculator', 'Head and Neck', 'thyroid', 'ACR TI-RADS 2017'),
-    ('pirads-calculator', 'PI-RADS Zone-Based Calculator', 'Pelvis', 'prostate', 'PI-RADS v2.1'),
-    ('lirads-calculator', 'LI-RADS Feature Calculator', 'Abdomen', 'hepatic', 'ACR LI-RADS v2018'),
-    ('bosniak-calculator', 'Bosniak Feature Calculator (v2019)', 'Abdomen', 'renal', 'Bosniak v2019'),
-    ('ct-severity-index-calc', 'CT Severity Index Calculator (Pancreatitis)', 'Abdomen', 'pancreatic', 'Balthazar CTSI'),
-    ('recist-calculator', 'RECIST 1.1 Calculator', 'Multisystem', 'oncology', 'RECIST 1.1 2009'),
     ('aorta-diameter-reference', 'Aorta Diameter Reference Values', 'Cardiovascular', 'vascular', 'Age/Sex-Adjusted Normals'),
-    # === PHASE 3: Specialist (10) ===
-    ('o-rads-calculator', 'O-RADS Calculator (Ovarian US)', 'Pelvis', 'ovarian', 'ACR O-RADS US v2022'),
-    ('cad-rads-calculator', 'CAD-RADS Calculator', 'Cardiovascular', 'cardiac', 'CAD-RADS 2.0 2022'),
-    ('deauville-calculator', 'Deauville Score Calculator', 'Multisystem', 'oncology', 'Deauville 5-Point Scale'),
-    ('child-pugh-calculator', 'Child-Pugh Score Calculator', 'Abdomen', 'hepatic', 'Child-Pugh Classification'),
-    ('meld-calculator', 'MELD Score Calculator', 'Abdomen', 'hepatic', 'MELD Score'),
     ('ct-dose-calculator', 'CT Radiation Dose Calculator (DLP to mSv)', 'Multisystem', 'dose', 'ICRP/NRPB Conversion Factors'),
     ('lymph-node-size-reference', 'Lymph Node Size Reference (by Station)', 'Multisystem', 'reference', 'Short Axis Thresholds'),
+    # === PHASE 3: Reference Values + Volume Calculators (3) ===
     ('cbd-diameter-reference', 'CBD Diameter Reference', 'Abdomen', 'hepatobiliary', 'Age-Adjusted CBD Normals'),
     ('ovarian-volume-calculator', 'Ovarian Volume Calculator', 'Pelvis', 'ovarian', 'Ellipsoid Formula'),
     ('thyroid-volume-calculator', 'Thyroid Volume Calculator', 'Head and Neck', 'thyroid', 'Ellipsoid Per Lobe'),
@@ -170,7 +159,7 @@ def batch_generate(skip_existing=True, only_slugs=None, phase=None):
         existing_slugs = {r[0] for r in rows}
         session.close()
 
-    phase_ranges = {1: (0, 10), 2: (10, 20), 3: (20, 30)}
+    phase_ranges = {1: (0, 10), 2: (10, 16), 3: (16, 19)}
 
     todo = []
     for i, (slug, name, body, cat, guide) in enumerate(BATCH_LIST):
@@ -267,7 +256,7 @@ def list_status():
     existing = {r[0]: r[1] for r in rows}
     session.close()
 
-    phases = {0: 'Phase 1 (ACR White Papers + Scoring)', 10: 'Phase 2 (Expanded IF + Scoring)', 20: 'Phase 3 (Specialist)'}
+    phases = {0: 'Phase 1 (ACR White Papers + Calculators)', 10: 'Phase 2 (Expanded IF + References)', 16: 'Phase 3 (Reference Values + Volume Calculators)'}
     print(f"\n{'Slug':35s} | {'Finding':40s} | {'Category':15s} | {'Section':15s} | Status")
     print(f"{'-'*145}")
 

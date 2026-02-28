@@ -1,0 +1,177 @@
+content_type,slug_or_title,display_name,category,body_section,source_citation,guideline_url,edition_year,key_criteria_notes,status
+template,ct-head-acute,"CT Head (acute, non-contrast)",CT,Brain,,,,, pending
+template,ctpa-pulmonary-angiogram,CTPA (Pulmonary Angiogram),CTA,Thorax,,,,, pending
+template,ct-abdomen-pelvis-acute,CT Abdomen/Pelvis (acute abdomen),CT,Abdomen,,,,, pending
+template,ct-cervical-spine-trauma,CT Cervical Spine (trauma),CT,Spine,,,,, pending
+template,ct-whole-body-polytrauma,CT Whole Body (polytrauma),CT,Multisystem,,,,, pending
+template,ct-aorta-dissection,CT Aorta (dissection/aneurysm),CTA,Cardiovascular,,,,, pending
+template,ct-kub-renal-colic,CT KUB (renal colic),CT,Abdomen,,,,, pending
+template,ct-head-stroke-cta,CT Head Stroke (CTA Circle of Willis),CTA,Brain,,,,, pending
+template,chest-xray-normal-adult,Chest X-ray (normal adult),XR,Thorax,,,,, pending
+template,chest-xray-itu,Chest X-ray (ITU/ICU),XR,Thorax,,,,, pending
+template,mri-lumbar-spine,MRI Lumbar Spine,MRI,Spine,,,,, pending
+template,mri-brain-routine,MRI Brain (routine),MRI,Brain,,,,, pending
+template,mri-knee,MRI Knee,MRI,Musculoskeletal,,,,, pending
+template,ct-chest-routine,CT Chest (routine with contrast),CT,Thorax,,,,, pending
+template,us-abdomen-general,Ultrasound Abdomen (general),US,Abdomen,,,,, pending
+template,ct-abdomen-triple-phase-liver,CT Abdomen (triple phase liver),CT,Abdomen,,,,, pending
+template,mri-cervical-spine,MRI Cervical Spine,MRI,Spine,,,,, pending
+template,ct-cap-oncology-staging,CT Chest/Abdomen/Pelvis (oncology staging),CT,Multisystem,,,,, pending
+template,ct-cap-oncology-followup,CT Chest/Abdomen/Pelvis (oncology follow-up RECIST),CT,Multisystem,,,,, pending
+template,us-renal,Ultrasound Renal,US,Abdomen,,,,, pending
+template,ct-sinuses,CT Sinuses,CT,Head and Neck,,,,, pending
+template,ct-neck-staging,CT Neck with contrast (staging),CT,Head and Neck,,,,, pending
+template,us-thyroid,Ultrasound Thyroid,US,Head and Neck,,,,, pending
+template,us-neck-lumps,Ultrasound Neck lumps,US,Head and Neck,,,,, pending
+template,mri-brain-epilepsy,MRI Brain (epilepsy protocol),MRI,Brain,,,,, pending
+template,mri-brain-dementia,MRI Brain (dementia/memory clinic),MRI,Brain,,,,, pending
+template,mri-brain-pituitary,MRI Brain (pituitary protocol),MRI,Brain,,,,, pending
+template,ct-thoracolumbar-spine-trauma,CT Thoracic/Lumbar Spine (trauma),CT,Spine,,,,, pending
+template,mri-whole-spine-metastatic,MRI Whole Spine (metastatic survey),MRI,Spine,,,,, pending
+template,ct-chest-hrct,CT Chest (HRCT - ILD),CT,Thorax,,,,, pending
+template,ct-abdomen-pancreatic,CT Abdomen (pancreatic protocol),CT,Abdomen,,,,, pending
+template,ct-abdomen-sbo,CT Abdomen (small bowel obstruction),CT,Abdomen,,,,, pending
+template,mri-liver-primovist,MRI Liver (hepatocyte-specific / Primovist),MRI,Abdomen,,,,, pending
+template,mri-mrcp,MRI MRCP,MRI,Abdomen,,,,, pending
+template,mri-small-bowel-crohns,MRI Small Bowel (Crohn's / MR enterography),MRI,Abdomen,,,,, pending
+template,us-hepatobiliary,Ultrasound Hepatobiliary,US,Abdomen,,,,, pending
+template,ct-pelvis-trauma,CT Pelvis (trauma),CT,Pelvis,,,,, pending
+template,mri-pelvis-rectal-staging,MRI Pelvis (rectal cancer staging),MRI,Pelvis,,,,, pending
+template,mri-prostate-pirads,MRI Prostate (mpMRI - PI-RADS),MRI,Pelvis,,,,, pending
+template,us-pelvis-gynae,Ultrasound Pelvis (gynaecological),US,Pelvis,,,,, pending
+template,mri-shoulder,MRI Shoulder,MRI,Musculoskeletal,,,,, pending
+template,us-dvt-lower-limb,Ultrasound DVT (lower limb venous),US,Cardiovascular,,,,, pending
+template,us-carotid-doppler,Ultrasound Carotid Doppler,US,Cardiovascular,,,,, pending
+template,mammography-screening,Mammography (screening - BI-RADS),XR,Breast,,,,, pending
+template,mammography-diagnostic,Mammography (diagnostic/symptomatic),XR,Breast,,,,, pending
+template,ct-temporal-bones,CT Temporal Bones,CT,Head and Neck,,,,, pending
+template,mri-iams,MRI Internal Auditory Meati (IAMs),MRI,Head and Neck,,,,, pending
+template,mri-orbits,MRI Orbits,MRI,Head and Neck,,,,, pending
+template,ct-venogram-cerebral,CT Venogram (cerebral),CTV,Brain,,,,, pending
+template,mri-brain-tumour-rano,MRI Brain (tumour surveillance - RANO),MRI,Brain,,,,, pending
+template,mri-spine-infection,MRI Spine (infection/discitis),MRI,Spine,,,,, pending
+template,ldct-lung-screening,LDCT Lung Screening (Lung-RADS),CT,Thorax,,,,, pending
+template,ct-mesenteric-angiogram,CT Mesenteric Angiogram,CTA,Abdomen,,,,, pending
+template,mri-pancreas-cystic,MRI Pancreas (cystic lesions/IPMN),MRI,Abdomen,,,,, pending
+template,ct-colonography,CT Colonography,CT,Abdomen,,,,, pending
+template,mri-pelvis-cervical-staging,MRI Pelvis (cervical cancer staging),MRI,Pelvis,,,,, pending
+template,mri-pelvis-anal-cancer,MRI Pelvis (anal cancer),MRI,Pelvis,,,,, pending
+template,mri-fistula-perianal,MRI Fistula (perianal - Parks),MRI,Pelvis,,,,, pending
+template,mri-hip,MRI Hip,MRI,Musculoskeletal,,,,, pending
+template,mri-soft-tissue-mass,MRI Soft Tissue Mass,MRI,Musculoskeletal,,,,, pending
+template,dexa-scan,DEXA Scan,DXA,Musculoskeletal,,,,, pending
+template,ct-coronary-angiogram,CT Coronary Angiogram (CAD-RADS),CTA,Cardiovascular,,,,, pending
+template,cardiac-mri-routine,Cardiac MRI (routine),MRI,Cardiovascular,,,,, pending
+template,mri-breast,MRI Breast,MRI,Breast,,,,, pending
+template,pet-ct-report,PET-CT Report (Deauville),PET/CT,Multisystem,,,,, pending
+algorithm,bi-rads,BI-RADS Assessment Categories,scoring,Breast,ACR BI-RADS 5th Edition,,,, pending
+algorithm,li-rads,LI-RADS (Liver Imaging),scoring,Abdomen,ACR LI-RADS v2018,,,, pending
+algorithm,pi-rads,PI-RADS v2.1 (Prostate MRI),scoring,Pelvis,PI-RADS v2.1 2019,,,, pending
+algorithm,ti-rads,ACR TI-RADS (Thyroid Ultrasound),scoring,Head and Neck,ACR TI-RADS 2017,,,, pending
+algorithm,lung-rads,Lung-RADS v2022 (Lung Screening CT),scoring,Thorax,ACR Lung-RADS v2022,,,, pending
+algorithm,fleischner-criteria,Fleischner Society Criteria (Pulmonary Nodules 2017),emergency,Thorax,Fleischner Society 2017,,,, pending
+algorithm,aspects-score,ASPECTS (Alberta Stroke Programme Early CT Score),emergency,Brain,ASPECTS 2000,,,, pending
+algorithm,aast-spleen,AAST Organ Injury Scale - Spleen (2018),trauma,Abdomen,AAST 2018 Revision,,,, pending
+algorithm,aast-liver,AAST Organ Injury Scale - Liver (2018),trauma,Abdomen,AAST 2018 Revision,,,, pending
+algorithm,aast-kidney,AAST Organ Injury Scale - Kidney (2018),trauma,Abdomen,AAST 2018 Revision,,,, pending
+algorithm,bosniak-classification,Bosniak Classification v2019 (Renal Cysts),routine,Abdomen,Bosniak Classification v2019,,,, pending
+algorithm,ct-severity-index-pancreatitis,CT Severity Index / Balthazar (Pancreatitis),scoring,Abdomen,Balthazar CT Severity Index,,,, pending
+algorithm,fazekas-scale,Fazekas Scale (White Matter Disease),scoring,Brain,Fazekas Scale 1987,,,, pending
+algorithm,scheltens-mta-score,Scheltens MTA Score (Medial Temporal Atrophy),scoring,Brain,Scheltens MTA Scale,,,, pending
+algorithm,recist-1-1,RECIST 1.1 (Tumour Response Assessment),oncology,Multisystem,RECIST 1.1 2009,,,, pending
+algorithm,o-rads,O-RADS (Ovarian/Adnexal),scoring,Pelvis,ACR O-RADS US v2022 / MRI 2020,,,, pending
+algorithm,cad-rads,CAD-RADS 2.0 (Coronary CTA),scoring,Cardiovascular,CAD-RADS 2.0 2022,,,, pending
+algorithm,c-rads,C-RADS (CT Colonography),scoring,Abdomen,ACR C-RADS 2005,,,, pending
+algorithm,fisher-scale,Fisher Scale / Modified Fisher (SAH),emergency,Brain,Fisher Scale 1980,,,, pending
+algorithm,marshall-ct-classification,Marshall CT Classification (TBI),emergency,Brain,Marshall CT Classification 1991,,,, pending
+algorithm,gca-scale,GCA Scale (Global Cortical Atrophy / Pasquier),scoring,Brain,Pasquier GCA Scale,,,, pending
+algorithm,koedam-pa-score,Koedam Posterior Atrophy Score,scoring,Brain,Koedam PA Score 2011,,,, pending
+algorithm,evans-index,Evans Index (Hydrocephalus),routine,Brain,Evans Index,,,, pending
+algorithm,spetzler-martin,Spetzler-Martin AVM Grading,grading,Brain,Spetzler-Martin 1986,,,, pending
+algorithm,modified-atlanta-pancreatitis,Modified Atlanta Classification (Pancreatitis),emergency,Abdomen,Revised Atlanta Classification 2012,,,, pending
+algorithm,couinaud-liver-segments,Couinaud Liver Segment Anatomy,routine,Abdomen,Couinaud Classification,,,, pending
+algorithm,sfu-hydronephrosis,SFU Hydronephrosis Grading,routine,Abdomen,Society of Fetal Urology,,,, pending
+algorithm,aast-pancreas,AAST Organ Injury Scale - Pancreas,trauma,Abdomen,AAST OIS,,,, pending
+algorithm,aast-bowel-mesentery,AAST Organ Injury Scale - Bowel/Mesentery,trauma,Abdomen,AAST OIS,,,, pending
+algorithm,aast-bladder,AAST Organ Injury Scale - Bladder,trauma,Pelvis,AAST OIS,,,, pending
+algorithm,young-burgess-pelvic,Young-Burgess Classification (Pelvic Fractures),trauma,Pelvis,Young-Burgess 1986,,,, pending
+algorithm,tlics,TLICS (Thoracolumbar Injury Classification),trauma,Spine,TLICS Score,,,, pending
+algorithm,salter-harris,Salter-Harris Classification (Physeal Fractures),grading,Musculoskeletal,Salter-Harris 1963,,,, pending
+algorithm,garden-classification,Garden Classification (Femoral Neck Fractures),grading,Musculoskeletal,Garden 1961,,,, pending
+algorithm,weber-ankle,Weber Classification (Ankle Fractures),grading,Musculoskeletal,Weber/Danis-Weber,,,, pending
+algorithm,neer-proximal-humerus,Neer Classification (Proximal Humerus),grading,Musculoskeletal,Neer 1970,,,, pending
+algorithm,schatzker-tibial-plateau,Schatzker Classification (Tibial Plateau),grading,Musculoskeletal,Schatzker 1979,,,, pending
+algorithm,mason-radial-head,Mason Classification (Radial Head),grading,Musculoskeletal,Mason 1954,,,, pending
+algorithm,kellgren-lawrence,Kellgren-Lawrence (Osteoarthritis Grading),grading,Musculoskeletal,Kellgren-Lawrence 1957,,,, pending
+algorithm,modic-changes,Modic Changes (Endplate Degeneration),grading,Spine,Modic 1988,,,, pending
+algorithm,deauville-criteria,Deauville Criteria (Lymphoma PET-CT),oncology,Multisystem,Deauville 5-Point Scale,,,, pending
+algorithm,irecist,iRECIST (Immunotherapy Response),oncology,Multisystem,iRECIST 2017,,,, pending
+algorithm,mrecist,mRECIST (HCC Response),oncology,Abdomen,mRECIST 2010,,,, pending
+algorithm,rano-criteria,RANO Criteria (Brain Tumour Response),oncology,Brain,RANO 2010,,,, pending
+algorithm,lugano-classification,Lugano Classification (Lymphoma Staging),oncology,Multisystem,Lugano 2014,,,, pending
+algorithm,hunt-hess,Hunt and Hess Scale (SAH),grading,Brain,Hunt and Hess 1968,,,, pending
+algorithm,wfns-sah,WFNS Scale (SAH),grading,Brain,WFNS 1988,,,, pending
+algorithm,rotterdam-ct-score,Rotterdam CT Score (TBI),emergency,Brain,Rotterdam 2005,,,, pending
+algorithm,stanford-dissection,Stanford Classification (Aortic Dissection),emergency,Cardiovascular,Stanford Classification,,,, pending
+algorithm,debakey-dissection,DeBakey Classification (Aortic Dissection),emergency,Cardiovascular,DeBakey Classification,,,, pending
+algorithm,lake-louise-myocarditis,Lake Louise Criteria (Myocarditis CMR),routine,Cardiovascular,Lake Louise Criteria 2018,,,, pending
+algorithm,rockwood-acj,Rockwood Classification (ACJ Injuries),grading,Musculoskeletal,Rockwood 1984,,,, pending
+algorithm,sanders-calcaneal,Sanders Classification (Calcaneal CT),grading,Musculoskeletal,Sanders 1993,,,, pending
+algorithm,pfirrmann-disc,Pfirrmann Grading (Disc Degeneration MRI),grading,Spine,Pfirrmann 2001,,,, pending
+algorithm,hawkins-talar-neck,Hawkins Classification (Talar Neck Fractures),grading,Musculoskeletal,Hawkins 1970,,,, pending
+algorithm,gustilo-anderson,Gustilo-Anderson (Open Fractures),grading,Musculoskeletal,Gustilo-Anderson 1976,,,, pending
+algorithm,cobb-angle,Cobb Angle Measurement (Scoliosis),scoring,Spine,Cobb Method,,,, pending
+algorithm,bi-rads-density,BI-RADS Breast Density (a-d),scoring,Breast,ACR BI-RADS 5th Edition,,,, pending
+algorithm,parks-fistula,Parks Classification (Perianal Fistula),routine,Pelvis,Parks Classification 1976,,,, pending
+algorithm,figo-staging,FIGO Staging (Cervical/Endometrial/Ovarian),oncology,Pelvis,FIGO 2018,,,, pending
+algorithm,child-pugh,Child-Pugh Score (Liver Cirrhosis),scoring,Abdomen,Child-Pugh Classification,,,, pending
+algorithm,meld-score,MELD Score (Liver Disease Severity),scoring,Abdomen,MELD Score,,,, pending
+tool,thyroid-nodule-incidental,Thyroid Nodule (Incidental on CT),thyroid,Head and Neck,ACR White Paper 2015,,,, exists
+tool,renal-mass-incidental,Renal Mass (Incidental),renal,Abdomen,ACR White Paper 2017,,,, exists
+tool,liver-lesion-incidental,Liver Lesion (Incidental),hepatic,Abdomen,ACR White Paper 2017,,,, exists
+tool,pancreatic-cyst-incidental,Pancreatic Cyst (Incidental),pancreatic,Abdomen,ACR White Paper 2017,,,, exists
+tool,ovarian-adnexal-incidental,Ovarian/Adnexal Mass (Incidental),ovarian,Pelvis,ACR White Paper 2019,,,, exists
+tool,pulmonary-nodule-fleischner,Pulmonary Nodule (Fleischner Calculator),pulmonary,Thorax,Fleischner Society 2017,,,, exists
+tool,pulmonary-nodule-bts,Pulmonary Nodule (BTS UK Guidelines),pulmonary,Thorax,British Thoracic Society 2015,,,, exists
+tool,wells-score-pe,Wells Score - Pulmonary Embolism,scoring,Thorax,Wells PE Score,,,, pending
+tool,wells-score-dvt,Wells Score - DVT,scoring,Cardiovascular,Wells DVT Score,,,, pending
+tool,nascet-calculator,NASCET Calculator (Carotid Stenosis %),vascular,Cardiovascular,NASCET Method,,,, pending
+tool,splenic-lesion-incidental,Splenic Lesion (Incidental),splenic,Abdomen,ACR White Paper,,,, pending
+tool,gallbladder-polyp,Gallbladder Polyp Management,hepatobiliary,Abdomen,European Guidelines,,,, pending
+tool,mediastinal-lymph-node,Mediastinal Lymph Node (Incidental),mediastinal,Thorax,ACR White Paper 2020,,,, pending
+tool,aorta-diameter-reference,Aorta Diameter Reference Values,vascular,Cardiovascular,Age/Sex-Adjusted Normals,,,, pending
+tool,ct-dose-calculator,CT Radiation Dose Calculator (DLP to mSv),dose,Multisystem,ICRP/NRPB Conversion Factors,,,, pending
+tool,lymph-node-size-reference,Lymph Node Size Reference (by Station),reference,Multisystem,Short Axis Thresholds,,,, pending
+tool,cbd-diameter-reference,CBD Diameter Reference,hepatobiliary,Abdomen,Age-Adjusted CBD Normals,,,, pending
+tool,ovarian-volume-calculator,Ovarian Volume Calculator,ovarian,Pelvis,Ellipsoid Formula,,,, pending
+tool,thyroid-volume-calculator,Thyroid Volume Calculator,thyroid,Head and Neck,Ellipsoid Per Lobe,,,, pending
+protocol,Acute Contrast Reaction Management (Anaphylaxis),Acute Contrast Reaction Management (Anaphylaxis),emergency,,ACR Manual on Contrast Media 2024,,,, exists
+protocol,Contrast in Renal Impairment (eGFR Guidelines),Contrast in Renal Impairment (eGFR Guidelines),safety,,ACR/RCR/ESUR Guidelines,,,, exists
+protocol,Metformin and Iodinated Contrast,Metformin and Iodinated Contrast,safety,,ESUR/RCR Guidelines,,,, exists
+protocol,MRI Gadolinium in Renal Impairment (NSF Risk),MRI Gadolinium in Renal Impairment (NSF Risk),safety,,ACR Group Classification,,,, exists
+protocol,Contrast Premedication Regimen (High-Risk Patients),Contrast Premedication Regimen (High-Risk Patients),safety,,ACR Manual on Contrast Media 2024,,,, exists
+protocol,Acute Stroke Imaging Pathway (< 4.5h and Extended Window),Acute Stroke Imaging Pathway (< 4.5h and Extended Window),emergency,,RCR/AHA Guidelines,,,, exists
+protocol,Whole-Body CT Polytrauma Protocol,Whole-Body CT Polytrauma Protocol,emergency,,ESER Dual-Track Approach,,,, exists
+protocol,Spinal Clearance Protocol (NEXUS/Canadian Rules),Spinal Clearance Protocol (NEXUS/Canadian Rules),emergency,,NEXUS/Canadian C-Spine Rules,,,, exists
+protocol,MRI Safety Screening Questionnaire (Zones I-IV),MRI Safety Screening Questionnaire (Zones I-IV),safety,,ACR MR Safety Manual 2024,,,, exists
+protocol,NAI Skeletal Survey Protocol,NAI Skeletal Survey Protocol,emergency,,RCR 2018 Guidelines,,,, exists
+protocol,Contrast Extravasation Management,Contrast Extravasation Management,emergency,,ACR Manual on Contrast Media,,,, exists
+protocol,Breastfeeding and Contrast,Breastfeeding and Contrast,safety,,ACR/ESUR Guidelines,,,, exists
+protocol,Thyroid and Iodinated Contrast,Thyroid and Iodinated Contrast,safety,,Thyroid Storm Risk in Hyperthyroidism,,,, exists
+protocol,Mechanical Thrombectomy Imaging Criteria,Mechanical Thrombectomy Imaging Criteria,emergency,,AHA/ASA Guidelines,,,, exists
+protocol,TIA Imaging Pathway,TIA Imaging Pathway,emergency,,NICE/RCR Guidelines,,,, exists
+protocol,NAI Head Imaging Algorithm,NAI Head Imaging Algorithm,emergency,,RCR 2018 Guidelines,,,, exists
+protocol,Paediatric CT Dose Optimisation,Paediatric CT Dose Optimisation,safety,,Image Gently / ALARA,,,, exists
+protocol,Paediatric Sedation Protocol (MRI/CT),Paediatric Sedation Protocol (MRI/CT),safety,,RCR/RCPCH Guidelines,,,, exists
+protocol,"UTI Imaging Pathway (Paediatric, NICE)","UTI Imaging Pathway (Paediatric, NICE)",routine,,NICE CG54 Update,,,, exists
+protocol,Biopsy Pre-Procedure Checklist (RADPASS),Biopsy Pre-Procedure Checklist (RADPASS),routine,,SIR/BSIR Guidelines,,,, exists
+protocol,Anticoagulation Management (Pre-IR Procedure),Anticoagulation Management (Pre-IR Procedure),routine,,SIR/BSIR Risk Stratification,,,, exists
+protocol,Drain Insertion Protocol,Drain Insertion Protocol,routine,,Seldinger Technique / BSIR,,,, exists
+protocol,Post-Procedure Observation,Post-Procedure Observation,routine,,SIR Standards,,,, exists
+protocol,Nephrostomy Protocol,Nephrostomy Protocol,routine,,BSIR Guidelines,,,, exists
+protocol,MRI Conditional Implant Checklist,MRI Conditional Implant Checklist,safety,,ACR MR Safety Manual,,,, pending
+protocol,MRI in Pregnancy,MRI in Pregnancy,safety,,ACR/RCR Guidelines,,,, pending
+protocol,Claustrophobia Management,Claustrophobia Management,routine,,RCR Best Practice,,,, exists
+protocol,Intussusception Air Reduction Protocol,Intussusception Air Reduction Protocol,emergency,,Paediatric Radiology Guidelines,,,, exists
+protocol,Cerebral Venous Thrombosis Imaging Pathway,Cerebral Venous Thrombosis Imaging Pathway,emergency,,AHA/ASA CVT Guidelines,,,, pending
+protocol,Contrast Allergy Referral Pathway,Contrast Allergy Referral Pathway,safety,,Immunology Testing Pathway,,,, pending

@@ -1509,6 +1509,41 @@ def view_revision_case(session_id, case_index):
                          next_url=next_url)
 
 
+# ==================== RADIOLOGY PROTOCOLS (USER-FACING) ====================
+
+
+@app.route('/radiology-protocols')
+@login_required
+def radiology_protocols_index():
+    """User-facing browse page for clinical protocols."""
+    protocols = ClinicalProtocol.query.filter_by(is_published=True).order_by(ClinicalProtocol.title).all()
+    grouped = {}
+    for p in protocols:
+        cat = p.category or 'Other'
+        grouped.setdefault(cat, []).append(p)
+    return render_template('radiology_protocols_user.html', grouped=grouped, protocols=protocols)
+
+
+@app.route('/radiology-protocols/api/search')
+@login_required
+def radiology_protocols_search():
+    """Search published clinical protocols."""
+    q = request.args.get('q', '').strip()
+    if len(q) < 2:
+        return jsonify([])
+    protocols = ClinicalProtocol.query.filter(
+        ClinicalProtocol.is_published == True,
+        db.or_(
+            ClinicalProtocol.title.ilike(f'%{q}%'),
+            ClinicalProtocol.keywords.ilike(f'%{q}%'),
+        )
+    ).order_by(ClinicalProtocol.title).limit(20).all()
+    return jsonify([{
+        'id': p.id, 'title': p.title, 'category': p.category,
+        'url': f'/on-call-helper/protocol/{p.id}'
+    } for p in protocols])
+
+
 # ==================== SPACED REPETITION STUDY SYSTEM ====================
 
 
