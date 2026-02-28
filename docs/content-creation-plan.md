@@ -17,18 +17,18 @@ All scripts support `list` (check status), `batch` (generate all), and `generate
 
 ---
 
-## Current State (Feb 2026)
+## Current State (Neon DB — Feb 2026)
 
-| Content Type | Count | Status |
+| Content Type | Count | Details |
 |---|---|---|
-| Cases | 30 published | Cardiothoracic 3, MSK 5, GI 6, GU 3, Paeds 0, CNS/HN 13 |
+| Cases | 36 published | CNS/HN **17**, GI 7, MSK 5, GU/Breast 4, Cardiothoracic 3, Paeds **0** |
 | TNM Calculators | 39 | Complete AJCC 8th Edition coverage |
-| Reporting Algorithms | 3 (Brachial Plexus, PE, anatomy cache) | Major gap |
-| Radiology Templates | 1 (PE) | Major gap |
+| Reporting Algorithms | 4 admin + 4 anatomy cache | Brachial Plexus, PE, 4D CT Parathyroid, Ca Cervix MRI |
+| Radiology Templates | 1 admin + 5 personal | Admin: 4D CT Parathyroid. Personal templates are user-specific |
 | Radiology Tools | 1 (Adrenal incidentaloma) | Major gap |
 | Clinical Protocols | 0 | Empty |
 
-**Key gaps:** Templates, algorithms, tools, and protocols are virtually empty. Cases need paediatric and cardiothoracic expansion. TNM calculators are complete.
+**Key gaps:** Templates (1 admin), tools (1), and protocols (0) are virtually empty. Algorithms improving (4 admin) but need ~56 more for RADS family, trauma scales, grading systems. Cases strong in CNS/HN (17, well-covered) but **Paediatrics empty (0)**, Cardiothoracic weak (3), GU/Breast (4) needs expansion. TNM calculators complete.
 
 ---
 
@@ -280,11 +280,11 @@ The most commonly referenced classification and grading systems.
 | 19 | UTI imaging pathway (paediatric, NICE) | Routine |
 | 20 | Biopsy pre-procedure checklist (RADPASS) | Routine |
 
-### 2E. Cases (+30 cases, total ~60) — Weeks 5-10
+### 2E. Cases (+30 cases, total ~66) — Weeks 5-10
 
 **Priority: Fill empty modules and FRCR high-yield gaps.**
 
-**Paediatric (0 cases currently — need 8):**
+**Paediatric (0 cases currently — critical gap, need 8):**
 
 | # | Case | Priority |
 |---|---|---|
@@ -309,7 +309,7 @@ The most commonly referenced classification and grading systems.
 | 14 | Thoracic aortic aneurysm | Tier 2 |
 | 15 | Pulmonary sequestration | Tier 2 |
 
-**GU (3 cases currently — need 5 more):**
+**GU/Breast (4 cases currently — need 5 more):**
 
 | # | Case | Priority |
 |---|---|---|
@@ -329,7 +329,7 @@ The most commonly referenced classification and grading systems.
 | 24 | Septic arthritis / osteomyelitis | Tier 1 |
 | 25 | Perthes disease / SUFE (paediatric hip) | Tier 1 |
 
-**GI (6 cases currently — need 5 more):**
+**GI (7 cases currently — need 5 more):**
 
 | # | Case | Priority |
 |---|---|---|
@@ -450,7 +450,7 @@ The most commonly referenced classification and grading systems.
 | 29 | Cerebral venous thrombosis imaging pathway | Emergency |
 | 30 | Contrast allergy referral pathway | Safety |
 
-### 3E. Cases (+20 cases, total ~80)
+### 3E. Cases (+20 cases, total ~86)
 
 **Tier 2 and rare-but-classic FRCR cases:**
 
@@ -531,15 +531,17 @@ Monitor the `ContentRequest` table for patterns. Prioritise requests that:
 
 ### Total Content Targets by Phase
 
-| Content Type | Current | Phase 1 | Phase 2 | Phase 3 | Total Target |
+| Content Type | Current (Neon) | Phase 1 | Phase 2 | Phase 3 | Total Target |
 |---|---|---|---|---|---|
-| Reporting Templates | 1 | +20 (21) | +25 (45) | +20 (65) | ~65 |
-| Reporting Algorithms | 3 | +15 (18) | +25 (40) | +20 (60) | ~60 |
-| Radiology Tools | 1 | +10 (11) | +10 (20) | +10 (30) | ~30 |
+| Reporting Templates | 1 admin (+5 personal) | +20 (21) | +25 (46) | +20 (66) | ~66 |
+| Reporting Algorithms | 4 admin (+4 anatomy) | +15 (19) | +25 (44) | +20 (64) | ~64 |
+| Radiology Tools | 1 | +10 (11) | +10 (21) | +10 (31) | ~31 |
 | Clinical Protocols | 0 | +10 (10) | +10 (20) | +10 (30) | ~30 |
-| Cases | 30 | — | +30 (60) | +20 (80) | ~80 |
+| Cases | 36 | — | +30 (66) | +20 (86) | ~86 |
 | TNM Calculators | 39 | — | — | — | 39 (complete) |
-| **TOTAL** | **74** | **+55** | **+100** | **+80** | **~305** |
+| **TOTAL** | **81 admin** | **+55** | **+100** | **+80** | **~316** |
+
+> **Note:** Existing admin algorithms (Brachial Plexus, PE, 4D CT Parathyroid, Ca Cervix) and the admin template (4D CT Parathyroid) are NOT duplicated in the batch lists — they are additional to the 65 + 60 planned items. Personal templates (5) are user-specific and not visible to all users.
 
 ### Content by Body Section (Target Distribution)
 
