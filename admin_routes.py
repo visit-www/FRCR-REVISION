@@ -2317,6 +2317,26 @@ def publish_user_draft(draft_id):
     return jsonify({'success': True, 'message': f'Algorithm "{draft.title}" published'}), 200
 
 
+@admin_bp.route('/moderation/user-drafts/<int:draft_id>/preview', methods=['GET'])
+@require_admin
+def preview_user_draft(draft_id):
+    """Get full HTML preview of a user-generated algorithm draft."""
+    from models import ReportingAlgorithm
+    draft = ReportingAlgorithm.query.get_or_404(draft_id)
+    creator = User.query.get(draft.created_by_user_id) if draft.created_by_user_id else None
+    return jsonify({
+        'id': draft.id,
+        'title': draft.title,
+        'category': draft.category,
+        'body_section': draft.body_section,
+        'description': draft.description,
+        'algorithm_html': draft.algorithm_html or '',
+        'template_html': draft.template_html or '',
+        'username': creator.full_name if creator else 'Unknown',
+        'created_at': draft.created_at.isoformat() if draft.created_at else None,
+    }), 200
+
+
 @admin_bp.route('/moderation/user-drafts/<int:draft_id>', methods=['DELETE'])
 @require_admin
 def delete_user_draft(draft_id):

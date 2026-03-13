@@ -161,11 +161,33 @@
                 </button>
             </div>
 
-            <!-- Content Requests List -->
+            <!-- Content List -->
             <div id="modContentList">
                 <div class="text-center py-5">
                     <div class="spinner-border text-primary" role="status">
                         <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Draft Preview Modal -->
+            <div class="modal fade" id="draftPreviewModal" tabindex="-1" aria-labelledby="draftPreviewTitle" aria-hidden="true">
+                <div class="modal-dialog modal-xl modal-dialog-scrollable">
+                    <div class="modal-content app-content-modal">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="draftPreviewTitle">Algorithm Preview</h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body" style="background: var(--brand-bg-offwhite, #fdfdfb);">
+                            <div id="draftPreviewMeta" class="mb-3"></div>
+                            <div id="draftPreviewContent" style="border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; background: white;"></div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-modal-secondary" data-bs-dismiss="modal">Close</button>
+                            <button type="button" class="btn btn-success" id="draftPreviewPublishBtn" style="display:none;" onclick="modPublishFromPreview()">
+                                <i class="fas fa-check me-1"></i>Publish
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1958,6 +1980,7 @@
     (function() {
         let modCurrentFilter = 'pending';
         let modLoaded = false;
+        let currentPreviewDraftId = null;
 
         function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
 
@@ -1970,7 +1993,20 @@
             return Math.floor(s / 86400) + 'd ago';
         }
 
-        // Load badge count on page load
+        function modFormatDate(iso) {
+            if (!iso) return '';
+            return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+        }
+
+        // Map request_type to admin page link
+        function getAdminLink(type) {
+            if (type === 'template') return '/admin/radiology-templates';
+            if (type === 'algorithm') return '/admin/reporting-algorithms';
+            if (type === 'tool') return '/incidental-findings/admin';
+            if (type === 'protocol') return '/on-call-helper/admin/protocols';
+            return null;
+        }
+
         async function loadModCounts() {
             try {
                 const resp = await fetch('/api/admin/moderation/counts');
@@ -1998,32 +2034,39 @@
                 list.innerHTML = items.map(r => {
                     const typeBadge = r.request_type === 'template' ? 'bg-info' : r.request_type === 'algorithm' ? 'bg-primary' : 'bg-secondary';
                     const statusBadge = r.status === 'pending' ? 'bg-warning text-dark' : r.status === 'completed' ? 'bg-success' : 'bg-danger';
+                    const adminLink = getAdminLink(r.request_type);
+
                     let actions = '';
                     if (r.status === 'pending') {
                         actions = `
-                            <div class="mt-2">
-                                <input type="text" class="form-control form-control-sm mb-2" id="mod-notes-${r.id}" placeholder="Admin notes (optional)" style="max-width: 400px;">
-                                <button class="btn btn-sm btn-success me-1" onclick="modUpdateRequest(${r.id}, 'completed')"><i class="fas fa-check me-1"></i>Complete</button>
+                            <hr class="my-2">
+                            <div class="d-flex align-items-start gap-2 flex-wrap">
+                                ${adminLink ? '<a href="' + adminLink + '" class="btn btn-sm btn-outline-primary" target="_blank"><i class="fas fa-external-link-alt me-1"></i>Open ' + esc(r.request_type) + ' admin</a>' : ''}
+                                <div class="flex-grow-1" style="max-width: 400px;">
+                                    <input type="text" class="form-control form-control-sm mb-2" id="mod-notes-${r.id}" placeholder="Admin notes (optional)">
+                                </div>
+                                <button class="btn btn-sm btn-success" onclick="modUpdateRequest(${r.id}, 'completed')"><i class="fas fa-check me-1"></i>Mark Done</button>
                                 <button class="btn btn-sm btn-outline-danger" onclick="modUpdateRequest(${r.id}, 'declined')"><i class="fas fa-times me-1"></i>Decline</button>
                             </div>`;
                     } else if (r.admin_notes) {
-                        actions = '<div class="mt-1"><small class="text-muted"><i class="fas fa-sticky-note me-1"></i>' + esc(r.admin_notes) + '</small></div>';
+                        actions = '<div class="mt-2 p-2 rounded" style="background: #f8f9fa;"><small class="text-muted"><i class="fas fa-sticky-note me-1"></i><strong>Admin notes:</strong> ' + esc(r.admin_notes) + '</small></div>';
                     }
-                    return `<div class="card mb-2">
-                        <div class="card-body py-3">
-                            <div class="d-flex justify-content-between align-items-start">
+
+                    return `<div class="card mb-3" style="border-left: 4px solid ${r.status === 'pending' ? '#ffc107' : r.status === 'completed' ? '#a8d5ba' : '#dc3545'};">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
                                 <div>
                                     <span class="badge ${typeBadge} me-1">${esc(r.request_type)}</span>
                                     <span class="badge ${statusBadge}">${esc(r.status)}</span>
-                                    <strong class="ms-2">${esc(r.title)}</strong>
                                 </div>
-                                <small class="text-muted text-nowrap">${modTimeAgo(r.created_at)}</small>
+                                <small class="text-muted">${modFormatDate(r.created_at)}</small>
                             </div>
-                            <div class="mt-1">
+                            <h6 class="mb-1">${esc(r.title)}</h6>
+                            <div class="mb-2">
                                 <small class="text-muted"><i class="fas fa-user me-1"></i>${esc(r.username)}</small>
-                                ${r.body_section ? '<small class="text-muted ms-2"><i class="fas fa-body me-1"></i>' + esc(r.body_section) + '</small>' : ''}
+                                ${r.body_section ? '<small class="text-muted ms-3"><i class="fas fa-sitemap me-1"></i>' + esc(r.body_section) + '</small>' : ''}
                             </div>
-                            ${r.description ? '<p class="mb-0 mt-2" style="font-size: 0.9rem;">' + esc(r.description) + '</p>' : ''}
+                            ${r.description ? '<div class="p-2 rounded mb-1" style="background: #f8f9fa; font-size: 0.9rem;"><i class="fas fa-quote-left text-muted me-1" style="font-size: 0.7rem;"></i>' + esc(r.description) + '</div>' : '<div class="text-muted small fst-italic">No description provided</div>'}
                             ${actions}
                         </div>
                     </div>`;
@@ -2044,23 +2087,24 @@
                     list.innerHTML = '<div class="text-center text-muted py-5"><i class="fas fa-check-circle fa-3x mb-3" style="color: var(--brand-success);"></i><p>No user algorithm drafts pending review</p></div>';
                     return;
                 }
-                list.innerHTML = drafts.map(d => `<div class="card mb-2">
-                    <div class="card-body py-3">
-                        <div class="d-flex justify-content-between align-items-start">
+                list.innerHTML = drafts.map(d => `<div class="card mb-3" style="border-left: 4px solid #0dcaf0;">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
                             <div>
                                 <span class="badge bg-info"><i class="fas fa-user me-1"></i>User Draft</span>
                                 ${d.category ? '<span class="badge bg-secondary ms-1">' + esc(d.category) + '</span>' : ''}
-                                <strong class="ms-2">${esc(d.title)}</strong>
                             </div>
-                            <small class="text-muted text-nowrap">${modTimeAgo(d.created_at)}</small>
+                            <small class="text-muted">${modFormatDate(d.created_at)}</small>
                         </div>
-                        <div class="mt-1">
+                        <h6 class="mb-1">${esc(d.title)}</h6>
+                        <div class="mb-2">
                             <small class="text-muted"><i class="fas fa-user me-1"></i>${esc(d.username)}</small>
-                            ${d.body_section ? '<small class="text-muted ms-2">' + esc(d.body_section) + '</small>' : ''}
+                            ${d.body_section ? '<small class="text-muted ms-3"><i class="fas fa-sitemap me-1"></i>' + esc(d.body_section) + '</small>' : ''}
                         </div>
-                        <div class="mt-2">
-                            <a href="/admin/reporting-algorithms" class="btn btn-sm btn-outline-primary me-1"><i class="fas fa-eye me-1"></i>View in Admin</a>
-                            <button class="btn btn-sm btn-success me-1" onclick="modPublishDraft(${d.id})"><i class="fas fa-check me-1"></i>Publish</button>
+                        <hr class="my-2">
+                        <div class="d-flex gap-2 flex-wrap">
+                            <button class="btn btn-sm btn-outline-primary" onclick="modPreviewDraft(${d.id})"><i class="fas fa-eye me-1"></i>Preview Algorithm</button>
+                            <button class="btn btn-sm btn-success" onclick="modPublishDraft(${d.id})"><i class="fas fa-check me-1"></i>Publish</button>
                             <button class="btn btn-sm btn-outline-danger" onclick="modDeleteDraft(${d.id})"><i class="fas fa-trash me-1"></i>Delete</button>
                         </div>
                     </div>
@@ -2078,7 +2122,58 @@
             }
         }
 
-        // Global functions for onclick handlers
+        // Preview a user algorithm draft in modal
+        window.modPreviewDraft = async function(id) {
+            currentPreviewDraftId = id;
+            const meta = document.getElementById('draftPreviewMeta');
+            const content = document.getElementById('draftPreviewContent');
+            const publishBtn = document.getElementById('draftPreviewPublishBtn');
+            meta.innerHTML = '<div class="text-center"><div class="spinner-border text-primary spinner-border-sm"></div> Loading...</div>';
+            content.innerHTML = '';
+            publishBtn.style.display = 'none';
+            publishBtn.setAttribute('data-draft-id', id);
+            const modal = new bootstrap.Modal(document.getElementById('draftPreviewModal'));
+            modal.show();
+
+            try {
+                const resp = await fetch('/api/admin/moderation/user-drafts/' + id + '/preview');
+                if (!resp.ok) { meta.innerHTML = '<div class="alert alert-danger">Failed to load preview</div>'; return; }
+                const d = await resp.json();
+                document.getElementById('draftPreviewTitle').textContent = d.title || 'Algorithm Preview';
+                meta.innerHTML = `
+                    <div class="d-flex gap-3 flex-wrap align-items-center">
+                        <span class="badge bg-info"><i class="fas fa-user me-1"></i>User Draft</span>
+                        ${d.category ? '<span class="badge bg-secondary">' + esc(d.category) + '</span>' : ''}
+                        ${d.body_section ? '<span class="badge bg-light text-dark"><i class="fas fa-sitemap me-1"></i>' + esc(d.body_section) + '</span>' : ''}
+                        <small class="text-muted"><i class="fas fa-user me-1"></i>${esc(d.username)}</small>
+                        <small class="text-muted"><i class="fas fa-calendar me-1"></i>${modFormatDate(d.created_at)}</small>
+                    </div>
+                    ${d.description ? '<p class="mt-2 mb-0 text-muted" style="font-size: 0.9rem;">' + esc(d.description) + '</p>' : ''}`;
+                // Render the algorithm HTML
+                content.innerHTML = d.algorithm_html || d.template_html || '<p class="text-muted">No content available</p>';
+                publishBtn.style.display = 'inline-block';
+            } catch (e) {
+                meta.innerHTML = '<div class="alert alert-danger">Failed to load preview</div>';
+            }
+        };
+
+        window.modPublishFromPreview = async function() {
+            const id = currentPreviewDraftId;
+            if (!id) return;
+            if (!confirm('Publish this algorithm for all users?')) return;
+            try {
+                const resp = await fetch('/api/admin/moderation/user-drafts/' + id + '/publish', { method: 'POST' });
+                const data = await resp.json();
+                if (resp.ok) {
+                    bootstrap.Modal.getInstance(document.getElementById('draftPreviewModal'))?.hide();
+                    loadModeration();
+                    loadModCounts();
+                } else {
+                    alert(data.error || 'Failed to publish');
+                }
+            } catch (e) { alert('Connection error'); }
+        };
+
         window.modUpdateRequest = async function(id, status) {
             const notes = document.getElementById('mod-notes-' + id)?.value || '';
             try {
@@ -2136,7 +2231,6 @@
             document.getElementById(btnId).addEventListener('click', function() {
                 document.querySelectorAll('.mod-filter-btn').forEach(b => b.classList.remove('active'));
                 this.classList.add('active');
-                // Update button styles
                 document.querySelectorAll('.mod-filter-btn').forEach(b => {
                     if (!b.classList.contains('active')) {
                         b.className = b.className.replace(/btn-\w+/g, '').trim();
