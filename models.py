@@ -2575,67 +2575,6 @@ class OnCallQueryLog(db.Model):
         return f'<OnCallQueryLog {self.id}: user={self.user_id} at {self.created_at}>'
 
 
-# ==================== REPORTING TEMPLATE (Non-Oncologic Decision Trees) ====================
-
-class ReportingTemplate(db.Model):
-    """
-    LEGACY — kept for data migration and backward-compatible backup imports.
-    New code should use RadiologyTemplate or ReportingAlgorithm instead.
-    """
-    __tablename__ = 'reporting_template'
-
-    id = db.Column(db.Integer, primary_key=True)
-    slug = db.Column(db.String(200), unique=True, nullable=False, index=True)
-    title = db.Column(db.String(300), nullable=False)
-    category = db.Column(db.String(100), nullable=False, index=True)  # trauma, grading, emergency
-    body_section = db.Column(db.String(100), nullable=True)  # e.g. 'Abdomen', 'Thorax'
-    description = db.Column(db.String(500), nullable=True)
-    keywords = db.Column(db.Text, nullable=True)  # for pg_trgm search
-    template_html = db.Column(db.Text, nullable=True)  # interactive decision tree HTML
-    algorithm_html = db.Column(db.Text, nullable=True)  # extracted algorithm discussion
-    source_citation = db.Column(db.String(500), nullable=True)
-    guideline_version = db.Column(db.String(100), nullable=True)
-    is_available = db.Column(db.Boolean, default=False, nullable=False, index=True)
-    is_ai_generated = db.Column(db.Boolean, default=False, nullable=False)
-    verified_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
-    verified_at = db.Column(db.DateTime, nullable=True)
-    pacs_report_text = db.Column(db.Text, nullable=True)  # Plain-text PACS report for copy-to-clipboard
-    generation_prompt = db.Column(db.Text, nullable=True)
-    generation_model = db.Column(db.String(100), nullable=True)
-    generated_at = db.Column(db.DateTime, nullable=True)
-    created_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
-    last_edit_note = db.Column(db.String(500), nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
-
-    verified_by = db.relationship('User', foreign_keys=[verified_by_user_id], backref='verified_reporting_templates', lazy=True)
-    created_by = db.relationship('User', foreign_keys=[created_by_user_id], backref='created_reporting_templates', lazy=True)
-
-    def to_dict(self):
-        return {
-            'id': self.id,
-            'slug': self.slug,
-            'title': self.title,
-            'category': self.category,
-            'body_section': self.body_section,
-            'description': self.description,
-            'keywords': self.keywords,
-            'source_citation': self.source_citation,
-            'guideline_version': self.guideline_version,
-            'is_available': self.is_available,
-            'is_ai_generated': self.is_ai_generated,
-            'verified_at': self.verified_at.isoformat() if self.verified_at else None,
-            'pacs_report_text': self.pacs_report_text,
-            'generation_model': self.generation_model,
-            'generated_at': self.generated_at.isoformat() if self.generated_at else None,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
-            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
-        }
-
-    def __repr__(self):
-        return f'<ReportingTemplate {self.slug}: {self.title}>'
-
-
 # ==================== RADIOLOGY TEMPLATE (plain-text PACS reports) ====================
 
 class RadiologyTemplate(db.Model):

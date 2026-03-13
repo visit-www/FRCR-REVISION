@@ -104,7 +104,7 @@
 | # | Item | Status | Details |
 |---|------|--------|---------|
 | 40 | Set up pytest configuration | DONE | Created `pytest.ini`, `tests/conftest.py` with fixtures, `tests/test_routes.py` (13 smoke tests), `tests/test_ai_client.py` (13 unit tests). 26/26 pass. |
-| 41 | Add route/integration tests | TODO | 269 routes, 0 integration tests. Start with auth flows, case CRUD, and admin operations. |
+| 41 | Add route/integration tests | DONE | Created `tests/test_integration.py` — 26 integration tests: auth flows (register, login, logout, lockout), case CRUD, admin access control, algorithm verify, content requests. 58 total tests pass. |
 | 42 | Add CI/CD pipeline (GitHub Actions) | DONE | `.github/workflows/test.yml` — runs pytest on push/PR to main. Python 3.11, pip cache. |
 | 43 | API documentation (OpenAPI/Swagger) | TODO | 269 routes, no documentation. At minimum document the public-facing API endpoints. |
 
@@ -136,7 +136,7 @@
 | # | Item | Status | Details |
 |---|------|--------|---------|
 | 53 | Run `flake8 --select=F401` to find unused imports | DONE | Removed 5 unused imports: `engine_from_config` (app.py), `flash` (auth.py), `timedelta` (backup_routes.py), `url_for` + `SmartReporterError` (reporting_routes.py). |
-| 54 | Remove deprecated `ReportingTemplate` legacy model | TODO | Data migrated to `RadiologyTemplate` + `ReportingAlgorithm`. Legacy class kept for backward compat. |
+| 54 | Remove deprecated `ReportingTemplate` legacy model | DONE | Removed ORM class from `models.py`. Migration function in `app.py` rewritten to use raw SQL (no ORM dependency). Backup import already used new models. |
 | 55 | Remove deprecated `Algorithm Finder` route | DONE | Removed redirect route from `reporting_routes.py`. No remaining references in templates or JS. |
 | 56 | Split `static/style.css` (5,613 lines) | TODO | Organize into component-based CSS files (`variables.css`, `buttons.css`, `modals.css`, etc.). |
 | 57 | Organize templates into subfolders | TODO | 54 templates in flat structure. Move to `auth/`, `admin/`, `reporting/`, `cases/`, etc. |
@@ -167,7 +167,7 @@
 |---|------|--------|---------|
 | 68 | DICOM header stripping | TODO | Files on user's OneDrive, not processed locally. Document user responsibility in privacy policy. Low priority. |
 | 69 | Analytics integration | TODO | No Google Analytics/Mixpanel. No visibility into user behavior or feature adoption. |
-| 70 | Deployment runbook | TODO | No documented procedures for production issues, disaster recovery, or database restore. |
+| 70 | Deployment runbook | DONE | Created `docs/DEPLOYMENT_RUNBOOK.md` — env vars, Vercel deployment, Neon DB, monitoring, cron, backup/restore, disaster recovery, rollback, common issues. |
 
 ---
 

@@ -46,7 +46,7 @@ from models import db, User, Case, CaseImage, Question, Answer, BodyPart
 from models import RevisionSession, RevisionHistory  # STUDENT REVISION: New models for balanced revision
 from models import UserQAProgress  # STUDY MODE: SM-2 spaced repetition
 from models import ForumMessage, ForumMessageVote, ForumMessageFlag  # Forum models
-from models import ClinicalProtocol, OnCallQueryLog, ReportingTemplate, IncidentalFindingCalculator  # Clinical tools
+from models import ClinicalProtocol, OnCallQueryLog, IncidentalFindingCalculator  # Clinical tools
 from models import RadiologyTemplate, ReportingAlgorithm  # New split tables (Feb 2026)
 from models import ContentRequest  # User content requests (Feb 2026)
 from auth import auth_bp
@@ -666,9 +666,15 @@ def _seed_ajcc_data_if_needed():
 
 def _migrate_reporting_templates_if_needed():
     """One-time migration: copy rows from legacy reporting_template to new tables.
-    Idempotent — only runs if new tables are empty AND old table has data."""
+    Idempotent — only runs if new tables are empty AND old table has data.
+    Uses raw SQL so no ORM model is needed for the legacy table."""
     from sqlalchemy import text
     try:
+        # Check if legacy table exists
+        table_names = sa_inspect(db.engine).get_table_names()
+        if 'reporting_template' not in table_names:
+            return
+
         old_count = db.session.execute(text('SELECT COUNT(*) FROM reporting_template')).scalar()
         if old_count == 0:
             return
@@ -683,48 +689,55 @@ def _migrate_reporting_templates_if_needed():
         RADIOLOGY_CATEGORIES = {'radiology_template', 'personal_template'}
         rad_added = alg_added = 0
 
-        for old in ReportingTemplate.query.all():
-            if old.category in RADIOLOGY_CATEGORIES:
-                origin = 'personal' if old.category == 'personal_template' else 'admin'
+        rows = db.session.execute(text('SELECT * FROM reporting_template')).mappings().all()
+        for old in rows:
+            if old.get('category') in RADIOLOGY_CATEGORIES:
+                origin = 'personal' if old['category'] == 'personal_template' else 'admin'
                 new = RadiologyTemplate(
-                    slug=old.slug, title=old.title, origin=origin,
-                    category=None if origin == 'personal' else None,
-                    body_section=old.body_section, description=old.description,
-                    keywords=old.keywords, template_text=old.pacs_report_text,
-                    source_citation=old.source_citation, guideline_version=old.guideline_version,
-                    is_available=old.is_available, is_ai_generated=getattr(old, 'is_ai_generated', False),
-                    verified_by_user_id=getattr(old, 'verified_by_user_id', None),
-                    verified_at=getattr(old, 'verified_at', None),
-                    generation_prompt=old.generation_prompt, generation_model=old.generation_model,
-                    generated_at=old.generated_at, created_by_user_id=old.created_by_user_id,
-                    last_edit_note=old.last_edit_note, legacy_id=old.id,
+                    slug=old['slug'], title=old['title'], origin=origin,
+                    body_section=old.get('body_section'), description=old.get('description'),
+                    keywords=old.get('keywords'), template_text=old.get('pacs_report_text'),
+                    source_citation=old.get('source_citation'), guideline_version=old.get('guideline_version'),
+                    is_available=old.get('is_available', False),
+                    is_ai_generated=old.get('is_ai_generated', False),
+                    verified_by_user_id=old.get('verified_by_user_id'),
+                    verified_at=old.get('verified_at'),
+                    generation_prompt=old.get('generation_prompt'), generation_model=old.get('generation_model'),
+                    generated_at=old.get('generated_at'), created_by_user_id=old.get('created_by_user_id'),
+                    last_edit_note=old.get('last_edit_note'), legacy_id=old['id'],
                 )
-                new.created_at = old.created_at
-                new.updated_at = old.updated_at
+                if old.get('created_at'):
+                    new.created_at = old['created_at']
+                if old.get('updated_at'):
+                    new.updated_at = old['updated_at']
                 db.session.add(new)
                 rad_added += 1
             else:
-                if old.category in ('smart_reporter_cache', 'ai_generated'):
+                cat = old.get('category', '')
+                if cat in ('smart_reporter_cache', 'ai_generated'):
                     origin = 'user'
-                elif old.category == 'anatomy':
+                elif cat == 'anatomy':
                     origin = 'anatomy_cache'
                 else:
                     origin = 'admin'
                 new = ReportingAlgorithm(
-                    slug=old.slug, title=old.title, origin=origin,
-                    category=old.category, body_section=old.body_section,
-                    description=old.description, keywords=old.keywords,
-                    template_html=old.template_html, algorithm_html=old.algorithm_html,
-                    source_citation=old.source_citation, guideline_version=old.guideline_version,
-                    is_available=old.is_available, is_ai_generated=getattr(old, 'is_ai_generated', False),
-                    verified_by_user_id=getattr(old, 'verified_by_user_id', None),
-                    verified_at=getattr(old, 'verified_at', None),
-                    generation_prompt=old.generation_prompt, generation_model=old.generation_model,
-                    generated_at=old.generated_at, created_by_user_id=old.created_by_user_id,
-                    last_edit_note=old.last_edit_note, legacy_id=old.id,
+                    slug=old['slug'], title=old['title'], origin=origin,
+                    category=cat, body_section=old.get('body_section'),
+                    description=old.get('description'), keywords=old.get('keywords'),
+                    template_html=old.get('template_html'), algorithm_html=old.get('algorithm_html'),
+                    source_citation=old.get('source_citation'), guideline_version=old.get('guideline_version'),
+                    is_available=old.get('is_available', False),
+                    is_ai_generated=old.get('is_ai_generated', False),
+                    verified_by_user_id=old.get('verified_by_user_id'),
+                    verified_at=old.get('verified_at'),
+                    generation_prompt=old.get('generation_prompt'), generation_model=old.get('generation_model'),
+                    generated_at=old.get('generated_at'), created_by_user_id=old.get('created_by_user_id'),
+                    last_edit_note=old.get('last_edit_note'), legacy_id=old['id'],
                 )
-                new.created_at = old.created_at
-                new.updated_at = old.updated_at
+                if old.get('created_at'):
+                    new.created_at = old['created_at']
+                if old.get('updated_at'):
+                    new.updated_at = old['updated_at']
                 db.session.add(new)
                 alg_added += 1
 
