@@ -79,7 +79,7 @@
 
 | # | Item | Status | Details |
 |---|------|--------|---------|
-| 30 | Automated database backups | TODO | Manual JSON export exists, but no automated scheduled backups. Set up daily backup to Cloudflare R2 or similar. |
+| 30 | Automated database backups | DONE | Cron endpoint `GET /api/backup/scheduled-backup` — builds backup JSON, gzip-compresses, uploads to R2. Keeps last 30 backups, auto-prunes older. Runs daily at 2am UTC via Vercel cron. |
 | 31 | `robots.txt` | DONE | `GET /robots.txt` disallows `/api/`, `/auth/`, `/admin/`, backup, and admin tool routes |
 | 32 | SEO meta tags | DONE | `base.html` supports `{% block title %}` and `{% block meta_description %}` — templates can override |
 

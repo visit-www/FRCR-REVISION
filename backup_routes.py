@@ -102,716 +102,722 @@ def _parse_datetime_for_sqlite(value):
             return None
     return None
 
+def _build_backup_data():
+    """Build the complete backup data dict. Shared by download and scheduled backup."""
+    backup_data = {
+        'metadata': {
+            'backup_date': datetime.utcnow().isoformat(),
+            'database_type': 'postgresql' if os.getenv('DATABASE_URL') or os.getenv('DATABASE_POSTGRES_URL_NON_POOLING') else 'sqlite',
+            'version': '2.9',  # Bumped for clinical tools tables
+            'app_name': 'RadInsights'
+        },
+        'users': [],
+        'cases': [],
+        'case_images': [],
+        'questions': [],
+        'answers': [],
+        'revision_sessions': [],
+        'revision_history': [],  # NEW: User progress tracking
+        'case_flags': [],
+        'highlights': [],
+        'notes': [],
+        # Forum data (critical for discussions)
+        'forum_messages': [],
+        'forum_votes': [],
+        'forum_flags': [],
+        # AJCC TNM Staging data
+        'ajcc_body_sections': [],
+        'ajcc_disease_sites': [],
+        'ajcc_diagnosis_years': [],
+        'ajcc_staging_data': [],
+        'ajcc_disease_mappings': [],
+        'ajcc_staging_time_prefixes': [],
+        'intelligent_tnm_data': [],  # AI-generated TNM intelligence
+        # Reference and media tables
+        'case_references': [],
+        'case_reference_images': [],  # CC-licensed curated images for Anatomy tab
+        'tnm_references': [],
+        'anatomy_figures': [],
+        'tnm_images': [],
+        # Case DICOM Viewer (OneDrive image stacks and annotations)
+        'case_image_stacks': [],
+        'case_image_annotations': [],
+        # TNM Calculator Content (AI-generated calculators and algorithms)
+        'tnm_calculator_content': [],
+        # Association tables
+        'related_cases_links': [],
+        'case_calculator_links': [],
+        'case_reference_links': [],
+        # Audit, analytics & approval
+        'case_audit_logs': [],
+        'case_view_logs': [],
+        'case_approval_queue': [],
+        # Spaced repetition
+        'user_qa_progress': [],
+        # AI cache
+        'ai_diagnosis_cache': [],
+        'ai_prelim_case_data': [],
+        # Clinical Tools
+        'clinical_protocols': [],
+        'oncall_query_logs': [],
+        'reporting_templates': [],  # Legacy — kept for backward compat
+        'radiology_templates': [],
+        'reporting_algorithms': [],
+        'incidental_finding_calculators': [],
+        # AI audit trail
+        'ai_audit_logs': [],
+    }
+    
+    # Export users (with password hashes for sync purposes)
+    # SECURITY: Intentionally excludes recovery_token, notion_access_token,
+    # anki_api_key, sciencedirect_session_cookies to prevent credential leakage
+    for user in User.query.all():
+        user_data = {
+            'id': user.id,  # Include ID for proper mapping
+            'email': user.email,
+            'password_hash': user.password_hash,  # Salted hash, needed for DB sync
+            'full_name': user.full_name,
+            'profile_picture': user.profile_picture,  # Cloudinary URL or base64
+            'profile_picture_public_id': user.profile_picture_public_id,  # For Cloudinary cleanup
+            'public_display_name': user.public_display_name,  # Forum display name
+            'role': user.role.value if user.role else 'student',
+            'is_active': user.is_active,
+            'subscription_status': user.subscription_status.value if user.subscription_status else 'free',
+            'payment_status': user.payment_status.value if user.payment_status else 'no_subscription',
+            'subscription_start_date': user.subscription_start_date.isoformat() if user.subscription_start_date else None,
+            'subscription_end_date': user.subscription_end_date.isoformat() if user.subscription_end_date else None,
+            'last_case_viewed': user.last_case_viewed.isoformat() if user.last_case_viewed else None,
+            'last_case_viewed_id': user.last_case_viewed_id,
+            'created_at': user.created_at.isoformat() if user.created_at else None,
+            'last_login': user.last_login.isoformat() if user.last_login else None,
+        }
+        backup_data['users'].append(user_data)
+    
+    # Export cases
+    for case in Case.query.all():
+        case_data = {
+            'id': case.id,  # Include ID for proper mapping
+            'case_number': case.case_number,
+            'diagnosis': case.diagnosis,
+            'discussion': case.discussion or '',
+            'module': case.module.value if case.module else None,
+            'body_part': case.body_part.value if case.body_part else None,
+            'age_group': case.age_group.value if case.age_group else None,
+            'is_public': case.is_public,
+            'status': case.status.value if hasattr(case, 'status') and case.status else None,
+            'calculator_slug': getattr(case, 'calculator_slug', None),
+            'contributor_name': getattr(case, 'contributor_name', None),
+            'contributor_notes': getattr(case, 'contributor_notes', None),
+            'created_by_user_id': case.created_by_user_id,
+            'approved_by_user_id': case.approved_by_user_id if hasattr(case, 'approved_by_user_id') else None,
+            'approved_at': case.approved_at.isoformat() if hasattr(case, 'approved_at') and case.approved_at else None,
+            'created_at': case.created_at.isoformat() if case.created_at else None,
+            'updated_at': case.updated_at.isoformat() if hasattr(case, 'updated_at') and case.updated_at else None,
+        }
+        
+        # Export Questions for this case
+        questions = Question.query.filter_by(case_id=case.id).order_by(Question.question_number).all()
+        case_data['questions'] = [{
+            'question_number': q.question_number,
+            'question_text': q.question_text,
+        } for q in questions]
+        
+        # Export Answers for this case
+        answers = Answer.query.filter_by(case_id=case.id).order_by(Answer.answer_number).all()
+        case_data['answers'] = [{
+            'answer_number': a.answer_number,
+            'answer_text': a.answer_text,
+        } for a in answers]
+        
+        # Export Images for this case (support both binary and Cloudinary)
+        images = CaseImage.query.filter_by(case_id=case.id).all()
+        import base64
+        case_data['images'] = [{
+            'filename': img.image_filename or '',
+            'image_type': img.image_type or '',
+            'description': img.image_description or '',
+            'image_data': base64.b64encode(img.image_data).decode('utf-8') if img.image_data else None,
+            # Cloudinary fields (new)
+            'image_url': img.image_url,
+            'image_public_id': img.image_public_id,
+            'image_thumbnail_url': img.image_thumbnail_url,
+        } for img in images]
+        
+        backup_data['cases'].append(case_data)
+    
+    # Export revision sessions
+    for rev_session in RevisionSession.query.all():
+        backup_data['revision_sessions'].append({
+            'user_id': rev_session.user_id,
+            'case_ids': rev_session.get_case_ids_list() if hasattr(rev_session, 'get_case_ids_list') else json.loads(rev_session.case_ids or '[]'),
+            'current_case_index': rev_session.current_case_index,
+            'created_at': rev_session.created_at.isoformat() if rev_session.created_at else None,
+        })
+    
+    # Export case flags
+    for flag in CaseFlag.query.all():
+        backup_data['case_flags'].append({
+            'user_id': flag.user_id,
+            'case_id': flag.case_id,
+            'created_at': flag.created_at.isoformat() if flag.created_at else None,
+        })
+    
+    # Export highlights
+    for highlight in TextHighlight.query.all():
+        backup_data['highlights'].append({
+            'user_id': highlight.user_id,
+            'case_id': highlight.case_id,
+            'text_content': highlight.text_content or '',
+            'highlight_color': highlight.highlight_color or 'yellow',
+            'field_name': highlight.field_name or 'discussion',
+            'created_at': highlight.created_at.isoformat() if highlight.created_at else None,
+        })
+    
+    # Export notes
+    for note in CandidateNote.query.all():
+        backup_data['notes'].append({
+            'user_id': note.user_id,
+            'case_id': note.case_id,
+            'note_text': note.note_text or '',
+            'created_at': note.created_at.isoformat() if note.created_at else None,
+            'updated_at': note.updated_at.isoformat() if note.updated_at else None,
+        })
+    
+    # Export revision history (user progress tracking)
+    for history in RevisionHistory.query.all():
+        backup_data['revision_history'].append({
+            'user_id': history.user_id,
+            'case_id': history.case_id,
+            'module': history.module.value if history.module else None,
+            'first_seen_at': history.first_seen_at.isoformat() if history.first_seen_at else None,
+            'last_seen_at': history.last_seen_at.isoformat() if history.last_seen_at else None,
+            'times_seen': history.times_seen or 0,
+            'revision_session_id': history.revision_session_id,
+        })
+    
+    # Export forum messages
+    for msg in ForumMessage.query.filter_by(is_deleted=False).all():
+        backup_data['forum_messages'].append({
+            'id': msg.id,
+            'case_id': msg.case_id,
+            'user_id': msg.user_id,
+            'content': msg.content or '',
+            'vote_score': msg.vote_score or 0,
+            'is_pinned': msg.is_pinned or False,
+            'flag_count': msg.flag_count or 0,
+            'image_url': msg.image_url,
+            'image_public_id': msg.image_public_id,
+            'image_thumbnail_url': msg.image_thumbnail_url,
+            'created_at': msg.created_at.isoformat() if msg.created_at else None,
+            'updated_at': msg.updated_at.isoformat() if msg.updated_at else None,
+        })
+    
+    # Export forum votes
+    for vote in ForumMessageVote.query.all():
+        backup_data['forum_votes'].append({
+            'message_id': vote.message_id,
+            'user_id': vote.user_id,
+            'vote_value': vote.vote_value,
+            'created_at': vote.created_at.isoformat() if vote.created_at else None,
+        })
+    
+    # Export forum flags (unresolved only)
+    for flag in ForumMessageFlag.query.filter_by(is_resolved=False).all():
+        backup_data['forum_flags'].append({
+            'message_id': flag.message_id,
+            'user_id': flag.user_id,
+            'reason': flag.reason,
+            'details': flag.details,
+            'created_at': flag.created_at.isoformat() if flag.created_at else None,
+        })
+    
+    # ==================== AJCC TNM DATA ====================
+    
+    # Export AJCC Body Sections
+    for section in AJCCBodySection.query.order_by(AJCCBodySection.display_order).all():
+        backup_data['ajcc_body_sections'].append({
+            'id': section.id,
+            'section_name': section.section_name,
+            'slug': section.slug,
+            'display_order': section.display_order,
+            'created_at': section.created_at.isoformat() if section.created_at else None,
+            'updated_at': section.updated_at.isoformat() if section.updated_at else None,
+        })
+    
+    # Export AJCC Disease Sites
+    for disease in AJCCDiseaseSite.query.all():
+        backup_data['ajcc_disease_sites'].append({
+            'id': disease.id,
+            'body_section_id': disease.body_section_id,
+            'disease_name': disease.disease_name,
+            'slug': disease.slug,
+            'ajcc_url_path': disease.ajcc_url_path,
+            'display_order': getattr(disease, 'display_order', 0) or 0,
+            'frcr_module': getattr(disease, 'frcr_module', None),
+            'frcr_body_part': getattr(disease, 'frcr_body_part', None),
+            'frcr_age_group': getattr(disease, 'frcr_age_group', None),
+            'created_at': disease.created_at.isoformat() if disease.created_at else None,
+            'updated_at': disease.updated_at.isoformat() if disease.updated_at else None,
+        })
+    
+    # Export AJCC Diagnosis Years
+    for year in AJCCDiagnosisYear.query.all():
+        backup_data['ajcc_diagnosis_years'].append({
+            'id': year.id,
+            'year': year.year,
+            'is_default': year.is_default,
+            'created_at': year.created_at.isoformat() if year.created_at else None,
+        })
+    
+    # Export AJCC Staging Data (the extracted TNM content)
+    for staging in AJCCStagingData.query.all():
+        staging_entry = {
+            'id': staging.id,
+            'disease_site_id': staging.disease_site_id,
+            'diagnosis_year_id': staging.diagnosis_year_id,
+            'extracted_at': staging.extracted_at.isoformat() if staging.extracted_at else None,
+            'extracted_by_user_id': staging.extracted_by_user_id,
+            'last_updated_at': staging.last_updated_at.isoformat() if staging.last_updated_at else None,
+            'data_version': staging.data_version,
+            # JSON data columns
+            'tnm_data_json': staging.tnm_data_json,
+            'cancers_staged_json': staging.cancers_staged_json,
+            'cancers_not_staged_json': staging.cancers_not_staged_json,
+            'summary_changes_json': staging.summary_changes_json,
+            'primary_sites_json': staging.primary_sites_json,
+            'histopathologic_types_json': staging.histopathologic_types_json,
+            'imaging_workup_json': staging.imaging_workup_json,
+            'staging_rules_json': staging.staging_rules_json,
+            'common_scenarios_json': staging.common_scenarios_json,
+            'notes_json': staging.notes_json,
+            # HTML section columns
+            'section_1_quick_reference_html': staging.section_1_quick_reference_html,
+            'section_2_cancers_staged_html': staging.section_2_cancers_staged_html,
+            'section_3_cancers_not_staged_html': staging.section_3_cancers_not_staged_html,
+            'section_4_summary_changes_html': staging.section_4_summary_changes_html,
+            'section_5_primary_site_html': staging.section_5_primary_site_html,
+            'section_6_histopathologic_type_html': staging.section_6_histopathologic_type_html,
+            'section_7_clinical_staging_workup_html': staging.section_7_clinical_staging_workup_html,
+            'section_8_staging_rules_html': staging.section_8_staging_rules_html,
+            'section_9_common_scenarios_html': staging.section_9_common_scenarios_html,
+            'section_10_explanatory_notes_html': staging.section_10_explanatory_notes_html,
+            # Raw HTML content (full page backup)
+            'raw_html_content': staging.raw_html_content,
+            # Curated admin content
+            'curated_quick_reference_html': getattr(staging, 'curated_quick_reference_html', None),
+            'curated_explanatory_notes_html': getattr(staging, 'curated_explanatory_notes_html', None),
+            'curated_by_user_id': getattr(staging, 'curated_by_user_id', None),
+            'curated_at': staging.curated_at.isoformat() if getattr(staging, 'curated_at', None) else None,
+        }
+        backup_data['ajcc_staging_data'].append(staging_entry)
+    
+    # Export AJCC Disease Mappings (links to FRCR modules/body parts)
+    for mapping in AJCCDiseaseMapping.query.all():
+        backup_data['ajcc_disease_mappings'].append({
+            'id': mapping.id,
+            'disease_site_id': mapping.disease_site_id,
+            'frcr_module': mapping.frcr_module.value if mapping.frcr_module else None,
+            'body_part': mapping.body_part.value if mapping.body_part else None,
+            'notes': mapping.notes,
+            'created_at': mapping.created_at.isoformat() if mapping.created_at else None,
+            'updated_at': mapping.updated_at.isoformat() if mapping.updated_at else None,
+        })
+    
+    # Export AJCC Staging Time Prefixes
+    for prefix in AJCCStagingTimePrefix.query.all():
+        backup_data['ajcc_staging_time_prefixes'].append({
+            'id': prefix.id,
+            'prefix': prefix.prefix,
+            'name': prefix.name,
+            'description': prefix.description,
+            'display_order': prefix.display_order,
+            'created_at': prefix.created_at.isoformat() if prefix.created_at else None,
+        })
+    
+    # Export Intelligent TNM Data (AI-generated, human-verified)
+    for intel in IntelligentTNMData.query.all():
+        backup_data['intelligent_tnm_data'].append({
+            'id': intel.id,
+            'disease_site_id': intel.disease_site_id,
+            'diagnosis_year_id': intel.diagnosis_year_id,
+            'tnm_memory_aid_t': intel.tnm_memory_aid_t,
+            'tnm_memory_aid_n': intel.tnm_memory_aid_n,
+            'tnm_memory_aid_m': intel.tnm_memory_aid_m,
+            'radiologist_key_points_json': intel.radiologist_key_points_json,
+            'upstaging_triggers_json': intel.upstaging_triggers_json,
+            'mdt_critical_findings_json': intel.mdt_critical_findings_json,
+            'copy_blocks_json': intel.copy_blocks_json,
+            'imaging_checklist_json': intel.imaging_checklist_json,
+            'reference_images_json': intel.reference_images_json,
+            'warnings_json': intel.warnings_json,
+            'verified_by_user_id': intel.verified_by_user_id,
+            'source_case_id': intel.source_case_id,
+            'version': intel.version,
+            'created_at': intel.created_at.isoformat() if intel.created_at else None,
+            'updated_at': intel.updated_at.isoformat() if intel.updated_at else None,
+        })
+    
+    # Export Case References
+    for ref in CaseReference.query.all():
+        backup_data['case_references'].append({
+            'id': ref.id,
+            'case_id': ref.case_id,
+            'ref_number': ref.ref_number,
+            'title': ref.title,
+            'url': ref.url,
+            'journal': ref.journal,
+            'year': ref.year,
+            'is_inline': ref.is_inline,
+            'created_at': ref.created_at.isoformat() if ref.created_at else None,
+        })
+    
+    # Export Case Reference Images (CC-licensed curated images for Anatomy tab)
+    for img in CaseReferenceImage.query.order_by(CaseReferenceImage.case_id, CaseReferenceImage.display_order).all():
+        backup_data['case_reference_images'].append({
+            'id': img.id,
+            'case_id': img.case_id,
+            'source_url': img.source_url,
+            'source_domain': img.source_domain,
+            'thumbnail_url': img.thumbnail_url,
+            'image_type': img.image_type,
+            'modality': img.modality,
+            'ai_description': img.ai_description,
+            'ai_relevance_score': img.ai_relevance_score,
+            'admin_note': img.admin_note,
+            'display_order': img.display_order,
+            'added_by_user_id': img.added_by_user_id,
+            'created_at': img.created_at.isoformat() if img.created_at else None,
+            'license': img.license,
+            'attribution': img.attribution,
+        })
+    
+    # Export TNM References
+    for ref in TnmReference.query.all():
+        backup_data['tnm_references'].append({
+            'id': ref.id,
+            'disease_site_id': ref.disease_site_id,
+            'ref_number': ref.ref_number,
+            'title': ref.title,
+            'url': ref.url,
+            'journal': ref.journal,
+            'year': ref.year,
+            'is_inline': ref.is_inline,
+            'created_at': ref.created_at.isoformat() if ref.created_at else None,
+        })
+    
+    # Export Anatomy Figures
+    for fig in AnatomyFigure.query.all():
+        backup_data['anatomy_figures'].append({
+            'id': fig.id,
+            'figure_id': fig.figure_id,
+            'title': fig.title,
+            'description': fig.description,
+            'source': fig.source,
+            'body_region': fig.body_region,
+            'figure_type': fig.figure_type,
+            'keywords': fig.keywords,
+            'modality': fig.modality,
+            'cancer_type': fig.cancer_type,
+            'staging_category': fig.staging_category,
+            'original_url': fig.original_url,
+            'cloudinary_url': fig.cloudinary_url,
+            'cloudinary_public_id': fig.cloudinary_public_id,
+            'thumbnail_url': fig.thumbnail_url,
+            'license': fig.license,
+            'attribution': fig.attribution,
+            'chapter': fig.chapter,
+            'page_number': fig.page_number,
+            'is_active': fig.is_active,
+            'created_at': fig.created_at.isoformat() if fig.created_at else None,
+            'updated_at': fig.updated_at.isoformat() if fig.updated_at else None,
+        })
+    
+    # Export TNM Images
+    for img in TNMImage.query.all():
+        backup_data['tnm_images'].append({
+            'id': img.id,
+            'disease_site_id': img.disease_site_id,
+            'diagnosis_year_id': img.diagnosis_year_id,
+            'title': img.title,
+            'description': img.description,
+            'alt_text': img.alt_text,
+            'cloudinary_url': img.cloudinary_url,
+            'cloudinary_public_id': img.cloudinary_public_id,
+            'width': img.width,
+            'height': img.height,
+            'image_type': img.image_type,
+            'uploaded_by_user_id': img.uploaded_by_user_id,
+            'is_active': img.is_active,
+            'created_at': img.created_at.isoformat() if img.created_at else None,
+            'updated_at': img.updated_at.isoformat() if img.updated_at else None,
+        })
+    
+    # Export Case Image Stacks (R2 + legacy OneDrive)
+    for stack in CaseImageStack.query.order_by(CaseImageStack.display_order, CaseImageStack.id).all():
+        backup_data['case_image_stacks'].append({
+            'id': stack.id,
+            'case_id': stack.case_id,
+            'study_label': getattr(stack, 'study_label', None),
+            'onedrive_share_id': stack.onedrive_share_id,
+            'onedrive_folder_path': stack.onedrive_folder_path,
+            'config_json': stack.config_json,
+            'storage_backend': getattr(stack, 'storage_backend', None),
+            'r2_config_json': getattr(stack, 'r2_config_json', None),
+            'display_order': getattr(stack, 'display_order', 0),
+            'onedrive_refresh_token_encrypted': getattr(stack, 'onedrive_refresh_token_encrypted', None),
+            'description_html': getattr(stack, 'description_html', None),
+            'created_by_user_id': stack.created_by_user_id,
+            'created_at': stack.created_at.isoformat() if stack.created_at else None,
+        })
+    
+    # Export Case Image Annotations (Cornerstone.js annotations; per-study via stack_id)
+    for ann in CaseImageAnnotation.query.all():
+        backup_data['case_image_annotations'].append({
+            'id': ann.id,
+            'case_id': ann.case_id,
+            'stack_id': getattr(ann, 'stack_id', None),
+            'annotations_json': ann.annotations_json,
+            'created_by_user_id': ann.created_by_user_id,
+            'created_at': ann.created_at.isoformat() if ann.created_at else None,
+            'updated_at': ann.updated_at.isoformat() if ann.updated_at else None,
+        })
+
+    # Export TNM Calculator Content (AI-generated calculators and algorithms)
+    for content in TNMCalculatorContent.query.all():
+        backup_data['tnm_calculator_content'].append({
+            'id': content.id,
+            'slug': content.slug,
+            'cancer_name': content.cancer_name,
+            'body_section': content.body_section,
+            'calculator_html': content.calculator_html,
+            'algorithm_discussion_html': content.algorithm_discussion_html,
+            'staging_system': content.staging_system,
+            'special_features': content.special_features,
+            'description': content.description,
+            'is_available': content.is_available,
+            'generation_prompt': content.generation_prompt,
+            'generation_model': content.generation_model,
+            'generated_at': content.generated_at.isoformat() if content.generated_at else None,
+            'algorithm_case_id': content.algorithm_case_id,
+            'created_by_user_id': content.created_by_user_id,
+            'created_at': content.created_at.isoformat() if content.created_at else None,
+            'updated_at': content.updated_at.isoformat() if content.updated_at else None,
+        })
+
+    # Export Related Cases (association table)
+    for row in db.session.execute(related_cases.select()).fetchall():
+        backup_data['related_cases_links'].append({
+            'case_id': row.case_id,
+            'related_case_id': row.related_case_id,
+            'relation_type': row.relation_type if hasattr(row, 'relation_type') else 'related',
+        })
+
+    # Export Case-Calculator Links (association table)
+    for row in db.session.execute(case_calculator_links.select()).fetchall():
+        backup_data['case_calculator_links'].append({
+            'case_id': row.case_id,
+            'calculator_id': row.calculator_id,
+            'created_by_user_id': row.created_by_user_id,
+        })
+
+    # Export Case-Reference Links (association table)
+    for row in db.session.execute(case_reference_links.select()).fetchall():
+        backup_data['case_reference_links'].append({
+            'case_id': row.case_id,
+            'reference_id': row.reference_id,
+            'created_by_user_id': row.created_by_user_id,
+        })
+
+    # Export Case Audit Logs
+    for log in CaseAuditLog.query.order_by(CaseAuditLog.id).all():
+        backup_data['case_audit_logs'].append({
+            'id': log.id,
+            'case_id': log.case_id,
+            'user_id': log.user_id,
+            'action': log.action,
+            'changes': log.changes,
+            'notes': log.notes,
+            'created_at': log.created_at.isoformat() if log.created_at else None,
+        })
+
+    # Export Case View Logs
+    for vlog in CaseViewLog.query.order_by(CaseViewLog.id).all():
+        backup_data['case_view_logs'].append({
+            'user_id': vlog.user_id,
+            'case_id': vlog.case_id,
+            'viewed_at': vlog.viewed_at.isoformat() if vlog.viewed_at else None,
+            'time_spent_seconds': vlog.time_spent_seconds,
+        })
+
+    # Export Case Approval Queue
+    for entry in CaseApprovalQueue.query.all():
+        backup_data['case_approval_queue'].append({
+            'case_id': entry.case_id,
+            'submitted_by_user_id': entry.submitted_by_user_id,
+            'submitted_at': entry.submitted_at.isoformat() if entry.submitted_at else None,
+            'admin_notes': entry.admin_notes,
+        })
+
+    # Export User QA Progress (spaced repetition state)
+    for prog in UserQAProgress.query.all():
+        backup_data['user_qa_progress'].append({
+            'user_id': prog.user_id,
+            'question_id': prog.question_id,
+            'case_id': prog.case_id,
+            'ease_factor': prog.ease_factor,
+            'interval_days': prog.interval_days,
+            'repetition_number': prog.repetition_number,
+            'next_review_date': prog.next_review_date.isoformat() if prog.next_review_date else None,
+            'last_reviewed_at': prog.last_reviewed_at.isoformat() if prog.last_reviewed_at else None,
+            'times_correct': prog.times_correct,
+            'times_incorrect': prog.times_incorrect,
+            'created_at': prog.created_at.isoformat() if prog.created_at else None,
+        })
+
+    # Export AI Diagnosis Cache
+    for cache in AiDiagnosisCache.query.all():
+        backup_data['ai_diagnosis_cache'].append({
+            'id': cache.id,
+            'diagnosis': cache.diagnosis,
+            'provider': cache.provider,
+            'model_name': cache.model_name,
+            'first_case_id': cache.first_case_id,
+            'first_user_id': cache.first_user_id,
+            'first_generated_at': cache.first_generated_at.isoformat() if cache.first_generated_at else None,
+            'query_count': cache.query_count,
+            'last_queried_at': cache.last_queried_at.isoformat() if cache.last_queried_at else None,
+        })
+
+    # Export AI Prelim Case Data (audit trail for AI-generated cases)
+    for apcd in AiPrelimCaseData.query.all():
+        backup_data['ai_prelim_case_data'].append({
+            'id': apcd.id,
+            'case_id': apcd.case_id,
+            'created_by_user_id': apcd.created_by_user_id,
+            'provider': apcd.provider,
+            'model_name': apcd.model_name,
+            'prompt_version': apcd.prompt_version,
+            'request_payload': apcd.request_payload,
+            'response_payload': apcd.response_payload,
+            'created_at': apcd.created_at.isoformat() if apcd.created_at else None,
+        })
+
+    # Export Clinical Protocols (On-Call Helper knowledge base)
+    for protocol in ClinicalProtocol.query.all():
+        backup_data['clinical_protocols'].append({
+            'id': protocol.id,
+            'category': protocol.category,
+            'title': protocol.title,
+            'keywords': protocol.keywords,
+            'content_structured': protocol.content_structured,
+            'content_html': protocol.content_html,
+            'source_citation': protocol.source_citation,
+            'guideline_version': protocol.guideline_version,
+            'source_url': protocol.source_url,
+            'is_published': protocol.is_published,
+            'verified_by_user_id': protocol.verified_by_user_id,
+            'verified_at': protocol.verified_at.isoformat() if protocol.verified_at else None,
+            'created_by_user_id': protocol.created_by_user_id,
+            'created_at': protocol.created_at.isoformat() if protocol.created_at else None,
+            'updated_at': protocol.updated_at.isoformat() if protocol.updated_at else None,
+        })
+
+    # Export On-Call Query Logs (audit trail)
+    for log in OnCallQueryLog.query.all():
+        backup_data['oncall_query_logs'].append({
+            'id': log.id,
+            'user_id': log.user_id,
+            'query_text': log.query_text,
+            'matched_protocol_ids': log.matched_protocol_ids,
+            'ai_response_text': log.ai_response_text,
+            'model_used': log.model_used,
+            'token_count': log.token_count,
+            'response_source': log.response_source,
+            'created_at': log.created_at.isoformat() if log.created_at else None,
+        })
+
+    # Export Radiology Templates (plain-text PACS reports)
+    for rt in RadiologyTemplate.query.all():
+        backup_data['radiology_templates'].append({
+            'id': rt.id, 'slug': rt.slug, 'title': rt.title,
+            'origin': rt.origin, 'category': rt.category,
+            'body_section': rt.body_section, 'description': rt.description,
+            'keywords': rt.keywords, 'template_text': rt.template_text,
+            'source_citation': rt.source_citation, 'guideline_version': rt.guideline_version,
+            'is_available': rt.is_available, 'is_ai_generated': rt.is_ai_generated,
+            'verified_by_user_id': rt.verified_by_user_id,
+            'verified_at': rt.verified_at.isoformat() if rt.verified_at else None,
+            'generation_prompt': rt.generation_prompt, 'generation_model': rt.generation_model,
+            'generated_at': rt.generated_at.isoformat() if rt.generated_at else None,
+            'created_by_user_id': rt.created_by_user_id,
+            'last_edit_note': rt.last_edit_note,
+            'created_at': rt.created_at.isoformat() if rt.created_at else None,
+            'updated_at': rt.updated_at.isoformat() if rt.updated_at else None,
+        })
+
+    # Export Reporting Algorithms (interactive decision trees)
+    for ra in ReportingAlgorithm.query.all():
+        backup_data['reporting_algorithms'].append({
+            'id': ra.id, 'slug': ra.slug, 'title': ra.title,
+            'origin': ra.origin, 'category': ra.category,
+            'body_section': ra.body_section, 'description': ra.description,
+            'keywords': ra.keywords,
+            'template_html': ra.template_html, 'algorithm_html': ra.algorithm_html,
+            'source_citation': ra.source_citation, 'guideline_version': ra.guideline_version,
+            'is_available': ra.is_available, 'is_ai_generated': ra.is_ai_generated,
+            'verified_by_user_id': ra.verified_by_user_id,
+            'verified_at': ra.verified_at.isoformat() if ra.verified_at else None,
+            'generation_prompt': ra.generation_prompt, 'generation_model': ra.generation_model,
+            'generated_at': ra.generated_at.isoformat() if ra.generated_at else None,
+            'created_by_user_id': ra.created_by_user_id,
+            'last_edit_note': ra.last_edit_note,
+            'created_at': ra.created_at.isoformat() if ra.created_at else None,
+            'updated_at': ra.updated_at.isoformat() if ra.updated_at else None,
+        })
+
+    # Export Incidental Finding Calculators
+    for ifc in IncidentalFindingCalculator.query.all():
+        backup_data['incidental_finding_calculators'].append({
+            'id': ifc.id,
+            'slug': ifc.slug,
+            'finding_name': ifc.finding_name,
+            'body_section': ifc.body_section,
+            'category': ifc.category,
+            'description': ifc.description,
+            'keywords': ifc.keywords,
+            'calculator_html': ifc.calculator_html,
+            'algorithm_html': ifc.algorithm_html,
+            'guideline_source': ifc.guideline_source,
+            'guideline_version': ifc.guideline_version,
+            'guideline_url': ifc.guideline_url,
+            'is_available': ifc.is_available,
+            'generation_prompt': ifc.generation_prompt,
+            'generation_model': ifc.generation_model,
+            'generated_at': ifc.generated_at.isoformat() if ifc.generated_at else None,
+            'verified_by_user_id': ifc.verified_by_user_id,
+            'verified_at': ifc.verified_at.isoformat() if ifc.verified_at else None,
+            'created_by_user_id': ifc.created_by_user_id,
+            'last_edit_note': ifc.last_edit_note,
+            'created_at': ifc.created_at.isoformat() if ifc.created_at else None,
+            'updated_at': ifc.updated_at.isoformat() if ifc.updated_at else None,
+        })
+
+    # Export AI audit logs
+    for log in AIAuditLog.query.order_by(AIAuditLog.created_at.desc()).all():
+        backup_data['ai_audit_logs'].append(log.to_dict())
+
+    return backup_data
+
+
 @backup_bp.route('/download', methods=['GET'])
 @login_required
 def download_backup():
     """Download complete database backup as JSON"""
     if not check_admin():
         return jsonify({'error': 'Admin access required'}), 403
-    
+
     try:
-        # Collect all data
-        backup_data = {
-            'metadata': {
-                'backup_date': datetime.utcnow().isoformat(),
-                'database_type': 'postgresql' if os.getenv('DATABASE_URL') or os.getenv('DATABASE_POSTGRES_URL_NON_POOLING') else 'sqlite',
-                'version': '2.9',  # Bumped for clinical tools tables
-                'app_name': 'RadInsights'
-            },
-            'users': [],
-            'cases': [],
-            'case_images': [],
-            'questions': [],
-            'answers': [],
-            'revision_sessions': [],
-            'revision_history': [],  # NEW: User progress tracking
-            'case_flags': [],
-            'highlights': [],
-            'notes': [],
-            # Forum data (critical for discussions)
-            'forum_messages': [],
-            'forum_votes': [],
-            'forum_flags': [],
-            # AJCC TNM Staging data
-            'ajcc_body_sections': [],
-            'ajcc_disease_sites': [],
-            'ajcc_diagnosis_years': [],
-            'ajcc_staging_data': [],
-            'ajcc_disease_mappings': [],
-            'ajcc_staging_time_prefixes': [],
-            'intelligent_tnm_data': [],  # AI-generated TNM intelligence
-            # Reference and media tables
-            'case_references': [],
-            'case_reference_images': [],  # CC-licensed curated images for Anatomy tab
-            'tnm_references': [],
-            'anatomy_figures': [],
-            'tnm_images': [],
-            # Case DICOM Viewer (OneDrive image stacks and annotations)
-            'case_image_stacks': [],
-            'case_image_annotations': [],
-            # TNM Calculator Content (AI-generated calculators and algorithms)
-            'tnm_calculator_content': [],
-            # Association tables
-            'related_cases_links': [],
-            'case_calculator_links': [],
-            'case_reference_links': [],
-            # Audit, analytics & approval
-            'case_audit_logs': [],
-            'case_view_logs': [],
-            'case_approval_queue': [],
-            # Spaced repetition
-            'user_qa_progress': [],
-            # AI cache
-            'ai_diagnosis_cache': [],
-            'ai_prelim_case_data': [],
-            # Clinical Tools
-            'clinical_protocols': [],
-            'oncall_query_logs': [],
-            'reporting_templates': [],  # Legacy — kept for backward compat
-            'radiology_templates': [],
-            'reporting_algorithms': [],
-            'incidental_finding_calculators': [],
-            # AI audit trail
-            'ai_audit_logs': [],
-        }
-        
-        # Export users (with password hashes for sync purposes)
-        # SECURITY: Intentionally excludes recovery_token, notion_access_token,
-        # anki_api_key, sciencedirect_session_cookies to prevent credential leakage
-        for user in User.query.all():
-            user_data = {
-                'id': user.id,  # Include ID for proper mapping
-                'email': user.email,
-                'password_hash': user.password_hash,  # Salted hash, needed for DB sync
-                'full_name': user.full_name,
-                'profile_picture': user.profile_picture,  # Cloudinary URL or base64
-                'profile_picture_public_id': user.profile_picture_public_id,  # For Cloudinary cleanup
-                'public_display_name': user.public_display_name,  # Forum display name
-                'role': user.role.value if user.role else 'student',
-                'is_active': user.is_active,
-                'subscription_status': user.subscription_status.value if user.subscription_status else 'free',
-                'payment_status': user.payment_status.value if user.payment_status else 'no_subscription',
-                'subscription_start_date': user.subscription_start_date.isoformat() if user.subscription_start_date else None,
-                'subscription_end_date': user.subscription_end_date.isoformat() if user.subscription_end_date else None,
-                'last_case_viewed': user.last_case_viewed.isoformat() if user.last_case_viewed else None,
-                'last_case_viewed_id': user.last_case_viewed_id,
-                'created_at': user.created_at.isoformat() if user.created_at else None,
-                'last_login': user.last_login.isoformat() if user.last_login else None,
-            }
-            backup_data['users'].append(user_data)
-        
-        # Export cases
-        for case in Case.query.all():
-            case_data = {
-                'id': case.id,  # Include ID for proper mapping
-                'case_number': case.case_number,
-                'diagnosis': case.diagnosis,
-                'discussion': case.discussion or '',
-                'module': case.module.value if case.module else None,
-                'body_part': case.body_part.value if case.body_part else None,
-                'age_group': case.age_group.value if case.age_group else None,
-                'is_public': case.is_public,
-                'status': case.status.value if hasattr(case, 'status') and case.status else None,
-                'calculator_slug': getattr(case, 'calculator_slug', None),
-                'contributor_name': getattr(case, 'contributor_name', None),
-                'contributor_notes': getattr(case, 'contributor_notes', None),
-                'created_by_user_id': case.created_by_user_id,
-                'approved_by_user_id': case.approved_by_user_id if hasattr(case, 'approved_by_user_id') else None,
-                'approved_at': case.approved_at.isoformat() if hasattr(case, 'approved_at') and case.approved_at else None,
-                'created_at': case.created_at.isoformat() if case.created_at else None,
-                'updated_at': case.updated_at.isoformat() if hasattr(case, 'updated_at') and case.updated_at else None,
-            }
-            
-            # Export Questions for this case
-            questions = Question.query.filter_by(case_id=case.id).order_by(Question.question_number).all()
-            case_data['questions'] = [{
-                'question_number': q.question_number,
-                'question_text': q.question_text,
-            } for q in questions]
-            
-            # Export Answers for this case
-            answers = Answer.query.filter_by(case_id=case.id).order_by(Answer.answer_number).all()
-            case_data['answers'] = [{
-                'answer_number': a.answer_number,
-                'answer_text': a.answer_text,
-            } for a in answers]
-            
-            # Export Images for this case (support both binary and Cloudinary)
-            images = CaseImage.query.filter_by(case_id=case.id).all()
-            import base64
-            case_data['images'] = [{
-                'filename': img.image_filename or '',
-                'image_type': img.image_type or '',
-                'description': img.image_description or '',
-                'image_data': base64.b64encode(img.image_data).decode('utf-8') if img.image_data else None,
-                # Cloudinary fields (new)
-                'image_url': img.image_url,
-                'image_public_id': img.image_public_id,
-                'image_thumbnail_url': img.image_thumbnail_url,
-            } for img in images]
-            
-            backup_data['cases'].append(case_data)
-        
-        # Export revision sessions
-        for rev_session in RevisionSession.query.all():
-            backup_data['revision_sessions'].append({
-                'user_id': rev_session.user_id,
-                'case_ids': rev_session.get_case_ids_list() if hasattr(rev_session, 'get_case_ids_list') else json.loads(rev_session.case_ids or '[]'),
-                'current_case_index': rev_session.current_case_index,
-                'created_at': rev_session.created_at.isoformat() if rev_session.created_at else None,
-            })
-        
-        # Export case flags
-        for flag in CaseFlag.query.all():
-            backup_data['case_flags'].append({
-                'user_id': flag.user_id,
-                'case_id': flag.case_id,
-                'created_at': flag.created_at.isoformat() if flag.created_at else None,
-            })
-        
-        # Export highlights
-        for highlight in TextHighlight.query.all():
-            backup_data['highlights'].append({
-                'user_id': highlight.user_id,
-                'case_id': highlight.case_id,
-                'text_content': highlight.text_content or '',
-                'highlight_color': highlight.highlight_color or 'yellow',
-                'field_name': highlight.field_name or 'discussion',
-                'created_at': highlight.created_at.isoformat() if highlight.created_at else None,
-            })
-        
-        # Export notes
-        for note in CandidateNote.query.all():
-            backup_data['notes'].append({
-                'user_id': note.user_id,
-                'case_id': note.case_id,
-                'note_text': note.note_text or '',
-                'created_at': note.created_at.isoformat() if note.created_at else None,
-                'updated_at': note.updated_at.isoformat() if note.updated_at else None,
-            })
-        
-        # Export revision history (user progress tracking)
-        for history in RevisionHistory.query.all():
-            backup_data['revision_history'].append({
-                'user_id': history.user_id,
-                'case_id': history.case_id,
-                'module': history.module.value if history.module else None,
-                'first_seen_at': history.first_seen_at.isoformat() if history.first_seen_at else None,
-                'last_seen_at': history.last_seen_at.isoformat() if history.last_seen_at else None,
-                'times_seen': history.times_seen or 0,
-                'revision_session_id': history.revision_session_id,
-            })
-        
-        # Export forum messages
-        for msg in ForumMessage.query.filter_by(is_deleted=False).all():
-            backup_data['forum_messages'].append({
-                'id': msg.id,
-                'case_id': msg.case_id,
-                'user_id': msg.user_id,
-                'content': msg.content or '',
-                'vote_score': msg.vote_score or 0,
-                'is_pinned': msg.is_pinned or False,
-                'flag_count': msg.flag_count or 0,
-                'image_url': msg.image_url,
-                'image_public_id': msg.image_public_id,
-                'image_thumbnail_url': msg.image_thumbnail_url,
-                'created_at': msg.created_at.isoformat() if msg.created_at else None,
-                'updated_at': msg.updated_at.isoformat() if msg.updated_at else None,
-            })
-        
-        # Export forum votes
-        for vote in ForumMessageVote.query.all():
-            backup_data['forum_votes'].append({
-                'message_id': vote.message_id,
-                'user_id': vote.user_id,
-                'vote_value': vote.vote_value,
-                'created_at': vote.created_at.isoformat() if vote.created_at else None,
-            })
-        
-        # Export forum flags (unresolved only)
-        for flag in ForumMessageFlag.query.filter_by(is_resolved=False).all():
-            backup_data['forum_flags'].append({
-                'message_id': flag.message_id,
-                'user_id': flag.user_id,
-                'reason': flag.reason,
-                'details': flag.details,
-                'created_at': flag.created_at.isoformat() if flag.created_at else None,
-            })
-        
-        # ==================== AJCC TNM DATA ====================
-        
-        # Export AJCC Body Sections
-        for section in AJCCBodySection.query.order_by(AJCCBodySection.display_order).all():
-            backup_data['ajcc_body_sections'].append({
-                'id': section.id,
-                'section_name': section.section_name,
-                'slug': section.slug,
-                'display_order': section.display_order,
-                'created_at': section.created_at.isoformat() if section.created_at else None,
-                'updated_at': section.updated_at.isoformat() if section.updated_at else None,
-            })
-        
-        # Export AJCC Disease Sites
-        for disease in AJCCDiseaseSite.query.all():
-            backup_data['ajcc_disease_sites'].append({
-                'id': disease.id,
-                'body_section_id': disease.body_section_id,
-                'disease_name': disease.disease_name,
-                'slug': disease.slug,
-                'ajcc_url_path': disease.ajcc_url_path,
-                'display_order': getattr(disease, 'display_order', 0) or 0,
-                'frcr_module': getattr(disease, 'frcr_module', None),
-                'frcr_body_part': getattr(disease, 'frcr_body_part', None),
-                'frcr_age_group': getattr(disease, 'frcr_age_group', None),
-                'created_at': disease.created_at.isoformat() if disease.created_at else None,
-                'updated_at': disease.updated_at.isoformat() if disease.updated_at else None,
-            })
-        
-        # Export AJCC Diagnosis Years
-        for year in AJCCDiagnosisYear.query.all():
-            backup_data['ajcc_diagnosis_years'].append({
-                'id': year.id,
-                'year': year.year,
-                'is_default': year.is_default,
-                'created_at': year.created_at.isoformat() if year.created_at else None,
-            })
-        
-        # Export AJCC Staging Data (the extracted TNM content)
-        for staging in AJCCStagingData.query.all():
-            staging_entry = {
-                'id': staging.id,
-                'disease_site_id': staging.disease_site_id,
-                'diagnosis_year_id': staging.diagnosis_year_id,
-                'extracted_at': staging.extracted_at.isoformat() if staging.extracted_at else None,
-                'extracted_by_user_id': staging.extracted_by_user_id,
-                'last_updated_at': staging.last_updated_at.isoformat() if staging.last_updated_at else None,
-                'data_version': staging.data_version,
-                # JSON data columns
-                'tnm_data_json': staging.tnm_data_json,
-                'cancers_staged_json': staging.cancers_staged_json,
-                'cancers_not_staged_json': staging.cancers_not_staged_json,
-                'summary_changes_json': staging.summary_changes_json,
-                'primary_sites_json': staging.primary_sites_json,
-                'histopathologic_types_json': staging.histopathologic_types_json,
-                'imaging_workup_json': staging.imaging_workup_json,
-                'staging_rules_json': staging.staging_rules_json,
-                'common_scenarios_json': staging.common_scenarios_json,
-                'notes_json': staging.notes_json,
-                # HTML section columns
-                'section_1_quick_reference_html': staging.section_1_quick_reference_html,
-                'section_2_cancers_staged_html': staging.section_2_cancers_staged_html,
-                'section_3_cancers_not_staged_html': staging.section_3_cancers_not_staged_html,
-                'section_4_summary_changes_html': staging.section_4_summary_changes_html,
-                'section_5_primary_site_html': staging.section_5_primary_site_html,
-                'section_6_histopathologic_type_html': staging.section_6_histopathologic_type_html,
-                'section_7_clinical_staging_workup_html': staging.section_7_clinical_staging_workup_html,
-                'section_8_staging_rules_html': staging.section_8_staging_rules_html,
-                'section_9_common_scenarios_html': staging.section_9_common_scenarios_html,
-                'section_10_explanatory_notes_html': staging.section_10_explanatory_notes_html,
-                # Raw HTML content (full page backup)
-                'raw_html_content': staging.raw_html_content,
-                # Curated admin content
-                'curated_quick_reference_html': getattr(staging, 'curated_quick_reference_html', None),
-                'curated_explanatory_notes_html': getattr(staging, 'curated_explanatory_notes_html', None),
-                'curated_by_user_id': getattr(staging, 'curated_by_user_id', None),
-                'curated_at': staging.curated_at.isoformat() if getattr(staging, 'curated_at', None) else None,
-            }
-            backup_data['ajcc_staging_data'].append(staging_entry)
-        
-        # Export AJCC Disease Mappings (links to FRCR modules/body parts)
-        for mapping in AJCCDiseaseMapping.query.all():
-            backup_data['ajcc_disease_mappings'].append({
-                'id': mapping.id,
-                'disease_site_id': mapping.disease_site_id,
-                'frcr_module': mapping.frcr_module.value if mapping.frcr_module else None,
-                'body_part': mapping.body_part.value if mapping.body_part else None,
-                'notes': mapping.notes,
-                'created_at': mapping.created_at.isoformat() if mapping.created_at else None,
-                'updated_at': mapping.updated_at.isoformat() if mapping.updated_at else None,
-            })
-        
-        # Export AJCC Staging Time Prefixes
-        for prefix in AJCCStagingTimePrefix.query.all():
-            backup_data['ajcc_staging_time_prefixes'].append({
-                'id': prefix.id,
-                'prefix': prefix.prefix,
-                'name': prefix.name,
-                'description': prefix.description,
-                'display_order': prefix.display_order,
-                'created_at': prefix.created_at.isoformat() if prefix.created_at else None,
-            })
-        
-        # Export Intelligent TNM Data (AI-generated, human-verified)
-        for intel in IntelligentTNMData.query.all():
-            backup_data['intelligent_tnm_data'].append({
-                'id': intel.id,
-                'disease_site_id': intel.disease_site_id,
-                'diagnosis_year_id': intel.diagnosis_year_id,
-                'tnm_memory_aid_t': intel.tnm_memory_aid_t,
-                'tnm_memory_aid_n': intel.tnm_memory_aid_n,
-                'tnm_memory_aid_m': intel.tnm_memory_aid_m,
-                'radiologist_key_points_json': intel.radiologist_key_points_json,
-                'upstaging_triggers_json': intel.upstaging_triggers_json,
-                'mdt_critical_findings_json': intel.mdt_critical_findings_json,
-                'copy_blocks_json': intel.copy_blocks_json,
-                'imaging_checklist_json': intel.imaging_checklist_json,
-                'reference_images_json': intel.reference_images_json,
-                'warnings_json': intel.warnings_json,
-                'verified_by_user_id': intel.verified_by_user_id,
-                'source_case_id': intel.source_case_id,
-                'version': intel.version,
-                'created_at': intel.created_at.isoformat() if intel.created_at else None,
-                'updated_at': intel.updated_at.isoformat() if intel.updated_at else None,
-            })
-        
-        # Export Case References
-        for ref in CaseReference.query.all():
-            backup_data['case_references'].append({
-                'id': ref.id,
-                'case_id': ref.case_id,
-                'ref_number': ref.ref_number,
-                'title': ref.title,
-                'url': ref.url,
-                'journal': ref.journal,
-                'year': ref.year,
-                'is_inline': ref.is_inline,
-                'created_at': ref.created_at.isoformat() if ref.created_at else None,
-            })
-        
-        # Export Case Reference Images (CC-licensed curated images for Anatomy tab)
-        for img in CaseReferenceImage.query.order_by(CaseReferenceImage.case_id, CaseReferenceImage.display_order).all():
-            backup_data['case_reference_images'].append({
-                'id': img.id,
-                'case_id': img.case_id,
-                'source_url': img.source_url,
-                'source_domain': img.source_domain,
-                'thumbnail_url': img.thumbnail_url,
-                'image_type': img.image_type,
-                'modality': img.modality,
-                'ai_description': img.ai_description,
-                'ai_relevance_score': img.ai_relevance_score,
-                'admin_note': img.admin_note,
-                'display_order': img.display_order,
-                'added_by_user_id': img.added_by_user_id,
-                'created_at': img.created_at.isoformat() if img.created_at else None,
-                'license': img.license,
-                'attribution': img.attribution,
-            })
-        
-        # Export TNM References
-        for ref in TnmReference.query.all():
-            backup_data['tnm_references'].append({
-                'id': ref.id,
-                'disease_site_id': ref.disease_site_id,
-                'ref_number': ref.ref_number,
-                'title': ref.title,
-                'url': ref.url,
-                'journal': ref.journal,
-                'year': ref.year,
-                'is_inline': ref.is_inline,
-                'created_at': ref.created_at.isoformat() if ref.created_at else None,
-            })
-        
-        # Export Anatomy Figures
-        for fig in AnatomyFigure.query.all():
-            backup_data['anatomy_figures'].append({
-                'id': fig.id,
-                'figure_id': fig.figure_id,
-                'title': fig.title,
-                'description': fig.description,
-                'source': fig.source,
-                'body_region': fig.body_region,
-                'figure_type': fig.figure_type,
-                'keywords': fig.keywords,
-                'modality': fig.modality,
-                'cancer_type': fig.cancer_type,
-                'staging_category': fig.staging_category,
-                'original_url': fig.original_url,
-                'cloudinary_url': fig.cloudinary_url,
-                'cloudinary_public_id': fig.cloudinary_public_id,
-                'thumbnail_url': fig.thumbnail_url,
-                'license': fig.license,
-                'attribution': fig.attribution,
-                'chapter': fig.chapter,
-                'page_number': fig.page_number,
-                'is_active': fig.is_active,
-                'created_at': fig.created_at.isoformat() if fig.created_at else None,
-                'updated_at': fig.updated_at.isoformat() if fig.updated_at else None,
-            })
-        
-        # Export TNM Images
-        for img in TNMImage.query.all():
-            backup_data['tnm_images'].append({
-                'id': img.id,
-                'disease_site_id': img.disease_site_id,
-                'diagnosis_year_id': img.diagnosis_year_id,
-                'title': img.title,
-                'description': img.description,
-                'alt_text': img.alt_text,
-                'cloudinary_url': img.cloudinary_url,
-                'cloudinary_public_id': img.cloudinary_public_id,
-                'width': img.width,
-                'height': img.height,
-                'image_type': img.image_type,
-                'uploaded_by_user_id': img.uploaded_by_user_id,
-                'is_active': img.is_active,
-                'created_at': img.created_at.isoformat() if img.created_at else None,
-                'updated_at': img.updated_at.isoformat() if img.updated_at else None,
-            })
-        
-        # Export Case Image Stacks (R2 + legacy OneDrive)
-        for stack in CaseImageStack.query.order_by(CaseImageStack.display_order, CaseImageStack.id).all():
-            backup_data['case_image_stacks'].append({
-                'id': stack.id,
-                'case_id': stack.case_id,
-                'study_label': getattr(stack, 'study_label', None),
-                'onedrive_share_id': stack.onedrive_share_id,
-                'onedrive_folder_path': stack.onedrive_folder_path,
-                'config_json': stack.config_json,
-                'storage_backend': getattr(stack, 'storage_backend', None),
-                'r2_config_json': getattr(stack, 'r2_config_json', None),
-                'display_order': getattr(stack, 'display_order', 0),
-                'onedrive_refresh_token_encrypted': getattr(stack, 'onedrive_refresh_token_encrypted', None),
-                'description_html': getattr(stack, 'description_html', None),
-                'created_by_user_id': stack.created_by_user_id,
-                'created_at': stack.created_at.isoformat() if stack.created_at else None,
-            })
-        
-        # Export Case Image Annotations (Cornerstone.js annotations; per-study via stack_id)
-        for ann in CaseImageAnnotation.query.all():
-            backup_data['case_image_annotations'].append({
-                'id': ann.id,
-                'case_id': ann.case_id,
-                'stack_id': getattr(ann, 'stack_id', None),
-                'annotations_json': ann.annotations_json,
-                'created_by_user_id': ann.created_by_user_id,
-                'created_at': ann.created_at.isoformat() if ann.created_at else None,
-                'updated_at': ann.updated_at.isoformat() if ann.updated_at else None,
-            })
-
-        # Export TNM Calculator Content (AI-generated calculators and algorithms)
-        for content in TNMCalculatorContent.query.all():
-            backup_data['tnm_calculator_content'].append({
-                'id': content.id,
-                'slug': content.slug,
-                'cancer_name': content.cancer_name,
-                'body_section': content.body_section,
-                'calculator_html': content.calculator_html,
-                'algorithm_discussion_html': content.algorithm_discussion_html,
-                'staging_system': content.staging_system,
-                'special_features': content.special_features,
-                'description': content.description,
-                'is_available': content.is_available,
-                'generation_prompt': content.generation_prompt,
-                'generation_model': content.generation_model,
-                'generated_at': content.generated_at.isoformat() if content.generated_at else None,
-                'algorithm_case_id': content.algorithm_case_id,
-                'created_by_user_id': content.created_by_user_id,
-                'created_at': content.created_at.isoformat() if content.created_at else None,
-                'updated_at': content.updated_at.isoformat() if content.updated_at else None,
-            })
-
-        # Export Related Cases (association table)
-        for row in db.session.execute(related_cases.select()).fetchall():
-            backup_data['related_cases_links'].append({
-                'case_id': row.case_id,
-                'related_case_id': row.related_case_id,
-                'relation_type': row.relation_type if hasattr(row, 'relation_type') else 'related',
-            })
-
-        # Export Case-Calculator Links (association table)
-        for row in db.session.execute(case_calculator_links.select()).fetchall():
-            backup_data['case_calculator_links'].append({
-                'case_id': row.case_id,
-                'calculator_id': row.calculator_id,
-                'created_by_user_id': row.created_by_user_id,
-            })
-
-        # Export Case-Reference Links (association table)
-        for row in db.session.execute(case_reference_links.select()).fetchall():
-            backup_data['case_reference_links'].append({
-                'case_id': row.case_id,
-                'reference_id': row.reference_id,
-                'created_by_user_id': row.created_by_user_id,
-            })
-
-        # Export Case Audit Logs
-        for log in CaseAuditLog.query.order_by(CaseAuditLog.id).all():
-            backup_data['case_audit_logs'].append({
-                'id': log.id,
-                'case_id': log.case_id,
-                'user_id': log.user_id,
-                'action': log.action,
-                'changes': log.changes,
-                'notes': log.notes,
-                'created_at': log.created_at.isoformat() if log.created_at else None,
-            })
-
-        # Export Case View Logs
-        for vlog in CaseViewLog.query.order_by(CaseViewLog.id).all():
-            backup_data['case_view_logs'].append({
-                'user_id': vlog.user_id,
-                'case_id': vlog.case_id,
-                'viewed_at': vlog.viewed_at.isoformat() if vlog.viewed_at else None,
-                'time_spent_seconds': vlog.time_spent_seconds,
-            })
-
-        # Export Case Approval Queue
-        for entry in CaseApprovalQueue.query.all():
-            backup_data['case_approval_queue'].append({
-                'case_id': entry.case_id,
-                'submitted_by_user_id': entry.submitted_by_user_id,
-                'submitted_at': entry.submitted_at.isoformat() if entry.submitted_at else None,
-                'admin_notes': entry.admin_notes,
-            })
-
-        # Export User QA Progress (spaced repetition state)
-        for prog in UserQAProgress.query.all():
-            backup_data['user_qa_progress'].append({
-                'user_id': prog.user_id,
-                'question_id': prog.question_id,
-                'case_id': prog.case_id,
-                'ease_factor': prog.ease_factor,
-                'interval_days': prog.interval_days,
-                'repetition_number': prog.repetition_number,
-                'next_review_date': prog.next_review_date.isoformat() if prog.next_review_date else None,
-                'last_reviewed_at': prog.last_reviewed_at.isoformat() if prog.last_reviewed_at else None,
-                'times_correct': prog.times_correct,
-                'times_incorrect': prog.times_incorrect,
-                'created_at': prog.created_at.isoformat() if prog.created_at else None,
-            })
-
-        # Export AI Diagnosis Cache
-        for cache in AiDiagnosisCache.query.all():
-            backup_data['ai_diagnosis_cache'].append({
-                'id': cache.id,
-                'diagnosis': cache.diagnosis,
-                'provider': cache.provider,
-                'model_name': cache.model_name,
-                'first_case_id': cache.first_case_id,
-                'first_user_id': cache.first_user_id,
-                'first_generated_at': cache.first_generated_at.isoformat() if cache.first_generated_at else None,
-                'query_count': cache.query_count,
-                'last_queried_at': cache.last_queried_at.isoformat() if cache.last_queried_at else None,
-            })
-
-        # Export AI Prelim Case Data (audit trail for AI-generated cases)
-        for apcd in AiPrelimCaseData.query.all():
-            backup_data['ai_prelim_case_data'].append({
-                'id': apcd.id,
-                'case_id': apcd.case_id,
-                'created_by_user_id': apcd.created_by_user_id,
-                'provider': apcd.provider,
-                'model_name': apcd.model_name,
-                'prompt_version': apcd.prompt_version,
-                'request_payload': apcd.request_payload,
-                'response_payload': apcd.response_payload,
-                'created_at': apcd.created_at.isoformat() if apcd.created_at else None,
-            })
-
-        # Export Clinical Protocols (On-Call Helper knowledge base)
-        for protocol in ClinicalProtocol.query.all():
-            backup_data['clinical_protocols'].append({
-                'id': protocol.id,
-                'category': protocol.category,
-                'title': protocol.title,
-                'keywords': protocol.keywords,
-                'content_structured': protocol.content_structured,
-                'content_html': protocol.content_html,
-                'source_citation': protocol.source_citation,
-                'guideline_version': protocol.guideline_version,
-                'source_url': protocol.source_url,
-                'is_published': protocol.is_published,
-                'verified_by_user_id': protocol.verified_by_user_id,
-                'verified_at': protocol.verified_at.isoformat() if protocol.verified_at else None,
-                'created_by_user_id': protocol.created_by_user_id,
-                'created_at': protocol.created_at.isoformat() if protocol.created_at else None,
-                'updated_at': protocol.updated_at.isoformat() if protocol.updated_at else None,
-            })
-
-        # Export On-Call Query Logs (audit trail)
-        for log in OnCallQueryLog.query.all():
-            backup_data['oncall_query_logs'].append({
-                'id': log.id,
-                'user_id': log.user_id,
-                'query_text': log.query_text,
-                'matched_protocol_ids': log.matched_protocol_ids,
-                'ai_response_text': log.ai_response_text,
-                'model_used': log.model_used,
-                'token_count': log.token_count,
-                'response_source': log.response_source,
-                'created_at': log.created_at.isoformat() if log.created_at else None,
-            })
-
-        # Export Radiology Templates (plain-text PACS reports)
-        for rt in RadiologyTemplate.query.all():
-            backup_data['radiology_templates'].append({
-                'id': rt.id, 'slug': rt.slug, 'title': rt.title,
-                'origin': rt.origin, 'category': rt.category,
-                'body_section': rt.body_section, 'description': rt.description,
-                'keywords': rt.keywords, 'template_text': rt.template_text,
-                'source_citation': rt.source_citation, 'guideline_version': rt.guideline_version,
-                'is_available': rt.is_available, 'is_ai_generated': rt.is_ai_generated,
-                'verified_by_user_id': rt.verified_by_user_id,
-                'verified_at': rt.verified_at.isoformat() if rt.verified_at else None,
-                'generation_prompt': rt.generation_prompt, 'generation_model': rt.generation_model,
-                'generated_at': rt.generated_at.isoformat() if rt.generated_at else None,
-                'created_by_user_id': rt.created_by_user_id,
-                'last_edit_note': rt.last_edit_note,
-                'created_at': rt.created_at.isoformat() if rt.created_at else None,
-                'updated_at': rt.updated_at.isoformat() if rt.updated_at else None,
-            })
-
-        # Export Reporting Algorithms (interactive decision trees)
-        for ra in ReportingAlgorithm.query.all():
-            backup_data['reporting_algorithms'].append({
-                'id': ra.id, 'slug': ra.slug, 'title': ra.title,
-                'origin': ra.origin, 'category': ra.category,
-                'body_section': ra.body_section, 'description': ra.description,
-                'keywords': ra.keywords,
-                'template_html': ra.template_html, 'algorithm_html': ra.algorithm_html,
-                'source_citation': ra.source_citation, 'guideline_version': ra.guideline_version,
-                'is_available': ra.is_available, 'is_ai_generated': ra.is_ai_generated,
-                'verified_by_user_id': ra.verified_by_user_id,
-                'verified_at': ra.verified_at.isoformat() if ra.verified_at else None,
-                'generation_prompt': ra.generation_prompt, 'generation_model': ra.generation_model,
-                'generated_at': ra.generated_at.isoformat() if ra.generated_at else None,
-                'created_by_user_id': ra.created_by_user_id,
-                'last_edit_note': ra.last_edit_note,
-                'created_at': ra.created_at.isoformat() if ra.created_at else None,
-                'updated_at': ra.updated_at.isoformat() if ra.updated_at else None,
-            })
-
-        # Export Incidental Finding Calculators
-        for ifc in IncidentalFindingCalculator.query.all():
-            backup_data['incidental_finding_calculators'].append({
-                'id': ifc.id,
-                'slug': ifc.slug,
-                'finding_name': ifc.finding_name,
-                'body_section': ifc.body_section,
-                'category': ifc.category,
-                'description': ifc.description,
-                'keywords': ifc.keywords,
-                'calculator_html': ifc.calculator_html,
-                'algorithm_html': ifc.algorithm_html,
-                'guideline_source': ifc.guideline_source,
-                'guideline_version': ifc.guideline_version,
-                'guideline_url': ifc.guideline_url,
-                'is_available': ifc.is_available,
-                'generation_prompt': ifc.generation_prompt,
-                'generation_model': ifc.generation_model,
-                'generated_at': ifc.generated_at.isoformat() if ifc.generated_at else None,
-                'verified_by_user_id': ifc.verified_by_user_id,
-                'verified_at': ifc.verified_at.isoformat() if ifc.verified_at else None,
-                'created_by_user_id': ifc.created_by_user_id,
-                'last_edit_note': ifc.last_edit_note,
-                'created_at': ifc.created_at.isoformat() if ifc.created_at else None,
-                'updated_at': ifc.updated_at.isoformat() if ifc.updated_at else None,
-            })
-
-        # Export AI audit logs
-        for log in AIAuditLog.query.order_by(AIAuditLog.created_at.desc()).all():
-            backup_data['ai_audit_logs'].append(log.to_dict())
+        backup_data = _build_backup_data()
 
         # Create JSON data
         json_data = json.dumps(backup_data, indent=2)
@@ -871,6 +877,69 @@ def download_backup():
         
     except Exception as e:
         return jsonify({'error': f'Backup failed: {str(e)}'}), 500
+
+
+@backup_bp.route('/scheduled-backup', methods=['GET', 'POST'])
+def scheduled_backup():
+    """Cron endpoint: build backup JSON and upload to Cloudflare R2.
+    Keeps the last 30 daily backups; deletes older ones."""
+    from flask import current_app
+    import gzip
+
+    # Auth: same pattern as other cron endpoints
+    cron_secret = os.getenv('CRON_SECRET')
+    if current_app.debug:
+        pass  # Allow in debug mode
+    elif not cron_secret:
+        logger.error('CRON_SECRET not configured — rejecting scheduled backup')
+        return jsonify({'error': 'CRON_SECRET not configured'}), 401
+    else:
+        auth = request.headers.get('Authorization', '')
+        if not auth.endswith(cron_secret):
+            return jsonify({'error': 'Unauthorized'}), 401
+
+    try:
+        from case_dicom_viewer import r2_service
+
+        if not r2_service.is_configured():
+            return jsonify({'error': 'R2 storage not configured'}), 503
+
+        # Build backup data
+        backup_data = _build_backup_data()
+        json_bytes = json.dumps(backup_data, separators=(',', ':')).encode('utf-8')
+
+        # Gzip compress to save storage
+        compressed = gzip.compress(json_bytes)
+
+        # Upload to R2
+        timestamp = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
+        key = f'backups/radinsights_{timestamp}.json.gz'
+        success = r2_service.upload_object(key, compressed, content_type='application/gzip')
+        if not success:
+            return jsonify({'error': 'R2 upload failed'}), 500
+
+        size_kb = len(compressed) / 1024
+
+        # Prune old backups — keep last 30
+        pruned = 0
+        listing = r2_service.list_objects(prefix='backups/', delimiter='', max_keys=1000)
+        objects = sorted(listing.get('objects', []), key=lambda o: o.get('key', ''))
+        if len(objects) > 30:
+            old_keys = [o['key'] for o in objects[:len(objects) - 30]]
+            deleted, _ = r2_service.delete_objects(old_keys)
+            pruned = len(deleted)
+
+        logger.info(f'Scheduled backup uploaded: {key} ({size_kb:.1f} KB), pruned {pruned} old backups')
+        return jsonify({
+            'success': True,
+            'key': key,
+            'size_kb': round(size_kb, 1),
+            'pruned': pruned,
+        }), 200
+
+    except Exception as e:
+        logger.exception('Scheduled backup failed: %s', e)
+        return jsonify({'error': str(e)}), 500
 
 
 @backup_bp.route('/restore', methods=['POST'])

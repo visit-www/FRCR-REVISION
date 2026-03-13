@@ -18,6 +18,14 @@
     {
       "path": "/api/cron/process-tnm-jobs",
       "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/backup/scheduled-backup",
+      "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/cron/data-retention-cleanup",
+      "schedule": "0 3 * * 0"
     }
   ],
   "rewrites": [
