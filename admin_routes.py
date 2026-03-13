@@ -2180,6 +2180,87 @@ def delete_tnm_calculator(slug):
 
 
 # ============================================================================
+# SENTRY MONITORING (Admin only)
+# ============================================================================
+
+@admin_bp.route('/sentry/stats', methods=['GET'])
+@require_admin
+def sentry_stats():
+    """Proxy endpoint for Sentry API. Returns aggregated error stats."""
+    import requests as http_requests
+
+    auth_token = os.getenv('SENTRY_AUTH_TOKEN')
+    org = os.getenv('SENTRY_ORG')
+    project = os.getenv('SENTRY_PROJECT')
+
+    if not all([auth_token, org, project]):
+        return jsonify({
+            'configured': False,
+            'error': 'Sentry API not configured. Set SENTRY_AUTH_TOKEN, SENTRY_ORG, SENTRY_PROJECT.',
+        }), 200
+
+    headers = {'Authorization': f'Bearer {auth_token}'}
+    base_url = 'https://sentry.io/api/0'
+    period = request.args.get('period', '24h')
+
+    result = {
+        'configured': True,
+        'period': period,
+        'unresolved_count': 0,
+        'recent_issues': [],
+        'stats': [],
+        'sentry_url': f'https://{org}.sentry.io/projects/{project}/',
+        'errors': [],
+    }
+
+    try:
+        # 1. Unresolved issues (most recent 10)
+        issues_resp = http_requests.get(
+            f'{base_url}/projects/{org}/{project}/issues/',
+            headers=headers,
+            params={'query': 'is:unresolved', 'sort': 'date', 'limit': 10, 'statsPeriod': period},
+            timeout=10,
+        )
+        if issues_resp.status_code == 200:
+            issues = issues_resp.json()
+            result['unresolved_count'] = int(issues_resp.headers.get('X-Hits', len(issues)))
+            result['recent_issues'] = [{
+                'id': issue['id'],
+                'title': issue['title'],
+                'culprit': issue.get('culprit', ''),
+                'count': int(issue.get('count', 0)),
+                'first_seen': issue.get('firstSeen'),
+                'last_seen': issue.get('lastSeen'),
+                'level': issue.get('level', 'error'),
+                'permalink': issue.get('permalink', ''),
+            } for issue in issues]
+        else:
+            result['errors'].append(f'Issues API: {issues_resp.status_code}')
+
+        # 2. Event stats (hourly/daily counts)
+        stats_resp = http_requests.get(
+            f'{base_url}/projects/{org}/{project}/stats/',
+            headers=headers,
+            params={'stat': 'received', 'resolution': '1h' if period == '24h' else '1d'},
+            timeout=10,
+        )
+        if stats_resp.status_code == 200:
+            result['stats'] = stats_resp.json()
+        else:
+            result['errors'].append(f'Stats API: {stats_resp.status_code}')
+
+    except http_requests.exceptions.Timeout:
+        result['errors'].append('Sentry API timeout')
+    except http_requests.exceptions.ConnectionError:
+        result['errors'].append('Could not connect to Sentry API')
+    except Exception as e:
+        logger.exception("Sentry stats error: %s", e)
+        result['errors'].append(str(e)[:200])
+
+    return jsonify(result), 200
+
+
+# ============================================================================
 # ERROR HANDLERS
 # ============================================================================
 

@@ -72,6 +72,11 @@
                 <i class="fas fa-book"></i> App Documents
             </button>
         </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="monitoring-tab" data-bs-toggle="tab" data-bs-target="#monitoring-content" type="button" role="tab" aria-controls="monitoring-content" aria-selected="false">
+                <i class="fas fa-heartbeat"></i> Monitoring
+            </button>
+        </li>
     </ul>
 
     <!-- Tab Content -->
@@ -399,6 +404,82 @@
             </div>
         </div>
         <!-- End App Documents Tab -->
+
+        <!-- Monitoring Tab -->
+        <div class="tab-pane fade" id="monitoring-content" role="tabpanel" aria-labelledby="monitoring-tab">
+            <h2 class="mb-4 admin-section-title"><i class="fas fa-heartbeat"></i> Application Monitoring</h2>
+
+            <div id="sentry-not-configured" class="alert alert-warning" style="display: none;">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                <strong>Sentry API not configured.</strong> Set <code>SENTRY_AUTH_TOKEN</code>, <code>SENTRY_ORG</code>, and <code>SENTRY_PROJECT</code> environment variables to enable monitoring stats.
+            </div>
+
+            <div id="sentry-loading" class="text-center py-5" style="display: none;">
+                <div class="spinner-border" style="color: var(--brand-neutral);" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+
+            <div id="sentry-stats-content" style="display: none;">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div class="btn-group" role="group">
+                        <button type="button" class="btn btn-brand-neutral btn-sm sentry-period-btn active" data-period="24h">Last 24 Hours</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm sentry-period-btn" data-period="14d">Last 14 Days</button>
+                    </div>
+                    <a id="sentry-dashboard-link" href="#" target="_blank" class="btn btn-brand-primary btn-sm">
+                        <i class="fas fa-external-link-alt me-1"></i> Open Sentry Dashboard
+                    </a>
+                </div>
+
+                <div class="row mb-4">
+                    <div class="col-md-4 mb-3">
+                        <div class="admin-metric admin-metric-danger">
+                            <h4 id="sentry-unresolved-count">-</h4>
+                            <small>Unresolved Issues</small>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="admin-metric admin-metric-warning">
+                            <h4 id="sentry-events-period">-</h4>
+                            <small id="sentry-events-period-label">Events (24h)</small>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="admin-metric admin-metric-success">
+                            <h4 id="sentry-health-status">-</h4>
+                            <small>Health Status</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card admin-card mb-4">
+                    <div class="card-header admin-card-header admin-header-info">
+                        <h5 class="mb-0"><i class="fas fa-chart-bar me-2"></i> Error Trend</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="sentry-chart" style="display: flex; align-items: flex-end; height: 120px; gap: 2px; padding: 10px 0;"></div>
+                        <div class="d-flex justify-content-between mt-2">
+                            <small class="text-muted" id="sentry-chart-start"></small>
+                            <small class="text-muted" id="sentry-chart-end">Now</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card admin-card">
+                    <div class="card-header admin-card-header admin-header-info">
+                        <h5 class="mb-0"><i class="fas fa-exclamation-circle me-2"></i> Recent Unresolved Issues</h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div id="sentry-issues-list">
+                            <div class="text-center text-muted py-4">No issues to display.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="sentry-error" class="alert alert-danger" style="display: none;"></div>
+        </div>
+        <!-- End Monitoring Tab -->
     </div>
 </div>
 
@@ -1687,6 +1768,157 @@
         });
     }
 
+    // ========================================================================
+    // MONITORING TAB (Sentry)
+    // ========================================================================
+
+    let sentryCurrentPeriod = '24h';
+    const monitoringTabEl = document.getElementById('monitoring-tab');
+    if (monitoringTabEl) {
+        monitoringTabEl.addEventListener('shown.bs.tab', function() {
+            loadSentryStats(sentryCurrentPeriod);
+        });
+    }
+
+    document.querySelectorAll('.sentry-period-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.sentry-period-btn').forEach(b => {
+                b.classList.remove('active', 'btn-brand-neutral');
+                b.classList.add('btn-outline-secondary');
+            });
+            this.classList.add('active', 'btn-brand-neutral');
+            this.classList.remove('btn-outline-secondary');
+            sentryCurrentPeriod = this.dataset.period;
+            loadSentryStats(sentryCurrentPeriod);
+        });
+    });
+
+    async function loadSentryStats(period) {
+        const loading = document.getElementById('sentry-loading');
+        const content = document.getElementById('sentry-stats-content');
+        const notConfigured = document.getElementById('sentry-not-configured');
+        const errorDiv = document.getElementById('sentry-error');
+
+        loading.style.display = 'block';
+        content.style.display = 'none';
+        notConfigured.style.display = 'none';
+        errorDiv.style.display = 'none';
+
+        try {
+            const response = await fetch(`/api/admin/sentry/stats?period=${period}`, { credentials: 'include' });
+            const data = await response.json();
+            loading.style.display = 'none';
+
+            if (!data.configured) {
+                notConfigured.style.display = 'block';
+                return;
+            }
+
+            content.style.display = 'block';
+            document.getElementById('sentry-dashboard-link').href = data.sentry_url;
+            document.getElementById('sentry-unresolved-count').textContent = data.unresolved_count;
+
+            const totalEvents = (data.stats || []).reduce((sum, point) => sum + point[1], 0);
+            document.getElementById('sentry-events-period').textContent = totalEvents;
+            document.getElementById('sentry-events-period-label').textContent =
+                period === '24h' ? 'Events (24h)' : 'Events (14d)';
+
+            const healthEl = document.getElementById('sentry-health-status');
+            if (data.unresolved_count === 0 && totalEvents === 0) {
+                healthEl.textContent = 'Healthy';
+                healthEl.closest('.admin-metric').className = 'admin-metric admin-metric-success';
+            } else if (data.unresolved_count <= 3) {
+                healthEl.textContent = 'Attention';
+                healthEl.closest('.admin-metric').className = 'admin-metric admin-metric-warning';
+            } else {
+                healthEl.textContent = 'Issues';
+                healthEl.closest('.admin-metric').className = 'admin-metric admin-metric-danger';
+            }
+
+            renderSentryChart(data.stats || [], period);
+            renderSentryIssues(data.recent_issues || []);
+
+            if (data.errors && data.errors.length > 0) {
+                errorDiv.style.display = 'block';
+                errorDiv.className = 'alert alert-warning';
+                errorDiv.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i> Some data may be incomplete: ' + data.errors.join(', ');
+            }
+        } catch (e) {
+            loading.style.display = 'none';
+            errorDiv.style.display = 'block';
+            errorDiv.className = 'alert alert-danger';
+            errorDiv.innerHTML = '<i class="fas fa-times-circle me-1"></i> Failed to load monitoring data: ' + e.message;
+        }
+    }
+
+    function renderSentryChart(stats, period) {
+        const chart = document.getElementById('sentry-chart');
+        if (!stats.length) {
+            chart.innerHTML = '<div class="text-muted w-100 text-center">No data available</div>';
+            return;
+        }
+        const maxVal = Math.max(...stats.map(s => s[1]), 1);
+        chart.innerHTML = stats.map(([ts, count]) => {
+            const height = Math.max((count / maxVal) * 100, 2);
+            const color = count === 0 ? 'var(--brand-success)' : count <= 5 ? 'var(--brand-secondary)' : '#dc3545';
+            const time = new Date(ts * 1000);
+            const label = period === '24h'
+                ? time.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})
+                : time.toLocaleDateString([], {month: 'short', day: 'numeric'});
+            return `<div style="flex:1; background:${color}; height:${height}%; border-radius:2px 2px 0 0; min-width:4px; cursor:pointer; transition: opacity 0.15s;" title="${label}: ${count} event(s)"></div>`;
+        }).join('');
+
+        if (stats.length > 0) {
+            const startTime = new Date(stats[0][0] * 1000);
+            document.getElementById('sentry-chart-start').textContent = period === '24h'
+                ? startTime.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})
+                : startTime.toLocaleDateString([], {month: 'short', day: 'numeric'});
+        }
+    }
+
+    function renderSentryIssues(issues) {
+        const container = document.getElementById('sentry-issues-list');
+        if (!issues.length) {
+            container.innerHTML = '<div class="text-center text-muted py-4"><i class="fas fa-check-circle me-2" style="color: var(--brand-success);"></i>No unresolved issues. All clear!</div>';
+            return;
+        }
+        container.innerHTML = issues.map(issue => {
+            const levelClass = issue.level === 'error' ? 'bg-danger'
+                : issue.level === 'warning' ? 'bg-warning text-dark' : 'bg-secondary';
+            const lastSeen = issue.last_seen ? sentryTimeAgo(new Date(issue.last_seen)) : '';
+            const titleHtml = issue.permalink
+                ? `<a href="${issue.permalink}" target="_blank" class="text-decoration-none" style="color: var(--brand-text-primary);">${sentryEscape(issue.title)}</a>`
+                : sentryEscape(issue.title);
+            return `<div class="d-flex justify-content-between align-items-center px-3 py-3 border-bottom" style="font-size: 0.9rem;">
+                <div class="flex-grow-1">
+                    <div class="d-flex align-items-center gap-2 mb-1">
+                        <span class="badge ${levelClass}">${issue.level}</span>
+                        <strong>${titleHtml}</strong>
+                    </div>
+                    <small class="text-muted">${sentryEscape(issue.culprit)}</small>
+                </div>
+                <div class="text-end text-nowrap ms-3">
+                    <div><strong>${issue.count}</strong> <small class="text-muted">events</small></div>
+                    <small class="text-muted">${lastSeen}</small>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    function sentryTimeAgo(date) {
+        const s = Math.floor((Date.now() - date) / 1000);
+        if (s < 60) return 'just now';
+        if (s < 3600) return Math.floor(s / 60) + 'm ago';
+        if (s < 86400) return Math.floor(s / 3600) + 'h ago';
+        return Math.floor(s / 86400) + 'd ago';
+    }
+
+    function sentryEscape(str) {
+        const d = document.createElement('div');
+        d.textContent = str || '';
+        return d.innerHTML;
+    }
+
 </script>
 
 <style>
@@ -1882,6 +2114,11 @@
 #r2-folders .list-group-item {
     border-radius: 6px;
     margin-bottom: 4px;
+}
+
+/* Monitoring Tab */
+#sentry-chart div:hover {
+    opacity: 0.8;
 }
 </style>
 {% endblock %}
