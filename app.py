@@ -35,6 +35,40 @@ else:
     )
 logger = logging.getLogger(__name__)
 
+# ==================== SENTRY ERROR TRACKING ====================
+_sentry_dsn = os.getenv('SENTRY_DSN')
+if _sentry_dsn:
+    import sentry_sdk
+    from sentry_sdk.integrations.flask import FlaskIntegration
+    from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
+
+    def _sentry_before_send(event, hint):
+        """Scrub PII from Sentry events before sending."""
+        if 'request' in event:
+            req = event['request']
+            # Remove cookies and authorization headers
+            if 'headers' in req:
+                req['headers'] = {
+                    k: v for k, v in req['headers'].items()
+                    if k.lower() not in ('cookie', 'authorization', 'x-csrf-token')
+                }
+            # Remove request body data (may contain user reports)
+            req.pop('data', None)
+        # Remove user IP address
+        if 'user' in event:
+            event['user'].pop('ip_address', None)
+        return event
+
+    sentry_sdk.init(
+        dsn=_sentry_dsn,
+        integrations=[FlaskIntegration(), SqlalchemyIntegration()],
+        traces_sample_rate=float(os.getenv('SENTRY_TRACES_RATE', '0.1')),
+        environment=os.getenv('VERCEL_ENV', 'development'),
+        before_send=_sentry_before_send,
+        send_default_pii=False,
+    )
+    logger.info('Sentry error tracking initialized')
+
 # ==================== STUDENT CASE BROWSER ====================
 # (Moved below app initialization)
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session, send_file, send_from_directory, flash

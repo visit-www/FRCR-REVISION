@@ -70,7 +70,7 @@
 
 | # | Item | Status | Details |
 |---|------|--------|---------|
-| 26 | Error tracking service (Sentry) | TODO | No external error tracking. Requires Sentry account + DSN. Integrate when ready. |
+| 26 | Error tracking service (Sentry) | DONE | `sentry-sdk[flask]` with Flask + SQLAlchemy integrations. PII scrubbed via `before_send` (no cookies, auth headers, request bodies, IPs). Set `SENTRY_DSN` env var to activate. Privacy policy updated. |
 | 27 | Health check endpoint | DONE | `GET /health` returns `{"status": "ok", "database": "ok"}` with DB connection check |
 | 28 | Structured logging (JSON format) | DONE | Production uses JSON formatter (`_JSONFormatter`); local dev uses human-readable format |
 | 29 | Slow query logging | DONE | SQLAlchemy `before/after_cursor_execute` listeners log queries > 1s to `slow_query` logger |
