@@ -163,8 +163,13 @@ if DATABASE_URL:
     except Exception as e:
         pass  # URL parsing failed, use original db_uri
     
+    # Enforce SSL for PostgreSQL connections (required for UK GDPR compliance)
+    if 'sslmode' not in db_uri:
+        separator = '&' if '?' in db_uri else '?'
+        db_uri = db_uri + separator + 'sslmode=require'
+
     app.config['SQLALCHEMY_DATABASE_URI'] = db_uri
-    
+
     # For serverless environments (Vercel), disable connection pooling
     # Each function invocation should create and close its own connection
     if os.getenv('VERCEL'):
@@ -741,6 +746,10 @@ with app.app_context():
         _add_col_if_missing('user', 'failed_login_last', 'failed_login_last TIMESTAMP')
         _add_col_if_missing('user', 'locked_until', 'locked_until TIMESTAMP')
 
+        # -- user: Widen token columns VARCHAR(255) → TEXT for encrypted storage --
+        for _token_col in ['notion_access_token', 'anki_api_key']:
+            _widen_col_to_text('user', _token_col)
+
         # -- reporting_session (legacy) --
         _add_col_if_missing('reporting_session', 'ask_claude_count', 'ask_claude_count INTEGER DEFAULT 0')
         _add_col_if_missing('reporting_session', 'updated_at', 'updated_at TIMESTAMP')
@@ -898,6 +907,18 @@ def add_security_headers(response):
     response.headers['Permissions-Policy'] = 'camera=(), microphone=(), geolocation=()'
     if is_production:
         response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+    # Content Security Policy — allow self, Cloudinary (images), CDN (Bootstrap, Font Awesome)
+    response.headers['Content-Security-Policy'] = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; "
+        "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com; "
+        "img-src 'self' data: blob: https://res.cloudinary.com https://*.cloudinary.com https://upload.wikimedia.org https://*.wikimedia.org; "
+        "font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com; "
+        "connect-src 'self'; "
+        "frame-src 'self'; "
+        "object-src 'none'; "
+        "base-uri 'self'"
+    )
     return response
 
 
@@ -921,11 +942,15 @@ def process_tnm_generator_jobs():
     cron_secret = os.environ.get('CRON_SECRET')
     auth_header = request.headers.get('Authorization', '')
 
-    # Allow in development or with valid secret
-    if cron_secret and not auth_header.endswith(cron_secret):
-        # In production, require secret; in dev, allow without
-        if not app.debug:
-            return jsonify({'error': 'Unauthorized'}), 401
+    if app.debug:
+        # Allow in development without secret
+        pass
+    elif not cron_secret:
+        # Production: CRON_SECRET must be configured
+        logger.error("CRON_SECRET not configured — rejecting cron request")
+        return jsonify({'error': 'Unauthorized'}), 401
+    elif not auth_header.endswith(cron_secret):
+        return jsonify({'error': 'Unauthorized'}), 401
 
     # Get oldest pending job
     job = TNMGeneratorJob.query.filter_by(status='pending').order_by(TNMGeneratorJob.created_at).first()
@@ -3018,6 +3043,7 @@ def delete_case(case_id):
 @login_required
 def upload_case_image(case_id):
     """Upload an image for a case - stores in Cloudinary"""
+    import re
     # Verify user ownership
     case = verify_case_ownership(case_id)
     if not case:
@@ -3076,7 +3102,7 @@ def upload_case_image(case_id):
             image_url=upload_result['secure_url'],
             image_public_id=upload_result['public_id'],
             image_thumbnail_url=thumbnail_url,
-            image_filename=file.filename,
+            image_filename=re.sub(r'[^a-zA-Z0-9._-]', '_', os.path.basename(file.filename)) if file.filename else 'upload',
             image_type=file_type,
             image_description=description
         )
@@ -4945,11 +4971,16 @@ def upload_forum_image():
     if not file or not file.filename:
         return jsonify({'error': 'No image selected'}), 400
     
-    # Validate file type
+    # Validate file type (content-type header)
     allowed_types = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
     if file.content_type not in allowed_types:
         return jsonify({'error': 'Invalid image type. Allowed: jpg, png, gif, webp'}), 400
-    
+
+    # Validate magic bytes (defense-in-depth — content-type is spoofable)
+    detected_mime = _validate_image_magic(file)
+    if not detected_mime:
+        return jsonify({'error': 'File content does not match an allowed image format'}), 400
+
     # Check file size (read into memory to check, max 2MB)
     file_data = file.read()
     if len(file_data) > 2 * 1024 * 1024:
@@ -5193,6 +5224,30 @@ def migrate_db():
         return jsonify({'success': True, 'message': 'Database tables created'}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+@app.errorhandler(404)
+def page_not_found(e):
+    """Branded 404 error page."""
+    if request.path.startswith('/api/'):
+        return jsonify({'error': 'Not found'}), 404
+    return render_template('errors/404.html'), 404
+
+
+@app.errorhandler(403)
+def access_denied(e):
+    """Branded 403 error page."""
+    if request.path.startswith('/api/'):
+        return jsonify({'error': 'Access denied'}), 403
+    return render_template('errors/403.html'), 403
+
+
+@app.errorhandler(500)
+def internal_server_error(e):
+    """Branded 500 error page."""
+    if request.path.startswith('/api/'):
+        return jsonify({'error': 'Internal server error'}), 500
+    return render_template('errors/500.html'), 500
 
 
 @app.errorhandler(413)

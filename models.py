@@ -3,11 +3,42 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
 from datetime import datetime, timedelta
 from werkzeug.security import generate_password_hash, check_password_hash
+from sqlalchemy.types import TypeDecorator, Text as SAText
 import secrets
 import enum
 import json
+import logging
+
+_models_logger = logging.getLogger(__name__)
 
 db = SQLAlchemy()
+
+
+class EncryptedText(TypeDecorator):
+    """Transparently encrypts on write and decrypts on read using Fernet (AES).
+    Falls back to plaintext for legacy unencrypted data (backward compatible)."""
+    impl = SAText
+    cache_ok = True
+
+    def process_bind_param(self, value, dialect):
+        if value is not None and isinstance(value, str) and value.strip():
+            try:
+                from case_dicom_viewer.token_utils import encrypt_refresh_token
+                encrypted = encrypt_refresh_token(value)
+                return encrypted if encrypted else value
+            except Exception:
+                return value
+        return value
+
+    def process_result_value(self, value, dialect):
+        if value is not None and isinstance(value, str) and value.strip():
+            try:
+                from case_dicom_viewer.token_utils import decrypt_refresh_token
+                decrypted = decrypt_refresh_token(value)
+                return decrypted if decrypted else value  # Plaintext fallback for legacy data
+            except Exception:
+                return value
+        return value
 
 # ==================== CASE FLAG MODEL ====================
 class CaseFlag(db.Model):
@@ -177,17 +208,17 @@ class User(UserMixin, db.Model):
     last_case_viewed_id = db.Column(db.Integer, nullable=True)  # Which case was viewed
     
     # === NOTION INTEGRATION ===
-    notion_access_token = db.Column(db.String(255), nullable=True)  # OAuth access token
+    notion_access_token = db.Column(EncryptedText(), nullable=True)  # OAuth access token (encrypted at rest)
     notion_workspace_id = db.Column(db.String(100), nullable=True)  # Connected workspace ID
     notion_connected_at = db.Column(db.DateTime, nullable=True)  # When Notion was connected
     
     # === ANKI INTEGRATION ===
-    anki_api_key = db.Column(db.String(255), nullable=True)  # AnkiWeb API key (if using AnkiWeb)
+    anki_api_key = db.Column(EncryptedText(), nullable=True)  # AnkiWeb API key (encrypted at rest)
     anki_deck_name = db.Column(db.String(100), nullable=True, default='RadInsights')  # Default deck name
     anki_connected_at = db.Column(db.DateTime, nullable=True)  # When Anki was connected
     
     # === SCIENCE DIRECT INTEGRATION (Student) ===
-    sciencedirect_session_cookies = db.Column(db.Text, nullable=True)  # Serialized session cookies (JSON)
+    sciencedirect_session_cookies = db.Column(EncryptedText(), nullable=True)  # Serialized session cookies (encrypted at rest)
     sciencedirect_connected_at = db.Column(db.DateTime, nullable=True)  # When ScienceDirect was connected
     
     # === AI USAGE RATE LIMITING ===

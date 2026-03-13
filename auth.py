@@ -438,8 +438,14 @@ def login():
                 days_remaining = max(0, RECOVERY_PERIOD_DAYS - days_since_deletion)
                 deletion_date = user.deleted_at.strftime('%B %d, %Y')
                 
-                # Check if recovery period expired
+                # Check if recovery period expired — auto-purge user data (GDPR right to erasure)
                 if days_remaining <= 0:
+                    try:
+                        from access_control import delete_user_completely
+                        delete_user_completely(user.id)
+                        logger.info(f"Auto-purged soft-deleted account {user.id} (recovery period expired)")
+                    except Exception as purge_err:
+                        logger.error(f"Auto-purge failed for user {user.id}: {purge_err}")
                     return jsonify({
                         'error': 'This account has been permanently deleted.',
                         'account_deleted': True,
@@ -621,26 +627,6 @@ def forgot_password():
     return render_template('forgot_password.html')
 
 
-@auth_bp.route('/reset-password-test', methods=['GET'])
-def reset_password_test():
-    """Test route to verify reset password template works"""
-    logger.debug("Reset password TEST page accessed - starting")
-    try:
-        logger.debug("About to render template...")
-        result = render_template('reset_password.html', token='test-token-12345')
-        logger.debug("Template rendered successfully")
-        return result
-    except Exception as e:
-        logger.error(f"Template render error: {e}", exc_info=True)
-        return f"<h1>Template Error</h1><pre>{e}</pre>", 500
-
-
-@auth_bp.route('/reset-password-simple', methods=['GET'])
-def reset_password_simple():
-    """Minimal test route"""
-    logger.debug("Simple test accessed")
-    return "<h1>Reset Password</h1><p>This is a simple test page.</p>", 200
-
 
 @auth_bp.route('/reset-password/<token>', methods=['GET', 'POST'])
 def reset_password(token):
@@ -702,71 +688,6 @@ def profile():
     # Return HTML profile page
     return render_template('profile.html', user=current_user)
 
-
-@auth_bp.route('/test-email', methods=['GET'])
-def test_email():
-    """Test email configuration"""
-    try:
-        import requests
-        resend_key = os.getenv('RESEND_API_KEY')
-        
-        result = {
-            'resend_key_set': bool(resend_key),
-            'resend_key_length': len(resend_key) if resend_key else 0,
-            'requests_available': True,
-            'app_url': os.getenv('APP_URL', 'https://www.radinsights.xyz'),
-            'email_from': os.getenv('EMAIL_FROM', 'RadInsights <no-reply@radinsights.xyz>')
-        }
-        
-        return jsonify(result), 200
-    except ImportError as e:
-        return jsonify({'error': f'Import error: {str(e)}', 'requests_available': False}), 500
-    except Exception as e:
-        return jsonify({'error': f'Error: {str(e)}'}), 500
-
-
-@auth_bp.route('/test-send-email', methods=['GET'])
-def test_send_email():
-    """Actually try to send a test email and return full response"""
-    try:
-        import requests
-        resend_key = os.getenv('RESEND_API_KEY')
-        
-        if not resend_key:
-            return jsonify({'error': 'RESEND_API_KEY not set'}), 500
-        
-        from_email = os.getenv('EMAIL_FROM', "RadInsights <no-reply@radinsights.xyz>")
-        test_to = 'test@example.com'  # Use a test email
-        
-        response = requests.post(
-            "https://api.resend.com/emails",
-            headers={
-                "Authorization": f"Bearer {resend_key}",
-                "Content-Type": "application/json"
-            },
-            json={
-                "from": from_email,
-                "to": [test_to],
-                "subject": "Test Email from RadInsights",
-                "html": "<h1>Test Email</h1><p>This is a test email.</p>"
-            },
-            timeout=10
-        )
-        
-        return jsonify({
-            'status_code': response.status_code,
-            'response_text': response.text,
-            'response_json': response.json() if response.headers.get('content-type', '').startswith('application/json') else None,
-            'from_email': from_email,
-            'to_email': test_to
-        }), 200
-        
-    except Exception as e:
-        import traceback
-        return jsonify({
-            'error': str(e),
-            'traceback': traceback.format_exc()
-        }), 500
 
 
 @auth_bp.route('/logout-redirect', methods=['GET'])
@@ -1093,68 +1014,6 @@ def complete_account_recovery():
         logger.error(f"Complete recovery error: {e}")
         return jsonify({'error': 'An error occurred'}), 500
 
-
-@auth_bp.route('/debug', methods=['GET'])
-def debug_auth():
-    """Debug authentication status"""
-    from flask import session
-    return jsonify({
-        'is_authenticated': current_user.is_authenticated,
-        'user_id': current_user.id if current_user.is_authenticated else None,
-        'email': current_user.email if current_user.is_authenticated else None,
-        'session_id': session.get('_id', 'No session'),
-        'session_keys': list(session.keys())
-    }), 200
-
-
-@auth_bp.route('/debug/verify-db-users', methods=['GET'])
-@login_required
-def verify_db_users():
-    """
-    Verify that users and password hashes are stored in the database.
-    Admin only - shows user info but NOT full password hashes (security).
-    """
-    if current_user.role != UserRole.ADMIN:
-        return jsonify({'error': 'Admin access required'}), 403
-    
-    try:
-        # Query all users from database
-        users = User.query.all()
-        
-        users_data = []
-        for user in users:
-            # Check if password_hash exists and get its length (don't expose the hash itself)
-            password_hash_exists = bool(user.password_hash)
-            password_hash_length = len(user.password_hash) if user.password_hash else 0
-            
-            # Show first 20 chars of hash for verification (not the full hash)
-            password_hash_preview = user.password_hash[:20] + '...' if user.password_hash and len(user.password_hash) > 20 else (user.password_hash if user.password_hash else None)
-            
-            users_data.append({
-                'id': user.id,
-                'email': user.email,
-                'full_name': user.full_name,
-                'is_admin': user.is_admin,
-                'is_active': user.is_active,
-                'created_at': user.created_at.isoformat() if user.created_at else None,
-                'last_login': user.last_login.isoformat() if user.last_login else None,
-                # Password hash verification (safe to expose - it's a hash, not the password)
-                'password_hash_exists': password_hash_exists,
-                'password_hash_length': password_hash_length,
-                'password_hash_preview': password_hash_preview,  # First 20 chars only
-                'has_valid_password_hash': password_hash_exists and password_hash_length > 50  # Valid hashes are usually 100+ chars
-            })
-        
-        return jsonify({
-            'success': True,
-            'total_users': len(users_data),
-            'users': users_data,
-            'message': f'Found {len(users_data)} user(s) in database. Password hashes are stored in the "password_hash" column.'
-        }), 200
-        
-    except Exception as e:
-        pass
-        return jsonify({'error': f'Error querying database: {str(e)}'}), 500
 
 
 # ==================== ADMIN USER MANAGEMENT ====================

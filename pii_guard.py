@@ -28,11 +28,13 @@ PII_PATTERNS = [
     ('Patient Name', re.compile(
         r'\b(?:patient|pt|name)[:\s]+(?:Mr|Mrs|Ms|Miss|Dr)\.?\s*[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+\b',
         re.IGNORECASE)),
+    ('UK National Insurance Number', re.compile(
+        r'\b[A-Z]{2}\d{6}[A-D]\b', re.IGNORECASE)),
 ]
 
 # Keys in JSON payloads that are safe to skip
 SKIP_KEYS = frozenset({
-    'password', 'token', 'csrf', 'email', 'username',
+    'password', 'token', 'csrf', 'username',
     'model', 'provider', 'slug', 'category', 'status',
     'modality', 'body_section', 'image_url', 'image_public_id',
     'image_type', 'filename', 'image_thumbnail_url',

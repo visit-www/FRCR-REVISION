@@ -1,0 +1,246 @@
+# RadInsights — Comprehensive TODO & Roadmap
+
+**Generated:** 2026-03-13
+**Sources:** UK GDPR Gap Analysis, Security Audit, Feature Completeness Audit, Production Readiness Audit, Content Coverage Audit, Code Quality Audit
+
+---
+
+## Status Legend
+
+| Symbol | Meaning |
+|--------|---------|
+| DONE | Completed (Mar 2026 session) |
+| TODO | Not yet started |
+| WONTFIX | Assessed and intentionally skipped |
+
+---
+
+## TIER 1 — CRITICAL (Do Before Public Launch)
+
+### 1.1 Security
+
+| # | Item | Status | Details |
+|---|------|--------|---------|
+| 1 | Remove debug routes from `auth.py` | DONE | Removed `/auth/test-email`, `/auth/test-send-email`, `/auth/reset-password-test`, `/auth/reset-password-simple`, `/auth/debug`, `/auth/debug/verify-db-users` |
+| 2 | PII Guard — remove email from SKIP_KEYS | DONE | Removed `'email'` from both `pii_guard.py` and `pii-guard.js` SKIP_KEYS |
+| 3 | PII Guard — add NINO pattern | DONE | Added `[A-Z]{2}\d{6}[A-D]` to both client and server |
+| 4 | PII Guard — sync client skip routes with server | DONE | Added `/on-call-helper/admin/`, `/incidental-findings/admin/`, `/admin/reporting-algorithms/` to `pii-guard.js` |
+| 5 | DB SSL enforcement | DONE | Appends `sslmode=require` to DATABASE_URL if missing. **File:** `app.py` |
+| 6 | Encrypt sensitive API tokens in DB | DONE | `EncryptedText` TypeDecorator with Fernet applied to `notion_access_token`, `anki_api_key`, `sciencedirect_session_cookies`. **File:** `models.py` |
+| 7 | Content-Security-Policy header | DONE | CSP header added in `add_security_headers`. **File:** `app.py` |
+| 8 | Forum image upload — add magic byte validation | DONE | Added `_validate_image_magic(file)` check before content-type check in `upload_forum_image()` |
+| 9 | File upload filename sanitization | DONE | `re.sub(r'[^a-zA-Z0-9._-]', '_', os.path.basename(file.filename))` in `upload_case_image()` |
+| 10 | Cron job auth — enforce CRON_SECRET always | DONE | Rewritten: debug mode allows, production requires CRON_SECRET configured, logs error if missing |
+| 11 | HTML sanitizer — script/event handlers | WONTFIX | Assessed: all call sites are behind `@require_admin`. Sanitizer processes only trusted admin/AI content, not user input. Safe by design. |
+| 12 | Password complexity requirements | WONTFIX | User explicitly declined: "we do not want to make password complex as for now" |
+
+### 1.2 UK GDPR / Legal
+
+| # | Item | Status | Details |
+|---|------|--------|---------|
+| 13 | Privacy policy — comprehensive rewrite | DONE | Added: third-party processors (Anthropic, Cloudinary, Resend, Neon, Vercel, OneDrive, Notion), AI processing disclosure, breach notification (ICO 72h), data retention periods, IP logging, DPIA summary, expanded rights. **File:** `templates/privacy_policy.html` |
+| 14 | Cookie consent banner (PECR) | DONE | Added PECR-compliant banner with localStorage persistence. **File:** `templates/base.html` |
+| 15 | AI processing disclosure in Smart Reporter | DONE | Added note: "Powered by AI — your input is processed by Anthropic's Claude. Do not enter patient-identifiable data." **File:** `templates/smart_reporter.html` |
+| 16 | Auto-purge expired soft-deleted accounts | DONE | If `is_deleted=True` and `deleted_at + 31 days < now()`, calls `delete_user_completely()` at login check. **File:** `auth.py` |
+| 17 | Contact email inconsistency | DONE | Standardized to `support@eralight.com` across terms of use, privacy policy, and base.html footer |
+| 18 | Medical non-diagnostic disclaimer | TODO | On-call helper, protocols, templates, TNM calculators all have disclaimers, but verify **every** user-facing tool page has one. Add to landing page if missing. |
+
+### 1.3 Error Handling
+
+| # | Item | Status | Details |
+|---|------|--------|---------|
+| 19 | Create error pages (404, 500, 403) | DONE | Created branded `templates/errors/404.html`, `500.html`, `403.html` with brand styling and recovery links |
+| 20 | Register error handlers in `app.py` | DONE | Added `@app.errorhandler(404)`, `@app.errorhandler(500)`, `@app.errorhandler(403)` — returns JSON for `/api/` routes, HTML templates for pages |
+
+---
+
+## TIER 2 — HIGH PRIORITY (Before Feature Expansion)
+
+### 2.1 Security Hardening
+
+| # | Item | Status | Details |
+|---|------|--------|---------|
+| 21 | General API rate limiting | TODO | Only login + AI endpoints rate-limited. Add `flask-limiter` for all endpoints. Registration endpoint especially vulnerable (no protection). **Install:** `flask-limiter` |
+| 22 | Backup exports — add encryption | TODO | `backup_routes.py:815-832` exports plain JSON. Add AES-256 encryption or password-protected ZIP. |
+| 23 | Image EXIF stripping | TODO | Uploaded images may contain GPS/device metadata. Use Pillow to strip EXIF before Cloudinary upload. **Install:** `Pillow` |
+| 24 | Hardcoded superadmin email | TODO | `auth.py:103` falls back to `lotusheart2016@gmail.com`. Should require `SUPERADMIN_EMAIL` env var without default. |
+| 25 | Display name impersonation prevention | TODO | No blocked names list. Allow impersonation of "admin", "support", etc. Add blocklist + length validation. **File:** `auth.py:1298-1346` |
+
+### 2.2 Monitoring & Observability
+
+| # | Item | Status | Details |
+|---|------|--------|---------|
+| 26 | Error tracking service (Sentry) | TODO | No external error tracking. Production errors go unnoticed until user reports. Integrate Sentry or similar. |
+| 27 | Health check endpoint | TODO | No `/health` or `/healthz` endpoint. Add basic endpoint returning `{"status": "ok"}` with DB connection check. |
+| 28 | Structured logging (JSON format) | TODO | Current format: basic string. Switch to JSON format for log aggregation. Add request IDs to all logs. |
+| 29 | Slow query logging | TODO | No SQLAlchemy event listeners for query performance. Add `before_cursor_execute` listener for queries > 1s. |
+
+### 2.3 Production Infrastructure
+
+| # | Item | Status | Details |
+|---|------|--------|---------|
+| 30 | Automated database backups | TODO | Manual JSON export exists, but no automated scheduled backups. Set up daily backup to Cloudflare R2 or similar. |
+| 31 | `robots.txt` | TODO | No robots.txt. Search engines may crawl admin endpoints. Add with appropriate Disallow rules. |
+| 32 | SEO meta tags | TODO | All pages show generic `<title>RadInsights</title>`. Add dynamic `<title>` and `<meta name="description">`. |
+
+---
+
+## TIER 3 — MEDIUM PRIORITY (Improve Quality)
+
+### 3.1 Code Architecture
+
+| # | Item | Status | Details |
+|---|------|--------|---------|
+| 33 | Split `app.py` (5,212 lines) | TODO | Monolithic file with 124 functions. Split into: `config.py`, `error_handlers.py`, `case_routes.py`, `forum_routes.py`, `image_routes.py`, etc. |
+| 34 | Split `models.py` (2,995 lines, 56 classes) | TODO | Organize into `models/user.py`, `models/case.py`, `models/reporting.py`, `models/clinical.py`, etc. |
+| 35 | Consolidate duplicate `_call_claude()` helpers | TODO | 3+ identical implementations across `ai_smart_reporter.py`, `clinical_tool_generator.py`, `ai_tnm.py`. Create `shared/anthropic_client.py`. |
+| 36 | Consolidate duplicate JSON parsing | TODO | `_parse_json_response()` in `ai_smart_reporter.py` and `_strip_markdown_fences()` in `clinical_tool_generator.py` are identical. Create `shared/json_parser.py`. |
+| 37 | Consolidate duplicate `format_resources_for_prompt()` | TODO | Same function in `ai_smart_reporter.py` and `clinical_tool_generator.py`. Extract to shared module. |
+| 38 | Standardize API response format | TODO | Inconsistent: `{error: ...}`, `{success: true}`, `{message: ...}`, `{results: [...]}`. Define standard wrapper (success/error/meta). |
+| 39 | Standardize error exception classes | TODO | 5+ different error classes (`SmartReporterError`, `GeneratorError`, `AiTnmError`, etc.) — consolidate to `RadInsightsError` base class hierarchy. |
+
+### 3.2 Testing
+
+| # | Item | Status | Details |
+|---|------|--------|---------|
+| 40 | Set up pytest configuration | TODO | No `pytest.ini`, `setup.cfg`, or `.coveragerc`. Only ~40 TNM calculator tests exist. |
+| 41 | Add route/integration tests | TODO | 269 routes, 0 integration tests. Start with auth flows, case CRUD, and admin operations. |
+| 42 | Add CI/CD pipeline (GitHub Actions) | TODO | No automated testing on PR. Set up GitHub Actions to run tests. |
+| 43 | API documentation (OpenAPI/Swagger) | TODO | 269 routes, no documentation. At minimum document the public-facing API endpoints. |
+
+### 3.3 UX / Feature Gaps
+
+| # | Item | Status | Details |
+|---|------|--------|---------|
+| 44 | Pagination on admin lists | TODO | User list, case list load all results. Add offset/limit pagination. |
+| 45 | Pagination on algorithm search (limit=50 hardcoded) | TODO | Search returns max 50 results with no "load more". |
+| 46 | Bulk admin operations | TODO | No bulk delete, publish, or reassign for cases/algorithms. |
+| 47 | Content moderation queue | TODO | User-generated algorithms (`is_available=False`) have no visual queue or bulk approval UI. |
+| 48 | Notion image caching | TODO | Notion-hosted image URLs expire after ~1 hour. Need to re-host to Cloudinary on fetch. **File:** `notes_integration_routes.py:76, 188, 341` |
+
+### 3.4 Additional GDPR Items
+
+| # | Item | Status | Details |
+|---|------|--------|---------|
+| 49 | 2FA for admin accounts | TODO | No TOTP/2FA. Recommended: `pyotp` for admin-tier accounts. |
+| 50 | Immutable audit logs | TODO | Current audit logs in same DB — can be modified by DB admin. Consider append-only log table or external log service. |
+| 51 | Data retention cleanup cron | TODO | No automated deletion of expired data (old AI usage logs, expired recovery codes, etc.). Add scheduled cleanup. |
+| 52 | IP logging documented in privacy policy | DONE | Added in privacy policy rewrite. |
+
+---
+
+## TIER 4 — LOW PRIORITY / NICE-TO-HAVE
+
+### 4.1 Code Quality
+
+| # | Item | Status | Details |
+|---|------|--------|---------|
+| 53 | Run `flake8 --select=F401` to find unused imports | TODO | Multiple files have unused imports. Quick cleanup. |
+| 54 | Remove deprecated `ReportingTemplate` legacy model | TODO | Data migrated to `RadiologyTemplate` + `ReportingAlgorithm`. Legacy class kept for backward compat. |
+| 55 | Remove deprecated `Algorithm Finder` route | TODO | Redirects to Smart Reporter since Feb 2026. Route still registered at `reporting_routes.py:60-65`. |
+| 56 | Split `static/style.css` (5,613 lines) | TODO | Organize into component-based CSS files (`variables.css`, `buttons.css`, `modals.css`, etc.). |
+| 57 | Organize templates into subfolders | TODO | 54 templates in flat structure. Move to `auth/`, `admin/`, `reporting/`, `cases/`, etc. |
+| 58 | Input validation with Marshmallow | TODO | No schema validation for request parameters. Add `marshmallow` for API request validation. |
+| 59 | Update dependencies | TODO | Flask 2.3.3 (latest 3.x), Werkzeug 2.3.7 (latest 3.x), etc. Update quarterly. |
+| 60 | API versioning | TODO | No version prefix on API routes. Use `/api/v1/` for future compatibility. |
+
+### 4.2 Accessibility & SEO
+
+| # | Item | Status | Details |
+|---|------|--------|---------|
+| 61 | WCAG 2.1 AA audit | TODO | ARIA labels partially applied. Color contrast unverified. No skip links. |
+| 62 | Dynamic page titles | TODO | All pages show "RadInsights". Should be `{{page_title}} - RadInsights`. |
+| 63 | Sitemap.xml | TODO | No sitemap for search engines. |
+| 64 | Skip-to-content link | TODO | No keyboard skip link in `base.html`. |
+
+### 4.3 Performance
+
+| # | Item | Status | Details |
+|---|------|--------|---------|
+| 65 | Application-level caching (Redis) | TODO | No Redis/Memcached. Repeated DB queries for same data. |
+| 66 | Async job queue for AI generation | TODO | Background tasks run synchronously in request handler. Consider Celery/RQ. |
+| 67 | Query optimization (N+1) | TODO | Multiple `Case.query.filter()` without `.options()` loading. Profile with SQLAlchemy analysis. |
+
+### 4.4 Other
+
+| # | Item | Status | Details |
+|---|------|--------|---------|
+| 68 | DICOM header stripping | TODO | Files on user's OneDrive, not processed locally. Document user responsibility in privacy policy. Low priority. |
+| 69 | Analytics integration | TODO | No Google Analytics/Mixpanel. No visibility into user behavior or feature adoption. |
+| 70 | Deployment runbook | TODO | No documented procedures for production issues, disaster recovery, or database restore. |
+
+---
+
+## CONTENT CREATION (Separate Track)
+
+See `docs/content-creation-plan.md` for full details. Keyword: `RADINSIGHTS-CONTENT-BATCH-2026`
+
+### Current State (Mar 2026)
+
+| Content Type | Current | Target | % Complete |
+|---|---|---|---|
+| Cases | 36 | 86+ | 42% |
+| TNM Calculators | 39 | 39 | 100% |
+| Reporting Algorithms | 4 admin | 60+ | 7% |
+| Radiology Templates | 1 admin | 65+ | 2% |
+| Radiology Tools | 1 | 30+ | 3% |
+| Clinical Protocols | 20 | 30+ | 67% |
+
+### Critical FRCR Gaps
+
+| Subspecialty | Cases | Gap |
+|---|---|---|
+| Paediatric Radiology | **0** | **CRITICAL** — 8-10 needed for FRCR 2B |
+| Cardiothoracic | 3 | HIGH — 10-12 needed |
+| Breast Imaging | 0 | HIGH — 4-6 needed |
+| Musculoskeletal | 5 | MEDIUM — 10-12 needed |
+| Interventional | 0 cases | MEDIUM — protocol-only coverage |
+
+### Batch Generation Commands
+
+```bash
+# Phase 1 (55 items, ~$5.30 batch API)
+PYTHONUNBUFFERED=1 python scripts/batch_algorithms.py batch --phase 1
+PYTHONUNBUFFERED=1 python scripts/batch_templates.py batch --phase 1
+PYTHONUNBUFFERED=1 python scripts/batch_tools.py batch --phase 1
+PYTHONUNBUFFERED=1 python scripts/batch_protocols.py batch --phase 1
+
+# Phase 2 (62 items + 30 cases, ~$9.20)
+PYTHONUNBUFFERED=1 python scripts/batch_algorithms.py batch --phase 2
+PYTHONUNBUFFERED=1 python scripts/batch_templates.py batch --phase 2
+# Cases: manual creation (50 total across phases)
+```
+
+---
+
+## COMPLETED ITEMS (Mar 2026 Session)
+
+For reference, the following were implemented:
+
+1. **PII Guard email bypass fix** — removed `'email'` from SKIP_KEYS in both layers
+2. **PII Guard NINO pattern** — added `[A-Z]{2}\d{6}[A-D]` detection
+3. **PII Guard route sync** — client skip prefixes match server
+4. **DB SSL enforcement** — auto-appends `sslmode=require`
+5. **Token encryption** — `EncryptedText` TypeDecorator with Fernet for 3 token columns
+6. **Auto-purge soft-deleted accounts** — 31-day expiry at login check
+7. **Privacy policy rewrite** — 14 sections, full UK GDPR compliance
+8. **Cookie consent banner** — PECR-compliant with localStorage
+9. **AI disclosure in Smart Reporter** — note with link to privacy policy
+10. **CSP header** — Content-Security-Policy covering all CDN resources
+11. **Column widening migration** — `notion_access_token`, `anki_api_key` widened to TEXT for encryption
+12. **Debug routes removed** — `/auth/test-email`, `/test-send-email`, `/reset-password-test`, `/reset-password-simple`, `/debug`, `/debug/verify-db-users`
+13. **Error pages (404/500/403)** — branded templates + error handlers (JSON for API routes, HTML for pages)
+14. **Forum image magic byte validation** — `_validate_image_magic()` check added
+15. **Filename sanitization** — `re.sub()` + `os.path.basename()` for case image uploads
+16. **Cron auth hardened** — requires `CRON_SECRET` in production, logs error if missing
+17. **Contact email standardized** — all pages now use `support@eralight.com`
+
+---
+
+## QUICK REFERENCE — What To Work On Next
+
+**If you have 1 hour:** Items 24-25 (superadmin env var, display name blocklist)
+**If you have 4 hours:** + Items 18, 21, 27 (disclaimers, rate limiting, health check)
+**If you have 1 day:** + Items 26, 30-31 (Sentry, backups, robots.txt)
+**If you have 1 week:** + Items 33-39 (code architecture refactoring)
+**If you have 1 month:** + Items 40-43, 49-51 (testing, 2FA, audit logs)

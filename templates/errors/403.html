@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Access Denied - RadInsights</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        .error-container {
+            min-height: 70vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .error-code {
+            font-size: 6rem;
+            font-weight: 700;
+            color: #dc3545;
+            line-height: 1;
+        }
+        .error-message {
+            color: var(--brand-text-primary, #2c3e50);
+            font-size: 1.3rem;
+            font-weight: 600;
+        }
+        .error-description {
+            color: var(--brand-text-secondary, #5a6270);
+        }
+    </style>
+</head>
+<body>
+    <div class="error-container">
+        <div class="text-center px-4">
+            <div class="error-code mb-3">403</div>
+            <p class="error-message mb-2">Access Denied</p>
+            <p class="error-description mb-4">You don't have permission to access this page.</p>
+            <div class="d-flex gap-3 justify-content-center flex-wrap">
+                <a href="/" class="btn btn-brand-neutral">
+                    <i class="fas fa-home me-1"></i> Home
+                </a>
+                <a href="/dashboard" class="btn btn-brand-primary">
+                    <i class="fas fa-tachometer-alt me-1"></i> Dashboard
+                </a>
+                <a href="javascript:history.back()" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-1"></i> Go Back
+                </a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

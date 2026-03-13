@@ -47,12 +47,17 @@
             type: 'Patient Name',
             regex: /\b(?:patient|pt|name)[:\s]+(?:Mr|Mrs|Ms|Miss|Dr)\.?\s*[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+\b/gi,
             description: 'Possible patient name detected'
+        },
+        {
+            type: 'UK National Insurance Number',
+            regex: /\b[A-Z]{2}\d{6}[A-D]\b/gi,
+            description: 'UK National Insurance Number detected'
         }
     ];
 
     // Fields to skip scanning (non-patient data)
     const SKIP_KEYS = new Set([
-        'password', 'token', 'csrf', 'email', 'username',
+        'password', 'token', 'csrf', 'username',
         'model', 'provider', 'slug', 'category', 'status',
         'modality', 'body_section', 'image_url', 'image_public_id',
         'image_type', 'filename', 'image_thumbnail_url'
@@ -176,7 +181,8 @@
             'UK Postcode': '#6b46c1',
             'Phone Number': '#0d6efd',
             'Email Address': '#0d6efd',
-            'Patient Name': '#dc3545'
+            'Patient Name': '#dc3545',
+            'UK National Insurance Number': '#dc3545'
         };
 
         return unique.map(m => {
@@ -282,7 +288,8 @@
 
             // Skip auth/admin/backup routes
             const urlStr = typeof url === 'string' ? url : url.toString();
-            const skipPrefixes = ['/auth/', '/api/admin/', '/api/backup', '/login', '/register'];
+            const skipPrefixes = ['/auth/', '/api/admin/', '/api/backup', '/login', '/register',
+                '/on-call-helper/admin/', '/incidental-findings/admin/', '/admin/reporting-algorithms/'];
             if (skipPrefixes.some(function(p) { return urlStr.includes(p); })) {
                 return originalFetch.call(this, url, options);
             }

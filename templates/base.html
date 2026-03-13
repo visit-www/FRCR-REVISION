@@ -282,7 +282,7 @@
                         <h6 class="footer-title mb-2">Contact</h6>
                         <p class="footer-text small">
                             <i class="fas fa-envelope me-2"></i>
-                            <a href="mailto:lotusheart2016@gmail.com" class="footer-link">lotusheart2016@gmail.com</a>
+                            <a href="mailto:support@eralight.com" class="footer-link">support@eralight.com</a>
                         </p>
                     </div>
                     <div class="col-md-4 text-center text-center">
@@ -458,5 +458,30 @@
     {% endif %}
 
     {% block scripts %}{% endblock %}
+
+    <!-- Cookie Consent Banner (PECR/UK GDPR compliance) -->
+    <div id="cookieConsentBanner" style="display:none; position:fixed; bottom:0; left:0; right:0; z-index:9999; background:#2c3e50; color:#fff; padding:1rem 1.5rem; font-size:0.85rem; box-shadow:0 -2px 10px rgba(0,0,0,0.2);">
+        <div class="container d-flex flex-wrap align-items-center justify-content-between gap-2">
+            <div style="flex:1; min-width:200px;">
+                <i class="fas fa-cookie-bite me-1"></i>
+                This site uses essential cookies for authentication and session management. No tracking or analytics cookies are used.
+                <a href="/privacy" style="color:#a8d5ba; text-decoration:underline;" target="_blank">Privacy Policy</a>
+            </div>
+            <button onclick="acceptCookies()" class="btn btn-sm" style="background:#e96304; color:#fff; white-space:nowrap;">
+                <i class="fas fa-check me-1"></i>Got it
+            </button>
+        </div>
+    </div>
+    <script>
+    (function(){
+        if (!localStorage.getItem('cookieConsent')) {
+            document.getElementById('cookieConsentBanner').style.display = 'block';
+        }
+    })();
+    function acceptCookies() {
+        localStorage.setItem('cookieConsent', 'accepted');
+        document.getElementById('cookieConsentBanner').style.display = 'none';
+    }
+    </script>
 </body>
 </html>
