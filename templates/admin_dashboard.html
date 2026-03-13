@@ -170,27 +170,6 @@
                 </div>
             </div>
 
-            <!-- Draft Preview Modal -->
-            <div class="modal fade" id="draftPreviewModal" tabindex="-1" aria-labelledby="draftPreviewTitle" aria-hidden="true">
-                <div class="modal-dialog modal-xl modal-dialog-scrollable">
-                    <div class="modal-content app-content-modal">
-                        <div class="modal-header">
-                            <h5 class="modal-title" id="draftPreviewTitle">Algorithm Preview</h5>
-                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <div class="modal-body" style="background: var(--brand-bg-offwhite, #fdfdfb);">
-                            <div id="draftPreviewMeta" class="mb-3"></div>
-                            <div id="draftPreviewContent" style="border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; background: white;"></div>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-modal-secondary" data-bs-dismiss="modal">Close</button>
-                            <button type="button" class="btn btn-success" id="draftPreviewPublishBtn" style="display:none;" onclick="modPublishFromPreview()">
-                                <i class="fas fa-check me-1"></i>Publish
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
         </div>
 
         <!-- Database Management Tab (Consolidated Backup & Import) -->
@@ -2260,6 +2239,28 @@
     })();
 
 </script>
+
+<!-- Draft Preview Modal (must be outside tab-content for Bootstrap) -->
+<div class="modal fade" id="draftPreviewModal" tabindex="-1" aria-labelledby="draftPreviewTitle" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content app-content-modal">
+            <div class="modal-header">
+                <h5 class="modal-title" id="draftPreviewTitle">Algorithm Preview</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" style="background: var(--brand-bg-offwhite, #fdfdfb);">
+                <div id="draftPreviewMeta" class="mb-3"></div>
+                <div id="draftPreviewContent" style="border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; background: white;"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-modal-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-success" id="draftPreviewPublishBtn" style="display:none;" onclick="modPublishFromPreview()">
+                    <i class="fas fa-check me-1"></i>Publish
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <style>
 .admin-dashboard-title {
