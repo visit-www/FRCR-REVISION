@@ -38,6 +38,11 @@
             </button>
         </li>
         <li class="nav-item" role="presentation">
+            <button class="nav-link" id="moderation-tab" data-bs-toggle="tab" data-bs-target="#moderation-content" type="button" role="tab" aria-controls="moderation-content" aria-selected="false">
+                <i class="fas fa-clipboard-check"></i> Moderation <span id="moderationCountBadge" class="badge bg-danger ms-1" style="display: none;">0</span>
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
             <button class="nav-link" id="database-tab" data-bs-toggle="tab" data-bs-target="#database-content" type="button" role="tab" aria-controls="database-content" aria-selected="false">
                 <i class="fas fa-database"></i> Database Management
             </button>
@@ -134,6 +139,36 @@
             
             <!-- Pagination -->
             <div id="forumPagination" class="d-flex justify-content-center mt-4"></div>
+        </div>
+
+        <!-- Content Moderation Tab -->
+        <div class="tab-pane fade" id="moderation-content" role="tabpanel" aria-labelledby="moderation-tab">
+            <h2 class="mb-4 admin-section-title"><i class="fas fa-clipboard-check"></i> Content Moderation</h2>
+
+            <!-- Filter buttons -->
+            <div class="d-flex gap-2 mb-4 flex-wrap">
+                <button type="button" class="btn btn-warning mod-filter-btn active" id="modShowPendingBtn">
+                    <i class="fas fa-clock me-1"></i>Pending <span id="modPendingCount" class="badge bg-dark ms-1">0</span>
+                </button>
+                <button type="button" class="btn btn-outline-success mod-filter-btn" id="modShowCompletedBtn">
+                    <i class="fas fa-check me-1"></i>Completed
+                </button>
+                <button type="button" class="btn btn-outline-secondary mod-filter-btn" id="modShowDeclinedBtn">
+                    <i class="fas fa-times me-1"></i>Declined
+                </button>
+                <button type="button" class="btn btn-outline-info mod-filter-btn" id="modShowDraftsBtn">
+                    <i class="fas fa-user me-1"></i>User Algorithm Drafts <span id="modDraftsCount" class="badge bg-dark ms-1">0</span>
+                </button>
+            </div>
+
+            <!-- Content Requests List -->
+            <div id="modContentList">
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Database Management Tab (Consolidated Backup & Import) -->
@@ -1919,6 +1954,216 @@
         return d.innerHTML;
     }
 
+    // ==================== CONTENT MODERATION ====================
+    (function() {
+        let modCurrentFilter = 'pending';
+        let modLoaded = false;
+
+        function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+
+        function modTimeAgo(iso) {
+            if (!iso) return '';
+            const s = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+            if (s < 60) return 'just now';
+            if (s < 3600) return Math.floor(s / 60) + 'm ago';
+            if (s < 86400) return Math.floor(s / 3600) + 'h ago';
+            return Math.floor(s / 86400) + 'd ago';
+        }
+
+        // Load badge count on page load
+        async function loadModCounts() {
+            try {
+                const resp = await fetch('/api/admin/moderation/counts');
+                const data = await resp.json();
+                const badge = document.getElementById('moderationCountBadge');
+                const total = data.total || 0;
+                badge.textContent = total;
+                badge.style.display = total > 0 ? 'inline' : 'none';
+                document.getElementById('modPendingCount').textContent = data.pending_requests || 0;
+                document.getElementById('modDraftsCount').textContent = data.user_drafts || 0;
+            } catch (e) { console.error('Moderation counts error:', e); }
+        }
+
+        async function loadContentRequests(status) {
+            const list = document.getElementById('modContentList');
+            list.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary"></div></div>';
+            try {
+                const resp = await fetch('/api/admin/content-requests?status=' + status);
+                const data = await resp.json();
+                const items = data.requests || [];
+                if (items.length === 0) {
+                    list.innerHTML = '<div class="text-center text-muted py-5"><i class="fas fa-check-circle fa-3x mb-3" style="color: var(--brand-success);"></i><p>No ' + status + ' content requests</p></div>';
+                    return;
+                }
+                list.innerHTML = items.map(r => {
+                    const typeBadge = r.request_type === 'template' ? 'bg-info' : r.request_type === 'algorithm' ? 'bg-primary' : 'bg-secondary';
+                    const statusBadge = r.status === 'pending' ? 'bg-warning text-dark' : r.status === 'completed' ? 'bg-success' : 'bg-danger';
+                    let actions = '';
+                    if (r.status === 'pending') {
+                        actions = `
+                            <div class="mt-2">
+                                <input type="text" class="form-control form-control-sm mb-2" id="mod-notes-${r.id}" placeholder="Admin notes (optional)" style="max-width: 400px;">
+                                <button class="btn btn-sm btn-success me-1" onclick="modUpdateRequest(${r.id}, 'completed')"><i class="fas fa-check me-1"></i>Complete</button>
+                                <button class="btn btn-sm btn-outline-danger" onclick="modUpdateRequest(${r.id}, 'declined')"><i class="fas fa-times me-1"></i>Decline</button>
+                            </div>`;
+                    } else if (r.admin_notes) {
+                        actions = '<div class="mt-1"><small class="text-muted"><i class="fas fa-sticky-note me-1"></i>' + esc(r.admin_notes) + '</small></div>';
+                    }
+                    return `<div class="card mb-2">
+                        <div class="card-body py-3">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <span class="badge ${typeBadge} me-1">${esc(r.request_type)}</span>
+                                    <span class="badge ${statusBadge}">${esc(r.status)}</span>
+                                    <strong class="ms-2">${esc(r.title)}</strong>
+                                </div>
+                                <small class="text-muted text-nowrap">${modTimeAgo(r.created_at)}</small>
+                            </div>
+                            <div class="mt-1">
+                                <small class="text-muted"><i class="fas fa-user me-1"></i>${esc(r.username)}</small>
+                                ${r.body_section ? '<small class="text-muted ms-2"><i class="fas fa-body me-1"></i>' + esc(r.body_section) + '</small>' : ''}
+                            </div>
+                            ${r.description ? '<p class="mb-0 mt-2" style="font-size: 0.9rem;">' + esc(r.description) + '</p>' : ''}
+                            ${actions}
+                        </div>
+                    </div>`;
+                }).join('');
+            } catch (e) {
+                list.innerHTML = '<div class="alert alert-danger">Failed to load content requests</div>';
+            }
+        }
+
+        async function loadUserDrafts() {
+            const list = document.getElementById('modContentList');
+            list.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary"></div></div>';
+            try {
+                const resp = await fetch('/api/admin/moderation/user-drafts');
+                const data = await resp.json();
+                const drafts = data.drafts || [];
+                if (drafts.length === 0) {
+                    list.innerHTML = '<div class="text-center text-muted py-5"><i class="fas fa-check-circle fa-3x mb-3" style="color: var(--brand-success);"></i><p>No user algorithm drafts pending review</p></div>';
+                    return;
+                }
+                list.innerHTML = drafts.map(d => `<div class="card mb-2">
+                    <div class="card-body py-3">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <span class="badge bg-info"><i class="fas fa-user me-1"></i>User Draft</span>
+                                ${d.category ? '<span class="badge bg-secondary ms-1">' + esc(d.category) + '</span>' : ''}
+                                <strong class="ms-2">${esc(d.title)}</strong>
+                            </div>
+                            <small class="text-muted text-nowrap">${modTimeAgo(d.created_at)}</small>
+                        </div>
+                        <div class="mt-1">
+                            <small class="text-muted"><i class="fas fa-user me-1"></i>${esc(d.username)}</small>
+                            ${d.body_section ? '<small class="text-muted ms-2">' + esc(d.body_section) + '</small>' : ''}
+                        </div>
+                        <div class="mt-2">
+                            <a href="/admin/reporting-algorithms" class="btn btn-sm btn-outline-primary me-1"><i class="fas fa-eye me-1"></i>View in Admin</a>
+                            <button class="btn btn-sm btn-success me-1" onclick="modPublishDraft(${d.id})"><i class="fas fa-check me-1"></i>Publish</button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="modDeleteDraft(${d.id})"><i class="fas fa-trash me-1"></i>Delete</button>
+                        </div>
+                    </div>
+                </div>`).join('');
+            } catch (e) {
+                list.innerHTML = '<div class="alert alert-danger">Failed to load user drafts</div>';
+            }
+        }
+
+        function loadModeration() {
+            if (modCurrentFilter === 'drafts') {
+                loadUserDrafts();
+            } else {
+                loadContentRequests(modCurrentFilter);
+            }
+        }
+
+        // Global functions for onclick handlers
+        window.modUpdateRequest = async function(id, status) {
+            const notes = document.getElementById('mod-notes-' + id)?.value || '';
+            try {
+                const resp = await fetch('/api/admin/content-requests/' + id, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status, admin_notes: notes })
+                });
+                if (resp.ok) {
+                    loadModeration();
+                    loadModCounts();
+                } else {
+                    const data = await resp.json();
+                    alert(data.error || 'Failed to update');
+                }
+            } catch (e) { alert('Connection error'); }
+        };
+
+        window.modPublishDraft = async function(id) {
+            if (!confirm('Publish this algorithm for all users?')) return;
+            try {
+                const resp = await fetch('/api/admin/moderation/user-drafts/' + id + '/publish', { method: 'POST' });
+                const data = await resp.json();
+                if (resp.ok) {
+                    loadModeration();
+                    loadModCounts();
+                } else {
+                    alert(data.error || 'Failed to publish');
+                }
+            } catch (e) { alert('Connection error'); }
+        };
+
+        window.modDeleteDraft = async function(id) {
+            if (!confirm('Delete this draft? This cannot be undone.')) return;
+            try {
+                const resp = await fetch('/api/admin/moderation/user-drafts/' + id, { method: 'DELETE' });
+                if (resp.ok) {
+                    loadModeration();
+                    loadModCounts();
+                } else {
+                    const data = await resp.json();
+                    alert(data.error || 'Failed to delete');
+                }
+            } catch (e) { alert('Connection error'); }
+        };
+
+        // Filter button handlers
+        const filterMap = {
+            'modShowPendingBtn': 'pending',
+            'modShowCompletedBtn': 'completed',
+            'modShowDeclinedBtn': 'declined',
+            'modShowDraftsBtn': 'drafts',
+        };
+        Object.entries(filterMap).forEach(([btnId, filter]) => {
+            document.getElementById(btnId).addEventListener('click', function() {
+                document.querySelectorAll('.mod-filter-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                // Update button styles
+                document.querySelectorAll('.mod-filter-btn').forEach(b => {
+                    if (!b.classList.contains('active')) {
+                        b.className = b.className.replace(/btn-\w+/g, '').trim();
+                        b.classList.add('btn', 'btn-outline-secondary', 'mod-filter-btn');
+                    }
+                });
+                this.classList.remove('btn-outline-secondary');
+                if (filter === 'pending') this.classList.add('btn-warning');
+                else if (filter === 'completed') this.classList.add('btn-success');
+                else if (filter === 'declined') this.classList.add('btn-danger');
+                else if (filter === 'drafts') this.classList.add('btn-info');
+                modCurrentFilter = filter;
+                loadModeration();
+            });
+        });
+
+        // Lazy load on tab show
+        document.getElementById('moderation-tab').addEventListener('shown.bs.tab', function() {
+            if (!modLoaded) {
+                modLoaded = true;
+                loadModeration();
+            }
+        });
+
+        // Load badge count immediately
+        loadModCounts();
+    })();
 
 </script>
 

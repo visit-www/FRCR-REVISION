@@ -2261,6 +2261,78 @@ def sentry_stats():
 
 
 # ============================================================================
+# CONTENT MODERATION ENDPOINTS
+# ============================================================================
+
+@admin_bp.route('/moderation/counts', methods=['GET'])
+@require_admin
+def moderation_counts():
+    """Get counts for pending content requests and user algorithm drafts."""
+    from models import ContentRequest, ReportingAlgorithm
+    pending_requests = ContentRequest.query.filter_by(status='pending').count()
+    user_drafts = ReportingAlgorithm.query.filter_by(origin='user', is_available=False).count()
+    return jsonify({
+        'pending_requests': pending_requests,
+        'user_drafts': user_drafts,
+        'total': pending_requests + user_drafts,
+    }), 200
+
+
+@admin_bp.route('/moderation/user-drafts', methods=['GET'])
+@require_admin
+def list_user_drafts():
+    """List user-generated algorithm drafts awaiting review."""
+    from models import ReportingAlgorithm
+    drafts = ReportingAlgorithm.query.filter_by(
+        origin='user', is_available=False
+    ).order_by(ReportingAlgorithm.created_at.desc()).limit(100).all()
+    results = []
+    for d in drafts:
+        creator = User.query.get(d.created_by_user_id) if d.created_by_user_id else None
+        results.append({
+            'id': d.id,
+            'title': d.title,
+            'slug': d.slug,
+            'category': d.category,
+            'body_section': d.body_section,
+            'username': creator.full_name if creator else 'Unknown',
+            'created_at': d.created_at.isoformat() if d.created_at else None,
+        })
+    return jsonify({'drafts': results, 'count': len(results)}), 200
+
+
+@admin_bp.route('/moderation/user-drafts/<int:draft_id>/publish', methods=['POST'])
+@require_admin
+def publish_user_draft(draft_id):
+    """Publish a user-generated algorithm draft (make it available to all users)."""
+    from models import ReportingAlgorithm
+    draft = ReportingAlgorithm.query.get_or_404(draft_id)
+    if draft.origin != 'user':
+        return jsonify({'error': 'Only user-generated drafts can be published here'}), 400
+    draft.is_available = True
+    draft.verified_by_user_id = current_user.id
+    draft.verified_at = datetime.utcnow()
+    db.session.commit()
+    logger.info(f'Admin {current_user.email} published user draft algorithm #{draft_id}')
+    return jsonify({'success': True, 'message': f'Algorithm "{draft.title}" published'}), 200
+
+
+@admin_bp.route('/moderation/user-drafts/<int:draft_id>', methods=['DELETE'])
+@require_admin
+def delete_user_draft(draft_id):
+    """Delete a user-generated algorithm draft."""
+    from models import ReportingAlgorithm
+    draft = ReportingAlgorithm.query.get_or_404(draft_id)
+    if draft.origin != 'user':
+        return jsonify({'error': 'Only user-generated drafts can be deleted here'}), 400
+    title = draft.title
+    db.session.delete(draft)
+    db.session.commit()
+    logger.info(f'Admin {current_user.email} deleted user draft algorithm #{draft_id}')
+    return jsonify({'success': True, 'message': f'Draft "{title}" deleted'}), 200
+
+
+# ============================================================================
 # 2FA SETUP ENDPOINTS
 # ============================================================================
 

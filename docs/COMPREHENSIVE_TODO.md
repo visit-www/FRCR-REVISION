@@ -115,7 +115,7 @@
 | 44 | Pagination on admin lists | DONE | Admin case list: page/per_page params with Bootstrap pagination controls. Admin user list already had pagination. |
 | 45 | Pagination on algorithm search (limit=50 hardcoded) | DONE | Added `offset` param to `/api/algorithms/search`. Response includes `has_more`, `total`, `offset` for "load more" support. |
 | 46 | Bulk admin operations | TODO | No bulk delete, publish, or reassign for cases/algorithms. |
-| 47 | Content moderation queue | TODO | User-generated algorithms (`is_available=False`) have no visual queue or bulk approval UI. |
+| 47 | Content moderation queue | DONE | "Moderation" tab in admin dashboard with badge counter. Shows pending/completed/declined content requests + user algorithm drafts. Publish/decline/delete actions. Lazy-loads on tab click. Endpoints: `/api/admin/moderation/counts`, `/moderation/user-drafts`, `/moderation/user-drafts/<id>/publish`. |
 | 48 | Notion image caching | TODO | Notion-hosted image URLs expire after ~1 hour. Need to re-host to Cloudinary on fetch. **File:** `notes_integration_routes.py:76, 188, 341` |
 
 ### 3.4 Additional GDPR Items
