@@ -264,7 +264,7 @@ db.init_app(app)
 
 # Slow query logging — log queries taking > 1 second
 import time as _time
-from sqlalchemy import event as _sa_event, engine_from_config
+from sqlalchemy import event as _sa_event
 
 def _setup_slow_query_logging(app_instance):
     """Attach slow query listeners once engine is available."""
@@ -2222,7 +2222,14 @@ def all_cases_view():
     if search_query:
         query = query.filter(Case.diagnosis.ilike(f'%{search_query}%'))
 
-    cases = query.order_by(Case.id.desc()).all()
+    # Pagination
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 50, type=int)
+    per_page = min(per_page, 200)
+    pagination = query.order_by(Case.id.desc()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+    cases = pagination.items
 
     cases_data = []
     for case in cases:
@@ -2258,7 +2265,10 @@ def all_cases_view():
                            status_selected=status_filter,
                            pending_staging_count=pending_staging_count,
                            search_query=search_query,
-                           list_source='admin')
+                           list_source='admin',
+                           pagination=pagination,
+                           page=page,
+                           per_page=per_page)
 
 
 @app.route('/student-cases')

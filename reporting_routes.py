@@ -9,7 +9,7 @@ Flask blueprint for:
 - Admin management of reporting templates
 """
 
-from flask import Blueprint, request, render_template, jsonify, url_for
+from flask import Blueprint, request, render_template, jsonify
 from flask_login import login_required, current_user
 from datetime import datetime
 import json
@@ -69,9 +69,11 @@ def unified_search():
     filter_type = request.args.get('type', '')
     limit = request.args.get('limit', 20, type=int)
     limit = min(limit, 50)
+    offset = request.args.get('offset', 0, type=int)
+    offset = max(offset, 0)
 
     if len(query) < 2:
-        return jsonify({'results': [], 'query': query})
+        return jsonify({'results': [], 'query': query, 'total': 0, 'offset': 0, 'has_more': False})
 
     results = []
 
@@ -239,10 +241,16 @@ def unified_search():
     # Sort all results by similarity descending
     results.sort(key=lambda r: r.get('similarity', 0), reverse=True)
 
+    total = len(results)
+    paginated = results[offset:offset + limit]
+
     return jsonify({
-        'results': results[:limit],
+        'results': paginated,
         'query': query,
-        'total': len(results),
+        'total': total,
+        'offset': offset,
+        'limit': limit,
+        'has_more': (offset + limit) < total,
     })
 
 
@@ -2236,7 +2244,7 @@ def smart_reporter_anatomy():
 
     # AI fallback: generate anatomy reference
     try:
-        from ai_smart_reporter import generate_anatomy_reference, SmartReporterError
+        from ai_smart_reporter import generate_anatomy_reference
         result = generate_anatomy_reference(topic)
     except Exception as exc:
         logger.error(f"Anatomy reference generation failed: {exc}")

@@ -19,7 +19,11 @@ logger = logging.getLogger(__name__)
 
 
 class AIClientError(Exception):
-    """Base exception for AI API call failures."""
+    """Base exception for all AI/generator failures.
+
+    All module-specific errors inherit from this, enabling callers to
+    catch AIClientError for any AI-related failure regardless of source.
+    """
     pass
 
 

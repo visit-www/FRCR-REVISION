@@ -24,10 +24,12 @@ from datetime import datetime
 
 import requests
 
+from ai_client import AIClientError
+
 logger = logging.getLogger(__name__)
 
 
-class OnCallHelperError(Exception):
+class OnCallHelperError(AIClientError):
     """Raised when on-call helper query fails."""
     pass
 

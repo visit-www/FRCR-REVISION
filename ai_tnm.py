@@ -23,10 +23,10 @@ from typing import Optional, Dict, List, Tuple, Any
 
 import requests
 
-from ai_client import call_claude as _call_claude_shared, strip_markdown_fences
+from ai_client import call_claude as _call_claude_shared, strip_markdown_fences, AIClientError
 
 
-class AiTnmError(Exception):
+class AiTnmError(AIClientError):
     """Raised when TNM intelligence generation fails."""
     pass
 

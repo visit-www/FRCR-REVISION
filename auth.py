@@ -2,7 +2,7 @@
 User authentication module
 Handles login, signup, password recovery, and session management
 """
-from flask import Blueprint, render_template, request, jsonify, redirect, url_for, session, flash
+from flask import Blueprint, render_template, request, jsonify, redirect, url_for, session
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from models import db, User, UserRole
 from datetime import datetime, timedelta

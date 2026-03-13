@@ -14,8 +14,10 @@ from datetime import datetime
 
 import requests
 
+from ai_client import AIClientError
 
-class AiPrelimError(Exception):
+
+class AiPrelimError(AIClientError):
     """Raised when AI generation fails."""
     pass
 

@@ -294,6 +294,37 @@
     </div>
 </div>
 
+{% if pagination and pagination.pages > 1 %}
+<div class="d-flex justify-content-between align-items-center mt-3 px-2">
+    <small class="text-muted">
+        Showing {{ ((pagination.page - 1) * pagination.per_page) + 1 }}–{{ [pagination.page * pagination.per_page, pagination.total] | min }} of {{ pagination.total }} cases
+    </small>
+    <nav>
+        <ul class="pagination pagination-sm mb-0">
+            {% if pagination.has_prev %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ pagination.prev_num }}&per_page={{ per_page }}&module={{ module_filter }}&body_part={{ body_part_selected }}&age_group={{ age_group_selected }}&status={{ status_selected }}&q={{ search_query }}">&laquo;</a>
+            </li>
+            {% endif %}
+            {% for p in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+                {% if p %}
+                <li class="page-item {% if p == pagination.page %}active{% endif %}">
+                    <a class="page-link" href="?page={{ p }}&per_page={{ per_page }}&module={{ module_filter }}&body_part={{ body_part_selected }}&age_group={{ age_group_selected }}&status={{ status_selected }}&q={{ search_query }}">{{ p }}</a>
+                </li>
+                {% else %}
+                <li class="page-item disabled"><span class="page-link">…</span></li>
+                {% endif %}
+            {% endfor %}
+            {% if pagination.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ pagination.next_num }}&per_page={{ per_page }}&module={{ module_filter }}&body_part={{ body_part_selected }}&age_group={{ age_group_selected }}&status={{ status_selected }}&q={{ search_query }}">&raquo;</a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+</div>
+{% endif %}
+
 <script>
 // Public/private toggle for each case card
 document.querySelectorAll('.case-public-toggle').forEach(function(toggle) {

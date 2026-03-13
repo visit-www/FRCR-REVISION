@@ -68,3 +68,33 @@ class TestCallClaude:
             pass
         with pytest.raises(MyError):
             call_claude("system", "user", error_class=MyError)
+
+
+class TestErrorHierarchy:
+    """All module-specific errors should be catchable as AIClientError."""
+
+    def test_smart_reporter_error_is_ai_client_error(self):
+        from ai_smart_reporter import SmartReporterError
+        assert issubclass(SmartReporterError, AIClientError)
+
+    def test_generator_error_is_ai_client_error(self):
+        from clinical_tool_generator import GeneratorError
+        assert issubclass(GeneratorError, AIClientError)
+
+    def test_tnm_error_is_ai_client_error(self):
+        from ai_tnm import AiTnmError
+        assert issubclass(AiTnmError, AIClientError)
+
+    def test_prelim_error_is_ai_client_error(self):
+        from ai_prelim import AiPrelimError
+        assert issubclass(AiPrelimError, AIClientError)
+
+    def test_oncall_error_is_ai_client_error(self):
+        from ai_oncall_helper import OnCallHelperError
+        assert issubclass(OnCallHelperError, AIClientError)
+
+    def test_catch_specific_as_base(self):
+        """Module errors should be catchable via base AIClientError."""
+        from ai_smart_reporter import SmartReporterError
+        with pytest.raises(AIClientError):
+            raise SmartReporterError("test")

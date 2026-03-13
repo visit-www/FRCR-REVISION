@@ -22,12 +22,13 @@ import requests
 from ai_client import (
     call_claude as _call_claude_raw,
     strip_markdown_fences as _strip_markdown_fences,
+    AIClientError,
 )
 
 logger = logging.getLogger(__name__)
 
 
-class GeneratorError(Exception):
+class GeneratorError(AIClientError):
     """Raised when tool generation fails."""
     pass
 

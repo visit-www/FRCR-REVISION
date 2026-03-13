@@ -57,13 +57,13 @@ import logging
 
 import requests
 
-from ai_client import call_claude as _call_claude_raw, parse_json_response as _parse_json_raw
+from ai_client import call_claude as _call_claude_raw, parse_json_response as _parse_json_raw, AIClientError
 from clinical_tool_generator import format_resources_for_prompt
 
 logger = logging.getLogger(__name__)
 
 
-class SmartReporterError(Exception):
+class SmartReporterError(AIClientError):
     """Raised when Smart Reporter generation fails."""
     pass
 
