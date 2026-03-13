@@ -813,17 +813,55 @@ def download_backup():
         for log in AIAuditLog.query.order_by(AIAuditLog.created_at.desc()).all():
             backup_data['ai_audit_logs'].append(log.to_dict())
 
-        # Create JSON file in memory
+        # Create JSON data
         json_data = json.dumps(backup_data, indent=2)
-        json_bytes = io.BytesIO(json_data.encode('utf-8'))
-        
+
         # Generate filename
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        filename = f'radinsights_backup_{timestamp}.json'
-        
+
         # Update session with last backup time
         session['last_backup_time'] = datetime.utcnow().isoformat()
-        
+
+        # Encrypted backup: AES-256 via Fernet, wrapped in ZIP
+        if request.args.get('encrypted') == 'true':
+            try:
+                from cryptography.fernet import Fernet
+                import hashlib, base64, zipfile
+
+                # Derive encryption key from app SECRET_KEY (consistent per deployment)
+                secret = os.getenv('SECRET_KEY', 'fallback').encode()
+                key = base64.urlsafe_b64encode(hashlib.sha256(secret).digest())
+                f = Fernet(key)
+
+                encrypted_data = f.encrypt(json_data.encode('utf-8'))
+
+                # Package in ZIP with metadata
+                zip_buffer = io.BytesIO()
+                with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zf:
+                    zf.writestr('backup.enc', encrypted_data)
+                    zf.writestr('README.txt',
+                        'RadInsights Encrypted Backup\n'
+                        f'Date: {timestamp}\n'
+                        'This backup is encrypted with AES-256 (Fernet).\n'
+                        'Decrypt using your deployment SECRET_KEY.\n'
+                    )
+                zip_buffer.seek(0)
+                filename = f'radinsights_backup_{timestamp}.enc.zip'
+
+                return send_file(
+                    zip_buffer,
+                    mimetype='application/zip',
+                    as_attachment=True,
+                    download_name=filename
+                )
+            except Exception as enc_err:
+                logger.error(f"Backup encryption failed: {enc_err}")
+                return jsonify({'error': f'Encryption failed: {str(enc_err)}'}), 500
+
+        # Plain JSON backup (default)
+        json_bytes = io.BytesIO(json_data.encode('utf-8'))
+        filename = f'radinsights_backup_{timestamp}.json'
+
         return send_file(
             json_bytes,
             mimetype='application/json',

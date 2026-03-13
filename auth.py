@@ -100,7 +100,10 @@ def send_admin_approval_email(requesting_admin_email, requesting_admin_name, tar
     
     # Superadmin email - configurable via env for testing with Resend free tier
     # In production with verified domain, this should always be the real superadmin
-    SUPERADMIN_EMAIL = os.getenv('SUPERADMIN_EMAIL', 'lotusheart2016@gmail.com')
+    SUPERADMIN_EMAIL = os.getenv('SUPERADMIN_EMAIL')
+    if not SUPERADMIN_EMAIL:
+        logger.warning("SUPERADMIN_EMAIL not set — admin notifications disabled")
+        return
     
     resend_key = os.getenv('RESEND_API_KEY')
     
@@ -241,7 +244,10 @@ def send_case_review_notification(case, submitter):
     import resend
     resend.api_key = resend_key
     from_email = os.getenv('EMAIL_FROM', "RadInsights <no-reply@radinsights.xyz>")
-    admin_email = os.getenv('SUPERADMIN_EMAIL', 'lotusheart2016@gmail.com')
+    admin_email = os.getenv('SUPERADMIN_EMAIL')
+    if not admin_email:
+        logger.warning("SUPERADMIN_EMAIL not set — cannot send case submission notification")
+        return
     app_url = os.getenv('APP_URL', 'https://www.radinsights.xyz').rstrip('/')
     review_url = f"{app_url}/view-case/{case.id}"
 
@@ -291,7 +297,7 @@ def generate_approval_code():
 
 @auth_bp.route('/register', methods=['GET', 'POST'])
 def register():
-    """User registration"""
+    """User registration — rate limited to 5/hour per IP"""
     if request.method == 'POST':
         try:
             # Verify database connection is working
@@ -1162,7 +1168,11 @@ def update_profile():
                 return jsonify({'error': 'Public name can only contain letters, numbers, and spaces'}), 400
             if '@' in public_display_name:
                 return jsonify({'error': 'Public name cannot contain email addresses'}), 400
-        
+            # Block impersonation of staff/system names
+            _blocked = {'admin', 'administrator', 'moderator', 'support', 'system', 'radinsights', 'staff', 'superadmin'}
+            if public_display_name.lower().strip() in _blocked:
+                return jsonify({'error': 'This display name is reserved'}), 400
+
         # Check if email is already taken by another user
         if email != current_user.email:
             existing = User.query.filter_by(email=email).first()
@@ -1203,12 +1213,16 @@ def update_display_name():
                 return jsonify({'error': 'Public name can only contain letters, numbers, and spaces'}), 400
             if '@' in public_display_name:
                 return jsonify({'error': 'Public name cannot contain email addresses'}), 400
-        
+            # Block impersonation of staff/system names
+            _blocked = {'admin', 'administrator', 'moderator', 'support', 'system', 'radinsights', 'staff', 'superadmin'}
+            if public_display_name.lower().strip() in _blocked:
+                return jsonify({'error': 'This display name is reserved'}), 400
+
         current_user.public_display_name = public_display_name if public_display_name else None
         db.session.commit()
-        
+
         return jsonify({
-            'success': True, 
+            'success': True,
             'message': 'Display name updated',
             'display_name': current_user.get_display_name()
         }), 200

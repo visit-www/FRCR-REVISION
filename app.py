@@ -12,10 +12,27 @@ if os.getenv('ENV') == 'production' or os.getenv('FLASK_ENV') == 'production':
 
 # Configure logging (before any module imports that use logging)
 import logging
-logging.basicConfig(
-    level=logging.INFO if not os.getenv('FLASK_DEBUG') else logging.DEBUG,
-    format='%(asctime)s [%(name)s] %(levelname)s: %(message)s',
-)
+
+# Structured JSON logging for production; human-readable for local dev
+_is_production = os.getenv('VERCEL_ENV') == 'production'
+if _is_production:
+    class _JSONFormatter(logging.Formatter):
+        def format(self, record):
+            import json as _j
+            return _j.dumps({
+                'ts': self.formatTime(record),
+                'level': record.levelname,
+                'logger': record.name,
+                'msg': record.getMessage(),
+            })
+    _handler = logging.StreamHandler()
+    _handler.setFormatter(_JSONFormatter())
+    logging.basicConfig(level=logging.INFO, handlers=[_handler])
+else:
+    logging.basicConfig(
+        level=logging.INFO if not os.getenv('FLASK_DEBUG') else logging.DEBUG,
+        format='%(asctime)s [%(name)s] %(levelname)s: %(message)s',
+    )
 logger = logging.getLogger(__name__)
 
 # ==================== STUDENT CASE BROWSER ====================
@@ -86,6 +103,23 @@ CORS(app, resources={
         "allow_headers": ["Content-Type"]
     }
 })
+
+# Rate limiting — per-IP limits for abuse prevention
+try:
+    from flask_limiter import Limiter
+    from flask_limiter.util import get_remote_address
+    limiter = Limiter(
+        get_remote_address,
+        app=app,
+        default_limits=["200 per minute"],
+        storage_uri="memory://",
+    )
+    # Stricter limits for sensitive endpoints (applied via decorators in auth.py)
+    app.config['LIMITER'] = limiter
+    logger.info("Flask-Limiter enabled (200/min default)")
+except ImportError:
+    limiter = None
+    logger.warning("flask-limiter not installed — rate limiting disabled")
 
 # Ensure instance folder exists
 instance_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'instance')
@@ -227,6 +261,31 @@ logger.info(f"SECURE={app.config['SESSION_COOKIE_SECURE']} (local_http={is_local
 
 # Initialize database
 db.init_app(app)
+
+# Slow query logging — log queries taking > 1 second
+import time as _time
+from sqlalchemy import event as _sa_event, engine_from_config
+
+def _setup_slow_query_logging(app_instance):
+    """Attach slow query listeners once engine is available."""
+    engine = db.engine
+
+    @_sa_event.listens_for(engine, "before_cursor_execute", named=True)
+    def _before_cursor_execute(**kw):
+        kw['context']._query_start_time = _time.monotonic()
+
+    @_sa_event.listens_for(engine, "after_cursor_execute", named=True)
+    def _after_cursor_execute(**kw):
+        elapsed = _time.monotonic() - getattr(kw['context'], '_query_start_time', _time.monotonic())
+        if elapsed > 1.0:
+            _slow_logger = logging.getLogger('slow_query')
+            _slow_logger.warning(f"Slow query ({elapsed:.2f}s): {kw['statement'][:200]}")
+
+with app.app_context():
+    try:
+        _setup_slow_query_logging(app)
+    except Exception as e:
+        logger.warning(f"Slow query logging setup skipped: {e}")
 
 # Initialize Flask-Migrate for Alembic migrations
 migrate = Migrate(app, db)
@@ -831,6 +890,28 @@ def sanitize_clinical_html(html_content):
     )
 
 
+# EXIF stripping — remove GPS/device metadata from uploaded images (GDPR)
+def _strip_exif(file_stream):
+    """Strip EXIF metadata from image file stream. Returns cleaned BytesIO or original if not applicable."""
+    try:
+        from PIL import Image
+        import io as _io
+        file_stream.seek(0)
+        img = Image.open(file_stream)
+        if img.format not in ('JPEG', 'PNG', 'WEBP'):
+            file_stream.seek(0)
+            return file_stream
+        # Re-save without EXIF
+        clean = _io.BytesIO()
+        img.save(clean, format=img.format, exif=b'')
+        clean.seek(0)
+        return clean
+    except Exception:
+        # If Pillow not installed or image can't be processed, pass through
+        file_stream.seek(0)
+        return file_stream
+
+
 # Image magic byte validation (defense-in-depth alongside extension check + Cloudinary)
 _IMAGE_MAGIC_BYTES = {
     b'\xff\xd8\xff': 'image/jpeg',
@@ -895,6 +976,12 @@ app.register_blueprint(if_bp)  # Radiology Tools - guideline-based calculators (
 # Global PII guard — blocks patient-identifiable data in all POST/PUT JSON requests
 from pii_guard import create_pii_middleware
 create_pii_middleware(app)
+
+# Apply stricter rate limits to sensitive auth endpoints
+if limiter:
+    limiter.limit("5 per hour")(app.view_functions.get('auth.register', lambda: None))
+    limiter.limit("10 per minute")(app.view_functions.get('auth.login', lambda: None))
+    limiter.limit("5 per hour")(app.view_functions.get('auth.forgot_password', lambda: None))
 
 # Security headers — applied to every response
 @app.after_request
@@ -3084,6 +3171,9 @@ def upload_case_image(case_id):
     description = request.form.get('description', '')
     
     try:
+        # Strip EXIF metadata (GPS, device info) before upload
+        file = _strip_exif(file)
+
         # Upload to Cloudinary
         upload_result = cloudinary.uploader.upload(
             file,
@@ -4985,11 +5075,15 @@ def upload_forum_image():
     file_data = file.read()
     if len(file_data) > 2 * 1024 * 1024:
         return jsonify({'error': 'Image too large (max 2MB)'}), 400
-    
+
+    # Strip EXIF metadata (GPS, device info) before upload
+    import io as _io
+    file_data = _strip_exif(_io.BytesIO(file_data)).read()
+
     # Check if Cloudinary is configured
     if not os.environ.get('CLOUDINARY_CLOUD_NAME'):
         return jsonify({'error': 'Image upload not configured'}), 500
-    
+
     try:
         # Upload to Cloudinary with auto-thumbnail
         result = cloudinary.uploader.upload(
@@ -5224,6 +5318,37 @@ def migrate_db():
         return jsonify({'success': True, 'message': 'Database tables created'}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+@app.route('/health', methods=['GET'])
+def health_check():
+    """Health check endpoint for monitoring and uptime checks."""
+    health = {'status': 'ok', 'app': 'RadInsights'}
+    try:
+        db.session.execute(db.text('SELECT 1'))
+        health['database'] = 'ok'
+    except Exception as e:
+        health['status'] = 'degraded'
+        health['database'] = 'error'
+        logger.error(f"Health check DB error: {e}")
+    return jsonify(health), 200 if health['status'] == 'ok' else 503
+
+
+@app.route('/robots.txt', methods=['GET'])
+def robots_txt():
+    """Serve robots.txt to prevent search engines crawling admin/API routes."""
+    content = """User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /auth/
+Disallow: /admin/
+Disallow: /on-call-helper/admin/
+Disallow: /incidental-findings/admin/
+Disallow: /api/admin/
+Disallow: /api/backup/
+Disallow: /health
+"""
+    return content, 200, {'Content-Type': 'text/plain'}
 
 
 @app.errorhandler(404)

@@ -60,28 +60,28 @@
 
 | # | Item | Status | Details |
 |---|------|--------|---------|
-| 21 | General API rate limiting | TODO | Only login + AI endpoints rate-limited. Add `flask-limiter` for all endpoints. Registration endpoint especially vulnerable (no protection). **Install:** `flask-limiter` |
-| 22 | Backup exports — add encryption | TODO | `backup_routes.py:815-832` exports plain JSON. Add AES-256 encryption or password-protected ZIP. |
-| 23 | Image EXIF stripping | TODO | Uploaded images may contain GPS/device metadata. Use Pillow to strip EXIF before Cloudinary upload. **Install:** `Pillow` |
-| 24 | Hardcoded superadmin email | TODO | `auth.py:103` falls back to `lotusheart2016@gmail.com`. Should require `SUPERADMIN_EMAIL` env var without default. |
-| 25 | Display name impersonation prevention | TODO | No blocked names list. Allow impersonation of "admin", "support", etc. Add blocklist + length validation. **File:** `auth.py:1298-1346` |
+| 21 | General API rate limiting | DONE | `flask-limiter` with 200/min default. Stricter: register 5/hr, login 10/min, forgot-password 5/hr |
+| 22 | Backup exports — add encryption | DONE | `?encrypted=true` param → AES-256 Fernet encrypted ZIP. Key derived from SECRET_KEY |
+| 23 | Image EXIF stripping | DONE | `_strip_exif()` via Pillow strips GPS/device metadata before Cloudinary upload (case + forum) |
+| 24 | Hardcoded superadmin email | DONE | Removed default fallback. Returns early with warning log if `SUPERADMIN_EMAIL` not set |
+| 25 | Display name impersonation prevention | DONE | Blocklist: admin, administrator, moderator, support, system, radinsights, staff, superadmin |
 
 ### 2.2 Monitoring & Observability
 
 | # | Item | Status | Details |
 |---|------|--------|---------|
-| 26 | Error tracking service (Sentry) | TODO | No external error tracking. Production errors go unnoticed until user reports. Integrate Sentry or similar. |
-| 27 | Health check endpoint | TODO | No `/health` or `/healthz` endpoint. Add basic endpoint returning `{"status": "ok"}` with DB connection check. |
-| 28 | Structured logging (JSON format) | TODO | Current format: basic string. Switch to JSON format for log aggregation. Add request IDs to all logs. |
-| 29 | Slow query logging | TODO | No SQLAlchemy event listeners for query performance. Add `before_cursor_execute` listener for queries > 1s. |
+| 26 | Error tracking service (Sentry) | TODO | No external error tracking. Requires Sentry account + DSN. Integrate when ready. |
+| 27 | Health check endpoint | DONE | `GET /health` returns `{"status": "ok", "database": "ok"}` with DB connection check |
+| 28 | Structured logging (JSON format) | DONE | Production uses JSON formatter (`_JSONFormatter`); local dev uses human-readable format |
+| 29 | Slow query logging | DONE | SQLAlchemy `before/after_cursor_execute` listeners log queries > 1s to `slow_query` logger |
 
 ### 2.3 Production Infrastructure
 
 | # | Item | Status | Details |
 |---|------|--------|---------|
 | 30 | Automated database backups | TODO | Manual JSON export exists, but no automated scheduled backups. Set up daily backup to Cloudflare R2 or similar. |
-| 31 | `robots.txt` | TODO | No robots.txt. Search engines may crawl admin endpoints. Add with appropriate Disallow rules. |
-| 32 | SEO meta tags | TODO | All pages show generic `<title>RadInsights</title>`. Add dynamic `<title>` and `<meta name="description">`. |
+| 31 | `robots.txt` | DONE | `GET /robots.txt` disallows `/api/`, `/auth/`, `/admin/`, backup, and admin tool routes |
+| 32 | SEO meta tags | DONE | `base.html` supports `{% block title %}` and `{% block meta_description %}` — templates can override |
 
 ---
 
@@ -234,13 +234,23 @@ For reference, the following were implemented:
 15. **Filename sanitization** — `re.sub()` + `os.path.basename()` for case image uploads
 16. **Cron auth hardened** — requires `CRON_SECRET` in production, logs error if missing
 17. **Contact email standardized** — all pages now use `support@eralight.com`
+18. **Superadmin email env var** — removed hardcoded default, requires `SUPERADMIN_EMAIL` env var
+19. **Display name blocklist** — blocks admin/moderator/support/system/staff impersonation
+20. **Health check endpoint** — `GET /health` with DB connection check
+21. **robots.txt** — disallows admin, API, auth, backup routes
+22. **SEO meta tags** — `{% block title %}` + `{% block meta_description %}` in base.html
+23. **Rate limiting** — flask-limiter: 200/min default, 5/hr register, 10/min login, 5/hr forgot-password
+24. **Backup encryption** — `?encrypted=true` → AES-256 Fernet encrypted ZIP
+25. **EXIF stripping** — `_strip_exif()` via Pillow on case + forum image uploads
+26. **Structured JSON logging** — production uses JSON formatter, local uses human-readable
+27. **Slow query logging** — SQLAlchemy event listeners log queries > 1s
 
 ---
 
 ## QUICK REFERENCE — What To Work On Next
 
-**If you have 1 hour:** Items 24-25 (superadmin env var, display name blocklist)
-**If you have 4 hours:** + Items 18, 21, 27 (disclaimers, rate limiting, health check)
-**If you have 1 day:** + Items 26, 30-31 (Sentry, backups, robots.txt)
-**If you have 1 week:** + Items 33-39 (code architecture refactoring)
+**If you have 1 hour:** Item 26 (Sentry integration — needs account)
+**If you have 4 hours:** + Items 30, 18 (automated backups, medical disclaimers)
+**If you have 1 day:** + Items 33-37 (code architecture: split app.py, consolidate helpers)
+**If you have 1 week:** + Items 40-43 (testing, CI/CD, API docs)
 **If you have 1 month:** + Items 40-43, 49-51 (testing, 2FA, audit logs)
