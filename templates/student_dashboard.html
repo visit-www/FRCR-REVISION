@@ -1,7 +1,15 @@
 {% extends "base.html" %}
+{% block title %}Dashboard - RadInsights{% endblock %}
 
 {% block content %}
 <div class="container py-4">
+    <!-- Disclaimer -->
+    <div class="p-2 rounded mb-3" style="background: #f8f9fa; border: 1px solid #e9ecef;">
+        <small class="text-muted">
+            <i class="fas fa-shield-alt me-1" style="color: #e96304;"></i>
+            <strong>RadInsights</strong> is an educational platform for FRCR exam revision. Not intended as a diagnostic or clinical decision-making tool.
+        </small>
+    </div>
     <!-- Main Action Cards -->
     <div class="row g-4">
         <!-- FEATURED: Balanced Revision Card -->

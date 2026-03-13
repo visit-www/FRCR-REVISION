@@ -1109,6 +1109,64 @@ def process_tnm_generator_jobs():
         }), 500
 
 
+@app.route('/api/cron/data-retention-cleanup', methods=['GET', 'POST'])
+def data_retention_cleanup():
+    """
+    Cron endpoint for GDPR data retention cleanup.
+    Deletes expired recovery codes, approval codes, and stale TNM jobs.
+    """
+    from datetime import datetime, timedelta
+    from models import AccountRecoveryCode, AdminApprovalCode, TNMGeneratorJob
+
+    # Verify cron secret
+    cron_secret = os.environ.get('CRON_SECRET')
+    auth_header = request.headers.get('Authorization', '')
+    if app.debug:
+        pass
+    elif not cron_secret:
+        logger.error("CRON_SECRET not configured — rejecting cron request")
+        return jsonify({'error': 'Unauthorized'}), 401
+    elif not auth_header.endswith(cron_secret):
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    now = datetime.utcnow()
+    cleaned = {}
+
+    try:
+        # 1. Expired recovery codes (older than 7 days past expiry)
+        cutoff_recovery = now - timedelta(days=7)
+        expired_recovery = AccountRecoveryCode.query.filter(
+            AccountRecoveryCode.expires_at < cutoff_recovery
+        ).delete(synchronize_session=False)
+        cleaned['expired_recovery_codes'] = expired_recovery
+
+        # 2. Expired/used approval codes (older than 30 days past expiry)
+        cutoff_approval = now - timedelta(days=30)
+        expired_approvals = AdminApprovalCode.query.filter(
+            AdminApprovalCode.expires_at < cutoff_approval
+        ).delete(synchronize_session=False)
+        cleaned['expired_approval_codes'] = expired_approvals
+
+        # 3. Completed/failed TNM generator jobs older than 90 days
+        cutoff_jobs = now - timedelta(days=90)
+        old_jobs = TNMGeneratorJob.query.filter(
+            TNMGeneratorJob.status.in_(['completed', 'failed']),
+            TNMGeneratorJob.completed_at < cutoff_jobs
+        ).delete(synchronize_session=False)
+        cleaned['old_tnm_jobs'] = old_jobs
+
+        db.session.commit()
+        total = sum(cleaned.values())
+        if total > 0:
+            logger.info(f"[Data Retention] Cleaned {total} records: {cleaned}")
+        return jsonify({'status': 'ok', 'cleaned': cleaned}), 200
+
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"[Data Retention] Cleanup error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/')
 def index():
     """Smart dashboard - students see student dashboard, admins can access admin features"""
@@ -5347,8 +5405,45 @@ Disallow: /incidental-findings/admin/
 Disallow: /api/admin/
 Disallow: /api/backup/
 Disallow: /health
+
+Sitemap: https://radinsights.co.uk/sitemap.xml
 """
     return content, 200, {'Content-Type': 'text/plain'}
+
+
+@app.route('/sitemap.xml', methods=['GET'])
+def sitemap_xml():
+    """Generate sitemap.xml for search engines."""
+    pages = [
+        ('/', '1.0', 'monthly'),
+        ('/smart-reporter', '0.9', 'weekly'),
+        ('/radiology-protocols', '0.8', 'weekly'),
+        ('/reporting-algorithms', '0.8', 'weekly'),
+        ('/reporting-templates', '0.8', 'weekly'),
+        ('/radiology-tools', '0.8', 'weekly'),
+        ('/on-call-helper', '0.7', 'monthly'),
+        ('/privacy-policy', '0.3', 'yearly'),
+        ('/terms-of-use', '0.3', 'yearly'),
+    ]
+
+    # Add public TNM calculator pages
+    try:
+        from models import TNMCalculator
+        calcs = TNMCalculator.query.filter_by(is_available=True).all()
+        for c in calcs:
+            pages.append((f'/tnm-calculator/{c.slug}', '0.7', 'monthly'))
+    except Exception:
+        pass
+
+    base_url = 'https://radinsights.co.uk'
+    xml = '<?xml version="1.0" encoding="UTF-8"?>\n'
+    xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+    for path, priority, freq in pages:
+        xml += f'  <url>\n    <loc>{base_url}{path}</loc>\n'
+        xml += f'    <priority>{priority}</priority>\n'
+        xml += f'    <changefreq>{freq}</changefreq>\n  </url>\n'
+    xml += '</urlset>'
+    return xml, 200, {'Content-Type': 'application/xml'}
 
 
 @app.errorhandler(404)

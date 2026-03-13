@@ -19,6 +19,11 @@ from datetime import datetime
 
 import requests
 
+from ai_client import (
+    call_claude as _call_claude_raw,
+    strip_markdown_fences as _strip_markdown_fences,
+)
+
 logger = logging.getLogger(__name__)
 
 
@@ -27,76 +32,14 @@ class GeneratorError(Exception):
     pass
 
 
-# ==================== SHARED API HELPER ====================
+# ==================== API HELPER (delegated to ai_client) ====================
 
 def _call_claude(system_prompt, user_prompt, model=None, max_tokens=4000,
                  temperature=0.3, timeout=60):
-    """
-    Shared helper for all Claude API calls.
-
-    Returns:
-        tuple: (response_text, model_used, token_count)
-    Raises:
-        GeneratorError on any failure
-    """
-    api_key = os.getenv("CLAUDE_API_KEY")
-    if not api_key:
-        raise GeneratorError("CLAUDE_API_KEY not configured.")
-
-    effective_model = model or os.getenv("CLAUDE_MODEL", "claude-sonnet-4-20250514")
-
-    payload = {
-        "model": effective_model,
-        "max_tokens": max_tokens,
-        "temperature": temperature,
-        "system": system_prompt,
-        "messages": [{"role": "user", "content": user_prompt}],
-    }
-
-    try:
-        response = requests.post(
-            "https://api.anthropic.com/v1/messages",
-            headers={
-                "Content-Type": "application/json",
-                "x-api-key": api_key,
-                "anthropic-version": "2023-06-01",
-            },
-            json=payload,
-            timeout=timeout,
-        )
-    except requests.exceptions.Timeout:
-        raise GeneratorError("Generation timed out. Please try again.")
-    except requests.exceptions.RequestException as exc:
-        raise GeneratorError(f"API connection error: {exc}")
-
-    if response.status_code >= 300:
-        detail = response.text[:500]
-        raise GeneratorError(f"API error (HTTP {response.status_code}): {detail}")
-
-    result = response.json()
-    content = result.get("content", [])
-    if not content:
-        raise GeneratorError("Empty response from API.")
-
-    text = content[0].get("text", "").strip()
-    if not text:
-        raise GeneratorError("No text in API response.")
-
-    token_count = result.get("usage", {}).get("output_tokens", 0)
-    return text, effective_model, token_count
-
-
-def _strip_markdown_fences(text):
-    """Strip markdown code fences from generated HTML."""
-    cleaned = text.strip()
-    if cleaned.startswith("```"):
-        lines = cleaned.split("\n")
-        if lines[0].startswith("```"):
-            lines = lines[1:]
-        if lines and lines[-1].strip() == "```":
-            lines = lines[:-1]
-        cleaned = "\n".join(lines)
-    return cleaned
+    """Wrapper that raises GeneratorError instead of AIClientError."""
+    return _call_claude_raw(system_prompt, user_prompt, model=model,
+                            max_tokens=max_tokens, temperature=temperature,
+                            timeout=timeout, error_class=GeneratorError)
 
 
 # ==================== URL CONTENT FETCHING ====================

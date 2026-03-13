@@ -57,14 +57,6 @@ def _check_ai_rate_limit():
 
 # ==================== ALGORITHM FINDER (Unified Search) ====================
 
-@reporting_bp.route('/algorithm-finder')
-@login_required
-def algorithm_finder():
-    """Redirect to Smart Reporter — Algorithm Finder is now superseded."""
-    from flask import redirect
-    return redirect('/smart-reporter', code=302)
-
-
 @reporting_bp.route('/api/algorithms/search')
 @login_required
 def unified_search():

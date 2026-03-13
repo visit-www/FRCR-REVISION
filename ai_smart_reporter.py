@@ -57,6 +57,9 @@ import logging
 
 import requests
 
+from ai_client import call_claude as _call_claude_raw, parse_json_response as _parse_json_raw
+from clinical_tool_generator import format_resources_for_prompt
+
 logger = logging.getLogger(__name__)
 
 
@@ -65,208 +68,19 @@ class SmartReporterError(Exception):
     pass
 
 
-# ==================== SHARED API HELPER ====================
+# ==================== SHARED API HELPERS (delegated to ai_client) ====================
 
 def _call_claude(system_prompt, user_prompt, model=None, max_tokens=4000,
                  temperature=0.3, timeout=60):
-    """
-    Shared helper for all Claude API calls.
-    Eliminates duplicated request/error-handling boilerplate.
-
-    Args:
-        system_prompt: System message string
-        user_prompt: User message string
-        model: Override model (defaults to CLAUDE_MODEL env var)
-        max_tokens: Max response tokens
-        temperature: Sampling temperature
-        timeout: Request timeout in seconds
-
-    Returns:
-        tuple: (response_text: str, model_used: str, token_count: int)
-
-    Raises:
-        SmartReporterError on any failure
-    """
-    api_key = os.getenv("CLAUDE_API_KEY")
-    if not api_key:
-        raise SmartReporterError("RadInsight Intelligence API key not configured.")
-
-    effective_model = model or os.getenv("CLAUDE_MODEL", "claude-sonnet-4-20250514")
-
-    payload = {
-        "model": effective_model,
-        "max_tokens": max_tokens,
-        "temperature": temperature,
-        "system": system_prompt,
-        "messages": [{"role": "user", "content": user_prompt}],
-    }
-
-    try:
-        response = requests.post(
-            "https://api.anthropic.com/v1/messages",
-            headers={
-                "Content-Type": "application/json",
-                "x-api-key": api_key,
-                "anthropic-version": "2023-06-01",
-            },
-            json=payload,
-            timeout=timeout,
-        )
-    except requests.exceptions.Timeout:
-        raise SmartReporterError("Request timed out. Please try again.")
-    except requests.exceptions.RequestException as exc:
-        raise SmartReporterError(f"Failed to connect to RadInsight Intelligence: {exc}")
-
-    if response.status_code >= 300:
-        detail = response.text[:500]
-        raise SmartReporterError(
-            f"RadInsight Intelligence error (HTTP {response.status_code}): {detail}"
-        )
-
-    result = response.json()
-    content = result.get("content", [])
-    if not content:
-        raise SmartReporterError("Empty response from RadInsight Intelligence.")
-
-    text = content[0].get("text", "").strip()
-    if not text:
-        raise SmartReporterError("No text in RadInsight Intelligence response.")
-
-    token_count = result.get("usage", {}).get("output_tokens", 0)
-    return text, effective_model, token_count
+    """Wrapper that raises SmartReporterError instead of AIClientError."""
+    return _call_claude_raw(system_prompt, user_prompt, model=model,
+                            max_tokens=max_tokens, temperature=temperature,
+                            timeout=timeout, error_class=SmartReporterError)
 
 
 def _parse_json_response(text):
-    """
-    Shared JSON parser with markdown fence stripping and regex fallback.
-
-    Returns parsed dict or raises SmartReporterError.
-    """
-    cleaned = text.strip()
-
-    # Strip markdown code fences
-    if cleaned.startswith("```"):
-        lines = cleaned.split("\n")
-        if lines[0].startswith("```"):
-            lines = lines[1:]
-        if lines and lines[-1].strip() == "```":
-            lines = lines[:-1]
-        cleaned = "\n".join(lines)
-
-    try:
-        return json.loads(cleaned)
-    except json.JSONDecodeError:
-        # Fallback: find the outermost JSON object
-        match = re.search(r'\{[\s\S]*\}', cleaned)
-        if match:
-            try:
-                return json.loads(match.group())
-            except json.JSONDecodeError:
-                logger.warning("JSON fallback parse also failed. Raw text: %s", cleaned[:500])
-                raise SmartReporterError("Failed to parse AI response as JSON.")
-        raise SmartReporterError("AI response was not valid JSON.")
-
-
-# ==================== RESOURCE FORMATTING (Gap 1) ====================
-
-def format_resources_for_prompt(resources):
-    """
-    Convert user-supplied resources into a structured prompt section.
-
-    Args:
-        resources: dict with optional keys:
-            - urls: list of reference article URLs
-            - db_refs: list of {type: 'if'|'rt'|'protocol'|'tnm', slug: str, content: str}
-            - pdf_texts: list of {filename: str, text: str}
-            - tnm_refs: list of {system: str, content: str}
-
-    Returns:
-        str: Formatted prompt section, or empty string if no resources
-    """
-    if not resources or not isinstance(resources, dict):
-        return ""
-
-    sections = []
-
-    # Reference URLs (fetch content)
-    urls = resources.get('urls', [])
-    if urls:
-        from clinical_tool_generator import fetch_url_content
-        url_parts = []
-        for u in urls:
-            if not u:
-                continue
-            fetched = fetch_url_content(u)
-            if fetched:
-                url_parts.append(f"  - {u}\n    Content:\n    {fetched[:4000]}")
-            else:
-                url_parts.append(f"  - {u}")
-        if url_parts:
-            sections.append("REFERENCE ARTICLES (use these as evidence sources):\n" + "\n".join(url_parts))
-
-    # Database references (pre-fetched content from IF calcs, templates, protocols)
-    db_refs = resources.get('db_refs', [])
-    if db_refs:
-        ref_parts = []
-        type_labels = {
-            'if': 'Incidental Findings Calculator',
-            'rt': 'Reporting Template',
-            'protocol': 'Clinical Protocol',
-            'tnm': 'TNM Staging System',
-        }
-        for ref in db_refs:
-            if not isinstance(ref, dict):
-                continue
-            label = type_labels.get(ref.get('type', ''), ref.get('type', 'Reference'))
-            content = ref.get('content', '')
-            slug = ref.get('slug', '')
-            if content:
-                ref_parts.append(f"  [{label}: {slug}]\n  {content[:3000]}")
-        if ref_parts:
-            sections.append(
-                "EXISTING DATABASE CONTENT (incorporate into your output):\n"
-                + "\n\n".join(ref_parts)
-            )
-
-    # TNM staging data
-    tnm_refs = resources.get('tnm_refs', [])
-    if tnm_refs:
-        tnm_parts = []
-        for ref in tnm_refs:
-            if isinstance(ref, dict) and ref.get('content'):
-                tnm_parts.append(f"  [{ref.get('system', 'TNM')}]\n  {ref['content'][:2000]}")
-        if tnm_parts:
-            sections.append(
-                "TNM STAGING DATA (use for staging-related steps):\n"
-                + "\n\n".join(tnm_parts)
-            )
-
-    # Uploaded PDF text
-    pdf_texts = resources.get('pdf_texts', [])
-    if pdf_texts:
-        pdf_parts = []
-        for pdf in pdf_texts:
-            if isinstance(pdf, dict) and pdf.get('text'):
-                fname = pdf.get('filename', 'uploaded document')
-                # Truncate long PDFs to stay within token budget
-                pdf_parts.append(f"  [PDF: {fname}]\n  {pdf['text'][:4000]}")
-        if pdf_parts:
-            sections.append(
-                "UPLOADED REFERENCE DOCUMENTS (use as evidence):\n"
-                + "\n\n".join(pdf_parts)
-            )
-
-    if not sections:
-        return ""
-
-    return (
-        "\n\n═══ REFERENCE MATERIALS PROVIDED ═══\n"
-        "Use the following references to ground your output in evidence. "
-        "Where references conflict with general knowledge, prefer the references. "
-        "If references are incomplete for certain steps, supplement with your own knowledge.\n\n"
-        + "\n\n".join(sections)
-        + "\n═══ END REFERENCES ═══\n\n"
-    )
+    """Wrapper that raises SmartReporterError instead of AIClientError."""
+    return _parse_json_raw(text, error_class=SmartReporterError)
 
 
 # ==================== SYSTEM PROMPTS ====================
@@ -861,10 +675,9 @@ def generate_radiology_template(clinical_scenario, modality='', body_section='',
     resources_section = ''
     if resources:
         try:
-            from clinical_tool_generator import format_resources_for_prompt
             resources_section = format_resources_for_prompt(resources)
-        except ImportError:
-            logger.warning("clinical_tool_generator not available for resource formatting")
+        except Exception:
+            logger.warning("Resource formatting failed")
 
     prompt = RADIOLOGY_TEMPLATE_PROMPT.format(
         clinical_scenario=clinical_scenario or 'Not specified',

@@ -23,6 +23,8 @@ from typing import Optional, Dict, List, Tuple, Any
 
 import requests
 
+from ai_client import call_claude as _call_claude_shared, strip_markdown_fences
+
 
 class AiTnmError(Exception):
     """Raised when TNM intelligence generation fails."""
@@ -1222,83 +1224,26 @@ def _call_claude_tnm(system_prompt: str, user_prompt: str, model: str = None) ->
     Make Claude API call for TNM intelligence.
 
     Returns Markdown content directly (not JSON).
-    Uses lower temperature for more deterministic output.
-
-    Args:
-        system_prompt: System prompt for Claude
-        user_prompt: User prompt for Claude
-        model: Claude model to use (defaults to env CLAUDE_MODEL or sonnet)
+    Delegates to shared ai_client.call_claude() for API boilerplate.
     """
-    api_key = os.getenv("CLAUDE_API_KEY")
-    if not api_key:
-        raise AiTnmError("CLAUDE_API_KEY is not configured.")
+    text, _, _ = _call_claude_shared(
+        system_prompt, user_prompt,
+        model=model, max_tokens=4000, temperature=0.3, timeout=90,
+        error_class=AiTnmError,
+    )
 
-    # Use provided model or fall back to environment/default
-    if model is None:
-        model = os.getenv("CLAUDE_MODEL", "claude-sonnet-4-20250514")
-    
-    payload = {
-        "model": model,
-        "max_tokens": 4000,  # Increased for longer Markdown output
-        "temperature": 0.3,  # Slightly higher for better writing quality
-        "system": system_prompt,
-        "messages": [
-            {"role": "user", "content": user_prompt}
-        ],
-    }
-    
-    try:
-        response = requests.post(
-            "https://api.anthropic.com/v1/messages",
-            headers={
-                "Content-Type": "application/json",
-                "x-api-key": api_key,
-                "anthropic-version": "2023-06-01",
-            },
-            json=payload,
-            timeout=90,  # Increased timeout for longer responses
-        )
-    except requests.exceptions.Timeout:
-        raise AiTnmError("RadInsights Intelligence request timed out.")
-    except requests.exceptions.RequestException as exc:
-        raise AiTnmError(f"Failed to connect to RadInsights Intelligence: {exc}")
+    # Strip markdown fences
+    text = strip_markdown_fences(text)
 
-    if response.status_code >= 300:
-        error_detail = response.text[:500] if response.text else "No details"
-        raise AiTnmError(f"RadInsights Intelligence error (HTTP {response.status_code}): {error_detail}")
-
-    data = response.json()
-    content = data.get("content", [])
-    if not content:
-        raise AiTnmError("RadInsights Intelligence response missing content block")
-
-    text = content[0].get("text", "").strip()
-    if not text:
-        raise AiTnmError("RadInsights Intelligence response was empty")
-    
-    # Clean up - remove any code fence wrapper if Claude added it
-    if text.startswith("```markdown"):
-        text = text[11:]
-        if text.endswith("```"):
-            text = text[:-3]
-        text = text.strip()
-    elif text.startswith("```"):
-        lines = text.split("\n")
-        lines = lines[1:]
-        if lines and lines[-1].strip() == "```":
-            lines = lines[:-1]
-        text = "\n".join(lines)
-    
     # Validate that we got proper Markdown output
     if not text.startswith("###") and not text.startswith("# "):
-        # Try to find the start of the expected output
         start_idx = text.find("### TNM Imaging Intelligence")
         if start_idx != -1:
             text = text[start_idx:]
         else:
             print(f"[AI_TNM] Warning: Response doesn't start with expected header")
             print(f"[AI_TNM] First 500 chars: {text[:500]}")
-    
+
     return text
 
 

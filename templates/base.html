@@ -46,6 +46,7 @@
     <script src="{{ url_for('static', filename='pwa-register.js') }}" defer></script>
 </head>
 <body>
+    <a href="#main-content" class="visually-hidden-focusable skip-link">Skip to main content</a>
     <!-- Smart Navigation Bar -->
     <nav class="navbar navbar-expand-lg sticky-top">
         <div class="container-fluid">
@@ -253,7 +254,7 @@
     </div>
 
     <!-- Main Content -->
-    <div class="container-fluid main-content">
+    <div id="main-content" class="container-fluid main-content">
         {% with messages = get_flashed_messages() %}
             {% if messages %}
                 {% for message in messages %}

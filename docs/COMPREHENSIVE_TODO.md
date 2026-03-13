@@ -43,7 +43,7 @@
 | 15 | AI processing disclosure in Smart Reporter | DONE | Added note: "Powered by AI — your input is processed by Anthropic's Claude. Do not enter patient-identifiable data." **File:** `templates/smart_reporter.html` |
 | 16 | Auto-purge expired soft-deleted accounts | DONE | If `is_deleted=True` and `deleted_at + 31 days < now()`, calls `delete_user_completely()` at login check. **File:** `auth.py` |
 | 17 | Contact email inconsistency | DONE | Standardized to `support@eralight.com` across terms of use, privacy policy, and base.html footer |
-| 18 | Medical non-diagnostic disclaimer | TODO | On-call helper, protocols, templates, TNM calculators all have disclaimers, but verify **every** user-facing tool page has one. Add to landing page if missing. |
+| 18 | Medical non-diagnostic disclaimer | DONE | Added disclaimers to smart_reporter, reporting_algorithms_browse, reporting_templates_browse, radiology_protocols_user, student_dashboard. Existing disclaimers verified on 9 other pages. |
 
 ### 1.3 Error Handling
 
@@ -93,9 +93,9 @@
 |---|------|--------|---------|
 | 33 | Split `app.py` (5,212 lines) | TODO | Monolithic file with 124 functions. Split into: `config.py`, `error_handlers.py`, `case_routes.py`, `forum_routes.py`, `image_routes.py`, etc. |
 | 34 | Split `models.py` (2,995 lines, 56 classes) | TODO | Organize into `models/user.py`, `models/case.py`, `models/reporting.py`, `models/clinical.py`, etc. |
-| 35 | Consolidate duplicate `_call_claude()` helpers | TODO | 3+ identical implementations across `ai_smart_reporter.py`, `clinical_tool_generator.py`, `ai_tnm.py`. Create `shared/anthropic_client.py`. |
-| 36 | Consolidate duplicate JSON parsing | TODO | `_parse_json_response()` in `ai_smart_reporter.py` and `_strip_markdown_fences()` in `clinical_tool_generator.py` are identical. Create `shared/json_parser.py`. |
-| 37 | Consolidate duplicate `format_resources_for_prompt()` | TODO | Same function in `ai_smart_reporter.py` and `clinical_tool_generator.py`. Extract to shared module. |
+| 35 | Consolidate duplicate `_call_claude()` helpers | DONE | Created `ai_client.py` with `call_claude()`, `parse_json_response()`, `strip_markdown_fences()`. All 3 AI modules now import from shared module. |
+| 36 | Consolidate duplicate JSON parsing | DONE | `parse_json_response()` and `strip_markdown_fences()` in `ai_client.py`. Used by `ai_smart_reporter.py` and `clinical_tool_generator.py`. |
+| 37 | Consolidate duplicate `format_resources_for_prompt()` | DONE | Removed duplicate from `ai_smart_reporter.py`, now imports from `clinical_tool_generator.py` (superset version). |
 | 38 | Standardize API response format | TODO | Inconsistent: `{error: ...}`, `{success: true}`, `{message: ...}`, `{results: [...]}`. Define standard wrapper (success/error/meta). |
 | 39 | Standardize error exception classes | TODO | 5+ different error classes (`SmartReporterError`, `GeneratorError`, `AiTnmError`, etc.) — consolidate to `RadInsightsError` base class hierarchy. |
 
@@ -103,7 +103,7 @@
 
 | # | Item | Status | Details |
 |---|------|--------|---------|
-| 40 | Set up pytest configuration | TODO | No `pytest.ini`, `setup.cfg`, or `.coveragerc`. Only ~40 TNM calculator tests exist. |
+| 40 | Set up pytest configuration | DONE | Created `pytest.ini`, `tests/conftest.py` with fixtures, `tests/test_routes.py` (13 smoke tests), `tests/test_ai_client.py` (13 unit tests). 26/26 pass. |
 | 41 | Add route/integration tests | TODO | 269 routes, 0 integration tests. Start with auth flows, case CRUD, and admin operations. |
 | 42 | Add CI/CD pipeline (GitHub Actions) | TODO | No automated testing on PR. Set up GitHub Actions to run tests. |
 | 43 | API documentation (OpenAPI/Swagger) | TODO | 269 routes, no documentation. At minimum document the public-facing API endpoints. |
@@ -124,7 +124,7 @@
 |---|------|--------|---------|
 | 49 | 2FA for admin accounts | TODO | No TOTP/2FA. Recommended: `pyotp` for admin-tier accounts. |
 | 50 | Immutable audit logs | TODO | Current audit logs in same DB — can be modified by DB admin. Consider append-only log table or external log service. |
-| 51 | Data retention cleanup cron | TODO | No automated deletion of expired data (old AI usage logs, expired recovery codes, etc.). Add scheduled cleanup. |
+| 51 | Data retention cleanup cron | DONE | `GET /api/cron/data-retention-cleanup` — deletes expired recovery codes (7d), approval codes (30d), old TNM jobs (90d). Cron-authenticated. |
 | 52 | IP logging documented in privacy policy | DONE | Added in privacy policy rewrite. |
 
 ---
@@ -137,7 +137,7 @@
 |---|------|--------|---------|
 | 53 | Run `flake8 --select=F401` to find unused imports | TODO | Multiple files have unused imports. Quick cleanup. |
 | 54 | Remove deprecated `ReportingTemplate` legacy model | TODO | Data migrated to `RadiologyTemplate` + `ReportingAlgorithm`. Legacy class kept for backward compat. |
-| 55 | Remove deprecated `Algorithm Finder` route | TODO | Redirects to Smart Reporter since Feb 2026. Route still registered at `reporting_routes.py:60-65`. |
+| 55 | Remove deprecated `Algorithm Finder` route | DONE | Removed redirect route from `reporting_routes.py`. No remaining references in templates or JS. |
 | 56 | Split `static/style.css` (5,613 lines) | TODO | Organize into component-based CSS files (`variables.css`, `buttons.css`, `modals.css`, etc.). |
 | 57 | Organize templates into subfolders | TODO | 54 templates in flat structure. Move to `auth/`, `admin/`, `reporting/`, `cases/`, etc. |
 | 58 | Input validation with Marshmallow | TODO | No schema validation for request parameters. Add `marshmallow` for API request validation. |
@@ -149,9 +149,9 @@
 | # | Item | Status | Details |
 |---|------|--------|---------|
 | 61 | WCAG 2.1 AA audit | TODO | ARIA labels partially applied. Color contrast unverified. No skip links. |
-| 62 | Dynamic page titles | TODO | All pages show "RadInsights". Should be `{{page_title}} - RadInsights`. |
-| 63 | Sitemap.xml | TODO | No sitemap for search engines. |
-| 64 | Skip-to-content link | TODO | No keyboard skip link in `base.html`. |
+| 62 | Dynamic page titles | DONE | Added `{% block title %}` to 28 templates with context-specific titles (e.g. "Smart Reporter - RadInsights"). |
+| 63 | Sitemap.xml | DONE | `GET /sitemap.xml` generates XML sitemap with static pages + dynamic TNM calculator URLs. Referenced in robots.txt. |
+| 64 | Skip-to-content link | DONE | Added `<a href="#main-content" class="visually-hidden-focusable skip-link">` in `base.html` with `id="main-content"` target on content div. |
 
 ### 4.3 Performance
 
