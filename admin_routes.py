@@ -2261,6 +2261,107 @@ def sentry_stats():
 
 
 # ============================================================================
+# 2FA SETUP ENDPOINTS
+# ============================================================================
+
+@admin_bp.route('/2fa/setup', methods=['POST'])
+@require_admin
+def setup_2fa():
+    """Generate a new TOTP secret and QR code for 2FA setup."""
+    import pyotp
+    import qrcode
+    import io
+    import base64
+
+    secret = pyotp.random_base32()
+    totp = pyotp.TOTP(secret)
+    provisioning_uri = totp.provisioning_uri(
+        name=current_user.email,
+        issuer_name='RadInsights'
+    )
+
+    # Generate QR code as base64 PNG
+    qr = qrcode.QRCode(version=1, box_size=6, border=2)
+    qr.add_data(provisioning_uri)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color='black', back_color='white')
+    buffer = io.BytesIO()
+    img.save(buffer, format='PNG')
+    qr_base64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
+
+    return jsonify({
+        'secret': secret,
+        'qr_code': f'data:image/png;base64,{qr_base64}',
+    }), 200
+
+
+@admin_bp.route('/2fa/enable', methods=['POST'])
+@require_admin
+def enable_2fa():
+    """Verify a TOTP code and enable 2FA for the admin account."""
+    import pyotp
+
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'Invalid request'}), 400
+
+    secret = data.get('secret', '').strip()
+    code = str(data.get('code', '')).strip()
+
+    if not secret or not code or len(code) != 6 or not code.isdigit():
+        return jsonify({'error': 'Please enter the 6-digit code from your authenticator app'}), 400
+
+    totp = pyotp.TOTP(secret)
+    if not totp.verify(code, valid_window=1):
+        return jsonify({'error': 'Invalid code. Please check your authenticator app and try again.'}), 400
+
+    current_user.totp_secret = secret
+    current_user.totp_enabled = True
+    db.session.commit()
+
+    logger.info(f'2FA enabled for admin user {current_user.email}')
+    return jsonify({'success': True, 'message': '2FA has been enabled'}), 200
+
+
+@admin_bp.route('/2fa/disable', methods=['POST'])
+@require_admin
+def disable_2fa():
+    """Disable 2FA — requires a valid TOTP code for security."""
+    import pyotp
+
+    if not current_user.totp_enabled or not current_user.totp_secret:
+        return jsonify({'error': '2FA is not enabled'}), 400
+
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'Invalid request'}), 400
+
+    code = str(data.get('code', '')).strip()
+    if not code or len(code) != 6 or not code.isdigit():
+        return jsonify({'error': 'Please enter your current 6-digit code'}), 400
+
+    totp = pyotp.TOTP(current_user.totp_secret)
+    if not totp.verify(code, valid_window=1):
+        return jsonify({'error': 'Invalid code. 2FA was not disabled.'}), 400
+
+    current_user.totp_secret = None
+    current_user.totp_enabled = False
+    db.session.commit()
+
+    logger.info(f'2FA disabled for admin user {current_user.email}')
+    return jsonify({'success': True, 'message': '2FA has been disabled'}), 200
+
+
+@admin_bp.route('/2fa/status', methods=['GET'])
+@require_admin
+def get_2fa_status():
+    """Get current 2FA status for the logged-in admin."""
+    return jsonify({
+        'enabled': bool(current_user.totp_enabled),
+    }), 200
+
+
+# ============================================================================
 # ERROR HANDLERS
 # ============================================================================
 

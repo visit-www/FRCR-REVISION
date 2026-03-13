@@ -473,18 +473,27 @@ def login():
             user.failed_login_count = 0
             user.locked_until = None
             db.session.commit()
-            
+
+            # Check if admin has 2FA enabled — require TOTP verification
+            if user.role == UserRole.ADMIN and user.totp_enabled and user.totp_secret:
+                from flask import session as flask_session
+                flask_session['pending_2fa_user_id'] = user.id
+                flask_session['2fa_remember'] = bool(remember)
+                flask_session['2fa_request_time'] = datetime.utcnow().isoformat()
+                flask_session['2fa_attempts'] = 0
+                return jsonify({'requires_2fa': True}), 200
+
             # Mark session as permanent for session timeout tracking
             from flask import session as flask_session
             flask_session.permanent = True
             # Track last activity time for session timeout
             flask_session['last_activity'] = datetime.utcnow().isoformat()
-            
+
             # Use user's "Remember Me" preference
             # If remember=False: session expires when browser closes
             # If remember=True: session persists for REMEMBER_COOKIE_DURATION (7 days)
             login_user(user, remember=bool(remember))
-            
+
             return jsonify({'success': True, 'message': 'Login successful'}), 200
         
         except Exception as e:
@@ -492,6 +501,79 @@ def login():
             return jsonify({'error': 'Login failed. Please try again.'}), 500
     
     return render_template('login.html')
+
+
+@auth_bp.route('/verify-2fa', methods=['GET', 'POST'])
+def verify_2fa():
+    """Two-factor authentication verification for admin accounts."""
+    from flask import session as flask_session
+
+    pending_user_id = flask_session.get('pending_2fa_user_id')
+    if not pending_user_id:
+        return redirect('/auth/login')
+
+    # Check 5-minute expiry window
+    request_time_str = flask_session.get('2fa_request_time')
+    if request_time_str:
+        request_time = datetime.fromisoformat(request_time_str)
+        if datetime.utcnow() - request_time > timedelta(minutes=5):
+            flask_session.pop('pending_2fa_user_id', None)
+            flask_session.pop('2fa_remember', None)
+            flask_session.pop('2fa_request_time', None)
+            flask_session.pop('2fa_attempts', None)
+            if request.method == 'POST':
+                return jsonify({'error': '2FA session expired. Please log in again.'}), 401
+            return redirect('/auth/login')
+
+    if request.method == 'GET':
+        return render_template('verify_2fa.html')
+
+    # POST — verify the TOTP code
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'Invalid request'}), 400
+
+    code = str(data.get('code', '')).strip()
+    if not code or len(code) != 6 or not code.isdigit():
+        return jsonify({'error': 'Please enter a 6-digit code'}), 400
+
+    # Check attempt limit
+    attempts = flask_session.get('2fa_attempts', 0)
+    if attempts >= 5:
+        flask_session.pop('pending_2fa_user_id', None)
+        flask_session.pop('2fa_remember', None)
+        flask_session.pop('2fa_request_time', None)
+        flask_session.pop('2fa_attempts', None)
+        return jsonify({'error': 'Too many failed attempts. Please log in again.', 'locked': True}), 401
+
+    user = User.query.get(pending_user_id)
+    if not user or not user.totp_secret:
+        flask_session.pop('pending_2fa_user_id', None)
+        return jsonify({'error': 'Invalid session. Please log in again.'}), 401
+
+    import pyotp
+    totp = pyotp.TOTP(user.totp_secret)
+    if not totp.verify(code, valid_window=1):
+        flask_session['2fa_attempts'] = attempts + 1
+        remaining = 5 - (attempts + 1)
+        return jsonify({
+            'error': f'Invalid code. {remaining} attempt{"s" if remaining != 1 else ""} remaining.',
+            'remaining': remaining
+        }), 401
+
+    # 2FA verified — complete login
+    remember = flask_session.get('2fa_remember', False)
+    flask_session.pop('pending_2fa_user_id', None)
+    flask_session.pop('2fa_remember', None)
+    flask_session.pop('2fa_request_time', None)
+    flask_session.pop('2fa_attempts', None)
+
+    flask_session.permanent = True
+    flask_session['last_activity'] = datetime.utcnow().isoformat()
+    login_user(user, remember=bool(remember))
+
+    logger.info(f'Admin 2FA verified for user {user.email}')
+    return jsonify({'success': True, 'message': 'Login successful'}), 200
 
 
 @auth_bp.route('/session/refresh', methods=['POST'])

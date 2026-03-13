@@ -84,6 +84,63 @@
         <!-- User Management Tab -->
         <div class="tab-pane fade show active" id="users-content" role="tabpanel" aria-labelledby="users-tab">
             {% include 'user-management-tab.html' %}
+
+            <!-- 2FA Security Section -->
+            <div class="card mt-4" style="border-left: 4px solid var(--brand-neutral);">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="fas fa-shield-halved me-2" style="color: var(--brand-neutral);"></i>Two-Factor Authentication</h5>
+                    <p class="text-muted mb-3" style="font-size: 14px;">Protect your admin account with an authenticator app (Google Authenticator, Authy, 1Password).</p>
+                    <div id="twofa-status-area">
+                        <span class="badge bg-secondary" id="twofa-badge">Loading...</span>
+                    </div>
+                    <div id="twofa-actions" class="mt-3" style="display:none;">
+                        <button class="btn btn-brand-primary btn-sm" id="twofa-setup-btn" style="display:none;">
+                            <i class="fas fa-qrcode me-1"></i>Set Up 2FA
+                        </button>
+                        <button class="btn btn-outline-danger btn-sm" id="twofa-disable-btn" style="display:none;">
+                            <i class="fas fa-times me-1"></i>Disable 2FA
+                        </button>
+                    </div>
+                    <!-- Setup flow (hidden by default) -->
+                    <div id="twofa-setup-area" style="display:none;" class="mt-3">
+                        <div class="text-center mb-3">
+                            <p class="mb-2" style="font-size: 14px;">Scan this QR code with your authenticator app:</p>
+                            <img id="twofa-qr" src="" alt="2FA QR Code" style="max-width: 200px; border: 1px solid #eee; border-radius: 8px;">
+                            <div class="mt-2">
+                                <small class="text-muted">Manual key: <code id="twofa-manual-key"></code></small>
+                            </div>
+                        </div>
+                        <div class="row justify-content-center">
+                            <div class="col-md-6">
+                                <label class="form-label" style="font-size: 14px;">Enter the 6-digit code to confirm:</label>
+                                <div class="input-group">
+                                    <input type="text" id="twofa-confirm-code" class="form-control" maxlength="6" inputmode="numeric" pattern="[0-9]{6}" placeholder="000000" style="text-align:center; letter-spacing:4px; font-weight:600;">
+                                    <button class="btn btn-brand-primary" id="twofa-confirm-btn">Confirm</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="text-center mt-2">
+                            <button class="btn btn-link btn-sm text-muted" id="twofa-cancel-setup">Cancel</button>
+                        </div>
+                    </div>
+                    <!-- Disable flow (hidden by default) -->
+                    <div id="twofa-disable-area" style="display:none;" class="mt-3">
+                        <div class="row justify-content-center">
+                            <div class="col-md-6">
+                                <label class="form-label" style="font-size: 14px;">Enter your current 2FA code to disable:</label>
+                                <div class="input-group">
+                                    <input type="text" id="twofa-disable-code" class="form-control" maxlength="6" inputmode="numeric" pattern="[0-9]{6}" placeholder="000000" style="text-align:center; letter-spacing:4px; font-weight:600;">
+                                    <button class="btn btn-outline-danger" id="twofa-disable-confirm-btn">Disable</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="text-center mt-2">
+                            <button class="btn btn-link btn-sm text-muted" id="twofa-cancel-disable">Cancel</button>
+                        </div>
+                    </div>
+                    <div id="twofa-message" class="mt-2" style="font-size: 14px;"></div>
+                </div>
+            </div>
         </div>
 
         <!-- Forum Management Tab -->
@@ -1918,6 +1975,141 @@
         d.textContent = str || '';
         return d.innerHTML;
     }
+
+    // ==================== 2FA MANAGEMENT ====================
+    (function() {
+        let pendingSecret = null;
+        const badge = document.getElementById('twofa-badge');
+        const actions = document.getElementById('twofa-actions');
+        const setupBtn = document.getElementById('twofa-setup-btn');
+        const disableBtn = document.getElementById('twofa-disable-btn');
+        const setupArea = document.getElementById('twofa-setup-area');
+        const disableArea = document.getElementById('twofa-disable-area');
+        const msgEl = document.getElementById('twofa-message');
+
+        function showMsg(text, type) {
+            msgEl.innerHTML = '<span class="text-' + (type === 'error' ? 'danger' : 'success') + '">' + text + '</span>';
+            setTimeout(() => { msgEl.innerHTML = ''; }, 5000);
+        }
+
+        async function load2FAStatus() {
+            try {
+                const resp = await fetch('/api/admin/2fa/status');
+                const data = await resp.json();
+                if (data.enabled) {
+                    badge.textContent = 'Enabled';
+                    badge.className = 'badge bg-success';
+                    setupBtn.style.display = 'none';
+                    disableBtn.style.display = '';
+                } else {
+                    badge.textContent = 'Disabled';
+                    badge.className = 'badge bg-warning text-dark';
+                    setupBtn.style.display = '';
+                    disableBtn.style.display = 'none';
+                }
+                actions.style.display = '';
+            } catch (e) {
+                badge.textContent = 'Error';
+                badge.className = 'badge bg-danger';
+            }
+        }
+
+        setupBtn.addEventListener('click', async () => {
+            setupBtn.disabled = true;
+            try {
+                const resp = await fetch('/api/admin/2fa/setup', { method: 'POST' });
+                const data = await resp.json();
+                pendingSecret = data.secret;
+                document.getElementById('twofa-qr').src = data.qr_code;
+                document.getElementById('twofa-manual-key').textContent = data.secret;
+                setupArea.style.display = '';
+                setupBtn.style.display = 'none';
+                document.getElementById('twofa-confirm-code').value = '';
+                document.getElementById('twofa-confirm-code').focus();
+            } catch (e) {
+                showMsg('Failed to generate QR code', 'error');
+            }
+            setupBtn.disabled = false;
+        });
+
+        document.getElementById('twofa-confirm-btn').addEventListener('click', async () => {
+            const code = document.getElementById('twofa-confirm-code').value.trim();
+            if (!code || code.length !== 6 || !/^\d{6}$/.test(code)) {
+                showMsg('Enter a 6-digit code', 'error');
+                return;
+            }
+            try {
+                const resp = await fetch('/api/admin/2fa/enable', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ secret: pendingSecret, code })
+                });
+                const data = await resp.json();
+                if (resp.ok) {
+                    showMsg('2FA enabled successfully!', 'success');
+                    setupArea.style.display = 'none';
+                    pendingSecret = null;
+                    load2FAStatus();
+                } else {
+                    showMsg(data.error || 'Failed to enable', 'error');
+                }
+            } catch (e) {
+                showMsg('Connection error', 'error');
+            }
+        });
+
+        document.getElementById('twofa-cancel-setup').addEventListener('click', () => {
+            setupArea.style.display = 'none';
+            pendingSecret = null;
+            setupBtn.style.display = '';
+        });
+
+        disableBtn.addEventListener('click', () => {
+            disableArea.style.display = '';
+            disableBtn.style.display = 'none';
+            document.getElementById('twofa-disable-code').value = '';
+            document.getElementById('twofa-disable-code').focus();
+        });
+
+        document.getElementById('twofa-disable-confirm-btn').addEventListener('click', async () => {
+            const code = document.getElementById('twofa-disable-code').value.trim();
+            if (!code || code.length !== 6 || !/^\d{6}$/.test(code)) {
+                showMsg('Enter your current 6-digit code', 'error');
+                return;
+            }
+            try {
+                const resp = await fetch('/api/admin/2fa/disable', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code })
+                });
+                const data = await resp.json();
+                if (resp.ok) {
+                    showMsg('2FA disabled', 'success');
+                    disableArea.style.display = 'none';
+                    load2FAStatus();
+                } else {
+                    showMsg(data.error || 'Failed to disable', 'error');
+                }
+            } catch (e) {
+                showMsg('Connection error', 'error');
+            }
+        });
+
+        document.getElementById('twofa-cancel-disable').addEventListener('click', () => {
+            disableArea.style.display = 'none';
+            disableBtn.style.display = '';
+        });
+
+        // Only allow digits in 2FA inputs
+        ['twofa-confirm-code', 'twofa-disable-code'].forEach(id => {
+            document.getElementById(id).addEventListener('input', function() {
+                this.value = this.value.replace(/\D/g, '').slice(0, 6);
+            });
+        });
+
+        load2FAStatus();
+    })();
 
 </script>
 

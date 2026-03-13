@@ -393,7 +393,12 @@
                     return;
                 }
 
-                if (response.ok) {
+                if (response.ok && data.requires_2fa) {
+                    showAlert('Verifying identity...', 'success');
+                    setTimeout(() => {
+                        window.location.href = '/auth/verify-2fa';
+                    }, 300);
+                } else if (response.ok) {
                     showAlert('Login successful! Redirecting...', 'success');
                     setTimeout(() => {
                         window.location.href = '/';

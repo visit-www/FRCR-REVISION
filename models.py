@@ -230,6 +230,10 @@ class User(UserMixin, db.Model):
     failed_login_last = db.Column(db.DateTime, nullable=True)
     locked_until = db.Column(db.DateTime, nullable=True)
 
+    # === 2FA TOTP (admin only) ===
+    totp_secret = db.Column(EncryptedText(), nullable=True)  # Base32 TOTP secret (encrypted at rest)
+    totp_enabled = db.Column(db.Boolean, default=False)       # Whether 2FA is active
+
     # Password recovery
     recovery_token = db.Column(db.String(255), unique=True, nullable=True)
     recovery_token_expires = db.Column(db.DateTime, nullable=True)

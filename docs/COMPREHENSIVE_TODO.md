@@ -122,7 +122,7 @@
 
 | # | Item | Status | Details |
 |---|------|--------|---------|
-| 49 | 2FA for admin accounts | TODO | No TOTP/2FA. Recommended: `pyotp` for admin-tier accounts. |
+| 49 | 2FA for admin accounts | DONE | TOTP 2FA via `pyotp` + `qrcode`. Setup in admin dashboard (Users tab), verify page at `/auth/verify-2fa`. Secret encrypted via `EncryptedText`. 5-attempt limit, 5-min session window. Disable requires valid code. |
 | 50 | Immutable audit logs | TODO | Current audit logs in same DB — can be modified by DB admin. Consider append-only log table or external log service. |
 | 51 | Data retention cleanup cron | DONE | `GET /api/cron/data-retention-cleanup` — deletes expired recovery codes (7d), approval codes (30d), old TNM jobs (90d). Cron-authenticated. |
 | 52 | IP logging documented in privacy policy | DONE | Added in privacy policy rewrite. |
