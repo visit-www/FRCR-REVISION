@@ -33,6 +33,8 @@ from models import (
     IncidentalFindingCalculator,
     # AI audit trail
     AIAuditLog,
+    # Content requests
+    ContentRequest,
 )
 from datetime import datetime
 from sqlalchemy import inspect
@@ -166,6 +168,10 @@ def _build_backup_data():
         'incidental_finding_calculators': [],
         # AI audit trail
         'ai_audit_logs': [],
+        # Content requests
+        'content_requests': [],
+        # Import staging
+        'imported_case_staging': [],
     }
     
     # Export users (with password hashes for sync purposes)
@@ -805,6 +811,52 @@ def _build_backup_data():
     # Export AI audit logs
     for log in AIAuditLog.query.order_by(AIAuditLog.created_at.desc()).all():
         backup_data['ai_audit_logs'].append(log.to_dict())
+
+    # Export Content Requests
+    for cr in ContentRequest.query.all():
+        backup_data['content_requests'].append({
+            'id': cr.id,
+            'user_id': cr.user_id,
+            'request_type': cr.request_type,
+            'title': cr.title,
+            'description': cr.description,
+            'body_section': cr.body_section,
+            'status': cr.status,
+            'admin_notes': cr.admin_notes,
+            'created_at': cr.created_at.isoformat() if cr.created_at else None,
+        })
+
+    # Export Imported Case Staging
+    for ics in ImportedCaseStaging.query.all():
+        backup_data['imported_case_staging'].append({
+            'id': ics.id,
+            'original_id': ics.original_id,
+            'case_number': ics.case_number,
+            'diagnosis': ics.diagnosis,
+            'questions': ics.questions,
+            'answers': ics.answers,
+            'discussion': ics.discussion,
+            'module': ics.module.value if ics.module else None,
+            'body_part': ics.body_part.value if ics.body_part else None,
+            'age_group': ics.age_group.value if ics.age_group else None,
+            'is_public': ics.is_public,
+            'enrichment_status': ics.enrichment_status,
+            'enriched_by_user_id': ics.enriched_by_user_id,
+            'enriched_at': ics.enriched_at.isoformat() if ics.enriched_at else None,
+            'enrichment_notes': ics.enrichment_notes,
+            'approved_by_user_id': ics.approved_by_user_id,
+            'approved_at': ics.approved_at.isoformat() if ics.approved_at else None,
+            'approval_notes': ics.approval_notes,
+            'promoted_to_case_id': ics.promoted_to_case_id,
+            'promoted_at': ics.promoted_at.isoformat() if ics.promoted_at else None,
+            'previous_staging_id': ics.previous_staging_id,
+            'is_replacement': ics.is_replacement,
+            'import_batch_id': ics.import_batch_id,
+            'source_system': ics.source_system,
+            'import_timestamp': ics.import_timestamp.isoformat() if ics.import_timestamp else None,
+            'created_at': ics.created_at.isoformat() if ics.created_at else None,
+            'updated_at': ics.updated_at.isoformat() if ics.updated_at else None,
+        })
 
     return backup_data
 
@@ -3542,10 +3594,108 @@ def restore_backup():
             db.session.add(ifc)
             stats['incidental_finding_calculators']['added'] += 1
 
+        # Import Content Requests
+        stats['content_requests'] = {'added': 0, 'skipped': 0}
+        for cr_data in backup_data.get('content_requests', []):
+            if not isinstance(cr_data, dict):
+                continue
+            title = cr_data.get('title', '')
+            old_user_id = cr_data.get('user_id')
+            if not title or not old_user_id:
+                stats['content_requests']['skipped'] += 1
+                continue
+            mapped_user_id = user_id_map.get(old_user_id)
+            if not mapped_user_id:
+                stats['content_requests']['skipped'] += 1
+                continue
+            # Skip if same user already has a request with same title
+            existing = ContentRequest.query.filter_by(user_id=mapped_user_id, title=title).first()
+            if existing:
+                stats['content_requests']['skipped'] += 1
+                continue
+            cr = ContentRequest(
+                user_id=mapped_user_id,
+                request_type=cr_data.get('request_type', 'template'),
+                title=title,
+                description=cr_data.get('description'),
+                body_section=cr_data.get('body_section'),
+                status=cr_data.get('status', 'pending'),
+                admin_notes=cr_data.get('admin_notes'),
+            )
+            if cr_data.get('created_at'):
+                cr.created_at = _parse_datetime_for_sqlite(cr_data['created_at']) or datetime.utcnow()
+            db.session.add(cr)
+            stats['content_requests']['added'] += 1
+
+        # Import Imported Case Staging
+        stats['imported_case_staging'] = {'added': 0, 'skipped': 0}
+        for ics_data in backup_data.get('imported_case_staging', []):
+            if not isinstance(ics_data, dict):
+                continue
+            batch_id = ics_data.get('import_batch_id', '')
+            original_id = ics_data.get('original_id')
+            if not batch_id:
+                stats['imported_case_staging']['skipped'] += 1
+                continue
+            # Skip if same batch+original_id exists
+            existing = ImportedCaseStaging.query.filter_by(
+                import_batch_id=batch_id, original_id=original_id
+            ).first() if original_id else None
+            if existing:
+                stats['imported_case_staging']['skipped'] += 1
+                continue
+            old_enriched_by = ics_data.get('enriched_by_user_id')
+            old_approved_by = ics_data.get('approved_by_user_id')
+            ics = ImportedCaseStaging(
+                original_id=original_id,
+                case_number=ics_data.get('case_number'),
+                diagnosis=ics_data.get('diagnosis', ''),
+                questions=ics_data.get('questions', ''),
+                answers=ics_data.get('answers', ''),
+                discussion=ics_data.get('discussion'),
+                is_public=ics_data.get('is_public', False),
+                enrichment_status=ics_data.get('enrichment_status', 'pending'),
+                enriched_by_user_id=user_id_map.get(old_enriched_by) if old_enriched_by else None,
+                enriched_at=_parse_datetime_for_sqlite(ics_data.get('enriched_at')),
+                enrichment_notes=ics_data.get('enrichment_notes'),
+                approved_by_user_id=user_id_map.get(old_approved_by) if old_approved_by else None,
+                approved_at=_parse_datetime_for_sqlite(ics_data.get('approved_at')),
+                approval_notes=ics_data.get('approval_notes'),
+                is_replacement=ics_data.get('is_replacement', False),
+                import_batch_id=batch_id,
+                source_system=ics_data.get('source_system', 'frcr_examiner'),
+                import_timestamp=_parse_datetime_for_sqlite(ics_data.get('import_timestamp')),
+            )
+            # Enum fields need special handling
+            module_val = ics_data.get('module')
+            if module_val:
+                try:
+                    ics.module = FRCRModule(module_val)
+                except (ValueError, KeyError):
+                    pass
+            body_part_val = ics_data.get('body_part')
+            if body_part_val:
+                try:
+                    ics.body_part = BodyPart(body_part_val)
+                except (ValueError, KeyError):
+                    pass
+            age_group_val = ics_data.get('age_group')
+            if age_group_val:
+                try:
+                    ics.age_group = AgeGroup(age_group_val)
+                except (ValueError, KeyError):
+                    pass
+            if ics_data.get('created_at'):
+                ics.created_at = _parse_datetime_for_sqlite(ics_data['created_at']) or datetime.utcnow()
+            if ics_data.get('updated_at'):
+                ics.updated_at = _parse_datetime_for_sqlite(ics_data['updated_at']) or datetime.utcnow()
+            db.session.add(ics)
+            stats['imported_case_staging']['added'] += 1
+
         # Final commit for new tables
         try:
             db.session.commit()
-            print(f"[IMPORT] New tables imported: {stats.get('related_cases_links', {}).get('added', 0)} related links, {stats.get('case_audit_logs', {}).get('added', 0)} audit logs, {stats.get('case_view_logs', {}).get('added', 0)} view logs, {stats.get('user_qa_progress', {}).get('added', 0)} QA progress, {stats.get('ai_diagnosis_cache', {}).get('added', 0)} AI cache, {stats.get('clinical_protocols', {}).get('added', 0)} protocols, {stats.get('radiology_templates', {}).get('added', 0)} radiology templates, {stats.get('reporting_algorithms', {}).get('added', 0)} reporting algorithms, {stats.get('incidental_finding_calculators', {}).get('added', 0)} IF calculators")
+            print(f"[IMPORT] New tables imported: {stats.get('related_cases_links', {}).get('added', 0)} related links, {stats.get('case_audit_logs', {}).get('added', 0)} audit logs, {stats.get('case_view_logs', {}).get('added', 0)} view logs, {stats.get('user_qa_progress', {}).get('added', 0)} QA progress, {stats.get('ai_diagnosis_cache', {}).get('added', 0)} AI cache, {stats.get('clinical_protocols', {}).get('added', 0)} protocols, {stats.get('radiology_templates', {}).get('added', 0)} radiology templates, {stats.get('reporting_algorithms', {}).get('added', 0)} reporting algorithms, {stats.get('incidental_finding_calculators', {}).get('added', 0)} IF calculators, {stats.get('content_requests', {}).get('added', 0)} content requests, {stats.get('imported_case_staging', {}).get('added', 0)} staging cases")
         except Exception as new_tables_error:
             db.session.rollback()
             print(f"[IMPORT] ERROR during new tables commit: {new_tables_error}")
