@@ -1052,7 +1052,7 @@ def add_security_headers(response):
         "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com; "
         "img-src 'self' data: blob: https://res.cloudinary.com https://*.cloudinary.com https://upload.wikimedia.org https://*.wikimedia.org; "
         "font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com; "
-        "connect-src 'self'; "
+        "connect-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://res.cloudinary.com https://*.cloudinary.com https://fonts.googleapis.com https://fonts.gstatic.com; "
         "frame-src 'self'; "
         "object-src 'none'; "
         "base-uri 'self'"

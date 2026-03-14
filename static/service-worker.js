@@ -4,7 +4,7 @@
  * SAFE: Only caches static files, never interferes with database operations
  */
 
-const CACHE_VERSION = 'v3';
+const CACHE_VERSION = 'v4';
 const CACHE_NAME = `frcr-revision-${CACHE_VERSION}`;
 const STATIC_CACHE = `frcr-static-${CACHE_VERSION}`;
 const PAGES_CACHE = `frcr-pages-${CACHE_VERSION}`;
@@ -96,7 +96,15 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
-  
+
+  // Skip cross-origin requests — let the browser handle them directly.
+  // CDN resources (Bootstrap, Font Awesome, Cloudinary) are governed by
+  // style-src/script-src/img-src CSP directives, not connect-src.
+  // If the SW intercepts them, its own connect-src 'self' blocks the fetch.
+  if (url.origin !== self.location.origin) {
+    return;
+  }
+
   // CRITICAL: Always use network for API calls (database operations)
   // This ensures database integrity - no offline data changes!
   if (url.pathname.startsWith('/api/') || 
