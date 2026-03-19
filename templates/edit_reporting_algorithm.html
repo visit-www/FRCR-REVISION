@@ -99,6 +99,39 @@
         </div>
     </div>
 
+    <!-- Image Upload (for anatomy snippets and algorithms) -->
+    <div class="card border-0 shadow-sm mb-3">
+        <div class="card-header bg-white py-2 d-flex justify-content-between align-items-center"
+             data-bs-toggle="collapse" data-bs-target="#imageUploadPanel" role="button"
+             style="cursor: pointer;">
+            <span class="fw-semibold small">
+                <i class="fas fa-image me-1 text-muted"></i>Insert Image
+            </span>
+            <i class="fas fa-chevron-down small text-muted"></i>
+        </div>
+        <div class="collapse" id="imageUploadPanel">
+            <div class="card-body py-3">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-6">
+                        <label class="form-label small fw-semibold">Upload Image</label>
+                        <input type="file" class="form-control form-control-sm" id="imageUploadInput"
+                               accept="image/*" onchange="uploadImageToCloudinary(this)">
+                        <small class="text-muted">Upload to Cloudinary and insert &lt;img&gt; tag into editor</small>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small fw-semibold">Alt text (optional)</label>
+                        <input type="text" class="form-control form-control-sm" id="imageAltText"
+                               placeholder="e.g. Circle of Willis diagram">
+                    </div>
+                    <div class="col-md-2">
+                        <div id="imageUploadStatus" class="small text-muted"></div>
+                    </div>
+                </div>
+                <div id="uploadedImagesGallery" class="mt-3 d-flex flex-wrap gap-2"></div>
+            </div>
+        </div>
+    </div>
+
     <!-- Layout Toggle (always visible) -->
     <div class="d-flex justify-content-between align-items-center mb-2">
         <span class="fw-semibold small text-muted" id="editorModeLabel">
@@ -293,6 +326,66 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('metaChevron').style.transform = 'rotate(0deg)';
     });
 });
+
+// ==================== IMAGE UPLOAD ====================
+
+function uploadImageToCloudinary(input) {
+    if (!input.files || !input.files[0]) return;
+    if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {
+        alert('Cloudinary not configured. Set CLOUDINARY_CLOUD_NAME and CLOUDINARY_UPLOAD_PRESET.');
+        return;
+    }
+
+    var file = input.files[0];
+    var status = document.getElementById('imageUploadStatus');
+    status.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Uploading...';
+
+    var formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+    formData.append('folder', 'radinsights/anatomy');
+
+    fetch('https://api.cloudinary.com/v1_1/' + CLOUDINARY_CLOUD_NAME + '/image/upload', {
+        method: 'POST',
+        body: formData
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.secure_url) {
+            var altText = document.getElementById('imageAltText').value || file.name;
+            var imgTag = '<img src="' + data.secure_url + '" alt="' + altText + '" style="max-width: 100%; border-radius: 8px; margin: 1rem 0;">';
+
+            // Insert at cursor position in editor
+            var editor = document.getElementById('htmlEditor');
+            var start = editor.selectionStart;
+            var end = editor.selectionEnd;
+            var text = editor.value;
+            editor.value = text.substring(0, start) + '\n' + imgTag + '\n' + text.substring(end);
+            editor.selectionStart = editor.selectionEnd = start + imgTag.length + 2;
+            _isDirty = true;
+            refreshPreview();
+
+            // Add to gallery
+            var gallery = document.getElementById('uploadedImagesGallery');
+            var thumb = document.createElement('div');
+            thumb.className = 'position-relative';
+            thumb.innerHTML = '<img src="' + data.secure_url + '" style="width: 80px; height: 80px; object-fit: cover; border-radius: 6px; border: 2px solid #dee2e6;">'
+                + '<button class="btn btn-sm btn-danger position-absolute top-0 end-0 p-0" style="width: 18px; height: 18px; font-size: 0.6rem; line-height: 1;" onclick="this.parentElement.remove()" title="Remove thumbnail"><i class="fas fa-times"></i></button>';
+            gallery.appendChild(thumb);
+
+            status.innerHTML = '<i class="fas fa-check text-success me-1"></i>Uploaded!';
+            setTimeout(function() { status.textContent = ''; }, 3000);
+        } else {
+            status.innerHTML = '<i class="fas fa-exclamation-triangle text-danger me-1"></i>Upload failed';
+        }
+        input.value = '';
+        document.getElementById('imageAltText').value = '';
+    })
+    .catch(function() {
+        status.innerHTML = '<i class="fas fa-exclamation-triangle text-danger me-1"></i>Upload error';
+        input.value = '';
+    });
+}
 </script>
 <style>
     #metaChevron { transition: transform 0.2s ease; }

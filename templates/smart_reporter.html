@@ -451,7 +451,8 @@
                         <div class="card border-0 shadow-sm mb-3">
                             <div class="card-header bg-white border-0 py-2">
                                 <div class="d-flex justify-content-between align-items-center">
-                                    <small class="fw-semibold"><i class="fas fa-pencil-alt me-1" style="color: #5E899E;"></i>Your Draft Report</small>
+                                    <small class="fw-semibold"><i class="fas fa-pencil-alt me-1" style="color: #5E899E;"></i>Your Working Draft</small>
+                                    <small class="text-muted ms-2" style="font-size: 0.7rem;"><i class="fas fa-robot me-1"></i>RadInsight Intelligence reads this text</small>
                                 </div>
                             </div>
                             <div class="card-body p-3">
@@ -499,7 +500,7 @@
                             <div class="card border-0 shadow-sm mb-3">
                                 <div class="card-header bg-white border-0 py-2">
                                     <div class="d-flex justify-content-between align-items-center">
-                                        <small class="fw-semibold"><i class="fas fa-file-alt me-1" style="color: #a8d5ba;"></i>Final Report</small>
+                                        <small class="fw-semibold"><i class="fas fa-file-alt me-1" style="color: #a8d5ba;"></i>PACS-Ready Report</small>
                                         <div class="d-flex gap-1">
                                             <button class="btn btn-sm btn-outline-success" onclick="copyFinalReport()" id="btnCopyReport">
                                                 <i class="fas fa-copy me-1"></i>Copy
@@ -525,10 +526,9 @@
                                 </div>
                                 <div class="card-body p-3">
                                     <textarea class="form-control" id="editorOutput" rows="12"
-                                              style="font-family: 'Courier New', monospace; font-size: 0.9rem; line-height: 1.6;"
-                                              readonly></textarea>
+                                              style="font-family: 'Courier New', monospace; font-size: 0.9rem; line-height: 1.6;"></textarea>
                                     <small class="text-muted mt-1 d-block">
-                                        <i class="fas fa-info-circle me-1"></i>Accept or reject suggestions on the right to update this output. You can also edit the input and re-run review.
+                                        <i class="fas fa-copy me-1"></i>Copy this to PACS. To change what RadInsight Intelligence analyses, update your working draft above.
                                     </small>
                                 </div>
                             </div>
@@ -571,7 +571,7 @@
                                     <small class="text-muted" id="askClaudeCounter"></small>
                                 </div>
                                 <div class="mt-1">
-                                    <small class="text-muted" style="font-size: 0.7rem;"><i class="fas fa-info-circle me-1"></i>Powered by AI &mdash; your input is processed by Anthropic's Claude. Do not enter patient-identifiable data. <a href="/privacy" target="_blank">Privacy Policy</a></small>
+                                    <small class="text-muted" style="font-size: 0.7rem;"><i class="fas fa-info-circle me-1"></i>Powered by RadInsight Intelligence &mdash; a fine-tuned radiology specific model. Do not enter patient-identifiable data. <a href="/privacy" target="_blank">Privacy Policy</a></small>
                                 </div>
                             </div>
                             <div class="card-body p-3" style="overflow: visible;">
@@ -584,20 +584,20 @@
                                         <i class="fas fa-paper-plane"></i>
                                     </button>
                                 </div>
-                                <div class="d-flex flex-wrap gap-1 mb-2">
-                                    <button class="btn btn-outline-secondary py-0 px-2" style="font-size: 0.72rem;" onclick="quickAsk('Finalize this report')">
+                                <div class="d-flex flex-wrap gap-1 mb-2" id="quickAskButtons">
+                                    <button class="btn btn-outline-secondary py-0 px-2 quick-ask-btn" style="font-size: 0.72rem;" data-instruction="Finalize this report" onclick="toggleQuickAsk(this)">
                                         <i class="fas fa-check-circle me-1"></i>Finalize
                                     </button>
-                                    <button class="btn btn-outline-secondary py-0 px-2" style="font-size: 0.72rem;" onclick="quickAsk('Write the impression')">
+                                    <button class="btn btn-outline-secondary py-0 px-2 quick-ask-btn" style="font-size: 0.72rem;" data-instruction="Write the impression" onclick="toggleQuickAsk(this)">
                                         Impression
                                     </button>
-                                    <button class="btn btn-outline-secondary py-0 px-2" style="font-size: 0.72rem;" onclick="quickAsk('What am I missing?')">
+                                    <button class="btn btn-outline-secondary py-0 px-2 quick-ask-btn" style="font-size: 0.72rem;" data-instruction="What am I missing?" onclick="toggleQuickAsk(this)">
                                         Missing?
                                     </button>
-                                    <button class="btn btn-outline-secondary py-0 px-2" style="font-size: 0.72rem;" onclick="quickAsk('Check for differentials')">
+                                    <button class="btn btn-outline-secondary py-0 px-2 quick-ask-btn" style="font-size: 0.72rem;" data-instruction="Check for differentials" onclick="toggleQuickAsk(this)">
                                         Differentials
                                     </button>
-                                    <button class="btn btn-outline-secondary py-0 px-2" style="font-size: 0.72rem;" onclick="quickAsk('Add recommendations')">
+                                    <button class="btn btn-outline-secondary py-0 px-2 quick-ask-btn" style="font-size: 0.72rem;" data-instruction="Add recommendations if relevant for this report" onclick="toggleQuickAsk(this)">
                                         Recommendations
                                     </button>
                                 </div>
@@ -641,9 +641,12 @@
                                         </div>
                                         <div class="p-2 rounded" style="background: #f0f9f4; border: 1px solid #c3e6cb;">
                                             <pre id="aiAssistAnswer" class="mb-2" style="white-space: pre-wrap; font-family: 'Courier New', monospace; font-size: 0.85rem; line-height: 1.4; margin: 0;"></pre>
-                                            <div class="d-flex gap-2 mt-2">
+                                            <div class="d-flex flex-wrap gap-2 mt-2">
+                                                <button class="btn btn-sm btn-brand-primary" onclick="insertIntoDraft()">
+                                                    <i class="fas fa-pencil-alt me-1"></i>Add to Draft
+                                                </button>
                                                 <button class="btn btn-sm btn-outline-success" onclick="insertClaudeResponse()">
-                                                    <i class="fas fa-plus me-1"></i>Insert into report
+                                                    <i class="fas fa-plus me-1"></i>Insert into PACS Report
                                                 </button>
                                                 <button class="btn btn-sm btn-outline-secondary" onclick="dismissAiAssist()">
                                                     Dismiss
@@ -656,7 +659,7 @@
                                     <div id="aiAssistReportSection" class="mb-3 d-none">
                                         <div class="d-flex justify-content-between align-items-center mb-1">
                                             <small class="fw-semibold text-muted">
-                                                <i class="fas fa-file-medical me-1"></i>Finalized Report
+                                                <i class="fas fa-file-medical me-1"></i>Generated Report
                                             </small>
                                         </div>
                                         <div class="p-2 rounded" style="background: #e8f5e9; border: 1px solid #81c784;">
@@ -666,7 +669,7 @@
                                                     <i class="fas fa-exchange-alt me-1"></i>Replace Draft With This Report
                                                 </button>
                                                 <button class="btn btn-sm btn-outline-success" onclick="insertReportText()">
-                                                    <i class="fas fa-plus me-1"></i>Insert into report
+                                                    <i class="fas fa-plus me-1"></i>Insert into PACS Report
                                                 </button>
                                                 <button class="btn btn-sm btn-outline-secondary" onclick="dismissAiAssist()">
                                                     Dismiss
@@ -733,7 +736,12 @@
                                             <div id="insightTeaching" class="d-none">
                                                 <div class="d-flex align-items-start">
                                                     <i class="fas fa-lightbulb me-2 mt-1" style="color: #e96304; font-size: 0.7rem;"></i>
-                                                    <div><strong>Teaching Point:</strong> <span id="insightTeachingText"></span></div>
+                                                    <div class="flex-grow-1"><strong>Teaching Point:</strong> <span id="insightTeachingText"></span></div>
+                                                    <button class="btn btn-sm btn-outline-secondary py-0 px-1 ms-2 flex-shrink-0"
+                                                            onclick="savePearl()" title="Save as Radiology Pearl" id="savePearlBtn"
+                                                            style="font-size: 0.65rem; line-height: 1.2;">
+                                                        <i class="fas fa-gem"></i>
+                                                    </button>
                                                 </div>
                                             </div>
                                         </div>
@@ -1513,7 +1521,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // ==================== WALKTHROUGH ABORT (Phase 5, Gap 3) ====================
 
     window.exitToEditor = function() {
-        // Same as skipToEditor but with a user-friendly message
         // Save current free text if visible
         const stepId = state.stepHistory[state.currentHistoryIndex];
         if (stepId && state.answers[stepId]) {
@@ -1523,25 +1530,8 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
 
+        // assembleReport() builds organ-grouped findings and sets state.inputText
         assembleReport();
-
-        // Build partial report text from assembled sections
-        const sections = state.reportSections;
-        const reportText = [
-            'INDICATION:', sections.indication || '',
-            '',
-            'TECHNIQUE:', sections.technique || '',
-            '',
-            'COMPARISON:', sections.comparison || '',
-            '',
-            'FINDINGS:', sections.findings || '',
-            '',
-            'IMPRESSION:', sections.impression || '',
-            '',
-            'RECOMMENDATION:', sections.recommendation || '',
-        ].join('\n').trim();
-
-        state.inputText = reportText;
         showScene('editor');
 
         const input = document.getElementById('editorInput');
@@ -1897,8 +1887,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const rt = state.algorithmTree.report_template || {};
 
-        // Build findings from answers
-        let findingsLines = [];
+        // Group findings by organ/structure for natural-language flow
+        let organGroups = {};  // { organ: [report_text, ...] }
         let hasAbnormal = false;
         const allSteps = getAllSteps();
 
@@ -1906,15 +1896,23 @@ document.addEventListener('DOMContentLoaded', function() {
             const answer = state.answers[step.id];
             if (!answer || answer.selected.length === 0) return;
 
+            const organ = step.organ || 'Other';
+
             answer.selected.forEach(idx => {
                 const opt = (step.options || [])[idx];
                 if (!opt) return;
 
+                let text = '';
                 if (opt.is_free_text && answer.free_text) {
-                    findingsLines.push(answer.free_text);
+                    text = answer.free_text;
                     hasAbnormal = true;
                 } else if (opt.report_text) {
-                    findingsLines.push(opt.report_text);
+                    text = opt.report_text;
+                }
+
+                if (text) {
+                    if (!organGroups[organ]) organGroups[organ] = [];
+                    organGroups[organ].push(text);
                 }
 
                 if (opt.findings_flag === 'abnormal' || opt.findings_flag === 'equivocal') {
@@ -1923,10 +1921,23 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
 
+        // Build findings as organ-grouped paragraphs
+        // If an organ has multiple sentences, join them into a single paragraph
+        let findingsParagraphs = [];
+        for (const organ in organGroups) {
+            const sentences = organGroups[organ];
+            if (sentences.length === 1) {
+                findingsParagraphs.push(sentences[0]);
+            } else {
+                // Join multiple findings for the same organ into one paragraph
+                findingsParagraphs.push(sentences.join(' '));
+            }
+        }
+
         const indication = rt.indication || '';
         const technique = rt.technique || '';
         const comparison = rt.comparison || 'No prior available for comparison.';
-        const findings = findingsLines.join('\n\n');
+        const findings = findingsParagraphs.join('\n\n');
         const impression = hasAbnormal
             ? (rt.impression_abnormal || '')
             : (rt.impression_normal || 'No acute abnormality identified.');
@@ -1946,24 +1957,35 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function updateRunningReport() {
         const allSteps = getAllSteps();
-        let lines = [];
+        let organGroups = {};
 
         allSteps.forEach(step => {
             const answer = state.answers[step.id];
             if (!answer || answer.selected.length === 0) return;
+            const organ = step.organ || 'Other';
 
             answer.selected.forEach(idx => {
                 const opt = (step.options || [])[idx];
                 if (!opt) return;
+                let text = '';
                 if (opt.is_free_text && answer.free_text) {
-                    lines.push(answer.free_text);
+                    text = answer.free_text;
                 } else if (opt.report_text) {
-                    lines.push(opt.report_text);
+                    text = opt.report_text;
+                }
+                if (text) {
+                    if (!organGroups[organ]) organGroups[organ] = [];
+                    organGroups[organ].push(text);
                 }
             });
         });
 
-        document.getElementById('runningReport').textContent = lines.join('\n\n') || 'Select findings to build the report...';
+        let paragraphs = [];
+        for (const organ in organGroups) {
+            paragraphs.push(organGroups[organ].join(' '));
+        }
+
+        document.getElementById('runningReport').textContent = paragraphs.join('\n\n') || 'Select findings to build the report...';
     }
 
     window.toggleReportPreview = function() {
@@ -2015,18 +2037,23 @@ document.addEventListener('DOMContentLoaded', function() {
         el.style.height = Math.max(el.scrollHeight, 60) + 'px';
     }
 
-    function getCurrentReportText() {
-        // Output if available, otherwise input
-        const output = document.getElementById('editorOutput');
-        if (output && output.value.trim()) return output.value.trim();
+    function getCurrentReportText(warnIfEmpty) {
+        // Draft (editorInput) is the user's working document — always use it.
+        // editorOutput is PACS-ready copy only — never used as AI input.
         const input = document.getElementById('editorInput');
-        return input ? input.value.trim() : '';
+        const text = input ? input.value.trim() : '';
+        if (!text && warnIfEmpty !== false) {
+            showToast('Your working draft is empty. Add or update your draft text before asking RadInsight Intelligence.', 'warning', 5000);
+        }
+        return text;
     }
 
     // ==================== PRINT / SAVE ====================
 
     window.printReport = function() {
-        var text = getCurrentReportText();
+        // For printing, prefer PACS output; fall back to draft
+        var output = document.getElementById('editorOutput');
+        var text = (output && output.value.trim()) || getCurrentReportText(false);
         if (!text) { showToast('No report to print.', 'warning'); return; }
         var printWin = window.open('', '_blank');
         printWin.document.write('<pre style="font-family: Courier New, monospace; font-size: 12pt; line-height: 1.6; white-space: pre-wrap;">' +
@@ -2501,11 +2528,16 @@ document.addEventListener('DOMContentLoaded', function() {
             state.askClaudeRemaining = data.remaining_requests || 0;
             updateAskClaudeCounter();
             input.value = '';
+            input.setAttribute('data-free-text', '');
+            _clearQuickAskButtons();
 
             // Store AI assist state
             state.aiAssistResponseType = data.response_type || 'advisory';
             state.aiAssistAnswer = data.answer || '';
-            state.aiAssistReportText = data.report_text || '';
+            // Preserve finalized report if follow-up is advisory (no new report_text)
+            if ((data.report_text || '').trim()) {
+                state.aiAssistReportText = data.report_text;
+            }
             state.aiAssistCorrections = (data.corrections || []).map(c => ({ ...c, status: 'pending' }));
 
             // Accumulate insights (new non-empty values enhance existing ones)
@@ -2551,8 +2583,25 @@ document.addEventListener('DOMContentLoaded', function() {
         return output;
     }
 
+    window.insertIntoDraft = function() {
+        // Insert advisory answer into the DRAFT (editorInput) so it's part of the report when user finalizes
+        const aiAssistAnswer = document.getElementById('aiAssistAnswer');
+        const answer = (aiAssistAnswer && aiAssistAnswer.textContent) || '';
+        if (!answer.trim()) return;
+
+        const input = document.getElementById('editorInput');
+        const current = input.value.trim();
+        input.value = current ? current + '\n\n' + answer : answer;
+        state.inputText = input.value;
+        autoResizeTextarea(input);
+
+        // Hide AI response section but keep insights
+        document.getElementById('aiAssistResponse').classList.add('d-none');
+        showToast('Added to your draft. Ask RadInsight Intelligence to finalize when ready.', 'success');
+    };
+
     window.insertClaudeResponse = function() {
-        // Get answer from AI assist (advisory text only)
+        // Get answer from AI assist (advisory text only) — inserts into Final Report output
         const aiAssistAnswer = document.getElementById('aiAssistAnswer');
         const answer = (aiAssistAnswer && aiAssistAnswer.textContent) || '';
         if (!answer.trim()) return;
@@ -2583,16 +2632,22 @@ document.addEventListener('DOMContentLoaded', function() {
     window.replaceWithFinalReport = function() {
         const reportText = state.aiAssistReportText;
         if (!reportText || !reportText.trim()) return;
+        // Update the working draft — this is what RadInsight Intelligence reads
+        const input = document.getElementById('editorInput');
+        input.value = reportText;
+        state.inputText = reportText;
+        autoResizeTextarea(input);
+        // Also populate PACS output
         const output = ensureOutputBoxVisible();
         output.value = reportText;
         state.outputText = reportText;
+        autoResizeTextarea(output);
         // Clear stale corrections since they applied to old draft
         state.aiAssistCorrections = [];
         renderAiAssistCorrections();
-        autoResizeTextarea(output);
         // Hide answer and report sections but keep insights
         document.getElementById('aiAssistResponse').classList.add('d-none');
-        showToast('Report replaced with finalized version.', 'success');
+        showToast('Draft and PACS report updated with finalized version.', 'success');
     };
 
     window.insertReportText = function() {
@@ -2619,11 +2674,105 @@ document.addEventListener('DOMContentLoaded', function() {
         showToast('Report text inserted.', 'success');
     };
 
-    window.quickAsk = function(question) {
-        const input = document.getElementById('askClaudeInput');
-        input.value = question;
-        input.focus();
+    // ==================== SAVE PEARL ====================
+
+    window.savePearl = function() {
+        const teachingText = (state.aiAssistInsights?.teaching_point || '').trim();
+        if (!teachingText) {
+            showToast('No teaching point to save.', 'warning');
+            return;
+        }
+
+        const btn = document.getElementById('savePearlBtn');
+        if (btn) { btn.disabled = true; }
+
+        // Collect context: first ~300 chars of current report text
+        const reportText = (state.reportText || '').trim();
+        const contextSnippet = reportText.length > 300 ? reportText.substring(0, 300) + '...' : reportText;
+
+        fetch('/api/smart-reporter/save-pearl', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                pearl_text: teachingText,
+                body_section: state.bodySection || '',
+                modality: state.modality || '',
+                tags: '',
+                source_report_context: contextSnippet,
+            })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (btn) { btn.disabled = false; }
+            if (data.success) {
+                if (data.duplicate) {
+                    showToast('Pearl already saved.', 'info');
+                } else {
+                    showToast('Teaching point saved as pearl!', 'success');
+                }
+                // Visual feedback: change icon to check
+                if (btn) {
+                    btn.innerHTML = '<i class="fas fa-check" style="color: var(--brand-success, #a8d5ba);"></i>';
+                    btn.disabled = true;
+                }
+            } else {
+                showToast(data.error || 'Failed to save pearl.', 'error');
+            }
+        })
+        .catch(() => {
+            if (btn) { btn.disabled = false; }
+            showToast('Failed to save pearl.', 'error');
+        });
     };
+
+    // Track selected quick-ask instructions
+    const _activeQuickAsks = new Set();
+
+    window.toggleQuickAsk = function(btn) {
+        const instruction = btn.getAttribute('data-instruction');
+        if (_activeQuickAsks.has(instruction)) {
+            _activeQuickAsks.delete(instruction);
+            btn.classList.remove('btn-brand-primary');
+            btn.classList.add('btn-outline-secondary');
+        } else {
+            _activeQuickAsks.add(instruction);
+            btn.classList.remove('btn-outline-secondary');
+            btn.classList.add('btn-brand-primary');
+        }
+        // Build combined instruction in the text field
+        _syncQuickAskInput();
+    };
+
+    function _syncQuickAskInput() {
+        const input = document.getElementById('askClaudeInput');
+        const freeText = input.getAttribute('data-free-text') || '';
+        const parts = Array.from(_activeQuickAsks);
+        if (freeText) parts.push(freeText);
+        input.value = parts.join('. ');
+        if (parts.length > 0) input.focus();
+    }
+
+    function _clearQuickAskButtons() {
+        _activeQuickAsks.clear();
+        document.querySelectorAll('.quick-ask-btn').forEach(function(btn) {
+            btn.classList.remove('btn-brand-primary');
+            btn.classList.add('btn-outline-secondary');
+        });
+    }
+
+    // Preserve free-typed text separately so toggle buttons don't overwrite it
+    (function() {
+        const input = document.getElementById('askClaudeInput');
+        if (!input) return;
+        input.addEventListener('input', function() {
+            // If user types manually, store any text not from quick-ask buttons
+            const quickParts = Array.from(_activeQuickAsks);
+            let raw = input.value;
+            quickParts.forEach(function(p) { raw = raw.replace(p, ''); });
+            raw = raw.replace(/\.\s*/g, ' ').trim();
+            input.setAttribute('data-free-text', raw);
+        });
+    })();
 
     // ==================== AI ASSIST RENDERING ====================
 
@@ -2688,6 +2837,13 @@ document.addEventListener('DOMContentLoaded', function() {
             renderInsight('insightQuality', 'insightQualityText', ins.quality_assessment);
             renderInsight('insightRecommendation', 'insightRecommendationText', ins.recommendation_check);
             renderInsight('insightTeaching', 'insightTeachingText', ins.teaching_point);
+
+            // Reset pearl save button when new teaching point arrives
+            var pearlBtn = document.getElementById('savePearlBtn');
+            if (pearlBtn) {
+                pearlBtn.innerHTML = '<i class="fas fa-gem"></i>';
+                pearlBtn.disabled = false;
+            }
 
             // Differentials as comma-separated list
             const diffEl = document.getElementById('insightDifferentials');
@@ -2848,6 +3004,10 @@ document.addEventListener('DOMContentLoaded', function() {
         autoResizeTextarea(this);
     });
 
+    document.getElementById('editorOutput').addEventListener('input', function() {
+        state.outputText = this.value;
+        autoResizeTextarea(this);
+    });
 
 
     // ==================== PERSONAL TEMPLATES (Phase 4, Gap 4) ====================
@@ -3014,26 +3174,37 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     // Auto-show save prompt when user pastes into editor (Gap 4)
-    // Also warn if pasting into an active session with existing AI results
+    // Also warn if pasting a new report into an active session (but not small edits)
     const editorInputEl = document.getElementById('editorInput');
     if (editorInputEl) {
+        var _prePasteText = '';
         editorInputEl.addEventListener('paste', function() {
+            _prePasteText = editorInputEl.value;
+        });
+        editorInputEl.addEventListener('input', function(e) {
+            if (e.inputType !== 'insertFromPaste') return;
             setTimeout(function() {
-                const text = editorInputEl.value.trim();
-                // Warn if session has existing AI results and user pastes new content
+                var newText = editorInputEl.value.trim();
+                var oldLen = _prePasteText.trim().length;
+                var changeLen = Math.abs(newText.length - oldLen);
+                // Only warn if paste changes >30% of text OR replaces nearly everything
+                var isLargePaste = oldLen > 0
+                    ? (changeLen / Math.max(oldLen, 1)) > 0.3
+                    : newText.length > 100;
                 var hasAIState = state.aiAssistAnswer || state.aiAssistReportText ||
                     (state.aiAssistInsights && Object.values(state.aiAssistInsights).some(function(v) {
                         return Array.isArray(v) ? v.length > 0 : (v && v.trim());
                     })) ||
                     state.outputText || state.suggestions.length > 0;
-                if (hasAIState && text.length > 20) {
-                    showToast('You pasted into an active session. Use "New Blank" or load a template to start fresh with a clean session.', 'info', 6000);
+                if (hasAIState && isLargePaste) {
+                    showToast('Looks like a new report was pasted. Use "New Blank" to start a fresh session, or keep editing your current draft.', 'info', 6000);
                 }
                 // Save template prompt
-                if (!saveTemplatePromptDismissed && text.length > 50) {
+                if (!saveTemplatePromptDismissed && newText.length > 50) {
                     showSaveTemplatePrompt();
                 }
-            }, 300);
+                _prePasteText = '';
+            }, 100);
         });
     }
 
@@ -3161,25 +3332,8 @@ document.addEventListener('DOMContentLoaded', function() {
             };
 
             // Assemble the full report from auto-selected options
+            // assembleReport() already sets state.inputText with organ-grouped findings
             assembleReport();
-
-            // Build the full report text for the editor
-            const sections = state.reportSections;
-            const reportText = [
-                'INDICATION:', sections.indication || '',
-                '',
-                'TECHNIQUE:', sections.technique || '',
-                '',
-                'COMPARISON:', sections.comparison || '',
-                '',
-                'FINDINGS:', sections.findings || '',
-                '',
-                'IMPRESSION:', sections.impression || '',
-                '',
-                'RECOMMENDATION:', sections.recommendation || '',
-            ].join('\n');
-
-            state.inputText = reportText.trim();
 
             showScene('editor');
             const input = document.getElementById('editorInput');

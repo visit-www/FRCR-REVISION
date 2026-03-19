@@ -297,6 +297,9 @@ window.CLOUDINARY_UPLOAD_PRESET = {{ cloudinary_upload_preset|default('', true)|
                                         <option value="similar">Similar Case</option>
                                         <option value="algorithm">Algorithm Guide</option>
                                         <option value="reference">Reference Article</option>
+                                        <option value="reporting_algorithm">Reporting Algorithm</option>
+                                        <option value="radiology_template">Radiology Template</option>
+                                        <option value="pearl">Radiology Pearl</option>
                                     </select>
                                 </div>
                                 <div class="col-md-8">
@@ -2306,6 +2309,37 @@ function deleteRefImage(imageId) {
 // Pending discussion content — set when content loads before TinyMCE is ready
 window._pendingDiscussionContent = null;
 
+// Promise that resolves when TinyMCE discussion editor is ready
+window._tinyMCEReadyResolve = null;
+window._tinyMCEReady = new Promise(function(resolve) {
+    window._tinyMCEReadyResolve = resolve;
+});
+
+// Helper: set discussion content, waiting for TinyMCE if needed
+window.setDiscussionContentSafe = function(content) {
+    if (typeof tinymce !== 'undefined' && tinymce.get('editCaseDiscussion')) {
+        tinymce.get('editCaseDiscussion').setContent(content);
+        if (typeof loadExistingReferences === 'function') {
+            loadExistingReferences(tinymce.get('editCaseDiscussion'));
+        }
+        return;
+    }
+    // TinyMCE not ready — store for init_instance_callback AND await the promise
+    window._pendingDiscussionContent = content;
+    document.getElementById('editCaseDiscussion').value = content;
+    // Also try again once TinyMCE is ready (belt-and-suspenders)
+    window._tinyMCEReady.then(function() {
+        var editor = tinymce.get('editCaseDiscussion');
+        if (editor && window._pendingDiscussionContent !== null) {
+            editor.setContent(window._pendingDiscussionContent);
+            window._pendingDiscussionContent = null;
+            if (typeof loadExistingReferences === 'function') {
+                loadExistingReferences(editor);
+            }
+        }
+    });
+};
+
 // Initialize TinyMCE for Discussion field
 let tinyMCERetryCount = 0;
 const MAX_TINYMCE_RETRIES = 20; // Max 10 seconds of retries (increased for slower connections)
@@ -2638,6 +2672,10 @@ function initializeDiscussionEditor() {
             });
         },
         init_instance_callback: function(editor) {
+            // Signal that TinyMCE is ready
+            if (window._tinyMCEReadyResolve) {
+                window._tinyMCEReadyResolve(editor);
+            }
             // If content was loaded before TinyMCE was ready, apply it now
             if (window._pendingDiscussionContent !== null) {
                 editor.setContent(window._pendingDiscussionContent);
@@ -2827,7 +2865,7 @@ function initializeNewStandaloneCase() {
 
 // Load case data for editing
 function loadCaseForEdit(caseId) {
-    Promise.all([
+    Promise.allSettled([
         fetch(`/api/admin/cases/${caseId}`).then(r => {
             if (!r.ok) {
                 return r.json().then(err => {
@@ -2838,9 +2876,8 @@ function loadCaseForEdit(caseId) {
         }),
         fetch(`/api/case/${caseId}/images`).then(r => {
             if (!r.ok) {
-                return r.json().then(err => {
-                    throw new Error(err.error || `HTTP ${r.status}: ${r.statusText}`);
-                });
+                console.warn('[Edit Case] Images fetch failed, using empty array');
+                return [];
             }
             return r.json();
         }),
@@ -2853,7 +2890,15 @@ function loadCaseForEdit(caseId) {
         }),
         fetch(`/api/reference-images/case/${caseId}`).then(r => r.ok ? r.json() : [])
     ])
-    .then(([caseData, images, qaPairs, refImages]) => {
+    .then(results => {
+        // Case metadata is required — abort if it failed
+        if (results[0].status === 'rejected') {
+            throw results[0].reason || new Error('Failed to load case data');
+        }
+        var caseData = results[0].value;
+        var images = results[1].status === 'fulfilled' ? results[1].value : [];
+        var qaPairs = results[2].status === 'fulfilled' ? results[2].value : [];
+        var refImages = results[3].status === 'fulfilled' ? results[3].value : [];
         document.getElementById('editCaseId').value = caseData.id;
         var viewAsStudentLink = document.getElementById('viewCaseAsStudentLink');
         if (viewAsStudentLink) {
@@ -2881,20 +2926,9 @@ function loadCaseForEdit(caseId) {
                 updateVisibilityUI(statusSelect.value);
             }
         }
-        // Load discussion content — handles TinyMCE not yet ready
+        // Load discussion content — safely handles TinyMCE not yet ready
         const discussionContent = caseData.discussion || '';
-        if (typeof tinymce !== 'undefined' && tinymce.get('editCaseDiscussion')) {
-            // TinyMCE already initialized — set content directly
-            tinymce.get('editCaseDiscussion').setContent(discussionContent);
-            if (typeof loadExistingReferences === 'function') {
-                loadExistingReferences(tinymce.get('editCaseDiscussion'));
-            }
-        } else {
-            // TinyMCE not ready yet — store for init_instance_callback
-            window._pendingDiscussionContent = discussionContent;
-            // Also set textarea as fallback
-            document.getElementById('editCaseDiscussion').value = discussionContent;
-        }
+        window.setDiscussionContentSafe(discussionContent);
         // Contributor Notes — show section if notes exist
         var cnSection = document.getElementById('contributorNotesSection');
         if (cnSection && caseData.contributor_notes) {
@@ -3089,17 +3123,9 @@ function loadStagingCaseForEdit(stagingId) {
             document.getElementById('editCaseNumber').value = stagingData.case_number || '';
             document.getElementById('editCaseDiagnosis').value = stagingData.diagnosis || '';
             
-            // Load discussion content — handles TinyMCE not yet ready
+            // Load discussion content — safely handles TinyMCE not yet ready
             const stagingDiscussion = stagingData.discussion || '';
-            if (typeof tinymce !== 'undefined' && tinymce.get('editCaseDiscussion')) {
-                tinymce.get('editCaseDiscussion').setContent(stagingDiscussion);
-                if (typeof loadExistingReferences === 'function') {
-                    loadExistingReferences(tinymce.get('editCaseDiscussion'));
-                }
-            } else {
-                window._pendingDiscussionContent = stagingDiscussion;
-                document.getElementById('editCaseDiscussion').value = stagingDiscussion;
-            }
+            window.setDiscussionContentSafe(stagingDiscussion);
 
             // Set module, body_part, age_group (may be empty for missing fields)
             if (document.getElementById('editCaseModule')) {
@@ -6408,7 +6434,10 @@ function initRelatedCasesSearch() {
         related: 'Search by diagnosis or case number...',
         similar: 'Search by diagnosis or case number...',
         algorithm: 'Search by cancer type, body section...',
-        reference: 'Search by reference title or journal...'
+        reference: 'Search by reference title or journal...',
+        reporting_algorithm: 'Search by algorithm title, body section...',
+        radiology_template: 'Search by template title, body section...',
+        pearl: 'Search by pearl text, tags...'
     };
     if (typeSelect) {
         typeSelect.addEventListener('change', function() {
@@ -6466,6 +6495,45 @@ function initRelatedCasesSearch() {
                                     </div>
                                 </button>
                             `;
+                        } else if (item.link_type === 'reporting_algorithm') {
+                            return `
+                                <button type="button" class="list-group-item list-group-item-action"
+                                        onclick="addLink('reporting_algorithm', ${item.id}, ${JSON.stringify(item).replace(/"/g, '&quot;')})">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <i class="fas fa-sitemap" style="color: #5E899E;"></i>
+                                        <div>
+                                            <strong>${item.title}</strong>
+                                            <small class="text-muted ms-2">${item.category || ''} · ${item.body_section || ''}</small>
+                                        </div>
+                                    </div>
+                                </button>
+                            `;
+                        } else if (item.link_type === 'radiology_template') {
+                            return `
+                                <button type="button" class="list-group-item list-group-item-action"
+                                        onclick="addLink('radiology_template', ${item.id}, ${JSON.stringify(item).replace(/"/g, '&quot;')})">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <i class="fas fa-file-alt" style="color: #e96304;"></i>
+                                        <div>
+                                            <strong>${item.title}</strong>
+                                            <small class="text-muted ms-2">${item.category || ''} · ${item.body_section || ''}</small>
+                                        </div>
+                                    </div>
+                                </button>
+                            `;
+                        } else if (item.link_type === 'pearl') {
+                            return `
+                                <button type="button" class="list-group-item list-group-item-action"
+                                        onclick="addLink('pearl', ${item.id}, ${JSON.stringify(item).replace(/"/g, '&quot;')})">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <i class="fas fa-gem" style="color: #6b46c1;"></i>
+                                        <div>
+                                            <strong class="text-truncate d-block" style="max-width:400px;">${item.title}</strong>
+                                            <small class="text-muted">${item.body_section || ''} ${item.is_verified ? '· Verified' : ''}</small>
+                                        </div>
+                                    </div>
+                                </button>
+                            `;
                         } else {
                             // case (related/similar)
                             return `
@@ -6514,6 +6582,12 @@ async function addLink(linkType, linkedId, itemData) {
         body.calculator_id = linkedId;
     } else if (linkType === 'reference') {
         body.reference_id = linkedId;
+    } else if (linkType === 'reporting_algorithm') {
+        body.algorithm_id = linkedId;
+    } else if (linkType === 'radiology_template') {
+        body.template_id = linkedId;
+    } else if (linkType === 'pearl') {
+        body.pearl_id = linkedId;
     } else {
         body.related_case_id = linkedId;
         body.relation_type = relationType;
@@ -6607,6 +6681,27 @@ function renderRelatedCases() {
             sublabel = [c.journal, c.year].filter(Boolean).join(' · ');
             clickUrl = c.ref_url || '#';
             target = '_blank';
+        } else if (lt === 'reporting_algorithm') {
+            badge = '<span class="badge" style="background: #5E899E;">Algorithm</span>';
+            icon = '<i class="fas fa-sitemap" style="color: #5E899E;"></i>';
+            label = c.title || 'Algorithm';
+            sublabel = [c.category, c.body_section].filter(Boolean).join(' · ');
+            clickUrl = c.url || `/reporting-template/${c.slug}`;
+            target = '_blank';
+        } else if (lt === 'radiology_template') {
+            badge = '<span class="badge" style="background: #e96304;">Template</span>';
+            icon = '<i class="fas fa-file-alt" style="color: #e96304;"></i>';
+            label = c.title || 'Template';
+            sublabel = [c.category, c.body_section].filter(Boolean).join(' · ');
+            clickUrl = '#';
+            target = '_self';
+        } else if (lt === 'pearl') {
+            badge = '<span class="badge" style="background: #6b46c1; color: white;">Pearl</span>';
+            icon = '<i class="fas fa-gem" style="color: #6b46c1;"></i>';
+            label = c.title || c.pearl_text || 'Pearl';
+            sublabel = c.body_section || '';
+            clickUrl = '#';
+            target = '_self';
         } else {
             const relType = c.relation_type || 'related';
             const colors = { 'related': 'primary', 'similar': 'info', 'algorithm': 'success', 'reference': 'secondary' };

@@ -275,7 +275,7 @@ class SessionManager {
         if (this.expired) return;
         this.expired = true;
 
-        // Clear all timers
+        // Clear all timers immediately
         this.cleanup();
 
         // Remove any existing warning toast
@@ -289,6 +289,9 @@ class SessionManager {
             return;
         }
 
+        // Stop all pending network requests and page activity before redirecting
+        try { window.stop(); } catch (e) { /* ignore */ }
+
         // Show expiration message with toast
         const message = 'Your session has expired due to inactivity. Redirecting to login...';
 
@@ -298,16 +301,27 @@ class SessionManager {
             alert(message);
         }
 
-        // Redirect to login
+        // Force redirect to login — use replace() so back button won't return to expired page
         const redirectUrl = '/auth/login?expired=1';
         try {
-            window.location.href = redirectUrl;
+            window.location.replace(redirectUrl);
         } catch (error) {
             // Immediate redirect failed, fallback below
         }
+
+        // Hard fallback: if replace() didn't navigate (e.g. blocked by pending JS), retry
         setTimeout(() => {
-            window.location.href = redirectUrl;
-        }, 2000);
+            if (!window.location.pathname.startsWith('/auth/login')) {
+                window.location.replace(redirectUrl);
+            }
+        }, 1500);
+
+        // Last-resort fallback using href assignment
+        setTimeout(() => {
+            if (!window.location.pathname.startsWith('/auth/login')) {
+                window.location.href = redirectUrl;
+            }
+        }, 3000);
     }
     
     async handleLogout() {
@@ -332,6 +346,15 @@ class SessionManager {
         const self = this;
 
         window.fetch = async function(...args) {
+            // Skip interception if session already expired (avoid cascading 401s)
+            if (self.expired) {
+                return originalFetch.apply(this, args);
+            }
+
+            // Identify session manager's own internal calls to avoid recursive handling
+            const url = (typeof args[0] === 'string') ? args[0] : args[0]?.url || '';
+            const isSessionCall = url.includes('/auth/session/');
+
             let response;
             try {
                 response = await originalFetch.apply(this, args);
@@ -339,18 +362,20 @@ class SessionManager {
                 throw error;
             }
 
+            // Don't intercept responses after expiry triggered
+            if (self.expired) return response;
+
             // Handle 401 Unauthorized — session manager only runs for
-            // authenticated users, so any 401 means session expired
-            if (response.status === 401) {
+            // authenticated users, so any 401 means session expired.
+            // Skip for session manager's own calls (handled by caller directly).
+            if (response.status === 401 && !isSessionCall) {
                 self.handleSessionExpired();
-                // Return a clone so callers can still read the body
                 return response;
             }
 
             // Handle 403 Forbidden (might be session issue)
-            if (response.status === 403) {
+            if (response.status === 403 && !isSessionCall) {
                 try {
-                    // Clone response so we can read body without consuming it
                     const cloned = response.clone();
                     const data = await cloned.json().catch(() => ({}));
                     if (data.error?.includes('session') || data.error?.includes('expired')) {

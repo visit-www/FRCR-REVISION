@@ -83,6 +83,8 @@ from models import ForumMessage, ForumMessageVote, ForumMessageFlag  # Forum mod
 from models import ClinicalProtocol, OnCallQueryLog, IncidentalFindingCalculator  # Clinical tools
 from models import RadiologyTemplate, ReportingAlgorithm  # New split tables (Feb 2026)
 from models import ContentRequest  # User content requests (Feb 2026)
+from models import RadiologyPearl  # Radiology pearls from teaching points
+from models import case_algorithm_links, case_template_links, case_pearl_links  # Knowledge linking
 from auth import auth_bp
 from backup_routes import backup_bp
 from admin_routes import admin_bp
@@ -3821,6 +3823,60 @@ def get_related_cases(case_id):
             if source_case:
                 items[-1]['source_case_number'] = source_case.case_number
 
+    # 4) Case-to-algorithm links
+    algo_rows = db.session.execute(
+        db.select(case_algorithm_links.c.algorithm_id).where(
+            case_algorithm_links.c.case_id == case_id
+        )
+    ).all()
+    for arow in algo_rows:
+        algo = ReportingAlgorithm.query.get(arow.algorithm_id)
+        if algo:
+            items.append({
+                'id': algo.id,
+                'link_type': 'reporting_algorithm',
+                'title': algo.title,
+                'slug': algo.slug,
+                'category': algo.category,
+                'body_section': algo.body_section,
+                'url': f'/reporting-template/{algo.slug}'
+            })
+
+    # 5) Case-to-template links
+    tmpl_rows = db.session.execute(
+        db.select(case_template_links.c.template_id).where(
+            case_template_links.c.case_id == case_id
+        )
+    ).all()
+    for trow in tmpl_rows:
+        tmpl = RadiologyTemplate.query.get(trow.template_id)
+        if tmpl:
+            items.append({
+                'id': tmpl.id,
+                'link_type': 'radiology_template',
+                'title': tmpl.title,
+                'slug': tmpl.slug,
+                'category': tmpl.category,
+                'body_section': tmpl.body_section,
+            })
+
+    # 6) Case-to-pearl links
+    pearl_rows = db.session.execute(
+        db.select(case_pearl_links.c.pearl_id).where(
+            case_pearl_links.c.case_id == case_id
+        )
+    ).all()
+    for prow in pearl_rows:
+        pearl = RadiologyPearl.query.get(prow.pearl_id)
+        if pearl:
+            items.append({
+                'id': pearl.id,
+                'link_type': 'pearl',
+                'title': pearl.pearl_text[:120] + '...' if len(pearl.pearl_text or '') > 120 else pearl.pearl_text,
+                'body_section': pearl.body_section,
+                'is_verified': pearl.is_verified,
+            })
+
     return jsonify(items)
 
 
@@ -3883,6 +3939,80 @@ def add_related_case(case_id):
             'ref_url': ref.url, 'journal': ref.journal, 'year': ref.year
         }})
 
+    elif link_type == 'reporting_algorithm':
+        algorithm_id = data.get('algorithm_id')
+        if not algorithm_id:
+            return jsonify({'error': 'algorithm_id required'}), 400
+        algo = ReportingAlgorithm.query.get(algorithm_id)
+        if not algo:
+            return jsonify({'error': 'Algorithm not found'}), 404
+        existing = db.session.execute(
+            db.select(case_algorithm_links).where(
+                case_algorithm_links.c.case_id == case_id,
+                case_algorithm_links.c.algorithm_id == algorithm_id
+            )
+        ).first()
+        if existing:
+            return jsonify({'error': 'Algorithm already linked'}), 400
+        db.session.execute(case_algorithm_links.insert().values(
+            case_id=case_id, algorithm_id=algorithm_id, created_by_user_id=current_user.id
+        ))
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'Algorithm linked', 'item': {
+            'id': algo.id, 'link_type': 'reporting_algorithm', 'title': algo.title,
+            'slug': algo.slug, 'category': algo.category, 'body_section': algo.body_section,
+            'url': f'/reporting-template/{algo.slug}'
+        }})
+
+    elif link_type == 'radiology_template':
+        template_id = data.get('template_id')
+        if not template_id:
+            return jsonify({'error': 'template_id required'}), 400
+        tmpl = RadiologyTemplate.query.get(template_id)
+        if not tmpl:
+            return jsonify({'error': 'Template not found'}), 404
+        existing = db.session.execute(
+            db.select(case_template_links).where(
+                case_template_links.c.case_id == case_id,
+                case_template_links.c.template_id == template_id
+            )
+        ).first()
+        if existing:
+            return jsonify({'error': 'Template already linked'}), 400
+        db.session.execute(case_template_links.insert().values(
+            case_id=case_id, template_id=template_id, created_by_user_id=current_user.id
+        ))
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'Template linked', 'item': {
+            'id': tmpl.id, 'link_type': 'radiology_template', 'title': tmpl.title,
+            'slug': tmpl.slug, 'category': tmpl.category, 'body_section': tmpl.body_section,
+        }})
+
+    elif link_type == 'pearl':
+        pearl_id = data.get('pearl_id')
+        if not pearl_id:
+            return jsonify({'error': 'pearl_id required'}), 400
+        pearl = RadiologyPearl.query.get(pearl_id)
+        if not pearl:
+            return jsonify({'error': 'Pearl not found'}), 404
+        existing = db.session.execute(
+            db.select(case_pearl_links).where(
+                case_pearl_links.c.case_id == case_id,
+                case_pearl_links.c.pearl_id == pearl_id
+            )
+        ).first()
+        if existing:
+            return jsonify({'error': 'Pearl already linked'}), 400
+        db.session.execute(case_pearl_links.insert().values(
+            case_id=case_id, pearl_id=pearl_id, created_by_user_id=current_user.id
+        ))
+        db.session.commit()
+        return jsonify({'success': True, 'message': 'Pearl linked', 'item': {
+            'id': pearl.id, 'link_type': 'pearl',
+            'title': pearl.pearl_text[:120] + '...' if len(pearl.pearl_text or '') > 120 else pearl.pearl_text,
+            'body_section': pearl.body_section,
+        }})
+
     else:
         # Default: case-to-case link
         related_case_id = data.get('related_case_id')
@@ -3937,6 +4067,27 @@ def remove_related_case(case_id, linked_id):
             case_reference_links.delete().where(
                 case_reference_links.c.case_id == case_id,
                 case_reference_links.c.reference_id == linked_id
+            )
+        )
+    elif link_type == 'reporting_algorithm':
+        db.session.execute(
+            case_algorithm_links.delete().where(
+                case_algorithm_links.c.case_id == case_id,
+                case_algorithm_links.c.algorithm_id == linked_id
+            )
+        )
+    elif link_type == 'radiology_template':
+        db.session.execute(
+            case_template_links.delete().where(
+                case_template_links.c.case_id == case_id,
+                case_template_links.c.template_id == linked_id
+            )
+        )
+    elif link_type == 'pearl':
+        db.session.execute(
+            case_pearl_links.delete().where(
+                case_pearl_links.c.case_id == case_id,
+                case_pearl_links.c.pearl_id == linked_id
             )
         )
     else:
@@ -4027,6 +4178,60 @@ def search_cases_for_linking():
                 'link_type': 'reference',
             })
         return jsonify(results)
+
+    elif search_type == 'reporting_algorithm':
+        algos = ReportingAlgorithm.query.filter(
+            ReportingAlgorithm.is_available == True,
+            db.or_(
+                ReportingAlgorithm.title.ilike(f'%{query}%'),
+                ReportingAlgorithm.keywords.ilike(f'%{query}%'),
+                ReportingAlgorithm.body_section.ilike(f'%{query}%'),
+            )
+        ).limit(limit).all()
+        return jsonify([{
+            'id': a.id,
+            'title': a.title,
+            'slug': a.slug,
+            'category': a.category,
+            'body_section': a.body_section,
+            'origin': a.origin,
+            'link_type': 'reporting_algorithm',
+        } for a in algos])
+
+    elif search_type == 'radiology_template':
+        tmpls = RadiologyTemplate.query.filter(
+            RadiologyTemplate.is_available == True,
+            db.or_(
+                RadiologyTemplate.title.ilike(f'%{query}%'),
+                RadiologyTemplate.keywords.ilike(f'%{query}%'),
+                RadiologyTemplate.body_section.ilike(f'%{query}%'),
+            )
+        ).limit(limit).all()
+        return jsonify([{
+            'id': t.id,
+            'title': t.title,
+            'slug': t.slug,
+            'category': t.category,
+            'body_section': t.body_section,
+            'link_type': 'radiology_template',
+        } for t in tmpls])
+
+    elif search_type == 'pearl':
+        pearls = RadiologyPearl.query.filter(
+            db.or_(
+                RadiologyPearl.pearl_text.ilike(f'%{query}%'),
+                RadiologyPearl.tags.ilike(f'%{query}%'),
+                RadiologyPearl.body_section.ilike(f'%{query}%'),
+            )
+        ).limit(limit).all()
+        return jsonify([{
+            'id': p.id,
+            'title': p.pearl_text[:120] + '...' if len(p.pearl_text or '') > 120 else p.pearl_text,
+            'body_section': p.body_section,
+            'modality': p.modality,
+            'is_verified': p.is_verified,
+            'link_type': 'pearl',
+        } for p in pearls])
 
     else:
         # Default: related / similar — search Case directly

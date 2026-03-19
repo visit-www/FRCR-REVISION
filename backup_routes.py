@@ -35,6 +35,10 @@ from models import (
     AIAuditLog,
     # Content requests
     ContentRequest,
+    # Radiology pearls
+    RadiologyPearl,
+    # Knowledge linking tables
+    case_algorithm_links, case_template_links, case_pearl_links,
 )
 from datetime import datetime
 from sqlalchemy import inspect
@@ -170,6 +174,8 @@ def _build_backup_data():
         'ai_audit_logs': [],
         # Content requests
         'content_requests': [],
+        # Radiology pearls
+        'radiology_pearls': [],
         # Import staging
         'imported_case_staging': [],
     }
@@ -824,6 +830,24 @@ def _build_backup_data():
             'status': cr.status,
             'admin_notes': cr.admin_notes,
             'created_at': cr.created_at.isoformat() if cr.created_at else None,
+        })
+
+    # Export Radiology Pearls
+    for pearl in RadiologyPearl.query.all():
+        backup_data['radiology_pearls'].append({
+            'id': pearl.id,
+            'content_hash': pearl.content_hash,
+            'pearl_text': pearl.pearl_text,
+            'body_section': pearl.body_section,
+            'modality': pearl.modality,
+            'tags': pearl.tags,
+            'source_report_context': pearl.source_report_context,
+            'is_verified': pearl.is_verified,
+            'created_by_user_id': pearl.created_by_user_id,
+            'verified_by_user_id': pearl.verified_by_user_id,
+            'verified_at': pearl.verified_at.isoformat() if pearl.verified_at else None,
+            'created_at': pearl.created_at.isoformat() if pearl.created_at else None,
+            'updated_at': pearl.updated_at.isoformat() if pearl.updated_at else None,
         })
 
     # Export Imported Case Staging
@@ -3626,6 +3650,38 @@ def restore_backup():
                 cr.created_at = _parse_datetime_for_sqlite(cr_data['created_at']) or datetime.utcnow()
             db.session.add(cr)
             stats['content_requests']['added'] += 1
+
+        # Import Radiology Pearls
+        stats['radiology_pearls'] = {'added': 0, 'skipped': 0}
+        for pearl_data in backup_data.get('radiology_pearls', []):
+            if not isinstance(pearl_data, dict):
+                continue
+            content_hash = pearl_data.get('content_hash', '')
+            pearl_text = pearl_data.get('pearl_text', '')
+            if not content_hash or not pearl_text:
+                stats['radiology_pearls']['skipped'] += 1
+                continue
+            existing = RadiologyPearl.query.filter_by(content_hash=content_hash).first()
+            if existing:
+                stats['radiology_pearls']['skipped'] += 1
+                continue
+            pearl = RadiologyPearl(
+                content_hash=content_hash,
+                pearl_text=pearl_text,
+                body_section=pearl_data.get('body_section'),
+                modality=pearl_data.get('modality'),
+                tags=pearl_data.get('tags'),
+                source_report_context=pearl_data.get('source_report_context'),
+                is_verified=pearl_data.get('is_verified', False),
+                created_by_user_id=user_id_map.get(pearl_data.get('created_by_user_id')),
+                verified_by_user_id=user_id_map.get(pearl_data.get('verified_by_user_id')),
+            )
+            if pearl_data.get('verified_at'):
+                pearl.verified_at = _parse_datetime_for_sqlite(pearl_data['verified_at'])
+            if pearl_data.get('created_at'):
+                pearl.created_at = _parse_datetime_for_sqlite(pearl_data['created_at']) or datetime.utcnow()
+            db.session.add(pearl)
+            stats['radiology_pearls']['added'] += 1
 
         # Import Imported Case Staging
         stats['imported_case_staging'] = {'added': 0, 'skipped': 0}

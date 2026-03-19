@@ -1,0 +1,118 @@
+{% extends 'base.html' %}
+{% block title %}Radiology Pearls - RadInsights{% endblock %}
+{% block tool_active_pearls %}active{% endblock %}
+{% block mobile_active_pearls %}active{% endblock %}
+
+{% block mobile_breadcrumb %}
+<li class="breadcrumb-item active text-white-50">Radiology Pearls</li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+    <div class="row">
+        <div class="col-12">
+            <!-- Header -->
+            <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+                <div>
+                    <h4 class="mb-1"><i class="fas fa-gem me-2" style="color: #6b46c1;"></i>Radiology Pearls</h4>
+                    <small class="text-muted">Clinical teaching points captured from Smart Reporter AI insights</small>
+                </div>
+                <div class="d-flex gap-2">
+                    <a href="/smart-reporter" class="btn btn-sm btn-brand-primary">
+                        <i class="fas fa-file-medical me-1"></i>Open Smart Reporter
+                    </a>
+                </div>
+            </div>
+
+            <!-- Search -->
+            <div class="mb-4">
+                <div class="input-group" style="max-width: 500px;">
+                    <span class="input-group-text bg-white border-end-0"><i class="fas fa-search text-muted"></i></span>
+                    <input type="text" id="pearlSearch" class="form-control border-start-0"
+                           placeholder="Search radiology pearls..." autocomplete="off"
+                           oninput="filterPearls(this.value)">
+                </div>
+            </div>
+
+            <!-- Pearls grouped by body section -->
+            {% for section, pearls in grouped.items() %}
+            <div class="pearl-section-group mb-4" data-section="{{ section }}">
+                <h6 class="text-uppercase fw-semibold text-muted mb-3" style="font-size: 0.8rem; letter-spacing: 0.5px;">
+                    <span class="badge" style="background: #6b46c1;">{{ section }}</span>
+                    <small class="ms-1">({{ pearls|length }})</small>
+                </h6>
+                <div class="row g-3">
+                    {% for p in pearls %}
+                    <div class="col-12 col-md-6 col-lg-4 pearl-card-wrapper"
+                         data-text="{{ p.pearl_text|lower }}" data-tags="{{ (p.tags or '')|lower }}">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-body p-3">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <i class="fas fa-gem" style="color: #6b46c1; font-size: 0.8rem;"></i>
+                                        {% if p.is_verified %}
+                                        <span class="badge bg-success" style="font-size: 0.55rem;">Verified</span>
+                                        {% else %}
+                                        <span class="badge bg-warning text-dark" style="font-size: 0.55rem;">Pending</span>
+                                        {% endif %}
+                                    </div>
+                                    {% if p.modality %}
+                                    <small class="badge bg-light text-dark border">{{ p.modality }}</small>
+                                    {% endif %}
+                                </div>
+                                <p class="card-text mb-2" style="font-size: 0.85rem; line-height: 1.5; color: #333;">
+                                    {{ p.pearl_text }}
+                                </p>
+                                {% if p.tags %}
+                                <div class="mt-2">
+                                    {% for tag in p.tags.split(',') %}
+                                    <span class="badge bg-light text-muted border me-1" style="font-size: 0.65rem;">{{ tag.strip() }}</span>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                                <div class="mt-2 d-flex justify-content-between align-items-center">
+                                    <small class="text-muted" style="font-size: 0.7rem;">
+                                        {% if p.created_by %}{{ p.created_by.name }}{% endif %}
+                                        · {{ p.created_at.strftime('%d %b %Y') if p.created_at else '' }}
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+
+            {% if not grouped %}
+            <div class="text-center py-5 text-muted">
+                <i class="fas fa-gem" style="font-size: 3rem; opacity: 0.3;"></i>
+                <p class="mt-3">No radiology pearls available yet.</p>
+                <p class="small">Pearls are captured from teaching points when you use AI Assist in Smart Reporter.</p>
+                <a href="/smart-reporter" class="btn btn-brand-primary mt-2">
+                    <i class="fas fa-file-medical me-1"></i>Try Smart Reporter
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function filterPearls(query) {
+    query = query.toLowerCase().trim();
+    document.querySelectorAll('.pearl-card-wrapper').forEach(card => {
+        const text = card.dataset.text || '';
+        const tags = card.dataset.tags || '';
+        const match = !query || text.includes(query) || tags.includes(query);
+        card.style.display = match ? '' : 'none';
+    });
+    document.querySelectorAll('.pearl-section-group').forEach(group => {
+        const visibleCards = group.querySelectorAll('.pearl-card-wrapper[style=""], .pearl-card-wrapper:not([style])');
+        group.style.display = visibleCards.length > 0 ? '' : 'none';
+    });
+}
+</script>
+{% endblock %}

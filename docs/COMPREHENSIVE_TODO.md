@@ -1,7 +1,16 @@
 # RadInsights — Comprehensive TODO & Roadmap
 
-**Generated:** 2026-03-13
+**Generated:** 2026-03-13 | **Last updated:** 2026-03-14
 **Sources:** UK GDPR Gap Analysis, Security Audit, Feature Completeness Audit, Production Readiness Audit, Content Coverage Audit, Code Quality Audit
+
+### Progress Summary
+
+| Status | Count |
+|--------|-------|
+| DONE | **50** / 70 |
+| WONTFIX | 2 / 70 |
+| TODO | **18** / 70 |
+| **Completion** | **74%** |
 
 ---
 
@@ -213,9 +222,9 @@ PYTHONUNBUFFERED=1 python scripts/batch_templates.py batch --phase 2
 
 ---
 
-## COMPLETED ITEMS (Mar 2026 Session)
+## COMPLETED ITEMS (Mar 2026 Sessions)
 
-For reference, the following were implemented:
+50 of 70 items completed. Key implementations:
 
 1. **PII Guard email bypass fix** — removed `'email'` from SKIP_KEYS in both layers
 2. **PII Guard NINO pattern** — added `[A-Z]{2}\d{6}[A-D]` detection
@@ -244,13 +253,57 @@ For reference, the following were implemented:
 25. **EXIF stripping** — `_strip_exif()` via Pillow on case + forum image uploads
 26. **Structured JSON logging** — production uses JSON formatter, local uses human-readable
 27. **Slow query logging** — SQLAlchemy event listeners log queries > 1s
+28. **Sentry error tracking** — `sentry-sdk[flask]` with PII scrubbing, admin monitoring tab
+29. **Automated daily backups** — cron → gzip → R2 upload, 30-day retention, auto-prune
+30. **Consolidate AI helpers** — shared `ai_client.py` with `call_claude()`, `parse_json_response()`
+31. **AI error class hierarchy** — all AI errors inherit from `AIClientError`
+32. **pytest + CI/CD** — 58 tests (smoke + integration), GitHub Actions pipeline
+33. **Pagination** — admin case list + algorithm search with offset/has_more
+34. **Content moderation queue** — admin dashboard tab with badge, publish/decline/delete actions
+35. **2FA for admin accounts** — TOTP via `pyotp`, setup on profile page, 5-attempt lockout
+36. **Data retention cron** — auto-cleanup expired recovery codes, approval codes, old TNM jobs
+37. **Dynamic page titles** — `{% block title %}` on 28 templates
+38. **Sitemap.xml** — dynamic XML with cases, templates, algorithms, calculators
+39. **Skip-to-content link** — accessible skip link in `base.html`
+40. **Deployment runbook** — comprehensive `docs/DEPLOYMENT_RUNBOOK.md`
+41. **Unused imports removed** — 5 unused imports cleaned up via flake8
+42. **Legacy ReportingTemplate removed** — ORM class removed, migration uses raw SQL
+43. **Algorithm Finder redirect removed** — deprecated route cleaned up
+44. **Medical disclaimers** — added to Smart Reporter, browse pages, student dashboard
+45. **Service worker CSP fix** — fixed 503 errors from CDN resources blocked by CSP
 
 ---
 
 ## QUICK REFERENCE — What To Work On Next
 
-**If you have 1 hour:** Item 26 (Sentry integration — needs account)
-**If you have 4 hours:** + Items 30, 18 (automated backups, medical disclaimers)
-**If you have 1 day:** + Items 33-37 (code architecture: split app.py, consolidate helpers)
-**If you have 1 week:** + Items 40-43 (testing, CI/CD, API docs)
-**If you have 1 month:** + Items 40-43, 49-51 (testing, 2FA, audit logs)
+### Remaining TODO Items (18 total)
+
+**Tier 3 — Medium Priority:**
+- **#33** Split `app.py` (5,548 lines) into route modules
+- **#34** Split `models.py` (2,969 lines) into model packages
+- **#38** Standardize API response format
+- **#43** API documentation (OpenAPI/Swagger) — 269 routes, no docs
+- **#46** Bulk admin operations (delete, publish, reassign)
+- **#48** Notion image caching (URLs expire after ~1 hour)
+- **#50** Immutable audit logs (append-only or external service)
+
+**Tier 4 — Low Priority:**
+- **#56** Split `static/style.css` (5,613 lines) into component files
+- **#57** Organize 54 templates into subfolders
+- **#58** Input validation with Marshmallow
+- **#59** Update dependencies (Flask 2→3, Werkzeug 2→3)
+- **#60** API versioning (`/api/v1/` prefix)
+- **#61** WCAG 2.1 AA accessibility audit
+- **#65** Application-level caching (Redis/Memcached)
+- **#66** Async job queue for AI generation (Celery/RQ)
+- **#67** Query optimization (N+1 queries)
+- **#68** DICOM header stripping
+- **#69** Analytics integration (GA/Mixpanel)
+
+### Suggested Priorities
+
+**If you have 1 hour:** #38 (standardize API responses — define a wrapper pattern)
+**If you have 4 hours:** + #33 (split app.py — biggest code quality win)
+**If you have 1 day:** + #34, #43 (split models.py, start API docs)
+**If you have 1 week:** + #46, #48, #56-57 (bulk ops, Notion caching, CSS/template reorg)
+**If you have 1 month:** + #50, #58-59, #61 (audit logs, validation, deps update, accessibility)

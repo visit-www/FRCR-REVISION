@@ -84,6 +84,36 @@ case_reference_links = db.Table('case_reference_links',
     db.UniqueConstraint('case_id', 'reference_id')
 )
 
+# ==================== CASE-ALGORITHM LINK TABLE ====================
+case_algorithm_links = db.Table('case_algorithm_links',
+    db.Column('id', db.Integer, primary_key=True),
+    db.Column('case_id', db.Integer, db.ForeignKey('case.id', ondelete='CASCADE'), nullable=False),
+    db.Column('algorithm_id', db.Integer, db.ForeignKey('reporting_algorithm.id', ondelete='CASCADE'), nullable=False),
+    db.Column('created_by_user_id', db.Integer, db.ForeignKey('user.id'), nullable=True),
+    db.Column('created_at', db.DateTime, default=datetime.utcnow),
+    db.UniqueConstraint('case_id', 'algorithm_id')
+)
+
+# ==================== CASE-TEMPLATE LINK TABLE ====================
+case_template_links = db.Table('case_template_links',
+    db.Column('id', db.Integer, primary_key=True),
+    db.Column('case_id', db.Integer, db.ForeignKey('case.id', ondelete='CASCADE'), nullable=False),
+    db.Column('template_id', db.Integer, db.ForeignKey('radiology_template.id', ondelete='CASCADE'), nullable=False),
+    db.Column('created_by_user_id', db.Integer, db.ForeignKey('user.id'), nullable=True),
+    db.Column('created_at', db.DateTime, default=datetime.utcnow),
+    db.UniqueConstraint('case_id', 'template_id')
+)
+
+# ==================== CASE-PEARL LINK TABLE ====================
+case_pearl_links = db.Table('case_pearl_links',
+    db.Column('id', db.Integer, primary_key=True),
+    db.Column('case_id', db.Integer, db.ForeignKey('case.id', ondelete='CASCADE'), nullable=False),
+    db.Column('pearl_id', db.Integer, db.ForeignKey('radiology_pearl.id', ondelete='CASCADE'), nullable=False),
+    db.Column('created_by_user_id', db.Integer, db.ForeignKey('user.id'), nullable=True),
+    db.Column('created_at', db.DateTime, default=datetime.utcnow),
+    db.UniqueConstraint('case_id', 'pearl_id')
+)
+
 # ==================== ENUMS ====================
 
 # User Role Enum
@@ -2852,6 +2882,33 @@ class ContentRequest(db.Model):
 
     def __repr__(self):
         return f'<ContentRequest {self.id} type={self.request_type} status={self.status}>'
+
+
+# ==================== RADIOLOGY PEARLS ====================
+
+class RadiologyPearl(db.Model):
+    """Clinical teaching pearls captured from Smart Reporter AI insights."""
+    __tablename__ = 'radiology_pearl'
+
+    id = db.Column(db.Integer, primary_key=True)
+    content_hash = db.Column(db.String(64), unique=True, nullable=False)  # SHA-256 dedup
+    pearl_text = db.Column(db.Text, nullable=False)
+    body_section = db.Column(db.String(100))
+    modality = db.Column(db.String(100))
+    tags = db.Column(db.Text)  # comma-separated keywords
+    source_report_context = db.Column(db.Text)  # original report snippet for context
+    is_verified = db.Column(db.Boolean, default=False)
+    created_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    verified_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    verified_at = db.Column(db.DateTime)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    created_by = db.relationship('User', foreign_keys=[created_by_user_id])
+    verified_by = db.relationship('User', foreign_keys=[verified_by_user_id])
+
+    def __repr__(self):
+        return f'<RadiologyPearl {self.id} verified={self.is_verified}>'
 
 
 # ==================== AI AUDIT LOG ====================

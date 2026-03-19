@@ -159,8 +159,11 @@ UNIFIED_ASSIST_SYSTEM_PROMPT = (
     "- Give actionable report text ready to paste into PACS\n"
     "- Flag clinically important gaps the referring clinician would notice\n"
     "- Teach through the report — brief rationale when suggesting additions\n"
+    "- Think like a consultant who has seen thousands of cases: check anatomical plausibility, "
+    "laterality consistency, and whether the findings actually explain the clinical question\n"
     "- NEVER add findings the trainee didn't describe — the images aren't available to you\n"
-    "- NEVER fabricate or hallucinate imaging findings\n\n"
+    "- NEVER fabricate or hallucinate imaging findings\n"
+    "- NEVER suggest the trainee add findings they didn't observe — you cannot see the images\n\n"
     "Output valid JSON only. No markdown fences. No text outside the JSON object."
 )
 
@@ -193,11 +196,11 @@ Return a JSON object with EXACTLY this structure:
     }}
   ],
   "insights": {{
-    "clinical_question_coverage": "Does the report adequately address the referring clinician's question? 1-2 sentences.",
-    "quality_assessment": "Would a subspecialist consultant be satisfied with this report? What would they want added or changed? 1-2 sentences.",
+    "clinical_question_coverage": "Does the report answer the referring clinician's question? If the findings do NOT explain the clinical presentation (e.g. right-sided pain but only left-sided pathology found), flag this discordance. 1-2 sentences.",
+    "quality_assessment": "Would a subspecialist be satisfied? Specifically: (1) Does the impression answer the clinical question FIRST, before incidental findings? (2) Are findings prioritised by clinical significance? (3) Are measurements provided where they would change management? 1-2 sentences.",
     "differentials_to_consider": ["Differential 1 to consider", "Differential 2"],
-    "recommendation_check": "Are the recommendations appropriate and complete? 1 sentence.",
-    "teaching_point": "One brief clinical pearl relevant to this report. 1-2 sentences."
+    "recommendation_check": "Are recommendations appropriate? Flag if urgent findings lack escalation language, or if follow-up timings are missing/inappropriate. 1 sentence.",
+    "teaching_point": "A genuinely insightful clinical pearl — see RULES FOR INSIGHTS below. 1-3 sentences."
   }}
 }}
 
@@ -210,10 +213,21 @@ RULES FOR CORRECTIONS:
 2. Cross-check gender/anatomy: if clinical context mentions female patient, flag prostate references; if male, flag uterine references.
 3. Check section consistency: impression must not mention findings absent from the FINDINGS section, and vice versa.
 4. Each correction must quote EXACT original text so the frontend can locate it.
-5. Consistency in sidedness: e.g. if clinical details say "right sided pain abdomen" but report says "left iliac fossa diverticulitis", flag this sidedness inconsistency.
-6. Max 8 corrections. Prioritise clinically significant errors over stylistic ones.
-7. If the report has no issues, return an empty corrections array.
-8. If the report is empty or very short, return empty corrections and note this in quality_assessment.
+5. LATERALITY AND ANATOMICAL PLAUSIBILITY (critical):
+   a. Clinical-vs-report sidedness: if clinical details say "right" but report says "left", flag it.
+   b. Internal anatomy consistency: flag anatomically implausible statements WITHIN the report.
+      Example: "right common carotid artery mass causing left recurrent laryngeal nerve palsy"
+      — the left RLN loops under the aortic arch, not the right carotid. Flag as: "Consider
+      checking laterality — the left RLN is anatomically related to the aortic arch, not the
+      right carotid." Use suggestive language ("Consider checking...") not assertive ("This is wrong")
+      because anatomical variants exist.
+   c. Laterality omission: if a unilateral finding is described without stating the side, flag it.
+6. Flag missing measurements where they would change management (e.g. "aortic aneurysm" without
+   diameter, "pulmonary nodule" without size, "lymph node" without short-axis measurement).
+   Suggest: "Consider adding measurement — management thresholds depend on size."
+7. Max 8 corrections. Prioritise: anatomical/sidedness errors > clinical omissions > terminology > phrasing.
+8. If the report has no issues, return an empty corrections array.
+9. If the report is empty or very short, return empty corrections and note this in quality_assessment.
 
 RULES FOR ANSWER AND REPORT_TEXT:
 1. "answer" is for advisory/explanatory text ONLY. Never put complete report sections in answer.
@@ -227,11 +241,36 @@ RULES FOR ANSWER AND REPORT_TEXT:
 
 RULES FOR INSIGHTS:
 1. Be specific and actionable, not generic platitudes.
-2. differentials_to_consider: only list if genuinely relevant and not already covered in the report. Empty array if not applicable.
-3. teaching_point: one actionable pearl, not a textbook paragraph. Relevant to this specific report.
-4. If the report is excellent, say so — do not invent criticisms.
-5. If the report is empty or too short for meaningful assessment, say so briefly in each field (e.g. "Report too short for assessment").
-6. You MUST always populate ALL five insight fields with meaningful text. NEVER leave any field empty or blank — always provide at least one sentence per field.
+2. differentials_to_consider: list diagnoses that could ALSO explain the described findings (mimics),
+   or findings that would help narrow the differential. Only list if genuinely relevant and not
+   already covered. Empty array if not applicable. These are educational — the trainee should NOT
+   add them to their report unless they see supporting evidence on the images.
+3. teaching_point — this is the MOST IMPORTANT insight. It must add genuine learning value.
+   Think: "What would I teach this trainee at the workstation right now?"
+   GOOD examples:
+   - "The described peri-appendiceal fat stranding with a normal-calibre appendix raises the
+     possibility of epiploic appendagitis — a common mimic. The fat-ring sign, if present,
+     would help differentiate."
+   - "In this age group, a solitary pulmonary nodule >8mm warrants Fleischner Society follow-up
+     guidelines. Consider specifying the risk category (low vs high) as it changes the interval."
+   - "The combination of ground-glass opacity with crazy-paving pattern has a limited differential
+     — consider pulmonary alveolar proteinosis alongside the more common infective causes."
+   BAD examples (DO NOT produce these):
+   - "Always check for free fluid in cases of acute abdomen." (generic, not specific to this report)
+   - "This is a good report with appropriate findings." (parroting, zero learning value)
+   - "Remember to compare with prior imaging." (obvious, adds nothing)
+   Consider: Are there alternative interpretations of the findings? Is there a classic pitfall
+   or teaching case relevant here? Would a consultant interpret this differently?
+   CRITICAL: Never suggest the trainee ADD findings they didn't describe. Teaching points are
+   about understanding, not about modifying the report.
+4. If the report is excellent, say so — do not invent criticisms. But still provide a meaningful
+   teaching point (there is always something worth teaching, even on a perfect report).
+5. If the report is empty or too short for meaningful assessment, say so briefly in each field.
+6. You MUST always populate ALL five insight fields with meaningful text. NEVER leave any field
+   empty or blank — always provide at least one sentence per field.
+7. recommendation_check: flag if urgent/critical findings (stroke, PE, tension pneumothorax,
+   ruptured AAA, ectopic pregnancy) lack appropriate escalation language or verbal communication
+   documentation. Flag if follow-up recommendations are missing specific timeframes.
 
 Output ONLY the JSON object. No markdown. No explanation."""
 
@@ -357,10 +396,13 @@ RULES:
    For example, CT abdomen with clinical question about appendicitis:
    start with the appendix (target organ), then systematically cover remaining bowel,
    solid organs, vasculature, peritoneum, bones, soft tissues.
-4. Each option's report_text must be a complete, standalone PACS-ready sentence.
-   Write as a radiologist would in a formal report — use standard conventions.
-   Include specific measurements or thresholds where applicable
-   (e.g. "aortic diameter measures X cm" rather than just "aortic dilatation").
+4. Each option's report_text must be a complete, natural-language PACS-ready sentence.
+   Write EXACTLY as a consultant radiologist would dictate — flowing prose, not a label.
+   WRONG: "Liver: normal" or "Normal liver"
+   RIGHT: "The liver is normal in size and attenuation with no focal lesion identified."
+   WRONG: "Spleen enlarged" or "Splenomegaly present"
+   RIGHT: "The spleen is mildly enlarged, measuring approximately 14 cm in craniocaudal length."
+   Include specific measurements or thresholds where applicable.
 5. Use next_step for conditional branching:
    - If a finding is abnormal, next_step should point to a sub-step that characterises it further
      (e.g. abnormal liver → sub-step asking about number, segment, enhancement pattern).
@@ -379,7 +421,11 @@ RULES:
 13. report_template.technique should be specific to this modality (e.g., include contrast phase for CT,
     sequences for MRI, probe frequency for US).
 14. Do NOT include pathophysiology, epidemiology, or teaching content in report_text.
+    report_text is for the PACS report only — keep it clinical and concise.
 15. findings_flag values: "normal", "abnormal", "equivocal", "incidental"
+16. Multiple findings for the same organ will be joined into a single paragraph.
+    Write report_text sentences that flow naturally when combined with other sentences
+    about the same organ. Avoid repeating the organ name redundantly within the same step.
 
 Output ONLY the JSON object. No markdown. No explanation."""
 
@@ -474,21 +520,60 @@ def classify_intent(user_input):
 # ==================== ANATOMY REFERENCE (Phase 5) ====================
 
 ANATOMY_SYSTEM_PROMPT = (
-    "You are a radiology anatomy reference. Provide diagnostically relevant anatomy, "
-    "not full textbook anatomy. Focus on what radiologists need at the workstation. "
-    "Output valid HTML. No markdown. Use <h4>, <p>, <ul>, <li> tags only."
+    "You are a senior consultant radiologist creating a workstation-ready anatomy reference "
+    "for radiology trainees. You think like someone who has reported thousands of CT/MRI/X-ray "
+    "studies and knows EXACTLY what trips up trainees at the workstation.\n\n"
+    "Your output must be:\n"
+    "- Clinically aligned: tied to real imaging scenarios, not textbook descriptions\n"
+    "- Practically useful: help trainees recognise structures on actual scans and report correctly\n"
+    "- Memorable: use mnemonics, analogies, and 'pearl' boxes where helpful\n"
+    "- Warning-oriented: emphasise pitfalls, normal variants that mimic pathology, "
+    "and common reporting errors\n\n"
+    "Output valid HTML. No markdown. Use <h4>, <p>, <ul>, <li>, <strong>, <em> tags. "
+    "For high-yield tips, use: <div class=\"anatomy-pearl\"><strong>Pearl:</strong> ...</div>"
 )
 
-ANATOMY_PROMPT = """Provide a concise radiology-focused anatomy reference for: {topic}
+ANATOMY_PROMPT = """Create a radiology-focused anatomy reference for: {topic}
+
+You are writing for a radiology trainee who needs to understand this anatomy
+well enough to REPORT on imaging studies confidently. NOT a textbook chapter —
+a practical workstation companion.
 
 Structure your response as HTML with these sections:
-1. <h4>Key Structures</h4> — List the main anatomical components with imaging landmarks
-2. <h4>Imaging Appearance</h4> — Normal appearance on common modalities (CT, MRI, US as applicable)
-3. <h4>Normal Variants</h4> — Variants that mimic pathology (critical for avoiding false positives)
-4. <h4>Key Measurements</h4> — Normal measurement ranges relevant to reporting
 
-Keep it under 250 words total. Focus on practical reporting utility.
-Use HTML tags: <h4>, <p>, <ul>, <li>, <strong>. No markdown."""
+1. <h4>Essential Anatomy for Reporting</h4>
+   - Key structures a radiologist MUST identify on imaging
+   - Use imaging landmarks (e.g. "at the level of the carina", "posterior to the IVC")
+   - Include cross-sectional relationships visible on axial CT/MRI
+
+2. <h4>Imaging Appearance by Modality</h4>
+   - Normal appearance on CT, MRI, and/or ultrasound (whichever are relevant)
+   - Signal/density characteristics, enhancement patterns
+   - What the structure looks like vs what it gets confused with
+
+3. <h4>Normal Variants & Pitfalls</h4>
+   - CRITICAL: variants that mimic pathology (e.g. persistent sciatic artery mimicking DVT)
+   - Common reporting errors related to this anatomy
+   - Include a <div class="anatomy-pearl"> for each high-yield pitfall
+
+4. <h4>Key Measurements & Thresholds</h4>
+   - Normal size ranges that trigger action if exceeded
+   - When to call it abnormal (e.g. "aortic root >4cm warrants follow-up")
+
+5. <h4>Clinical Correlation</h4>
+   - How pathology at this site presents on imaging
+   - What clinical question is the referrer usually asking?
+   - Link anatomy to the report: what findings at this site mean clinically
+
+6. <h4>Memory Aids</h4>
+   - Mnemonics, analogies, or systematic approaches to avoid missing findings
+   - E.g. "ABCDE approach for chest X-ray" or "the rule of 2s for Meckel's"
+   - Keep these genuinely useful, not forced
+
+Target length: 400-500 words. Every sentence should help a trainee report better.
+NEVER include generic filler. If a section has nothing useful to add, skip it.
+Use HTML tags: <h4>, <p>, <ul>, <li>, <strong>, <em>.
+For high-yield tips use: <div class="anatomy-pearl"><strong>Pearl:</strong> text</div>"""
 
 
 def generate_anatomy_reference(topic):
@@ -510,9 +595,9 @@ def generate_anatomy_reference(topic):
         system_prompt=ANATOMY_SYSTEM_PROMPT,
         user_prompt=prompt,
         model=haiku_model,
-        max_tokens=1000,
-        temperature=0.2,
-        timeout=15,
+        max_tokens=2000,
+        temperature=0.3,
+        timeout=20,
     )
 
     return {

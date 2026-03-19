@@ -445,6 +445,7 @@ def validate_quality(html, tool_type='if'):
     rt_checks = [
         (r'finding|impression|report', 'Report generation'),
         (r'grade|score|category|classification', 'Grading/classification'),
+        (r'Generate\s+Report|generateReport|generate.*report', '"Generate Report" button'),
     ]
 
     checks = common_checks + (if_checks if tool_type == 'if' else rt_checks)
@@ -645,10 +646,15 @@ REQUIREMENTS:
    Include these sections in the generated report:
    - INDICATION: (pre-filled based on template type)
    - TECHNIQUE: (standard protocol for this study type)
-   - FINDINGS: (compiled from checked/entered findings, organised by system)
+   - FINDINGS: (compiled from checked/entered findings, organised by system into flowing prose paragraphs — NOT a raw list of checkbox labels)
    - IMPRESSION: (numbered key findings, most critical first)
 
-   Include a "Generate Report" button that compiles all inputs into the report.
+   CRITICAL: You MUST include a clearly visible "Generate Report" button (use id="generateReportBtn")
+   that compiles all checked/entered inputs into a natural-language radiology report.
+   The generated report text MUST read as a consultant radiologist's dictation — flowing prose
+   grouped by anatomical system, NOT a bullet list or a raw dump of the checked items.
+   For example, instead of copying "Liver: normal" verbatim, generate:
+   "The liver is normal in size and attenuation with no focal lesion identified."
    Include a "Copy Report" button for clipboard.
 
 4. REFERENCE SECTION

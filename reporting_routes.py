@@ -22,7 +22,7 @@ from models import (
     RadiologyTemplate, ReportingAlgorithm,
     TNMCalculatorContent, ClinicalProtocol,
     IncidentalFindingCalculator, AJCCDiseaseSite, AJCCBodySection,
-    User, AiPrelimCaseData, ContentRequest,
+    User, AiPrelimCaseData, ContentRequest, RadiologyPearl,
 )
 from access_control import require_admin
 from clinical_tool_generator import extract_html_content
@@ -234,6 +234,118 @@ def unified_search():
                     'is_ai_generated': bool(r.is_ai_generated),
                 })
 
+        # Search radiology templates (plain-text PACS reports)
+        if filter_type in ('', 'template'):
+            tmpl_sql = text("""
+                SELECT rt.id, rt.slug, rt.title, rt.category, rt.body_section,
+                       rt.description,
+                       GREATEST(
+                           similarity(rt.title, :query),
+                           COALESCE(similarity(rt.keywords, :query), 0)
+                       ) AS sim
+                FROM radiology_template rt
+                WHERE rt.is_available = TRUE
+                  AND (
+                      similarity(rt.title, :query) > 0.1
+                      OR similarity(rt.keywords, :query) > 0.1
+                      OR rt.title ILIKE :like_query
+                      OR rt.keywords ILIKE :like_query
+                  )
+                ORDER BY sim DESC
+                LIMIT :limit
+            """)
+            tmpl_results = db.session.execute(tmpl_sql, {
+                'query': query, 'like_query': f'%{query}%', 'limit': limit
+            }).fetchall()
+
+            for r in tmpl_results:
+                results.append({
+                    'type': 'template',
+                    'id': r.id,
+                    'slug': r.slug,
+                    'title': r.title,
+                    'body_section': r.body_section,
+                    'description': r.description,
+                    'subtitle': r.category or 'Radiology Template',
+                    'url': f'/radiology-template/view/{r.id}',
+                    'similarity': float(r.sim) if r.sim else 0,
+                })
+
+        # Search anatomy snippets
+        if filter_type in ('', 'anatomy'):
+            anat_sql = text("""
+                SELECT ra.id, ra.slug, ra.title, ra.body_section,
+                       ra.description, ra.keywords,
+                       GREATEST(
+                           similarity(ra.title, :query),
+                           COALESCE(similarity(ra.keywords, :query), 0)
+                       ) AS sim
+                FROM reporting_algorithm ra
+                WHERE ra.is_available = TRUE
+                  AND ra.origin = 'anatomy_cache'
+                  AND (
+                      similarity(ra.title, :query) > 0.1
+                      OR similarity(ra.keywords, :query) > 0.1
+                      OR ra.title ILIKE :like_query
+                      OR ra.keywords ILIKE :like_query
+                  )
+                ORDER BY sim DESC
+                LIMIT :limit
+            """)
+            anat_results = db.session.execute(anat_sql, {
+                'query': query, 'like_query': f'%{query}%', 'limit': limit
+            }).fetchall()
+
+            for r in anat_results:
+                results.append({
+                    'type': 'anatomy',
+                    'id': r.id,
+                    'slug': r.slug,
+                    'title': r.title,
+                    'body_section': r.body_section,
+                    'description': r.description,
+                    'subtitle': 'Anatomy Snippet',
+                    'url': f'/anatomy-snippets/{r.slug}',
+                    'similarity': float(r.sim) if r.sim else 0,
+                })
+
+        # Search radiology pearls
+        if filter_type in ('', 'pearl'):
+            pearl_sql = text("""
+                SELECT rp.id, rp.pearl_text, rp.body_section, rp.modality,
+                       rp.tags, rp.is_verified,
+                       GREATEST(
+                           similarity(rp.pearl_text, :query),
+                           COALESCE(similarity(rp.tags, :query), 0)
+                       ) AS sim
+                FROM radiology_pearl rp
+                WHERE rp.is_verified = TRUE
+                  AND (
+                      similarity(rp.pearl_text, :query) > 0.1
+                      OR similarity(rp.tags, :query) > 0.1
+                      OR rp.pearl_text ILIKE :like_query
+                      OR rp.tags ILIKE :like_query
+                  )
+                ORDER BY sim DESC
+                LIMIT :limit
+            """)
+            pearl_results = db.session.execute(pearl_sql, {
+                'query': query, 'like_query': f'%{query}%', 'limit': limit
+            }).fetchall()
+
+            for r in pearl_results:
+                pearl_title = r.pearl_text[:100] + '...' if len(r.pearl_text or '') > 100 else r.pearl_text
+                results.append({
+                    'type': 'pearl',
+                    'id': r.id,
+                    'title': pearl_title,
+                    'body_section': r.body_section,
+                    'description': r.modality or '',
+                    'subtitle': 'Radiology Pearl',
+                    'url': '/radiology-pearls',
+                    'similarity': float(r.sim) if r.sim else 0,
+                })
+
     except Exception as exc:
         logger.warning(f"pg_trgm unified search failed, falling back to ILIKE: {exc}")
         results = _fallback_search(query, filter_type, limit)
@@ -330,6 +442,62 @@ def _fallback_search(query, filter_type, limit):
                 'description': t.description,
                 'subtitle': sub,
                 'url': f'/reporting-template/{t.slug}',
+                'similarity': 0.5,
+            })
+
+    if filter_type in ('', 'template'):
+        tmpls = RadiologyTemplate.query.filter(
+            RadiologyTemplate.is_available == True,
+            db.or_(
+                RadiologyTemplate.title.ilike(like),
+                RadiologyTemplate.keywords.ilike(like),
+            ),
+        ).limit(limit).all()
+        for t in tmpls:
+            results.append({
+                'type': 'template', 'id': t.id, 'slug': t.slug,
+                'title': t.title, 'body_section': t.body_section,
+                'description': t.description,
+                'subtitle': t.category or 'Radiology Template',
+                'url': f'/radiology-template/view/{t.id}',
+                'similarity': 0.5,
+            })
+
+    if filter_type in ('', 'anatomy'):
+        anats = ReportingAlgorithm.query.filter(
+            ReportingAlgorithm.is_available == True,
+            ReportingAlgorithm.origin == 'anatomy_cache',
+            db.or_(
+                ReportingAlgorithm.title.ilike(like),
+                ReportingAlgorithm.keywords.ilike(like),
+            ),
+        ).limit(limit).all()
+        for a in anats:
+            results.append({
+                'type': 'anatomy', 'id': a.id, 'slug': a.slug,
+                'title': a.title, 'body_section': a.body_section,
+                'description': a.description,
+                'subtitle': 'Anatomy Snippet',
+                'url': f'/anatomy-snippets/{a.slug}',
+                'similarity': 0.5,
+            })
+
+    if filter_type in ('', 'pearl'):
+        pearls = RadiologyPearl.query.filter(
+            RadiologyPearl.is_verified == True,
+            db.or_(
+                RadiologyPearl.pearl_text.ilike(like),
+                RadiologyPearl.tags.ilike(like),
+            ),
+        ).limit(limit).all()
+        for p in pearls:
+            results.append({
+                'type': 'pearl', 'id': p.id,
+                'title': p.pearl_text[:100] + '...' if len(p.pearl_text or '') > 100 else p.pearl_text,
+                'body_section': p.body_section,
+                'description': p.modality or '',
+                'subtitle': 'Radiology Pearl',
+                'url': '/radiology-pearls',
                 'similarity': 0.5,
             })
 
@@ -915,6 +1083,25 @@ def view_anatomy_snippet(slug):
     return render_template('anatomy_snippet_view.html', snippet=snippet)
 
 
+@reporting_bp.route('/radiology-pearls')
+@login_required
+def browse_radiology_pearls():
+    """User-facing browse page for radiology pearls."""
+    pearls = RadiologyPearl.query.filter(
+        db.or_(
+            RadiologyPearl.is_verified == True,
+            RadiologyPearl.created_by_user_id == current_user.id,
+        )
+    ).order_by(RadiologyPearl.created_at.desc()).all()
+
+    grouped = {}
+    for p in pearls:
+        section = p.body_section or 'General'
+        grouped.setdefault(section, []).append(p)
+
+    return render_template('radiology_pearls_browse.html', grouped=grouped)
+
+
 @reporting_bp.route('/reporting-templates')
 @login_required
 def browse_reporting_templates():
@@ -974,11 +1161,17 @@ def view_radiology_template(template_id):
 @require_admin
 def admin_reporting_algorithms():
     """Admin page for managing reporting algorithms (interactive decision trees)."""
-    templates = ReportingAlgorithm.query.filter(
-        ReportingAlgorithm.origin.in_(['admin', 'user'])
-    ).order_by(
-        ReportingAlgorithm.category, ReportingAlgorithm.title
-    ).all()
+    origin_filter = request.args.get('origin', '').strip()
+    if origin_filter:
+        templates = ReportingAlgorithm.query.filter_by(origin=origin_filter).order_by(
+            ReportingAlgorithm.category, ReportingAlgorithm.title
+        ).all()
+    else:
+        templates = ReportingAlgorithm.query.filter(
+            ReportingAlgorithm.origin.in_(['admin', 'user'])
+        ).order_by(
+            ReportingAlgorithm.category, ReportingAlgorithm.title
+        ).all()
     return render_template('admin_reporting_algorithms.html', templates=templates,
                            cloudinary_cloud_name=os.environ.get('CLOUDINARY_CLOUD_NAME', ''),
                            cloudinary_upload_preset=os.environ.get('CLOUDINARY_UPLOAD_PRESET', ''))
@@ -2360,3 +2553,167 @@ def update_content_request(request_id):
 
     db.session.commit()
     return jsonify({'success': True, 'message': f'Request updated to {cr.status}.'})
+
+
+# ==================== RADIOLOGY PEARLS ====================
+
+@reporting_bp.route('/api/smart-reporter/save-pearl', methods=['POST'])
+@login_required
+def save_pearl():
+    """Save a teaching point as a radiology pearl."""
+    import hashlib
+    data = request.get_json() or {}
+
+    pearl_text = (data.get('pearl_text') or '').strip()
+    if not pearl_text:
+        return jsonify({'error': 'pearl_text is required'}), 400
+
+    content_hash = hashlib.sha256(pearl_text.lower().encode('utf-8')).hexdigest()
+
+    existing = RadiologyPearl.query.filter_by(content_hash=content_hash).first()
+    if existing:
+        return jsonify({
+            'success': True,
+            'message': 'Pearl already exists.',
+            'pearl': _pearl_to_dict(existing),
+            'duplicate': True,
+        })
+
+    pearl = RadiologyPearl(
+        content_hash=content_hash,
+        pearl_text=pearl_text,
+        body_section=data.get('body_section', '').strip() or None,
+        modality=data.get('modality', '').strip() or None,
+        tags=data.get('tags', '').strip() or None,
+        source_report_context=data.get('source_report_context', '').strip() or None,
+        created_by_user_id=current_user.id,
+    )
+    db.session.add(pearl)
+    db.session.commit()
+
+    return jsonify({
+        'success': True,
+        'message': 'Pearl saved successfully.',
+        'pearl': _pearl_to_dict(pearl),
+        'duplicate': False,
+    })
+
+
+@reporting_bp.route('/api/smart-reporter/pearls', methods=['GET'])
+@login_required
+def list_pearls():
+    """List radiology pearls. All verified + own unverified."""
+    q = request.args.get('q', '').strip()
+    body_section = request.args.get('body_section', '').strip()
+    modality = request.args.get('modality', '').strip()
+    limit = request.args.get('limit', 50, type=int)
+
+    query = RadiologyPearl.query.filter(
+        db.or_(
+            RadiologyPearl.is_verified == True,
+            RadiologyPearl.created_by_user_id == current_user.id,
+        )
+    )
+
+    if q:
+        query = query.filter(
+            db.or_(
+                RadiologyPearl.pearl_text.ilike(f'%{q}%'),
+                RadiologyPearl.tags.ilike(f'%{q}%'),
+            )
+        )
+    if body_section:
+        query = query.filter(RadiologyPearl.body_section.ilike(f'%{body_section}%'))
+    if modality:
+        query = query.filter(RadiologyPearl.modality.ilike(f'%{modality}%'))
+
+    pearls = query.order_by(RadiologyPearl.created_at.desc()).limit(limit).all()
+    return jsonify([_pearl_to_dict(p) for p in pearls])
+
+
+@reporting_bp.route('/api/smart-reporter/pearls/<int:pearl_id>', methods=['GET'])
+@login_required
+def get_pearl(pearl_id):
+    """Get a single radiology pearl."""
+    pearl = RadiologyPearl.query.get_or_404(pearl_id)
+    return jsonify(_pearl_to_dict(pearl))
+
+
+@reporting_bp.route('/api/smart-reporter/pearls/<int:pearl_id>', methods=['PUT'])
+@login_required
+def update_pearl(pearl_id):
+    """Edit a pearl (admin or creator)."""
+    pearl = RadiologyPearl.query.get_or_404(pearl_id)
+
+    from models import UserRole
+    if current_user.role != UserRole.ADMIN and pearl.created_by_user_id != current_user.id:
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    data = request.get_json() or {}
+
+    if 'pearl_text' in data:
+        import hashlib
+        new_text = data['pearl_text'].strip()
+        if not new_text:
+            return jsonify({'error': 'pearl_text cannot be empty'}), 400
+        new_hash = hashlib.sha256(new_text.lower().encode('utf-8')).hexdigest()
+        dup = RadiologyPearl.query.filter(
+            RadiologyPearl.content_hash == new_hash,
+            RadiologyPearl.id != pearl_id,
+        ).first()
+        if dup:
+            return jsonify({'error': 'Another pearl with identical text already exists'}), 400
+        pearl.pearl_text = new_text
+        pearl.content_hash = new_hash
+
+    if 'body_section' in data:
+        pearl.body_section = data['body_section'].strip() or None
+    if 'modality' in data:
+        pearl.modality = data['modality'].strip() or None
+    if 'tags' in data:
+        pearl.tags = data['tags'].strip() or None
+
+    pearl.updated_at = datetime.utcnow()
+    db.session.commit()
+    return jsonify({'success': True, 'pearl': _pearl_to_dict(pearl)})
+
+
+@reporting_bp.route('/api/smart-reporter/pearls/<int:pearl_id>', methods=['DELETE'])
+@login_required
+@require_admin
+def delete_pearl(pearl_id):
+    """Delete a pearl (admin only)."""
+    pearl = RadiologyPearl.query.get_or_404(pearl_id)
+    db.session.delete(pearl)
+    db.session.commit()
+    return jsonify({'success': True, 'message': 'Pearl deleted.'})
+
+
+@reporting_bp.route('/api/smart-reporter/pearls/<int:pearl_id>/verify', methods=['POST'])
+@login_required
+@require_admin
+def verify_pearl(pearl_id):
+    """Verify a pearl (admin only) — makes it visible to all users."""
+    pearl = RadiologyPearl.query.get_or_404(pearl_id)
+    pearl.is_verified = True
+    pearl.verified_by_user_id = current_user.id
+    pearl.verified_at = datetime.utcnow()
+    db.session.commit()
+    return jsonify({'success': True, 'message': 'Pearl verified.', 'pearl': _pearl_to_dict(pearl)})
+
+
+def _pearl_to_dict(pearl):
+    """Convert RadiologyPearl to JSON-serializable dict."""
+    return {
+        'id': pearl.id,
+        'pearl_text': pearl.pearl_text,
+        'body_section': pearl.body_section,
+        'modality': pearl.modality,
+        'tags': pearl.tags,
+        'source_report_context': pearl.source_report_context,
+        'is_verified': pearl.is_verified,
+        'created_by_user_id': pearl.created_by_user_id,
+        'created_by_name': pearl.created_by.name if pearl.created_by else None,
+        'verified_at': pearl.verified_at.isoformat() if pearl.verified_at else None,
+        'created_at': pearl.created_at.isoformat() if pearl.created_at else None,
+    }

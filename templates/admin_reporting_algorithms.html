@@ -41,6 +41,22 @@
                 </div>
             </div>
 
+            <!-- Origin Filter -->
+            <div class="mb-3 d-flex gap-2 flex-wrap">
+                <a href="/admin/reporting-algorithms" class="btn btn-sm {% if not request.args.get('origin') %}btn-brand-neutral{% else %}btn-outline-secondary{% endif %}">
+                    All (Admin + User)
+                </a>
+                <a href="/admin/reporting-algorithms?origin=admin" class="btn btn-sm {% if request.args.get('origin') == 'admin' %}btn-brand-neutral{% else %}btn-outline-secondary{% endif %}">
+                    <i class="fas fa-shield-alt me-1"></i>Admin Only
+                </a>
+                <a href="/admin/reporting-algorithms?origin=user" class="btn btn-sm {% if request.args.get('origin') == 'user' %}btn-brand-neutral{% else %}btn-outline-secondary{% endif %}">
+                    <i class="fas fa-user me-1"></i>User Generated
+                </a>
+                <a href="/admin/reporting-algorithms?origin=anatomy_cache" class="btn btn-sm {% if request.args.get('origin') == 'anatomy_cache' %}btn-brand-neutral{% else %}btn-outline-secondary{% endif %}">
+                    <i class="fas fa-bone me-1"></i>Anatomy Snippets
+                </a>
+            </div>
+
             <!-- Algorithms List -->
             <div class="card shadow-sm border-0" style="border-top: 3px solid #e96304 !important;">
                 <div class="table-responsive">
