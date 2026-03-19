@@ -152,13 +152,26 @@
 
     <!-- Editor + Preview (side by side) -->
     <div class="row g-3" style="height: calc(100vh - 290px);">
-        <!-- Code Editor -->
+        <!-- Code Editor with Syntax Highlighting -->
         <div class="col-md-6 d-flex flex-column" id="editorCol">
-            <textarea id="htmlEditor" class="flex-grow-1 form-control"
-                      style="font-family: 'Fira Code', 'SF Mono', 'Consolas', monospace;
-                             font-size: 0.82rem; line-height: 1.5; resize: none;
-                             background: #1e1e2e; color: #cdd6f4; border: 1px solid #45475a;
-                             border-radius: 8px; padding: 12px; tab-size: 2;">{{ algorithm.template_html or '' }}</textarea>
+            <div class="html-highlight-wrap flex-grow-1" style="position: relative; border-radius: 8px; overflow: hidden; border: 1px solid #45475a;">
+                <pre id="htmlHighlight" aria-hidden="true"
+                     style="position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+                            margin: 0; padding: 12px; overflow: auto;
+                            font-family: 'Fira Code', 'SF Mono', 'Consolas', monospace;
+                            font-size: 0.82rem; line-height: 1.5; tab-size: 2;
+                            background: #1e1e2e; color: #cdd6f4;
+                            white-space: pre-wrap; word-wrap: break-word;
+                            pointer-events: none; z-index: 1;"></pre>
+                <textarea id="htmlEditor" spellcheck="false"
+                          style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+                                 margin: 0; padding: 12px; overflow: auto;
+                                 font-family: 'Fira Code', 'SF Mono', 'Consolas', monospace;
+                                 font-size: 0.82rem; line-height: 1.5; tab-size: 2;
+                                 background: transparent; color: transparent; caret-color: #f5e0dc;
+                                 border: none; resize: none; z-index: 2;
+                                 white-space: pre-wrap; word-wrap: break-word;">{{ algorithm.template_html or '' }}</textarea>
+            </div>
         </div>
 
         <!-- Live Preview -->
@@ -192,8 +205,44 @@ function refreshPreview() {
     document.getElementById('previewFrame').srcdoc = wrapper;
 }
 
+// ==================== SYNTAX HIGHLIGHTING ====================
+
+function highlightHTML(text) {
+    // Escape HTML entities first
+    var escaped = text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    // Highlight HTML tags: <tag>, </tag>, <tag attr="val">
+    escaped = escaped.replace(/(&lt;\/?)([\w-]+)((?:\s+[\w-]+(?:\s*=\s*(?:&quot;[^&]*&quot;|&#39;[^&]*&#39;|&amp;quot;[^&]*&amp;quot;|"[^"]*"|'[^']*'|[^\s&gt;]*))?)*\s*\/?)(&gt;)/g,
+        function(match, open, tag, attrs, close) {
+            var highlightedAttrs = attrs.replace(/([\w-]+)(\s*=\s*)((?:&quot;[^&]*&quot;|&#39;[^&]*&#39;|&amp;quot;[^&]*&amp;quot;|"[^"]*"|'[^']*'|[^\s&gt;]*))/g,
+                '<span style="color:#89b4fa;">$1</span>$2<span style="color:#a6e3a1;">$3</span>');
+            return '<span style="color:#6c7086;">' + open + '</span><span style="color:#f38ba8;">' + tag + '</span>' + highlightedAttrs + '<span style="color:#6c7086;">' + close + '</span>';
+        });
+    // Highlight HTML comments
+    escaped = escaped.replace(/(&lt;!--[\s\S]*?--&gt;)/g, '<span style="color:#6c7086; font-style:italic;">$1</span>');
+    // Ensure trailing newline for proper sizing
+    if (escaped.charAt(escaped.length - 1) === '\n') escaped += ' ';
+    return escaped;
+}
+
+function syncHighlight() {
+    var editor = document.getElementById('htmlEditor');
+    var highlight = document.getElementById('htmlHighlight');
+    highlight.innerHTML = highlightHTML(editor.value);
+}
+
+// Sync scroll position between textarea and highlight overlay
+document.getElementById('htmlEditor').addEventListener('scroll', function() {
+    var highlight = document.getElementById('htmlHighlight');
+    highlight.scrollTop = this.scrollTop;
+    highlight.scrollLeft = this.scrollLeft;
+});
+
 document.getElementById('htmlEditor').addEventListener('input', function() {
     _isDirty = true;
+    syncHighlight();
     clearTimeout(_previewTimeout);
     _previewTimeout = setTimeout(refreshPreview, 600);
 });
@@ -315,7 +364,8 @@ window.addEventListener('beforeunload', function(e) {
 document.addEventListener('DOMContentLoaded', function() {
     // Load resources
     loadAllResources('edit', {{ algorithm.source_citation|default('', true)|tojson }});
-    // Initial preview
+    // Initial preview + syntax highlighting
+    syncHighlight();
     refreshPreview();
     // Collapse chevron animation
     var panel = document.getElementById('metadataPanel');

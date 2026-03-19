@@ -116,7 +116,6 @@
         </div>
     </div>
 </div>
-{% endblock %}
 
 <!-- Edit Pearl Modal (admin only) -->
 {% if current_user.is_authenticated and current_user.role and current_user.role.value == 'admin' %}
@@ -163,6 +162,7 @@
     </div>
 </div>
 {% endif %}
+{% endblock %}
 
 {% block scripts %}
 <script>
