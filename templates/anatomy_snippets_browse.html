@@ -21,6 +21,14 @@
                     <a href="/smart-reporter" class="btn btn-sm btn-brand-primary">
                         <i class="fas fa-file-medical me-1"></i>Open Smart Reporter
                     </a>
+                    {% if current_user.is_authenticated and current_user.role and current_user.role.value == 'admin' %}
+                    <button class="btn btn-sm btn-brand-neutral" data-bs-toggle="modal" data-bs-target="#addSnippetModal">
+                        <i class="fas fa-plus me-1"></i>Add Snippet
+                    </button>
+                    <a href="/admin/reporting-algorithms?origin=anatomy_cache" class="btn btn-sm btn-outline-secondary">
+                        <i class="fas fa-cog me-1"></i>Manage
+                    </a>
+                    {% endif %}
                 </div>
             </div>
 
@@ -44,26 +52,33 @@
                 <div class="row g-3">
                     {% for s in snippets %}
                     <div class="col-12 col-md-6 col-lg-4 anatomy-card-wrapper" data-title="{{ s.title|lower }}" data-keywords="{{ (s.keywords or '')|lower }}">
-                        <a href="/anatomy-snippets/{{ s.slug }}" class="text-decoration-none">
-                            <div class="card border-0 shadow-sm h-100" style="transition: transform 0.15s;">
-                                <div class="card-body p-3">
-                                    <div class="d-flex justify-content-between align-items-start mb-2">
-                                        <h6 class="card-title mb-0" style="color: #333; font-size: 0.95rem;">{{ s.title }}</h6>
+                        <div class="card border-0 shadow-sm h-100 position-relative" style="transition: transform 0.15s;">
+                            <a href="/anatomy-snippets/{{ s.slug }}" class="text-decoration-none stretched-link"></a>
+                            <div class="card-body p-3">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <h6 class="card-title mb-0" style="color: #333; font-size: 0.95rem;">{{ s.title }}</h6>
+                                    <div class="d-flex align-items-center gap-1">
                                         <span class="badge" style="background: #6f42c1; font-size: 0.6rem;">
                                             <i class="fas fa-bone me-1"></i>Anatomy
                                         </span>
+                                        {% if current_user.is_authenticated and current_user.role and current_user.role.value == 'admin' %}
+                                        <a href="{{ url_for('reporting.edit_reporting_algorithm', algorithm_id=s.id) }}"
+                                           class="btn btn-sm btn-outline-secondary py-0 px-1 position-relative" style="z-index: 2; font-size: 0.65rem;" title="Edit">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        {% endif %}
                                     </div>
-                                    {% if s.body_section %}
-                                    <small class="badge bg-light text-dark border mb-2">{{ s.body_section }}</small>
-                                    {% endif %}
-                                    {% if s.description %}
-                                    <p class="card-text text-muted mb-0" style="font-size: 0.8rem; line-height: 1.4;">
-                                        {{ s.description[:120] }}{% if s.description|length > 120 %}...{% endif %}
-                                    </p>
-                                    {% endif %}
                                 </div>
+                                {% if s.body_section %}
+                                <small class="badge bg-light text-dark border mb-2">{{ s.body_section }}</small>
+                                {% endif %}
+                                {% if s.description %}
+                                <p class="card-text text-muted mb-0" style="font-size: 0.8rem; line-height: 1.4;">
+                                    {{ s.description[:120] }}{% if s.description|length > 120 %}...{% endif %}
+                                </p>
+                                {% endif %}
                             </div>
-                        </a>
+                        </div>
                     </div>
                     {% endfor %}
                 </div>
@@ -85,6 +100,61 @@
 </div>
 {% endblock %}
 
+<!-- Add Snippet Modal (admin only) -->
+{% if current_user.is_authenticated and current_user.role and current_user.role.value == 'admin' %}
+<div class="modal fade app-content-modal" id="addSnippetModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-bone me-2"></i>Add Anatomy Snippet</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Title</label>
+                    <input type="text" class="form-control" id="addSnippetTitle" placeholder="e.g. Circle of Willis Anatomy">
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Body Section</label>
+                        <select class="form-select" id="addSnippetBodySection">
+                            <option value="">Select...</option>
+                            {% for bs in ['Thorax','Abdomen','Pelvis','Head and Neck','Brain','Spine','Musculoskeletal','Cardiovascular','Breast','Multisystem'] %}
+                            <option value="{{ bs }}">{{ bs }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Category</label>
+                        <select class="form-select" id="addSnippetCategory">
+                            <option value="emergency">Emergency</option>
+                            <option value="routine" selected>Routine</option>
+                            <option value="oncology">Oncology</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Description</label>
+                    <input type="text" class="form-control" id="addSnippetDesc" placeholder="Short description">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Content HTML</label>
+                    <textarea class="form-control" id="addSnippetHTML" rows="10" style="font-family: monospace; font-size: 0.85rem;"
+                              placeholder="<h2>Key Anatomy</h2><p>...</p>"></textarea>
+                </div>
+                <div id="addSnippetStatus" class="d-none"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-modal-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-modal-primary" onclick="saveNewSnippet()">
+                    <i class="fas fa-save me-1"></i>Save
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 {% block scripts %}
 <script>
 function filterSnippets(query) {
@@ -98,6 +168,40 @@ function filterSnippets(query) {
     document.querySelectorAll('.anatomy-section-group').forEach(group => {
         const visibleCards = group.querySelectorAll('.anatomy-card-wrapper[style=""], .anatomy-card-wrapper:not([style])');
         group.style.display = visibleCards.length > 0 ? '' : 'none';
+    });
+}
+
+function saveNewSnippet() {
+    var title = document.getElementById('addSnippetTitle').value.trim();
+    if (!title) { alert('Title is required.'); return; }
+    var status = document.getElementById('addSnippetStatus');
+    status.classList.remove('d-none');
+    status.innerHTML = '<div class="alert alert-info py-2"><i class="fas fa-spinner fa-spin me-1"></i>Saving...</div>';
+
+    fetch('/admin/reporting-algorithms/api', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            title: title,
+            origin: 'anatomy_cache',
+            category: document.getElementById('addSnippetCategory').value,
+            body_section: document.getElementById('addSnippetBodySection').value,
+            description: document.getElementById('addSnippetDesc').value,
+            template_html: document.getElementById('addSnippetHTML').value,
+            is_available: true
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.error) {
+            status.innerHTML = '<div class="alert alert-danger py-2">' + data.error + '</div>';
+            return;
+        }
+        status.innerHTML = '<div class="alert alert-success py-2"><i class="fas fa-check me-1"></i>Snippet created!</div>';
+        setTimeout(() => location.reload(), 1000);
+    })
+    .catch(() => {
+        status.innerHTML = '<div class="alert alert-danger py-2">Failed to save.</div>';
     });
 }
 </script>

@@ -21,6 +21,11 @@
                     <a href="/smart-reporter" class="btn btn-sm btn-brand-primary">
                         <i class="fas fa-file-medical me-1"></i>Open Smart Reporter
                     </a>
+                    {% if current_user.is_authenticated and current_user.role and current_user.role.value == 'admin' %}
+                    <button class="btn btn-sm btn-brand-neutral" onclick="addNewPearl()">
+                        <i class="fas fa-plus me-1"></i>Add Pearl
+                    </button>
+                    {% endif %}
                 </div>
             </div>
 
@@ -75,6 +80,21 @@
                                         {% if p.created_by %}{{ p.created_by.name }}{% endif %}
                                         · {{ p.created_at.strftime('%d %b %Y') if p.created_at else '' }}
                                     </small>
+                                    {% if current_user.is_authenticated and current_user.role and current_user.role.value == 'admin' %}
+                                    <div class="btn-group btn-group-sm">
+                                        <button class="btn btn-outline-secondary py-0 px-1" onclick="editPearl({{ p.id }})" title="Edit" style="font-size: 0.65rem;">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        {% if not p.is_verified %}
+                                        <button class="btn btn-outline-success py-0 px-1" onclick="verifyPearl({{ p.id }})" title="Verify" style="font-size: 0.65rem;">
+                                            <i class="fas fa-check"></i>
+                                        </button>
+                                        {% endif %}
+                                        <button class="btn btn-outline-danger py-0 px-1" onclick="deletePearl({{ p.id }})" title="Delete" style="font-size: 0.65rem;">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                    {% endif %}
                                 </div>
                             </div>
                         </div>
@@ -88,7 +108,6 @@
             <div class="text-center py-5 text-muted">
                 <i class="fas fa-gem" style="font-size: 3rem; opacity: 0.3;"></i>
                 <p class="mt-3">No radiology pearls available yet.</p>
-                <p class="small">Pearls are captured from teaching points when you use AI Assist in Smart Reporter.</p>
                 <a href="/smart-reporter" class="btn btn-brand-primary mt-2">
                     <i class="fas fa-file-medical me-1"></i>Try Smart Reporter
                 </a>
@@ -98,6 +117,52 @@
     </div>
 </div>
 {% endblock %}
+
+<!-- Edit Pearl Modal (admin only) -->
+{% if current_user.is_authenticated and current_user.role and current_user.role.value == 'admin' %}
+<div class="modal fade app-content-modal" id="editPearlModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-gem me-2"></i>Edit Pearl</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editPearlId">
+                <div class="mb-3">
+                    <label class="form-label">Pearl Text</label>
+                    <textarea class="form-control" id="editPearlText" rows="4"></textarea>
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-6">
+                        <label class="form-label">Body Section</label>
+                        <select class="form-select" id="editPearlBodySection">
+                            <option value="">—</option>
+                            {% for bs in ['Thorax','Abdomen','Pelvis','Head and Neck','Brain','Spine','Musculoskeletal','Cardiovascular','Breast','Multisystem'] %}
+                            <option value="{{ bs }}">{{ bs }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label">Modality</label>
+                        <input type="text" class="form-control" id="editPearlModality" placeholder="e.g. CT, MRI">
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Tags (comma-separated)</label>
+                    <input type="text" class="form-control" id="editPearlTags" placeholder="e.g. liver, cirrhosis, portal hypertension">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-modal-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-modal-primary" onclick="saveEditPearl()">
+                    <i class="fas fa-save me-1"></i>Save
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
 
 {% block scripts %}
 <script>
@@ -113,6 +178,79 @@ function filterPearls(query) {
         const visibleCards = group.querySelectorAll('.pearl-card-wrapper[style=""], .pearl-card-wrapper:not([style])');
         group.style.display = visibleCards.length > 0 ? '' : 'none';
     });
+}
+
+function addNewPearl() {
+    document.getElementById('editPearlId').value = '';
+    document.getElementById('editPearlText').value = '';
+    document.getElementById('editPearlBodySection').value = '';
+    document.getElementById('editPearlModality').value = '';
+    document.getElementById('editPearlTags').value = '';
+    document.querySelector('#editPearlModal .modal-title').innerHTML = '<i class="fas fa-gem me-2"></i>Add New Pearl';
+    new bootstrap.Modal(document.getElementById('editPearlModal')).show();
+}
+
+function editPearl(id) {
+    fetch('/api/smart-reporter/pearls/' + id)
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('editPearlId').value = data.id;
+            document.getElementById('editPearlText').value = data.pearl_text || '';
+            document.getElementById('editPearlBodySection').value = data.body_section || '';
+            document.getElementById('editPearlModality').value = data.modality || '';
+            document.getElementById('editPearlTags').value = data.tags || '';
+            new bootstrap.Modal(document.getElementById('editPearlModal')).show();
+        })
+        .catch(() => alert('Failed to load pearl.'));
+}
+
+function saveEditPearl() {
+    var id = document.getElementById('editPearlId').value;
+    var payload = {
+        pearl_text: document.getElementById('editPearlText').value,
+        body_section: document.getElementById('editPearlBodySection').value,
+        modality: document.getElementById('editPearlModality').value,
+        tags: document.getElementById('editPearlTags').value
+    };
+    var url, method;
+    if (id) {
+        url = '/api/smart-reporter/pearls/' + id;
+        method = 'PUT';
+    } else {
+        url = '/api/smart-reporter/save-pearl';
+        method = 'POST';
+    }
+    fetch(url, {
+        method: method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.error) { alert(data.error); return; }
+        location.reload();
+    })
+    .catch(() => alert('Failed to save.'));
+}
+
+function verifyPearl(id) {
+    if (!confirm('Verify this pearl? It will become visible to all users.')) return;
+    fetch('/api/smart-reporter/pearls/' + id + '/verify', { method: 'POST' })
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) { alert(data.error); return; }
+            location.reload();
+        });
+}
+
+function deletePearl(id) {
+    if (!confirm('Delete this pearl permanently?')) return;
+    fetch('/api/smart-reporter/pearls/' + id, { method: 'DELETE' })
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) { alert(data.error); return; }
+            location.reload();
+        });
 }
 </script>
 {% endblock %}

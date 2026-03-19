@@ -1211,10 +1211,15 @@ def create_reporting_template():
     _raw_template_html = data.get('template_html', '').strip() or None
     _raw_algorithm_html = data.get('algorithm_html', '').strip() or None
 
+    allowed_origins = ('admin', 'anatomy_cache')
+    req_origin = data.get('origin', 'admin').strip()
+    if req_origin not in allowed_origins:
+        req_origin = 'admin'
+
     template = ReportingAlgorithm(
         slug=slug,
         title=title,
-        origin='admin',
+        origin=req_origin,
         category=category,
         body_section=data.get('body_section', '').strip() or None,
         description=data.get('description', '').strip() or None,
