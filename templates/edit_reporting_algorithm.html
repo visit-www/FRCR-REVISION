@@ -1,11 +1,8 @@
 {% extends 'base.html' %}
-{% if origin_context == 'anatomy_cache' %}
-{% block tool_active_anatomy %}active{% endblock %}
-{% block mobile_active_anatomy %}active{% endblock %}
-{% else %}
-{% block tool_active_algorithms %}active{% endblock %}
-{% block mobile_active_algorithms %}active{% endblock %}
-{% endif %}
+{% block tool_active_anatomy %}{% if origin_context == 'anatomy_cache' %}active{% endif %}{% endblock %}
+{% block mobile_active_anatomy %}{% if origin_context == 'anatomy_cache' %}active{% endif %}{% endblock %}
+{% block tool_active_algorithms %}{% if origin_context != 'anatomy_cache' %}active{% endif %}{% endblock %}
+{% block mobile_active_algorithms %}{% if origin_context != 'anatomy_cache' %}active{% endif %}{% endblock %}
 {% from 'partials/resource_fields.html' import resource_fields, resource_styles %}
 
 {% block mobile_breadcrumb %}
