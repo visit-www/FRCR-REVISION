@@ -1173,6 +1173,7 @@ def admin_reporting_algorithms():
             ReportingAlgorithm.category, ReportingAlgorithm.title
         ).all()
     return render_template('admin_reporting_algorithms.html', templates=templates,
+                           origin_filter=origin_filter,
                            cloudinary_cloud_name=os.environ.get('CLOUDINARY_CLOUD_NAME', ''),
                            cloudinary_upload_preset=os.environ.get('CLOUDINARY_UPLOAD_PRESET', ''))
 
@@ -1183,6 +1184,7 @@ def edit_reporting_algorithm(algorithm_id):
     """Full-page editor for reporting algorithm content + metadata."""
     algorithm = ReportingAlgorithm.query.get_or_404(algorithm_id)
     return render_template('edit_reporting_algorithm.html', algorithm=algorithm,
+                           origin_context=algorithm.origin,
                            cloudinary_cloud_name=os.environ.get('CLOUDINARY_CLOUD_NAME', ''),
                            cloudinary_upload_preset=os.environ.get('CLOUDINARY_UPLOAD_PRESET', ''))
 

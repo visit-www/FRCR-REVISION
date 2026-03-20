@@ -1,11 +1,20 @@
 {% extends 'base.html' %}
+{% if origin_context == 'anatomy_cache' %}
+{% block tool_active_anatomy %}active{% endblock %}
+{% block mobile_active_anatomy %}active{% endblock %}
+{% else %}
 {% block tool_active_algorithms %}active{% endblock %}
 {% block mobile_active_algorithms %}active{% endblock %}
+{% endif %}
 {% from 'partials/resource_fields.html' import resource_fields, resource_styles %}
 
 {% block mobile_breadcrumb %}
 <li class="breadcrumb-item">
+    {% if origin_context == 'anatomy_cache' %}
+    <a href="/anatomy-snippets" class="text-white text-decoration-none">Anatomy Snippets</a>
+    {% else %}
     <a href="{{ url_for('reporting.admin_reporting_algorithms') }}" class="text-white text-decoration-none">Algorithms</a>
+    {% endif %}
 </li>
 <li class="breadcrumb-item active text-white-50">Edit</li>
 {% endblock %}
@@ -15,7 +24,7 @@
     <!-- Top Bar -->
     <div class="d-flex justify-content-between align-items-center mb-3">
         <div class="d-flex align-items-center gap-3">
-            <a href="{{ url_for('reporting.admin_reporting_algorithms') }}" class="btn btn-outline-secondary btn-sm">
+            <a href="{% if origin_context == 'anatomy_cache' %}/admin/reporting-algorithms?origin=anatomy_cache{% else %}{{ url_for('reporting.admin_reporting_algorithms') }}{% endif %}" class="btn btn-outline-secondary btn-sm">
                 <i class="fas fa-arrow-left me-1"></i>Back
             </a>
             <div>
