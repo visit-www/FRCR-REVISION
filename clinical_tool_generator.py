@@ -440,6 +440,7 @@ def validate_quality(html, tool_type='if'):
         (r'type=["\']number["\']', 'Number inputs for measurements'),
         (r'recommendation|follow-up|follow up', 'Follow-up recommendations'),
         (r'report|impression', 'Report language section'),
+        (r'reportOutput|report-output|generateReportBtn|Generate\s+Report', '"Generate Report" button or output'),
     ]
 
     rt_checks = [
@@ -571,8 +572,16 @@ REQUIREMENTS:
    - Clear category/grade/recommendation output
    - Follow-up recommendation with specific timing
    - Management implications
-   - REPORT LANGUAGE: Generate copy-paste radiology report text for the finding
-   - Include "Copy Report Language" button
+   - REPORT LANGUAGE: Generate copy-paste radiology report text for the finding.
+     The report text MUST read as a consultant radiologist's dictation — flowing prose,
+     NOT a raw list of checkbox labels or bullet points.
+     For example, instead of "Adrenal nodule: 2.1cm, lipid-rich" generate:
+     "There is a 2.1 cm left adrenal nodule demonstrating macroscopic fat on unenhanced CT
+     (HU < 10), consistent with a lipid-rich adenoma. No follow-up required."
+   - Place the generated report text in a <textarea id="reportOutput"> element
+   - Include a "Copy Report Language" button that copies from this textarea
+   - Include a clearly visible "Generate Report" button (use id="generateReportBtn")
+     that compiles all checked/entered inputs into the report text
 
 4. REFERENCE SECTION
    - Full guideline citation
@@ -651,11 +660,12 @@ REQUIREMENTS:
 
    CRITICAL: You MUST include a clearly visible "Generate Report" button (use id="generateReportBtn")
    that compiles all checked/entered inputs into a natural-language radiology report.
+   Place the generated report text in a <textarea id="reportOutput"> element.
    The generated report text MUST read as a consultant radiologist's dictation — flowing prose
    grouped by anatomical system, NOT a bullet list or a raw dump of the checked items.
    For example, instead of copying "Liver: normal" verbatim, generate:
    "The liver is normal in size and attenuation with no focal lesion identified."
-   Include a "Copy Report" button for clipboard.
+   Include a "Copy Report" button that copies from the reportOutput textarea.
 
 4. REFERENCE SECTION
    - Classification/grading table for quick reference

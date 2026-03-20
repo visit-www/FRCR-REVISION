@@ -154,3 +154,104 @@
     </div>
 </div>
 {% endblock %}
+
+{% block scripts %}
+<script>
+function sendToSmartReporter(text) {
+    if (!text || !text.trim()) {
+        alert('Please generate results first, then send to Smart Reporter.');
+        return;
+    }
+    try { sessionStorage.setItem('smartReporterPrefill', text.trim()); } catch(e) {}
+    window.location.href = '/smart-reporter?context=prefill&title=' + encodeURIComponent({{ calculator.finding_name|tojson }});
+}
+
+function extractToolResults() {
+    var wrapper = document.querySelector('.calculator-integrated-wrapper');
+    if (!wrapper) return '';
+    var text = '';
+
+    // 1. Standardised output: #reportOutput textarea (our prompt mandates this)
+    var reportOut = wrapper.querySelector('#reportOutput, #report-output, #generatedReport');
+    if (reportOut) {
+        text = (reportOut.value || reportOut.innerText || '').trim();
+        if (text.length > 10) return text;
+    }
+
+    // 2. Elements with report/output/result/recommendation/generated in id or class
+    var candidates = wrapper.querySelectorAll(
+        '[id*="report" i], [id*="output" i], [id*="result" i], [id*="recommendation" i], [id*="generated" i], ' +
+        '[class*="report" i], [class*="output" i], [class*="result" i], [class*="recommendation" i], [class*="generated" i]'
+    );
+    for (var j = 0; j < candidates.length; j++) {
+        // Skip small UI elements (badges, labels, headers)
+        var tag = candidates[j].tagName;
+        if (tag === 'BUTTON' || tag === 'LABEL' || tag === 'SPAN') continue;
+        var t = (candidates[j].value || candidates[j].innerText || '').trim();
+        if (t.length > 30) { text = t; break; }
+    }
+    if (text) return text;
+
+    // 3. Look for textarea/pre with generated content (skip small input fields)
+    var els = wrapper.querySelectorAll('textarea, pre');
+    for (var k = 0; k < els.length; k++) {
+        var t = (els[k].value || els[k].textContent || '').trim();
+        if (t.length > 30) { text = t; break; }
+    }
+    return text;
+}
+
+// Inject "Edit in Smart Reporter" button next to existing copy/generate buttons
+document.addEventListener('DOMContentLoaded', function() {
+    var wrapper = document.querySelector('.calculator-integrated-wrapper');
+    if (!wrapper) return;
+
+    var allBtns = wrapper.querySelectorAll('button');
+    var targetContainer = null;
+
+    // Find button group containing copy/generate/report buttons
+    for (var i = 0; i < allBtns.length; i++) {
+        var btnText = allBtns[i].textContent.toLowerCase();
+        if (btnText.indexOf('copy') !== -1 || btnText.indexOf('generate') !== -1 || btnText.indexOf('report') !== -1) {
+            targetContainer = allBtns[i].parentElement;
+            break;
+        }
+    }
+
+    if (!targetContainer) return;
+
+    var srBtn = document.createElement('button');
+    srBtn.className = targetContainer.querySelector('button').className;
+    srBtn.style.cssText = 'background:#e96304;border-color:#e96304;color:#fff;margin-left:4px;';
+    srBtn.innerHTML = '<i class="fas fa-paper-plane" style="margin-right:4px;"></i>Edit in Smart Reporter';
+    srBtn.title = 'Send results to Smart Reporter draft';
+    srBtn.onclick = function() {
+        var text = extractToolResults();
+        if (!text) {
+            alert('Please generate results first, then click to send to Smart Reporter.');
+            return;
+        }
+        sendToSmartReporter(text);
+    };
+    targetContainer.appendChild(srBtn);
+});
+
+// Also update the nav "Use the results in a report" button to extract results
+document.addEventListener('DOMContentLoaded', function() {
+    var navBtn = document.querySelector('a[href*="smart-reporter?context=if"]');
+    if (!navBtn) return;
+    navBtn.addEventListener('click', function(e) {
+        var text = extractToolResults();
+        if (text) {
+            e.preventDefault();
+            sendToSmartReporter(text);
+        } else {
+            // Warn user but still allow navigation
+            if (!confirm('No generated results found. Please use the tool to generate results first.\n\nOpen Smart Reporter anyway?')) {
+                e.preventDefault();
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

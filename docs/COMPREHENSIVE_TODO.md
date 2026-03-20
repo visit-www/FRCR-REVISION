@@ -7,10 +7,10 @@
 
 | Status | Count |
 |--------|-------|
-| DONE | **50** / 70 |
-| WONTFIX | 2 / 70 |
-| TODO | **18** / 70 |
-| **Completion** | **74%** |
+| DONE | **50** / 71 |
+| WONTFIX | 2 / 71 |
+| TODO | **19** / 71 |
+| **Completion** | **73%** |
 
 ---
 
@@ -162,7 +162,13 @@
 | 63 | Sitemap.xml | DONE | `GET /sitemap.xml` generates XML sitemap with static pages + dynamic TNM calculator URLs. Referenced in robots.txt. |
 | 64 | Skip-to-content link | DONE | Added `<a href="#main-content" class="visually-hidden-focusable skip-link">` in `base.html` with `id="main-content"` target on content div. |
 
-### 4.3 Performance
+### 4.3 Admin UX
+
+| # | Item | Status | Details |
+|---|------|--------|---------|
+| 71 | Shared HTML syntax highlighting editor | TODO | Extract `highlightHTML()` + scroll sync from `edit_reporting_algorithm.html` into `static/js/html-syntax-highlight.js`. Expose `initSyntaxEditor(textareaId, highlightId)`. Apply to: TNM calculator edit, Radiology Tools admin, Clinical Protocols admin, Anatomy snippet add modal. |
+
+### 4.4 Performance
 
 | # | Item | Status | Details |
 |---|------|--------|---------|
@@ -170,7 +176,7 @@
 | 66 | Async job queue for AI generation | TODO | Background tasks run synchronously in request handler. Consider Celery/RQ. |
 | 67 | Query optimization (N+1) | TODO | Multiple `Case.query.filter()` without `.options()` loading. Profile with SQLAlchemy analysis. |
 
-### 4.4 Other
+### 4.5 Other
 
 | # | Item | Status | Details |
 |---|------|--------|---------|

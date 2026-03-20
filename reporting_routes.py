@@ -2720,7 +2720,7 @@ def _pearl_to_dict(pearl):
         'source_report_context': pearl.source_report_context,
         'is_verified': pearl.is_verified,
         'created_by_user_id': pearl.created_by_user_id,
-        'created_by_name': pearl.created_by.name if pearl.created_by else None,
+        'created_by_name': pearl.created_by.get_display_name() if pearl.created_by else None,
         'verified_at': pearl.verified_at.isoformat() if pearl.verified_at else None,
         'created_at': pearl.created_at.isoformat() if pearl.created_at else None,
     }

@@ -756,7 +756,10 @@
                                 <div class="card-header border-0 py-2" style="background: var(--brand-neutral, #5E899E);">
                                     <div class="d-flex justify-content-between align-items-center">
                                         <small class="fw-semibold text-white"><i class="fas fa-calculator me-1"></i><span id="toolPanelTitle">Clinical Tool</span></small>
-                                        <div>
+                                        <div class="d-flex gap-1">
+                                            <button class="btn btn-sm py-0 px-2" onclick="copyToolResultsToDraft()" title="Copy tool results to your working draft" style="font-size: 0.7rem; background: #e96304; color: #fff; border-color: #e96304;">
+                                                <i class="fas fa-paste me-1"></i>To Draft
+                                            </button>
                                             <button class="btn btn-sm btn-outline-light py-0 px-1" onclick="openToolFullPage()" title="Open in new tab" style="font-size: 0.7rem;">
                                                 <i class="fas fa-external-link-alt"></i>
                                             </button>
@@ -1720,6 +1723,60 @@ document.addEventListener('DOMContentLoaded', function() {
         if (_toolPanelUrl) {
             window.open(_toolPanelUrl, '_blank');
         }
+    };
+
+    window.copyToolResultsToDraft = function() {
+        var iframe = document.getElementById('toolPanelIframe');
+        if (!iframe || !iframe.contentWindow) {
+            showToast('No tool loaded.', 'warning');
+            return;
+        }
+        var text = '';
+        try {
+            var doc = iframe.contentWindow.document;
+
+            // 1. Standardised output: #reportOutput textarea (our prompt mandates this)
+            var reportOut = doc.querySelector('#reportOutput, #report-output, #generatedReport');
+            if (reportOut) {
+                text = (reportOut.value || reportOut.innerText || '').trim();
+            }
+
+            // 2. Elements with report/output/result/recommendation/generated in id or class
+            if (!text) {
+                var candidates = doc.querySelectorAll(
+                    '[id*="report" i], [id*="output" i], [id*="result" i], [id*="recommendation" i], [id*="generated" i], ' +
+                    '[class*="report" i], [class*="output" i], [class*="result" i], [class*="recommendation" i], [class*="generated" i]'
+                );
+                for (var j = 0; j < candidates.length; j++) {
+                    var tag = candidates[j].tagName;
+                    if (tag === 'BUTTON' || tag === 'LABEL' || tag === 'SPAN') continue;
+                    var t = (candidates[j].value || candidates[j].innerText || '').trim();
+                    if (t.length > 30) { text = t; break; }
+                }
+            }
+
+            // 3. Look for textarea/pre with generated content
+            if (!text) {
+                var els = doc.querySelectorAll('textarea, pre');
+                for (var k = 0; k < els.length; k++) {
+                    var t = (els[k].value || els[k].textContent || '').trim();
+                    if (t.length > 30) { text = t; break; }
+                }
+            }
+        } catch (e) {
+            showToast('Cannot read tool results. Open the tool in a new tab and copy results manually.', 'warning', 5000);
+            return;
+        }
+        if (!text) {
+            showToast('Please generate results in the tool first, then copy to draft.', 'warning', 4000);
+            return;
+        }
+        var input = document.getElementById('editorInput');
+        var current = input.value.trim();
+        input.value = current ? current + '\n\n' + text : text;
+        state.inputText = input.value;
+        autoResizeTextarea(input);
+        showToast('Tool results added to your working draft.', 'success');
     };
 
     // Legacy: redirect reference panel calls to the editor resource search
