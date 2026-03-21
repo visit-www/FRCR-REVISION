@@ -119,7 +119,7 @@
 
 <!-- Edit Pearl Modal (admin only) -->
 {% if current_user.is_authenticated and current_user.role and current_user.role.value == 'admin' %}
-<div class="modal fade app-content-modal" id="editPearlModal" tabindex="-1">
+<div class="modal fade app-content-modal" id="editPearlModal" tabindex="-1" data-bs-focus="false">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
