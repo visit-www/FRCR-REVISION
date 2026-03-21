@@ -114,6 +114,21 @@ case_pearl_links = db.Table('case_pearl_links',
     db.UniqueConstraint('case_id', 'pearl_id')
 )
 
+# ==================== UNIVERSAL CONTENT LINK TABLE ====================
+# Generic many-to-many for linking any content type to any other content type.
+# Stored in canonical order (source_type <= target_type alphabetically) to
+# prevent duplicates. Queried from both directions for automatic cross-linking.
+content_links = db.Table('content_links',
+    db.Column('id', db.Integer, primary_key=True),
+    db.Column('source_type', db.String(50), nullable=False),   # 'algorithm', 'case', 'pearl'
+    db.Column('source_id', db.Integer, nullable=False),
+    db.Column('target_type', db.String(50), nullable=False),
+    db.Column('target_id', db.Integer, nullable=False),
+    db.Column('created_by_user_id', db.Integer, db.ForeignKey('user.id'), nullable=True),
+    db.Column('created_at', db.DateTime, default=datetime.utcnow),
+    db.UniqueConstraint('source_type', 'source_id', 'target_type', 'target_id', name='uq_content_link')
+)
+
 # ==================== ENUMS ====================
 
 # User Role Enum

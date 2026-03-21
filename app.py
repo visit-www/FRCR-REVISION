@@ -84,7 +84,7 @@ from models import ClinicalProtocol, OnCallQueryLog, IncidentalFindingCalculator
 from models import RadiologyTemplate, ReportingAlgorithm  # New split tables (Feb 2026)
 from models import ContentRequest  # User content requests (Feb 2026)
 from models import RadiologyPearl  # Radiology pearls from teaching points
-from models import case_algorithm_links, case_template_links, case_pearl_links  # Knowledge linking
+from models import case_algorithm_links, case_template_links, case_pearl_links, content_links  # Knowledge linking
 from auth import auth_bp
 from backup_routes import backup_bp
 from admin_routes import admin_bp
@@ -3937,6 +3937,359 @@ def get_algorithm_linked_cases(algorithm_id):
                 'url': f'/view-case/{c.id}',
             })
     return jsonify(cases)
+
+
+# ==================== UNIVERSAL CONTENT LINKING API ====================
+_VALID_CONTENT_TYPES = ('case', 'pearl', 'algorithm')
+
+def _resolve_content_item(ctype, cid):
+    """Resolve a content type + id to a display dict, or None if not found."""
+    if ctype == 'case':
+        c = Case.query.get(cid)
+        if not c:
+            return None
+        return {
+            'link_type': 'case', 'id': c.id,
+            'title': f'{c.case_number} — {(c.diagnosis or "")[:80]}',
+            'subtitle': c.body_part.value if c.body_part else '',
+            'icon': 'fa-file-medical', 'color': '#5E899E',
+            'url': f'/view-case/{c.id}',
+        }
+    elif ctype == 'pearl':
+        p = RadiologyPearl.query.get(cid)
+        if not p:
+            return None
+        import re
+        plain = re.sub(r'<[^>]+>', '', p.pearl_text or '')[:100]
+        return {
+            'link_type': 'pearl', 'id': p.id,
+            'title': plain + ('...' if len(re.sub(r'<[^>]+>', '', p.pearl_text or '')) > 100 else ''),
+            'subtitle': ' | '.join(filter(None, [p.body_section, p.modality])),
+            'icon': 'fa-gem', 'color': '#6b46c1',
+            'url': None,
+        }
+    elif ctype == 'algorithm':
+        a = ReportingAlgorithm.query.get(cid)
+        if not a:
+            return None
+        slug_prefix = 'anatomy-snippets' if a.origin == 'anatomy_cache' else 'reporting-algorithms'
+        return {
+            'link_type': 'algorithm', 'id': a.id,
+            'title': a.title or '',
+            'subtitle': ' | '.join(filter(None, [a.body_section, a.origin])),
+            'icon': 'fa-bone', 'color': '#6f42c1',
+            'url': f'/{slug_prefix}/{a.slug}' if a.slug else None,
+        }
+    return None
+
+
+def _canonical_link(stype, sid, ttype, tid):
+    """Return (source_type, source_id, target_type, target_id) in canonical order.
+    Alphabetical by type; for same type, lower id first."""
+    if stype > ttype or (stype == ttype and sid > tid):
+        return ttype, tid, stype, sid
+    return stype, sid, ttype, tid
+
+
+@app.route('/api/content/<content_type>/<int:content_id>/links', methods=['GET'])
+@login_required
+def get_content_links(content_type, content_id):
+    """Get all linked content for any item, merging legacy tables + content_links."""
+    if content_type not in _VALID_CONTENT_TYPES:
+        return jsonify({'error': 'Invalid content type'}), 400
+
+    # Verify item exists
+    if _resolve_content_item(content_type, content_id) is None:
+        return jsonify({'error': 'Item not found'}), 404
+
+    seen = set()  # (type, id) to deduplicate
+    items = []
+
+    def _add(ctype, cid):
+        if (ctype, cid) in seen:
+            return
+        seen.add((ctype, cid))
+        resolved = _resolve_content_item(ctype, cid)
+        if resolved:
+            items.append(resolved)
+
+    # 1. Query content_links in both directions
+    rows = db.session.execute(
+        db.select(
+            content_links.c.source_type, content_links.c.source_id,
+            content_links.c.target_type, content_links.c.target_id
+        ).where(
+            db.or_(
+                db.and_(content_links.c.source_type == content_type, content_links.c.source_id == content_id),
+                db.and_(content_links.c.target_type == content_type, content_links.c.target_id == content_id),
+            )
+        )
+    ).all()
+    for row in rows:
+        # Resolve the OTHER side of the link
+        if row.source_type == content_type and row.source_id == content_id:
+            _add(row.target_type, row.target_id)
+        else:
+            _add(row.source_type, row.source_id)
+
+    # 2. Merge legacy case link tables
+    if content_type == 'pearl':
+        legacy_rows = db.session.execute(
+            db.select(case_pearl_links.c.case_id).where(case_pearl_links.c.pearl_id == content_id)
+        ).all()
+        for r in legacy_rows:
+            _add('case', r.case_id)
+    elif content_type == 'algorithm':
+        legacy_rows = db.session.execute(
+            db.select(case_algorithm_links.c.case_id).where(case_algorithm_links.c.algorithm_id == content_id)
+        ).all()
+        for r in legacy_rows:
+            _add('case', r.case_id)
+    elif content_type == 'case':
+        # Case → pearls
+        pearl_rows = db.session.execute(
+            db.select(case_pearl_links.c.pearl_id).where(case_pearl_links.c.case_id == content_id)
+        ).all()
+        for r in pearl_rows:
+            _add('pearl', r.pearl_id)
+        # Case → algorithms
+        algo_rows = db.session.execute(
+            db.select(case_algorithm_links.c.algorithm_id).where(case_algorithm_links.c.case_id == content_id)
+        ).all()
+        for r in algo_rows:
+            _add('algorithm', r.algorithm_id)
+
+    return jsonify(items)
+
+
+@app.route('/api/content/<content_type>/<int:content_id>/links', methods=['POST'])
+@login_required
+def add_content_link(content_type, content_id):
+    """Create a link between two content items. Auto cross-links via bidirectional query."""
+    if content_type not in _VALID_CONTENT_TYPES:
+        return jsonify({'error': 'Invalid content type'}), 400
+
+    data = request.get_json()
+    target_type = data.get('target_type', '').strip()
+    target_id = data.get('target_id')
+
+    if target_type not in _VALID_CONTENT_TYPES or not target_id:
+        return jsonify({'error': 'target_type and target_id required'}), 400
+    target_id = int(target_id)
+
+    # Prevent self-links
+    if content_type == target_type and content_id == target_id:
+        return jsonify({'error': 'Cannot link an item to itself'}), 400
+
+    # Verify both exist
+    if _resolve_content_item(content_type, content_id) is None:
+        return jsonify({'error': 'Source item not found'}), 404
+    target_resolved = _resolve_content_item(target_type, target_id)
+    if target_resolved is None:
+        return jsonify({'error': 'Target item not found'}), 404
+
+    # Route case links to legacy tables for backward compat
+    case_side = None
+    other_type = None
+    other_id = None
+    if content_type == 'case':
+        case_side = content_id
+        other_type, other_id = target_type, target_id
+    elif target_type == 'case':
+        case_side = target_id
+        other_type, other_id = content_type, content_id
+
+    if case_side is not None:
+        if other_type == 'pearl':
+            # Check duplicate in legacy table
+            exists = db.session.execute(
+                db.select(case_pearl_links.c.id).where(
+                    case_pearl_links.c.case_id == case_side,
+                    case_pearl_links.c.pearl_id == other_id,
+                )
+            ).first()
+            if exists:
+                return jsonify({'error': 'Already linked'}), 400
+            db.session.execute(case_pearl_links.insert().values(
+                case_id=case_side, pearl_id=other_id,
+                created_by_user_id=current_user.id,
+            ))
+            db.session.commit()
+            return jsonify(target_resolved)
+        elif other_type == 'algorithm':
+            exists = db.session.execute(
+                db.select(case_algorithm_links.c.id).where(
+                    case_algorithm_links.c.case_id == case_side,
+                    case_algorithm_links.c.algorithm_id == other_id,
+                )
+            ).first()
+            if exists:
+                return jsonify({'error': 'Already linked'}), 400
+            db.session.execute(case_algorithm_links.insert().values(
+                case_id=case_side, algorithm_id=other_id,
+                created_by_user_id=current_user.id,
+            ))
+            db.session.commit()
+            return jsonify(target_resolved)
+
+    # Non-case link → content_links table (canonical order)
+    s_type, s_id, t_type, t_id = _canonical_link(content_type, content_id, target_type, target_id)
+
+    exists = db.session.execute(
+        db.select(content_links.c.id).where(
+            content_links.c.source_type == s_type,
+            content_links.c.source_id == s_id,
+            content_links.c.target_type == t_type,
+            content_links.c.target_id == t_id,
+        )
+    ).first()
+    if exists:
+        return jsonify({'error': 'Already linked'}), 400
+
+    db.session.execute(content_links.insert().values(
+        source_type=s_type, source_id=s_id,
+        target_type=t_type, target_id=t_id,
+        created_by_user_id=current_user.id,
+    ))
+    db.session.commit()
+    return jsonify(target_resolved)
+
+
+@app.route('/api/content/<content_type>/<int:content_id>/links', methods=['DELETE'])
+@login_required
+def delete_content_link(content_type, content_id):
+    """Remove a link between two content items. Admin only."""
+    from models import UserRole
+    if current_user.role not in [UserRole.ADMIN, UserRole.CONTENT_MANAGER]:
+        return jsonify({'error': 'Admin access required'}), 403
+
+    if content_type not in _VALID_CONTENT_TYPES:
+        return jsonify({'error': 'Invalid content type'}), 400
+
+    data = request.get_json() or {}
+    target_type = data.get('target_type') or request.args.get('target_type', '').strip()
+    target_id = data.get('target_id') or request.args.get('target_id', type=int)
+
+    if not target_type or not target_id:
+        return jsonify({'error': 'target_type and target_id required'}), 400
+    target_id = int(target_id)
+
+    deleted = False
+
+    # Try legacy tables first if case involved
+    case_side = None
+    other_type = None
+    other_id = None
+    if content_type == 'case':
+        case_side = content_id
+        other_type, other_id = target_type, target_id
+    elif target_type == 'case':
+        case_side = target_id
+        other_type, other_id = content_type, content_id
+
+    if case_side is not None:
+        if other_type == 'pearl':
+            db.session.execute(
+                case_pearl_links.delete().where(
+                    case_pearl_links.c.case_id == case_side,
+                    case_pearl_links.c.pearl_id == other_id,
+                )
+            )
+            deleted = True
+        elif other_type == 'algorithm':
+            db.session.execute(
+                case_algorithm_links.delete().where(
+                    case_algorithm_links.c.case_id == case_side,
+                    case_algorithm_links.c.algorithm_id == other_id,
+                )
+            )
+            deleted = True
+
+    # Also try content_links (canonical order)
+    s_type, s_id, t_type, t_id = _canonical_link(content_type, content_id, target_type, target_id)
+    db.session.execute(
+        content_links.delete().where(
+            content_links.c.source_type == s_type,
+            content_links.c.source_id == s_id,
+            content_links.c.target_type == t_type,
+            content_links.c.target_id == t_id,
+        )
+    )
+    deleted = True
+
+    db.session.commit()
+    return jsonify({'success': True})
+
+
+@app.route('/api/content/search', methods=['GET'])
+@login_required
+def search_content_universal():
+    """Unified search across all content types for the linking UI."""
+    query = request.args.get('q', '').strip()
+    search_type = request.args.get('type', 'case').strip()
+    exclude_type = request.args.get('exclude_type', '').strip()
+    exclude_id = request.args.get('exclude_id', type=int)
+    limit = request.args.get('limit', 15, type=int)
+
+    if len(query) < 2:
+        return jsonify([])
+
+    results = []
+
+    if search_type == 'case':
+        cases = Case.query.filter(
+            db.or_(Case.diagnosis.ilike(f'%{query}%'), Case.case_number.ilike(f'%{query}%'))
+        ).limit(limit).all()
+        for c in cases:
+            if exclude_type == 'case' and exclude_id == c.id:
+                continue
+            results.append({
+                'link_type': 'case', 'id': c.id,
+                'title': f'{c.case_number} — {(c.diagnosis or "")[:80]}',
+                'subtitle': c.body_part.value if c.body_part else '',
+                'icon': 'fa-file-medical', 'color': '#5E899E',
+            })
+
+    elif search_type == 'pearl':
+        pearls = RadiologyPearl.query.filter(
+            db.or_(
+                RadiologyPearl.pearl_text.ilike(f'%{query}%'),
+                RadiologyPearl.tags.ilike(f'%{query}%'),
+                RadiologyPearl.body_section.ilike(f'%{query}%'),
+            )
+        ).limit(limit).all()
+        import re
+        for p in pearls:
+            if exclude_type == 'pearl' and exclude_id == p.id:
+                continue
+            plain = re.sub(r'<[^>]+>', '', p.pearl_text or '')[:100]
+            results.append({
+                'link_type': 'pearl', 'id': p.id,
+                'title': plain + ('...' if len(re.sub(r'<[^>]+>', '', p.pearl_text or '')) > 100 else ''),
+                'subtitle': ' | '.join(filter(None, [p.body_section, p.modality])),
+                'icon': 'fa-gem', 'color': '#6b46c1',
+            })
+
+    elif search_type == 'algorithm':
+        algos = ReportingAlgorithm.query.filter(
+            ReportingAlgorithm.is_available == True,
+            db.or_(
+                ReportingAlgorithm.title.ilike(f'%{query}%'),
+                ReportingAlgorithm.keywords.ilike(f'%{query}%'),
+                ReportingAlgorithm.body_section.ilike(f'%{query}%'),
+            )
+        ).limit(limit).all()
+        for a in algos:
+            if exclude_type == 'algorithm' and exclude_id == a.id:
+                continue
+            results.append({
+                'link_type': 'algorithm', 'id': a.id,
+                'title': a.title or '',
+                'subtitle': ' | '.join(filter(None, [a.body_section, a.origin])),
+                'icon': 'fa-bone', 'color': '#6f42c1',
+            })
+
+    return jsonify(results)
 
 
 @app.route('/api/case/<int:case_id>/related', methods=['POST'])

@@ -1033,8 +1033,8 @@ function selectItem(el) {
             '    </div>' +
             '  </div>' +
             '</div>' +
-            '<div id="linkedCasesSection" class="mt-3"></div>';
-        loadLinkedCases('pearl', pearlId);
+            '<div id="linkedContentSection" class="mt-3"></div>';
+        loadLinkedContent('pearl', pearlId);
     } else if (type === 'anatomy') {
         var snippetId = id.replace('anatomy-', '');
         var source = document.getElementById('anatomy-content-' + snippetId);
@@ -1068,8 +1068,8 @@ function selectItem(el) {
             {% endif %}
             '  </div>' +
             '</div>' +
-            '<div id="linkedCasesSection" class="mt-3"></div>';
-        loadLinkedCases('algorithm', snippetId);
+            '<div id="linkedContentSection" class="mt-3"></div>';
+        loadLinkedContent('algorithm', snippetId);
     }
 
     placeholder.classList.add('d-none');
@@ -1089,98 +1089,169 @@ function copyDetailContent() {
     });
 }
 
-// ==================== LINKED CASES (bidirectional) ====================
-var _linkedCasesState = { type: null, itemId: null };
+// ==================== LINKED CONTENT (universal bidirectional) ====================
+var _linkedContentState = { type: null, itemId: null };
 
-function loadLinkedCases(type, itemId) {
-    _linkedCasesState = { type: type, itemId: itemId };
-    var container = document.getElementById('linkedCasesSection');
+var _CONTENT_TYPE_META = {
+    case:      { icon: 'fa-file-medical', color: '#5E899E', label: 'Cases' },
+    pearl:     { icon: 'fa-gem',          color: '#6b46c1', label: 'Pearls' },
+    algorithm: { icon: 'fa-bone',         color: '#6f42c1', label: 'Algorithms / Snippets' },
+};
+
+function loadLinkedContent(sourceType, sourceId) {
+    _linkedContentState = { type: sourceType, itemId: sourceId };
+    var container = document.getElementById('linkedContentSection');
     if (!container) return;
-
-    var apiUrl = type === 'pearl'
-        ? '/api/pearl/' + itemId + '/linked-cases'
-        : '/api/algorithm/' + itemId + '/linked-cases';
-    var linkType = type === 'pearl' ? 'pearl' : 'reporting_algorithm';
-    var idField = type === 'pearl' ? 'pearl_id' : 'algorithm_id';
 
     container.innerHTML =
         '<div class="detail-card" style="border-left: 5px solid #5E899E;">' +
         '  <div class="detail-header py-2">' +
         '    <div class="d-flex justify-content-between align-items-center">' +
-        '      <span class="fw-semibold" style="font-size: 0.85rem;"><i class="fas fa-link me-2" style="color: #5E899E;"></i>Linked Cases</span>' +
-        '      <span id="linkedCasesCount" class="badge bg-light text-muted border" style="font-size: 0.6rem;"></span>' +
+        '      <span class="fw-semibold" style="font-size: 0.85rem;"><i class="fas fa-link me-2" style="color: #5E899E;"></i>Linked Content</span>' +
+        '      <span id="linkedContentCount" class="badge bg-light text-muted border" style="font-size: 0.6rem;"></span>' +
         '    </div>' +
         '  </div>' +
         '  <div class="detail-body py-2">' +
-        '    <div id="linkedCasesList" class="d-flex flex-wrap gap-2 mb-2">' +
+        '    <div id="linkedContentList" class="mb-2">' +
         '      <small class="text-muted">Loading...</small>' +
         '    </div>' +
         {% if is_admin %}
         '    <div class="mt-2 pt-2 border-top">' +
-        '      <div class="input-group input-group-sm">' +
-        '        <span class="input-group-text bg-white"><i class="fas fa-search text-muted" style="font-size: 0.7rem;"></i></span>' +
-        '        <input type="text" id="linkCaseSearch" class="form-control form-control-sm" ' +
-        '               placeholder="Search case to link..." oninput="searchCaseForLinking(this.value)">' +
+        '      <div class="d-flex gap-1 mb-1">' +
+        '        <select id="linkContentType" class="form-select form-select-sm" style="max-width: 140px; font-size: 0.75rem;" onchange="updateLinkSearchPlaceholder()">' +
+        '          <option value="case">Case</option>' +
+        '          <option value="pearl">Pearl</option>' +
+        '          <option value="algorithm">Algorithm</option>' +
+        '        </select>' +
+        '        <div class="input-group input-group-sm flex-grow-1">' +
+        '          <span class="input-group-text bg-white"><i class="fas fa-search text-muted" style="font-size: 0.7rem;"></i></span>' +
+        '          <input type="text" id="linkContentSearch" class="form-control form-control-sm" ' +
+        '                 placeholder="Search cases to link..." oninput="searchContentForLinking(this.value)">' +
+        '        </div>' +
         '      </div>' +
-        '      <div id="linkCaseSearchResults" class="list-group mt-1 shadow-sm" style="display: none; max-height: 150px; overflow-y: auto; font-size: 0.8rem;"></div>' +
+        '      <div id="linkContentSearchResults" class="list-group mt-1 shadow-sm" style="display: none; max-height: 180px; overflow-y: auto; font-size: 0.8rem;"></div>' +
         '    </div>' +
         {% endif %}
         '  </div>' +
         '</div>';
 
-    fetch(apiUrl, { credentials: 'include' })
+    fetch('/api/content/' + sourceType + '/' + sourceId + '/links', { credentials: 'include' })
         .then(function(r) { return r.json(); })
-        .then(function(cases) {
-            var list = document.getElementById('linkedCasesList');
-            var count = document.getElementById('linkedCasesCount');
+        .then(function(allItems) {
+            var list = document.getElementById('linkedContentList');
+            var countBadge = document.getElementById('linkedContentCount');
             if (!list) return;
-            count.textContent = cases.length;
-            if (cases.length === 0) {
-                list.innerHTML = '<small class="text-muted">No cases linked yet.</small>';
+            countBadge.textContent = allItems.length;
+            if (allItems.length === 0) {
+                list.innerHTML = '<small class="text-muted">No content linked yet.</small>';
                 return;
             }
-            list.innerHTML = cases.map(function(c) {
-                var removeBtn = '';
-                {% if is_admin %}
-                removeBtn = '<button class="btn btn-link btn-sm p-0 ms-1 text-danger" style="font-size: 0.65rem;" ' +
-                    'onclick="event.preventDefault(); event.stopPropagation(); unlinkCaseFromItem(' + c.id + ')" title="Unlink">' +
-                    '<i class="fas fa-times"></i></button>';
-                {% endif %}
-                return '<a href="' + c.url + '" target="_blank" ' +
-                    'class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1" ' +
-                    'style="font-size: 0.75rem; border-color: #5E899E; color: #5E899E;">' +
-                    '<i class="fas fa-file-medical"></i>' +
-                    '<span class="text-truncate" style="max-width: 180px;">' +
-                    (c.case_number || '') + (c.diagnosis ? ' — ' + c.diagnosis.substring(0, 40) : '') +
-                    '</span>' + removeBtn + '</a>';
-            }).join('');
+            // Group by link_type
+            var grouped = {};
+            allItems.forEach(function(item) {
+                var t = item.link_type;
+                if (!grouped[t]) grouped[t] = [];
+                grouped[t].push(item);
+            });
+            var html = '';
+            // Render each group
+            ['case', 'pearl', 'algorithm'].forEach(function(t) {
+                if (!grouped[t] || grouped[t].length === 0) return;
+                var meta = _CONTENT_TYPE_META[t];
+                html += '<div class="mb-2">' +
+                    '<small class="text-muted fw-semibold d-block mb-1" style="font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.5px;">' +
+                    '<i class="fas ' + meta.icon + ' me-1" style="color: ' + meta.color + ';"></i>' + meta.label +
+                    ' <span class="badge bg-secondary ms-1" style="font-size: 0.55rem;">' + grouped[t].length + '</span></small>' +
+                    '<div class="d-flex flex-wrap gap-1">';
+                grouped[t].forEach(function(item) {
+                    var removeBtn = '';
+                    {% if is_admin %}
+                    removeBtn = '<button class="btn btn-link btn-sm p-0 ms-1 text-danger" style="font-size: 0.6rem;" ' +
+                        'onclick="event.preventDefault(); event.stopPropagation(); unlinkContent(\'' + item.link_type + '\',' + item.id + ')" title="Unlink">' +
+                        '<i class="fas fa-times"></i></button>';
+                    {% endif %}
+                    if (item.link_type === 'case' && item.url) {
+                        html += '<a href="' + item.url + '" target="_blank" ' +
+                            'class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1" ' +
+                            'style="font-size: 0.72rem; border-color: ' + meta.color + '; color: ' + meta.color + ';">' +
+                            '<i class="fas ' + meta.icon + '"></i>' +
+                            '<span class="text-truncate" style="max-width: 200px;">' + (item.title || '') + '</span>' +
+                            removeBtn + '</a>';
+                    } else {
+                        // Pearl or algorithm — try to select in sidebar
+                        var dataId = item.link_type === 'pearl' ? 'pearl-' + item.id : 'anatomy-' + item.id;
+                        html += '<button type="button" ' +
+                            'class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1" ' +
+                            'style="font-size: 0.72rem; border-color: ' + meta.color + '; color: ' + meta.color + ';" ' +
+                            'onclick="selectLinkedItem(\'' + dataId + '\')">' +
+                            '<i class="fas ' + meta.icon + '"></i>' +
+                            '<span class="text-truncate" style="max-width: 200px;">' + (item.title || '') + '</span>' +
+                            removeBtn + '</button>';
+                    }
+                });
+                html += '</div></div>';
+            });
+            list.innerHTML = html;
         })
         .catch(function() {
-            var list = document.getElementById('linkedCasesList');
+            var list = document.getElementById('linkedContentList');
             if (list) list.innerHTML = '<small class="text-muted">Failed to load.</small>';
         });
 }
 
-var _linkCaseSearchTimer;
-function searchCaseForLinking(query) {
-    clearTimeout(_linkCaseSearchTimer);
-    var results = document.getElementById('linkCaseSearchResults');
+function selectLinkedItem(dataId) {
+    // Find item in sidebar and select it
+    var el = document.querySelector('.knowledge-item[data-id="' + dataId + '"]');
+    if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        selectItem(el);
+    } else {
+        showToast('Item not found in current list (may be filtered out).', 'info');
+    }
+}
+
+function updateLinkSearchPlaceholder() {
+    var sel = document.getElementById('linkContentType');
+    var input = document.getElementById('linkContentSearch');
+    if (!sel || !input) return;
+    var placeholders = {
+        case: 'Search cases by diagnosis or number...',
+        pearl: 'Search pearls by text, tags...',
+        algorithm: 'Search algorithms by title, keywords...',
+    };
+    input.placeholder = placeholders[sel.value] || 'Search...';
+    input.value = '';
+    var results = document.getElementById('linkContentSearchResults');
+    if (results) results.style.display = 'none';
+}
+
+var _linkContentSearchTimer;
+function searchContentForLinking(query) {
+    clearTimeout(_linkContentSearchTimer);
+    var results = document.getElementById('linkContentSearchResults');
     if (!results) return;
     if (query.trim().length < 2) { results.style.display = 'none'; return; }
 
-    _linkCaseSearchTimer = setTimeout(function() {
-        fetch('/api/cases/search?q=' + encodeURIComponent(query.trim()) + '&type=related&limit=10', { credentials: 'include' })
+    var searchType = document.getElementById('linkContentType');
+    var type = searchType ? searchType.value : 'case';
+    var st = _linkedContentState;
+
+    _linkContentSearchTimer = setTimeout(function() {
+        var url = '/api/content/search?q=' + encodeURIComponent(query.trim()) +
+            '&type=' + type + '&limit=10' +
+            '&exclude_type=' + st.type + '&exclude_id=' + st.itemId;
+        fetch(url, { credentials: 'include' })
             .then(function(r) { return r.json(); })
             .then(function(items) {
                 if (items.length === 0) {
-                    results.innerHTML = '<div class="list-group-item text-muted" style="font-size: 0.8rem;">No cases found</div>';
+                    results.innerHTML = '<div class="list-group-item text-muted" style="font-size: 0.8rem;">No results found</div>';
                 } else {
-                    results.innerHTML = items.map(function(c) {
+                    results.innerHTML = items.map(function(item) {
                         return '<button type="button" class="list-group-item list-group-item-action py-1" style="font-size: 0.8rem;" ' +
-                            'onclick="linkCaseToItem(' + c.id + ')">' +
-                            '<i class="fas fa-file-medical me-1" style="color:#5E899E;"></i>' +
-                            '<strong>' + (c.case_number || '') + '</strong> ' +
-                            '<small class="text-muted">' + (c.diagnosis || '').substring(0, 50) + '</small>' +
+                            'onclick="linkContentToItem(\'' + item.link_type + '\',' + item.id + ')">' +
+                            '<i class="fas ' + (item.icon || 'fa-link') + ' me-1" style="color:' + (item.color || '#5E899E') + ';"></i>' +
+                            '<span class="text-truncate">' + (item.title || '') + '</span>' +
+                            (item.subtitle ? ' <small class="text-muted ms-1">' + item.subtitle + '</small>' : '') +
                             '</button>';
                     }).join('');
                 }
@@ -1189,56 +1260,52 @@ function searchCaseForLinking(query) {
     }, 300);
 }
 
-function linkCaseToItem(caseId) {
-    var st = _linkedCasesState;
+function linkContentToItem(targetType, targetId) {
+    var st = _linkedContentState;
     if (!st.type || !st.itemId) return;
-    var linkType = st.type === 'pearl' ? 'pearl' : 'reporting_algorithm';
-    var body = { link_type: linkType };
-    if (st.type === 'pearl') body.pearl_id = parseInt(st.itemId);
-    else body.algorithm_id = parseInt(st.itemId);
 
-    fetch('/api/case/' + caseId + '/related', {
+    fetch('/api/content/' + st.type + '/' + st.itemId + '/links', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ target_type: targetType, target_id: targetId }),
         credentials: 'include',
     })
     .then(function(r) { return r.json(); })
     .then(function(data) {
-        if (data.error) { if (typeof showToast === 'function') showToast(data.error, 'warning'); return; }
-        // Clear search and reload linked cases
-        var searchInput = document.getElementById('linkCaseSearch');
-        var results = document.getElementById('linkCaseSearchResults');
+        if (data.error) { showToast(data.error, 'warning'); return; }
+        var searchInput = document.getElementById('linkContentSearch');
+        var results = document.getElementById('linkContentSearchResults');
         if (searchInput) searchInput.value = '';
         if (results) results.style.display = 'none';
-        loadLinkedCases(st.type, st.itemId);
-        if (typeof showToast === 'function') showToast('Case linked!', 'success');
+        loadLinkedContent(st.type, st.itemId);
+        showToast('Content linked!', 'success');
     })
-    .catch(function(err) { if (typeof showToast === 'function') showToast('Failed to link: ' + err.message, 'danger'); });
+    .catch(function(err) { showToast('Failed to link: ' + err.message, 'danger'); });
 }
 
-function unlinkCaseFromItem(caseId) {
-    var st = _linkedCasesState;
+function unlinkContent(targetType, targetId) {
+    var st = _linkedContentState;
     if (!st.type || !st.itemId) return;
-    if (!confirm('Remove this case link?')) return;
-    var linkType = st.type === 'pearl' ? 'pearl' : 'reporting_algorithm';
+    if (!confirm('Remove this link?')) return;
 
-    fetch('/api/case/' + caseId + '/related/' + st.itemId + '?link_type=' + linkType, {
+    fetch('/api/content/' + st.type + '/' + st.itemId + '/links', {
         method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ target_type: targetType, target_id: targetId }),
         credentials: 'include',
     })
     .then(function(r) { return r.json(); })
     .then(function(data) {
-        loadLinkedCases(st.type, st.itemId);
-        if (typeof showToast === 'function') showToast('Link removed.', 'success');
+        loadLinkedContent(st.type, st.itemId);
+        showToast('Link removed.', 'success');
     })
-    .catch(function(err) { if (typeof showToast === 'function') showToast('Failed to unlink.', 'danger'); });
+    .catch(function(err) { showToast('Failed to unlink.', 'danger'); });
 }
 
 // Close search dropdown on outside click
 document.addEventListener('click', function(e) {
-    var results = document.getElementById('linkCaseSearchResults');
-    var input = document.getElementById('linkCaseSearch');
+    var results = document.getElementById('linkContentSearchResults');
+    var input = document.getElementById('linkContentSearch');
     if (results && input && !input.contains(e.target) && !results.contains(e.target)) {
         results.style.display = 'none';
     }
