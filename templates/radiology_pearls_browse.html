@@ -211,8 +211,8 @@
 {% endblock %}
 
 {% block scripts %}
-<!-- TinyMCE CDN -->
-<script src="https://cdn.jsdelivr.net/npm/tinymce@6/tinymce.min.js"></script>
+<!-- TinyMCE (local core, CDN for themes/skins/plugins) -->
+<script src="{{ url_for('static', filename='tinymce.min.js') }}"></script>
 <script>
 var _pearlTinyMCEReady = false;
 
@@ -231,7 +231,6 @@ document.addEventListener('DOMContentLoaded', function() {
             toolbar: 'undo redo | bold italic underline | bullist numlist | link | code',
             plugins: 'lists link code',
             base_url: 'https://cdn.jsdelivr.net/npm/tinymce@6',
-            suffix: '.min',
             relative_urls: false,
             convert_urls: false,
             remove_trailing_brs: true,

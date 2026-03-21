@@ -179,7 +179,7 @@
 </script>
 {{ resource_styles() }}
 <script src="{{ url_for('static', filename='js/admin-resource-helpers.js') }}"></script>
-<script src="https://cdn.jsdelivr.net/npm/tinymce@6/tinymce.min.js"></script>
+<script src="{{ url_for('static', filename='tinymce.min.js') }}"></script>
 <script>
 var ALGORITHM_ID = {{ algorithm.id }};
 var _previewTimeout = null;
@@ -234,7 +234,6 @@ function initTinyMCE() {
         toolbar: 'undo redo | blocks styles | bold italic underline strikethrough | numlist bullist indent outdent | table link image code removeformat',
         plugins: 'table link image code autoresize lists',
         base_url: 'https://cdn.jsdelivr.net/npm/tinymce@6',
-        suffix: '.min',
         relative_urls: false,
         convert_urls: false,
         remove_script_host: false,
