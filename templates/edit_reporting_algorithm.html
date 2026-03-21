@@ -122,7 +122,7 @@
                         <label class="form-label small fw-semibold">Upload Image</label>
                         <input type="file" class="form-control form-control-sm" id="imageUploadInput"
                                accept="image/*" onchange="uploadImageToCloudinary(this)">
-                        <small class="text-muted">Upload to Cloudinary and insert &lt;img&gt; tag into editor</small>
+                        <small class="text-muted">Upload to Cloudinary and insert into editor</small>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label small fw-semibold">Alt text (optional)</label>
@@ -148,7 +148,7 @@
                 <i class="fas fa-columns me-1"></i><span class="d-none d-md-inline">Split</span>
             </button>
             <button class="btn btn-outline-secondary btn-sm" onclick="setEditorLayout('editor')" title="Editor only">
-                <i class="fas fa-code me-1"></i><span class="d-none d-md-inline">Editor</span>
+                <i class="fas fa-edit me-1"></i><span class="d-none d-md-inline">Editor</span>
             </button>
             <button class="btn btn-outline-secondary btn-sm" onclick="setEditorLayout('preview')" title="Preview only">
                 <i class="fas fa-eye me-1"></i><span class="d-none d-md-inline">Preview</span>
@@ -158,26 +158,9 @@
 
     <!-- Editor + Preview (side by side) -->
     <div class="row g-3" style="height: calc(100vh - 290px);">
-        <!-- Code Editor with Syntax Highlighting -->
+        <!-- TinyMCE Editor -->
         <div class="col-md-6 d-flex flex-column" id="editorCol">
-            <div class="html-highlight-wrap flex-grow-1" style="position: relative; border-radius: 8px; overflow: hidden; border: 1px solid #45475a;">
-                <pre id="htmlHighlight" aria-hidden="true"
-                     style="position: absolute; top: 0; left: 0; right: 0; bottom: 0;
-                            margin: 0; padding: 12px; overflow: auto;
-                            font-family: 'Fira Code', 'SF Mono', 'Consolas', monospace;
-                            font-size: 0.82rem; line-height: 1.5; tab-size: 2;
-                            background: #1e1e2e; color: #cdd6f4;
-                            white-space: pre-wrap; word-wrap: break-word;
-                            pointer-events: none; z-index: 1;"></pre>
-                <textarea id="htmlEditor" spellcheck="false"
-                          style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-                                 margin: 0; padding: 12px; overflow: auto;
-                                 font-family: 'Fira Code', 'SF Mono', 'Consolas', monospace;
-                                 font-size: 0.82rem; line-height: 1.5; tab-size: 2;
-                                 background: transparent; color: transparent; caret-color: #f5e0dc;
-                                 border: none; resize: none; z-index: 2;
-                                 white-space: pre-wrap; word-wrap: break-word;">{{ algorithm.template_html or '' }}</textarea>
-            </div>
+            <textarea id="htmlEditor" style="visibility: hidden;">{{ algorithm.template_html or '' }}</textarea>
         </div>
 
         <!-- Live Preview -->
@@ -196,78 +179,172 @@
 </script>
 {{ resource_styles() }}
 <script src="{{ url_for('static', filename='js/admin-resource-helpers.js') }}"></script>
+<script src="https://cdn.jsdelivr.net/npm/tinymce@6/tinymce.min.js"></script>
 <script>
 var ALGORITHM_ID = {{ algorithm.id }};
 var _previewTimeout = null;
 var _isDirty = false;
+var _tinyMCEReady = false;
+
+// ==================== TINYMCE CONTENT STYLES ====================
+
+var EDITOR_CONTENT_STYLE = `
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        font-size: 14px;
+        line-height: 1.6;
+    }
+    a { text-decoration: none !important; }
+    a:hover { text-decoration: underline !important; }
+    table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+    th { background-color: #f8f9fa; font-weight: 600; }
+    img { max-width: 100%; height: auto; border-radius: 8px; margin: 0.5rem 0; }
+    .clinical-note, .key-finding, .differential-dx, .teaching-pearl, .pitfall, .normal-variant, .staging-info, .comparison-box { margin: 1.1rem 0; padding: 10px 16px; background: transparent; border: none; border-radius: 0; font-size: 0.95em; line-height: 1.7; }
+    .clinical-note { border-left: 3px solid #5E899E; }
+    .key-finding { border-left: 3px solid #28a745; }
+    .differential-dx { border-left: 3px solid #7952b3; }
+    .teaching-pearl { border-left: 3px solid #e9a304; }
+    .pitfall { border-left: 3px solid #dc3545; }
+    .normal-variant { border-left: 3px solid #17a2b8; }
+    .staging-info { border-left: 3px solid #c8d6e5; }
+    .comparison-box { border-left: 3px solid #adb5bd; }
+    .diagnosis-box { margin: 1.2rem 0; padding: 14px 18px; background: #fdf8f3; border: none; border-left: 4px solid #e96304; border-radius: 0; font-weight: normal; font-size: 1em; line-height: 1.7; }
+    .highlight-yellow { background-color: #fff3cd; padding: 1px 4px; border-radius: 2px; }
+    .highlight-green { background-color: #d4edda; padding: 1px 4px; border-radius: 2px; }
+    .highlight-red { background-color: #f8d7da; padding: 1px 4px; border-radius: 2px; }
+    .highlight-blue { background-color: #d1ecf1; padding: 1px 4px; border-radius: 2px; }
+    .important-text { color: #c0392b; font-weight: 600; }
+    .subtle-text { color: #6c757d; font-size: 0.9em; }
+    .indent-block { margin: 0.5rem 0 0.5rem 1.5rem; padding: 8px 12px; border-left: 3px solid #dee2e6; color: #495057; }
+    .image-finding { margin: 0.75rem 0; padding: 10px 14px; background: #f8f9fa; border-left: 3px solid #e96304; border-radius: 4px; font-size: 0.95em; }
+    .measurement { display: inline-block; background: #e2e8f0; padding: 2px 8px; border-radius: 4px; font-family: monospace; font-size: 0.9em; color: #2d3748; }
+    .anatomy-label { display: inline-block; background: #5E899E; color: #fff; padding: 1px 9px; border-radius: 10px; font-size: 0.82em; font-weight: 600; letter-spacing: 0.3px; white-space: nowrap; }
+    .anatomy-pearl { margin: 1rem 0; padding: 12px 16px; background: #f0f7fa; border-left: 4px solid #5E899E; border-radius: 0 6px 6px 0; }
+`;
+
+// ==================== TINYMCE INIT ====================
+
+function initTinyMCE() {
+    tinymce.init({
+        selector: '#htmlEditor',
+        height: '100%',
+        min_height: 400,
+        menubar: 'edit view insert format tools',
+        toolbar: 'undo redo | blocks styles | bold italic underline strikethrough | numlist bullist indent outdent | table link image code removeformat',
+        plugins: 'table link image code autoresize lists',
+        base_url: 'https://cdn.jsdelivr.net/npm/tinymce@6',
+        relative_urls: false,
+        convert_urls: false,
+        remove_script_host: false,
+        remove_trailing_brs: true,
+        remove_linebreaks: false,
+        extended_valid_elements: 'div[*],span[*],sup[*],i[*],a[*],img[*],style[*],script[*]',
+        valid_children: '+body[style|script]',
+        custom_elements: '~style,~script',
+        style_formats_merge: true,
+        style_formats: [
+            { title: 'Callout Boxes', items: [
+                { title: 'Clinical Note', block: 'div', classes: 'clinical-note' },
+                { title: 'Key Finding', block: 'div', classes: 'key-finding' },
+                { title: 'Teaching Pearl', block: 'div', classes: 'teaching-pearl' },
+                { title: 'Pitfall', block: 'div', classes: 'pitfall' },
+                { title: 'Differential Dx', block: 'div', classes: 'differential-dx' },
+                { title: 'Normal Variant', block: 'div', classes: 'normal-variant' },
+            ]},
+            { title: 'Diagnostic Boxes', items: [
+                { title: 'Diagnosis Box', block: 'div', classes: 'diagnosis-box' },
+                { title: 'Staging Info', block: 'div', classes: 'staging-info' },
+                { title: 'Comparison Box', block: 'div', classes: 'comparison-box' },
+                { title: 'Image Finding', block: 'div', classes: 'image-finding' },
+                { title: 'Anatomy Pearl', block: 'div', classes: 'anatomy-pearl' },
+            ]},
+            { title: 'Text Emphasis', items: [
+                { title: 'Highlight Yellow', inline: 'span', classes: 'highlight-yellow' },
+                { title: 'Highlight Green', inline: 'span', classes: 'highlight-green' },
+                { title: 'Highlight Red', inline: 'span', classes: 'highlight-red' },
+                { title: 'Highlight Blue', inline: 'span', classes: 'highlight-blue' },
+                { title: 'Important Text', inline: 'span', classes: 'important-text' },
+                { title: 'Subtle Text', inline: 'span', classes: 'subtle-text' },
+            ]},
+            { title: 'Radiology', items: [
+                { title: 'Measurement', inline: 'span', classes: 'measurement' },
+                { title: 'Anatomy Label', inline: 'span', classes: 'anatomy-label' },
+                { title: 'Indent Block', block: 'div', classes: 'indent-block' },
+            ]},
+        ],
+        table_advtab: false,
+        table_cell_advtab: false,
+        table_default_attributes: { border: '1', class: 'table table-sm table-bordered' },
+        image_advtab: true,
+        link_assume_external_targets: true,
+        content_css: 'default',
+        skin: 'oxide',
+        content_style: EDITOR_CONTENT_STYLE,
+        // Cloudinary image upload handler
+        images_upload_handler: function(blobInfo, progress) {
+            return new Promise(function(resolve, reject) {
+                if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {
+                    reject('Cloudinary not configured');
+                    return;
+                }
+                var formData = new FormData();
+                formData.append('file', blobInfo.blob(), blobInfo.filename());
+                formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+                formData.append('folder', 'radinsights/anatomy');
+
+                var xhr = new XMLHttpRequest();
+                xhr.open('POST', 'https://api.cloudinary.com/v1_1/' + CLOUDINARY_CLOUD_NAME + '/image/upload');
+                xhr.upload.onprogress = function(e) {
+                    if (e.lengthComputable) progress(Math.round(e.loaded / e.total * 100));
+                };
+                xhr.onload = function() {
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        var json = JSON.parse(xhr.responseText);
+                        if (json.secure_url) {
+                            resolve(json.secure_url);
+                            // Also add to gallery
+                            addToGallery(json.secure_url);
+                        } else {
+                            reject('Upload failed: no URL returned');
+                        }
+                    } else {
+                        reject('Upload failed: HTTP ' + xhr.status);
+                    }
+                };
+                xhr.onerror = function() { reject('Upload error'); };
+                xhr.send(formData);
+            });
+        },
+        setup: function(editor) {
+            editor.on('init', function() {
+                _tinyMCEReady = true;
+                refreshPreview();
+            });
+            editor.on('change keyup', function() {
+                _isDirty = true;
+                clearTimeout(_previewTimeout);
+                _previewTimeout = setTimeout(refreshPreview, 600);
+            });
+            // Ctrl/Cmd+S to save
+            editor.addShortcut('meta+s', 'Save', function() {
+                saveAll();
+            });
+        }
+    });
+}
 
 // ==================== LIVE PREVIEW ====================
 
 function refreshPreview() {
-    var html = document.getElementById('htmlEditor').value;
-    // Wrap in a base document that allows proper scrolling
+    var editor = tinymce.get('htmlEditor');
+    var html = editor ? editor.getContent() : (document.getElementById('htmlEditor').value || '');
     var wrapper = '<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width, initial-scale=1">'
-        + '<style>html,body{margin:0;padding:0;overflow:auto;}</style></head><body>' + html + '</body></html>';
+        + '<style>html,body{margin:0;padding:12px;overflow:auto;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;font-size:14px;line-height:1.6;}img{max-width:100%;height:auto;border-radius:8px;}table{border-collapse:collapse;width:100%;margin:1rem 0;}th,td{border:1px solid #ddd;padding:8px;}th{background:#f8f9fa;font-weight:600;}'
+        + EDITOR_CONTENT_STYLE
+        + '</style></head><body>' + html + '</body></html>';
     document.getElementById('previewFrame').srcdoc = wrapper;
 }
-
-// ==================== SYNTAX HIGHLIGHTING ====================
-
-function highlightHTML(text) {
-    // Escape HTML entities first
-    var escaped = text
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;');
-    // Highlight HTML tags: <tag>, </tag>, <tag attr="val">
-    escaped = escaped.replace(/(&lt;\/?)([\w-]+)((?:\s+[\w-]+(?:\s*=\s*(?:&quot;[^&]*&quot;|&#39;[^&]*&#39;|&amp;quot;[^&]*&amp;quot;|"[^"]*"|'[^']*'|[^\s&gt;]*))?)*\s*\/?)(&gt;)/g,
-        function(match, open, tag, attrs, close) {
-            var highlightedAttrs = attrs.replace(/([\w-]+)(\s*=\s*)((?:&quot;[^&]*&quot;|&#39;[^&]*&#39;|&amp;quot;[^&]*&amp;quot;|"[^"]*"|'[^']*'|[^\s&gt;]*))/g,
-                '<span style="color:#89b4fa;">$1</span>$2<span style="color:#a6e3a1;">$3</span>');
-            return '<span style="color:#6c7086;">' + open + '</span><span style="color:#f38ba8;">' + tag + '</span>' + highlightedAttrs + '<span style="color:#6c7086;">' + close + '</span>';
-        });
-    // Highlight HTML comments
-    escaped = escaped.replace(/(&lt;!--[\s\S]*?--&gt;)/g, '<span style="color:#6c7086; font-style:italic;">$1</span>');
-    // Ensure trailing newline for proper sizing
-    if (escaped.charAt(escaped.length - 1) === '\n') escaped += ' ';
-    return escaped;
-}
-
-function syncHighlight() {
-    var editor = document.getElementById('htmlEditor');
-    var highlight = document.getElementById('htmlHighlight');
-    highlight.innerHTML = highlightHTML(editor.value);
-}
-
-// Sync scroll position between textarea and highlight overlay
-document.getElementById('htmlEditor').addEventListener('scroll', function() {
-    var highlight = document.getElementById('htmlHighlight');
-    highlight.scrollTop = this.scrollTop;
-    highlight.scrollLeft = this.scrollLeft;
-});
-
-document.getElementById('htmlEditor').addEventListener('input', function() {
-    _isDirty = true;
-    syncHighlight();
-    clearTimeout(_previewTimeout);
-    _previewTimeout = setTimeout(refreshPreview, 600);
-});
-
-// Tab key inserts spaces in editor
-document.getElementById('htmlEditor').addEventListener('keydown', function(e) {
-    if (e.key === 'Tab') {
-        e.preventDefault();
-        var start = this.selectionStart;
-        var end = this.selectionEnd;
-        this.value = this.value.substring(0, start) + '  ' + this.value.substring(end);
-        this.selectionStart = this.selectionEnd = start + 2;
-    }
-    // Ctrl/Cmd+S to save
-    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-        e.preventDefault();
-        saveAll();
-    }
-});
 
 // ==================== LAYOUT TOGGLE ====================
 
@@ -275,14 +352,13 @@ function setEditorLayout(mode) {
     var editorCol = document.getElementById('editorCol');
     var previewCol = document.getElementById('previewCol');
     var label = document.getElementById('editorModeLabel');
-    // Reset active state on layout toggle buttons
     document.querySelectorAll('#layoutToggle .btn').forEach(function(b) { b.classList.remove('active'); });
 
     if (mode === 'editor') {
         editorCol.className = 'col-12 d-flex flex-column';
         editorCol.classList.remove('d-none');
         previewCol.classList.add('d-none');
-        label.innerHTML = '<i class="fas fa-code me-1"></i>Editor Only';
+        label.innerHTML = '<i class="fas fa-edit me-1"></i>Editor Only';
     } else if (mode === 'preview') {
         editorCol.classList.add('d-none');
         previewCol.className = 'col-12 d-flex flex-column';
@@ -296,10 +372,15 @@ function setEditorLayout(mode) {
         previewCol.classList.remove('d-none');
         label.innerHTML = '<i class="fas fa-columns me-1"></i>Split View';
     }
-    // Set active button by matching mode
     var btns = document.querySelectorAll('#layoutToggle .btn');
     var idx = mode === 'split' ? 0 : (mode === 'editor' ? 1 : 2);
     btns[idx].classList.add('active');
+
+    // Resize TinyMCE to fit new layout
+    var editor = tinymce.get('htmlEditor');
+    if (editor) {
+        setTimeout(function() { editor.execCommand('mceAutoResize'); }, 100);
+    }
 }
 
 // ==================== SAVE ====================
@@ -311,6 +392,8 @@ function saveAll() {
     btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Saving...';
 
     var resources = typeof collectResources === 'function' ? collectResources('edit') : {};
+    var editor = tinymce.get('htmlEditor');
+    var htmlContent = editor ? editor.getContent() : document.getElementById('htmlEditor').value;
 
     fetch('/admin/reporting-algorithms/api/' + ALGORITHM_ID, {
         method: 'PUT',
@@ -322,7 +405,7 @@ function saveAll() {
             keywords: document.getElementById('editKeywords').value,
             description: document.getElementById('editDescription').value,
             source_citation: JSON.stringify(resources),
-            template_html: document.getElementById('htmlEditor').value,
+            template_html: htmlContent,
             is_available: document.getElementById('editAvailable').checked,
         }),
     })
@@ -358,32 +441,16 @@ function verifyAlgorithm() {
         });
 }
 
-// ==================== INIT ====================
+// ==================== IMAGE UPLOAD (panel) ====================
 
-window.addEventListener('beforeunload', function(e) {
-    if (_isDirty) {
-        e.preventDefault();
-        e.returnValue = '';
-    }
-});
-
-document.addEventListener('DOMContentLoaded', function() {
-    // Load resources
-    loadAllResources('edit', {{ algorithm.source_citation|default('', true)|tojson }});
-    // Initial preview + syntax highlighting
-    syncHighlight();
-    refreshPreview();
-    // Collapse chevron animation
-    var panel = document.getElementById('metadataPanel');
-    panel.addEventListener('show.bs.collapse', function() {
-        document.getElementById('metaChevron').style.transform = 'rotate(180deg)';
-    });
-    panel.addEventListener('hide.bs.collapse', function() {
-        document.getElementById('metaChevron').style.transform = 'rotate(0deg)';
-    });
-});
-
-// ==================== IMAGE UPLOAD ====================
+function addToGallery(url) {
+    var gallery = document.getElementById('uploadedImagesGallery');
+    var thumb = document.createElement('div');
+    thumb.className = 'position-relative';
+    thumb.innerHTML = '<img src="' + url + '" style="width: 80px; height: 80px; object-fit: cover; border-radius: 6px; border: 2px solid #dee2e6;">'
+        + '<button class="btn btn-sm btn-danger position-absolute top-0 end-0 p-0" style="width: 18px; height: 18px; font-size: 0.6rem; line-height: 1;" onclick="this.parentElement.remove()" title="Remove thumbnail"><i class="fas fa-times"></i></button>';
+    gallery.appendChild(thumb);
+}
 
 function uploadImageToCloudinary(input) {
     if (!input.files || !input.files[0]) return;
@@ -409,25 +476,18 @@ function uploadImageToCloudinary(input) {
     .then(function(data) {
         if (data.secure_url) {
             var altText = document.getElementById('imageAltText').value || file.name;
-            var imgTag = '<img src="' + data.secure_url + '" alt="' + altText + '" style="max-width: 100%; border-radius: 8px; margin: 1rem 0;">';
+            var imgTag = '<img src="' + data.secure_url + '" alt="' + altText + '" style="max-width: 100%; border-radius: 8px; margin: 1rem 0;" />';
 
-            // Insert at cursor position in editor
-            var editor = document.getElementById('htmlEditor');
-            var start = editor.selectionStart;
-            var end = editor.selectionEnd;
-            var text = editor.value;
-            editor.value = text.substring(0, start) + '\n' + imgTag + '\n' + text.substring(end);
-            editor.selectionStart = editor.selectionEnd = start + imgTag.length + 2;
-            _isDirty = true;
-            refreshPreview();
+            // Insert into TinyMCE editor
+            var editor = tinymce.get('htmlEditor');
+            if (editor) {
+                editor.insertContent(imgTag);
+                _isDirty = true;
+                clearTimeout(_previewTimeout);
+                _previewTimeout = setTimeout(refreshPreview, 600);
+            }
 
-            // Add to gallery
-            var gallery = document.getElementById('uploadedImagesGallery');
-            var thumb = document.createElement('div');
-            thumb.className = 'position-relative';
-            thumb.innerHTML = '<img src="' + data.secure_url + '" style="width: 80px; height: 80px; object-fit: cover; border-radius: 6px; border: 2px solid #dee2e6;">'
-                + '<button class="btn btn-sm btn-danger position-absolute top-0 end-0 p-0" style="width: 18px; height: 18px; font-size: 0.6rem; line-height: 1;" onclick="this.parentElement.remove()" title="Remove thumbnail"><i class="fas fa-times"></i></button>';
-            gallery.appendChild(thumb);
+            addToGallery(data.secure_url);
 
             status.innerHTML = '<i class="fas fa-check text-success me-1"></i>Uploaded!';
             setTimeout(function() { status.textContent = ''; }, 3000);
@@ -442,9 +502,45 @@ function uploadImageToCloudinary(input) {
         input.value = '';
     });
 }
+
+// ==================== INIT ====================
+
+window.addEventListener('beforeunload', function(e) {
+    if (_isDirty) {
+        e.preventDefault();
+        e.returnValue = '';
+    }
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Load resources
+    loadAllResources('edit', {{ algorithm.source_citation|default('', true)|tojson }});
+    // Init TinyMCE
+    initTinyMCE();
+    // Collapse chevron animation
+    var panel = document.getElementById('metadataPanel');
+    panel.addEventListener('show.bs.collapse', function() {
+        document.getElementById('metaChevron').style.transform = 'rotate(180deg)';
+    });
+    panel.addEventListener('hide.bs.collapse', function() {
+        document.getElementById('metaChevron').style.transform = 'rotate(0deg)';
+    });
+});
+
+// Global keyboard shortcut (outside TinyMCE)
+document.addEventListener('keydown', function(e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        saveAll();
+    }
+});
 </script>
 <style>
     #metaChevron { transition: transform 0.2s ease; }
-    #htmlEditor:focus { outline: none; box-shadow: 0 0 0 2px rgba(233, 99, 4, 0.3); }
+    /* Make TinyMCE fill the editor column */
+    #editorCol .tox-tinymce {
+        flex: 1;
+        border-radius: 8px !important;
+    }
 </style>
 {% endblock %}

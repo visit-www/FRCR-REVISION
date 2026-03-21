@@ -2586,6 +2586,16 @@ def save_pearl():
             'duplicate': True,
         })
 
+    # Sanitize HTML if pearl contains markup (from TinyMCE editor)
+    if '<' in pearl_text:
+        from app import sanitize_clinical_html
+        pearl_text = sanitize_clinical_html(pearl_text)
+        # Recalculate hash after sanitization
+        content_hash = hashlib.sha256(pearl_text.lower().encode('utf-8')).hexdigest()
+        existing = RadiologyPearl.query.filter_by(content_hash=content_hash).first()
+        if existing:
+            return jsonify({'success': True, 'message': 'Pearl already exists.', 'pearl': _pearl_to_dict(existing), 'duplicate': True})
+
     pearl = RadiologyPearl(
         content_hash=content_hash,
         pearl_text=pearl_text,
@@ -2663,6 +2673,10 @@ def update_pearl(pearl_id):
         new_text = data['pearl_text'].strip()
         if not new_text:
             return jsonify({'error': 'pearl_text cannot be empty'}), 400
+        # Sanitize HTML if pearl contains markup (from TinyMCE editor)
+        if '<' in new_text:
+            from app import sanitize_clinical_html
+            new_text = sanitize_clinical_html(new_text)
         new_hash = hashlib.sha256(new_text.lower().encode('utf-8')).hexdigest()
         dup = RadiologyPearl.query.filter(
             RadiologyPearl.content_hash == new_hash,
