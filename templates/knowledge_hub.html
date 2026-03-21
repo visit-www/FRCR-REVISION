@@ -8,7 +8,7 @@
 {% endblock %}
 
 {% block content %}
-<div class="py-3 px-lg-0">
+<div class="kh-page py-3 px-0">
     <!-- Header -->
     <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
         <div>
@@ -425,6 +425,18 @@
 {% endif %}
 
 <style>
+/* ==================== PAGE LAYOUT OVERRIDE ==================== */
+/* Reduce parent container padding so Knowledge Hub uses near-full viewport width */
+#main-content:has(> .kh-page) {
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+}
+/* Fallback for browsers without :has() — targets via JS-added class */
+#main-content.kh-active {
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+}
+
 /* ==================== MODALITY CHECK PILLS ==================== */
 .modality-check-pill {
     display: inline-block;
@@ -696,6 +708,13 @@
 {% block scripts %}
 <script src="{{ url_for('static', filename='tinymce.min.js') }}"></script>
 <script>
+// ==================== LAYOUT: :has() FALLBACK ====================
+// For browsers without CSS :has() support, add class directly
+(function() {
+    var mc = document.getElementById('main-content');
+    if (mc) mc.classList.add('kh-active');
+})();
+
 // ==================== MODALITY COLOUR MAP ====================
 var MODALITY_COLORS = {
     'CT':              { border: '#ff9800', bg: '#fff3e0', text: '#e65100' },
