@@ -1,0 +1,1058 @@
+{% extends 'base.html' %}
+{% block title %}Knowledge Hub - RadInsights{% endblock %}
+{% block tool_active_knowledge_hub %}active{% endblock %}
+{% block mobile_active_knowledge_hub %}active{% endblock %}
+
+{% block mobile_breadcrumb %}
+<li class="breadcrumb-item active text-white-50">Knowledge Hub</li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+    <!-- Header -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+        <div>
+            <h4 class="mb-1">
+                <i class="fas fa-book-medical me-2" style="color: var(--brand-neutral);"></i>Knowledge Hub
+            </h4>
+            <small class="text-muted">Clinical pearls & anatomy references
+                <span class="badge bg-light text-dark border ms-1">{{ pearl_count + snippet_count }} items</span>
+            </small>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+            <div class="input-group" style="max-width: 260px;">
+                <span class="input-group-text bg-white border-end-0"><i class="fas fa-search text-muted"></i></span>
+                <input type="text" id="knowledgeSearch" class="form-control border-start-0"
+                       placeholder="Search..." autocomplete="off">
+            </div>
+            <a href="/smart-reporter" class="btn btn-sm btn-brand-primary">
+                <i class="fas fa-file-medical me-1"></i><span class="d-none d-sm-inline">Smart Reporter</span>
+            </a>
+            {% if is_admin %}
+            <button class="btn btn-sm btn-brand-neutral" onclick="addNewPearl()">
+                <i class="fas fa-plus me-1"></i>Add Pearl
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Content Type Tabs -->
+    <ul class="nav nav-pills nav-fill mb-3" style="max-width: 400px;" id="contentTypeTabs">
+        <li class="nav-item">
+            <a class="nav-link active py-1 px-2" href="#" data-content-type="all" style="font-size: 0.85rem;">
+                All <span class="badge bg-secondary ms-1" id="countAll">{{ pearl_count + snippet_count }}</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link py-1 px-2" href="#" data-content-type="pearl" style="font-size: 0.85rem;">
+                <i class="fas fa-gem me-1" style="color: #6b46c1;"></i>Pearls
+                <span class="badge bg-secondary ms-1" id="countPearls">{{ pearl_count }}</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link py-1 px-2" href="#" data-content-type="anatomy" style="font-size: 0.85rem;">
+                <i class="fas fa-bone me-1" style="color: #6f42c1;"></i>Anatomy
+                <span class="badge bg-secondary ms-1" id="countAnatomy">{{ snippet_count }}</span>
+            </a>
+        </li>
+    </ul>
+
+    <!-- Two-Panel Layout -->
+    <div class="row">
+        <!-- LEFT SIDEBAR -->
+        <div class="col-lg-4 mb-3 mb-lg-0">
+            <div class="knowledge-hub-sidebar">
+
+                <!-- Body Map (desktop) -->
+                <div class="card border-0 shadow-sm mb-3 d-none d-lg-block">
+                    <div class="card-body p-2 text-center">
+                        <svg id="bodyMap" viewBox="0 0 200 360" xmlns="http://www.w3.org/2000/svg" style="width: 160px; height: auto;">
+                            <!-- Brain -->
+                            <g class="body-region" data-section="Brain">
+                                <title>Brain</title>
+                                <ellipse cx="100" cy="32" rx="26" ry="22"/>
+                                <text class="body-region-count" x="100" y="36" id="mapCount-Brain"></text>
+                            </g>
+                            <!-- Head and Neck -->
+                            <g class="body-region" data-section="Head and Neck">
+                                <title>Head and Neck</title>
+                                <path d="M85,54 Q85,60 88,66 L88,78 Q88,82 92,82 L108,82 Q112,82 112,78 L112,66 Q115,60 115,54 Z"/>
+                                <text class="body-region-count" x="100" y="72" id="mapCount-HeadandNeck"></text>
+                            </g>
+                            <!-- Thorax -->
+                            <g class="body-region" data-section="Thorax">
+                                <title>Thorax</title>
+                                <path d="M68,86 L60,90 L55,130 L65,145 L135,145 L145,130 L140,90 L132,86 Z"/>
+                                <text class="body-region-count" x="100" y="118" id="mapCount-Thorax"></text>
+                            </g>
+                            <!-- Cardiovascular (heart overlay on thorax) -->
+                            <g class="body-region" data-section="Cardiovascular">
+                                <title>Cardiovascular</title>
+                                <path d="M92,105 C88,98 78,98 78,108 C78,118 92,126 92,126 C92,126 106,118 106,108 C106,98 96,98 92,105 Z" style="opacity: 0.7;"/>
+                                <text class="body-region-count" x="92" y="115" id="mapCount-Cardiovascular"></text>
+                            </g>
+                            <!-- Breast -->
+                            <g class="body-region" data-section="Breast">
+                                <title>Breast</title>
+                                <circle cx="118" cy="118" r="12" style="opacity: 0.6;"/>
+                                <text class="body-region-count" x="118" y="122" id="mapCount-Breast"></text>
+                            </g>
+                            <!-- Abdomen -->
+                            <g class="body-region" data-section="Abdomen">
+                                <title>Abdomen</title>
+                                <path d="M65,148 L60,195 L140,195 L135,148 Z"/>
+                                <text class="body-region-count" x="100" y="175" id="mapCount-Abdomen"></text>
+                            </g>
+                            <!-- Pelvis -->
+                            <g class="body-region" data-section="Pelvis">
+                                <title>Pelvis</title>
+                                <path d="M60,198 L55,230 L75,240 L100,245 L125,240 L145,230 L140,198 Z"/>
+                                <text class="body-region-count" x="100" y="222" id="mapCount-Pelvis"></text>
+                            </g>
+                            <!-- Spine -->
+                            <g class="body-region" data-section="Spine">
+                                <title>Spine</title>
+                                <rect x="96" y="82" width="8" height="160" rx="3"/>
+                                <text class="body-region-count" x="100" y="162" id="mapCount-Spine" style="font-size: 8px;"></text>
+                            </g>
+                            <!-- Musculoskeletal (arms + legs) -->
+                            <g class="body-region" data-section="Musculoskeletal">
+                                <title>Musculoskeletal</title>
+                                <!-- Left arm -->
+                                <path d="M55,90 L40,100 L28,140 L24,180 L32,182 L38,145 L48,110 L55,100 Z"/>
+                                <!-- Right arm -->
+                                <path d="M145,90 L160,100 L172,140 L176,180 L168,182 L162,145 L152,110 L145,100 Z"/>
+                                <!-- Left leg -->
+                                <path d="M75,242 L68,290 L65,340 L78,342 L80,295 L85,250 Z"/>
+                                <!-- Right leg -->
+                                <path d="M125,242 L132,290 L135,340 L122,342 L120,295 L115,250 Z"/>
+                                <text class="body-region-count" x="32" y="155" id="mapCount-Musculoskeletal" style="font-size: 8px;"></text>
+                            </g>
+                        </svg>
+                        <!-- Multisystem button below map -->
+                        <div class="mt-1">
+                            <button class="btn btn-sm btn-outline-secondary body-region-btn" data-section="Multisystem" style="font-size: 0.7rem;">
+                                <i class="fas fa-globe me-1"></i>Multisystem
+                                <span class="badge bg-light text-dark ms-1" id="mapCount-Multisystem"></span>
+                            </button>
+                            <button class="btn btn-sm btn-outline-secondary ms-1" id="clearBodyMap" style="font-size: 0.7rem; display: none;" onclick="clearBodySection()">
+                                <i class="fas fa-times me-1"></i>Clear
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Body Section Dropdown (mobile) -->
+                <select id="bodySectionDropdown" class="form-select form-select-sm mb-2 d-lg-none">
+                    <option value="">All Body Sections</option>
+                    {% for section in ['Brain','Head and Neck','Thorax','Cardiovascular','Breast','Abdomen','Pelvis','Spine','Musculoskeletal','Multisystem'] %}
+                    <option value="{{ section }}">{{ section }} ({{ section_counts.get(section, 0) }})</option>
+                    {% endfor %}
+                </select>
+
+                <!-- Mobile filter toggle -->
+                <button class="btn btn-sm btn-outline-secondary w-100 mb-2 d-lg-none" data-bs-toggle="collapse" data-bs-target="#filterPanel">
+                    <i class="fas fa-filter me-1"></i>Filters
+                    <span id="activeFilterBadge" class="badge bg-primary ms-1 d-none">0</span>
+                </button>
+
+                <div id="filterPanel" class="collapse d-lg-block">
+                    <!-- Modality Chips -->
+                    {% if modalities %}
+                    <div class="mb-3">
+                        <small class="text-uppercase fw-semibold text-muted d-block mb-2" style="font-size: 0.7rem; letter-spacing: 0.5px;">Modality</small>
+                        <div class="d-flex flex-wrap gap-1">
+                            {% for mod in modalities %}
+                            <button class="btn btn-sm modality-chip" data-modality="{{ mod }}" style="font-size: 0.72rem; padding: 2px 8px;">{{ mod }}</button>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Tag Cloud -->
+                    {% if tag_cloud %}
+                    <div class="mb-3">
+                        <small class="text-uppercase fw-semibold text-muted d-block mb-2" style="font-size: 0.7rem; letter-spacing: 0.5px;">Tags</small>
+                        <div class="tag-cloud">
+                            {% for tag, count in tag_cloud %}
+                            <span class="tag-cloud-item" data-tag="{{ tag }}">{{ tag }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Active Filters -->
+                <div id="activeFilters" class="mb-2 d-none">
+                    <div class="d-flex flex-wrap gap-1 align-items-center" id="activeFilterPills"></div>
+                </div>
+
+                <!-- Scrollable Item List -->
+                <div class="knowledge-hub-item-list">
+                    {% for p in pearls %}
+                    <div class="knowledge-item" data-id="pearl-{{ p.id }}" data-type="pearl"
+                         data-body-section="{{ p.body_section or '' }}" data-modality="{{ p.modality or '' }}"
+                         data-tags="{{ (p.tags or '')|lower }}" data-text="{{ p.pearl_text|striptags|lower }}"
+                         onclick="selectItem(this)">
+                        <div class="d-flex align-items-start gap-2">
+                            <i class="fas fa-gem mt-1 flex-shrink-0" style="color: #6b46c1; font-size: 0.7rem;"></i>
+                            <div class="flex-grow-1" style="min-width: 0;">
+                                <div class="knowledge-item-title">{{ p.pearl_text|striptags|truncate(80) }}</div>
+                                <div class="d-flex gap-1 mt-1 flex-wrap">
+                                    {% if p.modality %}
+                                    <span class="modality-badge" data-modality="{{ p.modality }}">{{ p.modality }}</span>
+                                    {% endif %}
+                                    {% if p.body_section %}
+                                    <span class="badge bg-light text-muted border" style="font-size: 0.55rem;">{{ p.body_section }}</span>
+                                    {% endif %}
+                                    {% if not p.is_verified %}
+                                    <span class="badge bg-warning text-dark" style="font-size: 0.5rem;">Pending</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    {% for s in snippets %}
+                    <div class="knowledge-item" data-id="anatomy-{{ s.id }}" data-type="anatomy"
+                         data-slug="{{ s.slug }}" data-body-section="{{ s.body_section or '' }}" data-modality=""
+                         data-tags="{{ (s.keywords or '')|lower }}" data-text="{{ s.title|lower }} {{ (s.description or '')|lower }}"
+                         onclick="selectItem(this)">
+                        <div class="d-flex align-items-start gap-2">
+                            <i class="fas fa-bone mt-1 flex-shrink-0" style="color: #6f42c1; font-size: 0.7rem;"></i>
+                            <div class="flex-grow-1" style="min-width: 0;">
+                                <div class="knowledge-item-title">{{ s.title }}</div>
+                                {% if s.body_section %}
+                                <span class="badge bg-light text-muted border mt-1" style="font-size: 0.55rem;">{{ s.body_section }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+
+                    {% if not pearls and not snippets %}
+                    <div class="text-center py-4 text-muted">
+                        <i class="fas fa-book-medical" style="font-size: 2rem; opacity: 0.3;"></i>
+                        <p class="mt-2 small">No items yet. Use Smart Reporter to generate content.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT DETAIL PANEL -->
+        <div class="col-lg-8">
+            <div id="detailPanel" class="knowledge-hub-detail">
+                <!-- Placeholder -->
+                <div id="detailPlaceholder" class="text-center py-5 text-muted">
+                    <i class="fas fa-book-medical" style="font-size: 3rem; opacity: 0.2; color: var(--brand-neutral);"></i>
+                    <p class="mt-3">Select an item from the list to view details</p>
+                    <small>Use the body map, modality chips, or search to find content</small>
+                </div>
+                <!-- Detail content (populated by JS) -->
+                <div id="detailContent" class="d-none"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden content for JS to read -->
+{% for p in pearls %}
+<div class="d-none" id="pearl-content-{{ p.id }}">
+    <div class="pearl-detail-data"
+         data-verified="{{ 'true' if p.is_verified else 'false' }}"
+         data-modality="{{ p.modality or '' }}"
+         data-body-section="{{ p.body_section or '' }}"
+         data-tags="{{ p.tags or '' }}"
+         data-created-by="{{ p.created_by.get_display_name() if p.created_by else '' }}"
+         data-created-at="{{ p.created_at.strftime('%d %b %Y') if p.created_at else '' }}"
+         data-pearl-id="{{ p.id }}">
+        {{ p.pearl_text|safe }}
+    </div>
+</div>
+{% endfor %}
+{% for s in snippets %}
+<div class="d-none" id="anatomy-content-{{ s.id }}">
+    <div class="anatomy-detail-data"
+         data-title="{{ s.title }}"
+         data-slug="{{ s.slug }}"
+         data-body-section="{{ s.body_section or '' }}"
+         data-snippet-id="{{ s.id }}">
+        {{ s.template_html|safe }}
+    </div>
+</div>
+{% endfor %}
+
+<!-- Edit Pearl Modal (admin only) -->
+{% if is_admin %}
+<div class="modal fade app-content-modal" id="editPearlModal" tabindex="-1" data-bs-focus="false">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-gem me-2"></i>Edit Pearl</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editPearlId">
+                <div class="mb-3">
+                    <label class="form-label">Pearl Text</label>
+                    <textarea class="form-control" id="editPearlText" rows="6"></textarea>
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-6">
+                        <label class="form-label">Body Section</label>
+                        <select class="form-select" id="editPearlBodySection">
+                            <option value="">--</option>
+                            {% for bs in ['Thorax','Abdomen','Pelvis','Head and Neck','Brain','Spine','Musculoskeletal','Cardiovascular','Breast','Multisystem'] %}
+                            <option value="{{ bs }}">{{ bs }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label">Modality</label>
+                        <input type="text" class="form-control" id="editPearlModality" placeholder="e.g. CT, MRI">
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Tags (comma-separated)</label>
+                    <input type="text" class="form-control" id="editPearlTags" placeholder="e.g. liver, cirrhosis">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-modal-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-modal-primary" onclick="saveEditPearl()">
+                    <i class="fas fa-save me-1"></i>Save
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<style>
+/* ==================== BODY MAP ==================== */
+.body-region {
+    fill: rgba(94, 137, 158, 0.08);
+    stroke: var(--brand-neutral, #5E899E);
+    stroke-width: 1.2;
+    cursor: pointer;
+    transition: fill 0.2s, stroke 0.2s, stroke-width 0.2s;
+}
+.body-region:hover {
+    fill: rgba(94, 137, 158, 0.2);
+}
+.body-region.active {
+    fill: rgba(233, 99, 4, 0.15);
+    stroke: var(--brand-primary, #e96304);
+    stroke-width: 2.5;
+}
+.body-region-count {
+    font-size: 9px;
+    font-weight: 700;
+    fill: var(--brand-text-primary, #2c3e50);
+    text-anchor: middle;
+    pointer-events: none;
+}
+.body-region-btn.active {
+    background: var(--brand-primary, #e96304) !important;
+    color: #fff !important;
+    border-color: var(--brand-primary, #e96304) !important;
+}
+
+/* ==================== MODALITY COLOURS ==================== */
+.modality-chip {
+    border: 1.5px solid #ccc;
+    background: #f8f9fa;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.modality-chip:hover { opacity: 0.85; }
+.modality-chip.active {
+    color: #fff !important;
+    font-weight: 600;
+}
+.modality-badge {
+    display: inline-block;
+    font-size: 0.55rem;
+    padding: 1px 6px;
+    border-radius: 8px;
+    font-weight: 600;
+}
+
+/* ==================== TAG CLOUD ==================== */
+.tag-cloud { line-height: 2; }
+.tag-cloud-item {
+    display: inline-block;
+    padding: 1px 8px;
+    margin: 1px;
+    border-radius: 10px;
+    background: #f0f0f0;
+    color: var(--brand-text-secondary, #5a6270);
+    cursor: pointer;
+    transition: all 0.15s;
+    font-size: 0.72rem;
+}
+.tag-cloud-item:hover {
+    background: rgba(233, 99, 4, 0.1);
+    color: var(--brand-primary, #e96304);
+}
+.tag-cloud-item.active {
+    background: var(--brand-primary, #e96304);
+    color: #fff;
+}
+
+/* ==================== ITEM LIST ==================== */
+.knowledge-hub-item-list {
+    max-height: calc(100vh - 520px);
+    overflow-y: auto;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    background: #fff;
+}
+.knowledge-item {
+    padding: 10px 12px;
+    border-bottom: 1px solid #f0f0f0;
+    cursor: pointer;
+    transition: background 0.15s;
+    border-left: 4px solid transparent;
+}
+.knowledge-item:last-child { border-bottom: none; }
+.knowledge-item:hover {
+    background: #f8f9fa;
+}
+.knowledge-item.active {
+    background: rgba(94, 137, 158, 0.08);
+    border-left-color: var(--brand-primary, #e96304) !important;
+}
+.knowledge-item-title {
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: var(--brand-text-primary, #2c3e50);
+    line-height: 1.4;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+/* ==================== DETAIL PANEL ==================== */
+.knowledge-hub-detail {
+    min-height: 400px;
+}
+.detail-header {
+    padding: 1rem 1.25rem;
+    background: linear-gradient(135deg, #fdfdfb 0%, #f8f8f6 100%);
+    border-bottom: 1px solid #e9ecef;
+    border-radius: 10px 10px 0 0;
+}
+.detail-body {
+    padding: 1.25rem;
+}
+
+/* Pearl content styling */
+.pearl-content p { margin-bottom: 0.5rem; }
+.pearl-content p:last-child { margin-bottom: 0; }
+.pearl-content strong { color: var(--brand-text-primary, #2c3e50); }
+.pearl-content ul, .pearl-content ol { padding-left: 1.4rem; margin: 0.4rem 0; }
+.pearl-content li { margin-bottom: 0.2rem; }
+
+/* Anatomy content styling */
+.anatomy-content { font-size: 0.95rem; line-height: 1.7; color: var(--brand-text-primary); }
+.anatomy-content h1, .anatomy-content h2, .anatomy-content h3,
+.anatomy-content h4, .anatomy-content h5, .anatomy-content h6 {
+    color: var(--brand-text-primary); margin-top: 1.5rem; margin-bottom: 0.75rem;
+}
+.anatomy-content h1 { font-size: 1.5rem; font-weight: 700; }
+.anatomy-content h2 { font-size: 1.3rem; font-weight: 600; color: var(--brand-neutral); }
+.anatomy-content h3 { font-size: 1.1rem; font-weight: 600; }
+.anatomy-content ul, .anatomy-content ol { padding-left: 1.5rem; margin-bottom: 1rem; }
+.anatomy-content li { margin-bottom: 0.35rem; }
+.anatomy-content table { width: 100%; border-collapse: collapse; margin-bottom: 1rem; }
+.anatomy-content table th { background: var(--brand-neutral); color: white; padding: 0.5rem 0.75rem; font-size: 0.9rem; }
+.anatomy-content table td { padding: 0.5rem 0.75rem; border-bottom: 1px solid #e9ecef; font-size: 0.9rem; }
+.anatomy-content table tr:hover td { background: #f8f9fa; }
+.anatomy-content strong { color: var(--brand-text-primary); }
+.anatomy-content p { margin-bottom: 0.75rem; }
+.anatomy-content .anatomy-pearl {
+    background: #fff3cd; border-left: 4px solid #e96304;
+    padding: 0.75rem 1rem; border-radius: 0 6px 6px 0; margin: 1rem 0;
+}
+.anatomy-content .anatomy-pearl strong { color: #e96304; }
+
+/* ==================== FILTER PILLS ==================== */
+.filter-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: var(--brand-neutral, #5E899E);
+    color: #fff;
+    font-size: 0.7rem;
+    cursor: pointer;
+}
+.filter-pill:hover { opacity: 0.8; }
+
+/* ==================== RESPONSIVE ==================== */
+@media (min-width: 992px) {
+    .knowledge-hub-sidebar {
+        position: sticky;
+        top: 110px;
+        max-height: calc(100vh - 130px);
+        overflow-y: auto;
+    }
+}
+@media (max-width: 991px) {
+    .knowledge-hub-item-list {
+        max-height: 50vh;
+    }
+}
+
+/* Nav pills active state */
+#contentTypeTabs .nav-link.active {
+    background: var(--brand-neutral, #5E899E);
+    color: #fff;
+}
+#contentTypeTabs .nav-link:not(.active) {
+    color: var(--brand-text-secondary, #5a6270);
+}
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='tinymce.min.js') }}"></script>
+<script>
+// ==================== MODALITY COLOUR MAP ====================
+var MODALITY_COLORS = {
+    'CT':          { border: '#ff9800', bg: '#fff3e0', text: '#e65100' },
+    'MRI':         { border: '#2196f3', bg: '#e3f2fd', text: '#0d47a1' },
+    'Ultrasound':  { border: '#4caf50', bg: '#e8f5e9', text: '#1b5e20' },
+    'US':          { border: '#4caf50', bg: '#e8f5e9', text: '#1b5e20' },
+    'X-Ray':       { border: '#9c27b0', bg: '#f3e5f5', text: '#4a148c' },
+    'XR':          { border: '#9c27b0', bg: '#f3e5f5', text: '#4a148c' },
+    'Fluoroscopy': { border: '#e91e63', bg: '#fce4ec', text: '#880e4f' },
+    'NM':          { border: '#ffc107', bg: '#fff8e1', text: '#f57f17' },
+    'PET':         { border: '#009688', bg: '#e0f2f1', text: '#004d40' },
+    'PET-CT':      { border: '#009688', bg: '#e0f2f1', text: '#004d40' },
+};
+var DEFAULT_COLOR = { border: '#9e9e9e', bg: '#f5f5f5', text: '#616161' };
+
+function getModalityColor(modality) {
+    return MODALITY_COLORS[modality] || MODALITY_COLORS[modality.toUpperCase()] || DEFAULT_COLOR;
+}
+
+// ==================== FILTER STATE ====================
+var filterState = {
+    bodySection: null,
+    modality: null,
+    tags: [],
+    contentType: 'all',
+    searchQuery: '',
+};
+
+// ==================== APPLY FILTERS ====================
+function applyFilters() {
+    var items = document.querySelectorAll('.knowledge-item');
+    var visibleCount = 0, pearlCount = 0, anatomyCount = 0;
+
+    items.forEach(function(item) {
+        var visible = true;
+        if (filterState.contentType !== 'all' && item.dataset.type !== filterState.contentType) visible = false;
+        if (visible && filterState.bodySection && item.dataset.bodySection !== filterState.bodySection) visible = false;
+        if (visible && filterState.modality && item.dataset.modality !== filterState.modality) visible = false;
+        if (visible && filterState.tags.length > 0) {
+            var itemTags = (item.dataset.tags || '').split(',').map(function(t) { return t.trim(); });
+            for (var i = 0; i < filterState.tags.length; i++) {
+                if (itemTags.indexOf(filterState.tags[i]) === -1) { visible = false; break; }
+            }
+        }
+        if (visible && filterState.searchQuery) {
+            var q = filterState.searchQuery;
+            var text = (item.dataset.text || '');
+            var tags = (item.dataset.tags || '');
+            if (text.indexOf(q) === -1 && tags.indexOf(q) === -1) visible = false;
+        }
+        item.style.display = visible ? '' : 'none';
+        if (visible) {
+            visibleCount++;
+            if (item.dataset.type === 'pearl') pearlCount++;
+            if (item.dataset.type === 'anatomy') anatomyCount++;
+        }
+    });
+
+    document.getElementById('countAll').textContent = visibleCount;
+    document.getElementById('countPearls').textContent = pearlCount;
+    document.getElementById('countAnatomy').textContent = anatomyCount;
+    renderActiveFilters();
+    updateBodyMapCounts();
+
+    // Auto-select first visible if current selection is hidden
+    var activeItem = document.querySelector('.knowledge-item.active');
+    if (!activeItem || activeItem.style.display === 'none') {
+        var first = document.querySelector('.knowledge-item[style=""], .knowledge-item:not([style])');
+        if (first) selectItem(first);
+    }
+}
+
+// ==================== BODY MAP ====================
+document.querySelectorAll('.body-region').forEach(function(region) {
+    region.addEventListener('click', function() {
+        var section = this.dataset.section;
+        if (filterState.bodySection === section) {
+            filterState.bodySection = null;
+            this.classList.remove('active');
+        } else {
+            document.querySelectorAll('.body-region').forEach(function(r) { r.classList.remove('active'); });
+            document.querySelectorAll('.body-region-btn').forEach(function(b) { b.classList.remove('active'); });
+            filterState.bodySection = section;
+            this.classList.add('active');
+        }
+        syncDropdown();
+        document.getElementById('clearBodyMap').style.display = filterState.bodySection ? '' : 'none';
+        applyFilters();
+    });
+});
+
+// Multisystem button
+document.querySelectorAll('.body-region-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+        var section = this.dataset.section;
+        if (filterState.bodySection === section) {
+            filterState.bodySection = null;
+            this.classList.remove('active');
+        } else {
+            document.querySelectorAll('.body-region').forEach(function(r) { r.classList.remove('active'); });
+            document.querySelectorAll('.body-region-btn').forEach(function(b) { b.classList.remove('active'); });
+            filterState.bodySection = section;
+            this.classList.add('active');
+        }
+        syncDropdown();
+        document.getElementById('clearBodyMap').style.display = filterState.bodySection ? '' : 'none';
+        applyFilters();
+    });
+});
+
+function clearBodySection() {
+    filterState.bodySection = null;
+    document.querySelectorAll('.body-region').forEach(function(r) { r.classList.remove('active'); });
+    document.querySelectorAll('.body-region-btn').forEach(function(b) { b.classList.remove('active'); });
+    document.getElementById('clearBodyMap').style.display = 'none';
+    syncDropdown();
+    applyFilters();
+}
+
+function syncDropdown() {
+    var dd = document.getElementById('bodySectionDropdown');
+    if (dd) dd.value = filterState.bodySection || '';
+}
+
+// Mobile dropdown
+var dropdown = document.getElementById('bodySectionDropdown');
+if (dropdown) {
+    dropdown.addEventListener('change', function() {
+        filterState.bodySection = this.value || null;
+        document.querySelectorAll('.body-region').forEach(function(r) {
+            r.classList.toggle('active', r.dataset.section === filterState.bodySection);
+        });
+        document.getElementById('clearBodyMap').style.display = filterState.bodySection ? '' : 'none';
+        applyFilters();
+    });
+}
+
+function updateBodyMapCounts() {
+    var sections = ['Brain','Head and Neck','Thorax','Cardiovascular','Breast','Abdomen','Pelvis','Spine','Musculoskeletal','Multisystem'];
+    sections.forEach(function(section) {
+        var count = 0;
+        document.querySelectorAll('.knowledge-item').forEach(function(item) {
+            if (item.style.display === 'none') return;
+            // Don't count body section filter for map counts — count based on other filters
+            if (item.dataset.bodySection === section || (!item.dataset.bodySection && section === 'General')) count++;
+        });
+        var elId = 'mapCount-' + section.replace(/\s+/g, '');
+        var el = document.getElementById(elId);
+        if (el) el.textContent = count > 0 ? count : '';
+        var badgeEl = document.querySelector('#mapCount-' + section.replace(/\s+/g, ''));
+        if (badgeEl && badgeEl.tagName === 'SPAN') badgeEl.textContent = count > 0 ? count : '';
+    });
+}
+
+// ==================== MODALITY CHIPS ====================
+document.querySelectorAll('.modality-chip').forEach(function(chip) {
+    var mod = chip.dataset.modality;
+    var color = getModalityColor(mod);
+    chip.style.borderColor = color.border;
+    chip.style.color = color.text;
+    chip.style.background = color.bg;
+
+    chip.addEventListener('click', function() {
+        if (filterState.modality === mod) {
+            filterState.modality = null;
+            this.classList.remove('active');
+            this.style.background = color.bg;
+            this.style.color = color.text;
+        } else {
+            document.querySelectorAll('.modality-chip').forEach(function(c) {
+                c.classList.remove('active');
+                var cc = getModalityColor(c.dataset.modality);
+                c.style.background = cc.bg;
+                c.style.color = cc.text;
+            });
+            filterState.modality = mod;
+            this.classList.add('active');
+            this.style.background = color.border;
+            this.style.color = '#fff';
+        }
+        applyFilters();
+    });
+});
+
+// ==================== TAG CLOUD ====================
+document.querySelectorAll('.tag-cloud-item').forEach(function(tag) {
+    tag.addEventListener('click', function() {
+        var tagText = this.dataset.tag;
+        var idx = filterState.tags.indexOf(tagText);
+        if (idx > -1) {
+            filterState.tags.splice(idx, 1);
+            this.classList.remove('active');
+        } else {
+            filterState.tags.push(tagText);
+            this.classList.add('active');
+        }
+        applyFilters();
+    });
+});
+
+// ==================== CONTENT TYPE TABS ====================
+document.querySelectorAll('[data-content-type]').forEach(function(tab) {
+    tab.addEventListener('click', function(e) {
+        e.preventDefault();
+        document.querySelectorAll('[data-content-type]').forEach(function(t) { t.classList.remove('active'); });
+        this.classList.add('active');
+        filterState.contentType = this.dataset.contentType;
+        applyFilters();
+    });
+});
+
+// ==================== SEARCH ====================
+var _searchTimeout;
+document.getElementById('knowledgeSearch').addEventListener('input', function() {
+    clearTimeout(_searchTimeout);
+    var self = this;
+    _searchTimeout = setTimeout(function() {
+        filterState.searchQuery = self.value.trim().toLowerCase();
+        applyFilters();
+    }, 250);
+});
+
+// ==================== ACTIVE FILTER PILLS ====================
+function renderActiveFilters() {
+    var container = document.getElementById('activeFilterPills');
+    var wrapper = document.getElementById('activeFilters');
+    var pills = [];
+    if (filterState.bodySection) pills.push({ label: filterState.bodySection, type: 'body' });
+    if (filterState.modality) pills.push({ label: filterState.modality, type: 'modality' });
+    filterState.tags.forEach(function(t) { pills.push({ label: t, type: 'tag' }); });
+    if (filterState.searchQuery) pills.push({ label: '"' + filterState.searchQuery + '"', type: 'search' });
+
+    if (pills.length === 0) {
+        wrapper.classList.add('d-none');
+        return;
+    }
+    wrapper.classList.remove('d-none');
+    container.innerHTML = '<small class="text-muted me-1">Filters:</small>' +
+        pills.map(function(p) {
+            return '<span class="filter-pill" onclick="removeFilter(\'' + p.type + '\',\'' + p.label.replace(/'/g, "\\'") + '\')">' + p.label + ' <i class="fas fa-times" style="font-size: 0.55rem;"></i></span>';
+        }).join('') +
+        '<span class="filter-pill" style="background: #dc3545;" onclick="clearAllFilters()">Clear all <i class="fas fa-times" style="font-size: 0.55rem;"></i></span>';
+
+    // Update mobile badge
+    var badge = document.getElementById('activeFilterBadge');
+    if (badge) {
+        badge.textContent = pills.length;
+        badge.classList.toggle('d-none', pills.length === 0);
+    }
+}
+
+function removeFilter(type, label) {
+    if (type === 'body') { clearBodySection(); }
+    else if (type === 'modality') {
+        filterState.modality = null;
+        document.querySelectorAll('.modality-chip').forEach(function(c) {
+            c.classList.remove('active');
+            var cc = getModalityColor(c.dataset.modality);
+            c.style.background = cc.bg;
+            c.style.color = cc.text;
+        });
+        applyFilters();
+    }
+    else if (type === 'tag') {
+        var idx = filterState.tags.indexOf(label);
+        if (idx > -1) filterState.tags.splice(idx, 1);
+        document.querySelectorAll('.tag-cloud-item').forEach(function(t) {
+            if (t.dataset.tag === label) t.classList.remove('active');
+        });
+        applyFilters();
+    }
+    else if (type === 'search') {
+        filterState.searchQuery = '';
+        document.getElementById('knowledgeSearch').value = '';
+        applyFilters();
+    }
+}
+
+function clearAllFilters() {
+    filterState.bodySection = null;
+    filterState.modality = null;
+    filterState.tags = [];
+    filterState.searchQuery = '';
+    document.getElementById('knowledgeSearch').value = '';
+    document.querySelectorAll('.body-region, .body-region-btn').forEach(function(r) { r.classList.remove('active'); });
+    document.querySelectorAll('.modality-chip').forEach(function(c) {
+        c.classList.remove('active');
+        var cc = getModalityColor(c.dataset.modality);
+        c.style.background = cc.bg;
+        c.style.color = cc.text;
+    });
+    document.querySelectorAll('.tag-cloud-item').forEach(function(t) { t.classList.remove('active'); });
+    document.getElementById('clearBodyMap').style.display = 'none';
+    syncDropdown();
+    applyFilters();
+}
+
+// ==================== ITEM SELECTION & DETAIL ====================
+function selectItem(el) {
+    document.querySelectorAll('.knowledge-item').forEach(function(i) { i.classList.remove('active'); });
+    el.classList.add('active');
+    el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+
+    var id = el.dataset.id;
+    var type = el.dataset.type;
+    var detailContent = document.getElementById('detailContent');
+    var placeholder = document.getElementById('detailPlaceholder');
+
+    if (type === 'pearl') {
+        var pearlId = id.replace('pearl-', '');
+        var source = document.getElementById('pearl-content-' + pearlId);
+        if (!source) return;
+        var data = source.querySelector('.pearl-detail-data');
+        var modality = data.dataset.modality;
+        var color = modality ? getModalityColor(modality) : DEFAULT_COLOR;
+        var isVerified = data.dataset.verified === 'true';
+
+        detailContent.innerHTML =
+            '<div class="card border-0 shadow-sm" style="border-radius: 10px; overflow: hidden; border-left: 5px solid ' + color.border + ' !important;">' +
+            '  <div class="detail-header">' +
+            '    <div class="d-flex justify-content-between align-items-center">' +
+            '      <div class="d-flex align-items-center gap-2">' +
+            '        <i class="fas fa-gem" style="color: #6b46c1;"></i>' +
+            '        <span class="fw-semibold">Radiology Pearl</span>' +
+            (isVerified ? '<span class="badge bg-success" style="font-size: 0.6rem;">Verified</span>' : '<span class="badge bg-warning text-dark" style="font-size: 0.6rem;">Pending</span>') +
+            '      </div>' +
+            '      <div class="d-flex gap-1">' +
+            (modality ? '<span class="modality-badge" style="background: ' + color.bg + '; color: ' + color.text + '; border: 1px solid ' + color.border + ';">' + modality + '</span>' : '') +
+            (data.dataset.bodySection ? '<span class="badge bg-light text-dark border" style="font-size: 0.65rem;">' + data.dataset.bodySection + '</span>' : '') +
+            '      </div>' +
+            '    </div>' +
+            '  </div>' +
+            '  <div class="detail-body">' +
+            '    <div class="pearl-content" style="font-size: 0.95rem; line-height: 1.7;">' + data.innerHTML + '</div>' +
+            (data.dataset.tags ? '<div class="mt-3">' + data.dataset.tags.split(',').map(function(t) { return '<span class="badge bg-light text-muted border me-1" style="font-size: 0.65rem;">' + t.trim() + '</span>'; }).join('') + '</div>' : '') +
+            '    <div class="mt-3 d-flex justify-content-between align-items-center">' +
+            '      <small class="text-muted">' + (data.dataset.createdBy || '') + (data.dataset.createdAt ? ' &middot; ' + data.dataset.createdAt : '') + '</small>' +
+            '      <div class="d-flex gap-1">' +
+            '        <button class="btn btn-sm btn-outline-secondary" onclick="copyDetailContent()"><i class="fas fa-copy me-1"></i>Copy</button>' +
+            {% if is_admin %}
+            '        <button class="btn btn-sm btn-outline-secondary" onclick="editPearl(' + pearlId + ')"><i class="fas fa-edit me-1"></i>Edit</button>' +
+            (!isVerified ? '        <button class="btn btn-sm btn-outline-success" onclick="verifyPearl(' + pearlId + ')"><i class="fas fa-check me-1"></i>Verify</button>' : '') +
+            '        <button class="btn btn-sm btn-outline-danger" onclick="deletePearl(' + pearlId + ')"><i class="fas fa-trash me-1"></i>Delete</button>' +
+            {% endif %}
+            '      </div>' +
+            '    </div>' +
+            '  </div>' +
+            '</div>';
+    } else if (type === 'anatomy') {
+        var snippetId = id.replace('anatomy-', '');
+        var source = document.getElementById('anatomy-content-' + snippetId);
+        if (!source) return;
+        var data = source.querySelector('.anatomy-detail-data');
+
+        detailContent.innerHTML =
+            '<div class="card border-0 shadow-sm" style="border-radius: 10px; overflow: hidden;">' +
+            '  <div class="detail-header">' +
+            '    <div class="d-flex justify-content-between align-items-center">' +
+            '      <div class="d-flex align-items-center gap-2">' +
+            '        <i class="fas fa-bone" style="color: #6f42c1;"></i>' +
+            '        <span class="fw-semibold">' + data.dataset.title + '</span>' +
+            '      </div>' +
+            (data.dataset.bodySection ? '<span class="badge bg-light text-dark border" style="font-size: 0.65rem;">' + data.dataset.bodySection + '</span>' : '') +
+            '    </div>' +
+            '  </div>' +
+            '  <div class="detail-body">' +
+            '    <div class="anatomy-content">' + data.innerHTML + '</div>' +
+            '    <div class="mt-3 d-flex gap-2">' +
+            '      <button class="btn btn-sm btn-outline-secondary" onclick="copyDetailContent()"><i class="fas fa-copy me-1"></i>Copy</button>' +
+            '      <a href="/anatomy-snippets/' + data.dataset.slug + '" class="btn btn-sm btn-brand-neutral"><i class="fas fa-external-link-alt me-1"></i>Full View</a>' +
+            {% if is_admin %}
+            '      <a href="/edit-reporting-algorithm/' + data.dataset.snippetId + '" class="btn btn-sm btn-outline-secondary"><i class="fas fa-edit me-1"></i>Edit</a>' +
+            {% endif %}
+            '    </div>' +
+            '  </div>' +
+            '</div>';
+    }
+
+    placeholder.classList.add('d-none');
+    detailContent.classList.remove('d-none');
+}
+
+function copyDetailContent() {
+    var content = document.querySelector('#detailContent .pearl-content, #detailContent .anatomy-content');
+    if (!content) return;
+    var text = content.innerText || content.textContent;
+    navigator.clipboard.writeText(text).then(function() {
+        // Brief visual feedback
+        event.target.innerHTML = '<i class="fas fa-check me-1"></i>Copied!';
+        setTimeout(function() { event.target.innerHTML = '<i class="fas fa-copy me-1"></i>Copy'; }, 2000);
+    });
+}
+
+// ==================== MODALITY-COLOURED LEFT BORDERS ====================
+function applyModalityBorders() {
+    document.querySelectorAll('.knowledge-item').forEach(function(item) {
+        var mod = item.dataset.modality;
+        if (mod) {
+            var color = getModalityColor(mod);
+            item.style.borderLeftColor = color.border;
+        }
+    });
+    document.querySelectorAll('.modality-badge').forEach(function(badge) {
+        var mod = badge.dataset.modality || badge.textContent.trim();
+        var color = getModalityColor(mod);
+        badge.style.background = color.bg;
+        badge.style.color = color.text;
+        badge.style.border = '1px solid ' + color.border;
+    });
+}
+
+// ==================== PEARL ADMIN ACTIONS ====================
+var _pearlTinyMCEReady = false;
+
+{% if is_admin %}
+document.addEventListener('DOMContentLoaded', function() {
+    var modal = document.getElementById('editPearlModal');
+    if (!modal) return;
+    modal.addEventListener('shown.bs.modal', function() {
+        if (_pearlTinyMCEReady) return;
+        tinymce.init({
+            selector: '#editPearlText',
+            min_height: 250,
+            max_height: 400,
+            menubar: 'edit view insert format',
+            toolbar: 'undo redo | bold italic underline | bullist numlist | link | code',
+            plugins: 'lists link code',
+            base_url: 'https://cdn.jsdelivr.net/npm/tinymce@6',
+            relative_urls: false,
+            convert_urls: false,
+            remove_trailing_brs: true,
+            extended_valid_elements: 'div[*],span[*],a[*]',
+            link_title: true,
+            link_assume_external_targets: true,
+            link_default_protocol: 'https',
+            content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; font-size: 14px; line-height: 1.6; }',
+            setup: function(editor) { editor.on('init', function() { _pearlTinyMCEReady = true; }); }
+        });
+    });
+    modal.addEventListener('hidden.bs.modal', function() {
+        var editor = tinymce.get('editPearlText');
+        if (editor) { editor.destroy(); _pearlTinyMCEReady = false; }
+    });
+});
+{% endif %}
+
+function addNewPearl() {
+    document.getElementById('editPearlId').value = '';
+    document.getElementById('editPearlBodySection').value = '';
+    document.getElementById('editPearlModality').value = '';
+    document.getElementById('editPearlTags').value = '';
+    var editor = tinymce.get('editPearlText');
+    if (editor) editor.setContent('');
+    else document.getElementById('editPearlText').value = '';
+    document.querySelector('#editPearlModal .modal-title').innerHTML = '<i class="fas fa-gem me-2"></i>Add New Pearl';
+    new bootstrap.Modal(document.getElementById('editPearlModal')).show();
+}
+
+function editPearl(id) {
+    fetch('/api/smart-reporter/pearls/' + id)
+        .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+        .then(function(data) {
+            document.getElementById('editPearlId').value = data.id;
+            document.getElementById('editPearlBodySection').value = data.body_section || '';
+            document.getElementById('editPearlModality').value = data.modality || '';
+            document.getElementById('editPearlTags').value = data.tags || '';
+            var pearlContent = data.pearl_text || '';
+            document.getElementById('editPearlText').value = pearlContent;
+            document.querySelector('#editPearlModal .modal-title').innerHTML = '<i class="fas fa-gem me-2"></i>Edit Pearl';
+            var modalEl = document.getElementById('editPearlModal');
+            new bootstrap.Modal(modalEl).show();
+            var check = setInterval(function() {
+                var ed = tinymce.get('editPearlText');
+                if (ed && _pearlTinyMCEReady) { ed.setContent(pearlContent); clearInterval(check); }
+            }, 100);
+            setTimeout(function() { clearInterval(check); }, 5000);
+        })
+        .catch(function(err) { alert('Failed to load pearl: ' + err.message); });
+}
+
+function saveEditPearl() {
+    var id = document.getElementById('editPearlId').value;
+    var editor = tinymce.get('editPearlText');
+    var pearlText = editor ? editor.getContent() : document.getElementById('editPearlText').value;
+    var payload = {
+        pearl_text: pearlText,
+        body_section: document.getElementById('editPearlBodySection').value,
+        modality: document.getElementById('editPearlModality').value,
+        tags: document.getElementById('editPearlTags').value
+    };
+    var url = id ? '/api/smart-reporter/pearls/' + id : '/api/smart-reporter/save-pearl';
+    var method = id ? 'PUT' : 'POST';
+    fetch(url, { method: method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+        .then(function(r) { return r.json(); })
+        .then(function(data) { if (data.error) { alert(data.error); return; } location.reload(); })
+        .catch(function() { alert('Failed to save.'); });
+}
+
+function verifyPearl(id) {
+    if (!confirm('Verify this pearl? It will become visible to all users.')) return;
+    fetch('/api/smart-reporter/pearls/' + id + '/verify', { method: 'POST' })
+        .then(function(r) { return r.json(); })
+        .then(function(data) { if (data.error) { alert(data.error); return; } location.reload(); });
+}
+
+function deletePearl(id) {
+    if (!confirm('Delete this pearl permanently?')) return;
+    fetch('/api/smart-reporter/pearls/' + id, { method: 'DELETE' })
+        .then(function(r) { return r.json(); })
+        .then(function(data) { if (data.error) { alert(data.error); return; } location.reload(); });
+}
+
+// ==================== INIT ====================
+document.addEventListener('DOMContentLoaded', function() {
+    applyModalityBorders();
+    updateBodyMapCounts();
+
+    // Handle hash-based deep linking
+    var hash = window.location.hash;
+    if (hash) {
+        var target = document.querySelector('.knowledge-item[data-id="' + hash.substring(1) + '"]');
+        if (target) { selectItem(target); return; }
+    }
+
+    // Auto-select first item on desktop
+    if (window.innerWidth >= 992) {
+        var first = document.querySelector('.knowledge-item');
+        if (first) selectItem(first);
+    }
+});
+</script>
+{% endblock %}

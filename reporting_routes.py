@@ -9,7 +9,7 @@ Flask blueprint for:
 - Admin management of reporting templates
 """
 
-from flask import Blueprint, request, render_template, jsonify
+from flask import Blueprint, request, render_template, jsonify, redirect, url_for
 from flask_login import login_required, current_user
 from datetime import datetime
 import json
@@ -1053,21 +1053,69 @@ def browse_reporting_algorithms():
 
 # ==================== USER: RADIOLOGY TEMPLATES BROWSE ====================
 
-@reporting_bp.route('/anatomy-snippets')
+@reporting_bp.route('/knowledge-hub')
 @login_required
-def browse_anatomy_snippets():
-    """User-facing browse page for cached anatomy snippets."""
+def knowledge_hub():
+    """Unified Knowledge Hub combining Radiology Pearls and Anatomy Snippets."""
+    from models import UserRole
+
+    # Fetch pearls (verified + own unverified)
+    pearls = RadiologyPearl.query.filter(
+        db.or_(
+            RadiologyPearl.is_verified == True,
+            RadiologyPearl.created_by_user_id == current_user.id,
+        )
+    ).order_by(RadiologyPearl.created_at.desc()).all()
+
+    # Fetch anatomy snippets
     snippets = ReportingAlgorithm.query.filter(
         ReportingAlgorithm.origin == 'anatomy_cache',
         ReportingAlgorithm.is_available == True,
     ).order_by(ReportingAlgorithm.title).all()
 
-    grouped = {}
+    # Collect distinct modalities
+    modalities = sorted(set(p.modality.strip() for p in pearls if p.modality and p.modality.strip()))
+
+    # Tag frequency for tag cloud (top 40)
+    tag_counts = {}
+    for p in pearls:
+        if p.tags:
+            for tag in p.tags.split(','):
+                tag = tag.strip().lower()
+                if tag:
+                    tag_counts[tag] = tag_counts.get(tag, 0) + 1
+    tag_cloud = sorted(tag_counts.items(), key=lambda x: -x[1])[:40]
+    max_tag_count = tag_cloud[0][1] if tag_cloud else 1
+
+    # Count items per body section (for body map)
+    section_counts = {}
+    for p in pearls:
+        section = p.body_section or 'General'
+        section_counts[section] = section_counts.get(section, 0) + 1
     for s in snippets:
         section = s.body_section or 'General'
-        grouped.setdefault(section, []).append(s)
+        section_counts[section] = section_counts.get(section, 0) + 1
 
-    return render_template('anatomy_snippets_browse.html', grouped=grouped)
+    is_admin = current_user.is_authenticated and current_user.role == UserRole.ADMIN
+
+    return render_template('knowledge_hub.html',
+        pearls=pearls,
+        snippets=snippets,
+        modalities=modalities,
+        tag_cloud=tag_cloud,
+        max_tag_count=max_tag_count,
+        section_counts=section_counts,
+        pearl_count=len(pearls),
+        snippet_count=len(snippets),
+        is_admin=is_admin,
+    )
+
+
+@reporting_bp.route('/anatomy-snippets')
+@login_required
+def browse_anatomy_snippets():
+    """Redirect to Knowledge Hub."""
+    return redirect(url_for('reporting.knowledge_hub'), code=301)
 
 
 @reporting_bp.route('/anatomy-snippets/<slug>')
@@ -1086,20 +1134,8 @@ def view_anatomy_snippet(slug):
 @reporting_bp.route('/radiology-pearls')
 @login_required
 def browse_radiology_pearls():
-    """User-facing browse page for radiology pearls."""
-    pearls = RadiologyPearl.query.filter(
-        db.or_(
-            RadiologyPearl.is_verified == True,
-            RadiologyPearl.created_by_user_id == current_user.id,
-        )
-    ).order_by(RadiologyPearl.created_at.desc()).all()
-
-    grouped = {}
-    for p in pearls:
-        section = p.body_section or 'General'
-        grouped.setdefault(section, []).append(p)
-
-    return render_template('radiology_pearls_browse.html', grouped=grouped)
+    """Redirect to Knowledge Hub."""
+    return redirect(url_for('reporting.knowledge_hub'), code=301)
 
 
 @reporting_bp.route('/reporting-templates')
