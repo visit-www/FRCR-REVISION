@@ -15,7 +15,7 @@
             <h4 class="mb-1">
                 <i class="fas fa-book-medical me-2" style="color: var(--brand-neutral);"></i>Knowledge Hub
             </h4>
-            <small class="text-muted">Clinical pearls & anatomy references
+            <small class="text-muted">Clinical pearls and anatomy snippets
                 <span class="badge bg-light text-dark border ms-1">{{ pearl_count + snippet_count }} items</span>
             </small>
         </div>
@@ -29,165 +29,91 @@
                 <i class="fas fa-file-medical me-1"></i><span class="d-none d-sm-inline">Smart Reporter</span>
             </a>
             {% if is_admin %}
-            <button class="btn btn-sm btn-brand-neutral" onclick="addNewPearl()">
-                <i class="fas fa-plus me-1"></i>Add Pearl
-            </button>
+            <div class="btn-group">
+                <button class="btn btn-sm btn-brand-neutral dropdown-toggle" data-bs-toggle="dropdown">
+                    <i class="fas fa-plus me-1"></i>Add
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li><a class="dropdown-item" href="#" onclick="addNewPearl(); return false;"><i class="fas fa-gem me-2" style="color: #6b46c1;"></i>Add Pearl</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="addNewSnippet(); return false;"><i class="fas fa-bone me-2" style="color: #6f42c1;"></i>Add Anatomy Snippet</a></li>
+                </ul>
+            </div>
             {% endif %}
         </div>
     </div>
 
-    <!-- Content Type Tabs -->
-    <ul class="nav nav-pills nav-fill mb-3" style="max-width: 400px;" id="contentTypeTabs">
-        <li class="nav-item">
-            <a class="nav-link active py-1 px-2" href="#" data-content-type="all" style="font-size: 0.85rem;">
-                All <span class="badge bg-secondary ms-1" id="countAll">{{ pearl_count + snippet_count }}</span>
-            </a>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link py-1 px-2" href="#" data-content-type="pearl" style="font-size: 0.85rem;">
-                <i class="fas fa-gem me-1" style="color: #6b46c1;"></i>Pearls
-                <span class="badge bg-secondary ms-1" id="countPearls">{{ pearl_count }}</span>
-            </a>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link py-1 px-2" href="#" data-content-type="anatomy" style="font-size: 0.85rem;">
-                <i class="fas fa-bone me-1" style="color: #6f42c1;"></i>Anatomy
-                <span class="badge bg-secondary ms-1" id="countAnatomy">{{ snippet_count }}</span>
-            </a>
-        </li>
-    </ul>
+    <!-- Content Type Tabs + Body Section Chips (unified filter bar) -->
+    <div class="kh-filter-bar mb-3">
+        <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+            <!-- Content type tabs -->
+            <div class="btn-group btn-group-sm" id="contentTypeTabs">
+                <button class="btn btn-outline-secondary active" data-content-type="all">
+                    All <span class="badge bg-secondary ms-1" id="countAll">{{ pearl_count + snippet_count }}</span>
+                </button>
+                <button class="btn btn-outline-secondary" data-content-type="pearl">
+                    <i class="fas fa-gem me-1" style="color: #6b46c1;"></i>Pearls
+                    <span class="badge bg-secondary ms-1" id="countPearls">{{ pearl_count }}</span>
+                </button>
+                <button class="btn btn-outline-secondary" data-content-type="anatomy">
+                    <i class="fas fa-bone me-1" style="color: #6f42c1;"></i>Anatomy
+                    <span class="badge bg-secondary ms-1" id="countAnatomy">{{ snippet_count }}</span>
+                </button>
+            </div>
+
+            <span class="text-muted d-none d-md-inline" style="font-size: 0.75rem;">|</span>
+
+            <!-- Modality chips -->
+            {% if modalities %}
+            <div class="d-flex flex-wrap gap-1 align-items-center">
+                <small class="text-muted fw-semibold me-1 d-none d-md-inline" style="font-size: 0.7rem;">MODALITY:</small>
+                {% for mod in modalities %}
+                <button class="btn btn-sm modality-chip" data-modality="{{ mod }}" style="font-size: 0.72rem; padding: 2px 8px;">{{ mod }}</button>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Body Section Chips -->
+        <div class="d-flex flex-wrap gap-1 align-items-center">
+            <small class="text-muted fw-semibold me-1" style="font-size: 0.7rem;">BODY:</small>
+            {% for section in ['Brain','Head and Neck','Thorax','Cardiovascular','Breast','Abdomen','Pelvis','Spine','Musculoskeletal','Multisystem'] %}
+            <button class="btn btn-sm body-section-chip" data-section="{{ section }}">
+                {{ section }}
+                {% if section_counts.get(section, 0) > 0 %}
+                <span class="badge bg-secondary ms-1" style="font-size: 0.5rem;">{{ section_counts.get(section, 0) }}</span>
+                {% endif %}
+            </button>
+            {% endfor %}
+        </div>
+
+        <!-- Active Filters -->
+        <div id="activeFilters" class="mt-2 d-none">
+            <div class="d-flex flex-wrap gap-1 align-items-center" id="activeFilterPills"></div>
+        </div>
+    </div>
 
     <!-- Two-Panel Layout -->
     <div class="row">
-        <!-- LEFT SIDEBAR -->
-        <div class="col-lg-4 mb-3 mb-lg-0">
+        <!-- LEFT PANEL: Item List -->
+        <div class="col-lg-5 col-xl-4 mb-3 mb-lg-0">
             <div class="knowledge-hub-sidebar">
-
-                <!-- Body Map (desktop) -->
-                <div class="card border-0 shadow-sm mb-3 d-none d-lg-block">
-                    <div class="card-body p-2 text-center">
-                        <svg id="bodyMap" viewBox="0 0 200 360" xmlns="http://www.w3.org/2000/svg" style="width: 160px; height: auto;">
-                            <!-- Brain -->
-                            <g class="body-region" data-section="Brain">
-                                <title>Brain</title>
-                                <ellipse cx="100" cy="32" rx="26" ry="22"/>
-                                <text class="body-region-count" x="100" y="36" id="mapCount-Brain"></text>
-                            </g>
-                            <!-- Head and Neck -->
-                            <g class="body-region" data-section="Head and Neck">
-                                <title>Head and Neck</title>
-                                <path d="M85,54 Q85,60 88,66 L88,78 Q88,82 92,82 L108,82 Q112,82 112,78 L112,66 Q115,60 115,54 Z"/>
-                                <text class="body-region-count" x="100" y="72" id="mapCount-HeadandNeck"></text>
-                            </g>
-                            <!-- Thorax -->
-                            <g class="body-region" data-section="Thorax">
-                                <title>Thorax</title>
-                                <path d="M68,86 L60,90 L55,130 L65,145 L135,145 L145,130 L140,90 L132,86 Z"/>
-                                <text class="body-region-count" x="100" y="118" id="mapCount-Thorax"></text>
-                            </g>
-                            <!-- Cardiovascular (heart overlay on thorax) -->
-                            <g class="body-region" data-section="Cardiovascular">
-                                <title>Cardiovascular</title>
-                                <path d="M92,105 C88,98 78,98 78,108 C78,118 92,126 92,126 C92,126 106,118 106,108 C106,98 96,98 92,105 Z" style="opacity: 0.7;"/>
-                                <text class="body-region-count" x="92" y="115" id="mapCount-Cardiovascular"></text>
-                            </g>
-                            <!-- Breast -->
-                            <g class="body-region" data-section="Breast">
-                                <title>Breast</title>
-                                <circle cx="118" cy="118" r="12" style="opacity: 0.6;"/>
-                                <text class="body-region-count" x="118" y="122" id="mapCount-Breast"></text>
-                            </g>
-                            <!-- Abdomen -->
-                            <g class="body-region" data-section="Abdomen">
-                                <title>Abdomen</title>
-                                <path d="M65,148 L60,195 L140,195 L135,148 Z"/>
-                                <text class="body-region-count" x="100" y="175" id="mapCount-Abdomen"></text>
-                            </g>
-                            <!-- Pelvis -->
-                            <g class="body-region" data-section="Pelvis">
-                                <title>Pelvis</title>
-                                <path d="M60,198 L55,230 L75,240 L100,245 L125,240 L145,230 L140,198 Z"/>
-                                <text class="body-region-count" x="100" y="222" id="mapCount-Pelvis"></text>
-                            </g>
-                            <!-- Spine -->
-                            <g class="body-region" data-section="Spine">
-                                <title>Spine</title>
-                                <rect x="96" y="82" width="8" height="160" rx="3"/>
-                                <text class="body-region-count" x="100" y="162" id="mapCount-Spine" style="font-size: 8px;"></text>
-                            </g>
-                            <!-- Musculoskeletal (arms + legs) -->
-                            <g class="body-region" data-section="Musculoskeletal">
-                                <title>Musculoskeletal</title>
-                                <!-- Left arm -->
-                                <path d="M55,90 L40,100 L28,140 L24,180 L32,182 L38,145 L48,110 L55,100 Z"/>
-                                <!-- Right arm -->
-                                <path d="M145,90 L160,100 L172,140 L176,180 L168,182 L162,145 L152,110 L145,100 Z"/>
-                                <!-- Left leg -->
-                                <path d="M75,242 L68,290 L65,340 L78,342 L80,295 L85,250 Z"/>
-                                <!-- Right leg -->
-                                <path d="M125,242 L132,290 L135,340 L122,342 L120,295 L115,250 Z"/>
-                                <text class="body-region-count" x="32" y="155" id="mapCount-Musculoskeletal" style="font-size: 8px;"></text>
-                            </g>
-                        </svg>
-                        <!-- Multisystem button below map -->
-                        <div class="mt-1">
-                            <button class="btn btn-sm btn-outline-secondary body-region-btn" data-section="Multisystem" style="font-size: 0.7rem;">
-                                <i class="fas fa-globe me-1"></i>Multisystem
-                                <span class="badge bg-light text-dark ms-1" id="mapCount-Multisystem"></span>
-                            </button>
-                            <button class="btn btn-sm btn-outline-secondary ms-1" id="clearBodyMap" style="font-size: 0.7rem; display: none;" onclick="clearBodySection()">
-                                <i class="fas fa-times me-1"></i>Clear
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Body Section Dropdown (mobile) -->
-                <select id="bodySectionDropdown" class="form-select form-select-sm mb-2 d-lg-none">
-                    <option value="">All Body Sections</option>
-                    {% for section in ['Brain','Head and Neck','Thorax','Cardiovascular','Breast','Abdomen','Pelvis','Spine','Musculoskeletal','Multisystem'] %}
-                    <option value="{{ section }}">{{ section }} ({{ section_counts.get(section, 0) }})</option>
-                    {% endfor %}
-                </select>
-
-                <!-- Mobile filter toggle -->
-                <button class="btn btn-sm btn-outline-secondary w-100 mb-2 d-lg-none" data-bs-toggle="collapse" data-bs-target="#filterPanel">
-                    <i class="fas fa-filter me-1"></i>Filters
-                    <span id="activeFilterBadge" class="badge bg-primary ms-1 d-none">0</span>
-                </button>
-
-                <div id="filterPanel" class="collapse d-lg-block">
-                    <!-- Modality Chips -->
-                    {% if modalities %}
-                    <div class="mb-3">
-                        <small class="text-uppercase fw-semibold text-muted d-block mb-2" style="font-size: 0.7rem; letter-spacing: 0.5px;">Modality</small>
-                        <div class="d-flex flex-wrap gap-1">
-                            {% for mod in modalities %}
-                            <button class="btn btn-sm modality-chip" data-modality="{{ mod }}" style="font-size: 0.72rem; padding: 2px 8px;">{{ mod }}</button>
-                            {% endfor %}
-                        </div>
-                    </div>
-                    {% endif %}
-
-                    <!-- Tag Cloud -->
-                    {% if tag_cloud %}
-                    <div class="mb-3">
-                        <small class="text-uppercase fw-semibold text-muted d-block mb-2" style="font-size: 0.7rem; letter-spacing: 0.5px;">Tags</small>
-                        <div class="tag-cloud">
+                <!-- Tag Cloud (collapsible) -->
+                {% if tag_cloud %}
+                <div class="mb-2">
+                    <button class="btn btn-sm btn-link text-muted p-0 mb-1" data-bs-toggle="collapse" data-bs-target="#tagCloudPanel" style="font-size: 0.72rem; text-decoration: none;">
+                        <i class="fas fa-tags me-1"></i>Tags <i class="fas fa-chevron-down ms-1" style="font-size: 0.6rem;"></i>
+                    </button>
+                    <div class="collapse" id="tagCloudPanel">
+                        <div class="tag-cloud p-2 rounded" style="background: #f8f9fa;">
                             {% for tag, count in tag_cloud %}
                             <span class="tag-cloud-item" data-tag="{{ tag }}">{{ tag }}</span>
                             {% endfor %}
                         </div>
                     </div>
-                    {% endif %}
                 </div>
+                {% endif %}
 
-                <!-- Active Filters -->
-                <div id="activeFilters" class="mb-2 d-none">
-                    <div class="d-flex flex-wrap gap-1 align-items-center" id="activeFilterPills"></div>
-                </div>
-
-                <!-- Scrollable Item List -->
+                <!-- Item List -->
                 <div class="knowledge-hub-item-list">
                     {% for p in pearls %}
                     <div class="knowledge-item" data-id="pearl-{{ p.id }}" data-type="pearl"
@@ -197,13 +123,13 @@
                         <div class="d-flex align-items-start gap-2">
                             <i class="fas fa-gem mt-1 flex-shrink-0" style="color: #6b46c1; font-size: 0.7rem;"></i>
                             <div class="flex-grow-1" style="min-width: 0;">
-                                <div class="knowledge-item-title">{{ p.pearl_text|striptags|truncate(80) }}</div>
-                                <div class="d-flex gap-1 mt-1 flex-wrap">
+                                <div class="knowledge-item-title">{{ p.pearl_text|striptags|truncate(90) }}</div>
+                                <div class="d-flex gap-1 mt-1 flex-wrap align-items-center">
                                     {% if p.modality %}
                                     <span class="modality-badge" data-modality="{{ p.modality }}">{{ p.modality }}</span>
                                     {% endif %}
                                     {% if p.body_section %}
-                                    <span class="badge bg-light text-muted border" style="font-size: 0.55rem;">{{ p.body_section }}</span>
+                                    <span class="section-badge">{{ p.body_section }}</span>
                                     {% endif %}
                                     {% if not p.is_verified %}
                                     <span class="badge bg-warning text-dark" style="font-size: 0.5rem;">Pending</span>
@@ -223,7 +149,7 @@
                             <div class="flex-grow-1" style="min-width: 0;">
                                 <div class="knowledge-item-title">{{ s.title }}</div>
                                 {% if s.body_section %}
-                                <span class="badge bg-light text-muted border mt-1" style="font-size: 0.55rem;">{{ s.body_section }}</span>
+                                <span class="section-badge mt-1">{{ s.body_section }}</span>
                                 {% endif %}
                             </div>
                         </div>
@@ -241,13 +167,15 @@
         </div>
 
         <!-- RIGHT DETAIL PANEL -->
-        <div class="col-lg-8">
+        <div class="col-lg-7 col-xl-8">
             <div id="detailPanel" class="knowledge-hub-detail">
                 <!-- Placeholder -->
                 <div id="detailPlaceholder" class="text-center py-5 text-muted">
-                    <i class="fas fa-book-medical" style="font-size: 3rem; opacity: 0.2; color: var(--brand-neutral);"></i>
-                    <p class="mt-3">Select an item from the list to view details</p>
-                    <small>Use the body map, modality chips, or search to find content</small>
+                    <div class="mb-3">
+                        <i class="fas fa-book-medical" style="font-size: 3rem; opacity: 0.15; color: var(--brand-neutral);"></i>
+                    </div>
+                    <p class="mb-1 fw-semibold" style="color: var(--brand-text-secondary);">Select an item to view details</p>
+                    <small>Use body section chips, modality filters, or search to find content</small>
                 </div>
                 <!-- Detail content (populated by JS) -->
                 <div id="detailContent" class="d-none"></div>
@@ -303,14 +231,19 @@
                         <label class="form-label">Body Section</label>
                         <select class="form-select" id="editPearlBodySection">
                             <option value="">--</option>
-                            {% for bs in ['Thorax','Abdomen','Pelvis','Head and Neck','Brain','Spine','Musculoskeletal','Cardiovascular','Breast','Multisystem'] %}
+                            {% for bs in ['Brain','Head and Neck','Thorax','Cardiovascular','Breast','Abdomen','Pelvis','Spine','Musculoskeletal','Multisystem'] %}
                             <option value="{{ bs }}">{{ bs }}</option>
                             {% endfor %}
                         </select>
                     </div>
                     <div class="col-6">
                         <label class="form-label">Modality</label>
-                        <input type="text" class="form-control" id="editPearlModality" placeholder="e.g. CT, MRI">
+                        <select class="form-select" id="editPearlModality">
+                            <option value="">--</option>
+                            {% for mod in ['CT','MRI','Ultrasound','X-ray','Fluoroscopy','Nuclear Medicine','PET-CT'] %}
+                            <option value="{{ mod }}">{{ mod }}</option>
+                            {% endfor %}
+                        </select>
                     </div>
                 </div>
                 <div class="mb-3">
@@ -327,36 +260,79 @@
         </div>
     </div>
 </div>
+
+<!-- Add Anatomy Snippet Modal (admin only) -->
+<div class="modal fade app-content-modal" id="addSnippetModal" tabindex="-1" data-bs-focus="false">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-bone me-2"></i>Add Anatomy Snippet</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Anatomy Topic</label>
+                    <input type="text" class="form-control" id="snippetTopic" placeholder="e.g. Circle of Willis, Brachial Plexus">
+                    <small class="text-muted">AI will generate a comprehensive anatomy reference for this topic.</small>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Body Section</label>
+                    <select class="form-select" id="snippetBodySection">
+                        <option value="">--</option>
+                        {% for bs in ['Brain','Head and Neck','Thorax','Cardiovascular','Breast','Abdomen','Pelvis','Spine','Musculoskeletal','Multisystem'] %}
+                        <option value="{{ bs }}">{{ bs }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-modal-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-modal-primary" id="generateSnippetBtn" onclick="generateSnippet()">
+                    <i class="fas fa-magic me-1"></i>Generate
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endif %}
 
 <style>
-/* ==================== BODY MAP ==================== */
-.body-region {
-    fill: rgba(94, 137, 158, 0.08);
-    stroke: var(--brand-neutral, #5E899E);
-    stroke-width: 1.2;
+/* ==================== FILTER BAR ==================== */
+.kh-filter-bar {
+    background: #fff;
+    border: 1px solid #e9ecef;
+    border-radius: 10px;
+    padding: 12px 16px;
+}
+
+/* Body Section Chips */
+.body-section-chip {
+    font-size: 0.72rem;
+    padding: 2px 10px;
+    border: 1.5px solid #dee2e6;
+    border-radius: 14px;
+    background: #fff;
+    color: var(--brand-text-secondary, #5a6270);
     cursor: pointer;
-    transition: fill 0.2s, stroke 0.2s, stroke-width 0.2s;
+    transition: all 0.15s;
 }
-.body-region:hover {
-    fill: rgba(94, 137, 158, 0.2);
+.body-section-chip:hover {
+    border-color: var(--brand-neutral, #5E899E);
+    color: var(--brand-neutral, #5E899E);
+    background: rgba(94, 137, 158, 0.06);
 }
-.body-region.active {
-    fill: rgba(233, 99, 4, 0.15);
-    stroke: var(--brand-primary, #e96304);
-    stroke-width: 2.5;
+.body-section-chip.active {
+    background: var(--brand-neutral, #5E899E);
+    color: #fff;
+    border-color: var(--brand-neutral, #5E899E);
+    font-weight: 600;
 }
-.body-region-count {
-    font-size: 9px;
-    font-weight: 700;
-    fill: var(--brand-text-primary, #2c3e50);
-    text-anchor: middle;
-    pointer-events: none;
-}
-.body-region-btn.active {
-    background: var(--brand-primary, #e96304) !important;
-    color: #fff !important;
-    border-color: var(--brand-primary, #e96304) !important;
+
+/* Content type button group */
+#contentTypeTabs .btn.active {
+    background: var(--brand-neutral, #5E899E);
+    color: #fff;
+    border-color: var(--brand-neutral, #5E899E);
 }
 
 /* ==================== MODALITY COLOURS ==================== */
@@ -379,6 +355,15 @@
     border-radius: 8px;
     font-weight: 600;
 }
+.section-badge {
+    display: inline-block;
+    font-size: 0.55rem;
+    padding: 1px 6px;
+    border-radius: 8px;
+    background: #f0f4f8;
+    color: var(--brand-text-secondary, #5a6270);
+    border: 1px solid #e2e8f0;
+}
 
 /* ==================== TAG CLOUD ==================== */
 .tag-cloud { line-height: 2; }
@@ -387,49 +372,52 @@
     padding: 1px 8px;
     margin: 1px;
     border-radius: 10px;
-    background: #f0f0f0;
+    background: #fff;
     color: var(--brand-text-secondary, #5a6270);
     cursor: pointer;
     transition: all 0.15s;
     font-size: 0.72rem;
+    border: 1px solid #e9ecef;
 }
 .tag-cloud-item:hover {
-    background: rgba(233, 99, 4, 0.1);
+    background: rgba(233, 99, 4, 0.08);
     color: var(--brand-primary, #e96304);
+    border-color: var(--brand-primary, #e96304);
 }
 .tag-cloud-item.active {
     background: var(--brand-primary, #e96304);
     color: #fff;
+    border-color: var(--brand-primary, #e96304);
 }
 
 /* ==================== ITEM LIST ==================== */
 .knowledge-hub-item-list {
-    max-height: calc(100vh - 520px);
+    max-height: calc(100vh - 340px);
     overflow-y: auto;
     border: 1px solid #e9ecef;
-    border-radius: 8px;
+    border-radius: 10px;
     background: #fff;
 }
 .knowledge-item {
-    padding: 10px 12px;
-    border-bottom: 1px solid #f0f0f0;
+    padding: 12px 14px;
+    border-bottom: 1px solid #f0f2f5;
     cursor: pointer;
-    transition: background 0.15s;
+    transition: background 0.15s, border-left-color 0.15s;
     border-left: 4px solid transparent;
 }
 .knowledge-item:last-child { border-bottom: none; }
 .knowledge-item:hover {
-    background: #f8f9fa;
+    background: #fafbfc;
 }
 .knowledge-item.active {
-    background: rgba(94, 137, 158, 0.08);
+    background: rgba(94, 137, 158, 0.07);
     border-left-color: var(--brand-primary, #e96304) !important;
 }
 .knowledge-item-title {
-    font-size: 0.82rem;
+    font-size: 0.83rem;
     font-weight: 500;
     color: var(--brand-text-primary, #2c3e50);
-    line-height: 1.4;
+    line-height: 1.45;
     overflow: hidden;
     text-overflow: ellipsis;
     display: -webkit-box;
@@ -441,22 +429,43 @@
 .knowledge-hub-detail {
     min-height: 400px;
 }
+.detail-card {
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid #e9ecef;
+}
 .detail-header {
     padding: 1rem 1.25rem;
-    background: linear-gradient(135deg, #fdfdfb 0%, #f8f8f6 100%);
-    border-bottom: 1px solid #e9ecef;
-    border-radius: 10px 10px 0 0;
+    background: linear-gradient(135deg, #f8fafb 0%, #f0f4f6 100%);
+    border-bottom: 1px solid #e2e8f0;
 }
 .detail-body {
-    padding: 1.25rem;
+    padding: 1.5rem 1.25rem;
+    background: #fff;
+}
+.detail-footer {
+    padding: 0.75rem 1.25rem;
+    background: #fafbfc;
+    border-top: 1px solid #f0f2f5;
 }
 
 /* Pearl content styling */
+.pearl-content { font-size: 0.95rem; line-height: 1.7; }
 .pearl-content p { margin-bottom: 0.5rem; }
 .pearl-content p:last-child { margin-bottom: 0; }
 .pearl-content strong { color: var(--brand-text-primary, #2c3e50); }
 .pearl-content ul, .pearl-content ol { padding-left: 1.4rem; margin: 0.4rem 0; }
 .pearl-content li { margin-bottom: 0.2rem; }
+.pearl-content h1, .pearl-content h2, .pearl-content h3,
+.pearl-content h4, .pearl-content h5, .pearl-content h6 {
+    font-weight: 600; color: var(--brand-text-primary);
+    margin-top: 1rem; margin-bottom: 0.5rem;
+}
+.pearl-content h2 { font-size: 1.1rem; }
+.pearl-content h3 { font-size: 1rem; }
+.pearl-content table { width: 100%; border-collapse: collapse; margin: 0.5rem 0; }
+.pearl-content th, .pearl-content td { border: 1px solid #dee2e6; padding: 6px 10px; font-size: 0.88rem; }
+.pearl-content th { background: #f8f9fa; font-weight: 600; }
 
 /* Anatomy content styling */
 .anatomy-content { font-size: 0.95rem; line-height: 1.7; color: var(--brand-text-primary); }
@@ -508,15 +517,9 @@
     .knowledge-hub-item-list {
         max-height: 50vh;
     }
-}
-
-/* Nav pills active state */
-#contentTypeTabs .nav-link.active {
-    background: var(--brand-neutral, #5E899E);
-    color: #fff;
-}
-#contentTypeTabs .nav-link:not(.active) {
-    color: var(--brand-text-secondary, #5a6270);
+    .kh-filter-bar {
+        padding: 8px 10px;
+    }
 }
 </style>
 {% endblock %}
@@ -526,21 +529,21 @@
 <script>
 // ==================== MODALITY COLOUR MAP ====================
 var MODALITY_COLORS = {
-    'CT':          { border: '#ff9800', bg: '#fff3e0', text: '#e65100' },
-    'MRI':         { border: '#2196f3', bg: '#e3f2fd', text: '#0d47a1' },
-    'Ultrasound':  { border: '#4caf50', bg: '#e8f5e9', text: '#1b5e20' },
-    'US':          { border: '#4caf50', bg: '#e8f5e9', text: '#1b5e20' },
-    'X-Ray':       { border: '#9c27b0', bg: '#f3e5f5', text: '#4a148c' },
-    'XR':          { border: '#9c27b0', bg: '#f3e5f5', text: '#4a148c' },
-    'Fluoroscopy': { border: '#e91e63', bg: '#fce4ec', text: '#880e4f' },
-    'NM':          { border: '#ffc107', bg: '#fff8e1', text: '#f57f17' },
-    'PET':         { border: '#009688', bg: '#e0f2f1', text: '#004d40' },
-    'PET-CT':      { border: '#009688', bg: '#e0f2f1', text: '#004d40' },
+    'CT':              { border: '#ff9800', bg: '#fff3e0', text: '#e65100' },
+    'MRI':             { border: '#2196f3', bg: '#e3f2fd', text: '#0d47a1' },
+    'Ultrasound':      { border: '#4caf50', bg: '#e8f5e9', text: '#1b5e20' },
+    'X-ray':           { border: '#9c27b0', bg: '#f3e5f5', text: '#4a148c' },
+    'Fluoroscopy':     { border: '#e91e63', bg: '#fce4ec', text: '#880e4f' },
+    'Nuclear Medicine':{ border: '#ffc107', bg: '#fff8e1', text: '#f57f17' },
+    'PET-CT':          { border: '#009688', bg: '#e0f2f1', text: '#004d40' },
 };
 var DEFAULT_COLOR = { border: '#9e9e9e', bg: '#f5f5f5', text: '#616161' };
 
 function getModalityColor(modality) {
-    return MODALITY_COLORS[modality] || MODALITY_COLORS[modality.toUpperCase()] || DEFAULT_COLOR;
+    if (!modality) return DEFAULT_COLOR;
+    // For compound modalities like "CT/MRI", use the first part's color
+    var primary = modality.split('/')[0].trim();
+    return MODALITY_COLORS[primary] || DEFAULT_COLOR;
 }
 
 // ==================== FILTER STATE ====================
@@ -561,7 +564,12 @@ function applyFilters() {
         var visible = true;
         if (filterState.contentType !== 'all' && item.dataset.type !== filterState.contentType) visible = false;
         if (visible && filterState.bodySection && item.dataset.bodySection !== filterState.bodySection) visible = false;
-        if (visible && filterState.modality && item.dataset.modality !== filterState.modality) visible = false;
+        if (visible && filterState.modality) {
+            // Match compound modalities: "CT/MRI" should match filter "CT" or "MRI"
+            var itemMod = (item.dataset.modality || '');
+            var itemParts = itemMod.split('/').map(function(p) { return p.trim(); });
+            if (itemParts.indexOf(filterState.modality) === -1 && itemMod !== filterState.modality) visible = false;
+        }
         if (visible && filterState.tags.length > 0) {
             var itemTags = (item.dataset.tags || '').split(',').map(function(t) { return t.trim(); });
             for (var i = 0; i < filterState.tags.length; i++) {
@@ -586,95 +594,65 @@ function applyFilters() {
     document.getElementById('countPearls').textContent = pearlCount;
     document.getElementById('countAnatomy').textContent = anatomyCount;
     renderActiveFilters();
-    updateBodyMapCounts();
+    updateSectionCounts();
 
     // Auto-select first visible if current selection is hidden
     var activeItem = document.querySelector('.knowledge-item.active');
     if (!activeItem || activeItem.style.display === 'none') {
-        var first = document.querySelector('.knowledge-item[style=""], .knowledge-item:not([style])');
-        if (first) selectItem(first);
+        var first = document.querySelector('.knowledge-item:not([style*="display: none"])');
+        if (first && window.innerWidth >= 992) selectItem(first);
+        else {
+            document.getElementById('detailPlaceholder').classList.remove('d-none');
+            document.getElementById('detailContent').classList.add('d-none');
+        }
     }
 }
 
-// ==================== BODY MAP ====================
-document.querySelectorAll('.body-region').forEach(function(region) {
-    region.addEventListener('click', function() {
+// ==================== BODY SECTION CHIPS ====================
+document.querySelectorAll('.body-section-chip').forEach(function(chip) {
+    chip.addEventListener('click', function() {
         var section = this.dataset.section;
         if (filterState.bodySection === section) {
             filterState.bodySection = null;
             this.classList.remove('active');
         } else {
-            document.querySelectorAll('.body-region').forEach(function(r) { r.classList.remove('active'); });
-            document.querySelectorAll('.body-region-btn').forEach(function(b) { b.classList.remove('active'); });
+            document.querySelectorAll('.body-section-chip').forEach(function(c) { c.classList.remove('active'); });
             filterState.bodySection = section;
             this.classList.add('active');
         }
-        syncDropdown();
-        document.getElementById('clearBodyMap').style.display = filterState.bodySection ? '' : 'none';
-        applyFilters();
-    });
-});
-
-// Multisystem button
-document.querySelectorAll('.body-region-btn').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-        var section = this.dataset.section;
-        if (filterState.bodySection === section) {
-            filterState.bodySection = null;
-            this.classList.remove('active');
-        } else {
-            document.querySelectorAll('.body-region').forEach(function(r) { r.classList.remove('active'); });
-            document.querySelectorAll('.body-region-btn').forEach(function(b) { b.classList.remove('active'); });
-            filterState.bodySection = section;
-            this.classList.add('active');
-        }
-        syncDropdown();
-        document.getElementById('clearBodyMap').style.display = filterState.bodySection ? '' : 'none';
         applyFilters();
     });
 });
 
 function clearBodySection() {
     filterState.bodySection = null;
-    document.querySelectorAll('.body-region').forEach(function(r) { r.classList.remove('active'); });
-    document.querySelectorAll('.body-region-btn').forEach(function(b) { b.classList.remove('active'); });
-    document.getElementById('clearBodyMap').style.display = 'none';
-    syncDropdown();
+    document.querySelectorAll('.body-section-chip').forEach(function(c) { c.classList.remove('active'); });
     applyFilters();
 }
 
-function syncDropdown() {
-    var dd = document.getElementById('bodySectionDropdown');
-    if (dd) dd.value = filterState.bodySection || '';
-}
-
-// Mobile dropdown
-var dropdown = document.getElementById('bodySectionDropdown');
-if (dropdown) {
-    dropdown.addEventListener('change', function() {
-        filterState.bodySection = this.value || null;
-        document.querySelectorAll('.body-region').forEach(function(r) {
-            r.classList.toggle('active', r.dataset.section === filterState.bodySection);
-        });
-        document.getElementById('clearBodyMap').style.display = filterState.bodySection ? '' : 'none';
-        applyFilters();
-    });
-}
-
-function updateBodyMapCounts() {
-    var sections = ['Brain','Head and Neck','Thorax','Cardiovascular','Breast','Abdomen','Pelvis','Spine','Musculoskeletal','Multisystem'];
-    sections.forEach(function(section) {
+function updateSectionCounts() {
+    document.querySelectorAll('.body-section-chip').forEach(function(chip) {
+        var section = chip.dataset.section;
         var count = 0;
         document.querySelectorAll('.knowledge-item').forEach(function(item) {
-            if (item.style.display === 'none') return;
-            // Don't count body section filter for map counts — count based on other filters
-            if (item.dataset.bodySection === section || (!item.dataset.bodySection && section === 'General')) count++;
+            // Count items matching this section (ignoring body section filter but respecting other filters)
+            var visible = true;
+            if (filterState.contentType !== 'all' && item.dataset.type !== filterState.contentType) visible = false;
+            if (visible && filterState.modality) {
+                var itemParts = (item.dataset.modality || '').split('/').map(function(p) { return p.trim(); });
+                if (itemParts.indexOf(filterState.modality) === -1 && item.dataset.modality !== filterState.modality) visible = false;
+            }
+            if (visible && filterState.searchQuery) {
+                var q = filterState.searchQuery;
+                if ((item.dataset.text || '').indexOf(q) === -1 && (item.dataset.tags || '').indexOf(q) === -1) visible = false;
+            }
+            if (visible && item.dataset.bodySection === section) count++;
         });
-        var elId = 'mapCount-' + section.replace(/\s+/g, '');
-        var el = document.getElementById(elId);
-        if (el) el.textContent = count > 0 ? count : '';
-        var badgeEl = document.querySelector('#mapCount-' + section.replace(/\s+/g, ''));
-        if (badgeEl && badgeEl.tagName === 'SPAN') badgeEl.textContent = count > 0 ? count : '';
+        var badge = chip.querySelector('.badge');
+        if (badge) {
+            badge.textContent = count;
+            badge.style.display = count > 0 ? '' : 'none';
+        }
     });
 }
 
@@ -761,18 +739,11 @@ function renderActiveFilters() {
         return;
     }
     wrapper.classList.remove('d-none');
-    container.innerHTML = '<small class="text-muted me-1">Filters:</small>' +
+    container.innerHTML = '<small class="text-muted me-1">Active:</small>' +
         pills.map(function(p) {
             return '<span class="filter-pill" onclick="removeFilter(\'' + p.type + '\',\'' + p.label.replace(/'/g, "\\'") + '\')">' + p.label + ' <i class="fas fa-times" style="font-size: 0.55rem;"></i></span>';
         }).join('') +
         '<span class="filter-pill" style="background: #dc3545;" onclick="clearAllFilters()">Clear all <i class="fas fa-times" style="font-size: 0.55rem;"></i></span>';
-
-    // Update mobile badge
-    var badge = document.getElementById('activeFilterBadge');
-    if (badge) {
-        badge.textContent = pills.length;
-        badge.classList.toggle('d-none', pills.length === 0);
-    }
 }
 
 function removeFilter(type, label) {
@@ -807,8 +778,9 @@ function clearAllFilters() {
     filterState.modality = null;
     filterState.tags = [];
     filterState.searchQuery = '';
+    filterState.contentType = 'all';
     document.getElementById('knowledgeSearch').value = '';
-    document.querySelectorAll('.body-region, .body-region-btn').forEach(function(r) { r.classList.remove('active'); });
+    document.querySelectorAll('.body-section-chip').forEach(function(c) { c.classList.remove('active'); });
     document.querySelectorAll('.modality-chip').forEach(function(c) {
         c.classList.remove('active');
         var cc = getModalityColor(c.dataset.modality);
@@ -816,8 +788,9 @@ function clearAllFilters() {
         c.style.color = cc.text;
     });
     document.querySelectorAll('.tag-cloud-item').forEach(function(t) { t.classList.remove('active'); });
-    document.getElementById('clearBodyMap').style.display = 'none';
-    syncDropdown();
+    document.querySelectorAll('[data-content-type]').forEach(function(t) {
+        t.classList.toggle('active', t.dataset.contentType === 'all');
+    });
     applyFilters();
 }
 
@@ -842,33 +815,33 @@ function selectItem(el) {
         var isVerified = data.dataset.verified === 'true';
 
         detailContent.innerHTML =
-            '<div class="card border-0 shadow-sm" style="border-radius: 10px; overflow: hidden; border-left: 5px solid ' + color.border + ' !important;">' +
+            '<div class="detail-card" style="border-left: 5px solid ' + color.border + ';">' +
             '  <div class="detail-header">' +
-            '    <div class="d-flex justify-content-between align-items-center">' +
+            '    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">' +
             '      <div class="d-flex align-items-center gap-2">' +
             '        <i class="fas fa-gem" style="color: #6b46c1;"></i>' +
             '        <span class="fw-semibold">Radiology Pearl</span>' +
             (isVerified ? '<span class="badge bg-success" style="font-size: 0.6rem;">Verified</span>' : '<span class="badge bg-warning text-dark" style="font-size: 0.6rem;">Pending</span>') +
             '      </div>' +
-            '      <div class="d-flex gap-1">' +
+            '      <div class="d-flex gap-1 flex-wrap">' +
             (modality ? '<span class="modality-badge" style="background: ' + color.bg + '; color: ' + color.text + '; border: 1px solid ' + color.border + ';">' + modality + '</span>' : '') +
-            (data.dataset.bodySection ? '<span class="badge bg-light text-dark border" style="font-size: 0.65rem;">' + data.dataset.bodySection + '</span>' : '') +
+            (data.dataset.bodySection ? '<span class="section-badge">' + data.dataset.bodySection + '</span>' : '') +
             '      </div>' +
             '    </div>' +
             '  </div>' +
             '  <div class="detail-body">' +
-            '    <div class="pearl-content" style="font-size: 0.95rem; line-height: 1.7;">' + data.innerHTML + '</div>' +
+            '    <div class="pearl-content">' + data.innerHTML + '</div>' +
             (data.dataset.tags ? '<div class="mt-3">' + data.dataset.tags.split(',').map(function(t) { return '<span class="badge bg-light text-muted border me-1" style="font-size: 0.65rem;">' + t.trim() + '</span>'; }).join('') + '</div>' : '') +
-            '    <div class="mt-3 d-flex justify-content-between align-items-center">' +
-            '      <small class="text-muted">' + (data.dataset.createdBy || '') + (data.dataset.createdAt ? ' &middot; ' + data.dataset.createdAt : '') + '</small>' +
-            '      <div class="d-flex gap-1">' +
-            '        <button class="btn btn-sm btn-outline-secondary" onclick="copyDetailContent()"><i class="fas fa-copy me-1"></i>Copy</button>' +
+            '  </div>' +
+            '  <div class="detail-footer d-flex justify-content-between align-items-center flex-wrap gap-2">' +
+            '    <small class="text-muted">' + (data.dataset.createdBy || '') + (data.dataset.createdAt ? ' &middot; ' + data.dataset.createdAt : '') + '</small>' +
+            '    <div class="d-flex gap-1 flex-wrap">' +
+            '      <button class="btn btn-sm btn-outline-secondary" onclick="copyDetailContent()"><i class="fas fa-copy me-1"></i>Copy</button>' +
             {% if is_admin %}
-            '        <button class="btn btn-sm btn-outline-secondary" onclick="editPearl(' + pearlId + ')"><i class="fas fa-edit me-1"></i>Edit</button>' +
-            (!isVerified ? '        <button class="btn btn-sm btn-outline-success" onclick="verifyPearl(' + pearlId + ')"><i class="fas fa-check me-1"></i>Verify</button>' : '') +
-            '        <button class="btn btn-sm btn-outline-danger" onclick="deletePearl(' + pearlId + ')"><i class="fas fa-trash me-1"></i>Delete</button>' +
+            '      <button class="btn btn-sm btn-outline-secondary" onclick="editPearl(' + pearlId + ')"><i class="fas fa-edit me-1"></i>Edit</button>' +
+            (!isVerified ? '      <button class="btn btn-sm btn-outline-success" onclick="verifyPearl(' + pearlId + ')"><i class="fas fa-check me-1"></i>Verify</button>' : '') +
+            '      <button class="btn btn-sm btn-outline-danger" onclick="deletePearl(' + pearlId + ')"><i class="fas fa-trash me-1"></i>Delete</button>' +
             {% endif %}
-            '      </div>' +
             '    </div>' +
             '  </div>' +
             '</div>';
@@ -879,25 +852,25 @@ function selectItem(el) {
         var data = source.querySelector('.anatomy-detail-data');
 
         detailContent.innerHTML =
-            '<div class="card border-0 shadow-sm" style="border-radius: 10px; overflow: hidden;">' +
+            '<div class="detail-card">' +
             '  <div class="detail-header">' +
-            '    <div class="d-flex justify-content-between align-items-center">' +
+            '    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">' +
             '      <div class="d-flex align-items-center gap-2">' +
             '        <i class="fas fa-bone" style="color: #6f42c1;"></i>' +
             '        <span class="fw-semibold">' + data.dataset.title + '</span>' +
             '      </div>' +
-            (data.dataset.bodySection ? '<span class="badge bg-light text-dark border" style="font-size: 0.65rem;">' + data.dataset.bodySection + '</span>' : '') +
+            (data.dataset.bodySection ? '<span class="section-badge">' + data.dataset.bodySection + '</span>' : '') +
             '    </div>' +
             '  </div>' +
             '  <div class="detail-body">' +
             '    <div class="anatomy-content">' + data.innerHTML + '</div>' +
-            '    <div class="mt-3 d-flex gap-2">' +
-            '      <button class="btn btn-sm btn-outline-secondary" onclick="copyDetailContent()"><i class="fas fa-copy me-1"></i>Copy</button>' +
-            '      <a href="/anatomy-snippets/' + data.dataset.slug + '" class="btn btn-sm btn-brand-neutral"><i class="fas fa-external-link-alt me-1"></i>Full View</a>' +
+            '  </div>' +
+            '  <div class="detail-footer d-flex gap-2 flex-wrap">' +
+            '    <button class="btn btn-sm btn-outline-secondary" onclick="copyDetailContent()"><i class="fas fa-copy me-1"></i>Copy</button>' +
+            '    <a href="/anatomy-snippets/' + data.dataset.slug + '" class="btn btn-sm btn-brand-neutral"><i class="fas fa-external-link-alt me-1"></i>Full View</a>' +
             {% if is_admin %}
-            '      <a href="/edit-reporting-algorithm/' + data.dataset.snippetId + '" class="btn btn-sm btn-outline-secondary"><i class="fas fa-edit me-1"></i>Edit</a>' +
+            '    <a href="/edit-reporting-algorithm/' + data.dataset.snippetId + '" class="btn btn-sm btn-outline-secondary"><i class="fas fa-edit me-1"></i>Edit</a>' +
             {% endif %}
-            '    </div>' +
             '  </div>' +
             '</div>';
     }
@@ -911,9 +884,11 @@ function copyDetailContent() {
     if (!content) return;
     var text = content.innerText || content.textContent;
     navigator.clipboard.writeText(text).then(function() {
-        // Brief visual feedback
-        event.target.innerHTML = '<i class="fas fa-check me-1"></i>Copied!';
-        setTimeout(function() { event.target.innerHTML = '<i class="fas fa-copy me-1"></i>Copy'; }, 2000);
+        var btn = event.target.closest('button');
+        if (btn) {
+            btn.innerHTML = '<i class="fas fa-check me-1"></i>Copied!';
+            setTimeout(function() { btn.innerHTML = '<i class="fas fa-copy me-1"></i>Copy'; }, 2000);
+        }
     });
 }
 
@@ -982,6 +957,47 @@ function addNewPearl() {
     new bootstrap.Modal(document.getElementById('editPearlModal')).show();
 }
 
+function addNewSnippet() {
+    document.getElementById('snippetTopic').value = '';
+    document.getElementById('snippetBodySection').value = '';
+    new bootstrap.Modal(document.getElementById('addSnippetModal')).show();
+}
+
+function generateSnippet() {
+    var topic = document.getElementById('snippetTopic').value.trim();
+    if (!topic) { alert('Please enter an anatomy topic.'); return; }
+    var bodySection = document.getElementById('snippetBodySection').value;
+    var btn = document.getElementById('generateSnippetBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Generating...';
+
+    fetch('/api/smart-reporter/anatomy-reference', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ topic: topic })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.error) { alert(data.error); return; }
+        // If body_section provided, update the cached entry
+        if (bodySection && data.success) {
+            // Find the anatomy cache entry and update body_section
+            fetch('/api/smart-reporter/update-snippet-section', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ topic: topic, body_section: bodySection })
+            }).finally(function() { location.reload(); });
+        } else {
+            location.reload();
+        }
+    })
+    .catch(function(err) { alert('Generation failed: ' + err.message); })
+    .finally(function() {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-magic me-1"></i>Generate';
+    });
+}
+
 function editPearl(id) {
     fetch('/api/smart-reporter/pearls/' + id)
         .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
@@ -1039,7 +1055,7 @@ function deletePearl(id) {
 // ==================== INIT ====================
 document.addEventListener('DOMContentLoaded', function() {
     applyModalityBorders();
-    updateBodyMapCounts();
+    updateSectionCounts();
 
     // Handle hash-based deep linking
     var hash = window.location.hash;

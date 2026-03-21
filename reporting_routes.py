@@ -29,6 +29,44 @@ from clinical_tool_generator import extract_html_content
 
 logger = logging.getLogger(__name__)
 
+# ==================== MODALITY NORMALIZATION ====================
+_MODALITY_MAP = {
+    'ct': 'CT', 'ct scan': 'CT', 'computed tomography': 'CT',
+    'ct with contrast': 'CT', 'ct without contrast': 'CT',
+    'ct with and without contrast': 'CT', 'cect': 'CT', 'ncct': 'CT',
+    'mri': 'MRI', 'mr': 'MRI', 'magnetic resonance': 'MRI',
+    'mri with contrast': 'MRI', 'mri without contrast': 'MRI',
+    'mri with and without contrast': 'MRI',
+    'us': 'Ultrasound', 'ultrasound': 'Ultrasound', 'usg': 'Ultrasound',
+    'ultrasonography': 'Ultrasound',
+    'xr': 'X-ray', 'x-ray': 'X-ray', 'x ray': 'X-ray',
+    'plain film': 'X-ray', 'radiograph': 'X-ray', 'plain radiograph': 'X-ray',
+    'nm': 'Nuclear Medicine', 'nuclear medicine': 'Nuclear Medicine',
+    'scintigraphy': 'Nuclear Medicine',
+    'pet': 'PET-CT', 'pet-ct': 'PET-CT', 'pet ct': 'PET-CT', 'petct': 'PET-CT',
+    'fluoroscopy': 'Fluoroscopy', 'fluoro': 'Fluoroscopy',
+}
+
+def normalize_modality(raw):
+    """Normalize modality string to canonical form. Handles compound like 'CT/MRI'."""
+    if not raw or not raw.strip():
+        return None
+    raw = raw.strip()
+    # Handle compound modalities (e.g. "CT/MRI", "CT / MR")
+    if '/' in raw:
+        parts = [normalize_modality(p) for p in raw.split('/')]
+        parts = [p for p in parts if p]
+        # Deduplicate while preserving order
+        seen = set()
+        unique = []
+        for p in parts:
+            if p not in seen:
+                seen.add(p)
+                unique.append(p)
+        return '/'.join(unique) if unique else None
+    key = raw.lower().strip()
+    return _MODALITY_MAP.get(key, raw.strip())
+
 reporting_bp = Blueprint('reporting', __name__)
 
 AI_DAILY_LIMIT = 50  # Max AI requests per user per day
@@ -1073,8 +1111,11 @@ def knowledge_hub():
         ReportingAlgorithm.is_available == True,
     ).order_by(ReportingAlgorithm.title).all()
 
-    # Collect distinct modalities
-    modalities = sorted(set(p.modality.strip() for p in pearls if p.modality and p.modality.strip()))
+    # Collect distinct modalities (normalized)
+    modalities = sorted(set(
+        normalize_modality(p.modality) for p in pearls
+        if p.modality and normalize_modality(p.modality)
+    ))
 
     # Tag frequency for tag cloud (top 40)
     tag_counts = {}
@@ -2518,6 +2559,31 @@ def smart_reporter_anatomy():
     })
 
 
+# ==================== SNIPPET BODY SECTION UPDATE ====================
+
+@reporting_bp.route('/api/smart-reporter/update-snippet-section', methods=['POST'])
+@login_required
+@require_admin
+def update_snippet_section():
+    """Update body_section on a recently generated anatomy snippet."""
+    data = request.get_json() or {}
+    topic = (data.get('topic') or '').strip()
+    body_section = (data.get('body_section') or '').strip()
+    if not topic or not body_section:
+        return jsonify({'error': 'topic and body_section required'}), 400
+
+    slug = re.sub(r'[^a-z0-9]+', '-', topic.lower()).strip('-')[:200]
+    snippet = ReportingAlgorithm.query.filter(
+        ReportingAlgorithm.origin == 'anatomy_cache',
+        ReportingAlgorithm.slug == f'anatomy-{slug}',
+    ).first()
+    if not snippet:
+        return jsonify({'error': 'Snippet not found'}), 404
+    snippet.body_section = body_section
+    db.session.commit()
+    return jsonify({'success': True})
+
+
 # ==================== CONTENT REQUESTS ====================
 
 @reporting_bp.route('/api/smart-reporter/content-request', methods=['POST'])
@@ -2636,7 +2702,7 @@ def save_pearl():
         content_hash=content_hash,
         pearl_text=pearl_text,
         body_section=data.get('body_section', '').strip() or None,
-        modality=data.get('modality', '').strip() or None,
+        modality=normalize_modality(data.get('modality', '')),
         tags=data.get('tags', '').strip() or None,
         source_report_context=data.get('source_report_context', '').strip() or None,
         created_by_user_id=current_user.id,
@@ -2726,7 +2792,7 @@ def update_pearl(pearl_id):
     if 'body_section' in data:
         pearl.body_section = data['body_section'].strip() or None
     if 'modality' in data:
-        pearl.modality = data['modality'].strip() or None
+        pearl.modality = normalize_modality(data['modality'])
     if 'tags' in data:
         pearl.tags = data['tags'].strip() or None
 
