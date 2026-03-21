@@ -217,11 +217,13 @@
                         <!-- Search to Add Linked Content -->
                         <div class="related-cases-search-section">
                             <div class="input-group input-group-sm">
-                                <select id="relatedCaseTypeStudent" class="form-select" style="max-width: 140px; border-color: #5E899E;">
+                                <select id="relatedCaseTypeStudent" class="form-select" style="max-width: 160px; border-color: #5E899E;">
                                     <option value="related">Related</option>
                                     <option value="similar">Similar</option>
                                     <option value="algorithm">Algorithm</option>
                                     <option value="reference">Reference</option>
+                                    <option value="pearl">Pearl</option>
+                                    <option value="reporting_algorithm">Anatomy/Algorithm</option>
                                 </select>
                                 <span class="input-group-text bg-white" style="border-color: #5E899E;">
                                     <i class="fas fa-search text-muted"></i>
@@ -10351,6 +10353,24 @@
                             <span class="text-truncate" style="max-width:250px;">${item.title}${journal}</span>
                         </a>
                     `;
+                } else if (item.link_type === 'pearl') {
+                    return `
+                        <span class="btn btn-sm btn-outline-primary d-flex align-items-center gap-2 related-case-badge"
+                              style="border-color: #6b46c1; color: #6b46c1; cursor: default;">
+                            <i class="fas fa-gem"></i>
+                            <span class="text-truncate" style="max-width:200px;">${(item.title || 'Pearl').replace(/<[^>]*>/g, '')}</span>
+                        </span>
+                    `;
+                } else if (item.link_type === 'reporting_algorithm') {
+                    const algoUrl = item.url || (item.slug ? '/anatomy-snippets/' + item.slug : '#');
+                    return `
+                        <a href="${algoUrl}" target="_blank"
+                           class="btn btn-sm btn-outline-primary d-flex align-items-center gap-2 related-case-badge"
+                           style="border-color: #6f42c1; color: #6f42c1;">
+                            <i class="fas fa-bone"></i>
+                            <span class="text-truncate" style="max-width:200px;">${item.title || 'Algorithm'}</span>
+                        </a>
+                    `;
                 } else {
                     const relType = item.relation_type || 'related';
                     const iconClass = relType === 'similar' ? 'fa-clone' : 'fa-file-medical';
@@ -10382,7 +10402,9 @@
             related: 'Search by diagnosis or case number...',
             similar: 'Search by diagnosis or case number...',
             algorithm: 'Search by cancer type, body section...',
-            reference: 'Search by reference title or journal...'
+            reference: 'Search by reference title or journal...',
+            pearl: 'Search pearls by text, tags, body section...',
+            reporting_algorithm: 'Search algorithms by title, keywords...',
         };
         if (typeSelect) {
             typeSelect.addEventListener('change', function() {
@@ -10431,6 +10453,24 @@
                                         <small class="text-muted">${journal}</small>
                                     </button>
                                 `;
+                            } else if (item.link_type === 'pearl') {
+                                return `
+                                    <button type="button" class="list-group-item list-group-item-action"
+                                            onclick="addLinkStudent('pearl', ${item.id})">
+                                        <i class="fas fa-gem me-2" style="color:#6b46c1;"></i>
+                                        <span class="text-truncate d-inline-block" style="max-width:350px;">${item.title}</span>
+                                        ${item.body_section ? '<small class="text-muted ms-1">(' + item.body_section + ')</small>' : ''}
+                                    </button>
+                                `;
+                            } else if (item.link_type === 'reporting_algorithm') {
+                                return `
+                                    <button type="button" class="list-group-item list-group-item-action"
+                                            onclick="addLinkStudent('reporting_algorithm', ${item.id})">
+                                        <i class="fas fa-bone me-2" style="color:#6f42c1;"></i>
+                                        <strong>${item.title}</strong>
+                                        ${item.body_section ? '<small class="text-muted ms-1">(' + item.body_section + ')</small>' : ''}
+                                    </button>
+                                `;
                             } else {
                                 return `
                                     <button type="button" class="list-group-item list-group-item-action"
@@ -10468,6 +10508,10 @@
             body.calculator_id = linkedId;
         } else if (linkType === 'reference') {
             body.reference_id = linkedId;
+        } else if (linkType === 'pearl') {
+            body.pearl_id = linkedId;
+        } else if (linkType === 'reporting_algorithm') {
+            body.algorithm_id = linkedId;
         } else {
             body.related_case_id = linkedId;
             body.relation_type = relationType;

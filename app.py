@@ -1055,7 +1055,7 @@ def add_security_headers(response):
         "default-src 'self'; "
         "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; "
         "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com; "
-        "img-src 'self' data: blob: https://res.cloudinary.com https://*.cloudinary.com https://upload.wikimedia.org https://*.wikimedia.org; "
+        "img-src 'self' data: blob: https://res.cloudinary.com https://*.cloudinary.com https://upload.wikimedia.org https://*.wikimedia.org https://prod-images-static.radiopaedia.org; "
         "font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com; "
         "connect-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://res.cloudinary.com https://*.cloudinary.com https://fonts.googleapis.com https://fonts.gstatic.com; "
         "frame-src 'self'; "
@@ -3881,6 +3881,62 @@ def get_related_cases(case_id):
             })
 
     return jsonify(items)
+
+
+@app.route('/api/pearl/<int:pearl_id>/linked-cases', methods=['GET'])
+@login_required
+def get_pearl_linked_cases(pearl_id):
+    """Get all cases linked to a radiology pearl (reverse lookup)."""
+    from models import case_pearl_links
+    RadiologyPearl.query.get_or_404(pearl_id)
+
+    rows = db.session.execute(
+        db.select(case_pearl_links.c.case_id).where(
+            case_pearl_links.c.pearl_id == pearl_id
+        )
+    ).all()
+
+    cases = []
+    for row in rows:
+        c = Case.query.get(row.case_id)
+        if c:
+            cases.append({
+                'id': c.id,
+                'case_number': c.case_number,
+                'diagnosis': c.diagnosis[:120] + '...' if len(c.diagnosis or '') > 120 else c.diagnosis,
+                'body_part': c.body_part.value if c.body_part else None,
+                'status': c.status.value if c.status else None,
+                'url': f'/view-case/{c.id}',
+            })
+    return jsonify(cases)
+
+
+@app.route('/api/algorithm/<int:algorithm_id>/linked-cases', methods=['GET'])
+@login_required
+def get_algorithm_linked_cases(algorithm_id):
+    """Get all cases linked to a reporting algorithm / anatomy snippet (reverse lookup)."""
+    from models import case_algorithm_links
+    ReportingAlgorithm.query.get_or_404(algorithm_id)
+
+    rows = db.session.execute(
+        db.select(case_algorithm_links.c.case_id).where(
+            case_algorithm_links.c.algorithm_id == algorithm_id
+        )
+    ).all()
+
+    cases = []
+    for row in rows:
+        c = Case.query.get(row.case_id)
+        if c:
+            cases.append({
+                'id': c.id,
+                'case_number': c.case_number,
+                'diagnosis': c.diagnosis[:120] + '...' if len(c.diagnosis or '') > 120 else c.diagnosis,
+                'body_part': c.body_part.value if c.body_part else None,
+                'status': c.status.value if c.status else None,
+                'url': f'/view-case/{c.id}',
+            })
+    return jsonify(cases)
 
 
 @app.route('/api/case/<int:case_id>/related', methods=['POST'])

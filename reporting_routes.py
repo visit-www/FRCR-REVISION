@@ -2720,6 +2720,14 @@ def save_pearl():
         source_report_context=data.get('source_report_context', '').strip() or None,
         created_by_user_id=current_user.id,
     )
+
+    # Allow admin to save as pre-verified (for AI-generated pearls)
+    from models import UserRole
+    if data.get('is_verified') and current_user.role == UserRole.ADMIN:
+        pearl.is_verified = True
+        pearl.verified_by_user_id = current_user.id
+        pearl.verified_at = datetime.utcnow()
+
     db.session.add(pearl)
     db.session.commit()
 
@@ -2853,3 +2861,75 @@ def _pearl_to_dict(pearl):
         'verified_at': pearl.verified_at.isoformat() if pearl.verified_at else None,
         'created_at': pearl.created_at.isoformat() if pearl.created_at else None,
     }
+
+
+# ── Admin AI Pearl Generator ────────────────────────────────────────
+
+@reporting_bp.route('/api/admin/generate-pearl', methods=['POST'])
+@login_required
+@require_admin
+def admin_generate_pearl():
+    """Generate a structured radiology pearl via AI (admin only)."""
+    import time
+
+    data = request.get_json() or {}
+    topic = (data.get('topic') or '').strip()
+    if not topic:
+        return jsonify({'error': 'topic is required'}), 400
+
+    modality_raw = (data.get('modality') or '').strip()
+    modality = normalize_modality(modality_raw) if modality_raw else ''
+    body_section = (data.get('body_section') or '').strip()
+    include_image = data.get('include_image', True)
+
+    start = time.time()
+
+    try:
+        from ai_pearl_generator import (
+            generate_pearl, fetch_radiopaedia_image, render_pearl_html,
+            PearlGeneratorError,
+        )
+
+        result = generate_pearl(topic, modality=modality, body_section=body_section)
+
+        image = None
+        if include_image:
+            image = fetch_radiopaedia_image(topic, modality=modality)
+
+        # Re-render HTML with image if found
+        if image:
+            result['pearl_html'] = render_pearl_html(
+                result['pearl_data'], radiopaedia_image=image,
+            )
+
+    except Exception as exc:
+        logger.error("Pearl generation failed: %s", exc)
+        return jsonify({'error': str(exc)}), 500
+
+    duration_ms = int((time.time() - start) * 1000)
+
+    try:
+        from models import log_ai_usage
+        log_ai_usage(
+            user_id=current_user.id,
+            action='generate_pearl',
+            provider='anthropic',
+            model=result.get('model'),
+            output_tokens=result.get('token_count'),
+            input_summary=f"topic={topic}, modality={modality}, body={body_section}",
+            status='success',
+            duration_ms=duration_ms,
+        )
+    except Exception:
+        pass  # Audit logging never breaks main flow
+
+    return jsonify({
+        'success': True,
+        'pearl_html': result['pearl_html'],
+        'pearl_data': result['pearl_data'],
+        'title': result['title'],
+        'tags': result['tags'],
+        'image': image,
+        'model': result.get('model'),
+        'token_count': result.get('token_count'),
+    })

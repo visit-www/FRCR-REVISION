@@ -2780,42 +2780,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     };
 
-    // ==================== AUTO-SAVE PEARL ====================
-
-    function autoSavePearl(teachingText) {
-        if (!teachingText || teachingText === state._lastAutoSavedPearl) return;
-
-        const reportText = (state.reportText || '').trim();
-        const contextSnippet = reportText.length > 300 ? reportText.substring(0, 300) + '...' : reportText;
-
-        fetch('/api/smart-reporter/save-pearl', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                pearl_text: teachingText,
-                body_section: state.bodySection || '',
-                modality: state.modality || '',
-                tags: '',
-                source_report_context: contextSnippet,
-            })
-        })
-        .then(r => r.json())
-        .then(data => {
-            if (data.success) {
-                state._lastAutoSavedPearl = teachingText;
-                // Update gem button to checkmark (same visual as manual save)
-                var btn = document.getElementById('savePearlBtn');
-                if (btn) {
-                    btn.innerHTML = '<i class="fas fa-check" style="color: var(--brand-success, #a8d5ba);"></i>';
-                    btn.disabled = true;
-                }
-            }
-        })
-        .catch(function(err) {
-            console.warn('Auto-save pearl failed:', err);
-        });
-    }
-
     // Track selected quick-ask instructions
     const _activeQuickAsks = new Set();
 
@@ -2928,11 +2892,6 @@ document.addEventListener('DOMContentLoaded', function() {
             renderInsight('insightQuality', 'insightQualityText', ins.quality_assessment);
             renderInsight('insightRecommendation', 'insightRecommendationText', ins.recommendation_check);
             renderInsight('insightTeaching', 'insightTeachingText', ins.teaching_point);
-
-            // Auto-save teaching point as unverified pearl (silent, dedup on backend)
-            if (ins.teaching_point && ins.teaching_point.trim()) {
-                autoSavePearl(ins.teaching_point.trim());
-            }
 
             // Differentials as comma-separated list
             const diffEl = document.getElementById('insightDifferentials');

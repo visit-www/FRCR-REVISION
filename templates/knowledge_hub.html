@@ -34,6 +34,7 @@
                     <i class="fas fa-plus me-1"></i>Add
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end">
+                    <li><a class="dropdown-item" href="#" onclick="openGeneratePearlModal(); return false;"><i class="fas fa-magic me-2" style="color: #e96304;"></i>AI Generate Pearl</a></li>
                     <li><a class="dropdown-item" href="#" onclick="addNewPearl(); return false;"><i class="fas fa-gem me-2" style="color: #6b46c1;"></i>Add Pearl</a></li>
                     <li><a class="dropdown-item" href="#" onclick="addNewSnippet(); return false;"><i class="fas fa-bone me-2" style="color: #6f42c1;"></i>Add Anatomy Snippet</a></li>
                 </ul>
@@ -313,6 +314,114 @@
         </div>
     </div>
 </div>
+
+<!-- Generate Pearl Modal (admin AI generator) -->
+<div class="modal fade app-content-modal" id="generatePearlModal" tabindex="-1" data-bs-focus="false">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-magic me-2" style="color: #e96304;"></i>Generate Radiology Pearl
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <!-- INPUT SECTION -->
+                <div id="genPearlInputSection">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Topic / Pathology</label>
+                        <input type="text" class="form-control" id="genPearlTopic"
+                               placeholder="e.g. Hepatocellular Carcinoma, Pulmonary Embolism, Scaphoid Fracture">
+                        <small class="text-muted">Enter the diagnosis or pathology you want a teaching pearl for.</small>
+                    </div>
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Body Section</label>
+                            <select class="form-select" id="genPearlBodySection">
+                                <option value="">-- Auto-detect --</option>
+                                {% for bs in ['Brain','Head and Neck','Thorax','Cardiovascular','Breast','Abdomen','Pelvis','Spine','Musculoskeletal','Multisystem'] %}
+                                <option value="{{ bs }}">{{ bs }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Modality <small class="text-muted">(select all that apply)</small></label>
+                            <div class="d-flex flex-wrap gap-1" id="genPearlModalityGroup">
+                                {% for mod in ['CT','MRI','Ultrasound','X-ray','Fluoroscopy','Nuclear Medicine','PET-CT'] %}
+                                <label class="modality-check-pill">
+                                    <input type="checkbox" value="{{ mod }}" class="d-none">
+                                    <span>{{ mod }}</span>
+                                </label>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="genPearlIncludeImage" checked>
+                        <label class="form-check-label" for="genPearlIncludeImage">
+                            Include Radiopaedia reference image
+                        </label>
+                    </div>
+                </div>
+
+                <!-- LOADING SPINNER -->
+                <div id="genPearlLoading" class="d-none text-center py-5">
+                    <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;">
+                        <span class="visually-hidden">Generating...</span>
+                    </div>
+                    <p class="text-muted">Generating pearl&hellip; this may take 15-30 seconds.</p>
+                </div>
+
+                <!-- PREVIEW SECTION -->
+                <div id="genPearlPreview" class="d-none">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="mb-0"><i class="fas fa-eye me-1"></i>Preview</h6>
+                        <button class="btn btn-sm btn-outline-secondary" id="genPearlEditToggle" onclick="editGeneratedPearl()">
+                            <i class="fas fa-edit me-1"></i>Edit in TinyMCE
+                        </button>
+                    </div>
+                    <div id="genPearlPreviewContent" class="pearl-content border rounded p-3"
+                         style="max-height: 60vh; overflow-y: auto;"></div>
+
+                    <!-- Hidden edit area (TinyMCE) -->
+                    <div id="genPearlEditSection" class="d-none mt-2">
+                        <textarea id="genPearlEditText" rows="10"></textarea>
+                    </div>
+
+                    <!-- Metadata -->
+                    <div class="row g-3 mt-2">
+                        <div class="col-md-6">
+                            <label class="form-label">Body Section</label>
+                            <select class="form-select form-select-sm" id="genPearlSaveBodySection">
+                                <option value="">--</option>
+                                {% for bs in ['Brain','Head and Neck','Thorax','Cardiovascular','Breast','Abdomen','Pelvis','Spine','Musculoskeletal','Multisystem'] %}
+                                <option value="{{ bs }}">{{ bs }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Tags</label>
+                            <input type="text" class="form-control form-control-sm" id="genPearlSaveTags"
+                                   placeholder="comma-separated">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ERROR MESSAGE -->
+                <div id="genPearlError" class="d-none alert alert-danger mt-3"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-modal-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-brand-primary" id="genPearlGenerateBtn" onclick="generatePearl()">
+                    <i class="fas fa-magic me-1"></i>Generate
+                </button>
+                <button type="button" class="btn btn-modal-primary d-none" id="genPearlSaveBtn" onclick="saveGeneratedPearl()">
+                    <i class="fas fa-save me-1"></i>Save Pearl
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endif %}
 
 <style>
@@ -511,6 +620,21 @@
 .pearl-content table { width: 100%; border-collapse: collapse; margin: 0.5rem 0; }
 .pearl-content th, .pearl-content td { border: 1px solid #dee2e6; padding: 6px 10px; font-size: 0.88rem; }
 .pearl-content th { background: #f8f9fa; font-weight: 600; }
+
+/* Generated pearl card sections */
+.pearl-gen-title {
+    font-weight: 700; color: var(--brand-text-primary, #2c3e50);
+    font-size: 1.15rem; border-bottom: 2px solid #e9ecef; padding-bottom: 0.5rem;
+}
+.pearl-content .card { border-radius: 8px; overflow: hidden; }
+.pearl-content .card-header { font-size: 0.88rem; padding: 0.4rem 0.75rem; border-bottom: none; }
+.pearl-content .card-body { font-size: 0.88rem; }
+.pearl-content .card .table { font-size: 0.82rem; margin-bottom: 0; }
+.pearl-content .card .table th {
+    font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.3px;
+}
+.pearl-content .card .table td { vertical-align: top; }
+.pearl-content .card img.img-fluid { border: 1px solid #e9ecef; }
 
 /* Anatomy content styling */
 .anatomy-content { font-size: 0.95rem; line-height: 1.7; color: var(--brand-text-primary); }
@@ -889,7 +1013,9 @@ function selectItem(el) {
             {% endif %}
             '    </div>' +
             '  </div>' +
-            '</div>';
+            '</div>' +
+            '<div id="linkedCasesSection" class="mt-3"></div>';
+        loadLinkedCases('pearl', pearlId);
     } else if (type === 'anatomy') {
         var snippetId = id.replace('anatomy-', '');
         var source = document.getElementById('anatomy-content-' + snippetId);
@@ -922,7 +1048,9 @@ function selectItem(el) {
             '    <a href="/admin/reporting-algorithms/edit/' + data.dataset.snippetId + '" class="btn btn-sm btn-outline-secondary"><i class="fas fa-edit me-1"></i>Edit</a>' +
             {% endif %}
             '  </div>' +
-            '</div>';
+            '</div>' +
+            '<div id="linkedCasesSection" class="mt-3"></div>';
+        loadLinkedCases('algorithm', snippetId);
     }
 
     placeholder.classList.add('d-none');
@@ -941,6 +1069,161 @@ function copyDetailContent() {
         }
     });
 }
+
+// ==================== LINKED CASES (bidirectional) ====================
+var _linkedCasesState = { type: null, itemId: null };
+
+function loadLinkedCases(type, itemId) {
+    _linkedCasesState = { type: type, itemId: itemId };
+    var container = document.getElementById('linkedCasesSection');
+    if (!container) return;
+
+    var apiUrl = type === 'pearl'
+        ? '/api/pearl/' + itemId + '/linked-cases'
+        : '/api/algorithm/' + itemId + '/linked-cases';
+    var linkType = type === 'pearl' ? 'pearl' : 'reporting_algorithm';
+    var idField = type === 'pearl' ? 'pearl_id' : 'algorithm_id';
+
+    container.innerHTML =
+        '<div class="detail-card" style="border-left: 5px solid #5E899E;">' +
+        '  <div class="detail-header py-2">' +
+        '    <div class="d-flex justify-content-between align-items-center">' +
+        '      <span class="fw-semibold" style="font-size: 0.85rem;"><i class="fas fa-link me-2" style="color: #5E899E;"></i>Linked Cases</span>' +
+        '      <span id="linkedCasesCount" class="badge bg-light text-muted border" style="font-size: 0.6rem;"></span>' +
+        '    </div>' +
+        '  </div>' +
+        '  <div class="detail-body py-2">' +
+        '    <div id="linkedCasesList" class="d-flex flex-wrap gap-2 mb-2">' +
+        '      <small class="text-muted">Loading...</small>' +
+        '    </div>' +
+        {% if is_admin %}
+        '    <div class="mt-2 pt-2 border-top">' +
+        '      <div class="input-group input-group-sm">' +
+        '        <span class="input-group-text bg-white"><i class="fas fa-search text-muted" style="font-size: 0.7rem;"></i></span>' +
+        '        <input type="text" id="linkCaseSearch" class="form-control form-control-sm" ' +
+        '               placeholder="Search case to link..." oninput="searchCaseForLinking(this.value)">' +
+        '      </div>' +
+        '      <div id="linkCaseSearchResults" class="list-group mt-1 shadow-sm" style="display: none; max-height: 150px; overflow-y: auto; font-size: 0.8rem;"></div>' +
+        '    </div>' +
+        {% endif %}
+        '  </div>' +
+        '</div>';
+
+    fetch(apiUrl, { credentials: 'include' })
+        .then(function(r) { return r.json(); })
+        .then(function(cases) {
+            var list = document.getElementById('linkedCasesList');
+            var count = document.getElementById('linkedCasesCount');
+            if (!list) return;
+            count.textContent = cases.length;
+            if (cases.length === 0) {
+                list.innerHTML = '<small class="text-muted">No cases linked yet.</small>';
+                return;
+            }
+            list.innerHTML = cases.map(function(c) {
+                var removeBtn = '';
+                {% if is_admin %}
+                removeBtn = '<button class="btn btn-link btn-sm p-0 ms-1 text-danger" style="font-size: 0.65rem;" ' +
+                    'onclick="event.preventDefault(); event.stopPropagation(); unlinkCaseFromItem(' + c.id + ')" title="Unlink">' +
+                    '<i class="fas fa-times"></i></button>';
+                {% endif %}
+                return '<a href="' + c.url + '" target="_blank" ' +
+                    'class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1" ' +
+                    'style="font-size: 0.75rem; border-color: #5E899E; color: #5E899E;">' +
+                    '<i class="fas fa-file-medical"></i>' +
+                    '<span class="text-truncate" style="max-width: 180px;">' +
+                    (c.case_number || '') + (c.diagnosis ? ' — ' + c.diagnosis.substring(0, 40) : '') +
+                    '</span>' + removeBtn + '</a>';
+            }).join('');
+        })
+        .catch(function() {
+            var list = document.getElementById('linkedCasesList');
+            if (list) list.innerHTML = '<small class="text-muted">Failed to load.</small>';
+        });
+}
+
+var _linkCaseSearchTimer;
+function searchCaseForLinking(query) {
+    clearTimeout(_linkCaseSearchTimer);
+    var results = document.getElementById('linkCaseSearchResults');
+    if (!results) return;
+    if (query.trim().length < 2) { results.style.display = 'none'; return; }
+
+    _linkCaseSearchTimer = setTimeout(function() {
+        fetch('/api/cases/search?q=' + encodeURIComponent(query.trim()) + '&type=related&limit=10', { credentials: 'include' })
+            .then(function(r) { return r.json(); })
+            .then(function(items) {
+                if (items.length === 0) {
+                    results.innerHTML = '<div class="list-group-item text-muted" style="font-size: 0.8rem;">No cases found</div>';
+                } else {
+                    results.innerHTML = items.map(function(c) {
+                        return '<button type="button" class="list-group-item list-group-item-action py-1" style="font-size: 0.8rem;" ' +
+                            'onclick="linkCaseToItem(' + c.id + ')">' +
+                            '<i class="fas fa-file-medical me-1" style="color:#5E899E;"></i>' +
+                            '<strong>' + (c.case_number || '') + '</strong> ' +
+                            '<small class="text-muted">' + (c.diagnosis || '').substring(0, 50) + '</small>' +
+                            '</button>';
+                    }).join('');
+                }
+                results.style.display = 'block';
+            });
+    }, 300);
+}
+
+function linkCaseToItem(caseId) {
+    var st = _linkedCasesState;
+    if (!st.type || !st.itemId) return;
+    var linkType = st.type === 'pearl' ? 'pearl' : 'reporting_algorithm';
+    var body = { link_type: linkType };
+    if (st.type === 'pearl') body.pearl_id = parseInt(st.itemId);
+    else body.algorithm_id = parseInt(st.itemId);
+
+    fetch('/api/case/' + caseId + '/related', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        credentials: 'include',
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.error) { if (typeof showToast === 'function') showToast(data.error, 'warning'); return; }
+        // Clear search and reload linked cases
+        var searchInput = document.getElementById('linkCaseSearch');
+        var results = document.getElementById('linkCaseSearchResults');
+        if (searchInput) searchInput.value = '';
+        if (results) results.style.display = 'none';
+        loadLinkedCases(st.type, st.itemId);
+        if (typeof showToast === 'function') showToast('Case linked!', 'success');
+    })
+    .catch(function(err) { if (typeof showToast === 'function') showToast('Failed to link: ' + err.message, 'danger'); });
+}
+
+function unlinkCaseFromItem(caseId) {
+    var st = _linkedCasesState;
+    if (!st.type || !st.itemId) return;
+    if (!confirm('Remove this case link?')) return;
+    var linkType = st.type === 'pearl' ? 'pearl' : 'reporting_algorithm';
+
+    fetch('/api/case/' + caseId + '/related/' + st.itemId + '?link_type=' + linkType, {
+        method: 'DELETE',
+        credentials: 'include',
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        loadLinkedCases(st.type, st.itemId);
+        if (typeof showToast === 'function') showToast('Link removed.', 'success');
+    })
+    .catch(function(err) { if (typeof showToast === 'function') showToast('Failed to unlink.', 'danger'); });
+}
+
+// Close search dropdown on outside click
+document.addEventListener('click', function(e) {
+    var results = document.getElementById('linkCaseSearchResults');
+    var input = document.getElementById('linkCaseSearch');
+    if (results && input && !input.contains(e.target) && !results.contains(e.target)) {
+        results.style.display = 'none';
+    }
+});
 
 // ==================== MODALITY-COLOURED LEFT BORDERS ====================
 function applyModalityBorders() {
@@ -1067,6 +1350,178 @@ function generateSnippet() {
         btn.innerHTML = '<i class="fas fa-magic me-1"></i>Generate';
     });
 }
+
+// ==================== AI GENERATE PEARL ====================
+var _genPearlState = { html: '', data: null, editMode: false, tinyReady: false };
+
+function openGeneratePearlModal() {
+    document.getElementById('genPearlTopic').value = '';
+    document.getElementById('genPearlBodySection').value = '';
+    clearCheckedModalities('genPearlModalityGroup');
+    document.getElementById('genPearlIncludeImage').checked = true;
+    document.getElementById('genPearlInputSection').classList.remove('d-none');
+    document.getElementById('genPearlLoading').classList.add('d-none');
+    document.getElementById('genPearlPreview').classList.add('d-none');
+    document.getElementById('genPearlError').classList.add('d-none');
+    document.getElementById('genPearlEditSection').classList.add('d-none');
+    document.getElementById('genPearlGenerateBtn').classList.remove('d-none');
+    document.getElementById('genPearlGenerateBtn').disabled = false;
+    document.getElementById('genPearlGenerateBtn').innerHTML = '<i class="fas fa-magic me-1"></i>Generate';
+    document.getElementById('genPearlSaveBtn').classList.add('d-none');
+    _genPearlState = { html: '', data: null, editMode: false, tinyReady: false };
+    // Destroy leftover TinyMCE if any
+    var ed = typeof tinymce !== 'undefined' && tinymce.get('genPearlEditText');
+    if (ed) { ed.destroy(); }
+    new bootstrap.Modal(document.getElementById('generatePearlModal')).show();
+}
+
+function generatePearl() {
+    var topic = document.getElementById('genPearlTopic').value.trim();
+    if (!topic) { alert('Please enter a topic or pathology.'); return; }
+
+    var modality = getCheckedModalities('genPearlModalityGroup');
+    var bodySection = document.getElementById('genPearlBodySection').value;
+    var includeImage = document.getElementById('genPearlIncludeImage').checked;
+
+    document.getElementById('genPearlInputSection').classList.add('d-none');
+    document.getElementById('genPearlLoading').classList.remove('d-none');
+    document.getElementById('genPearlError').classList.add('d-none');
+    var genBtn = document.getElementById('genPearlGenerateBtn');
+    genBtn.disabled = true;
+    genBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Generating...';
+
+    fetch('/api/admin/generate-pearl', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            topic: topic,
+            modality: modality,
+            body_section: bodySection,
+            include_image: includeImage,
+        })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        document.getElementById('genPearlLoading').classList.add('d-none');
+        if (data.error) {
+            document.getElementById('genPearlError').textContent = data.error;
+            document.getElementById('genPearlError').classList.remove('d-none');
+            document.getElementById('genPearlInputSection').classList.remove('d-none');
+            genBtn.disabled = false;
+            genBtn.innerHTML = '<i class="fas fa-magic me-1"></i>Generate';
+            return;
+        }
+        _genPearlState.html = data.pearl_html;
+        _genPearlState.data = data.pearl_data;
+        document.getElementById('genPearlPreviewContent').innerHTML = data.pearl_html;
+        document.getElementById('genPearlPreview').classList.remove('d-none');
+        document.getElementById('genPearlSaveBodySection').value = bodySection || '';
+        document.getElementById('genPearlSaveTags').value = data.tags || '';
+        genBtn.classList.add('d-none');
+        document.getElementById('genPearlSaveBtn').classList.remove('d-none');
+    })
+    .catch(function(err) {
+        document.getElementById('genPearlLoading').classList.add('d-none');
+        document.getElementById('genPearlInputSection').classList.remove('d-none');
+        document.getElementById('genPearlError').textContent = 'Generation failed: ' + err.message;
+        document.getElementById('genPearlError').classList.remove('d-none');
+        genBtn.disabled = false;
+        genBtn.innerHTML = '<i class="fas fa-magic me-1"></i>Generate';
+    });
+}
+
+function editGeneratedPearl() {
+    var editSection = document.getElementById('genPearlEditSection');
+    var toggleBtn = document.getElementById('genPearlEditToggle');
+    if (_genPearlState.editMode) {
+        var editor = typeof tinymce !== 'undefined' && tinymce.get('genPearlEditText');
+        if (editor) {
+            _genPearlState.html = editor.getContent();
+            document.getElementById('genPearlPreviewContent').innerHTML = _genPearlState.html;
+            editor.destroy();
+            _genPearlState.tinyReady = false;
+        }
+        editSection.classList.add('d-none');
+        document.getElementById('genPearlPreviewContent').classList.remove('d-none');
+        toggleBtn.innerHTML = '<i class="fas fa-edit me-1"></i>Edit in TinyMCE';
+        _genPearlState.editMode = false;
+    } else {
+        document.getElementById('genPearlEditText').value = _genPearlState.html;
+        editSection.classList.remove('d-none');
+        document.getElementById('genPearlPreviewContent').classList.add('d-none');
+        toggleBtn.innerHTML = '<i class="fas fa-eye me-1"></i>Back to Preview';
+        _genPearlState.editMode = true;
+        tinymce.init({
+            selector: '#genPearlEditText',
+            min_height: 400, max_height: 600,
+            menubar: 'edit view insert format table',
+            toolbar: 'undo redo | bold italic underline | bullist numlist | table | link image | code',
+            plugins: 'lists link table image code',
+            base_url: 'https://cdn.jsdelivr.net/npm/tinymce@6',
+            relative_urls: false, convert_urls: false,
+            content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 14px; line-height: 1.6; }',
+            setup: function(editor) {
+                editor.on('init', function() {
+                    editor.setContent(_genPearlState.html);
+                    _genPearlState.tinyReady = true;
+                });
+            }
+        });
+    }
+}
+
+function saveGeneratedPearl() {
+    var pearlHtml = _genPearlState.html;
+    if (_genPearlState.editMode) {
+        var editor = typeof tinymce !== 'undefined' && tinymce.get('genPearlEditText');
+        if (editor) pearlHtml = editor.getContent();
+    }
+    if (!pearlHtml || !pearlHtml.trim()) { alert('Pearl content is empty.'); return; }
+
+    var modality = getCheckedModalities('genPearlModalityGroup');
+    var bodySection = document.getElementById('genPearlSaveBodySection').value;
+    var tags = document.getElementById('genPearlSaveTags').value;
+
+    var saveBtn = document.getElementById('genPearlSaveBtn');
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Saving...';
+
+    fetch('/api/smart-reporter/save-pearl', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            pearl_text: pearlHtml,
+            body_section: bodySection,
+            modality: modality,
+            tags: tags,
+            is_verified: true,
+        })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.error) { alert(data.error); return; }
+        if (data.duplicate) {
+            alert('A pearl with identical content already exists.');
+            return;
+        }
+        bootstrap.Modal.getInstance(document.getElementById('generatePearlModal')).hide();
+        if (typeof showToast === 'function') showToast('Pearl saved successfully!', 'success');
+        location.reload();
+    })
+    .catch(function(err) { alert('Save failed: ' + err.message); })
+    .finally(function() {
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = '<i class="fas fa-save me-1"></i>Save Pearl';
+    });
+}
+
+// Clean up TinyMCE on modal close
+document.getElementById('generatePearlModal').addEventListener('hidden.bs.modal', function() {
+    var editor = typeof tinymce !== 'undefined' && tinymce.get('genPearlEditText');
+    if (editor) { editor.destroy(); }
+    _genPearlState.editMode = false;
+    _genPearlState.tinyReady = false;
+});
 
 function editPearl(id) {
     fetch('/api/smart-reporter/pearls/' + id)
