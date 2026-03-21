@@ -2693,6 +2693,7 @@ class ReportingAlgorithm(db.Model):
     generation_model = db.Column(db.String(100), nullable=True)
     generated_at = db.Column(db.DateTime, nullable=True)
     created_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    modality = db.Column(db.String(200), nullable=True)
     last_edit_note = db.Column(db.Text, nullable=True)
     legacy_id = db.Column(db.Integer, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
@@ -2705,7 +2706,8 @@ class ReportingAlgorithm(db.Model):
         d = {
             'id': self.id, 'slug': self.slug, 'title': self.title,
             'origin': self.origin, 'category': self.category,
-            'body_section': self.body_section, 'description': self.description,
+            'body_section': self.body_section, 'modality': self.modality,
+            'description': self.description,
             'keywords': self.keywords, 'source_citation': self.source_citation,
             'guideline_version': self.guideline_version,
             'is_available': self.is_available, 'is_ai_generated': self.is_ai_generated,

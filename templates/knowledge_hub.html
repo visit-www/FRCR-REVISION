@@ -141,16 +141,21 @@
                     {% endfor %}
                     {% for s in snippets %}
                     <div class="knowledge-item" data-id="anatomy-{{ s.id }}" data-type="anatomy"
-                         data-slug="{{ s.slug }}" data-body-section="{{ s.body_section or '' }}" data-modality=""
+                         data-slug="{{ s.slug }}" data-body-section="{{ s.body_section or '' }}" data-modality="{{ s.modality or '' }}"
                          data-tags="{{ (s.keywords or '')|lower }}" data-text="{{ s.title|lower }} {{ (s.description or '')|lower }}"
                          onclick="selectItem(this)">
                         <div class="d-flex align-items-start gap-2">
                             <i class="fas fa-bone mt-1 flex-shrink-0" style="color: #6f42c1; font-size: 0.7rem;"></i>
                             <div class="flex-grow-1" style="min-width: 0;">
                                 <div class="knowledge-item-title">{{ s.title }}</div>
-                                {% if s.body_section %}
-                                <span class="section-badge mt-1">{{ s.body_section }}</span>
-                                {% endif %}
+                                <div class="d-flex gap-1 mt-1 flex-wrap align-items-center">
+                                    {% if s.modality %}
+                                    <span class="modality-badge" data-modality="{{ s.modality }}">{{ s.modality }}</span>
+                                    {% endif %}
+                                    {% if s.body_section %}
+                                    <span class="section-badge">{{ s.body_section }}</span>
+                                    {% endif %}
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -205,6 +210,7 @@
          data-title="{{ s.title }}"
          data-slug="{{ s.slug }}"
          data-body-section="{{ s.body_section or '' }}"
+         data-modality="{{ s.modality or '' }}"
          data-snippet-id="{{ s.id }}">
         {{ s.template_html|safe }}
     </div>
@@ -237,13 +243,15 @@
                         </select>
                     </div>
                     <div class="col-6">
-                        <label class="form-label">Modality</label>
-                        <select class="form-select" id="editPearlModality">
-                            <option value="">--</option>
+                        <label class="form-label">Modality <small class="text-muted">(select all that apply)</small></label>
+                        <div class="d-flex flex-wrap gap-1" id="editPearlModalityGroup">
                             {% for mod in ['CT','MRI','Ultrasound','X-ray','Fluoroscopy','Nuclear Medicine','PET-CT'] %}
-                            <option value="{{ mod }}">{{ mod }}</option>
+                            <label class="modality-check-pill">
+                                <input type="checkbox" value="{{ mod }}" class="d-none">
+                                <span>{{ mod }}</span>
+                            </label>
                             {% endfor %}
-                        </select>
+                        </div>
                     </div>
                 </div>
                 <div class="mb-3">
@@ -284,6 +292,17 @@
                         {% endfor %}
                     </select>
                 </div>
+                <div class="mb-3">
+                    <label class="form-label">Modality <small class="text-muted">(select all that apply)</small></label>
+                    <div class="d-flex flex-wrap gap-1" id="snippetModalityGroup">
+                        {% for mod in ['CT','MRI','Ultrasound','X-ray','Fluoroscopy','Nuclear Medicine','PET-CT'] %}
+                        <label class="modality-check-pill">
+                            <input type="checkbox" value="{{ mod }}" class="d-none">
+                            <span>{{ mod }}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-modal-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -297,6 +316,32 @@
 {% endif %}
 
 <style>
+/* ==================== MODALITY CHECK PILLS ==================== */
+.modality-check-pill {
+    display: inline-block;
+    cursor: pointer;
+    margin: 0;
+}
+.modality-check-pill span {
+    display: inline-block;
+    font-size: 0.75rem;
+    padding: 3px 10px;
+    border-radius: 14px;
+    border: 1.5px solid #dee2e6;
+    background: #fff;
+    color: var(--brand-text-secondary, #5a6270);
+    transition: all 0.15s;
+}
+.modality-check-pill span:hover {
+    border-color: var(--brand-neutral, #5E899E);
+}
+.modality-check-pill input:checked + span {
+    background: var(--brand-neutral, #5E899E);
+    color: #fff;
+    border-color: var(--brand-neutral, #5E899E);
+    font-weight: 600;
+}
+
 /* ==================== FILTER BAR ==================== */
 .kh-filter-bar {
     background: #fff;
@@ -850,16 +895,21 @@ function selectItem(el) {
         var source = document.getElementById('anatomy-content-' + snippetId);
         if (!source) return;
         var data = source.querySelector('.anatomy-detail-data');
+        var aModality = data.dataset.modality;
+        var aColor = aModality ? getModalityColor(aModality) : null;
 
         detailContent.innerHTML =
-            '<div class="detail-card">' +
+            '<div class="detail-card"' + (aColor ? ' style="border-left: 5px solid ' + aColor.border + ';"' : '') + '>' +
             '  <div class="detail-header">' +
             '    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">' +
             '      <div class="d-flex align-items-center gap-2">' +
             '        <i class="fas fa-bone" style="color: #6f42c1;"></i>' +
             '        <span class="fw-semibold">' + data.dataset.title + '</span>' +
             '      </div>' +
+            '      <div class="d-flex gap-1 flex-wrap">' +
+            (aModality ? '<span class="modality-badge" style="background: ' + (aColor || DEFAULT_COLOR).bg + '; color: ' + (aColor || DEFAULT_COLOR).text + '; border: 1px solid ' + (aColor || DEFAULT_COLOR).border + ';">' + aModality + '</span>' : '') +
             (data.dataset.bodySection ? '<span class="section-badge">' + data.dataset.bodySection + '</span>' : '') +
+            '      </div>' +
             '    </div>' +
             '  </div>' +
             '  <div class="detail-body">' +
@@ -945,10 +995,30 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 {% endif %}
 
+// Modality checkbox helpers
+function getCheckedModalities(groupId) {
+    var checked = [];
+    document.querySelectorAll('#' + groupId + ' input[type="checkbox"]:checked').forEach(function(cb) {
+        checked.push(cb.value);
+    });
+    return checked.join('/');
+}
+function setCheckedModalities(groupId, modality) {
+    var parts = (modality || '').split('/').map(function(p) { return p.trim(); }).filter(Boolean);
+    document.querySelectorAll('#' + groupId + ' input[type="checkbox"]').forEach(function(cb) {
+        cb.checked = parts.indexOf(cb.value) > -1;
+    });
+}
+function clearCheckedModalities(groupId) {
+    document.querySelectorAll('#' + groupId + ' input[type="checkbox"]').forEach(function(cb) {
+        cb.checked = false;
+    });
+}
+
 function addNewPearl() {
     document.getElementById('editPearlId').value = '';
     document.getElementById('editPearlBodySection').value = '';
-    document.getElementById('editPearlModality').value = '';
+    clearCheckedModalities('editPearlModalityGroup');
     document.getElementById('editPearlTags').value = '';
     var editor = tinymce.get('editPearlText');
     if (editor) editor.setContent('');
@@ -960,6 +1030,7 @@ function addNewPearl() {
 function addNewSnippet() {
     document.getElementById('snippetTopic').value = '';
     document.getElementById('snippetBodySection').value = '';
+    clearCheckedModalities('snippetModalityGroup');
     new bootstrap.Modal(document.getElementById('addSnippetModal')).show();
 }
 
@@ -967,6 +1038,7 @@ function generateSnippet() {
     var topic = document.getElementById('snippetTopic').value.trim();
     if (!topic) { alert('Please enter an anatomy topic.'); return; }
     var bodySection = document.getElementById('snippetBodySection').value;
+    var modality = getCheckedModalities('snippetModalityGroup');
     var btn = document.getElementById('generateSnippetBtn');
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Generating...';
@@ -979,13 +1051,11 @@ function generateSnippet() {
     .then(function(r) { return r.json(); })
     .then(function(data) {
         if (data.error) { alert(data.error); return; }
-        // If body_section provided, update the cached entry
-        if (bodySection && data.success) {
-            // Find the anatomy cache entry and update body_section
-            fetch('/api/smart-reporter/update-snippet-section', {
+        if ((bodySection || modality) && data.success) {
+            fetch('/api/smart-reporter/update-snippet-metadata', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ topic: topic, body_section: bodySection })
+                body: JSON.stringify({ topic: topic, body_section: bodySection, modality: modality })
             }).finally(function() { location.reload(); });
         } else {
             location.reload();
@@ -1004,7 +1074,7 @@ function editPearl(id) {
         .then(function(data) {
             document.getElementById('editPearlId').value = data.id;
             document.getElementById('editPearlBodySection').value = data.body_section || '';
-            document.getElementById('editPearlModality').value = data.modality || '';
+            setCheckedModalities('editPearlModalityGroup', data.modality || '');
             document.getElementById('editPearlTags').value = data.tags || '';
             var pearlContent = data.pearl_text || '';
             document.getElementById('editPearlText').value = pearlContent;
@@ -1027,7 +1097,7 @@ function saveEditPearl() {
     var payload = {
         pearl_text: pearlText,
         body_section: document.getElementById('editPearlBodySection').value,
-        modality: document.getElementById('editPearlModality').value,
+        modality: getCheckedModalities('editPearlModalityGroup'),
         tags: document.getElementById('editPearlTags').value
     };
     var url = id ? '/api/smart-reporter/pearls/' + id : '/api/smart-reporter/save-pearl';

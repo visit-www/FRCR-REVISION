@@ -78,12 +78,24 @@
                             {% endfor %}
                         </select>
                     </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-semibold">Modality <small class="text-muted">(multi)</small></label>
+                        <div class="d-flex flex-wrap gap-1" id="editModalityGroup">
+                            {% for mod in ['CT','MRI','Ultrasound','X-ray','Fluoroscopy','Nuclear Medicine','PET-CT'] %}
+                            <label class="modality-check-pill-sm">
+                                <input type="checkbox" value="{{ mod }}" class="d-none"
+                                       {{ 'checked' if algorithm.modality and mod in algorithm.modality.split('/') }}>
+                                <span>{{ mod }}</span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                    </div>
                     <div class="col-md-2">
                         <label class="form-label small fw-semibold">Keywords</label>
                         <input type="text" class="form-control form-control-sm" id="editKeywords"
                                value="{{ algorithm.keywords or '' }}" placeholder="comma-separated">
                     </div>
-                    <div class="col-md-2">
+                    <div class="col-md-1">
                         <label class="form-label small fw-semibold">Status</label>
                         <div class="form-check form-switch mt-1">
                             <input class="form-check-input" type="checkbox" id="editAvailable"
@@ -402,6 +414,11 @@ function saveAll() {
             title: document.getElementById('editTitle').value,
             category: document.getElementById('editCategory').value,
             body_section: document.getElementById('editBodySection').value,
+            modality: (function() {
+                var checked = [];
+                document.querySelectorAll('#editModalityGroup input[type="checkbox"]:checked').forEach(function(cb) { checked.push(cb.value); });
+                return checked.join('/');
+            })(),
             keywords: document.getElementById('editKeywords').value,
             description: document.getElementById('editDescription').value,
             source_citation: JSON.stringify(resources),
@@ -541,6 +558,28 @@ document.addEventListener('keydown', function(e) {
     #editorCol .tox-tinymce {
         flex: 1;
         border-radius: 8px !important;
+    }
+    /* Modality check pills */
+    .modality-check-pill-sm {
+        display: inline-block;
+        cursor: pointer;
+        margin: 0;
+    }
+    .modality-check-pill-sm span {
+        display: inline-block;
+        font-size: 0.68rem;
+        padding: 1px 7px;
+        border-radius: 10px;
+        border: 1px solid #dee2e6;
+        background: #fff;
+        color: #6c757d;
+        transition: all 0.15s;
+    }
+    .modality-check-pill-sm input:checked + span {
+        background: var(--brand-neutral, #5E899E);
+        color: #fff;
+        border-color: var(--brand-neutral, #5E899E);
+        font-weight: 600;
     }
 </style>
 {% endblock %}

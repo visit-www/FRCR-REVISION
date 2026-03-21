@@ -845,6 +845,9 @@ with app.app_context():
         _add_col_if_missing('incidental_finding_calculator', 'created_by_user_id', 'created_by_user_id INTEGER')
         _add_col_if_missing('incidental_finding_calculator', 'last_edit_note', 'last_edit_note VARCHAR(500)')
 
+        # -- reporting_algorithm: modality --
+        _add_col_if_missing('reporting_algorithm', 'modality', 'modality VARCHAR(200)')
+
         # -- user: AI rate limiting --
         _add_col_if_missing('user', 'ai_usage_date', 'ai_usage_date DATE')
         _add_col_if_missing('user', 'ai_usage_count', 'ai_usage_count INTEGER DEFAULT 0')

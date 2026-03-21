@@ -143,8 +143,15 @@
                         </select>
                     </div>
                     <div class="col-6">
-                        <label class="form-label">Modality</label>
-                        <input type="text" class="form-control" id="editPearlModality" placeholder="e.g. CT, MRI">
+                        <label class="form-label">Modality <small class="text-muted">(select all that apply)</small></label>
+                        <div class="d-flex flex-wrap gap-1" id="editPearlModalityGroup">
+                            {% for mod in ['CT','MRI','Ultrasound','X-ray','Fluoroscopy','Nuclear Medicine','PET-CT'] %}
+                            <label class="modality-check-pill">
+                                <input type="checkbox" value="{{ mod }}" class="d-none">
+                                <span>{{ mod }}</span>
+                            </label>
+                            {% endfor %}
+                        </div>
                     </div>
                 </div>
                 <div class="mb-3">
@@ -206,6 +213,16 @@
 .pearl-content th {
     background: #f8f9fa;
     font-weight: 600;
+}
+.modality-check-pill { display: inline-block; cursor: pointer; margin: 0; }
+.modality-check-pill span {
+    display: inline-block; font-size: 0.75rem; padding: 3px 10px;
+    border-radius: 14px; border: 1.5px solid #dee2e6;
+    background: #fff; color: #5a6270; transition: all 0.15s;
+}
+.modality-check-pill span:hover { border-color: #5E899E; }
+.modality-check-pill input:checked + span {
+    background: #5E899E; color: #fff; border-color: #5E899E; font-weight: 600;
 }
 </style>
 {% endblock %}
@@ -270,52 +287,48 @@ function filterPearls(query) {
     });
 }
 
+// Modality checkbox helpers
+function _getCheckedMods(groupId) {
+    var checked = [];
+    document.querySelectorAll('#' + groupId + ' input[type="checkbox"]:checked').forEach(function(cb) { checked.push(cb.value); });
+    return checked.join('/');
+}
+function _setCheckedMods(groupId, modality) {
+    var parts = (modality || '').split('/').map(function(p) { return p.trim(); }).filter(Boolean);
+    document.querySelectorAll('#' + groupId + ' input[type="checkbox"]').forEach(function(cb) { cb.checked = parts.indexOf(cb.value) > -1; });
+}
+function _clearCheckedMods(groupId) {
+    document.querySelectorAll('#' + groupId + ' input[type="checkbox"]').forEach(function(cb) { cb.checked = false; });
+}
+
 function addNewPearl() {
     document.getElementById('editPearlId').value = '';
     document.getElementById('editPearlBodySection').value = '';
-    document.getElementById('editPearlModality').value = '';
+    _clearCheckedMods('editPearlModalityGroup');
     document.getElementById('editPearlTags').value = '';
     document.querySelector('#editPearlModal .modal-title').innerHTML = '<i class="fas fa-gem me-2"></i>Add New Pearl';
-    // Clear TinyMCE or textarea
     var editor = tinymce.get('editPearlText');
-    if (editor) {
-        editor.setContent('');
-    } else {
-        document.getElementById('editPearlText').value = '';
-    }
+    if (editor) { editor.setContent(''); } else { document.getElementById('editPearlText').value = ''; }
     new bootstrap.Modal(document.getElementById('editPearlModal')).show();
 }
 
 function editPearl(id) {
     fetch('/api/smart-reporter/pearls/' + id)
-        .then(function(r) {
-            if (!r.ok) throw new Error('HTTP ' + r.status);
-            return r.json();
-        })
+        .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
         .then(function(data) {
             document.getElementById('editPearlId').value = data.id;
             document.getElementById('editPearlBodySection').value = data.body_section || '';
-            document.getElementById('editPearlModality').value = data.modality || '';
+            _setCheckedMods('editPearlModalityGroup', data.modality || '');
             document.getElementById('editPearlTags').value = data.tags || '';
             document.querySelector('#editPearlModal .modal-title').innerHTML = '<i class="fas fa-gem me-2"></i>Edit Pearl';
-
-            // Store content to set after TinyMCE initializes
             var pearlContent = data.pearl_text || '';
             document.getElementById('editPearlText').value = pearlContent;
-
             var modalEl = document.getElementById('editPearlModal');
-            var bsModal = new bootstrap.Modal(modalEl);
-            bsModal.show();
-
-            // Wait for TinyMCE to be ready, then set content
+            new bootstrap.Modal(modalEl).show();
             var checkInterval = setInterval(function() {
                 var editor = tinymce.get('editPearlText');
-                if (editor && _pearlTinyMCEReady) {
-                    editor.setContent(pearlContent);
-                    clearInterval(checkInterval);
-                }
+                if (editor && _pearlTinyMCEReady) { editor.setContent(pearlContent); clearInterval(checkInterval); }
             }, 100);
-            // Safety timeout
             setTimeout(function() { clearInterval(checkInterval); }, 5000);
         })
         .catch(function(err) { alert('Failed to load pearl: ' + err.message); });
@@ -328,28 +341,15 @@ function saveEditPearl() {
     var payload = {
         pearl_text: pearlText,
         body_section: document.getElementById('editPearlBodySection').value,
-        modality: document.getElementById('editPearlModality').value,
+        modality: _getCheckedMods('editPearlModalityGroup'),
         tags: document.getElementById('editPearlTags').value
     };
-    var url, method;
-    if (id) {
-        url = '/api/smart-reporter/pearls/' + id;
-        method = 'PUT';
-    } else {
-        url = '/api/smart-reporter/save-pearl';
-        method = 'POST';
-    }
-    fetch(url, {
-        method: method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (data.error) { alert(data.error); return; }
-        location.reload();
-    })
-    .catch(() => alert('Failed to save.'));
+    var url = id ? '/api/smart-reporter/pearls/' + id : '/api/smart-reporter/save-pearl';
+    var method = id ? 'PUT' : 'POST';
+    fetch(url, { method: method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+        .then(r => r.json())
+        .then(data => { if (data.error) { alert(data.error); return; } location.reload(); })
+        .catch(() => alert('Failed to save.'));
 }
 
 function verifyPearl(id) {

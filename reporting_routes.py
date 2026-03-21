@@ -1111,11 +1111,15 @@ def knowledge_hub():
         ReportingAlgorithm.is_available == True,
     ).order_by(ReportingAlgorithm.title).all()
 
-    # Collect distinct modalities (normalized)
-    modalities = sorted(set(
-        normalize_modality(p.modality) for p in pearls
-        if p.modality and normalize_modality(p.modality)
-    ))
+    # Collect distinct modalities (normalized) from both pearls and snippets
+    all_modality_parts = set()
+    for item in list(pearls) + list(snippets):
+        if item.modality:
+            for part in item.modality.split('/'):
+                normalized = normalize_modality(part)
+                if normalized:
+                    all_modality_parts.add(normalized)
+    modalities = sorted(all_modality_parts)
 
     # Tag frequency for tag cloud (top 40)
     tag_counts = {}
@@ -1348,13 +1352,15 @@ def update_reporting_template(template_id):
 
     from app import sanitize_clinical_html
     _html_fields = {'template_html', 'algorithm_html'}
-    for field in ['title', 'category', 'body_section', 'description', 'keywords',
+    for field in ['title', 'category', 'body_section', 'modality', 'description', 'keywords',
                   'template_html', 'algorithm_html', 'source_citation', 'guideline_version',
                   'last_edit_note']:
         if field in data:
             val = data[field].strip() if isinstance(data[field], str) else data[field]
             if field in _html_fields and isinstance(val, str):
                 val = sanitize_clinical_html(val)
+            if field == 'modality' and isinstance(val, str):
+                val = normalize_modality(val)
             setattr(template, field, val)
 
     if 'is_available' in data:
@@ -2561,16 +2567,15 @@ def smart_reporter_anatomy():
 
 # ==================== SNIPPET BODY SECTION UPDATE ====================
 
-@reporting_bp.route('/api/smart-reporter/update-snippet-section', methods=['POST'])
+@reporting_bp.route('/api/smart-reporter/update-snippet-metadata', methods=['POST'])
 @login_required
 @require_admin
-def update_snippet_section():
-    """Update body_section on a recently generated anatomy snippet."""
+def update_snippet_metadata():
+    """Update body_section and/or modality on a recently generated anatomy snippet."""
     data = request.get_json() or {}
     topic = (data.get('topic') or '').strip()
-    body_section = (data.get('body_section') or '').strip()
-    if not topic or not body_section:
-        return jsonify({'error': 'topic and body_section required'}), 400
+    if not topic:
+        return jsonify({'error': 'topic required'}), 400
 
     slug = re.sub(r'[^a-z0-9]+', '-', topic.lower()).strip('-')[:200]
     snippet = ReportingAlgorithm.query.filter(
@@ -2579,7 +2584,15 @@ def update_snippet_section():
     ).first()
     if not snippet:
         return jsonify({'error': 'Snippet not found'}), 404
-    snippet.body_section = body_section
+
+    body_section = (data.get('body_section') or '').strip()
+    if body_section:
+        snippet.body_section = body_section
+
+    modality_raw = (data.get('modality') or '').strip()
+    if modality_raw:
+        snippet.modality = normalize_modality(modality_raw)
+
     db.session.commit()
     return jsonify({'success': True})
 
