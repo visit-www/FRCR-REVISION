@@ -63,7 +63,10 @@ PEARL_SYSTEM_PROMPT = (
     "field to one sentence.\n"
     "6. mimics: genuinely useful imaging discriminators — not 'clinical "
     "correlation.' One clear differentiator per mimic.\n"
-    "7. critical_findings: urgent call-back criteria only.\n"
+    "7. critical_findings: ONLY genuinely life-threatening or limb-threatening "
+    "findings that require immediate clinical action (e.g. tension pneumothorax, "
+    "aortic dissection, cord compression). If the condition has NO truly critical "
+    "urgent findings, return an EMPTY array []. Do NOT fabricate urgency.\n"
     "8. clinical_correlation: what the clinician needs in the report.\n"
     "9. workstation_tips: specific technical advice, not generic.\n"
     "10. image_guidance: describe how key findings appear on imaging so an "
@@ -71,7 +74,7 @@ PEARL_SYSTEM_PROMPT = (
     "sequence/phase, and the specific visual appearance (e.g. 'T2 hyperintense "
     "rim with central low signal on axial MRI' or 'hyperdense crescent on "
     "unenhanced CT').\n"
-    "11. Counts: 3-4 search pattern steps, 2-3 mimics, 2-3 critical findings, "
+    "11. Counts: 3-4 search pattern steps, 2-3 mimics, 0-2 critical findings (only if genuinely urgent), "
     "3-4 report essentials, 2-3 workstation tips, 1-2 image descriptions.\n"
     "12. Tags: lowercase, specific, useful for search.\n\n"
     "Output ONLY the JSON object. No markdown. No explanation."
@@ -114,8 +117,7 @@ Return a single JSON object with this exact schema:
   "critical_findings": [
     {{
       "finding": "The critical finding",
-      "action": "What to do",
-      "timeframe": "How quickly"
+      "action": "Required clinical action"
     }}
   ],
   "clinical_correlation": {{
@@ -140,7 +142,7 @@ Return a single JSON object with this exact schema:
   "tags": ["lowercase", "search", "tags"]
 }}
 
-KEEP IT SHORT. 3-4 search steps, 2-3 mimics, 2-3 critical findings, 3-4 report essentials, 2-3 workstation tips, 1-2 image descriptions."""
+KEEP IT SHORT. 3-4 search steps, 2-3 mimics, 0-2 critical findings (only if genuinely urgent), 3-4 report essentials, 2-3 workstation tips, 1-2 image descriptions."""
 
 
 # ── Generation function ──────────────────────────────────────────────
@@ -488,7 +490,6 @@ def render_pearl_html(pearl_data, radiopaedia_image=None, reference_images=None)
             '<thead><tr>'
             '<th>Finding</th>'
             '<th>Action Required</th>'
-            '<th>Timeframe</th>'
             '</tr></thead><tbody>'
         )
         for c in crits:
@@ -496,7 +497,6 @@ def render_pearl_html(pearl_data, radiopaedia_image=None, reference_images=None)
                 f'<tr>'
                 f'<td><strong>{_esc(c.get("finding", ""))}</strong></td>'
                 f'<td>{_esc(c.get("action", ""))}</td>'
-                f'<td>{_esc(c.get("timeframe", ""))}</td>'
                 f'</tr>'
             )
         parts.append('</tbody></table>')
