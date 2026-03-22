@@ -774,7 +774,7 @@ def generate_anatomy_reference(topic, modality='', body_section='', additional_c
     Returns:
         dict with: title, content_html, source, model, token_count, radiopaedia_image
     """
-    sonnet_model = os.getenv("CLAUDE_MAIN_MODEL", "claude-sonnet-4-5-20250929")
+    sonnet_model = os.getenv("CLAUDE_MODEL", "claude-sonnet-4-20250514")
 
     prompt = ANATOMY_PROMPT.format(
         topic=topic,
@@ -798,7 +798,7 @@ def generate_anatomy_reference(topic, modality='', body_section='', additional_c
         model=sonnet_model,
         max_tokens=3333,
         temperature=0.3,
-        timeout=45,
+        timeout=90,
     )
 
     parsed = _parse_json_response(text)
