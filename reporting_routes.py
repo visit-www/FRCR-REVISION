@@ -3522,7 +3522,6 @@ def admin_generate_pearl():
         'pearl_data': result['pearl_data'],
         'title': result['title'],
         'tags': result['tags'],
-        'image': image,
         'model': result.get('model'),
         'token_count': result.get('token_count'),
     })
