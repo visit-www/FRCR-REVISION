@@ -124,6 +124,17 @@ app = Flask(__name__,
     static_folder=os.path.join(os.path.dirname(__file__), 'static')
 )
 
+# Jinja filter: strip <style> and <script> tags from HTML content
+# Prevents AI-generated or user-entered content from injecting global CSS/JS
+import re as _re
+@app.template_filter('strip_unsafe_tags')
+def strip_unsafe_tags(html_content):
+    if not html_content:
+        return html_content
+    html_content = _re.sub(r'<style[^>]*>.*?</style>', '', html_content, flags=_re.DOTALL | _re.IGNORECASE)
+    html_content = _re.sub(r'<script[^>]*>.*?</script>', '', html_content, flags=_re.DOTALL | _re.IGNORECASE)
+    return html_content
+
 # CORS: restrict to production domain; allow all in local dev
 if os.getenv('CORS_ORIGINS'):
     _cors_origins = [o.strip() for o in os.getenv('CORS_ORIGINS').split(',')]
@@ -897,7 +908,7 @@ _SANITIZE_ALLOWED_TAGS = list(_bleach.ALLOWED_TAGS) + [
     'img', 'figure', 'figcaption',
     'input', 'select', 'option', 'optgroup', 'label', 'button', 'form', 'textarea', 'fieldset', 'legend',
     'details', 'summary', 'section', 'article', 'nav', 'header', 'footer', 'aside', 'main',
-    'style', 'script', 'hr', 'pre', 'code', 'sup', 'sub', 'mark', 'small', 'del', 'ins',
+    'hr', 'pre', 'code', 'sup', 'sub', 'mark', 'small', 'del', 'ins',
     'abbr', 'cite', 'dfn', 'kbd', 'samp', 'var', 'time', 'data',
     'svg', 'path', 'circle', 'rect', 'line', 'polyline', 'polygon', 'g', 'text', 'use', 'defs',
 ]

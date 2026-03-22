@@ -201,7 +201,7 @@
          data-created-by="{{ p.created_by.get_display_name() if p.created_by else '' }}"
          data-created-at="{{ p.created_at.strftime('%d %b %Y') if p.created_at else '' }}"
          data-pearl-id="{{ p.id }}">
-        {{ p.pearl_text|safe }}
+        {{ p.pearl_text|strip_unsafe_tags|safe }}
     </div>
 </div>
 {% endfor %}
@@ -213,7 +213,7 @@
          data-body-section="{{ s.body_section or '' }}"
          data-modality="{{ s.modality or '' }}"
          data-snippet-id="{{ s.id }}">
-        {{ s.template_html|safe }}
+        {{ s.template_html|strip_unsafe_tags|safe }}
     </div>
 </div>
 {% endfor %}

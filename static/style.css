@@ -625,8 +625,10 @@ body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background: linear-gradient(135deg, #fdfdfb 0%, #f8f8f6 50%, #f3f3f1 100%);
     background-attachment: fixed;
-    padding: 0;
-    margin: 0;
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: none !important;
+    width: 100% !important;
     display: flex;
     flex-direction: column;
     min-height: 100vh;
