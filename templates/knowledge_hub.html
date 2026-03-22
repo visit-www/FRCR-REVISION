@@ -296,15 +296,20 @@
                             <textarea class="form-control" id="genPearlInstructions" rows="2"
                                       placeholder="e.g. Focus on paediatric presentation, Include Bosniak classification"></textarea>
                         </div>
-                        <!-- Reference URL -->
+                        <!-- Reference URLs -->
                         <div class="mb-3">
-                            <label class="form-label">Reference URL <small class="text-muted">(optional — content will be fetched and used as context)</small></label>
-                            <input type="text" class="form-control" id="genPearlRefUrl" placeholder="e.g. https://radiopaedia.org/articles/...">
+                            <label class="form-label">Reference URLs <small class="text-muted">(optional — content will be fetched and used as context)</small></label>
+                            <div id="genPearlRefUrlList">
+                                <div class="input-group mb-1">
+                                    <input type="text" class="form-control ref-url-input" placeholder="e.g. https://radiopaedia.org/articles/...">
+                                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="addRefUrlInput('genPearlRefUrlList')" title="Add another URL"><i class="fas fa-plus"></i></button>
+                                </div>
+                            </div>
                         </div>
                         <!-- PDF Upload -->
                         <div class="mb-3">
-                            <label class="form-label">Reference PDF <small class="text-muted">(optional — text will be extracted and used as context)</small></label>
-                            <input type="file" class="form-control" id="genPearlPdf" accept=".pdf">
+                            <label class="form-label">Reference PDFs <small class="text-muted">(optional — text will be extracted and used as context)</small></label>
+                            <input type="file" class="form-control" id="genPearlPdf" accept=".pdf" multiple>
                         </div>
                     </div>
 
@@ -412,12 +417,17 @@
                                   placeholder="e.g. Focus on MRI appearances, Include surgical anatomy"></textarea>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Reference URL <small class="text-muted">(optional — content will be fetched and used as context)</small></label>
-                        <input type="text" class="form-control" id="snippetRefUrl" placeholder="e.g. https://radiopaedia.org/articles/...">
+                        <label class="form-label">Reference URLs <small class="text-muted">(optional — content will be fetched and used as context)</small></label>
+                        <div id="snippetRefUrlList">
+                            <div class="input-group mb-1">
+                                <input type="text" class="form-control ref-url-input" placeholder="e.g. https://radiopaedia.org/articles/...">
+                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="addRefUrlInput('snippetRefUrlList')" title="Add another URL"><i class="fas fa-plus"></i></button>
+                            </div>
+                        </div>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Reference PDF <small class="text-muted">(optional — text will be extracted and used as context)</small></label>
-                        <input type="file" class="form-control" id="snippetPdf" accept=".pdf">
+                        <label class="form-label">Reference PDFs <small class="text-muted">(optional — text will be extracted and used as context)</small></label>
+                        <input type="file" class="form-control" id="snippetPdf" accept=".pdf" multiple>
                     </div>
                 </div>
 
@@ -1541,6 +1551,34 @@ function setSnippetMode(mode) {
 }
 
 // Modality checkbox helpers
+// ==================== MULTI-REF HELPERS ====================
+function addRefUrlInput(containerId) {
+    var container = document.getElementById(containerId);
+    if (!container) return;
+    var row = document.createElement('div');
+    row.className = 'input-group mb-1';
+    row.innerHTML = '<input type="text" class="form-control ref-url-input" placeholder="e.g. https://radiopaedia.org/articles/...">' +
+        '<button type="button" class="btn btn-outline-danger btn-sm" onclick="this.parentElement.remove()" title="Remove"><i class="fas fa-minus"></i></button>';
+    container.appendChild(row);
+}
+function getRefUrls(containerId) {
+    var urls = [];
+    document.querySelectorAll('#' + containerId + ' .ref-url-input').forEach(function(input) {
+        var v = (input.value || '').trim();
+        if (v) urls.push(v);
+    });
+    return urls;
+}
+function clearRefUrlInputs(containerId) {
+    var container = document.getElementById(containerId);
+    if (!container) return;
+    // Keep only the first row, clear its value
+    var rows = container.querySelectorAll('.input-group');
+    for (var i = 1; i < rows.length; i++) rows[i].remove();
+    var first = container.querySelector('.ref-url-input');
+    if (first) first.value = '';
+}
+
 function getCheckedModalities(groupId) {
     var checked = [];
     document.querySelectorAll('#' + groupId + ' input[type="checkbox"]:checked').forEach(function(cb) {
@@ -1570,7 +1608,7 @@ function openAddPearlModal() {
     document.getElementById('genPearlTopic').value = '';
     document.getElementById('genPearlIncludeImage').checked = true;
     document.getElementById('genPearlInstructions').value = '';
-    document.getElementById('genPearlRefUrl').value = '';
+    clearRefUrlInputs('genPearlRefUrlList');
     document.getElementById('genPearlPdf').value = '';
     document.getElementById('addPearlModalTitle').innerHTML = '<i class="fas fa-gem me-2"></i>Add Pearl';
     // Show mode toggle
@@ -1584,7 +1622,7 @@ function openAddSnippetModal() {
     document.getElementById('snippetBodySection').value = '';
     clearCheckedModalities('snippetModalityGroup');
     document.getElementById('snippetInstructions').value = '';
-    document.getElementById('snippetRefUrl').value = '';
+    clearRefUrlInputs('snippetRefUrlList');
     document.getElementById('snippetPdf').value = '';
     if (document.getElementById('snippetManualText')) {
         document.getElementById('snippetManualText').value = '';
@@ -1599,27 +1637,27 @@ function generateSnippet() {
     var bodySection = document.getElementById('snippetBodySection').value;
     var modality = getCheckedModalities('snippetModalityGroup');
     var instructions = (document.getElementById('snippetInstructions').value || '').trim();
-    var refUrl = (document.getElementById('snippetRefUrl').value || '').trim();
+    var refUrls = getRefUrls('snippetRefUrlList');
     var pdfInput = document.getElementById('snippetPdf');
-    var pdfFile = pdfInput && pdfInput.files.length > 0 ? pdfInput.files[0] : null;
+    var pdfFiles = pdfInput ? Array.from(pdfInput.files) : [];
     var btn = document.getElementById('generateSnippetBtn');
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Generating...';
 
     var fetchOpts;
-    if (pdfFile) {
+    if (pdfFiles.length > 0) {
         var fd = new FormData();
         fd.append('topic', topic);
         fd.append('body_section', bodySection);
         fd.append('modality', modality);
         if (instructions) fd.append('instructions', instructions);
-        if (refUrl) fd.append('reference_url', refUrl);
-        fd.append('pdf', pdfFile);
+        refUrls.forEach(function(u) { fd.append('reference_url', u); });
+        pdfFiles.forEach(function(f) { fd.append('pdf', f); });
         fetchOpts = { method: 'POST', body: fd };
     } else {
         var payload = { topic: topic, body_section: bodySection, modality: modality };
         if (instructions) payload.instructions = instructions;
-        if (refUrl) payload.reference_url = refUrl;
+        if (refUrls.length) payload.reference_urls = refUrls;
         fetchOpts = { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) };
     }
 
@@ -1921,9 +1959,9 @@ function generatePearl() {
     var bodySection = document.getElementById('editPearlBodySection').value;
     var includeImage = document.getElementById('genPearlIncludeImage').checked;
     var instructions = (document.getElementById('genPearlInstructions').value || '').trim();
-    var refUrl = (document.getElementById('genPearlRefUrl').value || '').trim();
+    var refUrls = getRefUrls('genPearlRefUrlList');
     var pdfInput = document.getElementById('genPearlPdf');
-    var pdfFile = pdfInput && pdfInput.files.length > 0 ? pdfInput.files[0] : null;
+    var pdfFiles = pdfInput ? Array.from(pdfInput.files) : [];
 
     document.getElementById('pearlAiInputSection').classList.add('d-none');
     document.getElementById('genPearlLoading').classList.remove('d-none');
@@ -1933,20 +1971,20 @@ function generatePearl() {
     genBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Generating...';
 
     var fetchOpts;
-    if (pdfFile) {
+    if (pdfFiles.length > 0) {
         var fd = new FormData();
         fd.append('topic', topic);
         fd.append('modality', modality);
         fd.append('body_section', bodySection);
         fd.append('include_image', includeImage);
         if (instructions) fd.append('instructions', instructions);
-        if (refUrl) fd.append('reference_url', refUrl);
-        fd.append('pdf', pdfFile);
+        refUrls.forEach(function(u) { fd.append('reference_url', u); });
+        pdfFiles.forEach(function(f) { fd.append('pdf', f); });
         fetchOpts = { method: 'POST', body: fd };
     } else {
         var payload = { topic: topic, modality: modality, body_section: bodySection, include_image: includeImage };
         if (instructions) payload.instructions = instructions;
-        if (refUrl) payload.reference_url = refUrl;
+        if (refUrls.length) payload.reference_urls = refUrls;
         fetchOpts = { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) };
     }
 

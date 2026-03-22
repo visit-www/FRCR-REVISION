@@ -2280,23 +2280,27 @@ function createPrelimCaseData(forceRegenerate = false) {
 
     // Gather optional context fields (if present in DOM)
     const aiInstructions = (document.getElementById('aiPrelimInstructions')?.value || '').trim();
-    const aiRefUrl = (document.getElementById('aiPrelimRefUrl')?.value || '').trim();
+    const aiRefUrls = [];
+    document.querySelectorAll('#aiPrelimRefUrlList .ref-url-input').forEach(input => {
+        const v = (input.value || '').trim();
+        if (v) aiRefUrls.push(v);
+    });
     const aiPdfInput = document.getElementById('aiPrelimPdf');
-    const aiPdfFile = aiPdfInput && aiPdfInput.files.length > 0 ? aiPdfInput.files[0] : null;
+    const aiPdfFiles = aiPdfInput ? Array.from(aiPdfInput.files) : [];
 
     let fetchOpts;
-    if (aiPdfFile) {
+    if (aiPdfFiles.length > 0) {
         const fd = new FormData();
         fd.append('model', model);
         fd.append('force_regenerate', 'true');
         if (aiInstructions) fd.append('instructions', aiInstructions);
-        if (aiRefUrl) fd.append('reference_url', aiRefUrl);
-        fd.append('pdf', aiPdfFile);
+        aiRefUrls.forEach(u => fd.append('reference_url', u));
+        aiPdfFiles.forEach(f => fd.append('pdf', f));
         fetchOpts = { method: 'POST', body: fd, signal: abortController.signal };
     } else {
         const payload = { model, force_regenerate: true };
         if (aiInstructions) payload.instructions = aiInstructions;
-        if (aiRefUrl) payload.reference_url = aiRefUrl;
+        if (aiRefUrls.length) payload.reference_urls = aiRefUrls;
         fetchOpts = { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload), signal: abortController.signal };
     }
 

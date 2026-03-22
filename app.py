@@ -5273,13 +5273,11 @@ def generate_preliminary_case_data(case_id):
     if not has_case_edit_permission(case):
         return jsonify({'error': 'Access denied'}), 403
 
-    # Support both JSON and FormData (when PDF is uploaded)
+    # Support both JSON and FormData (when PDFs are uploaded)
     if request.content_type and 'multipart/form-data' in request.content_type:
         data = request.form
-        pdf_file = request.files.get('pdf')
     else:
         data = request.get_json() or {}
-        pdf_file = None
 
     # Support both model (new) and provider (legacy) parameters
     model = data.get('model', 'claude-sonnet-4-20250514')
@@ -5320,9 +5318,14 @@ def generate_preliminary_case_data(case_id):
 
     # Build additional context + extract reference images from optional user inputs
     instructions = (data.get('instructions') or '').strip()
-    reference_url = (data.get('reference_url') or '').strip()
+    if request.content_type and 'multipart/form-data' in request.content_type:
+        reference_urls = request.form.getlist('reference_url')
+        pdf_files = request.files.getlist('pdf')
+    else:
+        reference_urls = data.get('reference_urls') or ([data['reference_url']] if data.get('reference_url') else [])
+        pdf_files = []
     from reporting_routes import _build_generation_context
-    additional_context, ref_images = _build_generation_context(instructions, reference_url, pdf_file)
+    additional_context, ref_images = _build_generation_context(instructions, reference_urls, pdf_files)
 
     context = {
         'diagnosis': case.diagnosis,

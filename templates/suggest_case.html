@@ -129,13 +129,18 @@
                                                   placeholder="e.g. Focus on paediatric presentation, emphasise MRI findings"></textarea>
                                     </div>
                                     <div class="mb-2">
-                                        <label class="form-label small">Reference URL</label>
-                                        <input type="text" class="form-control form-control-sm" id="scRefUrl"
-                                               placeholder="e.g. https://radiopaedia.org/articles/...">
+                                        <label class="form-label small">Reference URLs</label>
+                                        <div id="scRefUrlList">
+                                            <div class="input-group input-group-sm mb-1">
+                                                <input type="text" class="form-control form-control-sm ref-url-input"
+                                                       placeholder="e.g. https://radiopaedia.org/articles/...">
+                                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="addRefUrlInput('scRefUrlList')" title="Add another URL"><i class="fas fa-plus"></i></button>
+                                            </div>
+                                        </div>
                                     </div>
                                     <div class="mb-0">
-                                        <label class="form-label small">Reference PDF</label>
-                                        <input type="file" class="form-control form-control-sm" id="scPdf" accept=".pdf">
+                                        <label class="form-label small">Reference PDFs</label>
+                                        <input type="file" class="form-control form-control-sm" id="scPdf" accept=".pdf" multiple>
                                     </div>
                                 </div>
                             </div>
@@ -348,6 +353,25 @@
 </div>
 
 <script>
+// Multi-ref URL helper
+function addRefUrlInput(containerId) {
+    var container = document.getElementById(containerId);
+    if (!container) return;
+    var row = document.createElement('div');
+    row.className = 'input-group input-group-sm mb-1';
+    row.innerHTML = '<input type="text" class="form-control form-control-sm ref-url-input" placeholder="e.g. https://radiopaedia.org/articles/...">' +
+        '<button type="button" class="btn btn-outline-danger btn-sm" onclick="this.parentElement.remove()" title="Remove"><i class="fas fa-minus"></i></button>';
+    container.appendChild(row);
+}
+function getRefUrls(containerId) {
+    var urls = [];
+    document.querySelectorAll('#' + containerId + ' .ref-url-input').forEach(function(input) {
+        var v = (input.value || '').trim();
+        if (v) urls.push(v);
+    });
+    return urls;
+}
+
 let _caseId = null;
 let _relatedCases = [];
 
@@ -433,22 +457,22 @@ function generateCase(confirmed) {
 
         // Step 2: Generate AI content (with optional context)
         var scInstructions = (document.getElementById('scInstructions')?.value || '').trim();
-        var scRefUrl = (document.getElementById('scRefUrl')?.value || '').trim();
+        var scRefUrls = getRefUrls('scRefUrlList');
         var scPdfInput = document.getElementById('scPdf');
-        var scPdfFile = scPdfInput && scPdfInput.files.length > 0 ? scPdfInput.files[0] : null;
+        var scPdfFiles = scPdfInput ? Array.from(scPdfInput.files) : [];
 
         var aiOpts;
-        if (scPdfFile) {
+        if (scPdfFiles.length > 0) {
             var fd = new FormData();
             fd.append('force_regenerate', 'true');
             if (scInstructions) fd.append('instructions', scInstructions);
-            if (scRefUrl) fd.append('reference_url', scRefUrl);
-            fd.append('pdf', scPdfFile);
+            scRefUrls.forEach(function(u) { fd.append('reference_url', u); });
+            scPdfFiles.forEach(function(f) { fd.append('pdf', f); });
             aiOpts = { method: 'POST', body: fd };
         } else {
             var aiPayload = { force_regenerate: true };
             if (scInstructions) aiPayload.instructions = scInstructions;
-            if (scRefUrl) aiPayload.reference_url = scRefUrl;
+            if (scRefUrls.length) aiPayload.reference_urls = scRefUrls;
             aiOpts = { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(aiPayload) };
         }
 

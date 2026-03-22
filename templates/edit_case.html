@@ -1179,13 +1179,18 @@ window.CLOUDINARY_UPLOAD_PRESET = {{ cloudinary_upload_preset|default('', true)|
                                               placeholder="e.g. Focus on paediatric presentation, emphasise MRI findings"></textarea>
                                 </div>
                                 <div class="mb-2">
-                                    <label class="form-label small">Reference URL</label>
-                                    <input type="text" class="form-control form-control-sm" id="aiPrelimRefUrl"
-                                           placeholder="e.g. https://radiopaedia.org/articles/...">
+                                    <label class="form-label small">Reference URLs</label>
+                                    <div id="aiPrelimRefUrlList">
+                                        <div class="input-group input-group-sm mb-1">
+                                            <input type="text" class="form-control form-control-sm ref-url-input"
+                                                   placeholder="e.g. https://radiopaedia.org/articles/...">
+                                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="addRefUrlInput('aiPrelimRefUrlList')" title="Add another URL"><i class="fas fa-plus"></i></button>
+                                        </div>
+                                    </div>
                                 </div>
                                 <div class="mb-0">
-                                    <label class="form-label small">Reference PDF</label>
-                                    <input type="file" class="form-control form-control-sm" id="aiPrelimPdf" accept=".pdf">
+                                    <label class="form-label small">Reference PDFs</label>
+                                    <input type="file" class="form-control form-control-sm" id="aiPrelimPdf" accept=".pdf" multiple>
                                 </div>
                             </div>
                         </div>
@@ -1440,6 +1445,17 @@ function handleSaveCase(event) {
 </script>
 <script src="/static/edit-case-modal.js"></script>
 <script>
+// Multi-ref URL helper
+function addRefUrlInput(containerId) {
+    var container = document.getElementById(containerId);
+    if (!container) return;
+    var row = document.createElement('div');
+    row.className = 'input-group input-group-sm mb-1';
+    row.innerHTML = '<input type="text" class="form-control form-control-sm ref-url-input" placeholder="e.g. https://radiopaedia.org/articles/...">' +
+        '<button type="button" class="btn btn-outline-danger btn-sm" onclick="this.parentElement.remove()" title="Remove"><i class="fas fa-minus"></i></button>';
+    container.appendChild(row);
+}
+
 // Case DICOM Viewer - OneDrive Image Stack
 let _caseDicomParsedData = null;
 function openCaseDicomLinkModal() {

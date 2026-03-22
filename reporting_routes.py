@@ -2515,13 +2515,11 @@ def smart_reporter_anatomy_suggest():
 @login_required
 def smart_reporter_anatomy():
     """Generate or retrieve anatomy reference content for the Anatomy Panel."""
-    # Support both JSON and FormData (when PDF is uploaded)
+    # Support both JSON and FormData (when PDFs are uploaded)
     if request.content_type and 'multipart/form-data' in request.content_type:
         data = request.form
-        pdf_file = request.files.get('pdf')
     else:
         data = request.get_json() or {}
-        pdf_file = None
 
     topic = (data.get('topic') or '').strip()
     if not topic:
@@ -2585,8 +2583,13 @@ def smart_reporter_anatomy():
 
     # Build additional context + extract reference images from optional admin inputs
     instructions = (data.get('instructions') or '').strip()
-    reference_url = (data.get('reference_url') or '').strip()
-    additional_context, ref_images = _build_generation_context(instructions, reference_url, pdf_file)
+    if request.content_type and 'multipart/form-data' in request.content_type:
+        reference_urls = request.form.getlist('reference_url')
+        pdf_files = request.files.getlist('pdf')
+    else:
+        reference_urls = data.get('reference_urls') or ([data['reference_url']] if data.get('reference_url') else [])
+        pdf_files = []
+    additional_context, ref_images = _build_generation_context(instructions, reference_urls, pdf_files)
 
     # AI fallback: generate anatomy reference
     try:
@@ -3339,8 +3342,13 @@ def _pearl_to_dict(pearl):
 
 # ── Shared helper: build context from admin inputs ─────────────────
 
-def _build_generation_context(instructions='', reference_url='', pdf_file=None):
+def _build_generation_context(instructions='', reference_urls=None, pdf_files=None):
     """Build context string + extract reference images from optional admin inputs.
+
+    Args:
+        instructions: Free-text instructions string.
+        reference_urls: A single URL string or list of URL strings.
+        pdf_files: A single FileStorage or list of FileStorage objects.
 
     Returns:
         tuple (context_text: str, reference_images: list[dict])
@@ -3352,24 +3360,33 @@ def _build_generation_context(instructions='', reference_url='', pdf_file=None):
     if instructions:
         parts.append(f"ADMIN INSTRUCTIONS:\n{instructions}")
 
-    if reference_url:
+    # Normalise to list (supports legacy single-string callers)
+    if isinstance(reference_urls, str):
+        reference_urls = [reference_urls] if reference_urls.strip() else []
+    reference_urls = [u.strip() for u in (reference_urls or []) if u and u.strip()]
+
+    for ref_url in reference_urls:
         try:
             from clinical_tool_generator import fetch_url_content
-            content = fetch_url_content(reference_url, max_chars=4000)
+            content = fetch_url_content(ref_url, max_chars=4000)
             if content:
-                parts.append(f"REFERENCE URL ({reference_url}):\n{content}")
+                parts.append(f"REFERENCE URL ({ref_url}):\n{content}")
         except Exception as exc:
-            logger.warning("Failed to fetch reference URL %s: %s", reference_url, exc)
-        # Also extract images from the URL
+            logger.warning("Failed to fetch reference URL %s: %s", ref_url, exc)
         try:
             from clinical_tool_generator import fetch_url_images
-            url_imgs = fetch_url_images(reference_url, max_images=3)
+            url_imgs = fetch_url_images(ref_url, max_images=3)
             ref_images.extend(url_imgs)
         except Exception as exc:
-            logger.warning("URL image extraction failed for %s: %s", reference_url, exc)
+            logger.warning("URL image extraction failed for %s: %s", ref_url, exc)
 
-    _pdf_tmp_path = None
-    if pdf_file:
+    # Normalise pdf_files to list
+    if pdf_files and not isinstance(pdf_files, (list, tuple)):
+        pdf_files = [pdf_files]
+    pdf_files = pdf_files or []
+
+    for pdf_file in pdf_files:
+        _pdf_tmp_path = None
         try:
             import tempfile, os as _os
             from clinical_tool_generator import extract_pdf_text
@@ -3382,7 +3399,6 @@ def _build_generation_context(instructions='', reference_url='', pdf_file=None):
                 parts.append(f"REFERENCE PDF ({pdf_file.filename}):\n{text[:6000]}")
         except Exception as exc:
             logger.warning("Failed to extract PDF text: %s", exc)
-        # Also extract images from the PDF
         if _pdf_tmp_path:
             try:
                 from clinical_tool_generator import extract_pdf_images
@@ -3390,7 +3406,6 @@ def _build_generation_context(instructions='', reference_url='', pdf_file=None):
                 ref_images.extend(pdf_imgs)
             except Exception as exc:
                 logger.warning("PDF image extraction failed: %s", exc)
-            # Clean up temp file
             try:
                 import os as _os
                 _os.unlink(_pdf_tmp_path)
@@ -3410,13 +3425,11 @@ def admin_generate_pearl():
     """Generate a structured radiology pearl via AI (admin only)."""
     import time
 
-    # Support both JSON and FormData (when PDF is uploaded)
+    # Support both JSON and FormData (when PDFs are uploaded)
     if request.content_type and 'multipart/form-data' in request.content_type:
         data = request.form
-        pdf_file = request.files.get('pdf')
     else:
         data = request.get_json() or {}
-        pdf_file = None
 
     topic = (data.get('topic') or '').strip()
     if not topic:
@@ -3431,8 +3444,13 @@ def admin_generate_pearl():
 
     # Build additional context + extract reference images from optional admin inputs
     instructions = (data.get('instructions') or '').strip()
-    reference_url = (data.get('reference_url') or '').strip()
-    additional_context, ref_images = _build_generation_context(instructions, reference_url, pdf_file)
+    if request.content_type and 'multipart/form-data' in request.content_type:
+        reference_urls = request.form.getlist('reference_url')
+        pdf_files = request.files.getlist('pdf')
+    else:
+        reference_urls = data.get('reference_urls') or ([data['reference_url']] if data.get('reference_url') else [])
+        pdf_files = []
+    additional_context, ref_images = _build_generation_context(instructions, reference_urls, pdf_files)
 
     start = time.time()
 
