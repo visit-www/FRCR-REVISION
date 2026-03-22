@@ -6,7 +6,7 @@
 
 {% block mobile_breadcrumb %}
 <li class="breadcrumb-item">
-    <a href="{{ url_for('radiology_tools.finder') }}" class="text-white text-decoration-none">Incidental Findings</a>
+    <a href="{{ url_for('radiology_tools.finder') }}" class="text-white text-decoration-none">Radiology Tools</a>
 </li>
 <li class="breadcrumb-item active text-white-50">Admin</li>
 {% endblock %}
@@ -21,14 +21,14 @@
                     <i class="fas fa-home me-1"></i>Dashboard
                 </a>
                 <a href="{{ url_for('radiology_tools.finder') }}" class="btn btn-outline-secondary btn-sm">
-                    <i class="fas fa-search-plus me-1"></i>Incidental Findings
+                    <i class="fas fa-search-plus me-1"></i>Radiology Tools
                 </a>
             </div>
 
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <div>
-                    <h2 class="mb-1"><i class="fas fa-cogs me-2" style="color: #5E899E;"></i>Radiiolohy Tools Admin</h2>
-                    <p class="text-muted mb-0">Manage Radiology tools and calculators</p>
+                    <h2 class="mb-1"><i class="fas fa-cogs me-2" style="color: #5E899E;"></i>Radiology Tools Admin</h2>
+                    <p class="text-muted mb-0">Manage radiology tools, calculators, grading and scoring systems</p>
                 </div>
                 <div class="d-flex gap-2">
                     <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#generateModal"
@@ -99,7 +99,7 @@
                             {% if not calculators %}
                             <tr>
                                 <td colspan="5" class="text-center py-4 text-muted">
-                                    No calculators yet. Click "Generate New" to create one.
+                                    No radiology tools yet. Click "Generate New" to create one.
                                 </td>
                             </tr>
                             {% endif %}
@@ -116,7 +116,7 @@
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title"><i class="fas fa-magic"></i> Generate IF Calculator</h5>
+                <h5 class="modal-title"><i class="fas fa-magic"></i> Generate Radiology Tool</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
@@ -162,7 +162,7 @@
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title"><i class="fas fa-edit"></i> Edit Calculator</h5>
+                <h5 class="modal-title"><i class="fas fa-edit"></i> Edit Radiology Tool</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
@@ -217,7 +217,7 @@
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title"><i class="fas fa-plus-circle"></i> Add Calculator Manually</h5>
+                <h5 class="modal-title"><i class="fas fa-plus-circle"></i> Add Radiology Tool Manually</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
@@ -277,7 +277,7 @@ function generateCalc() {
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Generating...';
     status.classList.remove('d-none');
-    status.innerHTML = '<div class="alert alert-info py-2"><i class="fas fa-spinner fa-spin me-1"></i>Generating calculator (this may take a minute)...</div>';
+    status.innerHTML = '<div class="alert alert-info py-2"><i class="fas fa-spinner fa-spin me-1"></i>Generating radiology tool (this may take a minute)...</div>';
 
     var resources = collectResources('gen');
 
@@ -347,7 +347,7 @@ function editCalc(id) {
             loadAllResources('edit', data.guideline_source);
             new bootstrap.Modal(document.getElementById('editCalcModal')).show();
         })
-        .catch(function(err) { alert('Failed to load calculator: ' + err); });
+        .catch(function(err) { alert('Failed to load radiology tool: ' + err); });
 }
 
 function saveEditCalc() {
@@ -375,7 +375,7 @@ function saveEditCalc() {
 }
 
 function verifyCalc(id) {
-    if (!confirm('Verify and publish this calculator?')) return;
+    if (!confirm('Verify and publish this radiology tool?')) return;
     fetch('/incidental-findings/admin/api/' + id + '/verify', { method: 'POST' })
         .then(function(r) { return r.json(); })
         .then(function() { location.reload(); });

@@ -59,13 +59,16 @@ def view_calculator(slug):
     if calculator.calculator_html:
         content = extract_html_content(calculator.calculator_html)
 
-    # Parse resources from guideline_source JSON
+    # Parse resources from guideline_source JSON (handles double-encoded strings)
     import json as _json
     resources = {'references': [], 'linked_cases': [], 'linked_tnm': [], 'pdfs': []}
     source_field = calculator.guideline_source
     if source_field:
         try:
             parsed = _json.loads(source_field)
+            # Handle double-encoded JSON (JSON.stringify called twice on frontend)
+            if isinstance(parsed, str):
+                parsed = _json.loads(parsed)
             if isinstance(parsed, dict):
                 resources = {
                     'references': parsed.get('references', []),
@@ -76,7 +79,7 @@ def view_calculator(slug):
             elif isinstance(parsed, list):
                 resources['references'] = parsed
         except (_json.JSONDecodeError, TypeError):
-            if source_field.strip():
+            if source_field.strip() and not source_field.strip().startswith('{'):
                 resources['references'] = [{'source': source_field.strip(), 'version': '', 'url': ''}]
 
     return render_template('radiology_tools_viewer.html',

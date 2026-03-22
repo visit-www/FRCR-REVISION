@@ -4,7 +4,7 @@
 {% block mobile_active_if %}active{% endblock %}
 
 {% block mobile_breadcrumb %}
-<li class="breadcrumb-item active text-white-50">Incidental Findings</li>
+<li class="breadcrumb-item active text-white-50">Radiology Tools</li>
 {% endblock %}
 
 {% block content %}
@@ -25,40 +25,30 @@
                 </a>
                 {% if current_user.is_authenticated and current_user.role and current_user.role.value == 'admin' %}
                 <a href="/incidental-findings/admin" class="btn btn-outline-warning btn-sm ms-auto">
-                    <i class="fas fa-cogs me-1"></i>Manage Radiology Tools
+                    <i class="fas fa-cogs me-1"></i>Manage Tools
                 </a>
                 {% endif %}
             </div>
 
             <div class="text-center mb-4">
-                <i class="fas fa-search-plus" style="font-size: 2.5rem; color: #5E899E;"></i>
-                <h2 class="mt-2 mb-1">Radiology Tools</h2>
-                <p class="text-muted">Guideline-based radiology calculators, grading systems, classifications and scorring systems useful in daily reporting with report language generation</p>
-            </div>
-
-            <!-- Clinical Disclaimer -->
-            <div class="alert alert-warning border-0 shadow-sm mb-4">
-                <div class="d-flex align-items-start">
-                    <i class="fas fa-shield-alt me-2 mt-1" style="color: #e96304;"></i>
-                    <div>
-                        <strong>Clinical Decision Support Tool</strong>
-                        <p class="mb-0 small">All recommendations are based on published guidelines (ACR, Fleischner, Bosniak, etc.).
-                        Verify against current guidelines and institutional protocols before clinical use.</p>
-                    </div>
+                <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-2"
+                     style="width:56px;height:56px;background:linear-gradient(135deg,#5E899E 0%,#4a7285 100%);">
+                    <i class="fas fa-tools" style="font-size:1.4rem;color:#fff;"></i>
                 </div>
+                <h2 class="mt-1 mb-1" style="color:#2c3e50;">Radiology Tools</h2>
+                <p class="text-muted mb-0" style="max-width:500px;margin:0 auto;">Guideline-based calculators, grading systems, classifications and scoring systems for daily radiology reporting</p>
             </div>
 
             <!-- Search Box -->
-            <div class="card shadow-sm border-0 mb-4">
-                <div class="card-body p-4">
-                    <div class="input-group input-group-lg">
-                        <span class="input-group-text bg-white border-end-0">
-                            <i class="fas fa-search text-muted"></i>
-                        </span>
-                        <input type="text" id="searchInput" class="form-control border-start-0"
-                               placeholder="e.g. pulmonary nodule, adrenal incidentaloma, renal cyst..."
-                               autocomplete="off">
-                    </div>
+            <div class="mb-4" style="max-width:560px;margin:0 auto;">
+                <div class="input-group">
+                    <span class="input-group-text bg-white border-end-0" style="border-radius:10px 0 0 10px;">
+                        <i class="fas fa-search text-muted"></i>
+                    </span>
+                    <input type="text" id="searchInput" class="form-control border-start-0"
+                           style="border-radius:0 10px 10px 0;"
+                           placeholder="Search tools... e.g. pulmonary nodule, Bosniak, Fleischner"
+                           autocomplete="off">
                 </div>
             </div>
 
@@ -70,34 +60,38 @@
             <div id="browseCategories">
                 {% for category, calcs in grouped.items() %}
                 <div class="mb-4">
-                    <h5 class="mb-3">
-                        <i class="fas fa-folder-open me-2" style="color: #5E899E;"></i>
-                        {{ category|capitalize }}
-                    </h5>
-                    <div class="row g-3">
+                    <div class="d-flex align-items-center mb-2">
+                        <div class="d-inline-flex align-items-center justify-content-center rounded me-2"
+                             style="width:28px;height:28px;background:#f0f7fa;">
+                            <i class="fas fa-folder-open" style="font-size:0.8rem;color:#5E899E;"></i>
+                        </div>
+                        <h6 class="mb-0 fw-semibold" style="color:#2c3e50;">{{ category|capitalize }}</h6>
+                        <span class="badge bg-light text-muted border ms-2" style="font-size:0.65rem;">{{ calcs|length }}</span>
+                    </div>
+                    <div class="row g-2">
                         {% for calc in calcs %}
                         <div class="col-md-6 col-lg-4">
-                            <div class="card border-0 shadow-sm hover-card h-100"
-                                 style="cursor: pointer; transition: transform 0.2s ease;"
-                                 onclick="window.location.href='{{ url_for('radiology_tools.view_calculator', slug=calc.slug) }}'">
-                                <div class="card-body">
-                                    <h6 class="mb-2">
-                                        <i class="fas fa-calculator me-1" style="color: #5E899E;"></i>
-                                        {{ calc.finding_name }}
-                                    </h6>
-                                    {% if calc.description %}
-                                    <p class="text-muted small mb-2">{{ calc.description }}</p>
-                                    {% endif %}
-                                    {% if calc.guideline_source %}
-                                    <small class="text-muted">
-                                        <i class="fas fa-book me-1"></i>{{ calc.guideline_source }}
-                                    </small>
-                                    {% endif %}
-                                    {% if calc.verified_at %}
-                                    <br><small class="text-success"><i class="fas fa-check-circle me-1"></i>Verified</small>
-                                    {% endif %}
+                            <a href="{{ url_for('radiology_tools.view_calculator', slug=calc.slug) }}"
+                               class="rt-tool-card d-block text-decoration-none h-100">
+                                <div class="d-flex align-items-start gap-2">
+                                    <i class="fas fa-calculator mt-1 flex-shrink-0" style="color:#5E899E;font-size:0.85rem;"></i>
+                                    <div class="flex-grow-1" style="min-width:0;">
+                                        <div class="fw-semibold" style="color:#2c3e50;font-size:0.88rem;line-height:1.3;">{{ calc.finding_name }}</div>
+                                        {% if calc.description %}
+                                        <p class="text-muted mb-0 mt-1" style="font-size:0.75rem;line-height:1.4;">{{ calc.description|truncate(80) }}</p>
+                                        {% endif %}
+                                        <div class="d-flex align-items-center gap-2 mt-1 flex-wrap">
+                                            {% if calc.verified_at %}
+                                            <span style="font-size:0.62rem;color:#198754;"><i class="fas fa-check-circle me-1"></i>Verified</span>
+                                            {% endif %}
+                                            {% if calc.body_section %}
+                                            <span class="badge bg-light text-muted border" style="font-size:0.58rem;">{{ calc.body_section }}</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <i class="fas fa-chevron-right text-muted flex-shrink-0 mt-1" style="font-size:0.6rem;opacity:0.4;"></i>
                                 </div>
-                            </div>
+                            </a>
                         </div>
                         {% endfor %}
                     </div>
@@ -106,26 +100,53 @@
             </div>
             {% else %}
             <div class="text-center py-5">
-                <i class="fas fa-inbox" style="font-size: 3rem; color: #dee2e6;"></i>
-                <h5 class="text-muted mt-3">No calculators available yet</h5>
-                <p class="text-muted small">Incidental finding calculators will be generated and verified by admin radiologists.</p>
+                <i class="fas fa-tools" style="font-size: 2.5rem; color: #dee2e6;"></i>
+                <h5 class="text-muted mt-3">No radiology tools available yet</h5>
+                <p class="text-muted small">Radiology tools will be generated and verified by admin radiologists.</p>
             </div>
             {% endif %}
+
+            <!-- Disclaimer -->
+            <div class="text-center mt-4 pt-3" style="border-top:1px solid #e9ecef;">
+                <small class="text-muted">
+                    <i class="fas fa-shield-alt me-1" style="color:#e96304;"></i>
+                    All tools are based on published guidelines (ACR, Fleischner, Bosniak, etc.). Verify against current guidelines before clinical use.
+                </small>
+            </div>
         </div>
     </div>
 </div>
+
+<style>
+.rt-tool-card {
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: 1px solid #e9ecef;
+    background: #fff;
+    transition: all 0.15s ease;
+}
+.rt-tool-card:hover {
+    border-color: #5E899E;
+    box-shadow: 0 2px 8px rgba(94,137,158,0.12);
+    transform: translateY(-1px);
+}
+.rt-tool-card:hover .fa-chevron-right {
+    opacity: 0.8 !important;
+    color: #5E899E !important;
+}
+</style>
 {% endblock %}
 
 {% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const searchInput = document.getElementById('searchInput');
-    const searchResults = document.getElementById('searchResults');
-    const browseCategories = document.getElementById('browseCategories');
-    let searchTimeout = null;
+    var searchInput = document.getElementById('searchInput');
+    var searchResults = document.getElementById('searchResults');
+    var browseCategories = document.getElementById('browseCategories');
+    var searchTimeout = null;
 
     searchInput.addEventListener('input', function() {
-        const q = this.value.trim();
+        var q = this.value.trim();
         clearTimeout(searchTimeout);
 
         if (q.length < 2) {
@@ -134,40 +155,34 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        searchTimeout = setTimeout(() => {
-            fetch(`/incidental-findings/api/search?q=${encodeURIComponent(q)}`)
-                .then(r => r.json())
-                .then(results => {
+        searchTimeout = setTimeout(function() {
+            fetch('/incidental-findings/api/search?q=' + encodeURIComponent(q))
+                .then(function(r) { return r.json(); })
+                .then(function(results) {
                     if (browseCategories) browseCategories.classList.add('d-none');
                     searchResults.classList.remove('d-none');
 
                     if (results.length === 0) {
-                        searchResults.innerHTML = `
-                            <div class="text-center py-4 text-muted">
-                                <i class="fas fa-search d-block mb-2" style="font-size: 1.5rem;"></i>
-                                No calculators found matching "${q}"
-                            </div>`;
+                        searchResults.innerHTML =
+                            '<div class="text-center py-4 text-muted">' +
+                            '<i class="fas fa-search d-block mb-2" style="font-size:1.5rem;"></i>' +
+                            'No radiology tools found matching "' + q + '"</div>';
                         return;
                     }
 
-                    searchResults.innerHTML = results.map(r => `
-                        <div class="card border-0 shadow-sm mb-3 hover-card" style="cursor: pointer; transition: transform 0.2s ease;"
-                             onclick="window.location.href='${r.url}'">
-                            <div class="card-body py-3">
-                                <div class="d-flex align-items-center">
-                                    <i class="fas fa-calculator me-3" style="font-size: 1.3rem; color: #5E899E;"></i>
-                                    <div>
-                                        <h6 class="mb-0">${r.finding_name}</h6>
-                                        ${r.description ? `<small class="text-muted">${r.description}</small>` : ''}
-                                        ${r.guideline_source ? `<br><small class="text-muted"><i class="fas fa-book me-1"></i>${r.guideline_source}</small>` : ''}
-                                    </div>
-                                    <i class="fas fa-chevron-right text-muted ms-auto"></i>
-                                </div>
-                            </div>
-                        </div>
-                    `).join('');
+                    searchResults.innerHTML = results.map(function(r) {
+                        return '<a href="' + r.url + '" class="rt-tool-card d-block text-decoration-none mb-2">' +
+                            '<div class="d-flex align-items-center">' +
+                            '<i class="fas fa-calculator me-3" style="font-size:1rem;color:#5E899E;"></i>' +
+                            '<div class="flex-grow-1">' +
+                            '<div class="fw-semibold" style="color:#2c3e50;">' + r.finding_name + '</div>' +
+                            (r.description ? '<small class="text-muted">' + r.description + '</small>' : '') +
+                            '</div>' +
+                            '<i class="fas fa-chevron-right text-muted ms-2" style="font-size:0.7rem;opacity:0.4;"></i>' +
+                            '</div></a>';
+                    }).join('');
                 })
-                .catch(() => {
+                .catch(function() {
                     searchResults.innerHTML = '<div class="alert alert-danger">Search failed.</div>';
                 });
         }, 300);

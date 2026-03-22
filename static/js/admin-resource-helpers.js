@@ -61,6 +61,8 @@ function parseResources(val) {
     if (!val) return empty;
     try {
         var parsed = JSON.parse(val);
+        // Handle double-encoded JSON strings
+        if (typeof parsed === 'string') parsed = JSON.parse(parsed);
         if (Array.isArray(parsed)) {
             return { references: parsed, linked_cases: [], linked_tnm: [], pdfs: [] };
         }
@@ -71,7 +73,7 @@ function parseResources(val) {
             pdfs: parsed.pdfs || []
         };
     } catch (e) {
-        if (val.trim()) {
+        if (val.trim() && val.trim().charAt(0) !== '{') {
             return { references: [{ source: val.trim(), version: '', url: '' }], linked_cases: [], linked_tnm: [], pdfs: [] };
         }
         return empty;

@@ -42,7 +42,7 @@ def generate_if_calculator_html(finding_name, guideline_source='', category='',
     if existing and not overwrite:
         return {
             'success': False,
-            'message': f'Calculator for "{finding_name}" already exists. Use overwrite=true to replace.',
+            'message': f'Radiology tool for "{finding_name}" already exists. Use overwrite=true to replace.',
             'slug': slug,
         }
 
@@ -102,7 +102,7 @@ def generate_if_calculator_html(finding_name, guideline_source='', category='',
 
     return {
         'success': True,
-        'message': f'Calculator for "{finding_name}" generated. Awaiting admin review.',
+        'message': f'Radiology tool for "{finding_name}" generated. Awaiting admin review.',
         'slug': slug,
         'id': calc_id,
         'html_length': len(calculator_html),
