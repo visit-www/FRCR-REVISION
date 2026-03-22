@@ -285,34 +285,21 @@ window.CLOUDINARY_UPLOAD_PRESET = {{ cloudinary_upload_preset|default('', true)|
                                     <i class="fas fa-link me-1" style="color: #5E899E;"></i>Linked Content
                                 </label>
                                 <small class="text-muted d-block mb-2">
-                                    Link related cases, algorithm calculators, and reference articles to this case
+                                    Search across cases, pearls, anatomy snippets, templates, algorithms, and references
                                 </small>
                             </div>
 
-                            <!-- Search for content to link -->
-                            <div class="row mb-3">
-                                <div class="col-md-4 mb-2 mb-md-0">
-                                    <select class="form-select" id="relatedCaseType">
-                                        <option value="related">Related Case</option>
-                                        <option value="similar">Similar Case</option>
-                                        <option value="algorithm">Algorithm Guide</option>
-                                        <option value="reference">Reference Article</option>
-                                        <option value="reporting_algorithm">Reporting Algorithm</option>
-                                        <option value="radiology_template">Radiology Template</option>
-                                        <option value="pearl">Radiology Pearl</option>
-                                    </select>
+                            <!-- Global search for content to link -->
+                            <div class="mb-3 position-relative">
+                                <div class="input-group">
+                                    <span class="input-group-text bg-white">
+                                        <i class="fas fa-search text-muted"></i>
+                                    </span>
+                                    <input type="text" class="form-control" id="relatedCaseSearch"
+                                           placeholder="Search all content by title, diagnosis, or keyword...">
                                 </div>
-                                <div class="col-md-8">
-                                    <div class="input-group">
-                                        <span class="input-group-text bg-white">
-                                            <i class="fas fa-search text-muted"></i>
-                                        </span>
-                                        <input type="text" class="form-control" id="relatedCaseSearch"
-                                               placeholder="Search cases by diagnosis or case number...">
-                                    </div>
-                                    <div id="relatedCaseSearchResults" class="list-group position-absolute w-100 shadow-lg"
-                                         style="z-index: 1000; display: none; max-height: 300px; overflow-y: auto;"></div>
-                                </div>
+                                <div id="relatedCaseSearchResults" class="list-group position-absolute w-100 shadow-lg"
+                                     style="z-index: 1000; display: none; max-height: 300px; overflow-y: auto;"></div>
                             </div>
 
                             <!-- List of linked content -->
@@ -1179,6 +1166,30 @@ window.CLOUDINARY_UPLOAD_PRESET = {{ cloudinary_upload_preset|default('', true)|
                     <button type="button" class="btn btn-lg btn-brand-primary m-2" id="aiPrelimBtn" onclick="createPrelimCaseData()">
                         <i class="fas fa-wand-magic-sparkles me-1"></i>Create Preliminary Case Data
                     </button>
+                    <!-- Optional context for AI generation -->
+                    <div class="w-100 px-2 mb-2">
+                        <a class="text-muted small text-decoration-none" data-bs-toggle="collapse" href="#aiPrelimContext" role="button" aria-expanded="false">
+                            <i class="fas fa-chevron-right me-1"></i>Additional context <small>(optional)</small>
+                        </a>
+                        <div class="collapse" id="aiPrelimContext">
+                            <div class="card card-body mt-2 bg-light border-0">
+                                <div class="mb-2">
+                                    <label class="form-label small">Instructions for AI</label>
+                                    <textarea class="form-control form-control-sm" id="aiPrelimInstructions" rows="2"
+                                              placeholder="e.g. Focus on paediatric presentation, emphasise MRI findings"></textarea>
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label small">Reference URL</label>
+                                    <input type="text" class="form-control form-control-sm" id="aiPrelimRefUrl"
+                                           placeholder="e.g. https://radiopaedia.org/articles/...">
+                                </div>
+                                <div class="mb-0">
+                                    <label class="form-label small">Reference PDF</label>
+                                    <input type="file" class="form-control form-control-sm" id="aiPrelimPdf" accept=".pdf">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                     <button type="button" class="btn btn-lg btn-outline-primary m-2" id="aiReloadBtn" onclick="reloadPrelimCaseData()" style="display: none;">
                         <i class="fas fa-history me-1"></i>Reload Previous Data
                     </button>
@@ -6423,29 +6434,64 @@ let relatedCasesData = [];
 let currentCaseIdForRelated = null;
 const canRemoveRelatedCases = {% if current_user.is_authenticated and current_user.role and current_user.role.value in ['admin', 'content_manager'] %}true{% else %}false{% endif %};
 
+function _linkSearchResultHtml(item) {
+    const esc = s => (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    const itemJson = JSON.stringify(item).replace(/"/g, '&quot;');
+    const lt = item.link_type;
+
+    // Visual config per content type
+    const cfg = {
+        case:                { icon: 'fa-file-medical', color: '#5E899E', badge: 'Case',        badgeCls: 'bg-primary' },
+        calculator:          { icon: 'fa-calculator',   color: '#198754', badge: 'Staging Calc', badgeCls: 'bg-success' },
+        reference:           { icon: 'fa-bookmark',     color: '#6c757d', badge: 'Reference',    badgeCls: 'bg-secondary' },
+        reporting_algorithm: { icon: 'fa-sitemap',      color: '#5E899E', badge: 'Algorithm',    badgeCls: 'bg-info' },
+        anatomy_snippet:     { icon: 'fa-bone',         color: '#0d6efd', badge: 'Anatomy',      badgeCls: 'bg-primary' },
+        radiology_template:  { icon: 'fa-file-alt',     color: '#e96304', badge: 'Template',     badgeCls: '' },
+        pearl:               { icon: 'fa-gem',          color: '#6b46c1', badge: 'Pearl',        badgeCls: '' },
+    }[lt] || { icon: 'fa-link', color: '#6c757d', badge: lt, badgeCls: 'bg-secondary' };
+
+    const badgeStyle = cfg.badgeCls ? '' : `style="background:${cfg.color};color:#fff;"`;
+    const badge = `<span class="badge ${cfg.badgeCls} me-2" ${badgeStyle}>${cfg.badge}</span>`;
+
+    // Build title + sublabel per type
+    let title, sublabel;
+    if (lt === 'case') {
+        title = esc(item.case_number || 'No number');
+        sublabel = esc(item.diagnosis || '') + (item.body_part ? ' · ' + esc(item.body_part) : '');
+    } else if (lt === 'calculator') {
+        title = esc(item.cancer_name);
+        sublabel = esc(item.body_section || '');
+    } else if (lt === 'reference') {
+        title = esc(item.title);
+        sublabel = [item.journal, item.year].filter(Boolean).map(esc).join(' · ');
+    } else {
+        title = esc(item.title);
+        sublabel = [item.category, item.body_section].filter(Boolean).map(esc).join(' · ');
+    }
+
+    // anatomy_snippet links as reporting_algorithm on the backend
+    const linkType = lt === 'anatomy_snippet' ? 'reporting_algorithm' : lt;
+
+    return `
+        <button type="button" class="list-group-item list-group-item-action"
+                onclick="addLink('${linkType}', ${item.id}, ${itemJson})">
+            <div class="d-flex align-items-center gap-2">
+                ${badge}
+                <i class="fas ${cfg.icon}" style="color:${cfg.color};"></i>
+                <div style="min-width:0;">
+                    <strong class="d-block text-truncate" style="max-width:400px;">${title}</strong>
+                    <small class="text-muted d-block text-truncate" style="max-width:400px;">${sublabel}</small>
+                </div>
+            </div>
+        </button>
+    `;
+}
+
 function initRelatedCasesSearch() {
     const searchInput = document.getElementById('relatedCaseSearch');
     const resultsContainer = document.getElementById('relatedCaseSearchResults');
-    const typeSelect = document.getElementById('relatedCaseType');
 
     if (!searchInput || !resultsContainer) return;
-
-    const placeholders = {
-        related: 'Search by diagnosis or case number...',
-        similar: 'Search by diagnosis or case number...',
-        algorithm: 'Search by cancer type, body section...',
-        reference: 'Search by reference title or journal...',
-        reporting_algorithm: 'Search by algorithm title, body section...',
-        radiology_template: 'Search by template title, body section...',
-        pearl: 'Search by pearl text, tags...'
-    };
-    if (typeSelect) {
-        typeSelect.addEventListener('change', function() {
-            searchInput.placeholder = placeholders[this.value] || placeholders.related;
-            searchInput.value = '';
-            resultsContainer.style.display = 'none';
-        });
-    }
 
     let debounceTimer;
     searchInput.addEventListener('input', function() {
@@ -6459,98 +6505,13 @@ function initRelatedCasesSearch() {
 
         debounceTimer = setTimeout(async () => {
             try {
-                const searchType = typeSelect ? typeSelect.value : 'related';
-                const response = await fetch(`/api/cases/search?q=${encodeURIComponent(query)}&exclude=${currentCaseIdForRelated || ''}&type=${encodeURIComponent(searchType)}`);
+                const response = await fetch(`/api/cases/search?q=${encodeURIComponent(query)}&exclude=${currentCaseIdForRelated || ''}&type=all`);
                 const items = await response.json();
 
                 if (items.length === 0) {
                     resultsContainer.innerHTML = '<div class="list-group-item text-muted">No results found</div>';
                 } else {
-                    resultsContainer.innerHTML = items.map(item => {
-                        if (item.link_type === 'calculator') {
-                            return `
-                                <button type="button" class="list-group-item list-group-item-action"
-                                        onclick="addLink('calculator', ${item.id}, ${JSON.stringify(item).replace(/"/g, '&quot;')})">
-                                    <div class="d-flex align-items-center gap-2">
-                                        <i class="fas fa-calculator" style="color: #198754;"></i>
-                                        <div>
-                                            <strong>${item.cancer_name}</strong>
-                                            <small class="text-muted ms-2">${item.body_section}</small>
-                                        </div>
-                                    </div>
-                                </button>
-                            `;
-                        } else if (item.link_type === 'reference') {
-                            const journal = item.journal ? ` — ${item.journal}` : '';
-                            const year = item.year ? ` (${item.year})` : '';
-                            return `
-                                <button type="button" class="list-group-item list-group-item-action"
-                                        onclick="addLink('reference', ${item.id}, ${JSON.stringify(item).replace(/"/g, '&quot;')})">
-                                    <div class="d-flex align-items-center gap-2">
-                                        <i class="fas fa-bookmark" style="color: #6c757d;"></i>
-                                        <div>
-                                            <strong class="text-truncate d-block" style="max-width:400px;">${item.title}</strong>
-                                            <small class="text-muted">${journal}${year}${item.source_case_number ? ' · from ' + item.source_case_number : ''}</small>
-                                        </div>
-                                    </div>
-                                </button>
-                            `;
-                        } else if (item.link_type === 'reporting_algorithm') {
-                            return `
-                                <button type="button" class="list-group-item list-group-item-action"
-                                        onclick="addLink('reporting_algorithm', ${item.id}, ${JSON.stringify(item).replace(/"/g, '&quot;')})">
-                                    <div class="d-flex align-items-center gap-2">
-                                        <i class="fas fa-sitemap" style="color: #5E899E;"></i>
-                                        <div>
-                                            <strong>${item.title}</strong>
-                                            <small class="text-muted ms-2">${item.category || ''} · ${item.body_section || ''}</small>
-                                        </div>
-                                    </div>
-                                </button>
-                            `;
-                        } else if (item.link_type === 'radiology_template') {
-                            return `
-                                <button type="button" class="list-group-item list-group-item-action"
-                                        onclick="addLink('radiology_template', ${item.id}, ${JSON.stringify(item).replace(/"/g, '&quot;')})">
-                                    <div class="d-flex align-items-center gap-2">
-                                        <i class="fas fa-file-alt" style="color: #e96304;"></i>
-                                        <div>
-                                            <strong>${item.title}</strong>
-                                            <small class="text-muted ms-2">${item.category || ''} · ${item.body_section || ''}</small>
-                                        </div>
-                                    </div>
-                                </button>
-                            `;
-                        } else if (item.link_type === 'pearl') {
-                            return `
-                                <button type="button" class="list-group-item list-group-item-action"
-                                        onclick="addLink('pearl', ${item.id}, ${JSON.stringify(item).replace(/"/g, '&quot;')})">
-                                    <div class="d-flex align-items-center gap-2">
-                                        <i class="fas fa-gem" style="color: #6b46c1;"></i>
-                                        <div>
-                                            <strong class="text-truncate d-block" style="max-width:400px;">${item.title}</strong>
-                                            <small class="text-muted">${item.body_section || ''} ${item.is_verified ? '· Verified' : ''}</small>
-                                        </div>
-                                    </div>
-                                </button>
-                            `;
-                        } else {
-                            // case (related/similar)
-                            return `
-                                <button type="button" class="list-group-item list-group-item-action"
-                                        onclick="addLink('case', ${item.id}, ${JSON.stringify(item).replace(/"/g, '&quot;')})">
-                                    <div class="d-flex align-items-center gap-2">
-                                        <i class="fas fa-file-medical" style="color: #5E899E;"></i>
-                                        <div>
-                                            <strong>${item.case_number || 'No number'}</strong>
-                                            <small class="text-muted ms-2">${item.body_part || ''}</small>
-                                        </div>
-                                    </div>
-                                    <small class="text-truncate d-block">${item.diagnosis || ''}</small>
-                                </button>
-                            `;
-                        }
-                    }).join('');
+                    resultsContainer.innerHTML = items.map(_linkSearchResultHtml).join('');
                 }
                 resultsContainer.style.display = 'block';
             } catch (error) {
@@ -6575,7 +6536,6 @@ async function addLink(linkType, linkedId, itemData) {
         return;
     }
 
-    const relationType = document.getElementById('relatedCaseType')?.value || 'related';
     let body = { link_type: linkType };
 
     if (linkType === 'calculator') {
@@ -6590,7 +6550,7 @@ async function addLink(linkType, linkedId, itemData) {
         body.pearl_id = linkedId;
     } else {
         body.related_case_id = linkedId;
-        body.relation_type = relationType;
+        body.relation_type = 'related';
     }
 
     try {
@@ -6605,7 +6565,7 @@ async function addLink(linkType, linkedId, itemData) {
             // Push the returned item or build from itemData
             const newItem = result.item || itemData;
             newItem.link_type = linkType;
-            if (linkType === 'case') newItem.relation_type = relationType;
+            if (linkType === 'case') newItem.relation_type = 'related';
             relatedCasesData.push(newItem);
             renderRelatedCases();
 
@@ -6665,10 +6625,11 @@ function renderRelatedCases() {
 
     container.innerHTML = relatedCasesData.map(c => {
         const lt = c.link_type || 'case';
+        const isAnatomy = (lt === 'reporting_algorithm' && c.category === 'anatomy');
         let badge, icon, label, sublabel, clickUrl, target;
 
         if (lt === 'calculator') {
-            badge = '<span class="badge bg-success">Algorithm</span>';
+            badge = '<span class="badge bg-success">Staging Calc</span>';
             icon = '<i class="fas fa-calculator" style="color: #198754;"></i>';
             label = c.cancer_name || c.slug || 'Calculator';
             sublabel = c.body_section || '';
@@ -6681,8 +6642,15 @@ function renderRelatedCases() {
             sublabel = [c.journal, c.year].filter(Boolean).join(' · ');
             clickUrl = c.ref_url || '#';
             target = '_blank';
+        } else if (isAnatomy) {
+            badge = '<span class="badge bg-primary">Anatomy</span>';
+            icon = '<i class="fas fa-bone" style="color: #0d6efd;"></i>';
+            label = c.title || 'Anatomy Snippet';
+            sublabel = c.body_section || '';
+            clickUrl = c.url || `/reporting-template/${c.slug}`;
+            target = '_blank';
         } else if (lt === 'reporting_algorithm') {
-            badge = '<span class="badge" style="background: #5E899E;">Algorithm</span>';
+            badge = '<span class="badge bg-info">Algorithm</span>';
             icon = '<i class="fas fa-sitemap" style="color: #5E899E;"></i>';
             label = c.title || 'Algorithm';
             sublabel = [c.category, c.body_section].filter(Boolean).join(' · ');

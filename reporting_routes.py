@@ -691,6 +691,18 @@ def generate_algorithmic_approach():
             return jsonify({'error': f'AI generation failed: {exc}'}), 500
 
         output = result.get('output', {})
+
+        # Auto-fetch Radiopaedia images for case discussion
+        try:
+            from ai_pearl_generator import fetch_radiopaedia_images, render_reference_images_html
+            rp_images = fetch_radiopaedia_images(diagnosis, max_images=3)
+            if rp_images:
+                captions = output.get('image_captions', [])
+                image_html = render_reference_images_html(rp_images, captions)
+                output['discussion'] = output.get('discussion', '') + image_html
+        except Exception as img_exc:
+            logger.warning("Failed to add images to case discussion: %s", img_exc)
+
         added_pairs = _apply_qa_pairs(case, output)
         discussion_html = _apply_discussion(case, output, result.get('provider', 'claude'), result.get('model', ''))
         provider = result.get('provider', 'claude')
@@ -2503,7 +2515,14 @@ def smart_reporter_anatomy_suggest():
 @login_required
 def smart_reporter_anatomy():
     """Generate or retrieve anatomy reference content for the Anatomy Panel."""
-    data = request.get_json() or {}
+    # Support both JSON and FormData (when PDF is uploaded)
+    if request.content_type and 'multipart/form-data' in request.content_type:
+        data = request.form
+        pdf_file = request.files.get('pdf')
+    else:
+        data = request.get_json() or {}
+        pdf_file = None
+
     topic = (data.get('topic') or '').strip()
     if not topic:
         return jsonify({'error': 'Anatomy topic is required.'}), 400
@@ -2564,13 +2583,35 @@ def smart_reporter_anatomy():
             'algorithm_id': cached.id,
         })
 
+    # Build additional context + extract reference images from optional admin inputs
+    instructions = (data.get('instructions') or '').strip()
+    reference_url = (data.get('reference_url') or '').strip()
+    additional_context, ref_images = _build_generation_context(instructions, reference_url, pdf_file)
+
     # AI fallback: generate anatomy reference
     try:
         from ai_smart_reporter import generate_anatomy_reference
-        result = generate_anatomy_reference(topic, modality=modality, body_section=body_section)
+        result = generate_anatomy_reference(topic, modality=modality, body_section=body_section,
+                                            additional_context=additional_context)
     except Exception as exc:
         logger.error(f"Anatomy reference generation failed: {exc}")
         return jsonify({'error': f'Failed to generate anatomy reference: {exc}'}), 500
+
+    # If reference images from URL/PDF, re-render with combined images
+    if ref_images:
+        try:
+            from ai_smart_reporter import render_anatomy_html
+            rp_images = result.get('radiopaedia_images', [])
+            all_images = rp_images + ref_images
+            all_images = all_images[:5]
+            # Re-parse the content to get the parsed data — use existing HTML
+            # Since we can't easily re-parse, just append images to existing HTML
+            from ai_pearl_generator import render_reference_images_html
+            captions = []  # captions already embedded in content_html from generate_anatomy_reference
+            extra_html = render_reference_images_html(ref_images, captions)
+            result['content_html'] = result.get('content_html', '') + extra_html
+        except Exception as img_exc:
+            logger.warning(f"Failed to add reference images to snippet: {img_exc}")
 
     # Auto-save to cache for future lookups
     content_html = result.get('content_html', '')
@@ -2597,29 +2638,30 @@ def smart_reporter_anatomy():
             algorithm_id = cache_entry.id
             logger.info(f"Cached anatomy reference: {topic}")
 
-            # Auto-create SnippetImage if Radiopaedia image was fetched
-            rp_img = result.get('radiopaedia_image')
-            if rp_img and algorithm_id:
+            # Auto-create SnippetImage records for each Radiopaedia image
+            rp_images = result.get('radiopaedia_images', [])
+            if rp_images and algorithm_id:
                 try:
                     from models import SnippetImage
-                    si = SnippetImage(
-                        algorithm_id=algorithm_id,
-                        source_url=rp_img.get('link', ''),
-                        source_domain='radiopaedia.org',
-                        thumbnail_url=rp_img.get('thumbnail_link', ''),
-                        image_type='ct_mri',
-                        modality=modality or None,
-                        description=rp_img.get('title', ''),
-                        display_order=0,
-                        license=rp_img.get('license', 'CC BY-NC-SA 3.0'),
-                        attribution=f"Radiopaedia.org — {rp_img.get('title', '')}",
-                        added_by_user_id=current_user.id if current_user.is_authenticated else None,
-                    )
-                    db.session.add(si)
+                    for idx, rp_img in enumerate(rp_images):
+                        si = SnippetImage(
+                            algorithm_id=algorithm_id,
+                            source_url=rp_img.get('url', ''),
+                            source_domain=rp_img.get('source_domain', 'radiopaedia.org'),
+                            thumbnail_url=rp_img.get('url', ''),
+                            image_type='ct_mri',
+                            modality=modality or None,
+                            description=rp_img.get('title', ''),
+                            display_order=idx,
+                            license=rp_img.get('license', 'CC BY-NC-SA 3.0'),
+                            attribution=f"{rp_img.get('author') or 'Radiopaedia.org'} — {rp_img.get('title', '')}",
+                            added_by_user_id=current_user.id if current_user.is_authenticated else None,
+                        )
+                        db.session.add(si)
                     db.session.commit()
                 except Exception as img_exc:
                     db.session.rollback()
-                    logger.warning(f"Failed to save Radiopaedia image: {img_exc}")
+                    logger.warning(f"Failed to save Radiopaedia images: {img_exc}")
 
         except Exception as cache_exc:
             db.session.rollback()
@@ -2838,29 +2880,30 @@ def regenerate_snippet(alg_id):
         db.session.commit()
         logger.info(f"Regenerated anatomy snippet id={alg_id}: {topic}")
 
-        # Auto-update Radiopaedia image if new one found
-        rp_img = result.get('radiopaedia_image')
-        if rp_img:
+        # Auto-update Radiopaedia images (multiple)
+        rp_images = result.get('radiopaedia_images', [])
+        if rp_images:
             try:
                 from models import SnippetImage
-                si = SnippetImage(
-                    algorithm_id=alg_id,
-                    source_url=rp_img.get('link', ''),
-                    source_domain='radiopaedia.org',
-                    thumbnail_url=rp_img.get('thumbnail_link', ''),
-                    image_type='ct_mri',
-                    modality=modality or None,
-                    description=rp_img.get('title', ''),
-                    display_order=0,
-                    license=rp_img.get('license', 'CC BY-NC-SA 3.0'),
-                    attribution=f"Radiopaedia.org — {rp_img.get('title', '')}",
-                    added_by_user_id=current_user.id if current_user.is_authenticated else None,
-                )
-                db.session.add(si)
+                for idx, rp_img in enumerate(rp_images):
+                    si = SnippetImage(
+                        algorithm_id=alg_id,
+                        source_url=rp_img.get('url', ''),
+                        source_domain=rp_img.get('source_domain', 'radiopaedia.org'),
+                        thumbnail_url=rp_img.get('url', ''),
+                        image_type='ct_mri',
+                        modality=modality or None,
+                        description=rp_img.get('title', ''),
+                        display_order=idx,
+                        license=rp_img.get('license', 'CC BY-NC-SA 3.0'),
+                        attribution=f"{rp_img.get('author') or 'Radiopaedia.org'} — {rp_img.get('title', '')}",
+                        added_by_user_id=current_user.id if current_user.is_authenticated else None,
+                    )
+                    db.session.add(si)
                 db.session.commit()
             except Exception as img_exc:
                 db.session.rollback()
-                logger.warning(f"Failed to save Radiopaedia image during regeneration: {img_exc}")
+                logger.warning(f"Failed to save Radiopaedia images during regeneration: {img_exc}")
 
     except Exception as save_exc:
         db.session.rollback()
@@ -3294,6 +3337,70 @@ def _pearl_to_dict(pearl):
     }
 
 
+# ── Shared helper: build context from admin inputs ─────────────────
+
+def _build_generation_context(instructions='', reference_url='', pdf_file=None):
+    """Build context string + extract reference images from optional admin inputs.
+
+    Returns:
+        tuple (context_text: str, reference_images: list[dict])
+        Each image dict has keys: url, title, case_url, source_domain, license, author
+    """
+    parts = []
+    ref_images = []
+
+    if instructions:
+        parts.append(f"ADMIN INSTRUCTIONS:\n{instructions}")
+
+    if reference_url:
+        try:
+            from clinical_tool_generator import fetch_url_content
+            content = fetch_url_content(reference_url, max_chars=4000)
+            if content:
+                parts.append(f"REFERENCE URL ({reference_url}):\n{content}")
+        except Exception as exc:
+            logger.warning("Failed to fetch reference URL %s: %s", reference_url, exc)
+        # Also extract images from the URL
+        try:
+            from clinical_tool_generator import fetch_url_images
+            url_imgs = fetch_url_images(reference_url, max_images=3)
+            ref_images.extend(url_imgs)
+        except Exception as exc:
+            logger.warning("URL image extraction failed for %s: %s", reference_url, exc)
+
+    _pdf_tmp_path = None
+    if pdf_file:
+        try:
+            import tempfile, os as _os
+            from clinical_tool_generator import extract_pdf_text
+            tmp = tempfile.NamedTemporaryFile(delete=False, suffix='.pdf')
+            pdf_file.save(tmp.name)
+            tmp.close()
+            _pdf_tmp_path = tmp.name
+            text = extract_pdf_text(_pdf_tmp_path)
+            if text:
+                parts.append(f"REFERENCE PDF ({pdf_file.filename}):\n{text[:6000]}")
+        except Exception as exc:
+            logger.warning("Failed to extract PDF text: %s", exc)
+        # Also extract images from the PDF
+        if _pdf_tmp_path:
+            try:
+                from clinical_tool_generator import extract_pdf_images
+                pdf_imgs = extract_pdf_images(_pdf_tmp_path, max_images=3)
+                ref_images.extend(pdf_imgs)
+            except Exception as exc:
+                logger.warning("PDF image extraction failed: %s", exc)
+            # Clean up temp file
+            try:
+                import os as _os
+                _os.unlink(_pdf_tmp_path)
+            except Exception:
+                pass
+
+    context_text = '\n\n'.join(parts) if parts else ''
+    return (context_text, ref_images)
+
+
 # ── Admin AI Pearl Generator ────────────────────────────────────────
 
 @reporting_bp.route('/api/admin/generate-pearl', methods=['POST'])
@@ -3303,7 +3410,14 @@ def admin_generate_pearl():
     """Generate a structured radiology pearl via AI (admin only)."""
     import time
 
-    data = request.get_json() or {}
+    # Support both JSON and FormData (when PDF is uploaded)
+    if request.content_type and 'multipart/form-data' in request.content_type:
+        data = request.form
+        pdf_file = request.files.get('pdf')
+    else:
+        data = request.get_json() or {}
+        pdf_file = None
+
     topic = (data.get('topic') or '').strip()
     if not topic:
         return jsonify({'error': 'topic is required'}), 400
@@ -3312,25 +3426,37 @@ def admin_generate_pearl():
     modality = normalize_modality(modality_raw) if modality_raw else ''
     body_section = (data.get('body_section') or '').strip()
     include_image = data.get('include_image', True)
+    if isinstance(include_image, str):
+        include_image = include_image.lower() not in ('false', '0', '')
+
+    # Build additional context + extract reference images from optional admin inputs
+    instructions = (data.get('instructions') or '').strip()
+    reference_url = (data.get('reference_url') or '').strip()
+    additional_context, ref_images = _build_generation_context(instructions, reference_url, pdf_file)
 
     start = time.time()
 
     try:
         from ai_pearl_generator import (
-            generate_pearl, fetch_radiopaedia_image, render_pearl_html,
+            generate_pearl, fetch_radiopaedia_images, render_pearl_html,
             PearlGeneratorError,
         )
 
-        result = generate_pearl(topic, modality=modality, body_section=body_section)
+        result = generate_pearl(topic, modality=modality, body_section=body_section,
+                                additional_context=additional_context)
 
-        image = None
+        # Fetch Radiopaedia images + combine with reference images
+        all_images = []
         if include_image:
-            image = fetch_radiopaedia_image(topic, modality=modality)
+            rp_images = fetch_radiopaedia_images(topic, modality=modality, max_images=3)
+            all_images.extend(rp_images)
+        all_images.extend(ref_images)
+        all_images = all_images[:5]  # Limit total
 
-        # Re-render HTML with image if found
-        if image:
+        # Re-render HTML with images if any found
+        if all_images:
             result['pearl_html'] = render_pearl_html(
-                result['pearl_data'], radiopaedia_image=image,
+                result['pearl_data'], reference_images=all_images,
             )
 
     except Exception as exc:

@@ -4237,7 +4237,7 @@ def delete_content_link(content_type, content_id):
 def search_content_universal():
     """Unified search across all content types for the linking UI."""
     query = request.args.get('q', '').strip()
-    search_type = request.args.get('type', 'case').strip()
+    search_type = request.args.get('type', 'all').strip()
     exclude_type = request.args.get('exclude_type', '').strip()
     exclude_id = request.args.get('exclude_id', type=int)
     limit = request.args.get('limit', 15, type=int)
@@ -4246,11 +4246,12 @@ def search_content_universal():
         return jsonify([])
 
     results = []
+    import re as _re
 
-    if search_type == 'case':
+    def _search_cases(per_limit):
         cases = Case.query.filter(
             db.or_(Case.diagnosis.ilike(f'%{query}%'), Case.case_number.ilike(f'%{query}%'))
-        ).limit(limit).all()
+        ).limit(per_limit).all()
         for c in cases:
             if exclude_type == 'case' and exclude_id == c.id:
                 continue
@@ -4259,29 +4260,30 @@ def search_content_universal():
                 'title': f'{c.case_number} — {(c.diagnosis or "")[:80]}',
                 'subtitle': c.body_part.value if c.body_part else '',
                 'icon': 'fa-file-medical', 'color': '#5E899E',
+                'badge': 'Case',
             })
 
-    elif search_type == 'pearl':
+    def _search_pearls(per_limit):
         pearls = RadiologyPearl.query.filter(
             db.or_(
                 RadiologyPearl.pearl_text.ilike(f'%{query}%'),
                 RadiologyPearl.tags.ilike(f'%{query}%'),
                 RadiologyPearl.body_section.ilike(f'%{query}%'),
             )
-        ).limit(limit).all()
-        import re
+        ).limit(per_limit).all()
         for p in pearls:
             if exclude_type == 'pearl' and exclude_id == p.id:
                 continue
-            plain = re.sub(r'<[^>]+>', '', p.pearl_text or '')[:100]
+            plain = _re.sub(r'<[^>]+>', '', p.pearl_text or '')[:100]
             results.append({
                 'link_type': 'pearl', 'id': p.id,
-                'title': plain + ('...' if len(re.sub(r'<[^>]+>', '', p.pearl_text or '')) > 100 else ''),
+                'title': plain + ('...' if len(_re.sub(r'<[^>]+>', '', p.pearl_text or '')) > 100 else ''),
                 'subtitle': ' | '.join(filter(None, [p.body_section, p.modality])),
                 'icon': 'fa-gem', 'color': '#6b46c1',
+                'badge': 'Pearl',
             })
 
-    elif search_type == 'algorithm':
+    def _search_algorithms(per_limit):
         algos = ReportingAlgorithm.query.filter(
             ReportingAlgorithm.is_available == True,
             db.or_(
@@ -4289,18 +4291,33 @@ def search_content_universal():
                 ReportingAlgorithm.keywords.ilike(f'%{query}%'),
                 ReportingAlgorithm.body_section.ilike(f'%{query}%'),
             )
-        ).limit(limit).all()
+        ).limit(per_limit).all()
         for a in algos:
             if exclude_type == 'algorithm' and exclude_id == a.id:
                 continue
+            is_anatomy = (a.category == 'anatomy')
             results.append({
                 'link_type': 'algorithm', 'id': a.id,
                 'title': a.title or '',
                 'subtitle': ' | '.join(filter(None, [a.body_section, a.origin])),
-                'icon': 'fa-bone', 'color': '#6f42c1',
+                'icon': 'fa-bone' if is_anatomy else 'fa-sitemap',
+                'color': '#0d6efd' if is_anatomy else '#5E899E',
+                'badge': 'Anatomy' if is_anatomy else 'Algorithm',
             })
 
-    return jsonify(results)
+    if search_type == 'all':
+        per_limit = min(limit, 5)
+        _search_cases(per_limit)
+        _search_pearls(per_limit)
+        _search_algorithms(per_limit)
+    elif search_type == 'case':
+        _search_cases(limit)
+    elif search_type == 'pearl':
+        _search_pearls(limit)
+    elif search_type == 'algorithm':
+        _search_algorithms(limit)
+
+    return jsonify(results[:limit])
 
 
 @app.route('/api/case/<int:case_id>/related', methods=['POST'])
@@ -4539,32 +4556,53 @@ def remove_related_case(case_id, linked_id):
 def search_cases_for_linking():
     """Search content for the universal content linker.
 
-    Accepts ?type= to branch search by content type:
-      related/similar  — searches Cases directly, returns case objects
-      algorithm        — searches TNMCalculatorContent, returns calculator objects
-      reference        — searches CaseReference, returns reference objects
+    Accepts ?type= to branch search by content type.
+    Default type=all searches ALL content types globally and returns
+    mixed results with link_type badges for the frontend.
     """
     query = request.args.get('q', '').strip()
     exclude_id = request.args.get('exclude', type=int)
     limit = request.args.get('limit', 20, type=int)
-    search_type = request.args.get('type', 'related').strip()
+    search_type = request.args.get('type', 'all').strip()
 
     if len(query) < 2:
         return jsonify([])
 
-    if search_type == 'algorithm':
+    # Per-type limit when searching globally (prevent one type dominating)
+    per_type_limit = min(limit, 5) if search_type == 'all' else limit
+
+    results = []
+
+    # ── Cases ──
+    if search_type in ('all', 'related', 'similar'):
+        cases_query = Case.query.filter(
+            db.or_(
+                Case.diagnosis.ilike(f'%{query}%'),
+                Case.case_number.ilike(f'%{query}%')
+            )
+        )
+        if exclude_id:
+            cases_query = cases_query.filter(Case.id != exclude_id)
+        for c in cases_query.limit(per_type_limit).all():
+            results.append({
+                'id': c.id,
+                'case_number': c.case_number,
+                'diagnosis': c.diagnosis[:100] + '...' if len(c.diagnosis or '') > 100 else c.diagnosis,
+                'body_part': c.body_part.value if c.body_part else None,
+                'link_type': 'case',
+            })
+
+    # ── Staging Calculators (TNMCalculatorContent) ──
+    if search_type in ('all', 'algorithm'):
         from models import TNMCalculatorContent
-        calcs = TNMCalculatorContent.query.filter(
+        for calc in TNMCalculatorContent.query.filter(
             db.or_(
                 TNMCalculatorContent.cancer_name.ilike(f'%{query}%'),
                 TNMCalculatorContent.slug.ilike(f'%{query}%'),
                 TNMCalculatorContent.body_section.ilike(f'%{query}%'),
                 TNMCalculatorContent.description.ilike(f'%{query}%'),
             )
-        ).limit(limit).all()
-
-        results = []
-        for calc in calcs:
+        ).limit(per_type_limit).all():
             results.append({
                 'id': calc.id,
                 'slug': calc.slug,
@@ -4573,20 +4611,17 @@ def search_cases_for_linking():
                 'url': f'/tnm-calculator/{calc.slug}',
                 'link_type': 'calculator',
             })
-        return jsonify(results)
 
-    elif search_type == 'reference':
+    # ── References ──
+    if search_type in ('all', 'reference'):
         from models import CaseReference
-        refs = CaseReference.query.filter(
+        seen_ids = set()
+        for ref in CaseReference.query.filter(
             db.or_(
                 CaseReference.title.ilike(f'%{query}%'),
                 CaseReference.journal.ilike(f'%{query}%'),
             )
-        ).limit(limit).all()
-
-        results = []
-        seen_ids = set()
-        for ref in refs:
+        ).limit(per_type_limit).all():
             if ref.id in seen_ids:
                 continue
             seen_ids.add(ref.id)
@@ -4600,80 +4635,88 @@ def search_cases_for_linking():
                 'source_case_number': source_case.case_number if source_case else None,
                 'link_type': 'reference',
             })
-        return jsonify(results)
 
-    elif search_type == 'reporting_algorithm':
-        algos = ReportingAlgorithm.query.filter(
+    # ── Reporting Algorithms (non-anatomy) ──
+    if search_type in ('all', 'reporting_algorithm'):
+        algo_query = ReportingAlgorithm.query.filter(
             ReportingAlgorithm.is_available == True,
             db.or_(
                 ReportingAlgorithm.title.ilike(f'%{query}%'),
                 ReportingAlgorithm.keywords.ilike(f'%{query}%'),
                 ReportingAlgorithm.body_section.ilike(f'%{query}%'),
             )
-        ).limit(limit).all()
-        return jsonify([{
-            'id': a.id,
-            'title': a.title,
-            'slug': a.slug,
-            'category': a.category,
-            'body_section': a.body_section,
-            'origin': a.origin,
-            'link_type': 'reporting_algorithm',
-        } for a in algos])
+        )
+        if search_type == 'all':
+            algo_query = algo_query.filter(ReportingAlgorithm.category != 'anatomy')
+        for a in algo_query.limit(per_type_limit).all():
+            results.append({
+                'id': a.id,
+                'title': a.title,
+                'slug': a.slug,
+                'category': a.category,
+                'body_section': a.body_section,
+                'origin': a.origin,
+                'link_type': 'reporting_algorithm',
+            })
 
-    elif search_type == 'radiology_template':
-        tmpls = RadiologyTemplate.query.filter(
+    # ── Anatomy Snippets (ReportingAlgorithm with category='anatomy') ──
+    if search_type in ('all', 'anatomy_snippet'):
+        for a in ReportingAlgorithm.query.filter(
+            ReportingAlgorithm.is_available == True,
+            ReportingAlgorithm.category == 'anatomy',
+            db.or_(
+                ReportingAlgorithm.title.ilike(f'%{query}%'),
+                ReportingAlgorithm.keywords.ilike(f'%{query}%'),
+                ReportingAlgorithm.body_section.ilike(f'%{query}%'),
+            )
+        ).limit(per_type_limit).all():
+            results.append({
+                'id': a.id,
+                'title': a.title,
+                'slug': a.slug,
+                'category': 'anatomy',
+                'body_section': a.body_section,
+                'link_type': 'anatomy_snippet',
+            })
+
+    # ── Radiology Templates ──
+    if search_type in ('all', 'radiology_template'):
+        for t in RadiologyTemplate.query.filter(
             RadiologyTemplate.is_available == True,
             db.or_(
                 RadiologyTemplate.title.ilike(f'%{query}%'),
                 RadiologyTemplate.keywords.ilike(f'%{query}%'),
                 RadiologyTemplate.body_section.ilike(f'%{query}%'),
             )
-        ).limit(limit).all()
-        return jsonify([{
-            'id': t.id,
-            'title': t.title,
-            'slug': t.slug,
-            'category': t.category,
-            'body_section': t.body_section,
-            'link_type': 'radiology_template',
-        } for t in tmpls])
+        ).limit(per_type_limit).all():
+            results.append({
+                'id': t.id,
+                'title': t.title,
+                'slug': t.slug,
+                'category': t.category,
+                'body_section': t.body_section,
+                'link_type': 'radiology_template',
+            })
 
-    elif search_type == 'pearl':
-        pearls = RadiologyPearl.query.filter(
+    # ── Pearls ──
+    if search_type in ('all', 'pearl'):
+        for p in RadiologyPearl.query.filter(
             db.or_(
                 RadiologyPearl.pearl_text.ilike(f'%{query}%'),
                 RadiologyPearl.tags.ilike(f'%{query}%'),
                 RadiologyPearl.body_section.ilike(f'%{query}%'),
             )
-        ).limit(limit).all()
-        return jsonify([{
-            'id': p.id,
-            'title': p.pearl_text[:120] + '...' if len(p.pearl_text or '') > 120 else p.pearl_text,
-            'body_section': p.body_section,
-            'modality': p.modality,
-            'is_verified': p.is_verified,
-            'link_type': 'pearl',
-        } for p in pearls])
+        ).limit(per_type_limit).all():
+            results.append({
+                'id': p.id,
+                'title': p.pearl_text[:120] + '...' if len(p.pearl_text or '') > 120 else p.pearl_text,
+                'body_section': p.body_section,
+                'modality': p.modality,
+                'is_verified': p.is_verified,
+                'link_type': 'pearl',
+            })
 
-    else:
-        # Default: related / similar — search Case directly
-        cases_query = Case.query.filter(
-            db.or_(
-                Case.diagnosis.ilike(f'%{query}%'),
-                Case.case_number.ilike(f'%{query}%')
-            )
-        )
-        if exclude_id:
-            cases_query = cases_query.filter(Case.id != exclude_id)
-        cases = cases_query.limit(limit).all()
-        return jsonify([{
-            'id': c.id,
-            'case_number': c.case_number,
-            'diagnosis': c.diagnosis[:100] + '...' if len(c.diagnosis or '') > 100 else c.diagnosis,
-            'body_part': c.body_part.value if c.body_part else None,
-            'link_type': 'case',
-        } for c in cases])
+    return jsonify(results[:limit])
 
 
 # ==================== CANDIDATE NOTES API ====================
@@ -5230,11 +5273,20 @@ def generate_preliminary_case_data(case_id):
     if not has_case_edit_permission(case):
         return jsonify({'error': 'Access denied'}), 403
 
-    data = request.get_json() or {}
+    # Support both JSON and FormData (when PDF is uploaded)
+    if request.content_type and 'multipart/form-data' in request.content_type:
+        data = request.form
+        pdf_file = request.files.get('pdf')
+    else:
+        data = request.get_json() or {}
+        pdf_file = None
+
     # Support both model (new) and provider (legacy) parameters
     model = data.get('model', 'claude-sonnet-4-20250514')
     notes = (data.get('notes') or '').strip()
-    force_regenerate = data.get('force_regenerate', False)  # User confirmed to regenerate
+    force_regenerate = data.get('force_regenerate', False)
+    if isinstance(force_regenerate, str):
+        force_regenerate = force_regenerate.lower() not in ('false', '0', '')
 
     if not case.diagnosis or not case.diagnosis.strip():
         return jsonify({'error': 'Diagnosis is required'}), 400
@@ -5266,6 +5318,12 @@ def generate_preliminary_case_data(case_id):
         'https://www.mdcalc.com',
     ]
 
+    # Build additional context + extract reference images from optional user inputs
+    instructions = (data.get('instructions') or '').strip()
+    reference_url = (data.get('reference_url') or '').strip()
+    from reporting_routes import _build_generation_context
+    additional_context, ref_images = _build_generation_context(instructions, reference_url, pdf_file)
+
     context = {
         'diagnosis': case.diagnosis,
         'module': case.module.name if case.module else '',
@@ -5273,6 +5331,7 @@ def generate_preliminary_case_data(case_id):
         'notes': notes,
         'existing_summary': case.discussion or '',
         'sources': sources,
+        'additional_context': additional_context,
     }
 
     try:
@@ -5283,6 +5342,20 @@ def generate_preliminary_case_data(case_id):
         return jsonify({'error': f'RadInsights Intelligence generation failed: {exc}'}), 500
 
     output = result.get('output', {})
+
+    # Fetch Radiopaedia images + combine with reference images from URL/PDF
+    try:
+        from ai_pearl_generator import fetch_radiopaedia_images, render_reference_images_html
+        modality_str = case.module.name if case.module else ''
+        rp_images = fetch_radiopaedia_images(case.diagnosis, modality=modality_str, max_images=3)
+        all_images = rp_images + ref_images
+        all_images = all_images[:5]
+        if all_images:
+            captions = output.get('image_captions', [])
+            image_html = render_reference_images_html(all_images, captions)
+            output['discussion'] = output.get('discussion', '') + image_html
+    except Exception as img_exc:
+        logger.warning("Failed to add images to case discussion: %s", img_exc)
 
     added_pairs = _apply_qa_pairs_from_output(case, output)
     discussion_html = _apply_discussion_from_output(case, output, result.get('provider', 'claude'), result.get('model', ''))

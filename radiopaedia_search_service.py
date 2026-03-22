@@ -125,6 +125,67 @@ def search_radiopaedia_single(
     return results
 
 
+# ── Author scraping ──────────────────────────────────────────────────
+
+_author_cache: dict[str, str | None] = {}
+
+
+def scrape_case_author(case_url: str) -> str | None:
+    """Scrape contributor/author name from a Radiopaedia case page.
+
+    Returns the first author name found, or None.
+    Results are cached in-memory to avoid duplicate requests.
+    Never raises — returns None on any failure.
+    """
+    if case_url in _author_cache:
+        return _author_cache[case_url]
+
+    try:
+        import requests
+        from bs4 import BeautifulSoup
+
+        r = requests.get(case_url, headers=HEADERS, timeout=10)
+        r.raise_for_status()
+        soup = BeautifulSoup(r.text, "html.parser")
+
+        # Strategy 1: look for .contributor-name or .study-author
+        for sel in ('.contributor-name', '.study-author', '.case-author',
+                    '[class*="author"]', '[class*="contributor"]'):
+            el = soup.select_one(sel)
+            if el:
+                name = el.get_text(strip=True)
+                if name and len(name) < 100:
+                    _author_cache[case_url] = name
+                    return name
+
+        # Strategy 2: meta tag
+        meta = soup.find('meta', attrs={'name': 'author'})
+        if meta and meta.get('content'):
+            name = meta['content'].strip()
+            if name and len(name) < 100:
+                _author_cache[case_url] = name
+                return name
+
+        # Strategy 3: look for "by" pattern near case header
+        header = soup.find('h1')
+        if header:
+            sib = header.find_next(['p', 'span', 'div'])
+            if sib:
+                text = sib.get_text(strip=True)
+                m = re.search(r'(?:by|By|BY)\s+(.+?)(?:\s*[,|]|$)', text)
+                if m:
+                    name = m.group(1).strip()
+                    if name and len(name) < 100:
+                        _author_cache[case_url] = name
+                        return name
+
+    except Exception as exc:
+        logger.debug("scrape_case_author failed for %s: %s", case_url, exc)
+
+    _author_cache[case_url] = None
+    return None
+
+
 def search_radiopaedia_images(
     diagnosis: str,
     body_part: str = "",

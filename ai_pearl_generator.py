@@ -134,6 +134,9 @@ Return a single JSON object with this exact schema:
       "search_term": "Suggested image search term for finding a reference image"
     }}
   ],
+  "image_captions": [
+    "Brief clinical description of what a key reference image for this topic would show (1-2 sentences). Describe the specific imaging appearance, modality, and diagnostic significance. Provide 1-3 captions."
+  ],
   "tags": ["lowercase", "search", "tags"]
 }}
 
@@ -142,7 +145,7 @@ KEEP IT SHORT. 3-4 search steps, 2-3 mimics, 2-3 critical findings, 3-4 report e
 
 # ── Generation function ──────────────────────────────────────────────
 
-def generate_pearl(topic, modality='', body_section=''):
+def generate_pearl(topic, modality='', body_section='', additional_context=''):
     """
     Generate a structured radiology teaching pearl via Claude.
 
@@ -158,6 +161,16 @@ def generate_pearl(topic, modality='', body_section=''):
         modality=modality or 'Any/All',
         body_section=body_section or 'Not specified',
     )
+    if additional_context:
+        user_prompt += (
+            f"\n\n=== ADDITIONAL CONTEXT PROVIDED BY ADMIN ===\n"
+            f"{additional_context}\n"
+            f"=== END CONTEXT ===\n\n"
+            f"Use the above as preferred references to enrich and ground your output. "
+            f"Cite specific details from these sources where relevant, but also draw on "
+            f"your broader medical knowledge — do not limit your response exclusively to "
+            f"these references."
+        )
 
     text, model_used, token_count = _call_claude(
         system_prompt=PEARL_SYSTEM_PROMPT,
@@ -188,22 +201,48 @@ def generate_pearl(topic, modality='', body_section=''):
     }
 
 
-# ── Radiopaedia image helper ────────────────────────────────────────
+# ── Radiopaedia image helpers ──────────────────────────────────────
 
-def fetch_radiopaedia_image(topic, modality=''):
-    """Fetch a single best Radiopaedia image for the pearl. Returns dict or None."""
+def fetch_radiopaedia_images(topic, modality='', max_images=3):
+    """Fetch multiple Radiopaedia images with author attribution.
+
+    Returns list of normalised image dicts:
+        [{url, title, case_url, license, author, source_domain}]
+    """
     try:
-        from radiopaedia_search_service import search_radiopaedia_images
-        results = search_radiopaedia_images(
+        from radiopaedia_search_service import (
+            search_radiopaedia_images, scrape_case_author,
+        )
+        raw = search_radiopaedia_images(
             diagnosis=topic,
             modality=modality,
-            max_per_type=3,
+            max_per_type=max_images,
         )
-        if results:
-            return results[0]
+        results = []
+        for r in raw[:max_images]:
+            author = None
+            try:
+                author = scrape_case_author(r.get('case_url', ''))
+            except Exception:
+                pass
+            results.append({
+                'url': r.get('thumbnail_link') or r.get('link', ''),
+                'title': r.get('title', 'Radiopaedia Case'),
+                'case_url': r.get('case_url', ''),
+                'license': r.get('license', 'CC BY-NC-SA 3.0'),
+                'author': author,
+                'source_domain': 'radiopaedia.org',
+            })
+        return results
     except Exception as exc:
         logger.warning("Radiopaedia image fetch failed for '%s': %s", topic, exc)
-    return None
+    return []
+
+
+def fetch_radiopaedia_image(topic, modality=''):
+    """Fetch single image (backward compat). Returns dict or None."""
+    results = fetch_radiopaedia_images(topic, modality, max_images=1)
+    return results[0] if results else None
 
 
 # ── HTML renderer ────────────────────────────────────────────────────
@@ -247,13 +286,100 @@ def _card_close():
     return '</div></div>'
 
 
-def render_pearl_html(pearl_data, radiopaedia_image=None):
+def render_reference_images_html(images, captions=None):
+    """Render a list of reference images into a Bootstrap card with attribution.
+
+    Args:
+        images: list of dicts with keys: url, title, case_url, license, author, source_domain
+        captions: optional list of AI-generated captions (paired by index)
+
+    Returns:
+        HTML string (empty string if no images)
+    """
+    if not images:
+        return ''
+    captions = captions or []
+
+    parts = [
+        '<div class="card mt-3 border">',
+        '<div class="card-header bg-light py-2">',
+        '<i class="fas fa-images me-2 text-muted"></i>',
+        '<strong class="text-muted">Reference Images</strong>',
+        '</div>',
+        '<div class="card-body p-3">',
+        '<div class="row g-3">',
+    ]
+
+    for i, img in enumerate(images[:5]):
+        img_url = _esc(img.get('url', ''))
+        title = _esc(img.get('title', 'Reference Image'))
+        case_url = _esc(img.get('case_url', ''))
+        license_text = _esc(img.get('license', ''))
+        author = _esc(img.get('author', ''))
+        source = _esc(img.get('source_domain', ''))
+        caption = _esc(captions[i]) if i < len(captions) else ''
+
+        # Single image gets full width, multiple get 2-column
+        col_class = 'col-12' if len(images) == 1 else 'col-12 col-md-6'
+
+        parts.append(f'<div class="{col_class}">')
+        parts.append('<div class="text-center">')
+
+        # Image with optional link
+        if case_url:
+            parts.append(
+                f'<a href="{case_url}" target="_blank" rel="noopener noreferrer">'
+                f'<img src="{img_url}" alt="{title}" '
+                f'class="img-fluid rounded" style="max-height: 280px;" loading="lazy">'
+                f'</a>'
+            )
+        else:
+            parts.append(
+                f'<img src="{img_url}" alt="{title}" '
+                f'class="img-fluid rounded" style="max-height: 280px;" loading="lazy">'
+            )
+
+        # AI-generated caption
+        if caption:
+            parts.append(
+                f'<p class="mt-1 mb-0 small text-muted fst-italic">{caption}</p>'
+            )
+
+        # Attribution line
+        attr_parts = []
+        if case_url and title:
+            attr_parts.append(
+                f'<a href="{case_url}" target="_blank" rel="noopener noreferrer">{title}</a>'
+            )
+        elif title:
+            attr_parts.append(title)
+        if author:
+            attr_parts.append(author)
+        if source:
+            attr_parts.append(source)
+        if license_text:
+            attr_parts.append(license_text)
+        if attr_parts:
+            parts.append(
+                f'<p class="mt-1 mb-0 small text-muted">'
+                + ' &mdash; '.join(attr_parts)
+                + '</p>'
+            )
+
+        parts.append('</div></div>')
+
+    parts.append('</div></div></div>')
+    return '\n'.join(parts)
+
+
+def render_pearl_html(pearl_data, radiopaedia_image=None, reference_images=None):
     """
     Render structured pearl JSON into Bootstrap 5 HTML cards.
 
     Args:
         pearl_data: Parsed JSON dict from Claude
-        radiopaedia_image: Optional dict from search_radiopaedia_images()
+        radiopaedia_image: DEPRECATED — single image dict (backward compat)
+        reference_images: List of normalised image dicts for multi-image rendering
 
     Returns:
         HTML string
@@ -423,27 +549,20 @@ def render_pearl_html(pearl_data, radiopaedia_image=None):
         parts.append('</tbody></table></div>')
         parts.append(_card_close())
 
-    # ── 8. Radiopaedia Image (optional) ──
-    if radiopaedia_image:
-        img_url = _esc(radiopaedia_image.get('link', ''))
-        thumb_url = _esc(radiopaedia_image.get('thumbnail_link', '') or img_url)
-        case_title = _esc(radiopaedia_image.get('title', 'Radiopaedia Case'))
-        case_url = _esc(radiopaedia_image.get('case_url', ''))
-        license_text = _esc(radiopaedia_image.get('license', 'CC BY-NC-SA 3.0'))
-
-        parts.append(
-            '<div class="card mt-3 border">'
-            '<div class="card-body text-center p-3">'
-            f'<a href="{case_url}" target="_blank" rel="noopener noreferrer">'
-            f'<img src="{thumb_url}" alt="{case_title}" '
-            f'class="img-fluid rounded" style="max-height: 300px;" loading="lazy">'
-            f'</a>'
-            f'<p class="mt-2 mb-0 small text-muted">'
-            f'<a href="{case_url}" target="_blank" rel="noopener noreferrer">'
-            f'{case_title}</a>'
-            f' &mdash; Radiopaedia.org &mdash; {license_text}'
-            f'</p>'
-            '</div></div>'
-        )
+    # ── 8. Reference Images (multi-image or legacy single) ──
+    captions = pearl_data.get('image_captions', [])
+    if reference_images:
+        parts.append(render_reference_images_html(reference_images, captions))
+    elif radiopaedia_image:
+        # Backward compat: convert legacy single image dict to list format
+        legacy = {
+            'url': radiopaedia_image.get('thumbnail_link') or radiopaedia_image.get('link', ''),
+            'title': radiopaedia_image.get('title', 'Radiopaedia Case'),
+            'case_url': radiopaedia_image.get('case_url', ''),
+            'license': radiopaedia_image.get('license', 'CC BY-NC-SA 3.0'),
+            'author': radiopaedia_image.get('author'),
+            'source_domain': 'radiopaedia.org',
+        }
+        parts.append(render_reference_images_html([legacy], captions))
 
     return '\n'.join(parts)

@@ -116,6 +116,31 @@
                                 </div>
                             </div>
                         </div>
+                        <!-- Optional context for AI generation -->
+                        <div class="mb-3">
+                            <a class="text-muted small text-decoration-none" data-bs-toggle="collapse" href="#scAdvancedContext" role="button" aria-expanded="false">
+                                <i class="fas fa-chevron-right me-1" id="scContextChevron"></i>Additional context <small>(optional)</small>
+                            </a>
+                            <div class="collapse" id="scAdvancedContext">
+                                <div class="card card-body mt-2 bg-light border-0">
+                                    <div class="mb-2">
+                                        <label class="form-label small">Instructions for AI</label>
+                                        <textarea class="form-control form-control-sm" id="scInstructions" rows="2"
+                                                  placeholder="e.g. Focus on paediatric presentation, emphasise MRI findings"></textarea>
+                                    </div>
+                                    <div class="mb-2">
+                                        <label class="form-label small">Reference URL</label>
+                                        <input type="text" class="form-control form-control-sm" id="scRefUrl"
+                                               placeholder="e.g. https://radiopaedia.org/articles/...">
+                                    </div>
+                                    <div class="mb-0">
+                                        <label class="form-label small">Reference PDF</label>
+                                        <input type="file" class="form-control form-control-sm" id="scPdf" accept=".pdf">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="d-grid mt-4">
                             <button class="btn btn-brand-success btn-lg" id="generateBtn" onclick="generateCase()">
                                 <i class="fas fa-magic me-2"></i>Generate with RadInsights
@@ -406,12 +431,28 @@ function generateCase(confirmed) {
         }
         _caseId = data.case_id;
 
-        // Step 2: Generate AI content
-        return fetch('/api/case/' + _caseId + '/ai-prelim', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({force_regenerate: true})
-        });
+        // Step 2: Generate AI content (with optional context)
+        var scInstructions = (document.getElementById('scInstructions')?.value || '').trim();
+        var scRefUrl = (document.getElementById('scRefUrl')?.value || '').trim();
+        var scPdfInput = document.getElementById('scPdf');
+        var scPdfFile = scPdfInput && scPdfInput.files.length > 0 ? scPdfInput.files[0] : null;
+
+        var aiOpts;
+        if (scPdfFile) {
+            var fd = new FormData();
+            fd.append('force_regenerate', 'true');
+            if (scInstructions) fd.append('instructions', scInstructions);
+            if (scRefUrl) fd.append('reference_url', scRefUrl);
+            fd.append('pdf', scPdfFile);
+            aiOpts = { method: 'POST', body: fd };
+        } else {
+            var aiPayload = { force_regenerate: true };
+            if (scInstructions) aiPayload.instructions = scInstructions;
+            if (scRefUrl) aiPayload.reference_url = scRefUrl;
+            aiOpts = { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(aiPayload) };
+        }
+
+        return fetch('/api/case/' + _caseId + '/ai-prelim', aiOpts);
     })
     .then(function(r) {
         if (!r) return;  // Skipped due to confirmation modal

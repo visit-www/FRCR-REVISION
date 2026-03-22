@@ -2278,13 +2278,30 @@ function createPrelimCaseData(forceRegenerate = false) {
         };
     }
 
+    // Gather optional context fields (if present in DOM)
+    const aiInstructions = (document.getElementById('aiPrelimInstructions')?.value || '').trim();
+    const aiRefUrl = (document.getElementById('aiPrelimRefUrl')?.value || '').trim();
+    const aiPdfInput = document.getElementById('aiPrelimPdf');
+    const aiPdfFile = aiPdfInput && aiPdfInput.files.length > 0 ? aiPdfInput.files[0] : null;
+
+    let fetchOpts;
+    if (aiPdfFile) {
+        const fd = new FormData();
+        fd.append('model', model);
+        fd.append('force_regenerate', 'true');
+        if (aiInstructions) fd.append('instructions', aiInstructions);
+        if (aiRefUrl) fd.append('reference_url', aiRefUrl);
+        fd.append('pdf', aiPdfFile);
+        fetchOpts = { method: 'POST', body: fd, signal: abortController.signal };
+    } else {
+        const payload = { model, force_regenerate: true };
+        if (aiInstructions) payload.instructions = aiInstructions;
+        if (aiRefUrl) payload.reference_url = aiRefUrl;
+        fetchOpts = { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload), signal: abortController.signal };
+    }
+
     // Start fetch request
-    fetch(`/api/case/${caseIdField}/ai-prelim`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model, force_regenerate: true }),
-        signal: abortController.signal
-    })
+    fetch(`/api/case/${caseIdField}/ai-prelim`, fetchOpts)
     .then(async r => {
         const text = await r.text();
         let payload;

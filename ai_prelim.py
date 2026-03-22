@@ -54,6 +54,8 @@ def _build_user_prompt(case_context):
     notes = case_context.get("notes", "").strip()
     existing_content = case_context.get("existing_summary", "").strip()
     
+    additional_context = case_context.get("additional_context", "").strip()
+
     # Build input section
     input_section = f"""INPUT
 ═══════════════════════════════════════════════════════════════════
@@ -64,6 +66,17 @@ Module: {module if module else 'Not specified'}
 Body Part: {body_part if body_part else 'Not specified'}
 Notes: {notes if notes else 'None'}
 Existing Content: {existing_content[:500] + '...' if len(existing_content) > 500 else existing_content if existing_content else 'None'}"""
+
+    if additional_context:
+        input_section += (
+            f"\n\n=== ADDITIONAL CONTEXT PROVIDED BY USER ===\n"
+            f"{additional_context}\n"
+            f"=== END CONTEXT ===\n\n"
+            f"Use the above as preferred references to enrich and ground your output. "
+            f"Cite specific details from these sources where relevant, but also draw on "
+            f"your broader medical knowledge — do not limit your response exclusively to "
+            f"these references."
+        )
 
     # Diagnosis handling instruction
     diagnosis_handling = """
@@ -103,11 +116,15 @@ Return valid JSON with this exact structure:
   "sources": [
     {"title": "...", "url": "...", "pmid": "..."}
   ],
+  "image_captions": [
+    "Brief clinical description of the key imaging finding for this diagnosis (1-2 sentences). Describe the specific imaging appearance, modality, and diagnostic significance. Provide 1-3 captions."
+  ],
   "warnings": ["..."]
 }
 
 IMPORTANT: The "discussion" field must contain HTML using the CSS classes described in Section 2.
-Do NOT include teaching_image or anatomy_image fields."""
+Do NOT include teaching_image or anatomy_image fields.
+The "image_captions" array should contain 1-3 brief descriptions of what key reference images for this diagnosis would show — these will be paired with automatically-fetched Radiopaedia images."""
 
     # Section 1: Q&A pairs
     qa_section = """
@@ -463,6 +480,7 @@ def generate_prelim_case_data(case_context, provider="claude", model=None):
     parsed.setdefault("teaching_image", {})
     parsed.setdefault("anatomy_image", {})  # Optional field - may be empty
     parsed.setdefault("sources", [])
+    parsed.setdefault("image_captions", [])
     parsed.setdefault("warnings", [])
     
     # Process sources: keep Radiopaedia URLs, generate Google Scholar search links for others

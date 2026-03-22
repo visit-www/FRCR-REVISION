@@ -84,6 +84,235 @@ def fetch_url_content(url, max_chars=4000):
         return ''
 
 
+# ==================== CLOUDINARY IMAGE UPLOAD ====================
+
+def upload_to_cloudinary(image_data, filename='reference_image',
+                         folder='frcr_revision/ai_references'):
+    """Upload image bytes to Cloudinary.
+
+    Args:
+        image_data: bytes or file-like object
+        filename: public_id stem (Cloudinary will add extension)
+        folder: Cloudinary folder path
+
+    Returns:
+        dict with url, public_id, width, height — or None on failure
+    """
+    try:
+        import cloudinary.uploader
+        result = cloudinary.uploader.upload(
+            image_data,
+            folder=folder,
+            resource_type='image',
+            transformation=[{'quality': 'auto', 'fetch_format': 'auto'}],
+        )
+        return {
+            'url': result['secure_url'],
+            'public_id': result['public_id'],
+            'width': result.get('width', 0),
+            'height': result.get('height', 0),
+        }
+    except Exception as exc:
+        logger.warning("Cloudinary upload failed for %s: %s", filename, exc)
+        return None
+
+
+# ==================== URL IMAGE EXTRACTION ====================
+
+# Patterns that indicate non-content images (logos, icons, tracking pixels, etc.)
+_NON_CONTENT_PATTERNS = re.compile(
+    r'(logo|icon|avatar|gravatar|tracking|pixel|badge|button|banner|sprite|favicon'
+    r'|widget|ad[_-]|advert|\.gif$|1x1|spacer|arrow|nav[_-]|menu[_-])',
+    re.IGNORECASE,
+)
+
+
+def fetch_url_images(url, max_images=5):
+    """Extract content images from a URL, upload to Cloudinary.
+
+    Returns list of dicts with keys:
+        url, title, case_url, source_domain, license, author
+    """
+    import hashlib
+    try:
+        from bs4 import BeautifulSoup
+    except ImportError:
+        logger.warning("BeautifulSoup not available — cannot extract URL images")
+        return []
+
+    try:
+        resp = requests.get(url, timeout=15, headers={
+            'User-Agent': 'Mozilla/5.0 (RadInsights/1.0; +educational)',
+        }, allow_redirects=True)
+        resp.raise_for_status()
+    except Exception as exc:
+        logger.warning("fetch_url_images: request failed for %s: %s", url, exc)
+        return []
+
+    content_type = resp.headers.get('Content-Type', '')
+    if 'html' not in content_type:
+        return []
+
+    soup = BeautifulSoup(resp.text[:300000], 'html.parser')
+
+    # Remove navigation/footer to focus on content
+    for tag in soup(['nav', 'footer', 'header', 'aside']):
+        tag.decompose()
+
+    # Collect candidate images — prefer <figure> images, then <article>, then <main>/<body>
+    candidates = []
+    seen_srcs = set()
+
+    # Priority 1: images inside <figure> tags (usually the main content images)
+    for fig in soup.find_all('figure'):
+        img = fig.find('img')
+        if not img:
+            continue
+        src = img.get('src', '') or img.get('data-src', '')
+        if not src or src in seen_srcs:
+            continue
+        seen_srcs.add(src)
+        figcap = fig.find('figcaption')
+        caption_text = figcap.get_text(strip=True) if figcap else ''
+        candidates.append({
+            'src': src,
+            'alt': img.get('alt', ''),
+            'caption': caption_text,
+            'priority': 0,
+        })
+
+    # Priority 2: images inside <article> or main content area
+    content_area = soup.find('article') or soup.find('main') or soup.find('body')
+    if content_area:
+        for img in content_area.find_all('img'):
+            src = img.get('src', '') or img.get('data-src', '')
+            if not src or src in seen_srcs:
+                continue
+            seen_srcs.add(src)
+            candidates.append({
+                'src': src,
+                'alt': img.get('alt', ''),
+                'caption': '',
+                'priority': 1,
+            })
+
+    # Filter out non-content images
+    from urllib.parse import urljoin
+    filtered = []
+    for c in candidates:
+        src = c['src']
+        if _NON_CONTENT_PATTERNS.search(src):
+            continue
+        # Make absolute URL
+        c['src'] = urljoin(url, src)
+        filtered.append(c)
+
+    # Sort by priority (figure images first)
+    filtered.sort(key=lambda x: x['priority'])
+
+    # Download, check size, upload to Cloudinary
+    from urllib.parse import urlparse
+    source_domain = urlparse(url).netloc
+    results = []
+
+    for c in filtered[:max_images * 2]:  # fetch extra in case some fail
+        if len(results) >= max_images:
+            break
+        try:
+            img_resp = requests.get(c['src'], timeout=10, headers={
+                'User-Agent': 'Mozilla/5.0 (RadInsights/1.0; +educational)',
+            })
+            img_resp.raise_for_status()
+            img_bytes = img_resp.content
+            # Skip small images (< 10KB likely icons/thumbnails)
+            if len(img_bytes) < 10000:
+                continue
+            # Upload to Cloudinary
+            img_hash = hashlib.md5(img_bytes).hexdigest()[:10]
+            cloud = upload_to_cloudinary(
+                img_bytes,
+                filename=f"url_ref_{img_hash}",
+                folder='frcr_revision/ai_references',
+            )
+            if cloud:
+                results.append({
+                    'url': cloud['url'],
+                    'title': c['alt'] or c['caption'] or 'Reference Image',
+                    'case_url': url,
+                    'source_domain': source_domain,
+                    'license': 'See source',
+                    'author': None,
+                })
+        except Exception as exc:
+            logger.debug("fetch_url_images: skip image %s: %s", c['src'][:80], exc)
+            continue
+
+    logger.info("fetch_url_images: extracted %d images from %s", len(results), url)
+    return results
+
+
+# ==================== PDF IMAGE EXTRACTION ====================
+
+def extract_pdf_images(file_path, max_images=5):
+    """Extract images from a PDF using PyMuPDF, upload to Cloudinary.
+
+    Returns list of dicts with keys:
+        url, title, case_url, source_domain, license, author
+    Gracefully returns [] if PyMuPDF is not installed.
+    """
+    try:
+        import fitz  # PyMuPDF
+    except ImportError:
+        logger.info("PyMuPDF not installed — skipping PDF image extraction")
+        return []
+
+    import hashlib
+
+    try:
+        doc = fitz.open(file_path)
+    except Exception as exc:
+        logger.warning("extract_pdf_images: cannot open %s: %s", file_path, exc)
+        return []
+
+    results = []
+    for page_num in range(min(len(doc), 30)):  # Limit to 30 pages
+        if len(results) >= max_images:
+            break
+        page = doc[page_num]
+        for img_index, img_info in enumerate(page.get_images()):
+            if len(results) >= max_images:
+                break
+            xref = img_info[0]
+            try:
+                base_image = doc.extract_image(xref)
+                img_bytes = base_image['image']
+                # Skip tiny images (icons, decorations)
+                if len(img_bytes) < 5000:
+                    continue
+                img_hash = hashlib.md5(img_bytes).hexdigest()[:10]
+                cloud = upload_to_cloudinary(
+                    img_bytes,
+                    filename=f"pdf_p{page_num + 1}_i{img_index}_{img_hash}",
+                    folder='frcr_revision/ai_pdf_images',
+                )
+                if cloud:
+                    results.append({
+                        'url': cloud['url'],
+                        'title': f'PDF Figure (page {page_num + 1})',
+                        'case_url': '',
+                        'source_domain': 'Uploaded PDF',
+                        'license': 'See source document',
+                        'author': None,
+                    })
+            except Exception as exc:
+                logger.debug("extract_pdf_images: skip xref %d: %s", xref, exc)
+                continue
+
+    doc.close()
+    logger.info("extract_pdf_images: extracted %d images from %s", len(results), file_path)
+    return results
+
+
 # ==================== RESOURCE FORMATTING (Gap 1) ====================
 
 def format_resources_for_prompt(resources):

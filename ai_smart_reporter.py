@@ -540,7 +540,8 @@ def classify_intent(user_input):
 
 from ai_pearl_generator import (
     _esc, _card_open, _card_open_custom, _card_close,
-    fetch_radiopaedia_image,
+    fetch_radiopaedia_image, fetch_radiopaedia_images,
+    render_reference_images_html,
 )
 
 ANATOMY_SYSTEM_PROMPT = (
@@ -607,6 +608,9 @@ Return a JSON object:
   ],
   "pearls": [
     "High-yield reporting tip, mnemonic, or pitfall — one per item"
+  ],
+  "image_captions": [
+    "Brief clinical description of what a reference image at this anatomical site would show (1-2 sentences). Describe the specific imaging appearance, modality, and diagnostic significance. Provide 1-3 captions."
   ]
 }}
 
@@ -620,8 +624,14 @@ RULES:
 - NO generic imaging descriptions (do NOT describe normal CT density or normal MRI signal unless it is diagnostically relevant or confusing)"""
 
 
-def render_anatomy_html(data, radiopaedia_image=None):
-    """Render structured anatomy JSON into Bootstrap 5 card HTML."""
+def render_anatomy_html(data, radiopaedia_image=None, reference_images=None):
+    """Render structured anatomy JSON into Bootstrap 5 card HTML.
+
+    Args:
+        data: Parsed JSON dict from Claude
+        radiopaedia_image: DEPRECATED — single image dict (backward compat)
+        reference_images: List of normalised image dicts for multi-image rendering
+    """
     parts = []
 
     title = data.get('title', '')
@@ -737,33 +747,26 @@ def render_anatomy_html(data, radiopaedia_image=None):
         parts.append('</ul>')
         parts.append(_card_close())
 
-    # Radiopaedia image card (same pattern as pearl renderer)
-    if radiopaedia_image:
-        img_url = _esc(radiopaedia_image.get('link', ''))
-        thumb_url = _esc(radiopaedia_image.get('thumbnail_link', '') or img_url)
-        case_title = _esc(radiopaedia_image.get('title', 'Radiopaedia Case'))
-        case_url = _esc(radiopaedia_image.get('case_url', ''))
-        license_text = _esc(radiopaedia_image.get('license', 'CC BY-NC-SA 3.0'))
-
-        parts.append(
-            '<div class="card mt-3 border">'
-            '<div class="card-body text-center p-3">'
-            f'<a href="{case_url}" target="_blank" rel="noopener noreferrer">'
-            f'<img src="{thumb_url}" alt="{case_title}" '
-            f'class="img-fluid rounded" style="max-height: 300px;" loading="lazy">'
-            f'</a>'
-            f'<p class="mt-2 mb-0 small text-muted">'
-            f'<a href="{case_url}" target="_blank" rel="noopener noreferrer">'
-            f'{case_title}</a>'
-            f' &mdash; Radiopaedia.org &mdash; {license_text}'
-            f'</p>'
-            '</div></div>'
-        )
+    # Reference Images (multi-image or legacy single)
+    captions = data.get('image_captions', [])
+    if reference_images:
+        parts.append(render_reference_images_html(reference_images, captions))
+    elif radiopaedia_image:
+        # Backward compat: convert legacy single image dict to list format
+        legacy = {
+            'url': radiopaedia_image.get('thumbnail_link') or radiopaedia_image.get('link', ''),
+            'title': radiopaedia_image.get('title', 'Radiopaedia Case'),
+            'case_url': radiopaedia_image.get('case_url', ''),
+            'license': radiopaedia_image.get('license', 'CC BY-NC-SA 3.0'),
+            'author': radiopaedia_image.get('author'),
+            'source_domain': 'radiopaedia.org',
+        }
+        parts.append(render_reference_images_html([legacy], captions))
 
     return '\n'.join(parts)
 
 
-def generate_anatomy_reference(topic, modality='', body_section=''):
+def generate_anatomy_reference(topic, modality='', body_section='', additional_context=''):
     """
     Generate a structured anatomy reference card.
     Uses Sonnet for quality. DB lookup should be attempted first (in routes).
@@ -778,6 +781,16 @@ def generate_anatomy_reference(topic, modality='', body_section=''):
         modality=modality or 'not specified',
         body_section=body_section or 'not specified',
     )
+    if additional_context:
+        prompt += (
+            f"\n\n=== ADDITIONAL CONTEXT PROVIDED BY ADMIN ===\n"
+            f"{additional_context}\n"
+            f"=== END CONTEXT ===\n\n"
+            f"Use the above as preferred references to enrich and ground your output. "
+            f"Cite specific details from these sources where relevant, but also draw on "
+            f"your broader medical knowledge — do not limit your response exclusively to "
+            f"these references."
+        )
 
     text, model, tokens = _call_claude(
         system_prompt=ANATOMY_SYSTEM_PROMPT,
@@ -790,10 +803,10 @@ def generate_anatomy_reference(topic, modality='', body_section=''):
 
     parsed = _parse_json_response(text)
 
-    # Auto-fetch Radiopaedia image
-    radiopaedia_image = fetch_radiopaedia_image(topic, modality=modality)
+    # Auto-fetch Radiopaedia images (multiple)
+    rp_images = fetch_radiopaedia_images(topic, modality=modality, max_images=3)
 
-    content_html = render_anatomy_html(parsed, radiopaedia_image=radiopaedia_image)
+    content_html = render_anatomy_html(parsed, reference_images=rp_images)
 
     return {
         'title': parsed.get('title', topic.title()),
@@ -801,7 +814,8 @@ def generate_anatomy_reference(topic, modality='', body_section=''):
         'source': 'ai',
         'model': model,
         'token_count': tokens,
-        'radiopaedia_image': radiopaedia_image,
+        'radiopaedia_image': rp_images[0] if rp_images else None,  # backward compat
+        'radiopaedia_images': rp_images,
     }
 
 
