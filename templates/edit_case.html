@@ -1489,6 +1489,20 @@ function closeAiGenerateModal() {
     document.body.style.overflow = '';
 }
 function submitAiGenerate() {
+    // Collect all values BEFORE closing modal (removal destroys DOM elements)
+    window._aiGenerateContext = {
+        model: (document.getElementById('aiModelSelect') || {}).value || 'claude-sonnet-4-20250514',
+        instructions: (document.getElementById('aiPrelimInstructions') || {}).value || '',
+        refUrls: [],
+        pdfFiles: [],
+    };
+    document.querySelectorAll('#aiPrelimRefUrlList .ref-url-input').forEach(function(input) {
+        var v = (input.value || '').trim();
+        if (v) window._aiGenerateContext.refUrls.push(v);
+    });
+    var pdfInput = document.getElementById('aiPrelimPdf');
+    if (pdfInput) window._aiGenerateContext.pdfFiles = Array.from(pdfInput.files);
+
     closeAiGenerateModal();
     createPrelimCaseData();
 }

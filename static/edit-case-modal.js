@@ -2225,8 +2225,11 @@ function checkAiCacheAndPrompt(caseId, model, diagnosis, btn) {
 function createPrelimCaseData(forceRegenerate = false) {
     const caseIdField = document.getElementById('editCaseId')?.value;
     const diagnosis = document.getElementById('editCaseDiagnosis')?.value.trim();
-    // Model selection - default to Sonnet for cost efficiency
-    const model = document.getElementById('aiModelSelect')?.value || 'claude-sonnet-4-20250514';
+
+    // Read context from stored global (set by submitAiGenerate before modal close)
+    // or fall back to DOM elements if they still exist
+    const ctx = window._aiGenerateContext || {};
+    const model = ctx.model || document.getElementById('aiModelSelect')?.value || 'claude-sonnet-4-20250514';
     const isOpus = model.includes('opus');
     const btn = document.getElementById('aiPrelimBtn');
     const cancelBtn = document.getElementById('aiCancelBtn');
@@ -2278,15 +2281,22 @@ function createPrelimCaseData(forceRegenerate = false) {
         };
     }
 
-    // Gather optional context fields (if present in DOM)
-    const aiInstructions = (document.getElementById('aiPrelimInstructions')?.value || '').trim();
-    const aiRefUrls = [];
-    document.querySelectorAll('#aiPrelimRefUrlList .ref-url-input').forEach(input => {
-        const v = (input.value || '').trim();
-        if (v) aiRefUrls.push(v);
-    });
-    const aiPdfInput = document.getElementById('aiPrelimPdf');
-    const aiPdfFiles = aiPdfInput ? Array.from(aiPdfInput.files) : [];
+    // Use stored context from modal (or fall back to DOM)
+    const aiInstructions = (ctx.instructions || document.getElementById('aiPrelimInstructions')?.value || '').trim();
+    const aiRefUrls = ctx.refUrls && ctx.refUrls.length > 0 ? ctx.refUrls : [];
+    const aiPdfFiles = ctx.pdfFiles && ctx.pdfFiles.length > 0 ? ctx.pdfFiles : [];
+
+    // If no stored context, try DOM as fallback
+    if (!ctx.refUrls) {
+        document.querySelectorAll('#aiPrelimRefUrlList .ref-url-input').forEach(input => {
+            const v = (input.value || '').trim();
+            if (v) aiRefUrls.push(v);
+        });
+    }
+    if (!ctx.pdfFiles) {
+        const aiPdfInput = document.getElementById('aiPrelimPdf');
+        if (aiPdfInput) aiPdfFiles.push(...Array.from(aiPdfInput.files));
+    }
 
     let fetchOpts;
     if (aiPdfFiles.length > 0) {
