@@ -2562,6 +2562,11 @@ def smart_reporter_anatomy():
             logger.error(f"Failed to save manual anatomy snippet: {exc}")
             return jsonify({'error': f'Failed to save: {exc}'}), 500
 
+    # Check force_regenerate flag
+    force_regenerate = data.get('force_regenerate', False)
+    if isinstance(force_regenerate, str):
+        force_regenerate = force_regenerate.lower() not in ('false', '0', '')
+
     # DB-first: check for cached anatomy content
     cached = ReportingAlgorithm.query.filter(
         ReportingAlgorithm.category == 'anatomy',
@@ -2572,13 +2577,14 @@ def smart_reporter_anatomy():
         ),
     ).first()
 
-    if cached and cached.template_html:
+    if cached and cached.template_html and not force_regenerate:
         return jsonify({
             'success': True,
+            'cached': True,
             'title': cached.title,
-            'content_html': cached.template_html,
-            'source': 'database',
             'algorithm_id': cached.id,
+            'is_ai_generated': cached.is_ai_generated,
+            'source': 'database',
         })
 
     # Build additional context + extract reference images from optional admin inputs
@@ -2616,27 +2622,39 @@ def smart_reporter_anatomy():
         except Exception as img_exc:
             logger.warning(f"Failed to add reference images to snippet: {img_exc}")
 
-    # Auto-save to cache for future lookups
+    # Auto-save to cache for future lookups (update existing if force_regenerate)
     content_html = result.get('content_html', '')
     algorithm_id = None
     if content_html:
         try:
-            slug = re.sub(r'[^a-z0-9]+', '-', topic.lower()).strip('-')[:200]
-            cache_entry = ReportingAlgorithm(
-                title=result.get('title', topic.title()),
-                slug=f'anatomy-{slug}',
-                category='anatomy',
-                origin='anatomy_cache',
-                template_html=content_html,
-                keywords=topic.lower(),
-                is_available=True,
-                is_ai_generated=True,
-            )
-            if body_section:
-                cache_entry.body_section = body_section
-            if modality:
-                cache_entry.modality = modality
-            db.session.add(cache_entry)
+            if cached and force_regenerate:
+                # Update existing record instead of creating duplicate
+                cache_entry = cached
+                cache_entry.title = result.get('title', topic.title())
+                cache_entry.template_html = content_html
+                cache_entry.keywords = topic.lower()
+                cache_entry.is_ai_generated = True
+                if body_section:
+                    cache_entry.body_section = body_section
+                if modality:
+                    cache_entry.modality = modality
+            else:
+                slug = re.sub(r'[^a-z0-9]+', '-', topic.lower()).strip('-')[:200]
+                cache_entry = ReportingAlgorithm(
+                    title=result.get('title', topic.title()),
+                    slug=f'anatomy-{slug}',
+                    category='anatomy',
+                    origin='anatomy_cache',
+                    template_html=content_html,
+                    keywords=topic.lower(),
+                    is_available=True,
+                    is_ai_generated=True,
+                )
+                if body_section:
+                    cache_entry.body_section = body_section
+                if modality:
+                    cache_entry.modality = modality
+                db.session.add(cache_entry)
             db.session.commit()
             algorithm_id = cache_entry.id
             logger.info(f"Cached anatomy reference: {topic}")

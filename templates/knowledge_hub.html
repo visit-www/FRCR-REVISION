@@ -319,6 +319,9 @@
                             <span class="visually-hidden">Generating...</span>
                         </div>
                         <p class="text-muted">Generating pearl&hellip; this may take 15-30 seconds.</p>
+                        <button type="button" class="btn btn-sm btn-outline-danger mt-2" onclick="cancelPearlGeneration()">
+                            <i class="fas fa-times me-1"></i>Cancel Generation
+                        </button>
                     </div>
 
                     <!-- PREVIEW SECTION -->
@@ -437,6 +440,17 @@
                         <label class="form-label fw-semibold">Snippet Content</label>
                         <textarea class="form-control" id="snippetManualText" rows="8"></textarea>
                     </div>
+                </div>
+
+                <!-- LOADING SPINNER (shown during AI generation) -->
+                <div id="snippetLoading" class="d-none text-center py-4">
+                    <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;">
+                        <span class="visually-hidden">Generating...</span>
+                    </div>
+                    <p class="text-muted">Generating anatomy snippet&hellip; this may take 15-30 seconds.</p>
+                    <button type="button" class="btn btn-sm btn-outline-danger mt-2" onclick="cancelSnippetGeneration()">
+                        <i class="fas fa-times me-1"></i>Cancel Generation
+                    </button>
                 </div>
             </div>
             <div class="modal-footer">
@@ -1631,7 +1645,7 @@ function openAddSnippetModal() {
     new bootstrap.Modal(document.getElementById('addSnippetModal')).show();
 }
 
-function generateSnippet() {
+function generateSnippet(forceRegenerate) {
     var topic = document.getElementById('snippetTopic').value.trim();
     if (!topic) { alert('Please enter an anatomy topic.'); return; }
     var bodySection = document.getElementById('snippetBodySection').value;
@@ -1644,6 +1658,13 @@ function generateSnippet() {
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Generating...';
 
+    // Show loading spinner, hide input sections
+    document.getElementById('snippetAiContextSection').classList.add('d-none');
+    document.getElementById('snippetLoading').classList.remove('d-none');
+
+    // AbortController for cancel support
+    window._snippetAbortController = new AbortController();
+
     var fetchOpts;
     if (pdfFiles.length > 0) {
         var fd = new FormData();
@@ -1651,27 +1672,52 @@ function generateSnippet() {
         fd.append('body_section', bodySection);
         fd.append('modality', modality);
         if (instructions) fd.append('instructions', instructions);
+        if (forceRegenerate) fd.append('force_regenerate', 'true');
         refUrls.forEach(function(u) { fd.append('reference_url', u); });
         pdfFiles.forEach(function(f) { fd.append('pdf', f); });
-        fetchOpts = { method: 'POST', body: fd };
+        fetchOpts = { method: 'POST', body: fd, signal: window._snippetAbortController.signal };
     } else {
         var payload = { topic: topic, body_section: bodySection, modality: modality };
         if (instructions) payload.instructions = instructions;
+        if (forceRegenerate) payload.force_regenerate = true;
         if (refUrls.length) payload.reference_urls = refUrls;
-        fetchOpts = { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) };
+        fetchOpts = { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload), signal: window._snippetAbortController.signal };
     }
 
     fetch('/api/smart-reporter/anatomy', fetchOpts)
     .then(function(r) { return r.json(); })
     .then(function(data) {
-        if (data.error) { alert(data.error); return; }
+        if (data.error) { alert(data.error); resetSnippetUI(); return; }
+        // Check if backend returned a cache warning
+        if (data.cached) {
+            resetSnippetUI();
+            showSnippetCacheWarning(data.title || topic);
+            return;
+        }
         location.reload();
     })
-    .catch(function(err) { alert('Generation failed: ' + err.message); })
-    .finally(function() {
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-magic me-1"></i>Generate';
-    });
+    .catch(function(err) {
+        if (err.name === 'AbortError') return; // User cancelled
+        alert('Generation failed: ' + err.message);
+        resetSnippetUI();
+    })
+    .finally(function() { window._snippetAbortController = null; });
+}
+
+function resetSnippetUI() {
+    document.getElementById('snippetLoading').classList.add('d-none');
+    document.getElementById('snippetAiContextSection').classList.remove('d-none');
+    var btn = document.getElementById('generateSnippetBtn');
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-magic me-1"></i>Generate';
+}
+
+function cancelSnippetGeneration() {
+    if (window._snippetAbortController) {
+        window._snippetAbortController.abort();
+        window._snippetAbortController = null;
+    }
+    resetSnippetUI();
 }
 
 function saveSnippetManual() {
@@ -1951,9 +1997,16 @@ function attachSearchImage(idx, group) {
 // ==================== AI GENERATE PEARL ====================
 var _genPearlState = { html: '', data: null, editMode: false, tinyReady: false };
 
-function generatePearl() {
+function generatePearl(confirmed) {
     var topic = document.getElementById('genPearlTopic').value.trim();
     if (!topic) { alert('Please enter a topic or pathology.'); return; }
+
+    // Warn if editing an existing pearl
+    var existingId = document.getElementById('editPearlId').value;
+    if (existingId && !confirmed) {
+        showPearlOverwriteWarning();
+        return;
+    }
 
     var modality = getCheckedModalities('editPearlModalityGroup');
     var bodySection = document.getElementById('editPearlBodySection').value;
@@ -1970,6 +2023,9 @@ function generatePearl() {
     genBtn.disabled = true;
     genBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Generating...';
 
+    // AbortController for cancel support
+    window._pearlAbortController = new AbortController();
+
     var fetchOpts;
     if (pdfFiles.length > 0) {
         var fd = new FormData();
@@ -1980,12 +2036,12 @@ function generatePearl() {
         if (instructions) fd.append('instructions', instructions);
         refUrls.forEach(function(u) { fd.append('reference_url', u); });
         pdfFiles.forEach(function(f) { fd.append('pdf', f); });
-        fetchOpts = { method: 'POST', body: fd };
+        fetchOpts = { method: 'POST', body: fd, signal: window._pearlAbortController.signal };
     } else {
         var payload = { topic: topic, modality: modality, body_section: bodySection, include_image: includeImage };
         if (instructions) payload.instructions = instructions;
         if (refUrls.length) payload.reference_urls = refUrls;
-        fetchOpts = { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) };
+        fetchOpts = { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload), signal: window._pearlAbortController.signal };
     }
 
     fetch('/api/admin/generate-pearl', fetchOpts)
@@ -2004,19 +2060,84 @@ function generatePearl() {
         _genPearlState.data = data.pearl_data;
         document.getElementById('genPearlPreviewContent').innerHTML = data.pearl_html;
         document.getElementById('genPearlPreview').classList.remove('d-none');
-        // Update tags from AI response
         if (data.tags) document.getElementById('editPearlTags').value = data.tags;
         genBtn.classList.add('d-none');
         document.getElementById('genPearlSaveBtn').classList.remove('d-none');
     })
     .catch(function(err) {
+        if (err.name === 'AbortError') return; // User cancelled
         document.getElementById('genPearlLoading').classList.add('d-none');
         document.getElementById('pearlAiInputSection').classList.remove('d-none');
         document.getElementById('genPearlError').textContent = 'Generation failed: ' + err.message;
         document.getElementById('genPearlError').classList.remove('d-none');
         genBtn.disabled = false;
         genBtn.innerHTML = '<i class="fas fa-magic me-1"></i>Generate';
-    });
+    })
+    .finally(function() { window._pearlAbortController = null; });
+}
+
+function cancelPearlGeneration() {
+    if (window._pearlAbortController) {
+        window._pearlAbortController.abort();
+        window._pearlAbortController = null;
+    }
+    document.getElementById('genPearlLoading').classList.add('d-none');
+    document.getElementById('pearlAiInputSection').classList.remove('d-none');
+    var genBtn = document.getElementById('genPearlGenerateBtn');
+    genBtn.disabled = false;
+    genBtn.innerHTML = '<i class="fas fa-magic me-1"></i>Generate';
+}
+
+function showPearlOverwriteWarning() {
+    var existing = document.getElementById('_pearlOverwriteModal');
+    if (existing) existing.remove();
+    var overlay = document.createElement('div');
+    overlay.id = '_pearlOverwriteModal';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:10050;display:flex;align-items:center;justify-content:center;padding:20px;';
+    overlay.innerHTML =
+        '<div style="background:white;border-radius:12px;max-width:440px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.3);">' +
+        '  <div style="background:linear-gradient(135deg,#e96304 0%,#d45a03 100%);color:white;padding:14px 20px;border-radius:12px 12px 0 0;display:flex;align-items:center;">' +
+        '    <i class="fas fa-exclamation-triangle me-2"></i>' +
+        '    <h6 style="margin:0;font-weight:600;">Overwrite Existing Pearl?</h6>' +
+        '  </div>' +
+        '  <div style="padding:20px;">' +
+        '    <p style="color:#2c3e50;margin:0;line-height:1.6;">This pearl already has content. AI generation will <strong>replace</strong> the current content with newly generated material.</p>' +
+        '  </div>' +
+        '  <div style="display:flex;justify-content:flex-end;gap:8px;padding:14px 20px;border-top:1px solid #e9ecef;">' +
+        '    <button class="btn btn-outline-secondary btn-sm" onclick="document.getElementById(\'_pearlOverwriteModal\').remove()">Cancel</button>' +
+        '    <button class="btn btn-sm" style="background:#e96304;color:white;" onclick="document.getElementById(\'_pearlOverwriteModal\').remove(); generatePearl(true);">' +
+        '      <i class="fas fa-magic me-1"></i>Generate Anyway</button>' +
+        '  </div>' +
+        '</div>';
+    document.body.appendChild(overlay);
+    overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
+}
+
+function showSnippetCacheWarning(title) {
+    var existing = document.getElementById('_snippetCacheModal');
+    if (existing) existing.remove();
+    var overlay = document.createElement('div');
+    overlay.id = '_snippetCacheModal';
+    overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:10050;display:flex;align-items:center;justify-content:center;padding:20px;';
+    overlay.innerHTML =
+        '<div style="background:white;border-radius:12px;max-width:480px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.3);">' +
+        '  <div style="background:linear-gradient(135deg,#5E899E 0%,#4a7285 100%);color:white;padding:14px 20px;border-radius:12px 12px 0 0;display:flex;align-items:center;">' +
+        '    <i class="fas fa-database me-2"></i>' +
+        '    <h6 style="margin:0;font-weight:600;">Existing Content Found</h6>' +
+        '  </div>' +
+        '  <div style="padding:20px;">' +
+        '    <p style="color:#2c3e50;margin:0;line-height:1.6;">An anatomy snippet for <strong>' + (title || 'this topic') + '</strong> already exists. You can use the existing content or regenerate with AI.</p>' +
+        '  </div>' +
+        '  <div style="display:flex;justify-content:flex-end;gap:8px;padding:14px 20px;border-top:1px solid #e9ecef;">' +
+        '    <button class="btn btn-outline-secondary btn-sm" onclick="document.getElementById(\'_snippetCacheModal\').remove()">Cancel</button>' +
+        '    <button class="btn btn-sm btn-outline-primary" onclick="document.getElementById(\'_snippetCacheModal\').remove(); location.reload();">' +
+        '      <i class="fas fa-check me-1"></i>Use Existing</button>' +
+        '    <button class="btn btn-sm" style="background:#e96304;color:white;" onclick="document.getElementById(\'_snippetCacheModal\').remove(); generateSnippet(true);">' +
+        '      <i class="fas fa-redo me-1"></i>Regenerate</button>' +
+        '  </div>' +
+        '</div>';
+    document.body.appendChild(overlay);
+    overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
 }
 
 function editGeneratedPearl() {
