@@ -495,14 +495,9 @@
     transition: all 0.15s;
 }
 .body-section-chip:hover {
-    border-color: var(--brand-neutral, #5E899E);
-    color: var(--brand-neutral, #5E899E);
-    background: rgba(94, 137, 158, 0.06);
+    opacity: 0.85;
 }
 .body-section-chip.active {
-    background: var(--brand-neutral, #5E899E);
-    color: #fff;
-    border-color: var(--brand-neutral, #5E899E);
     font-weight: 600;
 }
 
@@ -829,15 +824,29 @@ function applyFilters() {
 
 // ==================== BODY SECTION CHIPS ====================
 document.querySelectorAll('.body-section-chip').forEach(function(chip) {
+    var section = chip.dataset.section;
+    var color = getSectionColor(section);
+    chip.style.borderColor = color.border;
+    chip.style.color = color.text;
+    chip.style.background = color.bg;
+
     chip.addEventListener('click', function() {
-        var section = this.dataset.section;
         if (filterState.bodySection === section) {
             filterState.bodySection = null;
             this.classList.remove('active');
+            this.style.background = color.bg;
+            this.style.color = color.text;
         } else {
-            document.querySelectorAll('.body-section-chip').forEach(function(c) { c.classList.remove('active'); });
+            document.querySelectorAll('.body-section-chip').forEach(function(c) {
+                c.classList.remove('active');
+                var cc = getSectionColor(c.dataset.section);
+                c.style.background = cc.bg;
+                c.style.color = cc.text;
+            });
             filterState.bodySection = section;
             this.classList.add('active');
+            this.style.background = color.border;
+            this.style.color = '#fff';
         }
         applyFilters();
     });
@@ -845,7 +854,12 @@ document.querySelectorAll('.body-section-chip').forEach(function(chip) {
 
 function clearBodySection() {
     filterState.bodySection = null;
-    document.querySelectorAll('.body-section-chip').forEach(function(c) { c.classList.remove('active'); });
+    document.querySelectorAll('.body-section-chip').forEach(function(c) {
+        c.classList.remove('active');
+        var cc = getSectionColor(c.dataset.section);
+        c.style.background = cc.bg;
+        c.style.color = cc.text;
+    });
     applyFilters();
 }
 
@@ -999,7 +1013,12 @@ function clearAllFilters() {
     filterState.searchQuery = '';
     filterState.contentType = 'all';
     document.getElementById('knowledgeSearch').value = '';
-    document.querySelectorAll('.body-section-chip').forEach(function(c) { c.classList.remove('active'); });
+    document.querySelectorAll('.body-section-chip').forEach(function(c) {
+        c.classList.remove('active');
+        var cc = getSectionColor(c.dataset.section);
+        c.style.background = cc.bg;
+        c.style.color = cc.text;
+    });
     document.querySelectorAll('.modality-chip').forEach(function(c) {
         c.classList.remove('active');
         var cc = getModalityColor(c.dataset.modality);
