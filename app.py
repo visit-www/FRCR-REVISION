@@ -4939,12 +4939,14 @@ def _sanitize_ai_html(html_content):
         'div', 'span', 'p', 'br', 'strong', 'em', 'b', 'i', 'u',
         'h3', 'h4', 'h5', 'ul', 'ol', 'li', 'table', 'thead', 'tbody',
         'tr', 'th', 'td', 'a', 'hr', 'sup', 'sub',
+        'img', 'figure', 'figcaption', 'small',
     ]
     ALLOWED_ATTRS = {
-        '*': ['class'],
+        '*': ['class', 'style'],
         'a': ['href', 'target', 'rel'],
         'td': ['colspan', 'rowspan'],
         'th': ['colspan', 'rowspan'],
+        'img': ['src', 'alt', 'loading', 'width', 'height'],
     }
     return bleach.clean(
         html_content,
