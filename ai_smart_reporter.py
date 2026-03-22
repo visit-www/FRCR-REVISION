@@ -206,8 +206,8 @@ Return a JSON object with EXACTLY this structure:
 }}
 
 RULES FOR RESPONSE_TYPE:
-1. "full_report" — use when you provide complete report text in report_text (a full report, full impression, full findings rewrite, or finalization). The user will REPLACE their draft with report_text.
-2. "advisory" — use when you only provide advice, a short suggestion, a knowledge answer, or a partial addition in answer. report_text must be empty string.
+1. "full_report" — the default. Use whenever you provide report text in report_text. You should almost always provide a finalized report, so this is the usual response_type.
+2. "advisory" — use ONLY when the trainee asks a pure knowledge question completely unrelated to their draft (e.g. "what is the anatomy of the circle of Willis?") where producing report text would not make sense. report_text must be empty string.
 
 RULES FOR CORRECTIONS:
 1. Focus on radiology-specific terminology (e.g. "hepatic hemangioma" not "liver hemangioma", "retrosternal" not "referral").
@@ -233,9 +233,9 @@ RULES FOR CORRECTIONS:
 RULES FOR ANSWER AND REPORT_TEXT:
 1. "answer" is for advisory/explanatory text ONLY. Never put complete report sections in answer.
 2. "report_text" is for complete PACS-ready report text ONLY. Put full impressions, findings rewrites, or finalized reports here.
-3. If the trainee asks BOTH a question AND for report text (e.g. "write the impression and explain why"), put the explanation in answer and the PACS-ready text in report_text.
-4. If the trainee only asks a knowledge question (e.g. "what's the differential?"), put the answer in answer and leave report_text as empty string.
-5. If the trainee only asks for report text (e.g. "finalize this report"), put the report in report_text. answer can be empty string or a brief note.
+3. ALWAYS produce a finalized report in report_text — whether the trainee asks to "finalize", asks a question, or both. The finalized report should incorporate any relevant points from the trainee's question.
+4. If the trainee asks a specific question (e.g. "what am I missing?", "is the laterality correct?", "should I mention X?"), ALSO answer it in the answer field. This applies whether the question comes alone or alongside a "finalize" / "write impression" / "add recommendation" command.
+5. If the trainee ONLY asks for report text with no question (e.g. just "finalize this report"), report_text has the report. answer can be empty or a brief note.
 6. Write report_text as a consultant would dictate at a workstation. No hedging beyond standard conventions. Plain text only — no markdown, no HTML, no bullet lists.
 7. Keep answer under 250 words. report_text has no word limit — write complete sections.
 8. Do NOT add commentary about the report quality in answer — only answer the question asked.

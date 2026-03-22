@@ -2511,6 +2511,39 @@ def smart_reporter_anatomy():
     modality_raw = (data.get('modality') or '').strip()
     body_section = (data.get('body_section') or '').strip()
     modality = normalize_modality(modality_raw) if modality_raw else ''
+    manual_html = (data.get('manual_html') or '').strip()
+
+    # Manual HTML: admin wrote content directly — skip AI and DB lookup, just save
+    if manual_html:
+        try:
+            slug = re.sub(r'[^a-z0-9]+', '-', topic.lower()).strip('-')[:200]
+            entry = ReportingAlgorithm(
+                title=topic.title(),
+                slug=f'anatomy-{slug}',
+                category='anatomy',
+                origin='anatomy_cache',
+                template_html=manual_html,
+                keywords=topic.lower(),
+                is_available=True,
+                is_ai_generated=False,
+            )
+            if body_section:
+                entry.body_section = body_section
+            if modality:
+                entry.modality = modality
+            db.session.add(entry)
+            db.session.commit()
+            return jsonify({
+                'success': True,
+                'title': entry.title,
+                'content_html': manual_html,
+                'source': 'manual',
+                'algorithm_id': entry.id,
+            })
+        except Exception as exc:
+            db.session.rollback()
+            logger.error(f"Failed to save manual anatomy snippet: {exc}")
+            return jsonify({'error': f'Failed to save: {exc}'}), 500
 
     # DB-first: check for cached anatomy content
     cached = ReportingAlgorithm.query.filter(
@@ -2766,6 +2799,78 @@ def delete_snippet_document(alg_id, doc_id):
     db.session.delete(doc)
     db.session.commit()
     return jsonify({'success': True})
+
+
+# ==================== REGENERATE SNIPPET ====================
+
+@reporting_bp.route('/api/snippet/<int:alg_id>/regenerate', methods=['POST'])
+@login_required
+@require_admin
+def regenerate_snippet(alg_id):
+    """Regenerate an anatomy snippet's content using AI, replacing template_html in place."""
+    snippet = ReportingAlgorithm.query.get_or_404(alg_id)
+    if snippet.category != 'anatomy':
+        return jsonify({'error': 'Not an anatomy snippet'}), 400
+
+    topic = snippet.title or ''
+    body_section = snippet.body_section or ''
+    modality = snippet.modality or ''
+
+    # Rate limit check
+    ok, remaining, err = _check_ai_rate_limit()
+    if not ok:
+        return err
+
+    try:
+        from ai_smart_reporter import generate_anatomy_reference
+        result = generate_anatomy_reference(topic, modality=modality, body_section=body_section)
+    except Exception as exc:
+        logger.error(f"Snippet regeneration failed for id={alg_id}: {exc}")
+        return jsonify({'error': f'Failed to regenerate: {exc}'}), 500
+
+    content_html = result.get('content_html', '')
+    if not content_html:
+        return jsonify({'error': 'AI returned empty content'}), 500
+
+    try:
+        snippet.template_html = content_html
+        snippet.is_ai_generated = True
+        db.session.commit()
+        logger.info(f"Regenerated anatomy snippet id={alg_id}: {topic}")
+
+        # Auto-update Radiopaedia image if new one found
+        rp_img = result.get('radiopaedia_image')
+        if rp_img:
+            try:
+                from models import SnippetImage
+                si = SnippetImage(
+                    algorithm_id=alg_id,
+                    source_url=rp_img.get('link', ''),
+                    source_domain='radiopaedia.org',
+                    thumbnail_url=rp_img.get('thumbnail_link', ''),
+                    image_type='ct_mri',
+                    modality=modality or None,
+                    description=rp_img.get('title', ''),
+                    display_order=0,
+                    license=rp_img.get('license', 'CC BY-NC-SA 3.0'),
+                    attribution=f"Radiopaedia.org — {rp_img.get('title', '')}",
+                    added_by_user_id=current_user.id if current_user.is_authenticated else None,
+                )
+                db.session.add(si)
+                db.session.commit()
+            except Exception as img_exc:
+                db.session.rollback()
+                logger.warning(f"Failed to save Radiopaedia image during regeneration: {img_exc}")
+
+    except Exception as save_exc:
+        db.session.rollback()
+        logger.error(f"Failed to save regenerated snippet: {save_exc}")
+        return jsonify({'error': f'Failed to save: {save_exc}'}), 500
+
+    return jsonify({
+        'success': True,
+        'content_html': content_html,
+    })
 
 
 # ==================== SNIPPET IMAGES ====================
