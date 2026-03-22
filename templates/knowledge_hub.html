@@ -42,9 +42,9 @@
         </div>
     </div>
 
-    <!-- Content Type Tabs + Body Section Chips (unified filter bar) -->
+    <!-- Content Type Tabs + Filter Dropdowns (single-row filter bar) -->
     <div class="kh-filter-bar mb-3">
-        <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+        <div class="d-flex flex-wrap align-items-center gap-2">
             <!-- Content type tabs -->
             <div class="btn-group btn-group-sm" id="contentTypeTabs">
                 <button class="btn btn-outline-secondary active" data-content-type="all">
@@ -60,35 +60,28 @@
                 </button>
             </div>
 
-            <span class="text-muted d-none d-md-inline" style="font-size: 0.75rem;">|</span>
-
-            <!-- Modality chips -->
-            {% if modalities %}
-            <div class="d-flex flex-wrap gap-1 align-items-center">
-                <small class="text-muted fw-semibold me-1 d-none d-md-inline" style="font-size: 0.7rem;">MODALITY:</small>
-                {% for mod in modalities %}
-                <button class="btn btn-sm modality-chip" data-modality="{{ mod }}" style="font-size: 0.72rem; padding: 2px 8px;">{{ mod }}</button>
+            <!-- Body Section dropdown -->
+            <select id="bodySectionFilter" class="form-select form-select-sm kh-filter-select">
+                <option value="">Body Region</option>
+                {% for section in ['Brain','Head and Neck','Thorax','Cardiovascular','Breast','Abdomen','Pelvis','Spine','Musculoskeletal','Multisystem'] %}
+                <option value="{{ section }}">{{ section }}{% if section_counts.get(section, 0) > 0 %} ({{ section_counts.get(section, 0) }}){% endif %}</option>
                 {% endfor %}
-            </div>
+            </select>
+
+            <!-- Modality dropdown -->
+            {% if modalities %}
+            <select id="modalityFilter" class="form-select form-select-sm kh-filter-select">
+                <option value="">Modality</option>
+                {% for mod in modalities %}
+                <option value="{{ mod }}">{{ mod }}</option>
+                {% endfor %}
+            </select>
             {% endif %}
-        </div>
 
-        <!-- Body Section Chips -->
-        <div class="d-flex flex-wrap gap-1 align-items-center">
-            <small class="text-muted fw-semibold me-1" style="font-size: 0.7rem;">BODY:</small>
-            {% for section in ['Brain','Head and Neck','Thorax','Cardiovascular','Breast','Abdomen','Pelvis','Spine','Musculoskeletal','Multisystem'] %}
-            <button class="btn btn-sm body-section-chip" data-section="{{ section }}">
-                {{ section }}
-                {% if section_counts.get(section, 0) > 0 %}
-                <span class="badge bg-secondary ms-1" style="font-size: 0.5rem;">{{ section_counts.get(section, 0) }}</span>
-                {% endif %}
-            </button>
-            {% endfor %}
-        </div>
-
-        <!-- Active Filters -->
-        <div id="activeFilters" class="mt-2 d-none">
-            <div class="d-flex flex-wrap gap-1 align-items-center" id="activeFilterPills"></div>
+            <!-- Active Filters -->
+            <div id="activeFilters" class="d-none">
+                <div class="d-flex flex-wrap gap-1 align-items-center" id="activeFilterPills"></div>
+            </div>
         </div>
     </div>
 
@@ -537,24 +530,26 @@
     background: #fff;
     border: 1px solid #e9ecef;
     border-radius: 10px;
-    padding: 12px 16px;
+    padding: 10px 16px;
 }
-
-/* Body Section Chips */
-.body-section-chip {
-    font-size: 0.72rem;
-    padding: 2px 10px;
+.kh-filter-select {
+    width: auto;
+    min-width: 120px;
+    max-width: 180px;
+    font-size: 0.78rem;
+    border-radius: 8px;
     border: 1.5px solid #dee2e6;
-    border-radius: 14px;
-    background: #fff;
     color: var(--brand-text-secondary, #5a6270);
     cursor: pointer;
-    transition: all 0.15s;
+    padding: 4px 28px 4px 10px;
 }
-.body-section-chip:hover {
-    opacity: 0.85;
+.kh-filter-select:focus {
+    border-color: var(--brand-neutral, #5E899E);
+    box-shadow: 0 0 0 2px rgba(94,137,158,0.15);
 }
-.body-section-chip.active {
+.kh-filter-select.active {
+    border-color: var(--brand-neutral, #5E899E);
+    color: var(--brand-neutral, #5E899E);
     font-weight: 600;
 }
 
@@ -563,20 +558,6 @@
     background: var(--brand-neutral, #5E899E);
     color: #fff;
     border-color: var(--brand-neutral, #5E899E);
-}
-
-/* ==================== MODALITY COLOURS ==================== */
-.modality-chip {
-    border: 1.5px solid #ccc;
-    background: #f8f9fa;
-    border-radius: 12px;
-    cursor: pointer;
-    transition: all 0.15s;
-}
-.modality-chip:hover { opacity: 0.85; }
-.modality-chip.active {
-    color: #fff !important;
-    font-weight: 600;
 }
 .modality-badge {
     display: inline-block;
@@ -765,6 +746,11 @@
     .kh-filter-bar {
         padding: 8px 10px;
     }
+    .kh-filter-select {
+        min-width: 100px;
+        max-width: 150px;
+        font-size: 0.72rem;
+    }
 }
 </style>
 {% endblock %}
@@ -879,102 +865,58 @@ function applyFilters() {
     }
 }
 
-// ==================== BODY SECTION CHIPS ====================
-document.querySelectorAll('.body-section-chip').forEach(function(chip) {
-    var section = chip.dataset.section;
-    var color = getSectionColor(section);
-    chip.style.borderColor = color.border;
-    chip.style.color = color.text;
-    chip.style.background = color.bg;
-
-    chip.addEventListener('click', function() {
-        if (filterState.bodySection === section) {
-            filterState.bodySection = null;
-            this.classList.remove('active');
-            this.style.background = color.bg;
-            this.style.color = color.text;
-        } else {
-            document.querySelectorAll('.body-section-chip').forEach(function(c) {
-                c.classList.remove('active');
-                var cc = getSectionColor(c.dataset.section);
-                c.style.background = cc.bg;
-                c.style.color = cc.text;
-            });
-            filterState.bodySection = section;
-            this.classList.add('active');
-            this.style.background = color.border;
-            this.style.color = '#fff';
-        }
-        applyFilters();
-    });
+// ==================== BODY SECTION DROPDOWN ====================
+document.getElementById('bodySectionFilter').addEventListener('change', function() {
+    filterState.bodySection = this.value || null;
+    this.classList.toggle('active', !!this.value);
+    applyFilters();
 });
 
 function clearBodySection() {
     filterState.bodySection = null;
-    document.querySelectorAll('.body-section-chip').forEach(function(c) {
-        c.classList.remove('active');
-        var cc = getSectionColor(c.dataset.section);
-        c.style.background = cc.bg;
-        c.style.color = cc.text;
-    });
+    var sel = document.getElementById('bodySectionFilter');
+    sel.value = '';
+    sel.classList.remove('active');
     applyFilters();
 }
 
 function updateSectionCounts() {
-    document.querySelectorAll('.body-section-chip').forEach(function(chip) {
-        var section = chip.dataset.section;
-        var count = 0;
-        document.querySelectorAll('.knowledge-item').forEach(function(item) {
-            // Count items matching this section (ignoring body section filter but respecting other filters)
-            var visible = true;
-            if (filterState.contentType !== 'all' && item.dataset.type !== filterState.contentType) visible = false;
-            if (visible && filterState.modality) {
-                var itemParts = (item.dataset.modality || '').split('/').map(function(p) { return p.trim(); });
-                if (itemParts.indexOf(filterState.modality) === -1 && item.dataset.modality !== filterState.modality) visible = false;
-            }
-            if (visible && filterState.searchQuery) {
-                var q = filterState.searchQuery;
-                if ((item.dataset.text || '').indexOf(q) === -1 && (item.dataset.tags || '').indexOf(q) === -1) visible = false;
-            }
-            if (visible && item.dataset.bodySection === section) count++;
-        });
-        var badge = chip.querySelector('.badge');
-        if (badge) {
-            badge.textContent = count;
-            badge.style.display = count > 0 ? '' : 'none';
+    var sel = document.getElementById('bodySectionFilter');
+    var sections = ['Brain','Head and Neck','Thorax','Cardiovascular','Breast','Abdomen','Pelvis','Spine','Musculoskeletal','Multisystem'];
+    var counts = {};
+    sections.forEach(function(s) { counts[s] = 0; });
+    document.querySelectorAll('.knowledge-item').forEach(function(item) {
+        var visible = true;
+        if (filterState.contentType !== 'all' && item.dataset.type !== filterState.contentType) visible = false;
+        if (visible && filterState.modality) {
+            var itemParts = (item.dataset.modality || '').split('/').map(function(p) { return p.trim(); });
+            if (itemParts.indexOf(filterState.modality) === -1 && item.dataset.modality !== filterState.modality) visible = false;
         }
+        if (visible && filterState.searchQuery) {
+            var q = filterState.searchQuery;
+            if ((item.dataset.text || '').indexOf(q) === -1 && (item.dataset.tags || '').indexOf(q) === -1) visible = false;
+        }
+        if (visible && item.dataset.bodySection && counts.hasOwnProperty(item.dataset.bodySection)) {
+            counts[item.dataset.bodySection]++;
+        }
+    });
+    Array.from(sel.options).forEach(function(opt) {
+        if (!opt.value) return; // skip placeholder
+        var label = opt.value;
+        var c = counts[label] || 0;
+        opt.textContent = c > 0 ? label + ' (' + c + ')' : label;
     });
 }
 
-// ==================== MODALITY CHIPS ====================
-document.querySelectorAll('.modality-chip').forEach(function(chip) {
-    var mod = chip.dataset.modality;
-    var color = getModalityColor(mod);
-    chip.style.borderColor = color.border;
-    chip.style.color = color.text;
-    chip.style.background = color.bg;
-
-    chip.addEventListener('click', function() {
-        if (filterState.modality === mod) {
-            filterState.modality = null;
-            this.classList.remove('active');
-            this.style.background = color.bg;
-            this.style.color = color.text;
-        } else {
-            document.querySelectorAll('.modality-chip').forEach(function(c) {
-                c.classList.remove('active');
-                var cc = getModalityColor(c.dataset.modality);
-                c.style.background = cc.bg;
-                c.style.color = cc.text;
-            });
-            filterState.modality = mod;
-            this.classList.add('active');
-            this.style.background = color.border;
-            this.style.color = '#fff';
-        }
+// ==================== MODALITY DROPDOWN ====================
+var modalitySelect = document.getElementById('modalityFilter');
+if (modalitySelect) {
+    modalitySelect.addEventListener('change', function() {
+        filterState.modality = this.value || null;
+        this.classList.toggle('active', !!this.value);
         applyFilters();
     });
-});
+}
 
 // ==================== TAG CLOUD ====================
 document.querySelectorAll('.tag-cloud-item').forEach(function(tag) {
@@ -1040,12 +982,8 @@ function removeFilter(type, label) {
     if (type === 'body') { clearBodySection(); }
     else if (type === 'modality') {
         filterState.modality = null;
-        document.querySelectorAll('.modality-chip').forEach(function(c) {
-            c.classList.remove('active');
-            var cc = getModalityColor(c.dataset.modality);
-            c.style.background = cc.bg;
-            c.style.color = cc.text;
-        });
+        var ms = document.getElementById('modalityFilter');
+        if (ms) { ms.value = ''; ms.classList.remove('active'); }
         applyFilters();
     }
     else if (type === 'tag') {
@@ -1070,18 +1008,10 @@ function clearAllFilters() {
     filterState.searchQuery = '';
     filterState.contentType = 'all';
     document.getElementById('knowledgeSearch').value = '';
-    document.querySelectorAll('.body-section-chip').forEach(function(c) {
-        c.classList.remove('active');
-        var cc = getSectionColor(c.dataset.section);
-        c.style.background = cc.bg;
-        c.style.color = cc.text;
-    });
-    document.querySelectorAll('.modality-chip').forEach(function(c) {
-        c.classList.remove('active');
-        var cc = getModalityColor(c.dataset.modality);
-        c.style.background = cc.bg;
-        c.style.color = cc.text;
-    });
+    var bs = document.getElementById('bodySectionFilter');
+    bs.value = ''; bs.classList.remove('active');
+    var ms = document.getElementById('modalityFilter');
+    if (ms) { ms.value = ''; ms.classList.remove('active'); }
     document.querySelectorAll('.tag-cloud-item').forEach(function(t) { t.classList.remove('active'); });
     document.querySelectorAll('[data-content-type]').forEach(function(t) {
         t.classList.toggle('active', t.dataset.contentType === 'all');
