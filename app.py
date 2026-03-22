@@ -12,6 +12,7 @@ if os.getenv('ENV') == 'production' or os.getenv('FLASK_ENV') == 'production':
 
 # Configure logging (before any module imports that use logging)
 import logging
+from urllib.parse import quote_plus as _quote_plus
 
 # Structured JSON logging for production; human-readable for local dev
 _is_production = os.getenv('VERCEL_ENV') == 'production'
@@ -5010,8 +5011,20 @@ def _build_ai_discussion_html(output, provider, model_name):
         source_items = []
         for item in sources:
             title = _escape_html(item.get('title', 'Source'))
-            url = item.get('url', '')
+            url = item.get('url', '').strip()
             journal = _escape_html(item.get('journal', ''))
+            raw_journal = (item.get('journal') or '').strip().lower()
+
+            # Auto-resolve URL if not provided or if AI hallucinated one
+            if not url or 'radiopaedia' in url:
+                if 'radiopaedia' in raw_journal or 'radiopaedia' in url:
+                    # Build Radiopaedia search URL from title (more reliable than AI-generated URLs)
+                    search_q = _quote_plus(item.get('title', ''))
+                    url = f'https://radiopaedia.org/search?q={search_q}&scope=articles'
+                elif item.get('title'):
+                    # Google Scholar search for journal articles
+                    search_q = _quote_plus(item.get('title', ''))
+                    url = f'https://scholar.google.com/scholar?q={search_q}'
 
             if url:
                 safe_url = _escape_html(url)

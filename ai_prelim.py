@@ -296,14 +296,14 @@ Each item should be a complete, actionable statement."""
 Provide exactly 1-3 high-quality references. Each source object must have:
 • "title" — the exact article title (required)
 • "journal" — the journal or website name (required)
-• "url" — ONLY for Radiopaedia articles (optional, leave empty string for all other sources)
+• "url" — leave as EMPTY STRING for ALL sources (URLs are auto-resolved)
 
 RULES:
-• Include exactly 1 Radiopaedia article with its URL (radiopaedia.org/articles/... or radiopaedia.org/cases/...)
-• Include 1-2 journal articles — provide ONLY the exact article title and journal name, NO URL
-• PREFER pictorial essays, case reviews, and teaching articles from: Radiographics, AJR, AJNR, European Radiology, RadioGraphics, RadiologyAssistant
+• Include exactly 1 Radiopaedia article — provide the exact article title and set journal to "Radiopaedia". Do NOT generate a URL.
+• Include 1-2 journal articles from: Radiographics, AJR, AJNR, European Radiology, RadioGraphics, RadiologyAssistant
+• PREFER pictorial essays, case reviews, and teaching articles
 • The article title must be the REAL, EXACT title of a published article — do NOT invent titles
-• Do NOT generate URLs for journal articles — URLs will be auto-generated as search links
+• Do NOT generate ANY URLs — all URLs will be auto-resolved from titles. Set url to ""
 • Do NOT include pmid, pdf_url, or doi fields"""
 
     # Section 5: Warnings
