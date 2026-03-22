@@ -2624,14 +2624,18 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Helper: ensure the output box is visible and editable, populating from draft if first time
-    function ensureOutputBoxVisible() {
+    // Helper: ensure the output box is visible and editable.
+    // skipPopulate=true prevents auto-copying the draft (used by insert functions
+    // that will replace/set the output themselves).
+    function ensureOutputBoxVisible(skipPopulate) {
         const output = document.getElementById('editorOutput');
         const outputSection = document.getElementById('outputSection');
         if (outputSection.classList.contains('d-none')) {
-            const inputText = document.getElementById('editorInput').value;
-            output.value = inputText;
-            state.outputText = inputText;
+            if (!skipPopulate) {
+                const inputText = document.getElementById('editorInput').value;
+                output.value = inputText;
+                state.outputText = inputText;
+            }
             outputSection.classList.remove('d-none');
         }
         output.removeAttribute('readonly');
@@ -2656,25 +2660,14 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     window.insertClaudeResponse = function() {
-        // Get answer from AI assist (advisory text only) — inserts into Final Report output
+        // Get answer from AI assist (advisory text only) — replaces PACS output
         const aiAssistAnswer = document.getElementById('aiAssistAnswer');
         const answer = (aiAssistAnswer && aiAssistAnswer.textContent) || '';
         if (!answer.trim()) return;
 
-        // Always insert into the output box (never the draft)
-        const output = ensureOutputBoxVisible();
-
-        // Insert at cursor position if user has placed cursor, otherwise append to end
-        if (document.activeElement === output && output.selectionStart !== undefined) {
-            const pos = output.selectionStart;
-            const before = output.value.substring(0, pos);
-            const after = output.value.substring(pos);
-            output.value = before + answer + after;
-            output.selectionStart = output.selectionEnd = pos + answer.length;
-        } else {
-            const current = output.value.trim();
-            output.value = current ? current + '\n\n' + answer : answer;
-        }
+        // Show output box without auto-populating from draft
+        const output = ensureOutputBoxVisible(true);
+        output.value = answer;
 
         state.outputText = output.value;
         autoResizeTextarea(output);
@@ -2708,18 +2701,9 @@ document.addEventListener('DOMContentLoaded', function() {
     window.insertReportText = function() {
         const reportText = state.aiAssistReportText;
         if (!reportText || !reportText.trim()) return;
-        const output = ensureOutputBoxVisible();
-
-        if (document.activeElement === output && output.selectionStart !== undefined) {
-            const pos = output.selectionStart;
-            const before = output.value.substring(0, pos);
-            const after = output.value.substring(pos);
-            output.value = before + reportText + after;
-            output.selectionStart = output.selectionEnd = pos + reportText.length;
-        } else {
-            const current = output.value.trim();
-            output.value = current ? current + '\n\n' + reportText : reportText;
-        }
+        // Replace PACS output with the AI-generated report (not append to draft)
+        const output = ensureOutputBoxVisible(true);
+        output.value = reportText;
 
         state.outputText = output.value;
         autoResizeTextarea(output);
