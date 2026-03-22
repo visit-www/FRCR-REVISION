@@ -325,18 +325,27 @@ def render_reference_images_html(images, captions=None):
         parts.append(f'<div class="{col_class}">')
         parts.append('<div class="text-center">')
 
-        # Image with optional link
-        if case_url:
+        # Image with optional link, or link-only card if no image URL
+        if img_url:
+            if case_url:
+                parts.append(
+                    f'<a href="{case_url}" target="_blank" rel="noopener noreferrer">'
+                    f'<img src="{img_url}" alt="{title}" '
+                    f'class="img-fluid rounded" style="max-height: 280px;" loading="lazy">'
+                    f'</a>'
+                )
+            else:
+                parts.append(
+                    f'<img src="{img_url}" alt="{title}" '
+                    f'class="img-fluid rounded" style="max-height: 280px;" loading="lazy">'
+                )
+        elif case_url:
             parts.append(
-                f'<a href="{case_url}" target="_blank" rel="noopener noreferrer">'
-                f'<img src="{img_url}" alt="{title}" '
-                f'class="img-fluid rounded" style="max-height: 280px;" loading="lazy">'
-                f'</a>'
-            )
-        else:
-            parts.append(
-                f'<img src="{img_url}" alt="{title}" '
-                f'class="img-fluid rounded" style="max-height: 280px;" loading="lazy">'
+                f'<a href="{case_url}" target="_blank" rel="noopener noreferrer" '
+                f'class="d-inline-block p-3 rounded text-decoration-none" '
+                f'style="background:#f0f7fa;border:1px solid #d0e3ed;">'
+                f'<i class="fas fa-external-link-alt me-2" style="color:#5E899E;"></i>'
+                f'<span style="color:#2c3e50;">{title}</span></a>'
             )
 
         # AI-generated caption

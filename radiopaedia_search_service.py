@@ -101,6 +101,9 @@ def search_radiopaedia_single(
             if _IMG_CDN_RE.search(src):
                 case_imgs.append(src)
 
+    logger.info("[Radiopaedia] Query '%s': %d case links, %d images found",
+                query, len(case_links), len(case_imgs))
+
     # Match case links with images by position (1:1 correspondence in DOM order)
     results: list[dict] = []
     for i, case in enumerate(case_links):
@@ -112,8 +115,8 @@ def search_radiopaedia_single(
         case_url = f"https://radiopaedia.org{case['href'].split('?')[0]}"
 
         results.append({
-            "link": full_img or case_url,
-            "thumbnail_link": thumb or case_url,
+            "link": full_img if full_img else "",
+            "thumbnail_link": thumb if thumb else "",
             "title": case["title"],
             "displayLink": SOURCE_DOMAIN,
             "source_domain": SOURCE_DOMAIN,

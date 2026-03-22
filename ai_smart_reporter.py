@@ -805,6 +805,22 @@ def generate_anatomy_reference(topic, modality='', body_section='', additional_c
 
     # Auto-fetch Radiopaedia images (multiple)
     rp_images = fetch_radiopaedia_images(topic, modality=modality, max_images=3)
+    logger.info(f"Radiopaedia images for '{topic}': {len(rp_images)} found")
+
+    # Fallback: if no images fetched, create Radiopaedia search link entries
+    # so the snippet always has clickable Radiopaedia references
+    if not rp_images:
+        from urllib.parse import quote_plus
+        search_url = f"https://radiopaedia.org/search?q={quote_plus(topic)}&scope=cases"
+        rp_images = [{
+            'url': '',
+            'title': f'{topic.title()} — Radiopaedia Cases',
+            'case_url': search_url,
+            'license': 'CC BY-NC-SA 3.0',
+            'author': None,
+            'source_domain': 'radiopaedia.org',
+        }]
+        logger.info(f"Using Radiopaedia search link fallback for '{topic}'")
 
     content_html = render_anatomy_html(parsed, reference_images=rp_images)
 
