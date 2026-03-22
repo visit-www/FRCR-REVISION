@@ -385,6 +385,7 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='tinymce.min.js') }}"></script>
 <script>
     var CLOUDINARY_CLOUD_NAME = {{ cloudinary_cloud_name|default('', true)|tojson }};
     var CLOUDINARY_UPLOAD_PRESET = {{ cloudinary_upload_preset|default('', true)|tojson }};
@@ -556,6 +557,138 @@ function uploadPDF(input, chipsContainerId, progressId) {
 function escHtml(str) { if (!str) return ''; return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 function escAttr(str) { if (!str) return ''; return str.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
+// ==================== TINYMCE FOR PROTOCOL CONTENT ====================
+
+var EDITOR_CONTENT_STYLE = `
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        font-size: 14px;
+        line-height: 1.6;
+    }
+    a { text-decoration: none !important; }
+    a:hover { text-decoration: underline !important; }
+    table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+    th { background-color: #f8f9fa; font-weight: 600; }
+    img { max-width: 100%; height: auto; border-radius: 8px; margin: 0.5rem 0; }
+    .clinical-note, .key-finding, .differential-dx, .teaching-pearl, .pitfall, .normal-variant, .staging-info, .comparison-box { margin: 1.1rem 0; padding: 10px 16px; background: transparent; border: none; border-radius: 0; font-size: 0.95em; line-height: 1.7; }
+    .clinical-note { border-left: 3px solid #5E899E; }
+    .key-finding { border-left: 3px solid #28a745; }
+    .differential-dx { border-left: 3px solid #7952b3; }
+    .teaching-pearl { border-left: 3px solid #e9a304; }
+    .pitfall { border-left: 3px solid #dc3545; }
+    .normal-variant { border-left: 3px solid #17a2b8; }
+    .staging-info { border-left: 3px solid #c8d6e5; }
+    .comparison-box { border-left: 3px solid #adb5bd; }
+    .diagnosis-box { margin: 1.2rem 0; padding: 14px 18px; background: #fdf8f3; border: none; border-left: 4px solid #e96304; border-radius: 0; font-weight: normal; font-size: 1em; line-height: 1.7; }
+    .highlight-yellow { background-color: #fff3cd; padding: 1px 4px; border-radius: 2px; }
+    .highlight-green { background-color: #d4edda; padding: 1px 4px; border-radius: 2px; }
+    .highlight-red { background-color: #f8d7da; padding: 1px 4px; border-radius: 2px; }
+    .highlight-blue { background-color: #d1ecf1; padding: 1px 4px; border-radius: 2px; }
+    .important-text { color: #c0392b; font-weight: 600; }
+    .subtle-text { color: #6c757d; font-size: 0.9em; }
+    .indent-block { margin: 0.5rem 0 0.5rem 1.5rem; padding: 8px 12px; border-left: 3px solid #dee2e6; color: #495057; }
+    .image-finding { margin: 0.75rem 0; padding: 10px 14px; background: #f8f9fa; border-left: 3px solid #e96304; border-radius: 4px; font-size: 0.95em; }
+    .measurement { display: inline-block; background: #e2e8f0; padding: 2px 8px; border-radius: 4px; font-family: monospace; font-size: 0.9em; color: #2d3748; }
+    .anatomy-label { display: inline-block; background: #5E899E; color: #fff; padding: 1px 9px; border-radius: 10px; font-size: 0.82em; font-weight: 600; letter-spacing: 0.3px; white-space: nowrap; }
+    .anatomy-pearl { margin: 1rem 0; padding: 12px 16px; background: #f0f7fa; border-left: 4px solid #5E899E; border-radius: 0 6px 6px 0; }
+`;
+
+// Init TinyMCE when protocol modal opens
+document.getElementById('protocolModal').addEventListener('shown.bs.modal', function() {
+    // Only init if not already active
+    if (tinymce.get('protocolContentHtml')) return;
+    tinymce.init({
+        selector: '#protocolContentHtml',
+        height: 300,
+        menubar: false,
+        toolbar: 'undo redo | blocks styles | bold italic underline | numlist bullist indent outdent | table link image code removeformat',
+        plugins: 'table link image code lists',
+        base_url: 'https://cdn.jsdelivr.net/npm/tinymce@6',
+        relative_urls: false,
+        convert_urls: false,
+        remove_script_host: false,
+        extended_valid_elements: 'div[*],span[*],sup[*],i[*],a[*],img[*],style[*],script[*]',
+        valid_children: '+body[style|script]',
+        custom_elements: '~style,~script',
+        style_formats_merge: true,
+        style_formats: [
+            { title: 'Callout Boxes', items: [
+                { title: 'Clinical Note', block: 'div', classes: 'clinical-note' },
+                { title: 'Key Finding', block: 'div', classes: 'key-finding' },
+                { title: 'Teaching Pearl', block: 'div', classes: 'teaching-pearl' },
+                { title: 'Pitfall', block: 'div', classes: 'pitfall' },
+                { title: 'Differential Dx', block: 'div', classes: 'differential-dx' },
+                { title: 'Normal Variant', block: 'div', classes: 'normal-variant' },
+            ]},
+            { title: 'Diagnostic Boxes', items: [
+                { title: 'Diagnosis Box', block: 'div', classes: 'diagnosis-box' },
+                { title: 'Staging Info', block: 'div', classes: 'staging-info' },
+                { title: 'Comparison Box', block: 'div', classes: 'comparison-box' },
+                { title: 'Image Finding', block: 'div', classes: 'image-finding' },
+                { title: 'Anatomy Pearl', block: 'div', classes: 'anatomy-pearl' },
+            ]},
+            { title: 'Text Emphasis', items: [
+                { title: 'Highlight Yellow', inline: 'span', classes: 'highlight-yellow' },
+                { title: 'Highlight Green', inline: 'span', classes: 'highlight-green' },
+                { title: 'Highlight Red', inline: 'span', classes: 'highlight-red' },
+                { title: 'Highlight Blue', inline: 'span', classes: 'highlight-blue' },
+                { title: 'Important Text', inline: 'span', classes: 'important-text' },
+                { title: 'Subtle Text', inline: 'span', classes: 'subtle-text' },
+            ]},
+            { title: 'Radiology', items: [
+                { title: 'Measurement', inline: 'span', classes: 'measurement' },
+                { title: 'Anatomy Label', inline: 'span', classes: 'anatomy-label' },
+                { title: 'Indent Block', block: 'div', classes: 'indent-block' },
+            ]},
+        ],
+        table_advtab: false,
+        table_cell_advtab: false,
+        table_default_attributes: { border: '1', class: 'table table-sm table-bordered' },
+        image_advtab: true,
+        link_assume_external_targets: true,
+        content_css: 'default',
+        skin: 'oxide',
+        content_style: EDITOR_CONTENT_STYLE,
+        images_upload_handler: function(blobInfo, progress) {
+            return new Promise(function(resolve, reject) {
+                if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {
+                    reject('Cloudinary not configured');
+                    return;
+                }
+                var formData = new FormData();
+                formData.append('file', blobInfo.blob(), blobInfo.filename());
+                formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+                formData.append('folder', 'radinsights/protocols');
+                var xhr = new XMLHttpRequest();
+                xhr.open('POST', 'https://api.cloudinary.com/v1_1/' + CLOUDINARY_CLOUD_NAME + '/image/upload');
+                xhr.upload.onprogress = function(e) {
+                    if (e.lengthComputable) progress(Math.round(e.loaded / e.total * 100));
+                };
+                xhr.onload = function() {
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        var json = JSON.parse(xhr.responseText);
+                        if (json.secure_url) resolve(json.secure_url);
+                        else reject('Upload failed: no URL returned');
+                    } else reject('Upload failed: HTTP ' + xhr.status);
+                };
+                xhr.onerror = function() { reject('Upload error'); };
+                xhr.send(formData);
+            });
+        },
+    });
+});
+
+// Destroy TinyMCE when modal closes (prevents stale instances)
+document.getElementById('protocolModal').addEventListener('hidden.bs.modal', function() {
+    var editor = tinymce.get('protocolContentHtml');
+    if (editor) {
+        // Sync content back to textarea before destroying
+        document.getElementById('protocolContentHtml').value = editor.getContent();
+        editor.remove();
+    }
+});
+
 // ==================== CATEGORY FILTER ====================
 document.querySelectorAll('.filter-btn').forEach(function(btn) {
     btn.addEventListener('click', function() {
@@ -622,7 +755,10 @@ function saveProtocol() {
         category: document.getElementById('protocolCategory').value,
         keywords: document.getElementById('protocolKeywords').value,
         source_citation: JSON.stringify(resources),
-        content_html: document.getElementById('protocolContentHtml').value,
+        content_html: (function() {
+            var editor = tinymce.get('protocolContentHtml');
+            return editor ? editor.getContent() : document.getElementById('protocolContentHtml').value;
+        })(),
         content_structured: structured,
         body_section: document.getElementById('protocolBodySection').value,
         is_published: document.getElementById('protocolPublished').checked,
