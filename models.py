@@ -3041,3 +3041,104 @@ class IncidentalFindingCalculator(db.Model):
 
     def __repr__(self):
         return f'<IncidentalFindingCalculator {self.slug}: {self.finding_name}>'
+
+
+# ==================== SNIPPET REFERENCE / DOCUMENT / IMAGE ====================
+
+class SnippetReference(db.Model):
+    """URL references attached to anatomy snippets (journal articles, guidelines, etc.)."""
+    __tablename__ = 'snippet_reference'
+
+    id = db.Column(db.Integer, primary_key=True)
+    algorithm_id = db.Column(db.Integer, db.ForeignKey('reporting_algorithm.id'), nullable=False, index=True)
+    ref_number = db.Column(db.Integer, nullable=False)
+    title = db.Column(db.Text, nullable=False)
+    url = db.Column(db.Text, nullable=False)
+    journal = db.Column(db.String(500))
+    year = db.Column(db.String(10))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    algorithm = db.relationship('ReportingAlgorithm', backref=db.backref('references', cascade='all, delete-orphan'))
+
+    __table_args__ = (
+        db.UniqueConstraint('algorithm_id', 'ref_number', name='uq_snippet_ref_number'),
+    )
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'algorithm_id': self.algorithm_id,
+            'ref_number': self.ref_number,
+            'title': self.title,
+            'url': self.url,
+            'journal': self.journal,
+            'year': self.year,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+class SnippetDocument(db.Model):
+    """PDF/document uploads attached to anatomy snippets via Cloudinary."""
+    __tablename__ = 'snippet_document'
+
+    id = db.Column(db.Integer, primary_key=True)
+    algorithm_id = db.Column(db.Integer, db.ForeignKey('reporting_algorithm.id'), nullable=False, index=True)
+    title = db.Column(db.String(500), nullable=False)
+    cloudinary_url = db.Column(db.String(500), nullable=False)
+    cloudinary_public_id = db.Column(db.String(255))
+    file_type = db.Column(db.String(50), default='pdf')
+    file_size_kb = db.Column(db.Integer)
+    uploaded_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    algorithm = db.relationship('ReportingAlgorithm', backref=db.backref('documents', cascade='all, delete-orphan'))
+    uploaded_by = db.relationship('User')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'algorithm_id': self.algorithm_id,
+            'title': self.title,
+            'cloudinary_url': self.cloudinary_url,
+            'file_type': self.file_type,
+            'file_size_kb': self.file_size_kb,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+class SnippetImage(db.Model):
+    """Images with attribution attached to anatomy snippets (Radiopaedia, CC, manual)."""
+    __tablename__ = 'snippet_image'
+
+    id = db.Column(db.Integer, primary_key=True)
+    algorithm_id = db.Column(db.Integer, db.ForeignKey('reporting_algorithm.id'), nullable=False, index=True)
+    source_url = db.Column(db.String(1000), nullable=False)
+    source_domain = db.Column(db.String(255), nullable=False)
+    thumbnail_url = db.Column(db.String(500))
+    image_type = db.Column(db.String(50), default='ct_mri')
+    modality = db.Column(db.String(50))
+    description = db.Column(db.Text)
+    display_order = db.Column(db.Integer, default=0)
+    license = db.Column(db.String(100), nullable=False, default='CC BY-NC-SA 3.0')
+    attribution = db.Column(db.String(500), nullable=False)
+    added_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    algorithm = db.relationship('ReportingAlgorithm', backref=db.backref('snippet_images', cascade='all, delete-orphan'))
+    added_by = db.relationship('User')
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'algorithm_id': self.algorithm_id,
+            'source_url': self.source_url,
+            'source_domain': self.source_domain,
+            'thumbnail_url': self.thumbnail_url,
+            'image_type': self.image_type,
+            'modality': self.modality,
+            'description': self.description,
+            'display_order': self.display_order,
+            'license': self.license,
+            'attribution': self.attribution,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }

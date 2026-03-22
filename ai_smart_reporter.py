@@ -71,11 +71,12 @@ class SmartReporterError(AIClientError):
 # ==================== SHARED API HELPERS (delegated to ai_client) ====================
 
 def _call_claude(system_prompt, user_prompt, model=None, max_tokens=4000,
-                 temperature=0.3, timeout=60):
+                 temperature=0.3, timeout=60, skip_preamble=False):
     """Wrapper that raises SmartReporterError instead of AIClientError."""
     return _call_claude_raw(system_prompt, user_prompt, model=model,
                             max_tokens=max_tokens, temperature=temperature,
-                            timeout=timeout, error_class=SmartReporterError)
+                            timeout=timeout, error_class=SmartReporterError,
+                            skip_preamble=skip_preamble)
 
 
 def _parse_json_response(text):
@@ -493,6 +494,7 @@ def classify_intent(user_input):
         max_tokens=500,
         temperature=0.1,
         timeout=10,
+        skip_preamble=True,
     )
 
     parsed = _parse_json_response(text)
@@ -517,95 +519,272 @@ def classify_intent(user_input):
     return parsed
 
 
-# ==================== ANATOMY REFERENCE (Phase 5) ====================
+# ==================== ANATOMY REFERENCE (Phase 5 — upgraded) ====================
 
-ANATOMY_SYSTEM_PROMPT = (
-    "You are a senior consultant radiologist creating a workstation-ready anatomy reference "
-    "for radiology trainees. You think like someone who has reported thousands of CT/MRI/X-ray "
-    "studies and knows EXACTLY what trips up trainees at the workstation.\n\n"
-    "Your output must be:\n"
-    "- Clinically aligned: tied to real imaging scenarios, not textbook descriptions\n"
-    "- Practically useful: help trainees recognise structures on actual scans and report correctly\n"
-    "- Memorable: use mnemonics, analogies, and 'pearl' boxes where helpful\n"
-    "- Warning-oriented: emphasise pitfalls, normal variants that mimic pathology, "
-    "and common reporting errors\n\n"
-    "Output valid HTML. No markdown. Use <h4>, <p>, <ul>, <li>, <strong>, <em> tags. "
-    "For high-yield tips, use: <div class=\"anatomy-pearl\"><strong>Pearl:</strong> ...</div>"
+from ai_pearl_generator import (
+    _esc, _card_open, _card_open_custom, _card_close,
+    fetch_radiopaedia_image,
 )
 
-ANATOMY_PROMPT = """Create a radiology-focused anatomy reference for: {topic}
+ANATOMY_SYSTEM_PROMPT = (
+    "You are a senior consultant radiologist creating a concise anatomy reference card "
+    "for radiology registrars and consultants. You have reported thousands of studies "
+    "and know which anatomical knowledge actually matters at the workstation.\n\n"
+    "Focus ONLY on clinically and radiologically relevant anatomy:\n"
+    "- Describe anatomy as it appears on imaging, not cadaveric dissection\n"
+    "- Only mention modality-specific appearances when they are UNUSUAL, DIAGNOSTIC, "
+    "or a COMMON SOURCE OF CONFUSION (e.g. melanoma mets T1 hyperintense — useful; "
+    "air is T1 hypointense — waste of space)\n"
+    "- Emphasise normal variants that mimic pathology and cause reporting errors\n"
+    "- Include measurements with actionable thresholds\n"
+    "- Brief embryology ONLY when it explains why a variant exists\n\n"
+    "You produce ONLY valid JSON. No markdown fences, no explanation outside the JSON.\n"
+    "Use UK English spelling."
+)
 
-You are writing for a radiology trainee who needs to understand this anatomy
-well enough to REPORT on imaging studies confidently. NOT a textbook chapter —
-a practical workstation companion.
+ANATOMY_PROMPT = """Generate a radiology anatomy reference card for: {topic}
+Modality context: {modality}
+Body region: {body_section}
 
-Structure your response as HTML with these sections:
+Return a JSON object:
 
-1. <h4>Essential Anatomy for Reporting</h4>
-   - Key structures a radiologist MUST identify on imaging
-   - Use imaging landmarks (e.g. "at the level of the carina", "posterior to the IVC")
-   - Include cross-sectional relationships visible on axial CT/MRI
+{{
+  "title": "Concise title (e.g. 'Circle of Willis — Neurovascular Anatomy')",
+  "overview": "2-3 sentences: what this anatomy is and why radiologists must know it",
+  "key_structures": [
+    {{
+      "name": "Structure name",
+      "imaging_landmark": "How to find it on cross-sectional imaging",
+      "relationships": "What lies adjacent (anterior, posterior, medial, lateral)",
+      "reporting_relevance": "Why this structure matters in a radiology report"
+    }}
+  ],
+  "normal_variants": [
+    {{
+      "variant": "Variant name",
+      "prevalence": "Approximate prevalence",
+      "why_it_exists": "Brief embryological/developmental explanation (1 sentence)",
+      "imaging_pitfall": "How this mimics pathology or causes reporting errors"
+    }}
+  ],
+  "measurements": [
+    {{
+      "what": "Structure to measure",
+      "normal": "Normal range with units",
+      "abnormal_threshold": "When to flag and what to recommend"
+    }}
+  ],
+  "diagnostic_appearances": [
+    {{
+      "finding": "The unusual/diagnostic appearance",
+      "modality": "Which modality",
+      "significance": "What it means or what it gets confused with"
+    }}
+  ],
+  "pathology_at_this_site": [
+    {{
+      "pathology": "Common pathology",
+      "key_finding": "The imaging finding",
+      "clinical_question": "What the referrer needs answered"
+    }}
+  ],
+  "pearls": [
+    "High-yield reporting tip, mnemonic, or pitfall — one per item"
+  ]
+}}
 
-2. <h4>Imaging Appearance by Modality</h4>
-   - Normal appearance on CT, MRI, and/or ultrasound (whichever are relevant)
-   - Signal/density characteristics, enhancement patterns
-   - What the structure looks like vs what it gets confused with
-
-3. <h4>Normal Variants & Pitfalls</h4>
-   - CRITICAL: variants that mimic pathology (e.g. persistent sciatic artery mimicking DVT)
-   - Common reporting errors related to this anatomy
-   - Include a <div class="anatomy-pearl"> for each high-yield pitfall
-
-4. <h4>Key Measurements & Thresholds</h4>
-   - Normal size ranges that trigger action if exceeded
-   - When to call it abnormal (e.g. "aortic root >4cm warrants follow-up")
-
-5. <h4>Clinical Correlation</h4>
-   - How pathology at this site presents on imaging
-   - What clinical question is the referrer usually asking?
-   - Link anatomy to the report: what findings at this site mean clinically
-
-6. <h4>Memory Aids</h4>
-   - Mnemonics, analogies, or systematic approaches to avoid missing findings
-   - E.g. "ABCDE approach for chest X-ray" or "the rule of 2s for Meckel's"
-   - Keep these genuinely useful, not forced
-
-Target length: 400-500 words. Every sentence should help a trainee report better.
-NEVER include generic filler. If a section has nothing useful to add, skip it.
-Use HTML tags: <h4>, <p>, <ul>, <li>, <strong>, <em>.
-For high-yield tips use: <div class="anatomy-pearl"><strong>Pearl:</strong> text</div>"""
+RULES:
+- 3-6 key structures, 2-5 normal variants, 2-4 measurements
+- Only 2-3 diagnostic appearances (the genuinely unusual/tricky ones)
+- 3-5 pathologies, 3-5 pearls
+- Every fact must be radiologically accurate — do not fabricate prevalences or measurements
+- Skip any section with nothing genuinely useful to add
+- If modality context is provided, tailor content to that modality
+- NO generic imaging descriptions (do NOT describe normal CT density or normal MRI signal unless it is diagnostically relevant or confusing)"""
 
 
-def generate_anatomy_reference(topic):
+def render_anatomy_html(data, radiopaedia_image=None):
+    """Render structured anatomy JSON into Bootstrap 5 card HTML."""
+    parts = []
+
+    title = data.get('title', '')
+    if title:
+        parts.append(f'<h3 class="mb-3">{_esc(title)}</h3>')
+
+    # Overview — teal
+    overview = data.get('overview', '')
+    if overview:
+        parts.append(_card_open_custom('#5E899E', 'fa-bone', 'Overview'))
+        parts.append(f'<p class="mb-0">{_esc(overview)}</p>')
+        parts.append(_card_close())
+
+    # Key Structures — blue
+    structures = data.get('key_structures', [])
+    if structures:
+        parts.append(_card_open('primary', 'fa-crosshairs', 'Key Structures'))
+        parts.append(
+            '<div class="table-responsive"><table class="table table-sm table-bordered mb-0">'
+            '<thead><tr><th>Structure</th><th>Imaging Landmark</th>'
+            '<th>Relationships</th><th>Reporting Relevance</th></tr></thead><tbody>'
+        )
+        for s in structures:
+            parts.append(
+                f'<tr><td><strong>{_esc(s.get("name", ""))}</strong></td>'
+                f'<td>{_esc(s.get("imaging_landmark", ""))}</td>'
+                f'<td>{_esc(s.get("relationships", ""))}</td>'
+                f'<td>{_esc(s.get("reporting_relevance", ""))}</td></tr>'
+            )
+        parts.append('</tbody></table></div>')
+        parts.append(_card_close())
+
+    # Normal Variants — amber/warning
+    variants = data.get('normal_variants', [])
+    if variants:
+        parts.append(_card_open('warning', 'fa-exclamation-triangle', 'Normal Variants &amp; Pitfalls'))
+        parts.append(
+            '<div class="table-responsive"><table class="table table-sm table-bordered mb-0">'
+            '<thead><tr><th>Variant</th><th>Prevalence</th>'
+            '<th>Why It Exists</th><th>Imaging Pitfall</th></tr></thead><tbody>'
+        )
+        for v in variants:
+            parts.append(
+                f'<tr><td><strong>{_esc(v.get("variant", ""))}</strong></td>'
+                f'<td>{_esc(v.get("prevalence", ""))}</td>'
+                f'<td>{_esc(v.get("why_it_exists", ""))}</td>'
+                f'<td>{_esc(v.get("imaging_pitfall", ""))}</td></tr>'
+            )
+        parts.append('</tbody></table></div>')
+        parts.append(_card_close())
+
+    # Measurements — green/success
+    measurements = data.get('measurements', [])
+    if measurements:
+        parts.append(_card_open('success', 'fa-ruler', 'Measurements'))
+        parts.append(
+            '<div class="table-responsive"><table class="table table-sm table-bordered mb-0">'
+            '<thead><tr><th>What</th><th>Normal</th>'
+            '<th>Abnormal Threshold</th></tr></thead><tbody>'
+        )
+        for m in measurements:
+            parts.append(
+                f'<tr><td><strong>{_esc(m.get("what", ""))}</strong></td>'
+                f'<td>{_esc(m.get("normal", ""))}</td>'
+                f'<td>{_esc(m.get("abnormal_threshold", ""))}</td></tr>'
+            )
+        parts.append('</tbody></table></div>')
+        parts.append(_card_close())
+
+    # Diagnostic Appearances — purple
+    appearances = data.get('diagnostic_appearances', [])
+    if appearances:
+        parts.append(_card_open_custom('#6b46c1', 'fa-eye', 'Diagnostic Appearances'))
+        parts.append(
+            '<div class="table-responsive"><table class="table table-sm table-bordered mb-0">'
+            '<thead><tr><th>Finding</th><th>Modality</th>'
+            '<th>Significance</th></tr></thead><tbody>'
+        )
+        for a in appearances:
+            parts.append(
+                f'<tr><td><strong>{_esc(a.get("finding", ""))}</strong></td>'
+                f'<td>{_esc(a.get("modality", ""))}</td>'
+                f'<td>{_esc(a.get("significance", ""))}</td></tr>'
+            )
+        parts.append('</tbody></table></div>')
+        parts.append(_card_close())
+
+    # Pathology at This Site — red/danger
+    pathologies = data.get('pathology_at_this_site', [])
+    if pathologies:
+        parts.append(_card_open('danger', 'fa-search', 'Pathology at This Site'))
+        parts.append(
+            '<div class="table-responsive"><table class="table table-sm table-bordered mb-0">'
+            '<thead><tr><th>Pathology</th><th>Key Finding</th>'
+            '<th>Clinical Question</th></tr></thead><tbody>'
+        )
+        for p in pathologies:
+            parts.append(
+                f'<tr><td><strong>{_esc(p.get("pathology", ""))}</strong></td>'
+                f'<td>{_esc(p.get("key_finding", ""))}</td>'
+                f'<td>{_esc(p.get("clinical_question", ""))}</td></tr>'
+            )
+        parts.append('</tbody></table></div>')
+        parts.append(_card_close())
+
+    # Pearls — dark
+    pearls = data.get('pearls', [])
+    if pearls:
+        parts.append(_card_open('dark', 'fa-lightbulb', 'Pearls'))
+        parts.append('<ul class="mb-0">')
+        for tip in pearls:
+            parts.append(f'<li>{_esc(tip)}</li>')
+        parts.append('</ul>')
+        parts.append(_card_close())
+
+    # Radiopaedia image card (same pattern as pearl renderer)
+    if radiopaedia_image:
+        img_url = _esc(radiopaedia_image.get('link', ''))
+        thumb_url = _esc(radiopaedia_image.get('thumbnail_link', '') or img_url)
+        case_title = _esc(radiopaedia_image.get('title', 'Radiopaedia Case'))
+        case_url = _esc(radiopaedia_image.get('case_url', ''))
+        license_text = _esc(radiopaedia_image.get('license', 'CC BY-NC-SA 3.0'))
+
+        parts.append(
+            '<div class="card mt-3 border">'
+            '<div class="card-body text-center p-3">'
+            f'<a href="{case_url}" target="_blank" rel="noopener noreferrer">'
+            f'<img src="{thumb_url}" alt="{case_title}" '
+            f'class="img-fluid rounded" style="max-height: 300px;" loading="lazy">'
+            f'</a>'
+            f'<p class="mt-2 mb-0 small text-muted">'
+            f'<a href="{case_url}" target="_blank" rel="noopener noreferrer">'
+            f'{case_title}</a>'
+            f' &mdash; Radiopaedia.org &mdash; {license_text}'
+            f'</p>'
+            '</div></div>'
+        )
+
+    return '\n'.join(parts)
+
+
+def generate_anatomy_reference(topic, modality='', body_section=''):
     """
-    Generate a concise anatomy reference for the editor Anatomy Panel.
-    Uses Haiku for speed. DB lookup should be attempted first (in routes).
-
-    Args:
-        topic: Anatomical topic (e.g. "Circle of Willis", "brachial plexus")
+    Generate a structured anatomy reference card.
+    Uses Sonnet for quality. DB lookup should be attempted first (in routes).
 
     Returns:
-        dict with: title, content_html, source ('ai'), model, token_count
+        dict with: title, content_html, source, model, token_count, radiopaedia_image
     """
-    haiku_model = os.getenv("CLAUDE_QUICK_MODEL", "claude-haiku-4-5-20251001")
+    sonnet_model = os.getenv("CLAUDE_MAIN_MODEL", "claude-sonnet-4-5-20250929")
 
-    prompt = ANATOMY_PROMPT.format(topic=topic)
+    prompt = ANATOMY_PROMPT.format(
+        topic=topic,
+        modality=modality or 'not specified',
+        body_section=body_section or 'not specified',
+    )
 
     text, model, tokens = _call_claude(
         system_prompt=ANATOMY_SYSTEM_PROMPT,
         user_prompt=prompt,
-        model=haiku_model,
-        max_tokens=2000,
+        model=sonnet_model,
+        max_tokens=3333,
         temperature=0.3,
-        timeout=20,
+        timeout=45,
     )
 
+    parsed = _parse_json_response(text)
+
+    # Auto-fetch Radiopaedia image
+    radiopaedia_image = fetch_radiopaedia_image(topic, modality=modality)
+
+    content_html = render_anatomy_html(parsed, radiopaedia_image=radiopaedia_image)
+
     return {
-        'title': topic.title(),
-        'content_html': text,
+        'title': parsed.get('title', topic.title()),
+        'content_html': content_html,
         'source': 'ai',
         'model': model,
         'token_count': tokens,
+        'radiopaedia_image': radiopaedia_image,
     }
 
 
@@ -674,6 +853,7 @@ def generate_blank_template(modality='', body_section='', clinical_question=''):
         max_tokens=1500,
         temperature=0.2,
         timeout=15,
+        skip_preamble=True,
     )
 
     return {

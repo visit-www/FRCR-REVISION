@@ -211,13 +211,29 @@ STRUCTURE YOUR OUTPUT LIKE THIS EXAMPLE (adapt content to the actual diagnosis):
   <ul><li>High-yield teaching point for FRCR</li></ul>
 </div>
 
-CONTENT FOCUS (unchanged from before):
+CONTENT FOCUS:
 • Dangerous anatomy relevant to this diagnosis
 • Spread patterns and routes of involvement
 • Complications and what to look for
 • Key imaging signs and how they appear
 • What differentiates mild vs severe / stable vs unstable
 • What MUST be mentioned in a report
+
+IMAGE GUIDANCE (add 1-2 of these in a .image-finding box at the end of the discussion):
+When describing the key diagnostic imaging finding, be specific enough that an admin
+could search for a matching reference image. Include:
+• The modality and sequence/phase (e.g. 'arterial phase CT', 'T2 FLAIR MRI')
+• The specific visual appearance (e.g. 'hyperdense crescent', 'ring-enhancing lesion
+  with surrounding oedema', 'target sign on axial CT')
+• A suggested search term in [brackets] that would find a good reference image
+  (e.g. [epidural haematoma CT axial biconvex])
+Example:
+<div class="image-finding">
+  <strong>Key Image</strong>
+  <p>On <span class="anatomy-label">axial unenhanced CT</span>, look for a
+  biconvex hyperdense extra-axial collection — the classic lens-shaped haematoma.
+  [epidural haematoma CT axial biconvex hyperdense]</p>
+</div>
 
 If staging/grading/classification exists (non-cancer):
 • Do NOT give full scoring tables — only the 2-4 features that change management
@@ -361,11 +377,15 @@ def generate_prelim_case_data(case_context, provider="claude", model=None):
     if model is None:
         model = os.getenv("CLAUDE_MODEL", "claude-sonnet-4-20250514")
 
+    # Prepend shared ABC preamble for consistency with ai_client.py
+    from ai_client import ABC_PREAMBLE
+    effective_system = ABC_PREAMBLE + system_prompt
+
     payload = {
         "model": model,
         "max_tokens": 6000,  # HTML markup adds ~40-50% overhead vs plain text
         "temperature": 0.3,  # Slightly higher for more natural language
-        "system": system_prompt,
+        "system": effective_system,
         "messages": [
             {"role": "user", "content": user_prompt}
         ],

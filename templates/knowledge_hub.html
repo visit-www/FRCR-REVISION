@@ -315,6 +315,31 @@
     </div>
 </div>
 
+<!-- Image Search Modal (admin only) -->
+{% if is_admin %}
+<div class="modal fade app-content-modal" id="snippetImageSearchModal" tabindex="-1" data-bs-focus="false">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-search me-2 text-success"></i>Search Images</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="d-flex gap-2 mb-3">
+                    <input type="text" class="form-control" id="imgSearchTopic" placeholder="Search topic...">
+                    <button class="btn btn-success" onclick="searchSnippetImages()"><i class="fas fa-search me-1"></i>Search</button>
+                </div>
+                <div id="imgSearchLoading" class="text-center d-none py-3">
+                    <div class="spinner-border text-success" role="status"></div>
+                    <p class="mt-2 text-muted">Searching references, Radiopaedia, and CC sources...</p>
+                </div>
+                <div id="imgSearchResults"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <!-- Generate Pearl Modal (admin AI generator) -->
 <div class="modal fade app-content-modal" id="generatePearlModal" tabindex="-1" data-bs-focus="false">
     <div class="modal-dialog modal-xl">
@@ -1043,6 +1068,61 @@ function selectItem(el) {
         var aModality = data.dataset.modality;
         var aColor = aModality ? getModalityColor(aModality) : null;
 
+        var adminSections = '';
+        {% if is_admin %}
+        adminSections =
+            '<div class="mt-3">' +
+            '  <div class="card mb-2"><div class="card-header py-2 d-flex justify-content-between align-items-center" role="button" data-bs-toggle="collapse" data-bs-target="#snippetRefsCollapse">' +
+            '    <span><i class="fas fa-bookmark me-2 text-primary"></i><strong>References</strong></span>' +
+            '    <i class="fas fa-chevron-down small"></i>' +
+            '  </div><div class="collapse" id="snippetRefsCollapse"><div class="card-body py-2">' +
+            '    <div id="snippetRefsList"></div>' +
+            '    <hr class="my-2">' +
+            '    <div class="row g-2 align-items-end">' +
+            '      <div class="col-5"><input type="text" class="form-control form-control-sm" id="newRefTitle" placeholder="Title"></div>' +
+            '      <div class="col-4"><input type="text" class="form-control form-control-sm" id="newRefUrl" placeholder="URL"></div>' +
+            '      <div class="col-3"><button class="btn btn-sm btn-outline-primary w-100" onclick="addSnippetReference(' + snippetId + ')"><i class="fas fa-plus me-1"></i>Add</button></div>' +
+            '    </div>' +
+            '    <div class="row g-2 mt-1">' +
+            '      <div class="col-6"><input type="text" class="form-control form-control-sm" id="newRefJournal" placeholder="Journal (optional)"></div>' +
+            '      <div class="col-6"><input type="text" class="form-control form-control-sm" id="newRefYear" placeholder="Year (optional)"></div>' +
+            '    </div>' +
+            '  </div></div></div>' +
+            '  <div class="card mb-2"><div class="card-header py-2 d-flex justify-content-between align-items-center" role="button" data-bs-toggle="collapse" data-bs-target="#snippetDocsCollapse">' +
+            '    <span><i class="fas fa-file-pdf me-2 text-danger"></i><strong>Documents</strong></span>' +
+            '    <i class="fas fa-chevron-down small"></i>' +
+            '  </div><div class="collapse" id="snippetDocsCollapse"><div class="card-body py-2">' +
+            '    <div id="snippetDocsList"></div>' +
+            '    <hr class="my-2">' +
+            '    <div class="d-flex gap-2 align-items-center">' +
+            '      <input type="text" class="form-control form-control-sm" id="newDocTitle" placeholder="Document title">' +
+            '      <input type="file" class="form-control form-control-sm" id="newDocFile" accept=".pdf,.doc,.docx" style="max-width:200px;">' +
+            '      <button class="btn btn-sm btn-outline-danger" onclick="uploadSnippetDocument(' + snippetId + ')"><i class="fas fa-upload me-1"></i>Upload</button>' +
+            '    </div>' +
+            '  </div></div></div>' +
+            '  <div class="card mb-2"><div class="card-header py-2 d-flex justify-content-between align-items-center" role="button" data-bs-toggle="collapse" data-bs-target="#snippetImgsCollapse">' +
+            '    <span><i class="fas fa-images me-2 text-success"></i><strong>Images</strong></span>' +
+            '    <i class="fas fa-chevron-down small"></i>' +
+            '  </div><div class="collapse" id="snippetImgsCollapse"><div class="card-body py-2">' +
+            '    <div id="snippetImagesList" class="row g-2 mb-2"></div>' +
+            '    <div class="d-flex gap-2">' +
+            '      <button class="btn btn-sm btn-outline-success" onclick="openImageSearchModal(' + snippetId + ', \'' + (data.dataset.title || '').replace(/'/g, "\\'") + '\')"><i class="fas fa-search me-1"></i>Search Images</button>' +
+            '      <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="collapse" data-bs-target="#manualImageForm"><i class="fas fa-plus me-1"></i>Add URL</button>' +
+            '    </div>' +
+            '    <div class="collapse mt-2" id="manualImageForm">' +
+            '      <div class="row g-2">' +
+            '        <div class="col-6"><input type="text" class="form-control form-control-sm" id="newImgUrl" placeholder="Image URL"></div>' +
+            '        <div class="col-6"><input type="text" class="form-control form-control-sm" id="newImgAttribution" placeholder="Attribution"></div>' +
+            '      </div>' +
+            '      <div class="row g-2 mt-1">' +
+            '        <div class="col-6"><input type="text" class="form-control form-control-sm" id="newImgLicense" placeholder="License (e.g. CC BY-NC-SA 3.0)" value="CC BY-NC-SA 3.0"></div>' +
+            '        <div class="col-6"><button class="btn btn-sm btn-outline-success w-100" onclick="addSnippetImageManual(' + snippetId + ')"><i class="fas fa-plus me-1"></i>Add Image</button></div>' +
+            '      </div>' +
+            '    </div>' +
+            '  </div></div></div>' +
+            '</div>';
+        {% endif %}
+
         detailContent.innerHTML =
             '<div class="detail-card"' + (aColor ? ' style="border-left: 5px solid ' + aColor.border + ';"' : '') + '>' +
             '  <div class="detail-header">' +
@@ -1068,8 +1148,14 @@ function selectItem(el) {
             {% endif %}
             '  </div>' +
             '</div>' +
+            adminSections +
             '<div id="linkedContentSection" class="mt-3"></div>';
         loadLinkedContent('algorithm', snippetId);
+        {% if is_admin %}
+        loadSnippetReferences(snippetId);
+        loadSnippetDocuments(snippetId);
+        loadSnippetImages(snippetId);
+        {% endif %}
     }
 
     placeholder.classList.add('d-none');
@@ -1412,23 +1498,15 @@ function generateSnippet() {
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Generating...';
 
-    fetch('/api/smart-reporter/anatomy-reference', {
+    fetch('/api/smart-reporter/anatomy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ topic: topic })
+        body: JSON.stringify({ topic: topic, body_section: bodySection, modality: modality })
     })
     .then(function(r) { return r.json(); })
     .then(function(data) {
         if (data.error) { alert(data.error); return; }
-        if ((bodySection || modality) && data.success) {
-            fetch('/api/smart-reporter/update-snippet-metadata', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ topic: topic, body_section: bodySection, modality: modality })
-            }).finally(function() { location.reload(); });
-        } else {
-            location.reload();
-        }
+        location.reload();
     })
     .catch(function(err) { alert('Generation failed: ' + err.message); })
     .finally(function() {
@@ -1436,6 +1514,247 @@ function generateSnippet() {
         btn.innerHTML = '<i class="fas fa-magic me-1"></i>Generate';
     });
 }
+
+// ==================== SNIPPET REFERENCES / DOCUMENTS / IMAGES ====================
+{% if is_admin %}
+function loadSnippetReferences(algId) {
+    fetch('/api/snippet/' + algId + '/references')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        var el = document.getElementById('snippetRefsList');
+        if (!el) return;
+        var refs = data.references || [];
+        if (!refs.length) { el.innerHTML = '<p class="text-muted small mb-0">No references yet.</p>'; return; }
+        var html = '<div class="list-group list-group-flush">';
+        refs.forEach(function(ref) {
+            html += '<div class="list-group-item px-0 py-1 d-flex justify-content-between align-items-start">' +
+                '<div><span class="badge bg-primary me-1">[' + ref.ref_number + ']</span>' +
+                '<a href="' + ref.url + '" target="_blank" rel="noopener" class="text-decoration-none">' + ref.title + '</a>' +
+                (ref.journal ? ' <small class="text-muted">— ' + ref.journal + '</small>' : '') +
+                (ref.year ? ' <small class="text-muted">(' + ref.year + ')</small>' : '') +
+                '</div>' +
+                '<button class="btn btn-sm btn-outline-danger border-0 py-0" onclick="deleteSnippetReference(' + algId + ',' + ref.id + ')"><i class="fas fa-times"></i></button>' +
+                '</div>';
+        });
+        html += '</div>';
+        el.innerHTML = html;
+    });
+}
+
+function addSnippetReference(algId) {
+    var title = document.getElementById('newRefTitle').value.trim();
+    var url = document.getElementById('newRefUrl').value.trim();
+    if (!title || !url) { alert('Title and URL are required.'); return; }
+    fetch('/api/snippet/' + algId + '/references', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            title: title, url: url,
+            journal: document.getElementById('newRefJournal').value.trim(),
+            year: document.getElementById('newRefYear').value.trim()
+        })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.error) { alert(data.error); return; }
+        document.getElementById('newRefTitle').value = '';
+        document.getElementById('newRefUrl').value = '';
+        document.getElementById('newRefJournal').value = '';
+        document.getElementById('newRefYear').value = '';
+        loadSnippetReferences(algId);
+    });
+}
+
+function deleteSnippetReference(algId, refId) {
+    if (!confirm('Delete this reference?')) return;
+    fetch('/api/snippet/' + algId + '/references/' + refId, { method: 'DELETE' })
+    .then(function() { loadSnippetReferences(algId); });
+}
+
+function loadSnippetDocuments(algId) {
+    fetch('/api/snippet/' + algId + '/documents')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        var el = document.getElementById('snippetDocsList');
+        if (!el) return;
+        var docs = data.documents || [];
+        if (!docs.length) { el.innerHTML = '<p class="text-muted small mb-0">No documents yet.</p>'; return; }
+        var html = '';
+        docs.forEach(function(doc) {
+            html += '<div class="d-flex justify-content-between align-items-center py-1">' +
+                '<div><i class="fas fa-file-pdf text-danger me-1"></i>' +
+                '<a href="' + doc.cloudinary_url + '" target="_blank" rel="noopener">' + doc.title + '</a>' +
+                ' <small class="text-muted">(' + (doc.file_size_kb || '?') + ' KB)</small></div>' +
+                '<button class="btn btn-sm btn-outline-danger border-0 py-0" onclick="deleteSnippetDocument(' + algId + ',' + doc.id + ')"><i class="fas fa-times"></i></button>' +
+                '</div>';
+        });
+        el.innerHTML = html;
+    });
+}
+
+function uploadSnippetDocument(algId) {
+    var fileInput = document.getElementById('newDocFile');
+    var titleInput = document.getElementById('newDocTitle');
+    if (!fileInput.files.length) { alert('Select a file first.'); return; }
+    var formData = new FormData();
+    formData.append('file', fileInput.files[0]);
+    formData.append('title', titleInput.value.trim() || fileInput.files[0].name);
+    fetch('/api/snippet/' + algId + '/documents', { method: 'POST', body: formData })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.error) { alert(data.error); return; }
+        fileInput.value = '';
+        titleInput.value = '';
+        loadSnippetDocuments(algId);
+    });
+}
+
+function deleteSnippetDocument(algId, docId) {
+    if (!confirm('Delete this document?')) return;
+    fetch('/api/snippet/' + algId + '/documents/' + docId, { method: 'DELETE' })
+    .then(function() { loadSnippetDocuments(algId); });
+}
+
+function loadSnippetImages(algId) {
+    fetch('/api/snippet/' + algId + '/images')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        var el = document.getElementById('snippetImagesList');
+        if (!el) return;
+        var imgs = data.images || [];
+        if (!imgs.length) { el.innerHTML = '<p class="text-muted small mb-0 col-12">No images yet.</p>'; return; }
+        var html = '';
+        imgs.forEach(function(img) {
+            var thumb = img.thumbnail_url || img.source_url;
+            html += '<div class="col-6 col-md-4">' +
+                '<div class="card h-100">' +
+                '<a href="' + img.source_url + '" target="_blank" rel="noopener">' +
+                '<img src="' + thumb + '" class="card-img-top" alt="' + (img.description || '') + '" style="max-height:120px; object-fit:cover;" loading="lazy"></a>' +
+                '<div class="card-body p-2">' +
+                '<p class="small mb-1 text-truncate" title="' + img.source_domain + '">' + img.source_domain + '</p>' +
+                '<span class="badge bg-secondary" style="font-size:0.65rem;">' + img.license + '</span>' +
+                '<button class="btn btn-sm btn-outline-danger border-0 float-end py-0" onclick="deleteSnippetImage(' + algId + ',' + img.id + ')"><i class="fas fa-times"></i></button>' +
+                '</div></div></div>';
+        });
+        el.innerHTML = html;
+    });
+}
+
+function deleteSnippetImage(algId, imgId) {
+    if (!confirm('Remove this image?')) return;
+    fetch('/api/snippet/' + algId + '/images/' + imgId, { method: 'DELETE' })
+    .then(function() { loadSnippetImages(algId); });
+}
+
+function addSnippetImageManual(algId) {
+    var url = document.getElementById('newImgUrl').value.trim();
+    var attribution = document.getElementById('newImgAttribution').value.trim();
+    var license = document.getElementById('newImgLicense').value.trim();
+    if (!url) { alert('Image URL is required.'); return; }
+    fetch('/api/snippet/' + algId + '/images', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ source_url: url, attribution: attribution || url, license: license || 'CC BY-NC-SA 3.0' })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.error) { alert(data.error); return; }
+        document.getElementById('newImgUrl').value = '';
+        document.getElementById('newImgAttribution').value = '';
+        loadSnippetImages(algId);
+    });
+}
+
+var _imgSearchAlgId = null;
+function openImageSearchModal(algId, title) {
+    _imgSearchAlgId = algId;
+    document.getElementById('imgSearchTopic').value = title || '';
+    document.getElementById('imgSearchResults').innerHTML = '';
+    document.getElementById('imgSearchLoading').classList.add('d-none');
+    new bootstrap.Modal(document.getElementById('snippetImageSearchModal')).show();
+}
+
+function searchSnippetImages() {
+    var topic = document.getElementById('imgSearchTopic').value.trim();
+    if (!topic) { alert('Enter a search topic.'); return; }
+    var resultsEl = document.getElementById('imgSearchResults');
+    var loadingEl = document.getElementById('imgSearchLoading');
+    loadingEl.classList.remove('d-none');
+    resultsEl.innerHTML = '';
+
+    fetch('/api/snippet/' + _imgSearchAlgId + '/search-images', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ topic: topic })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        loadingEl.classList.add('d-none');
+        if (data.error) { resultsEl.innerHTML = '<p class="text-danger">' + data.error + '</p>'; return; }
+        var results = data.results || [];
+        if (!results.length) { resultsEl.innerHTML = '<p class="text-muted">No images found.</p>'; return; }
+
+        var groups = { reference: [], radiopaedia: [], cc_general: [] };
+        results.forEach(function(r) { (groups[r.source_group] || groups.cc_general).push(r); });
+
+        var html = '';
+        var groupLabels = { reference: 'From Your References', radiopaedia: 'Radiopaedia', cc_general: 'Other CC Sources' };
+        ['reference', 'radiopaedia', 'cc_general'].forEach(function(g) {
+            if (!groups[g].length) return;
+            html += '<h6 class="mt-3 mb-2"><i class="fas fa-' + (g === 'reference' ? 'bookmark' : g === 'radiopaedia' ? 'globe' : 'creative-commons') + ' me-1"></i>' + groupLabels[g] + ' (' + groups[g].length + ')</h6>';
+            html += '<div class="row g-2">';
+            groups[g].forEach(function(img, idx) {
+                var thumb = img.thumbnail_url || img.source_url;
+                var safeTitle = (img.title || '').replace(/"/g, '&quot;');
+                html += '<div class="col-4 col-md-3">' +
+                    '<div class="card h-100 position-relative">' +
+                    '<img src="' + thumb + '" class="card-img-top" style="max-height:100px; object-fit:cover;" loading="lazy" alt="' + safeTitle + '">' +
+                    '<div class="card-body p-2">' +
+                    '<p class="small mb-1 text-truncate">' + (img.source_domain || '') + '</p>' +
+                    '<span class="badge bg-secondary" style="font-size:0.6rem;">' + (img.license || 'CC') + '</span>' +
+                    '<button class="btn btn-sm btn-success py-0 px-1 float-end" onclick="attachSearchImage(' + idx + ',\'' + g + '\')" title="Attach"><i class="fas fa-plus"></i></button>' +
+                    '</div></div></div>';
+            });
+            html += '</div>';
+        });
+        resultsEl.innerHTML = html;
+        // Store results for attach
+        resultsEl._searchData = { groups: groups };
+    })
+    .catch(function(err) {
+        loadingEl.classList.add('d-none');
+        resultsEl.innerHTML = '<p class="text-danger">Search failed: ' + err.message + '</p>';
+    });
+}
+
+function attachSearchImage(idx, group) {
+    var resultsEl = document.getElementById('imgSearchResults');
+    var data = resultsEl._searchData;
+    if (!data) return;
+    var img = data.groups[group][idx];
+    if (!img) return;
+
+    fetch('/api/snippet/' + _imgSearchAlgId + '/images', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            source_url: img.source_url,
+            source_domain: img.source_domain,
+            thumbnail_url: img.thumbnail_url,
+            license: img.license || 'CC BY-NC-SA 3.0',
+            attribution: img.attribution || img.source_domain
+        })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(resp) {
+        if (resp.error) { alert(resp.error); return; }
+        loadSnippetImages(_imgSearchAlgId);
+        // Visual feedback
+        var btn = event.target.closest('button');
+        if (btn) { btn.innerHTML = '<i class="fas fa-check"></i>'; btn.disabled = true; btn.classList.replace('btn-success', 'btn-secondary'); }
+    });
+}
+{% endif %}
 
 // ==================== AI GENERATE PEARL ====================
 var _genPearlState = { html: '', data: null, editMode: false, tinyReady: false };

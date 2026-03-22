@@ -45,46 +45,40 @@ def _parse_json_response(text):
 # ── Prompts ──────────────────────────────────────────────────────────
 
 PEARL_SYSTEM_PROMPT = (
-    "You are an expert radiology educator writing a comprehensive teaching "
-    "pearl for FRCR exam trainees and radiology registrars. You produce ONLY "
-    "valid JSON. No markdown fences, no explanation outside the JSON object.\n\n"
-    "Your goal: create a pearl that a trainee can read in 3-5 minutes and walk "
-    "away with a practical, memorable understanding of the diagnosis — what to "
-    "look for on the workstation, what to not miss, and what to tell the "
-    "clinician.\n\n"
+    "You are a senior consultant radiologist writing a concise teaching pearl "
+    "for radiology registrars and consultants. You produce ONLY valid JSON. "
+    "No markdown fences, no explanation outside the JSON object.\n\n"
+    "Your goal: a pearl a registrar can read in 2-3 minutes and walk away "
+    "knowing what to look for, what to not miss, and what to tell the "
+    "clinician. Brevity is a virtue — every sentence must earn its place.\n\n"
     "RULES:\n"
-    "1. Every claim must be radiologically accurate. Do not fabricate criteria "
-    "or statistics.\n"
-    "2. Use precise anatomical and radiological terminology.\n"
-    "3. Use UK English spelling (e.g. tumour, centre, colour).\n"
-    "4. Tables are preferred for structured comparison data (mimics, search "
-    "patterns, grading).\n"
-    "5. Keep each section focused and concise — avoid filler sentences.\n"
-    "6. The search_pattern section must give a PRACTICAL step-by-step approach "
-    "a registrar would follow at the PACS workstation. Include window/level "
-    "settings, reformats, and specific things to click through.\n"
-    "7. aunt_minnie should describe the pathognomonic or near-pathognomonic "
-    "appearance — the one finding that clinches the diagnosis. If no true Aunt "
-    "Minnie exists, describe the most characteristic constellation.\n"
-    "8. mimics must give genuinely useful differentiators — not just 'clinical "
-    "correlation.' Include at least one imaging discriminator per mimic.\n"
-    "9. critical_findings should list findings that require immediate "
-    "communication (urgent call-back criteria). If there are none specific to "
-    "this diagnosis, list the general body-region critical findings.\n"
-    "10. clinical_correlation should answer: what is the clinician actually "
-    "asking when they request this scan, and what do they need in the report?\n"
-    "11. workstation_tips should include specific technical advice: window "
-    "settings, reconstruction algorithms, contrast timing, comparison "
-    "techniques.\n"
-    "12. Tags should be lowercase, specific, and useful for search (e.g. "
-    "'liver', 'hepatocellular carcinoma', 'lirads', 'arterial enhancement').\n"
-    "13. Provide 4-7 search pattern steps, 3-5 mimics, 2-4 critical findings, "
-    "3-5 report essentials, and 3-5 workstation tips.\n\n"
+    "1. Every claim must be radiologically accurate. Do not fabricate.\n"
+    "2. Use precise anatomical and radiological terminology. UK English.\n"
+    "3. Be CONCISE — short punchy sentences, no filler, no preamble.\n"
+    "4. search_pattern: practical PACS workstation steps. Include window/level "
+    "settings and reformats only when they genuinely help.\n"
+    "5. aunt_minnie: the pathognomonic or near-pathognomonic appearance — "
+    "the one finding that clinches the diagnosis. If no true Aunt Minnie "
+    "exists, describe the most characteristic constellation. Keep each "
+    "field to one sentence.\n"
+    "6. mimics: genuinely useful imaging discriminators — not 'clinical "
+    "correlation.' One clear differentiator per mimic.\n"
+    "7. critical_findings: urgent call-back criteria only.\n"
+    "8. clinical_correlation: what the clinician needs in the report.\n"
+    "9. workstation_tips: specific technical advice, not generic.\n"
+    "10. image_guidance: describe how key findings appear on imaging so an "
+    "admin can search for matching reference images. Include modality, "
+    "sequence/phase, and the specific visual appearance (e.g. 'T2 hyperintense "
+    "rim with central low signal on axial MRI' or 'hyperdense crescent on "
+    "unenhanced CT').\n"
+    "11. Counts: 3-4 search pattern steps, 2-3 mimics, 2-3 critical findings, "
+    "3-4 report essentials, 2-3 workstation tips, 1-2 image descriptions.\n"
+    "12. Tags: lowercase, specific, useful for search.\n\n"
     "Output ONLY the JSON object. No markdown. No explanation."
 )
 
 PEARL_USER_PROMPT = """\
-Generate a radiology teaching pearl for:
+Generate a concise radiology teaching pearl for:
 
 TOPIC: {topic}
 MODALITY: {modality}
@@ -93,47 +87,57 @@ BODY SECTION: {body_section}
 Return a single JSON object with this exact schema:
 
 {{
-  "title": "Short display title (e.g. 'Hepatocellular Carcinoma on MRI')",
+  "title": "Short title (e.g. 'HCC on MRI')",
   "search_pattern": {{
     "steps": [
       {{
         "step": 1,
         "action": "What to do at the workstation",
-        "detail": "Specific technique, window, or finding to assess",
-        "key_finding": "What you are looking for at this step"
+        "detail": "Specific technique or finding to assess",
+        "key_finding": "What you are looking for"
       }}
     ],
-    "summary_note": "One-sentence summary of the systematic approach"
+    "summary_note": "One-sentence systematic approach"
   }},
   "aunt_minnie": {{
-    "description": "The pathognomonic or most characteristic appearance",
-    "classic_presentation": "Brief clinical scenario where this is the spot diagnosis",
-    "confidence_note": "How confident can you be with imaging alone?"
+    "description": "The pathognomonic appearance (1 sentence)",
+    "classic_presentation": "Brief clinical scenario (1 sentence)",
+    "confidence_note": "Imaging-alone confidence (1 sentence)"
   }},
   "mimics": [
     {{
-      "diagnosis": "Name of the mimic",
-      "key_differentiator": "The ONE imaging feature that distinguishes it",
-      "pitfall": "Common mistake trainees make with this mimic"
+      "diagnosis": "Mimic name",
+      "key_differentiator": "ONE imaging feature that distinguishes it",
+      "pitfall": "Common trainee mistake"
     }}
   ],
   "critical_findings": [
     {{
       "finding": "The critical finding",
-      "action": "What to do (e.g. 'Urgent call to referrer')",
-      "timeframe": "How quickly to act"
+      "action": "What to do",
+      "timeframe": "How quickly"
     }}
   ],
   "clinical_correlation": {{
-    "clinical_question": "What is the referrer usually asking?",
-    "report_essentials": ["List of things that MUST be in the report"],
-    "mdm_note": "What the MDT/tumour board needs from radiology"
+    "clinical_question": "What is the referrer asking?",
+    "report_essentials": ["Must-include items in the report"],
+    "mdm_note": "What MDT needs from radiology (1 sentence)"
   }},
   "workstation_tips": [
-    "Specific technical tip for reading this study"
+    "Specific technical tip"
+  ],
+  "image_guidance": [
+    {{
+      "modality": "CT/MRI/US etc.",
+      "sequence_or_phase": "e.g. arterial phase, T2 FLAIR, lung window",
+      "appearance": "What the key finding looks like (e.g. 'hyperdense crescent on unenhanced CT')",
+      "search_term": "Suggested image search term for finding a reference image"
+    }}
   ],
   "tags": ["lowercase", "search", "tags"]
-}}"""
+}}
+
+KEEP IT SHORT. 3-4 search steps, 2-3 mimics, 2-3 critical findings, 3-4 report essentials, 2-3 workstation tips, 1-2 image descriptions."""
 
 
 # ── Generation function ──────────────────────────────────────────────
@@ -159,7 +163,7 @@ def generate_pearl(topic, modality='', body_section=''):
         system_prompt=PEARL_SYSTEM_PROMPT,
         user_prompt=user_prompt,
         model=model,
-        max_tokens=4000,
+        max_tokens=3000,
         temperature=0.3,
         timeout=90,
     )
@@ -400,7 +404,26 @@ def render_pearl_html(pearl_data, radiopaedia_image=None):
         parts.append('</ul>')
         parts.append(_card_close())
 
-    # ── 7. Radiopaedia Image (optional) ──
+    # ── 7. Image Guidance (Info) ──
+    img_guide = pearl_data.get('image_guidance', [])
+    if img_guide:
+        parts.append(_card_open('info', 'fa-camera', 'Image Guidance'))
+        parts.append(
+            '<div class="table-responsive"><table class="table table-sm table-bordered mb-0">'
+            '<thead><tr><th>Modality</th><th>Sequence / Phase</th>'
+            '<th>Appearance</th><th>Search Term</th></tr></thead><tbody>'
+        )
+        for ig in img_guide:
+            parts.append(
+                f'<tr><td>{_esc(ig.get("modality", ""))}</td>'
+                f'<td>{_esc(ig.get("sequence_or_phase", ""))}</td>'
+                f'<td>{_esc(ig.get("appearance", ""))}</td>'
+                f'<td><em>{_esc(ig.get("search_term", ""))}</em></td></tr>'
+            )
+        parts.append('</tbody></table></div>')
+        parts.append(_card_close())
+
+    # ── 8. Radiopaedia Image (optional) ──
     if radiopaedia_image:
         img_url = _esc(radiopaedia_image.get('link', ''))
         thumb_url = _esc(radiopaedia_image.get('thumbnail_link', '') or img_url)

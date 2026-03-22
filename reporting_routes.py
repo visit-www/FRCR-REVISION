@@ -2499,6 +2499,7 @@ def smart_reporter_anatomy_suggest():
 
 
 @reporting_bp.route('/api/smart-reporter/anatomy', methods=['POST'])
+@reporting_bp.route('/api/smart-reporter/anatomy-reference', methods=['POST'])
 @login_required
 def smart_reporter_anatomy():
     """Generate or retrieve anatomy reference content for the Anatomy Panel."""
@@ -2506,6 +2507,10 @@ def smart_reporter_anatomy():
     topic = (data.get('topic') or '').strip()
     if not topic:
         return jsonify({'error': 'Anatomy topic is required.'}), 400
+
+    modality_raw = (data.get('modality') or '').strip()
+    body_section = (data.get('body_section') or '').strip()
+    modality = normalize_modality(modality_raw) if modality_raw else ''
 
     # DB-first: check for cached anatomy content
     cached = ReportingAlgorithm.query.filter(
@@ -2523,21 +2528,22 @@ def smart_reporter_anatomy():
             'title': cached.title,
             'content_html': cached.template_html,
             'source': 'database',
+            'algorithm_id': cached.id,
         })
 
     # AI fallback: generate anatomy reference
     try:
         from ai_smart_reporter import generate_anatomy_reference
-        result = generate_anatomy_reference(topic)
+        result = generate_anatomy_reference(topic, modality=modality, body_section=body_section)
     except Exception as exc:
         logger.error(f"Anatomy reference generation failed: {exc}")
         return jsonify({'error': f'Failed to generate anatomy reference: {exc}'}), 500
 
     # Auto-save to cache for future lookups
     content_html = result.get('content_html', '')
+    algorithm_id = None
     if content_html:
         try:
-            import re
             slug = re.sub(r'[^a-z0-9]+', '-', topic.lower()).strip('-')[:200]
             cache_entry = ReportingAlgorithm(
                 title=result.get('title', topic.title()),
@@ -2549,9 +2555,39 @@ def smart_reporter_anatomy():
                 is_available=True,
                 is_ai_generated=True,
             )
+            if body_section:
+                cache_entry.body_section = body_section
+            if modality:
+                cache_entry.modality = modality
             db.session.add(cache_entry)
             db.session.commit()
+            algorithm_id = cache_entry.id
             logger.info(f"Cached anatomy reference: {topic}")
+
+            # Auto-create SnippetImage if Radiopaedia image was fetched
+            rp_img = result.get('radiopaedia_image')
+            if rp_img and algorithm_id:
+                try:
+                    from models import SnippetImage
+                    si = SnippetImage(
+                        algorithm_id=algorithm_id,
+                        source_url=rp_img.get('link', ''),
+                        source_domain='radiopaedia.org',
+                        thumbnail_url=rp_img.get('thumbnail_link', ''),
+                        image_type='ct_mri',
+                        modality=modality or None,
+                        description=rp_img.get('title', ''),
+                        display_order=0,
+                        license=rp_img.get('license', 'CC BY-NC-SA 3.0'),
+                        attribution=f"Radiopaedia.org — {rp_img.get('title', '')}",
+                        added_by_user_id=current_user.id if current_user.is_authenticated else None,
+                    )
+                    db.session.add(si)
+                    db.session.commit()
+                except Exception as img_exc:
+                    db.session.rollback()
+                    logger.warning(f"Failed to save Radiopaedia image: {img_exc}")
+
         except Exception as cache_exc:
             db.session.rollback()
             logger.warning(f"Failed to cache anatomy reference: {cache_exc}")
@@ -2562,6 +2598,7 @@ def smart_reporter_anatomy():
         'content_html': content_html,
         'source': result.get('source', 'ai'),
         'token_count': result.get('token_count', 0),
+        'algorithm_id': algorithm_id,
     })
 
 
@@ -2595,6 +2632,295 @@ def update_snippet_metadata():
 
     db.session.commit()
     return jsonify({'success': True})
+
+
+# ==================== SNIPPET REFERENCES ====================
+
+@reporting_bp.route('/api/snippet/<int:alg_id>/references', methods=['GET'])
+@login_required
+def list_snippet_references(alg_id):
+    """List all references for an anatomy snippet."""
+    from models import SnippetReference
+    refs = SnippetReference.query.filter_by(algorithm_id=alg_id).order_by(SnippetReference.ref_number).all()
+    return jsonify({'references': [r.to_dict() for r in refs]})
+
+
+@reporting_bp.route('/api/snippet/<int:alg_id>/references', methods=['POST'])
+@login_required
+@require_admin
+def add_snippet_reference(alg_id):
+    """Add a URL reference to an anatomy snippet."""
+    from models import SnippetReference
+    snippet = ReportingAlgorithm.query.get_or_404(alg_id)
+    data = request.get_json() or {}
+    title = (data.get('title') or '').strip()
+    url = (data.get('url') or '').strip()
+    if not title or not url:
+        return jsonify({'error': 'title and url are required'}), 400
+
+    # Auto-assign next ref_number
+    max_ref = db.session.query(db.func.max(SnippetReference.ref_number)).filter_by(
+        algorithm_id=alg_id
+    ).scalar() or 0
+
+    ref = SnippetReference(
+        algorithm_id=alg_id,
+        ref_number=max_ref + 1,
+        title=title,
+        url=url,
+        journal=(data.get('journal') or '').strip() or None,
+        year=(data.get('year') or '').strip() or None,
+    )
+    db.session.add(ref)
+    db.session.commit()
+    return jsonify({'success': True, 'reference': ref.to_dict()}), 201
+
+
+@reporting_bp.route('/api/snippet/<int:alg_id>/references/<int:ref_id>', methods=['DELETE'])
+@login_required
+@require_admin
+def delete_snippet_reference(alg_id, ref_id):
+    """Delete a reference from an anatomy snippet."""
+    from models import SnippetReference
+    ref = SnippetReference.query.filter_by(id=ref_id, algorithm_id=alg_id).first_or_404()
+    db.session.delete(ref)
+    db.session.commit()
+    return jsonify({'success': True})
+
+
+# ==================== SNIPPET DOCUMENTS ====================
+
+@reporting_bp.route('/api/snippet/<int:alg_id>/documents', methods=['GET'])
+@login_required
+def list_snippet_documents(alg_id):
+    """List all documents for an anatomy snippet."""
+    from models import SnippetDocument
+    docs = SnippetDocument.query.filter_by(algorithm_id=alg_id).order_by(SnippetDocument.created_at.desc()).all()
+    return jsonify({'documents': [d.to_dict() for d in docs]})
+
+
+@reporting_bp.route('/api/snippet/<int:alg_id>/documents', methods=['POST'])
+@login_required
+@require_admin
+def upload_snippet_document(alg_id):
+    """Upload a PDF/document to Cloudinary and attach to an anatomy snippet."""
+    snippet = ReportingAlgorithm.query.get_or_404(alg_id)
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file provided'}), 400
+
+    file = request.files['file']
+    if not file.filename:
+        return jsonify({'error': 'Empty filename'}), 400
+
+    # Check file size (10MB max)
+    file.seek(0, 2)
+    size_bytes = file.tell()
+    file.seek(0)
+    if size_bytes > 10 * 1024 * 1024:
+        return jsonify({'error': 'File too large (max 10MB)'}), 400
+
+    title = (request.form.get('title') or file.filename).strip()
+
+    try:
+        import cloudinary
+        import cloudinary.uploader
+        upload_result = cloudinary.uploader.upload(
+            file,
+            resource_type='raw',
+            folder='snippet-documents/',
+        )
+    except Exception as exc:
+        logger.error(f"Cloudinary upload failed: {exc}")
+        return jsonify({'error': 'Upload failed'}), 500
+
+    from models import SnippetDocument
+    doc = SnippetDocument(
+        algorithm_id=alg_id,
+        title=title,
+        cloudinary_url=upload_result.get('secure_url', upload_result.get('url', '')),
+        cloudinary_public_id=upload_result.get('public_id'),
+        file_type=file.filename.rsplit('.', 1)[-1].lower() if '.' in file.filename else 'pdf',
+        file_size_kb=round(size_bytes / 1024),
+        uploaded_by_user_id=current_user.id,
+    )
+    db.session.add(doc)
+    db.session.commit()
+    return jsonify({'success': True, 'document': doc.to_dict()}), 201
+
+
+@reporting_bp.route('/api/snippet/<int:alg_id>/documents/<int:doc_id>', methods=['DELETE'])
+@login_required
+@require_admin
+def delete_snippet_document(alg_id, doc_id):
+    """Delete a document from an anatomy snippet."""
+    from models import SnippetDocument
+    doc = SnippetDocument.query.filter_by(id=doc_id, algorithm_id=alg_id).first_or_404()
+    # Optionally delete from Cloudinary
+    if doc.cloudinary_public_id:
+        try:
+            import cloudinary
+            import cloudinary.uploader
+            cloudinary.uploader.destroy(doc.cloudinary_public_id, resource_type='raw')
+        except Exception:
+            pass  # Non-critical
+    db.session.delete(doc)
+    db.session.commit()
+    return jsonify({'success': True})
+
+
+# ==================== SNIPPET IMAGES ====================
+
+@reporting_bp.route('/api/snippet/<int:alg_id>/images', methods=['GET'])
+@login_required
+def list_snippet_images(alg_id):
+    """List all images for an anatomy snippet."""
+    from models import SnippetImage
+    imgs = SnippetImage.query.filter_by(algorithm_id=alg_id).order_by(SnippetImage.display_order).all()
+    return jsonify({'images': [i.to_dict() for i in imgs]})
+
+
+@reporting_bp.route('/api/snippet/<int:alg_id>/images', methods=['POST'])
+@login_required
+@require_admin
+def add_snippet_image(alg_id):
+    """Add an image to an anatomy snippet."""
+    from models import SnippetImage
+    snippet = ReportingAlgorithm.query.get_or_404(alg_id)
+    data = request.get_json() or {}
+    source_url = (data.get('source_url') or '').strip()
+    if not source_url:
+        return jsonify({'error': 'source_url is required'}), 400
+
+    # Auto display_order
+    max_order = db.session.query(db.func.max(SnippetImage.display_order)).filter_by(
+        algorithm_id=alg_id
+    ).scalar() or 0
+
+    img = SnippetImage(
+        algorithm_id=alg_id,
+        source_url=source_url,
+        source_domain=(data.get('source_domain') or '').strip() or _extract_domain(source_url),
+        thumbnail_url=(data.get('thumbnail_url') or '').strip() or None,
+        image_type=(data.get('image_type') or 'ct_mri').strip(),
+        modality=(data.get('modality') or '').strip() or None,
+        description=(data.get('description') or '').strip() or None,
+        display_order=max_order + 1,
+        license=(data.get('license') or 'CC BY-NC-SA 3.0').strip(),
+        attribution=(data.get('attribution') or '').strip() or _extract_domain(source_url),
+        added_by_user_id=current_user.id,
+    )
+    db.session.add(img)
+    db.session.commit()
+    return jsonify({'success': True, 'image': img.to_dict()}), 201
+
+
+@reporting_bp.route('/api/snippet/<int:alg_id>/images/<int:img_id>', methods=['DELETE'])
+@login_required
+@require_admin
+def delete_snippet_image(alg_id, img_id):
+    """Delete an image from an anatomy snippet."""
+    from models import SnippetImage
+    img = SnippetImage.query.filter_by(id=img_id, algorithm_id=alg_id).first_or_404()
+    db.session.delete(img)
+    db.session.commit()
+    return jsonify({'success': True})
+
+
+def _extract_domain(url):
+    """Extract domain from a URL."""
+    try:
+        from urllib.parse import urlparse
+        return urlparse(url).netloc or url
+    except Exception:
+        return url
+
+
+# ==================== SNIPPET IMAGE SEARCH ====================
+
+@reporting_bp.route('/api/snippet/<int:alg_id>/search-images', methods=['POST'])
+@login_required
+@require_admin
+def search_snippet_images(alg_id):
+    """Search for images: user references first, then Radiopaedia, then broad CC."""
+    from models import SnippetReference
+    snippet = ReportingAlgorithm.query.get_or_404(alg_id)
+    data = request.get_json() or {}
+    topic = (data.get('topic') or snippet.title or '').strip()
+    modality = (data.get('modality') or '').strip()
+    body_section = (data.get('body_section') or '').strip()
+
+    all_results = []
+
+    # Step 1: Search within user-provided reference domains
+    refs = SnippetReference.query.filter_by(algorithm_id=alg_id).all()
+    ref_domains = set()
+    for ref in refs:
+        domain = _extract_domain(ref.url)
+        if domain:
+            ref_domains.add(domain)
+
+    if ref_domains:
+        try:
+            from google_search_service import search_images
+            for domain in ref_domains:
+                query = f'site:{domain} {topic} radiology imaging'
+                results = search_images(query, max_results=5)
+                for r in results:
+                    r['source_group'] = 'reference'
+                    r['source_domain'] = r.get('source_domain', domain)
+                    r['license'] = r.get('license', 'Check source')
+                    r['attribution'] = r.get('attribution', domain)
+                all_results.extend(results)
+        except Exception as exc:
+            logger.warning(f"Reference domain image search failed: {exc}")
+
+    # Step 2: Radiopaedia (always)
+    try:
+        from radiopaedia_search_service import search_radiopaedia_images
+        rp_results = search_radiopaedia_images(
+            diagnosis=topic, modality=modality, max_per_type=5,
+        )
+        for r in rp_results:
+            r['source_group'] = 'radiopaedia'
+            r['source_domain'] = 'radiopaedia.org'
+            r['source_url'] = r.get('link', '')
+            r['thumbnail_url'] = r.get('thumbnail_link', '')
+            r['attribution'] = f"Radiopaedia.org — {r.get('title', '')}"
+        all_results.extend(rp_results)
+    except Exception as exc:
+        logger.warning(f"Radiopaedia image search failed: {exc}")
+
+    # Step 3: Broad CC search (fallback if < 3 results so far)
+    if len(all_results) < 3:
+        try:
+            from google_search_service import search_reference_images
+            cc_results = search_reference_images(
+                diagnosis=topic, body_part=body_section, modality=modality, max_per_type=5,
+            )
+            for r in cc_results:
+                r['source_group'] = 'cc_general'
+                r['source_url'] = r.get('link', '')
+                r['thumbnail_url'] = r.get('thumbnail_link', '')
+                r['license'] = r.get('license', 'CC')
+                r['attribution'] = r.get('source_domain', r.get('displayLink', ''))
+            all_results.extend(cc_results)
+        except Exception as exc:
+            logger.warning(f"CC image search failed: {exc}")
+
+    # Normalize results for frontend
+    normalized = []
+    for r in all_results:
+        normalized.append({
+            'source_url': r.get('source_url') or r.get('link', ''),
+            'thumbnail_url': r.get('thumbnail_url') or r.get('thumbnail_link', ''),
+            'source_domain': r.get('source_domain', ''),
+            'title': r.get('title', ''),
+            'license': r.get('license', 'CC BY-NC-SA 3.0'),
+            'attribution': r.get('attribution', ''),
+            'source_group': r.get('source_group', 'other'),
+        })
+
+    return jsonify({'success': True, 'results': normalized})
 
 
 # ==================== CONTENT REQUESTS ====================

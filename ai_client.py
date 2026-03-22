@@ -27,8 +27,23 @@ class AIClientError(Exception):
     pass
 
 
+# ── Shared ABC preamble — prepended to all content-generating prompts ──
+ABC_PREAMBLE = (
+    "CORE PRINCIPLES (apply to ALL your output):\n"
+    "A — ACCURACY: Every claim must be factually and radiologically correct. "
+    "Do not fabricate statistics, measurements, or prevalences. If uncertain, "
+    "omit rather than guess.\n"
+    "B — BREVITY: Every sentence must earn its place. No filler, no preamble, "
+    "no restating the question. Be concise and direct.\n"
+    "C — CLINICAL RELEVANCE: Every statement must matter at the workstation or "
+    "in the report. Omit textbook padding that does not change reporting or "
+    "management.\n\n"
+)
+
+
 def call_claude(system_prompt, user_prompt, model=None, max_tokens=4000,
-                temperature=0.3, timeout=60, error_class=None):
+                temperature=0.3, timeout=60, error_class=None,
+                skip_preamble=False):
     """
     Call the Anthropic Messages API.
 
@@ -40,6 +55,8 @@ def call_claude(system_prompt, user_prompt, model=None, max_tokens=4000,
         temperature: Sampling temperature
         timeout: Request timeout in seconds
         error_class: Exception class to raise on failure (default: AIClientError)
+        skip_preamble: If True, omit the ABC_PREAMBLE (for classification
+                       or structural tasks that don't generate clinical content)
 
     Returns:
         tuple: (response_text: str, model_used: str, token_count: int)
@@ -55,11 +72,15 @@ def call_claude(system_prompt, user_prompt, model=None, max_tokens=4000,
 
     effective_model = model or os.getenv("CLAUDE_MODEL", "claude-sonnet-4-20250514")
 
+    effective_system = system_prompt
+    if not skip_preamble:
+        effective_system = ABC_PREAMBLE + system_prompt
+
     payload = {
         "model": effective_model,
         "max_tokens": max_tokens,
         "temperature": temperature,
-        "system": system_prompt,
+        "system": effective_system,
         "messages": [{"role": "user", "content": user_prompt}],
     }
 
