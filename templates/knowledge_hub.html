@@ -2540,11 +2540,36 @@ document.addEventListener('DOMContentLoaded', function() {
     var hash = window.location.hash;
     if (hash) {
         var target = document.querySelector('.knowledge-item[data-id="' + hash.substring(1) + '"]');
-        if (target) { selectItem(target); return; }
+        if (target) { selectItem(target); }
     }
 
-    // Auto-select first item on desktop
-    if (window.innerWidth >= 992) {
+    // Handle ?edit= param — auto-open edit modal for the specified item
+    var editParam = new URLSearchParams(window.location.search).get('edit');
+    if (editParam) {
+        // Select the item first if not already selected via hash
+        if (!hash) {
+            var editTarget = document.querySelector('.knowledge-item[data-id="' + editParam + '"]');
+            if (editTarget) selectItem(editTarget);
+        }
+        // Open edit modal after a brief delay for DOM to settle
+        setTimeout(function() {
+            if (editParam.startsWith('pearl-')) {
+                var pearlId = editParam.replace('pearl-', '');
+                if (typeof editPearl === 'function') editPearl(parseInt(pearlId));
+            } else if (editParam.startsWith('anatomy-')) {
+                var snippetId = editParam.replace('anatomy-', '');
+                if (typeof editSnippet === 'function') editSnippet(parseInt(snippetId));
+            }
+            // Clean URL without reloading
+            if (window.history.replaceState) {
+                window.history.replaceState({}, '', window.location.pathname + (hash || ''));
+            }
+        }, 300);
+        return;
+    }
+
+    // Auto-select first item on desktop (only if no hash/edit param)
+    if (!hash && window.innerWidth >= 992) {
         var first = document.querySelector('.knowledge-item');
         if (first) selectItem(first);
     }

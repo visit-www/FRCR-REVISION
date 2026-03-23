@@ -135,10 +135,17 @@
                                         <button class="btn btn-outline-secondary" onclick="previewAlgorithm({{ t.id }})" title="Preview">
                                             <i class="fas fa-eye"></i>
                                         </button>
+                                        {% if origin_filter == 'anatomy_cache' %}
+                                        <a href="/knowledge-hub?edit=anatomy-{{ t.id }}#anatomy-{{ t.id }}"
+                                           class="btn btn-outline-secondary" title="Edit in Knowledge Hub">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        {% else %}
                                         <a href="{{ url_for('reporting.edit_reporting_algorithm', algorithm_id=t.id) }}"
                                            class="btn btn-outline-secondary" title="Edit">
                                             <i class="fas fa-edit"></i>
                                         </a>
+                                        {% endif %}
                                         {% if origin_filter == 'anatomy_cache' %}
                                         <button class="btn btn-outline-warning" onclick="regenerateSnippet({{ t.id }}, '{{ t.title|e }}')" title="Regenerate with AI">
                                             <i class="fas fa-sync-alt"></i>
