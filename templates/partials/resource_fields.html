@@ -44,6 +44,42 @@
 </div>
 
 <div class="mb-3">
+    <label class="form-label small fw-semibold">Linked Reporting Algorithms</label>
+    <div class="input-group input-group-sm mb-2">
+        <input type="text" class="form-control" id="{{ prefix }}AlgorithmSearch" placeholder="Search reporting algorithms..." autocomplete="off">
+        <button class="btn btn-outline-secondary" type="button" onclick="searchItems('{{ prefix }}AlgorithmSearch', '{{ prefix }}AlgorithmResults', 'reporting_algorithm')">
+            <i class="fas fa-search"></i>
+        </button>
+    </div>
+    <div id="{{ prefix }}AlgorithmResults" class="search-results-dropdown d-none"></div>
+    <div id="{{ prefix }}LinkedAlgorithms" class="d-flex flex-wrap gap-1"></div>
+</div>
+
+<div class="mb-3">
+    <label class="form-label small fw-semibold">Linked Radiology Templates</label>
+    <div class="input-group input-group-sm mb-2">
+        <input type="text" class="form-control" id="{{ prefix }}TemplateSearch" placeholder="Search radiology templates..." autocomplete="off">
+        <button class="btn btn-outline-secondary" type="button" onclick="searchItems('{{ prefix }}TemplateSearch', '{{ prefix }}TemplateResults', 'radiology_template')">
+            <i class="fas fa-search"></i>
+        </button>
+    </div>
+    <div id="{{ prefix }}TemplateResults" class="search-results-dropdown d-none"></div>
+    <div id="{{ prefix }}LinkedTemplates" class="d-flex flex-wrap gap-1"></div>
+</div>
+
+<div class="mb-3">
+    <label class="form-label small fw-semibold">Linked Pearls</label>
+    <div class="input-group input-group-sm mb-2">
+        <input type="text" class="form-control" id="{{ prefix }}PearlSearch" placeholder="Search radiology pearls..." autocomplete="off">
+        <button class="btn btn-outline-secondary" type="button" onclick="searchItems('{{ prefix }}PearlSearch', '{{ prefix }}PearlResults', 'pearl')">
+            <i class="fas fa-search"></i>
+        </button>
+    </div>
+    <div id="{{ prefix }}PearlResults" class="search-results-dropdown d-none"></div>
+    <div id="{{ prefix }}LinkedPearls" class="d-flex flex-wrap gap-1"></div>
+</div>
+
+<div class="mb-3">
     <label class="form-label small fw-semibold">Reference PDFs</label>
     <div class="mb-2">
         <input type="file" class="form-control form-control-sm" id="{{ prefix }}PdfUpload" accept=".pdf" multiple onchange="uploadPDFs(this, '{{ prefix }}LinkedPdfs', '{{ prefix }}PdfProgress')">

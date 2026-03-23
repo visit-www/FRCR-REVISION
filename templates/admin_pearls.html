@@ -1,0 +1,205 @@
+{% extends 'base.html' %}
+{% block title %}Manage Pearls - RadInsights{% endblock %}
+{% block tool_active_knowledge_hub %}active{% endblock %}
+{% block mobile_active_knowledge_hub %}active{% endblock %}
+
+{% block mobile_breadcrumb %}
+<li class="breadcrumb-item">
+    <a href="/knowledge-hub" class="text-white text-decoration-none">Knowledge Hub</a>
+</li>
+<li class="breadcrumb-item active text-white-50">Manage Pearls</li>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row">
+        <div class="col-12">
+
+            <div class="d-flex flex-wrap gap-2 mb-3">
+                <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary btn-sm">
+                    <i class="fas fa-home me-1"></i>Dashboard
+                </a>
+                <a href="/knowledge-hub" class="btn btn-outline-secondary btn-sm">
+                    <i class="fas fa-book-medical me-1"></i>Knowledge Hub
+                </a>
+                <a href="/admin/reporting-algorithms?origin=anatomy_cache" class="btn btn-outline-secondary btn-sm">
+                    <i class="fas fa-bone me-1"></i>Manage Snippets
+                </a>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="mb-1"><i class="fas fa-gem me-2" style="color: #6b46c1;"></i>Manage Pearls</h2>
+                    <p class="text-muted mb-0">Edit, verify and manage radiology teaching pearls
+                        <span class="badge bg-light text-dark border ms-1">{{ pearls|length }} items</span>
+                    </p>
+                </div>
+            </div>
+
+            <!-- Pearls Table -->
+            <div class="card shadow-sm border-0" style="border-top: 3px solid #6b46c1 !important;">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead style="background: #f3eef8;">
+                            <tr>
+                                <th style="max-width: 350px;">Preview</th>
+                                <th>Body Section</th>
+                                <th>Modality</th>
+                                <th>Tags</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for p in pearls %}
+                            <tr id="pearl-row-{{ p.id }}">
+                                <td style="max-width: 350px;">
+                                    <div class="text-truncate" style="max-width: 350px;" title="{{ p.pearl_text|striptags|truncate(200) }}">
+                                        {{ p.pearl_text|striptags|truncate(100) }}
+                                    </div>
+                                    <small class="text-muted" style="font-size: 0.7rem;">
+                                        {% if p.created_by %}{{ p.created_by.get_display_name() }}{% endif %}
+                                        {% if p.created_at %} &middot; {{ p.created_at.strftime('%d %b %Y') }}{% endif %}
+                                    </small>
+                                </td>
+                                <td>{{ p.body_section or '---' }}</td>
+                                <td>{{ p.modality or '---' }}</td>
+                                <td>
+                                    {% if p.tags %}
+                                    {% for tag in p.tags.split(',')[:3] %}
+                                    <span class="badge bg-light text-muted border" style="font-size: 0.65rem;">{{ tag.strip() }}</span>
+                                    {% endfor %}
+                                    {% if p.tags.split(',')|length > 3 %}
+                                    <span class="text-muted" style="font-size: 0.65rem;">+{{ p.tags.split(',')|length - 3 }}</span>
+                                    {% endif %}
+                                    {% else %}---{% endif %}
+                                </td>
+                                <td>
+                                    {% if p.is_verified %}
+                                    <span class="badge bg-success"><i class="fas fa-shield-alt me-1"></i>Verified</span>
+                                    {% else %}
+                                    <span class="badge bg-warning text-dark"><i class="fas fa-clock me-1"></i>Pending</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="/knowledge-hub#pearl-{{ p.id }}" class="btn btn-outline-secondary" title="View in Hub">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        <a href="/knowledge-hub#pearl-{{ p.id }}" class="btn btn-outline-secondary" title="Edit in Hub">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        <button class="btn btn-outline-warning" onclick="regeneratePearl({{ p.id }}, this)" title="Regenerate">
+                                            <i class="fas fa-sync-alt"></i>
+                                        </button>
+                                        {% if not p.is_verified %}
+                                        <button class="btn btn-outline-success" onclick="verifyPearl({{ p.id }}, this)" title="Verify">
+                                            <i class="fas fa-check"></i>
+                                        </button>
+                                        {% endif %}
+                                        <button class="btn btn-outline-danger" onclick="deletePearl({{ p.id }}, this)" title="Delete">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                            {% if not pearls %}
+                            <tr>
+                                <td colspan="6" class="text-center py-4 text-muted">
+                                    <i class="fas fa-gem mb-2" style="font-size: 2rem; opacity: 0.3;"></i>
+                                    <p class="mb-0">No pearls yet. Generate pearls from the <a href="/knowledge-hub">Knowledge Hub</a>.</p>
+                                </td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function regeneratePearl(id, btn) {
+    if (!confirm('Regenerate this pearl using AI? Current content will be replaced.')) return;
+    var row = document.getElementById('pearl-row-' + id);
+    if (row) row.style.opacity = '0.5';
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
+
+    fetch('/api/smart-reporter/pearls/' + id)
+        .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+        .then(function(data) {
+            var tmp = document.createElement('div');
+            tmp.innerHTML = data.pearl_text || '';
+            var topic = (tmp.textContent || '').substring(0, 80).split('\n')[0].trim();
+            if (!topic) { alert('Could not determine topic.'); return; }
+
+            return fetch('/api/admin/generate-pearl', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    topic: topic,
+                    modality: data.modality || '',
+                    body_section: data.body_section || '',
+                    include_image: true,
+                })
+            })
+            .then(function(r2) { return r2.json(); })
+            .then(function(genData) {
+                if (genData.error) { alert('Generation failed: ' + genData.error); return; }
+                return fetch('/api/smart-reporter/pearls/' + id, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        pearl_text: genData.pearl_html,
+                        body_section: data.body_section || '',
+                        modality: data.modality || '',
+                        tags: genData.tags || data.tags || '',
+                    })
+                })
+                .then(function(r3) { return r3.json(); })
+                .then(function() { location.reload(); });
+            });
+        })
+        .catch(function(err) {
+            alert('Regeneration failed: ' + err.message);
+            if (row) row.style.opacity = '1';
+            if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-sync-alt"></i>'; }
+        });
+}
+
+function verifyPearl(id, btn) {
+    if (!confirm('Verify this pearl? It will become visible to all users.')) return;
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>'; }
+    fetch('/api/smart-reporter/pearls/' + id + '/verify', { method: 'POST' })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.error) { alert(data.error); return; }
+            location.reload();
+        })
+        .catch(function(err) {
+            alert('Verify failed: ' + err.message);
+            if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-check"></i>'; }
+        });
+}
+
+function deletePearl(id, btn) {
+    if (!confirm('Delete this pearl permanently?')) return;
+    if (btn) { btn.disabled = true; }
+    fetch('/api/smart-reporter/pearls/' + id, { method: 'DELETE' })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.error) { alert(data.error); return; }
+            var row = document.getElementById('pearl-row-' + id);
+            if (row) row.remove();
+        })
+        .catch(function(err) {
+            alert('Delete failed: ' + err.message);
+            if (btn) btn.disabled = false;
+        });
+}
+</script>
+{% endblock %}

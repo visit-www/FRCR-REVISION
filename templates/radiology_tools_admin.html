@@ -81,9 +81,9 @@
                                             <i class="fas fa-eye"></i>
                                         </a>
                                         {% endif %}
-                                        <button class="btn btn-outline-secondary" onclick="editCalc({{ c.id }})" title="Edit">
+                                        <a href="/incidental-findings/admin/edit/{{ c.id }}" class="btn btn-outline-secondary" title="Edit">
                                             <i class="fas fa-edit"></i>
-                                        </button>
+                                        </a>
                                         {% if not c.verified_at %}
                                         <button class="btn btn-outline-success" onclick="verifyCalc({{ c.id }})" title="Verify">
                                             <i class="fas fa-check"></i>
@@ -127,7 +127,15 @@
                 <div class="row g-3 mb-3">
                     <div class="col-md-6">
                         <label class="form-label">Category</label>
-                        <input type="text" class="form-control" id="genCategory" placeholder="e.g. pulmonary">
+                        <select class="form-select" id="genCategory" onchange="toggleCustomCategory(this, 'genCustomCategory')">
+                            <option value="">Select category...</option>
+                            <option value="Guidelines">Guidelines</option>
+                            <option value="Calculator">Calculator</option>
+                            <option value="Classification">Classification</option>
+                            <option value="Scoring">Scoring</option>
+                            <option value="custom">Custom...</option>
+                        </select>
+                        <input type="text" class="form-control mt-1 d-none" id="genCustomCategory" placeholder="Enter custom category">
                     </div>
                     <div class="col-md-6">
                         <label class="form-label">Body Section</label>
@@ -148,64 +156,9 @@
                 <div id="genStatus" class="mt-3 d-none"></div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-modal-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-modal-secondary" id="genCancelBtn" data-bs-dismiss="modal">Cancel</button>
                 <button type="button" class="btn btn-modal-primary" id="genBtn" onclick="generateCalc()">
                     <i class="fas fa-magic me-1"></i>Generate
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Edit Calculator Modal -->
-<div class="modal fade app-content-modal" id="editCalcModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title"><i class="fas fa-edit"></i> Edit Radiology Tool</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <input type="hidden" id="editCalcId">
-                <div class="mb-3">
-                    <label class="form-label">Finding Name</label>
-                    <input type="text" class="form-control" id="editFindingName">
-                </div>
-                <div class="row g-3 mb-3">
-                    <div class="col-md-6">
-                        <label class="form-label">Category</label>
-                        <input type="text" class="form-control" id="editCategory">
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Body Section</label>
-                        <select class="form-select" id="editBodySection">
-                            <option value="">Select...</option>
-                            {% for bs in ['Brain','Head and Neck','Thorax','Cardiovascular','Breast','Abdomen','Pelvis','Spine','Musculoskeletal','Multisystem'] %}
-                            <option value="{{ bs }}">{{ bs }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Keywords</label>
-                    <input type="text" class="form-control" id="editKeywords" placeholder="comma-separated">
-                </div>
-                <div class="mb-3">
-                    <div class="form-check form-switch">
-                        <input class="form-check-input" type="checkbox" id="editAvailable">
-                        <label class="form-check-label" for="editAvailable">Available (published)</label>
-                    </div>
-                </div>
-                {{ resource_fields('edit') }}
-                <div class="mb-3">
-                    <label class="form-label">Edit Note</label>
-                    <input type="text" class="form-control" id="editNote" placeholder="What did you change?">
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-modal-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-modal-primary" onclick="saveEditCalc()">
-                    <i class="fas fa-save me-1"></i>Save Changes
                 </button>
             </div>
         </div>
@@ -228,7 +181,15 @@
                     </div>
                     <div class="col-md-3">
                         <label class="form-label">Category</label>
-                        <input type="text" class="form-control" id="manCategory">
+                        <select class="form-select" id="manCategory" onchange="toggleCustomCategory(this, 'manCustomCategory')">
+                            <option value="">Select...</option>
+                            <option value="Guidelines">Guidelines</option>
+                            <option value="Calculator">Calculator</option>
+                            <option value="Classification">Classification</option>
+                            <option value="Scoring">Scoring</option>
+                            <option value="custom">Custom...</option>
+                        </select>
+                        <input type="text" class="form-control mt-1 d-none" id="manCustomCategory" placeholder="Custom category">
                     </div>
                     <div class="col-md-3">
                         <label class="form-label">Body Section</label>
@@ -269,15 +230,46 @@
 {{ resource_styles() }}
 <script src="{{ url_for('static', filename='js/admin-resource-helpers.js') }}"></script>
 <script>
-// ==================== IF CALCULATOR CRUD ====================
+// ==================== CATEGORY DROPDOWN ====================
 
-function generateCalc() {
+var STANDARD_CATEGORIES = ['Guidelines', 'Calculator', 'Classification', 'Scoring'];
+
+function toggleCustomCategory(select, inputId) {
+    var customInput = document.getElementById(inputId);
+    if (select.value === 'custom') {
+        customInput.classList.remove('d-none');
+        customInput.focus();
+    } else {
+        customInput.classList.add('d-none');
+        customInput.value = '';
+    }
+}
+
+function getCategoryValue(selectId, customId) {
+    var sel = document.getElementById(selectId);
+    if (sel.value === 'custom') {
+        return document.getElementById(customId).value.trim();
+    }
+    return sel.value;
+}
+
+// ==================== GENERATE WITH ABORT ====================
+
+var _lastGenSlug = null;
+
+function generateCalc(overwrite) {
     var btn = document.getElementById('genBtn');
+    var cancelBtn = document.getElementById('genCancelBtn');
     var status = document.getElementById('genStatus');
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Generating...';
+    cancelBtn.textContent = 'Cancel Generation';
+    cancelBtn.setAttribute('data-bs-dismiss', '');
+    cancelBtn.onclick = cancelGeneration;
     status.classList.remove('d-none');
     status.innerHTML = '<div class="alert alert-info py-2"><i class="fas fa-spinner fa-spin me-1"></i>Generating radiology tool (this may take a minute)...</div>';
+
+    window._genCalcAbortController = new AbortController();
 
     var resources = collectResources('gen');
 
@@ -287,28 +279,76 @@ function generateCalc() {
         body: JSON.stringify({
             finding_name: document.getElementById('genFindingName').value,
             guideline_source: JSON.stringify(resources),
-            category: document.getElementById('genCategory').value,
+            category: getCategoryValue('genCategory', 'genCustomCategory'),
             body_section: document.getElementById('genBodySection').value,
             additional_context: document.getElementById('genContext').value,
+            overwrite: overwrite || false,
         }),
+        signal: window._genCalcAbortController.signal,
     })
     .then(function(r) { return r.json(); })
     .then(function(result) {
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-magic me-1"></i>Generate';
+        resetGenUI();
         if (result.success) {
             status.innerHTML = '<div class="alert alert-success py-2"><i class="fas fa-check me-1"></i>' + result.message + '</div>';
             setTimeout(function() { location.reload(); }, 1500);
+        } else if (result.slug && (result.message || '').indexOf('already exists') !== -1) {
+            // Duplicate — show friendly options
+            _lastGenSlug = result.slug;
+            var findingName = document.getElementById('genFindingName').value;
+            status.innerHTML =
+                '<div class="alert alert-warning py-2">' +
+                '<i class="fas fa-exclamation-triangle me-1"></i>' +
+                '<strong>"' + escHtml(findingName) + '"</strong> already exists.' +
+                '<div class="mt-2 d-flex gap-2">' +
+                '<button class="btn btn-sm btn-outline-primary" onclick="viewExistingTool()"><i class="fas fa-eye me-1"></i>View Existing</button>' +
+                '<button class="btn btn-sm btn-outline-warning" onclick="generateCalc(true)"><i class="fas fa-sync-alt me-1"></i>Regenerate (replaces current)</button>' +
+                '</div></div>';
         } else {
             status.innerHTML = '<div class="alert alert-danger py-2"><i class="fas fa-exclamation-circle me-1"></i>' + (result.message || result.error) + '</div>';
         }
     })
-    .catch(function() {
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-magic me-1"></i>Generate';
-        status.innerHTML = '<div class="alert alert-danger py-2">Generation failed.</div>';
-    });
+    .catch(function(err) {
+        resetGenUI();
+        if (err.name === 'AbortError') {
+            status.innerHTML = '<div class="alert alert-info py-2"><i class="fas fa-info-circle me-1"></i>Generation cancelled. Your form data has been preserved.</div>';
+        } else {
+            status.innerHTML = '<div class="alert alert-danger py-2">Generation failed.</div>';
+        }
+    })
+    .finally(function() { window._genCalcAbortController = null; });
 }
+
+function cancelGeneration() {
+    if (window._genCalcAbortController) {
+        window._genCalcAbortController.abort();
+        window._genCalcAbortController = null;
+    }
+    resetGenUI();
+}
+
+function resetGenUI() {
+    var btn = document.getElementById('genBtn');
+    var cancelBtn = document.getElementById('genCancelBtn');
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-magic me-1"></i>Generate';
+    cancelBtn.textContent = 'Cancel';
+    cancelBtn.setAttribute('data-bs-dismiss', 'modal');
+    cancelBtn.onclick = null;
+}
+
+function viewExistingTool() {
+    if (_lastGenSlug) {
+        window.open('/incidental-findings/' + _lastGenSlug, '_blank');
+    }
+}
+
+function escHtml(str) {
+    if (!str) return '';
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+// ==================== MANUAL ADD ====================
 
 function addManual() {
     var resources = collectResources('man');
@@ -318,7 +358,7 @@ function addManual() {
         body: JSON.stringify({
             finding_name: document.getElementById('manFindingName').value,
             guideline_source: JSON.stringify(resources),
-            category: document.getElementById('manCategory').value,
+            category: getCategoryValue('manCategory', 'manCustomCategory'),
             body_section: document.getElementById('manBodySection').value,
             keywords: document.getElementById('manKeywords').value,
             calculator_html: document.getElementById('manHtml').value,
@@ -333,46 +373,7 @@ function addManual() {
     .catch(function(err) { alert('Error: ' + err); });
 }
 
-function editCalc(id) {
-    fetch('/incidental-findings/admin/api/' + id)
-        .then(function(r) { return r.json(); })
-        .then(function(data) {
-            document.getElementById('editCalcId').value = data.id;
-            document.getElementById('editFindingName').value = data.finding_name || '';
-            document.getElementById('editCategory').value = data.category || '';
-            document.getElementById('editBodySection').value = data.body_section || '';
-            document.getElementById('editKeywords').value = data.keywords || '';
-            document.getElementById('editAvailable').checked = data.is_available;
-            document.getElementById('editNote').value = '';
-            loadAllResources('edit', data.guideline_source);
-            new bootstrap.Modal(document.getElementById('editCalcModal')).show();
-        })
-        .catch(function(err) { alert('Failed to load radiology tool: ' + err); });
-}
-
-function saveEditCalc() {
-    var id = document.getElementById('editCalcId').value;
-    var resources = collectResources('edit');
-    fetch('/incidental-findings/admin/api/' + id, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            finding_name: document.getElementById('editFindingName').value,
-            guideline_source: JSON.stringify(resources),
-            category: document.getElementById('editCategory').value,
-            body_section: document.getElementById('editBodySection').value,
-            keywords: document.getElementById('editKeywords').value,
-            is_available: document.getElementById('editAvailable').checked,
-            last_edit_note: document.getElementById('editNote').value,
-        }),
-    })
-    .then(function(r) { return r.json(); })
-    .then(function(result) {
-        if (result.error) { alert(result.error); return; }
-        location.reload();
-    })
-    .catch(function(err) { alert('Error: ' + err); });
-}
+// ==================== VERIFY / DELETE ====================
 
 function verifyCalc(id) {
     if (!confirm('Verify and publish this radiology tool?')) return;

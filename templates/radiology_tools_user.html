@@ -58,14 +58,16 @@
             <!-- Browse by Category -->
             {% if grouped %}
             <div id="browseCategories">
+                {% set cat_icons = {'Guidelines': 'fa-book-medical', 'Calculator': 'fa-calculator',
+                                    'Classification': 'fa-layer-group', 'Scoring': 'fa-star-half-alt'} %}
                 {% for category, calcs in grouped.items() %}
                 <div class="mb-4">
                     <div class="d-flex align-items-center mb-2">
                         <div class="d-inline-flex align-items-center justify-content-center rounded me-2"
                              style="width:28px;height:28px;background:#f0f7fa;">
-                            <i class="fas fa-folder-open" style="font-size:0.8rem;color:#5E899E;"></i>
+                            <i class="fas {{ cat_icons.get(category, 'fa-folder-open') }}" style="font-size:0.8rem;color:#5E899E;"></i>
                         </div>
-                        <h6 class="mb-0 fw-semibold" style="color:#2c3e50;">{{ category|capitalize }}</h6>
+                        <h6 class="mb-0 fw-semibold" style="color:#2c3e50;">{{ category }}</h6>
                         <span class="badge bg-light text-muted border ms-2" style="font-size:0.65rem;">{{ calcs|length }}</span>
                     </div>
                     <div class="row g-2">

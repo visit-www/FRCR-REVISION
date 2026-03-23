@@ -57,36 +57,47 @@ function loadReferences(containerId, sourceCitation) {
 // ==================== RESOURCE PARSING ====================
 
 function parseResources(val) {
-    var empty = { references: [], linked_cases: [], linked_tnm: [], pdfs: [] };
+    var empty = { references: [], linked_cases: [], linked_tnm: [], linked_algorithms: [], linked_templates: [], linked_pearls: [], pdfs: [] };
     if (!val) return empty;
     try {
         var parsed = JSON.parse(val);
         // Handle double-encoded JSON strings
         if (typeof parsed === 'string') parsed = JSON.parse(parsed);
         if (Array.isArray(parsed)) {
-            return { references: parsed, linked_cases: [], linked_tnm: [], pdfs: [] };
+            return { references: parsed, linked_cases: [], linked_tnm: [], linked_algorithms: [], linked_templates: [], linked_pearls: [], pdfs: [] };
         }
         return {
             references: parsed.references || [],
             linked_cases: parsed.linked_cases || [],
             linked_tnm: parsed.linked_tnm || [],
+            linked_algorithms: parsed.linked_algorithms || [],
+            linked_templates: parsed.linked_templates || [],
+            linked_pearls: parsed.linked_pearls || [],
             pdfs: parsed.pdfs || []
         };
     } catch (e) {
         if (val.trim() && val.trim().charAt(0) !== '{') {
-            return { references: [{ source: val.trim(), version: '', url: '' }], linked_cases: [], linked_tnm: [], pdfs: [] };
+            return { references: [{ source: val.trim(), version: '', url: '' }], linked_cases: [], linked_tnm: [], linked_algorithms: [], linked_templates: [], linked_pearls: [], pdfs: [] };
         }
         return empty;
     }
 }
 
 function collectResources(prefix) {
-    return {
+    var res = {
         references: getReferences(prefix + 'RefsContainer'),
         linked_cases: getChips(prefix + 'LinkedCases'),
         linked_tnm: getChips(prefix + 'LinkedTnm'),
         pdfs: getChips(prefix + 'LinkedPdfs')
     };
+    // Include new content types if their containers exist
+    var algoContainer = document.getElementById(prefix + 'LinkedAlgorithms');
+    if (algoContainer) res.linked_algorithms = getChips(prefix + 'LinkedAlgorithms');
+    var tmplContainer = document.getElementById(prefix + 'LinkedTemplates');
+    if (tmplContainer) res.linked_templates = getChips(prefix + 'LinkedTemplates');
+    var pearlContainer = document.getElementById(prefix + 'LinkedPearls');
+    if (pearlContainer) res.linked_pearls = getChips(prefix + 'LinkedPearls');
+    return res;
 }
 
 function loadAllResources(prefix, sourceCitation) {
@@ -104,6 +115,23 @@ function loadAllResources(prefix, sourceCitation) {
     var pdfsContainer = document.getElementById(prefix + 'LinkedPdfs');
     pdfsContainer.innerHTML = '';
     res.pdfs.forEach(function(p) { addChip(prefix + 'LinkedPdfs', p, 'pdf'); });
+
+    // Load new content types if containers exist
+    var algoContainer = document.getElementById(prefix + 'LinkedAlgorithms');
+    if (algoContainer) {
+        algoContainer.innerHTML = '';
+        (res.linked_algorithms || []).forEach(function(a) { addChip(prefix + 'LinkedAlgorithms', a, 'algorithm_link'); });
+    }
+    var tmplContainer = document.getElementById(prefix + 'LinkedTemplates');
+    if (tmplContainer) {
+        tmplContainer.innerHTML = '';
+        (res.linked_templates || []).forEach(function(t) { addChip(prefix + 'LinkedTemplates', t, 'template_link'); });
+    }
+    var pearlContainer = document.getElementById(prefix + 'LinkedPearls');
+    if (pearlContainer) {
+        pearlContainer.innerHTML = '';
+        (res.linked_pearls || []).forEach(function(p) { addChip(prefix + 'LinkedPearls', p, 'pearl_link'); });
+    }
 }
 
 // ==================== CHIPS ====================
@@ -121,6 +149,17 @@ function addChip(containerId, data, type) {
     } else if (type === 'tnm') {
         icon = '<i class="fas fa-sitemap" style="color: #e96304;"></i>';
         label = data.cancer_name || data.slug;
+    } else if (type === 'algorithm_link') {
+        icon = '<i class="fas fa-project-diagram" style="color: #5E899E;"></i>';
+        label = (data.title || data.name || 'Algorithm').substring(0, 60);
+    } else if (type === 'template_link') {
+        icon = '<i class="fas fa-file-alt" style="color: #17a2b8;"></i>';
+        label = (data.title || data.name || 'Template').substring(0, 60);
+    } else if (type === 'pearl_link') {
+        icon = '<i class="fas fa-gem" style="color: #6b46c1;"></i>';
+        var tmp = document.createElement('div');
+        tmp.innerHTML = data.pearl_text || data.title || 'Pearl';
+        label = (tmp.textContent || tmp.innerText || 'Pearl').substring(0, 60);
     } else if (type === 'pdf') {
         icon = '<i class="fas fa-file-pdf" style="color: #dc3545;"></i>';
         var size = data.size ? ' (' + (data.size / 1048576).toFixed(1) + ' MB)' : '';
@@ -168,23 +207,43 @@ function searchItems(inputId, resultsId, type) {
                     div.className = 'search-result-item';
                     if (type === 'case') {
                         div.innerHTML = '<i class="fas fa-book-medical me-1" style="color: #5E899E;"></i><strong>' + escHtml(item.case_number) + '</strong>: ' + escHtml(item.diagnosis || '');
-                    } else {
+                    } else if (type === 'algorithm') {
                         div.innerHTML = '<i class="fas fa-sitemap me-1" style="color: #e96304;"></i><strong>' + escHtml(item.cancer_name || item.slug) + '</strong>' + (item.body_section ? ' <small class="text-muted">(' + escHtml(item.body_section) + ')</small>' : '');
+                    } else if (type === 'reporting_algorithm') {
+                        div.innerHTML = '<i class="fas fa-project-diagram me-1" style="color: #5E899E;"></i><strong>' + escHtml(item.title || item.name || '') + '</strong>' + (item.category ? ' <small class="text-muted">(' + escHtml(item.category) + ')</small>' : '');
+                    } else if (type === 'radiology_template') {
+                        div.innerHTML = '<i class="fas fa-file-alt me-1" style="color: #17a2b8;"></i><strong>' + escHtml(item.title || item.name || '') + '</strong>' + (item.body_section ? ' <small class="text-muted">(' + escHtml(item.body_section) + ')</small>' : '');
+                    } else if (type === 'pearl') {
+                        var pearlPreview = (item.pearl_text || '').replace(/<[^>]+>/g, '').substring(0, 80);
+                        div.innerHTML = '<i class="fas fa-gem me-1" style="color: #6b46c1;"></i><strong>' + escHtml(pearlPreview || 'Pearl #' + item.id) + '</strong>' + (item.body_section ? ' <small class="text-muted">(' + escHtml(item.body_section) + ')</small>' : '');
+                    } else {
+                        div.innerHTML = '<i class="fas fa-link me-1 text-muted"></i><strong>' + escHtml(item.title || item.name || item.slug || '') + '</strong>';
                     }
                     div.onclick = function() {
-                        var chipsId;
+                        // Map search type to chip container and chip type
+                        var chipsId, chipType;
                         if (type === 'algorithm') {
                             chipsId = inputId.replace('TnmSearch', 'LinkedTnm');
-                        } else {
+                            chipType = 'tnm';
+                        } else if (type === 'case') {
                             chipsId = inputId.replace('CaseSearch', 'LinkedCases');
+                            chipType = 'case';
+                        } else if (type === 'reporting_algorithm') {
+                            chipsId = inputId.replace('AlgorithmSearch', 'LinkedAlgorithms');
+                            chipType = 'algorithm_link';
+                        } else if (type === 'radiology_template') {
+                            chipsId = inputId.replace('TemplateSearch', 'LinkedTemplates');
+                            chipType = 'template_link';
+                        } else if (type === 'pearl') {
+                            chipsId = inputId.replace('PearlSearch', 'LinkedPearls');
+                            chipType = 'pearl_link';
                         }
                         var existing = getChips(chipsId);
                         var isDuplicate = existing.some(function(e) {
-                            if (type === 'case') return e.id === item.id;
-                            return e.slug === item.slug;
+                            return e.id === item.id;
                         });
                         if (!isDuplicate) {
-                            addChip(chipsId, item, type === 'algorithm' ? 'tnm' : 'case');
+                            addChip(chipsId, item, chipType);
                         }
                         container.classList.add('d-none');
                         document.getElementById(inputId).value = '';
@@ -291,14 +350,26 @@ function escAttr(str) {
 // ==================== AUTO-INIT ====================
 
 document.addEventListener('DOMContentLoaded', function() {
+    // Map input ID suffixes to search types
+    var _searchTypeMap = {
+        'CaseSearch': 'case',
+        'TnmSearch': 'algorithm',
+        'AlgorithmSearch': 'reporting_algorithm',
+        'TemplateSearch': 'radiology_template',
+        'PearlSearch': 'pearl'
+    };
+
     // Attach Enter key prevention + live search to all search inputs
-    document.querySelectorAll('[id$="CaseSearch"], [id$="TnmSearch"]').forEach(function(input) {
+    document.querySelectorAll('[id$="CaseSearch"], [id$="TnmSearch"], [id$="AlgorithmSearch"], [id$="TemplateSearch"], [id$="PearlSearch"]').forEach(function(input) {
         input.addEventListener('keydown', function(e) {
             if (e.key === 'Enter') e.preventDefault();
         });
         input.addEventListener('input', function() {
             var resultsId = this.id.replace('Search', 'Results');
-            var type = this.id.includes('Tnm') ? 'algorithm' : 'case';
+            var type = 'case';
+            for (var suffix in _searchTypeMap) {
+                if (this.id.endsWith(suffix)) { type = _searchTypeMap[suffix]; break; }
+            }
             searchItems(this.id, resultsId, type);
         });
     });

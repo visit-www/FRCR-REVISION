@@ -1168,6 +1168,15 @@ def knowledge_hub():
     )
 
 
+@reporting_bp.route('/admin/pearls')
+@login_required
+@require_admin
+def admin_pearls():
+    """Admin page for managing all radiology pearls."""
+    pearls = RadiologyPearl.query.order_by(RadiologyPearl.created_at.desc()).all()
+    return render_template('admin_pearls.html', pearls=pearls)
+
+
 @reporting_bp.route('/anatomy-snippets')
 @login_required
 def browse_anatomy_snippets():
@@ -2534,13 +2543,14 @@ def smart_reporter_anatomy():
     if manual_html:
         try:
             slug = re.sub(r'[^a-z0-9]+', '-', topic.lower()).strip('-')[:200]
+            user_keywords = (data.get('keywords') or '').strip()
             entry = ReportingAlgorithm(
                 title=topic.title(),
                 slug=f'anatomy-{slug}',
                 category='anatomy',
                 origin='anatomy_cache',
                 template_html=manual_html,
-                keywords=topic.lower(),
+                keywords=user_keywords or topic.lower(),
                 is_available=True,
                 is_ai_generated=False,
             )
@@ -2640,13 +2650,14 @@ def smart_reporter_anatomy():
                     cache_entry.modality = modality
             else:
                 slug = re.sub(r'[^a-z0-9]+', '-', topic.lower()).strip('-')[:200]
+                ai_user_keywords = (data.get('keywords') or '').strip()
                 cache_entry = ReportingAlgorithm(
                     title=result.get('title', topic.title()),
                     slug=f'anatomy-{slug}',
                     category='anatomy',
                     origin='anatomy_cache',
                     template_html=content_html,
-                    keywords=topic.lower(),
+                    keywords=ai_user_keywords or topic.lower(),
                     is_available=True,
                     is_ai_generated=True,
                 )

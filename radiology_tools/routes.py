@@ -35,15 +35,24 @@ def finder():
         IncidentalFindingCalculator.finding_name
     ).all()
 
-    # Group by category
+    # Group by category with defined ordering
     grouped = {}
     for calc in calculators:
         cat = calc.category or 'Other'
         grouped.setdefault(cat, []).append(calc)
 
+    CATEGORY_ORDER = ['Guidelines', 'Classification', 'Calculator', 'Scoring']
+    grouped_sorted = {}
+    for cat in CATEGORY_ORDER:
+        if cat in grouped:
+            grouped_sorted[cat] = grouped[cat]
+    for cat in sorted(grouped.keys()):
+        if cat not in grouped_sorted:
+            grouped_sorted[cat] = grouped[cat]
+
     return render_template('radiology_tools_user.html',
                            calculators=calculators,
-                           grouped=grouped)
+                           grouped=grouped_sorted)
 
 
 @if_bp.route('/<slug>')
@@ -180,6 +189,17 @@ def admin_list():
                            cloudinary_upload_preset=os.environ.get('CLOUDINARY_UPLOAD_PRESET', ''))
 
 
+@if_bp.route('/admin/edit/<int:calc_id>')
+@require_admin
+def edit_tool(calc_id):
+    """Full-page editor for a radiology tool."""
+    calculator = IncidentalFindingCalculator.query.get_or_404(calc_id)
+    return render_template('edit_radiology_tool.html',
+                           calculator=calculator,
+                           cloudinary_cloud_name=os.environ.get('CLOUDINARY_CLOUD_NAME', ''),
+                           cloudinary_upload_preset=os.environ.get('CLOUDINARY_UPLOAD_PRESET', ''))
+
+
 @if_bp.route('/admin/api', methods=['POST'])
 @require_admin
 def create_calculator():
@@ -308,6 +328,7 @@ def generate_calculator():
             body_section=data.get('body_section', ''),
             additional_context=data.get('additional_context', ''),
             user_id=current_user.id,
+            overwrite=data.get('overwrite', False),
         )
         return jsonify(result)
 

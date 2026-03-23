@@ -1,0 +1,507 @@
+{% extends 'base.html' %}
+{% block title %}Edit Tool - {{ calculator.finding_name }} - RadInsights{% endblock %}
+{% block tool_active_if %}active{% endblock %}
+{% block mobile_active_if %}active{% endblock %}
+{% from 'partials/resource_fields.html' import resource_fields, resource_styles %}
+
+{% block mobile_breadcrumb %}
+<li class="breadcrumb-item">
+    <a href="/incidental-findings/admin" class="text-white text-decoration-none">Tools Admin</a>
+</li>
+<li class="breadcrumb-item active text-white-50">Edit</li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3 px-4">
+    <!-- Top Bar -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="d-flex align-items-center gap-3">
+            <a href="/incidental-findings/admin" class="btn btn-outline-secondary btn-sm">
+                <i class="fas fa-arrow-left me-1"></i>Back
+            </a>
+            <div>
+                <h5 class="mb-0" id="pageTitle">{{ calculator.finding_name }}</h5>
+                <small class="text-muted">{{ calculator.slug }}</small>
+            </div>
+        </div>
+        <div class="d-flex gap-2 align-items-center">
+            <span id="saveStatus" class="text-muted small"></span>
+            <button class="btn btn-outline-warning btn-sm" id="regenerateBtn" onclick="openRegenerateModal()">
+                <i class="fas fa-sync-alt me-1"></i>Regenerate with AI
+            </button>
+            {% if not calculator.verified_at %}
+            <button class="btn btn-outline-success btn-sm" onclick="verifyTool()">
+                <i class="fas fa-check me-1"></i>Verify & Publish
+            </button>
+            {% endif %}
+            <button class="btn btn-sm" id="saveBtn" onclick="saveAll()"
+                    style="background: #5E899E; border-color: #5E899E; color: #fff;">
+                <i class="fas fa-save me-1"></i>Save
+            </button>
+        </div>
+    </div>
+
+    <!-- Metadata (collapsible) -->
+    <div class="card border-0 shadow-sm mb-3">
+        <div class="card-header bg-white py-2 d-flex justify-content-between align-items-center"
+             data-bs-toggle="collapse" data-bs-target="#metadataPanel" role="button"
+             style="cursor: pointer;">
+            <span class="fw-semibold small">
+                <i class="fas fa-cog me-1 text-muted"></i>Metadata & Resources
+            </span>
+            <i class="fas fa-chevron-down small text-muted" id="metaChevron"></i>
+        </div>
+        <div class="collapse" id="metadataPanel">
+            <div class="card-body py-3">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label small fw-semibold">Finding Name</label>
+                        <input type="text" class="form-control form-control-sm" id="editFindingName"
+                               value="{{ calculator.finding_name }}">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small fw-semibold">Category</label>
+                        <select class="form-select form-select-sm" id="editCategory" onchange="toggleCustomCategory(this, 'editCustomCategory')">
+                            <option value="">Select...</option>
+                            <option value="Guidelines">Guidelines</option>
+                            <option value="Calculator">Calculator</option>
+                            <option value="Classification">Classification</option>
+                            <option value="Scoring">Scoring</option>
+                            <option value="custom">Custom...</option>
+                        </select>
+                        <input type="text" class="form-control form-control-sm mt-1 d-none" id="editCustomCategory" placeholder="Enter custom category">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small fw-semibold">Body Section</label>
+                        <select class="form-select form-select-sm" id="editBodySection">
+                            <option value="">Select...</option>
+                            {% for bs in ['Brain','Head and Neck','Thorax','Cardiovascular','Breast','Abdomen','Pelvis','Spine','Musculoskeletal','Multisystem'] %}
+                            <option value="{{ bs }}" {{ 'selected' if calculator.body_section == bs }}>{{ bs }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small fw-semibold">Keywords</label>
+                        <input type="text" class="form-control form-control-sm" id="editKeywords"
+                               value="{{ calculator.keywords or '' }}" placeholder="comma-separated">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small fw-semibold">Status</label>
+                        <div class="form-check form-switch mt-1">
+                            <input class="form-check-input" type="checkbox" id="editAvailable"
+                                   {{ 'checked' if calculator.is_available }}>
+                            <label class="form-check-label small" for="editAvailable">Published</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="row g-3 mt-1">
+                    <div class="col-md-6">
+                        <label class="form-label small fw-semibold">Description</label>
+                        <textarea class="form-control form-control-sm" id="editDescription" rows="2">{{ calculator.description or '' }}</textarea>
+                    </div>
+                    <div class="col-md-6">
+                        {{ resource_fields('edit') }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Layout Toggle -->
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <span class="fw-semibold small text-muted" id="editorModeLabel">
+            <i class="fas fa-columns me-1"></i>Split View
+        </span>
+        <div class="btn-group btn-group-sm" id="layoutToggle">
+            <button class="btn btn-outline-secondary btn-sm active" onclick="setEditorLayout('split')" title="Split view">
+                <i class="fas fa-columns me-1"></i><span class="d-none d-md-inline">Split</span>
+            </button>
+            <button class="btn btn-outline-secondary btn-sm" onclick="setEditorLayout('editor')" title="Editor only">
+                <i class="fas fa-code me-1"></i><span class="d-none d-md-inline">Code</span>
+            </button>
+            <button class="btn btn-outline-secondary btn-sm" onclick="setEditorLayout('preview')" title="Preview only">
+                <i class="fas fa-eye me-1"></i><span class="d-none d-md-inline">Preview</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Editor + Preview (side by side) -->
+    <div class="row g-3" style="height: calc(100vh - 290px);">
+        <!-- Code Editor -->
+        <div class="col-md-6 d-flex flex-column" id="editorCol">
+            <textarea id="htmlEditor" class="form-control font-monospace flex-grow-1"
+                      style="resize: none; font-size: 0.82rem; line-height: 1.5; tab-size: 4; border-radius: 8px;"
+                      spellcheck="false">{{ calculator.calculator_html or '' }}</textarea>
+        </div>
+
+        <!-- Live Preview -->
+        <div class="col-md-6 d-flex flex-column" id="previewCol">
+            <iframe id="previewFrame" scrolling="yes"
+                    style="flex: 1; border: 1px solid #dee2e6; border-radius: 8px; background: #fff; overflow: auto;"></iframe>
+        </div>
+    </div>
+</div>
+
+<!-- Regenerate Modal -->
+<div class="modal fade app-content-modal" id="regenerateModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-sync-alt"></i> Regenerate Radiology Tool</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning py-2 mb-3">
+                    <i class="fas fa-exclamation-triangle me-1"></i>
+                    <strong>Warning:</strong> Regeneration will permanently replace the current content with newly AI-generated content.
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Finding Name</label>
+                    <input type="text" class="form-control" id="regenFindingName" value="{{ calculator.finding_name }}">
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Category</label>
+                        <select class="form-select" id="regenCategory" onchange="toggleCustomCategory(this, 'regenCustomCategory')">
+                            <option value="">Select...</option>
+                            <option value="Guidelines">Guidelines</option>
+                            <option value="Calculator">Calculator</option>
+                            <option value="Classification">Classification</option>
+                            <option value="Scoring">Scoring</option>
+                            <option value="custom">Custom...</option>
+                        </select>
+                        <input type="text" class="form-control mt-1 d-none" id="regenCustomCategory" placeholder="Enter custom category">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Body Section</label>
+                        <select class="form-select" id="regenBodySection">
+                            <option value="">Select...</option>
+                            {% for bs in ['Brain','Head and Neck','Thorax','Cardiovascular','Breast','Abdomen','Pelvis','Spine','Musculoskeletal','Multisystem'] %}
+                            <option value="{{ bs }}" {{ 'selected' if calculator.body_section == bs }}>{{ bs }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Additional Context</label>
+                    <textarea class="form-control" id="regenContext" rows="3"
+                              placeholder="Provide additional instructions, specific criteria, improvements needed..."></textarea>
+                </div>
+                <div id="regenStatus" class="mt-3 d-none"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-modal-secondary" id="regenCancelBtn" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-modal-primary" id="regenBtn" onclick="regenerateTool()">
+                    <i class="fas fa-sync-alt me-1"></i>Regenerate
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    var CLOUDINARY_CLOUD_NAME = {{ cloudinary_cloud_name|default('', true)|tojson }};
+    var CLOUDINARY_UPLOAD_PRESET = {{ cloudinary_upload_preset|default('', true)|tojson }};
+</script>
+{{ resource_styles() }}
+<script src="{{ url_for('static', filename='js/admin-resource-helpers.js') }}"></script>
+<script>
+var CALC_ID = {{ calculator.id }};
+var _previewTimeout = null;
+var _isDirty = false;
+
+// ==================== CATEGORY DROPDOWN ====================
+
+var STANDARD_CATEGORIES = ['Guidelines', 'Calculator', 'Classification', 'Scoring'];
+
+function toggleCustomCategory(select, inputId) {
+    var customInput = document.getElementById(inputId);
+    if (select.value === 'custom') {
+        customInput.classList.remove('d-none');
+        customInput.focus();
+    } else {
+        customInput.classList.add('d-none');
+        customInput.value = '';
+    }
+}
+
+function getCategoryValue(selectId, customId) {
+    var sel = document.getElementById(selectId);
+    if (sel.value === 'custom') {
+        return document.getElementById(customId).value.trim();
+    }
+    return sel.value;
+}
+
+function setCategoryDropdown(selectId, customId, value) {
+    var sel = document.getElementById(selectId);
+    var customInput = document.getElementById(customId);
+    if (!value) {
+        sel.value = '';
+        customInput.classList.add('d-none');
+        return;
+    }
+    if (STANDARD_CATEGORIES.indexOf(value) !== -1) {
+        sel.value = value;
+        customInput.classList.add('d-none');
+    } else {
+        sel.value = 'custom';
+        customInput.value = value;
+        customInput.classList.remove('d-none');
+    }
+}
+
+// ==================== LIVE PREVIEW ====================
+
+function refreshPreview() {
+    var html = document.getElementById('htmlEditor').value || '';
+    document.getElementById('previewFrame').srcdoc = html;
+}
+
+// ==================== LAYOUT TOGGLE ====================
+
+function setEditorLayout(mode) {
+    var editorCol = document.getElementById('editorCol');
+    var previewCol = document.getElementById('previewCol');
+    var label = document.getElementById('editorModeLabel');
+    document.querySelectorAll('#layoutToggle .btn').forEach(function(b) { b.classList.remove('active'); });
+
+    if (mode === 'editor') {
+        editorCol.className = 'col-12 d-flex flex-column';
+        editorCol.classList.remove('d-none');
+        previewCol.classList.add('d-none');
+        label.innerHTML = '<i class="fas fa-code me-1"></i>Code Only';
+    } else if (mode === 'preview') {
+        editorCol.classList.add('d-none');
+        previewCol.className = 'col-12 d-flex flex-column';
+        previewCol.classList.remove('d-none');
+        label.innerHTML = '<i class="fas fa-eye me-1"></i>Preview Only';
+        refreshPreview();
+    } else {
+        editorCol.className = 'col-md-6 d-flex flex-column';
+        editorCol.classList.remove('d-none');
+        previewCol.className = 'col-md-6 d-flex flex-column';
+        previewCol.classList.remove('d-none');
+        label.innerHTML = '<i class="fas fa-columns me-1"></i>Split View';
+    }
+    var btns = document.querySelectorAll('#layoutToggle .btn');
+    var idx = mode === 'split' ? 0 : (mode === 'editor' ? 1 : 2);
+    btns[idx].classList.add('active');
+}
+
+// ==================== SAVE ====================
+
+function saveAll() {
+    var btn = document.getElementById('saveBtn');
+    var status = document.getElementById('saveStatus');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Saving...';
+
+    var resources = typeof collectResources === 'function' ? collectResources('edit') : {};
+
+    fetch('/incidental-findings/admin/api/' + CALC_ID, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            finding_name: document.getElementById('editFindingName').value,
+            category: getCategoryValue('editCategory', 'editCustomCategory'),
+            body_section: document.getElementById('editBodySection').value,
+            keywords: document.getElementById('editKeywords').value,
+            description: document.getElementById('editDescription').value,
+            calculator_html: document.getElementById('htmlEditor').value,
+            guideline_source: JSON.stringify(resources),
+            is_available: document.getElementById('editAvailable').checked,
+        }),
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(result) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-save me-1"></i>Save';
+        if (result.error) {
+            status.innerHTML = '<span class="text-danger"><i class="fas fa-exclamation-circle me-1"></i>' + result.error + '</span>';
+        } else {
+            _isDirty = false;
+            status.innerHTML = '<span class="text-success"><i class="fas fa-check me-1"></i>Saved</span>';
+            document.getElementById('pageTitle').textContent = document.getElementById('editFindingName').value;
+            setTimeout(function() { status.innerHTML = ''; }, 3000);
+        }
+    })
+    .catch(function() {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-save me-1"></i>Save';
+        status.innerHTML = '<span class="text-danger">Save failed</span>';
+    });
+}
+
+// ==================== VERIFY ====================
+
+function verifyTool() {
+    if (!confirm('Verify and publish this radiology tool?')) return;
+    fetch('/incidental-findings/admin/api/' + CALC_ID + '/verify', { method: 'POST' })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.error) { alert(data.error); return; }
+            location.reload();
+        });
+}
+
+// ==================== REGENERATE ====================
+
+function openRegenerateModal() {
+    // Pre-fill from current metadata
+    document.getElementById('regenFindingName').value = document.getElementById('editFindingName').value;
+    setCategoryDropdown('regenCategory', 'regenCustomCategory', getCategoryValue('editCategory', 'editCustomCategory'));
+    document.getElementById('regenBodySection').value = document.getElementById('editBodySection').value;
+    document.getElementById('regenContext').value = '';
+    document.getElementById('regenStatus').classList.add('d-none');
+    document.getElementById('regenBtn').disabled = false;
+    document.getElementById('regenBtn').innerHTML = '<i class="fas fa-sync-alt me-1"></i>Regenerate';
+    new bootstrap.Modal(document.getElementById('regenerateModal')).show();
+}
+
+function regenerateTool() {
+    var btn = document.getElementById('regenBtn');
+    var cancelBtn = document.getElementById('regenCancelBtn');
+    var status = document.getElementById('regenStatus');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Regenerating...';
+    cancelBtn.textContent = 'Cancel Generation';
+    cancelBtn.setAttribute('data-bs-dismiss', '');
+    cancelBtn.onclick = cancelRegeneration;
+    status.classList.remove('d-none');
+    status.innerHTML = '<div class="alert alert-info py-2"><i class="fas fa-spinner fa-spin me-1"></i>Generating new content (this may take a minute)...</div>';
+
+    window._regenAbortController = new AbortController();
+
+    var resources = typeof collectResources === 'function' ? collectResources('edit') : {};
+
+    fetch('/incidental-findings/admin/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            finding_name: document.getElementById('regenFindingName').value,
+            guideline_source: JSON.stringify(resources),
+            category: getCategoryValue('regenCategory', 'regenCustomCategory'),
+            body_section: document.getElementById('regenBodySection').value,
+            additional_context: document.getElementById('regenContext').value,
+            overwrite: true,
+        }),
+        signal: window._regenAbortController.signal,
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(result) {
+        resetRegenUI();
+        if (result.success) {
+            status.innerHTML = '<div class="alert alert-success py-2"><i class="fas fa-check me-1"></i>Content regenerated! Reloading...</div>';
+            setTimeout(function() { location.reload(); }, 1500);
+        } else {
+            status.innerHTML = '<div class="alert alert-danger py-2"><i class="fas fa-exclamation-circle me-1"></i>' + (result.message || result.error) + '</div>';
+        }
+    })
+    .catch(function(err) {
+        if (err.name === 'AbortError') {
+            status.innerHTML = '<div class="alert alert-info py-2"><i class="fas fa-info-circle me-1"></i>Regeneration cancelled.</div>';
+        } else {
+            status.innerHTML = '<div class="alert alert-danger py-2">Regeneration failed: ' + err.message + '</div>';
+        }
+        resetRegenUI();
+    })
+    .finally(function() { window._regenAbortController = null; });
+}
+
+function cancelRegeneration() {
+    if (window._regenAbortController) {
+        window._regenAbortController.abort();
+        window._regenAbortController = null;
+    }
+    resetRegenUI();
+}
+
+function resetRegenUI() {
+    var btn = document.getElementById('regenBtn');
+    var cancelBtn = document.getElementById('regenCancelBtn');
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-sync-alt me-1"></i>Regenerate';
+    cancelBtn.textContent = 'Cancel';
+    cancelBtn.setAttribute('data-bs-dismiss', 'modal');
+    cancelBtn.onclick = null;
+}
+
+// ==================== INIT ====================
+
+window.addEventListener('beforeunload', function(e) {
+    if (_isDirty) {
+        e.preventDefault();
+        e.returnValue = '';
+    }
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Load resources
+    loadAllResources('edit', {{ calculator.guideline_source|default('', true)|tojson }});
+
+    // Set category dropdown
+    setCategoryDropdown('editCategory', 'editCustomCategory', {{ (calculator.category or '')|tojson }});
+
+    // Init live preview
+    refreshPreview();
+
+    // Editor input -> debounced preview
+    var editor = document.getElementById('htmlEditor');
+    editor.addEventListener('input', function() {
+        _isDirty = true;
+        clearTimeout(_previewTimeout);
+        _previewTimeout = setTimeout(refreshPreview, 600);
+    });
+
+    // Tab key inserts spaces instead of changing focus
+    editor.addEventListener('keydown', function(e) {
+        if (e.key === 'Tab') {
+            e.preventDefault();
+            var start = this.selectionStart;
+            var end = this.selectionEnd;
+            this.value = this.value.substring(0, start) + '    ' + this.value.substring(end);
+            this.selectionStart = this.selectionEnd = start + 4;
+            _isDirty = true;
+            clearTimeout(_previewTimeout);
+            _previewTimeout = setTimeout(refreshPreview, 600);
+        }
+    });
+
+    // Collapse chevron animation
+    var panel = document.getElementById('metadataPanel');
+    panel.addEventListener('show.bs.collapse', function() {
+        document.getElementById('metaChevron').style.transform = 'rotate(180deg)';
+    });
+    panel.addEventListener('hide.bs.collapse', function() {
+        document.getElementById('metaChevron').style.transform = 'rotate(0deg)';
+    });
+});
+
+// Global keyboard shortcut
+document.addEventListener('keydown', function(e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        saveAll();
+    }
+});
+</script>
+<style>
+    #metaChevron { transition: transform 0.2s ease; }
+    #htmlEditor {
+        font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+        background: #1e1e2e;
+        color: #cdd6f4;
+        border: 1px solid #45475a;
+        padding: 16px;
+    }
+    #htmlEditor:focus {
+        background: #1e1e2e;
+        color: #cdd6f4;
+        border-color: #5E899E;
+        box-shadow: 0 0 0 0.2rem rgba(94, 137, 158, 0.25);
+    }
+</style>
+{% endblock %}

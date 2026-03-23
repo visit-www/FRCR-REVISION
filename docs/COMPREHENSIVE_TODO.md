@@ -7,10 +7,10 @@
 
 | Status | Count |
 |--------|-------|
-| DONE | **50** / 71 |
-| WONTFIX | 2 / 71 |
-| TODO | **19** / 71 |
-| **Completion** | **73%** |
+| DONE | **50** / 72 |
+| WONTFIX | 2 / 72 |
+| TODO | **20** / 72 |
+| **Completion** | **72%** |
 
 ---
 
@@ -167,6 +167,7 @@
 | # | Item | Status | Details |
 |---|------|--------|---------|
 | 71 | Shared HTML syntax highlighting editor | TODO | Extract `highlightHTML()` + scroll sync from `edit_reporting_algorithm.html` into `static/js/html-syntax-highlight.js`. Expose `initSyntaxEditor(textareaId, highlightId)`. Apply to: TNM calculator edit, Radiology Tools admin, Clinical Protocols admin, Anatomy snippet add modal. |
+| 72 | Protocol nav tab not active | TODO | Verify why the Protocols nav tab is not highlighted as active when working with protocols. Likely same Jinja2 `{% block %}` inside `{% if %}` issue fixed for anatomy snippets (commit e3d7973). Check protocol templates for correct `tool_active_protocols` block definition. |
 
 ### 4.4 Performance
 
