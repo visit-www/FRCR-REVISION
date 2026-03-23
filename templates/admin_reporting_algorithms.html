@@ -9,9 +9,9 @@
 {% block mobile_breadcrumb %}
 {% if origin_filter == 'anatomy_cache' %}
 <li class="breadcrumb-item">
-    <a href="/anatomy-snippets" class="text-white text-decoration-none">Anatomy Snippets</a>
+    <a href="/knowledge-hub" class="text-white text-decoration-none">Knowledge Hub</a>
 </li>
-<li class="breadcrumb-item active text-white-50">Manage</li>
+<li class="breadcrumb-item active text-white-50">Manage Snippets</li>
 {% else %}
 <li class="breadcrumb-item">
     <a href="{{ url_for('reporting.smart_reporter') }}" class="text-white text-decoration-none">Smart Reporter</a>
@@ -29,12 +29,19 @@
                 <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary btn-sm">
                     <i class="fas fa-home me-1"></i>Dashboard
                 </a>
+                {% if origin_filter == 'anatomy_cache' %}
+                <a href="/knowledge-hub" class="btn btn-outline-secondary btn-sm">
+                    <i class="fas fa-book-medical me-1"></i>Knowledge Hub
+                </a>
+                {% endif %}
                 <a href="{{ url_for('reporting.smart_reporter') }}" class="btn btn-outline-secondary btn-sm">
                     <i class="fas fa-file-medical me-1"></i>Smart Reporter
                 </a>
+                {% if origin_filter != 'anatomy_cache' %}
                 <a href="{{ url_for('reporting.admin_radiology_templates') }}" class="btn btn-outline-secondary btn-sm">
                     <i class="fas fa-file-alt me-1"></i>Radiology Templates
                 </a>
+                {% endif %}
             </div>
 
             <div class="d-flex justify-content-between align-items-center mb-4">
@@ -49,13 +56,14 @@
                 </div>
                 <div class="d-flex gap-2">
                     <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#generateModal"
-                            style="background: #e96304; border-color: #e96304;">
+                            style="background: {% if origin_filter == 'anatomy_cache' %}#6f42c1; border-color: #6f42c1;{% else %}#e96304; border-color: #e96304;{% endif %}">
                         <i class="fas fa-magic me-1"></i>Generate New
                     </button>
                 </div>
             </div>
 
-            <!-- Origin Filter -->
+            {% if origin_filter != 'anatomy_cache' %}
+            <!-- Origin Filter (only for algorithms mode) -->
             <div class="mb-3 d-flex gap-2 flex-wrap">
                 <a href="/admin/reporting-algorithms" class="btn btn-sm {% if not request.args.get('origin') %}btn-brand-neutral{% else %}btn-outline-secondary{% endif %}">
                     All (Admin + User)
@@ -70,17 +78,19 @@
                     <i class="fas fa-bone me-1"></i>Anatomy Snippets
                 </a>
             </div>
+            {% endif %}
 
-            <!-- Algorithms List -->
-            <div class="card shadow-sm border-0" style="border-top: 3px solid #e96304 !important;">
+            <!-- Items List -->
+            <div class="card shadow-sm border-0" style="border-top: 3px solid {% if origin_filter == 'anatomy_cache' %}#6f42c1{% else %}#e96304{% endif %} !important;">
                 <div class="table-responsive">
                     <table class="table table-hover mb-0">
-                        <thead style="background: #fff3e8;">
+                        <thead style="background: {% if origin_filter == 'anatomy_cache' %}#f3eef8{% else %}#fff3e8{% endif %};">
                             <tr>
                                 <th>Title</th>
-                                <th>Category</th>
-                                <th>Origin</th>
+                                {% if origin_filter != 'anatomy_cache' %}<th>Category</th>{% endif %}
+                                {% if origin_filter != 'anatomy_cache' %}<th>Origin</th>{% endif %}
                                 <th>Body Section</th>
+                                {% if origin_filter == 'anatomy_cache' %}<th>Modality</th>{% endif %}
                                 <th>Status</th>
                                 <th>Actions</th>
                             </tr>
@@ -92,6 +102,7 @@
                                     <div class="fw-semibold">{{ t.title }}</div>
                                     <small class="text-muted">{{ t.slug }}</small>
                                 </td>
+                                {% if origin_filter != 'anatomy_cache' %}
                                 <td><span class="badge bg-light text-dark border">{{ t.category }}</span></td>
                                 <td>
                                     {% if t.origin == 'admin' %}
@@ -104,7 +115,11 @@
                                     <span class="badge bg-light text-dark border">{{ t.origin }}</span>
                                     {% endif %}
                                 </td>
+                                {% endif %}
                                 <td>{{ t.body_section or '—' }}</td>
+                                {% if origin_filter == 'anatomy_cache' %}
+                                <td>{{ t.modality or '—' }}</td>
+                                {% endif %}
                                 <td>
                                     {% if t.is_available %}
                                     <span class="badge bg-success"><i class="fas fa-check me-1"></i>Available</span>
@@ -124,6 +139,11 @@
                                            class="btn btn-outline-secondary" title="Edit">
                                             <i class="fas fa-edit"></i>
                                         </a>
+                                        {% if origin_filter == 'anatomy_cache' %}
+                                        <button class="btn btn-outline-warning" onclick="regenerateSnippet({{ t.id }}, '{{ t.title|e }}')" title="Regenerate with AI">
+                                            <i class="fas fa-sync-alt"></i>
+                                        </button>
+                                        {% endif %}
                                         {% if not t.verified_at %}
                                         <button class="btn btn-outline-success" onclick="verifyTemplate({{ t.id }})" title="Verify">
                                             <i class="fas fa-check"></i>
@@ -139,8 +159,12 @@
                             {% endfor %}
                             {% if not templates %}
                             <tr>
-                                <td colspan="6" class="text-center py-4 text-muted">
+                                <td colspan="{% if origin_filter == 'anatomy_cache' %}5{% else %}6{% endif %}" class="text-center py-4 text-muted">
+                                    {% if origin_filter == 'anatomy_cache' %}
+                                    No anatomy snippets yet. Click "Generate New" to create one.
+                                    {% else %}
                                     No templates yet. Click "Generate New" to create one.
+                                    {% endif %}
                                 </td>
                             </tr>
                             {% endif %}
@@ -152,7 +176,79 @@
     </div>
 </div>
 
-<!-- Generate Modal -->
+{% if origin_filter == 'anatomy_cache' %}
+<!-- Generate Anatomy Snippet Modal -->
+<div class="modal fade app-content-modal" id="generateModal" tabindex="-1" data-bs-focus="false">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-bone me-2"></i>Generate Anatomy Snippet</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Anatomy Topic</label>
+                    <input type="text" class="form-control" id="snippetTopic" placeholder="e.g. Circle of Willis, Brachial Plexus, Middle Ear Ossicles">
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Body Section</label>
+                        <select class="form-select" id="snippetBodySection">
+                            <option value="">Select...</option>
+                            {% for bs in ['Brain','Head and Neck','Thorax','Cardiovascular','Breast','Abdomen','Pelvis','Spine','Musculoskeletal','Multisystem'] %}
+                            <option value="{{ bs }}">{{ bs }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Modality <small class="text-muted">(select all that apply)</small></label>
+                        <div class="d-flex flex-wrap gap-1" id="snippetModalityGroup">
+                            {% for mod in ['CT','MRI','Ultrasound','X-ray','Fluoroscopy','Nuclear Medicine','PET-CT'] %}
+                            <label class="modality-check-pill">
+                                <input type="checkbox" value="{{ mod }}" class="d-none">
+                                <span>{{ mod }}</span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Additional Instructions <small class="text-muted">(optional)</small></label>
+                    <textarea class="form-control" id="snippetInstructions" rows="2"
+                              placeholder="e.g. Focus on MRI appearances, Include surgical anatomy"></textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Reference URLs <small class="text-muted">(optional)</small></label>
+                    <div id="snippetRefUrlList">
+                        <div class="input-group mb-1">
+                            <input type="text" class="form-control ref-url-input" placeholder="e.g. https://radiopaedia.org/articles/...">
+                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="addRefUrlInput('snippetRefUrlList')" title="Add another URL"><i class="fas fa-plus"></i></button>
+                        </div>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Reference PDFs <small class="text-muted">(optional)</small></label>
+                    <input type="file" class="form-control" id="snippetPdf" accept=".pdf" multiple>
+                </div>
+                <div id="snippetLoading" class="d-none text-center py-4">
+                    <div class="spinner-border mb-3" role="status" style="width: 3rem; height: 3rem; color: #6f42c1;">
+                        <span class="visually-hidden">Generating...</span>
+                    </div>
+                    <p class="text-muted">Generating anatomy snippet&hellip; this may take 15-30 seconds.</p>
+                </div>
+                <div id="snippetStatus" class="mt-3 d-none"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-modal-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-modal-primary" id="genSnippetBtn" onclick="generateAnatomySnippet()">
+                    <i class="fas fa-magic me-1"></i>Generate
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% else %}
+<!-- Generate Reporting Algorithm Modal -->
 <div class="modal fade app-content-modal" id="generateModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -207,15 +303,15 @@
         </div>
     </div>
 </div>
+{% endif %}
 
-
-<!-- Preview Algorithm Modal -->
+<!-- Preview Modal -->
 <div class="modal fade" id="previewModal" tabindex="-1">
     <div class="modal-dialog modal-xl">
         <div class="modal-content">
-            <div class="modal-header" style="background: linear-gradient(135deg, #e96304, #ff8534); color: #fff;">
+            <div class="modal-header" style="background: linear-gradient(135deg, {% if origin_filter == 'anatomy_cache' %}#6f42c1, #8b5cf6{% else %}#e96304, #ff8534{% endif %}); color: #fff;">
                 <h5 class="modal-title" id="previewTitle">
-                    <i class="fas fa-eye"></i> Algorithm Preview
+                    <i class="fas fa-eye"></i> {% if origin_filter == 'anatomy_cache' %}Snippet{% else %}Algorithm{% endif %} Preview
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
@@ -232,21 +328,49 @@
 {% endblock %}
 
 {% block scripts %}
+<style>
+.modality-check-pill {
+    display: inline-block;
+    cursor: pointer;
+    margin: 0;
+}
+.modality-check-pill span {
+    display: inline-block;
+    font-size: 0.75rem;
+    padding: 3px 10px;
+    border-radius: 14px;
+    border: 1.5px solid #dee2e6;
+    background: #fff;
+    color: var(--brand-text-secondary, #5a6270);
+    transition: all 0.15s;
+}
+.modality-check-pill span:hover {
+    border-color: var(--brand-neutral, #5E899E);
+}
+.modality-check-pill input:checked + span {
+    background: var(--brand-neutral, #5E899E);
+    color: #fff;
+    border-color: var(--brand-neutral, #5E899E);
+    font-weight: 600;
+}
+</style>
 <script>
     var CLOUDINARY_CLOUD_NAME = {{ cloudinary_cloud_name|default('', true)|tojson }};
     var CLOUDINARY_UPLOAD_PRESET = {{ cloudinary_upload_preset|default('', true)|tojson }};
 </script>
+{% if origin_filter != 'anatomy_cache' %}
 {{ resource_styles() }}
 <script src="{{ url_for('static', filename='js/admin-resource-helpers.js') }}"></script>
+{% endif %}
 <script>
-// ==================== REPORTING ALGORITHM CRUD ====================
+// ==================== SHARED FUNCTIONS ====================
 
 function previewAlgorithm(id) {
     fetch('/admin/reporting-algorithms/api/' + id)
         .then(function(r) { return r.json(); })
         .then(function(data) {
             document.getElementById('previewTitle').innerHTML =
-                '<i class="fas fa-eye"></i> ' + (data.title || 'Algorithm Preview');
+                '<i class="fas fa-eye"></i> ' + (data.title || 'Preview');
             var statusParts = [];
             if (!data.is_available) statusParts.push('<span class="badge bg-warning text-dark">Draft</span>');
             if (data.verified_at) statusParts.push('<span class="badge bg-success">Verified</span>');
@@ -260,6 +384,138 @@ function previewAlgorithm(id) {
         })
         .catch(function(err) { alert('Failed to load preview: ' + err); });
 }
+
+function verifyTemplate(id) {
+    if (!confirm('Verify and publish this item?')) return;
+    fetch('/admin/reporting-algorithms/api/' + id + '/verify', { method: 'POST' })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.error) { alert(data.error); return; }
+            location.reload();
+        });
+}
+
+function deleteTemplate(id, title) {
+    if (!confirm('Delete "' + title + '"?')) return;
+    fetch('/admin/reporting-algorithms/api/' + id, { method: 'DELETE' })
+        .then(function(r) { return r.json(); })
+        .then(function() { location.reload(); });
+}
+
+{% if origin_filter == 'anatomy_cache' %}
+// ==================== ANATOMY SNIPPET FUNCTIONS ====================
+
+function getCheckedModalities(groupId) {
+    var checks = document.querySelectorAll('#' + groupId + ' input[type="checkbox"]:checked');
+    var vals = [];
+    checks.forEach(function(c) { vals.push(c.value); });
+    return vals.join('/');
+}
+
+function addRefUrlInput(containerId) {
+    var container = document.getElementById(containerId);
+    var div = document.createElement('div');
+    div.className = 'input-group mb-1';
+    div.innerHTML = '<input type="text" class="form-control ref-url-input" placeholder="e.g. https://radiopaedia.org/articles/...">' +
+        '<button type="button" class="btn btn-outline-danger btn-sm" onclick="this.parentElement.remove()" title="Remove"><i class="fas fa-times"></i></button>';
+    container.appendChild(div);
+}
+
+function getRefUrls(containerId) {
+    var inputs = document.querySelectorAll('#' + containerId + ' .ref-url-input');
+    var urls = [];
+    inputs.forEach(function(inp) {
+        var v = inp.value.trim();
+        if (v) urls.push(v);
+    });
+    return urls;
+}
+
+function generateAnatomySnippet() {
+    var topic = document.getElementById('snippetTopic').value.trim();
+    if (!topic) { alert('Please enter an anatomy topic.'); return; }
+
+    var bodySection = document.getElementById('snippetBodySection').value;
+    var modality = getCheckedModalities('snippetModalityGroup');
+    var instructions = (document.getElementById('snippetInstructions').value || '').trim();
+    var refUrls = getRefUrls('snippetRefUrlList');
+    var pdfInput = document.getElementById('snippetPdf');
+    var pdfFiles = pdfInput ? Array.from(pdfInput.files) : [];
+
+    var btn = document.getElementById('genSnippetBtn');
+    var status = document.getElementById('snippetStatus');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Generating...';
+    document.getElementById('snippetLoading').classList.remove('d-none');
+    status.classList.add('d-none');
+
+    var fetchOpts;
+    if (pdfFiles.length > 0) {
+        var fd = new FormData();
+        fd.append('topic', topic);
+        fd.append('body_section', bodySection);
+        fd.append('modality', modality);
+        if (instructions) fd.append('instructions', instructions);
+        refUrls.forEach(function(u) { fd.append('reference_url', u); });
+        pdfFiles.forEach(function(f) { fd.append('pdf', f); });
+        fetchOpts = { method: 'POST', body: fd };
+    } else {
+        var payload = { topic: topic, body_section: bodySection, modality: modality };
+        if (instructions) payload.instructions = instructions;
+        if (refUrls.length) payload.reference_urls = refUrls;
+        fetchOpts = { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) };
+    }
+
+    fetch('/api/smart-reporter/anatomy', fetchOpts)
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        document.getElementById('snippetLoading').classList.add('d-none');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-magic me-1"></i>Generate';
+        if (data.error) {
+            status.classList.remove('d-none');
+            status.innerHTML = '<div class="alert alert-danger py-2">' + data.error + '</div>';
+            return;
+        }
+        if (data.cached) {
+            status.classList.remove('d-none');
+            status.innerHTML = '<div class="alert alert-info py-2"><i class="fas fa-info-circle me-1"></i>A cached snippet for "' + (data.title || topic) + '" already exists. Use Regenerate on the existing snippet to update it.</div>';
+            return;
+        }
+        status.classList.remove('d-none');
+        status.innerHTML = '<div class="alert alert-success py-2"><i class="fas fa-check me-1"></i>Anatomy snippet generated successfully!</div>';
+        setTimeout(function() { location.reload(); }, 1500);
+    })
+    .catch(function(err) {
+        document.getElementById('snippetLoading').classList.add('d-none');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-magic me-1"></i>Generate';
+        status.classList.remove('d-none');
+        status.innerHTML = '<div class="alert alert-danger py-2">Generation failed: ' + err.message + '</div>';
+    });
+}
+
+function regenerateSnippet(id, title) {
+    if (!confirm('Regenerate "' + title + '" using AI? Current content will be replaced.')) return;
+    var row = event.target.closest('tr');
+    if (row) row.style.opacity = '0.5';
+    fetch('/api/snippet/' + id + '/regenerate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.error) { alert('Regeneration failed: ' + data.error); if (row) row.style.opacity = '1'; return; }
+        location.reload();
+    })
+    .catch(function(err) {
+        alert('Regeneration failed: ' + err.message);
+        if (row) row.style.opacity = '1';
+    });
+}
+
+{% else %}
+// ==================== REPORTING ALGORITHM FUNCTIONS ====================
 
 function generateTemplate() {
     var btn = document.getElementById('genBtn');
@@ -300,21 +556,6 @@ function generateTemplate() {
     });
 }
 
-function verifyTemplate(id) {
-    if (!confirm('Verify and publish this template?')) return;
-    fetch('/admin/reporting-algorithms/api/' + id + '/verify', { method: 'POST' })
-        .then(function(r) { return r.json(); })
-        .then(function(data) {
-            if (data.error) { alert(data.error); return; }
-            location.reload();
-        });
-}
-
-function deleteTemplate(id, title) {
-    if (!confirm('Delete template "' + title + '"?')) return;
-    fetch('/admin/reporting-algorithms/api/' + id, { method: 'DELETE' })
-        .then(function(r) { return r.json(); })
-        .then(function() { location.reload(); });
-}
+{% endif %}
 </script>
 {% endblock %}

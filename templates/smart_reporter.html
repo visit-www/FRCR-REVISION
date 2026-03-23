@@ -2088,8 +2088,11 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function autoResizeTextarea(el) {
+        // Preserve scroll position to prevent page jump when textarea resizes
+        var scrollY = window.pageYOffset;
         el.style.height = 'auto';
         el.style.height = Math.max(el.scrollHeight, 60) + 'px';
+        window.scrollTo(0, scrollY);
     }
 
     function getCurrentReportText(warnIfEmpty) {
@@ -2671,10 +2674,20 @@ document.addEventListener('DOMContentLoaded', function() {
 
         state.outputText = output.value;
         autoResizeTextarea(output);
-        output.focus();
         // Hide answer and report sections but keep insights
         document.getElementById('aiAssistResponse').classList.add('d-none');
         showToast('Inserted into report.', 'success');
+        // Focus clinical insights section if visible, otherwise ask box
+        var insights = document.getElementById('aiAssistInsightsSection');
+        if (insights && !insights.classList.contains('d-none')) {
+            insights.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else {
+            var askInput = document.getElementById('askClaudeInput');
+            if (askInput) {
+                askInput.focus();
+                askInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
     };
 
     window.replaceWithFinalReport = function() {
@@ -2707,10 +2720,20 @@ document.addEventListener('DOMContentLoaded', function() {
 
         state.outputText = output.value;
         autoResizeTextarea(output);
-        output.focus();
         // Hide answer and report sections but keep insights
         document.getElementById('aiAssistResponse').classList.add('d-none');
         showToast('Report text inserted.', 'success');
+        // Focus clinical insights section if visible, otherwise ask box
+        var insights = document.getElementById('aiAssistInsightsSection');
+        if (insights && !insights.classList.contains('d-none')) {
+            insights.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else {
+            var askInput = document.getElementById('askClaudeInput');
+            if (askInput) {
+                askInput.focus();
+                askInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
     };
 
     // ==================== SAVE PEARL ====================
@@ -3234,6 +3257,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Save template prompt
                 if (!saveTemplatePromptDismissed && newText.length > 50) {
                     showSaveTemplatePrompt();
+                }
+                // After pasting a report, move focus to the Ask question box
+                if (newText.length > 30) {
+                    var askInput = document.getElementById('askClaudeInput');
+                    if (askInput) {
+                        askInput.focus();
+                        askInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
                 }
                 _prePasteText = '';
             }, 100);

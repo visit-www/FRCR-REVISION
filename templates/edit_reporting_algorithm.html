@@ -8,7 +8,7 @@
 {% block mobile_breadcrumb %}
 <li class="breadcrumb-item">
     {% if origin_context == 'anatomy_cache' %}
-    <a href="/anatomy-snippets" class="text-white text-decoration-none">Anatomy Snippets</a>
+    <a href="/knowledge-hub" class="text-white text-decoration-none">Knowledge Hub</a>
     {% else %}
     <a href="{{ url_for('reporting.admin_reporting_algorithms') }}" class="text-white text-decoration-none">Algorithms</a>
     {% endif %}
@@ -31,13 +31,18 @@
         </div>
         <div class="d-flex gap-2 align-items-center">
             <span id="saveStatus" class="text-muted small"></span>
+            {% if origin_context == 'anatomy_cache' %}
+            <button class="btn btn-outline-warning btn-sm" id="regenerateBtn" onclick="regenerateSnippet()">
+                <i class="fas fa-sync-alt me-1"></i>Regenerate with AI
+            </button>
+            {% endif %}
             {% if not algorithm.verified_at %}
             <button class="btn btn-outline-success btn-sm" onclick="verifyAlgorithm()">
                 <i class="fas fa-check me-1"></i>Verify & Publish
             </button>
             {% endif %}
             <button class="btn btn-sm" id="saveBtn" onclick="saveAll()"
-                    style="background: #e96304; border-color: #e96304; color: #fff;">
+                    style="background: {% if origin_context == 'anatomy_cache' %}#6f42c1; border-color: #6f42c1;{% else %}#e96304; border-color: #e96304;{% endif %} color: #fff;">
                 <i class="fas fa-save me-1"></i>Save
             </button>
         </div>
@@ -64,7 +69,7 @@
                     <div class="col-md-2">
                         <label class="form-label small fw-semibold">Category</label>
                         <select class="form-select form-select-sm" id="editCategory">
-                            {% for cat in ['emergency','routine','oncology','trauma','grading','scoring'] %}
+                            {% for cat in ['anatomy','emergency','routine','oncology','trauma','grading','scoring'] %}
                             <option value="{{ cat }}" {{ 'selected' if algorithm.category == cat }}>{{ cat|title }}</option>
                             {% endfor %}
                         </select>
@@ -517,6 +522,38 @@ function uploadImageToCloudinary(input) {
     .catch(function() {
         status.innerHTML = '<i class="fas fa-exclamation-triangle text-danger me-1"></i>Upload error';
         input.value = '';
+    });
+}
+
+// ==================== REGENERATE (anatomy snippets) ====================
+
+function regenerateSnippet() {
+    if (!confirm('Regenerate this anatomy snippet using AI? Current content will be replaced.')) return;
+    var btn = document.getElementById('regenerateBtn');
+    var status = document.getElementById('saveStatus');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Regenerating...';
+    status.innerHTML = '<span class="text-info"><i class="fas fa-spinner fa-spin me-1"></i>Regenerating...</span>';
+
+    fetch('/api/snippet/' + ALGORITHM_ID + '/regenerate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-sync-alt me-1"></i>Regenerate with AI';
+        if (data.error) {
+            status.innerHTML = '<span class="text-danger"><i class="fas fa-exclamation-circle me-1"></i>' + data.error + '</span>';
+            return;
+        }
+        status.innerHTML = '<span class="text-success"><i class="fas fa-check me-1"></i>Regenerated! Reloading...</span>';
+        setTimeout(function() { location.reload(); }, 1000);
+    })
+    .catch(function(err) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-sync-alt me-1"></i>Regenerate with AI';
+        status.innerHTML = '<span class="text-danger">Regeneration failed</span>';
     });
 }
 
