@@ -124,20 +124,25 @@ def unified_search():
             case_sql = text("""
                 SELECT c.id, c.case_number, c.diagnosis, c.status,
                        c.module, c.body_part,
+                       COALESCE(ci.summary, '') AS ci_summary,
                        GREATEST(
                            similarity(lower(c.diagnosis), lower(:query)),
                            similarity(
                                regexp_replace(lower(c.diagnosis), '^(right|left|bilateral|rt|lt|bilat)\\s+', ''),
                                lower(:query)
-                           )
+                           ),
+                           COALESCE(similarity(ci.search_tags, lower(:query)), 0) * 0.8
                        ) AS sim
                 FROM "case" c
-                WHERE c.status = 'published'
+                LEFT JOIN content_intelligence ci ON ci.content_type = 'case' AND ci.content_id = c.id
+                WHERE c.status = 'PUBLISHED'
                   AND c.discussion IS NOT NULL
                   AND c.discussion != ''
                   AND (
                       similarity(lower(c.diagnosis), lower(:query)) > 0.1
                       OR c.diagnosis ILIKE :like_query
+                      OR similarity(ci.search_tags, lower(:query)) > 0.15
+                      OR ci.search_tags ILIKE :like_query
                   )
                 ORDER BY sim DESC
                 LIMIT :limit
@@ -148,12 +153,13 @@ def unified_search():
 
             for r in case_results:
                 bp_val = r.body_part.value if hasattr(r.body_part, 'value') else str(r.body_part) if r.body_part else None
+                desc = r.ci_summary if r.ci_summary else (f'Case {r.case_number}' if r.case_number else 'Published case')
                 results.append({
                     'type': 'case',
                     'id': r.id,
                     'title': r.diagnosis,
                     'body_section': bp_val,
-                    'description': f'Case {r.case_number}' if r.case_number else 'Published case',
+                    'description': desc,
                     'subtitle': 'Algorithmic Approach Available',
                     'url': f'/view-case/{r.id}',
                     'case_id': r.id,
@@ -197,17 +203,22 @@ def unified_search():
             if_sql = text("""
                 SELECT ifc.id, ifc.slug, ifc.finding_name, ifc.category, ifc.body_section,
                        ifc.description, ifc.guideline_source,
+                       COALESCE(ci.summary, '') AS ci_summary,
                        GREATEST(
                            similarity(ifc.finding_name, :query),
-                           COALESCE(similarity(ifc.keywords, :query), 0)
+                           COALESCE(similarity(ifc.keywords, :query), 0),
+                           COALESCE(similarity(ci.search_tags, lower(:query)), 0) * 0.8
                        ) AS sim
                 FROM incidental_finding_calculator ifc
+                LEFT JOIN content_intelligence ci ON ci.content_type = 'radiology_tool' AND ci.content_id = ifc.id
                 WHERE ifc.is_available = TRUE
                   AND (
                       similarity(ifc.finding_name, :query) > 0.1
                       OR similarity(ifc.keywords, :query) > 0.1
                       OR ifc.finding_name ILIKE :like_query
                       OR ifc.keywords ILIKE :like_query
+                      OR similarity(ci.search_tags, lower(:query)) > 0.15
+                      OR ci.search_tags ILIKE :like_query
                   )
                 ORDER BY sim DESC
                 LIMIT :limit
@@ -217,13 +228,14 @@ def unified_search():
             }).fetchall()
 
             for r in if_results:
+                desc = r.ci_summary if r.ci_summary else (r.description or '')
                 results.append({
                     'type': 'incidental',
                     'id': r.id,
                     'slug': r.slug,
                     'title': r.finding_name,
                     'body_section': r.body_section,
-                    'description': r.description,
+                    'description': desc,
                     'subtitle': r.guideline_source or r.category,
                     'url': f'/incidental-findings/{r.slug}',
                     'similarity': float(r.sim) if r.sim else 0,
@@ -235,11 +247,14 @@ def unified_search():
                 SELECT ra.id, ra.slug, ra.title, ra.category, ra.body_section,
                        ra.description, ra.source_citation,
                        COALESCE(ra.is_ai_generated, FALSE) AS is_ai_generated,
+                       COALESCE(ci.summary, '') AS ci_summary,
                        GREATEST(
                            similarity(ra.title, :query),
-                           COALESCE(similarity(ra.keywords, :query), 0)
+                           COALESCE(similarity(ra.keywords, :query), 0),
+                           COALESCE(similarity(ci.search_tags, lower(:query)), 0) * 0.8
                        ) AS sim
                 FROM reporting_algorithm ra
+                LEFT JOIN content_intelligence ci ON ci.content_type = 'reporting_algorithm' AND ci.content_id = ra.id
                 WHERE ra.is_available = TRUE
                   AND ra.origin = 'admin'
                   AND (
@@ -247,6 +262,8 @@ def unified_search():
                       OR similarity(ra.keywords, :query) > 0.1
                       OR ra.title ILIKE :like_query
                       OR ra.keywords ILIKE :like_query
+                      OR similarity(ci.search_tags, lower(:query)) > 0.15
+                      OR ci.search_tags ILIKE :like_query
                   )
                 ORDER BY sim DESC
                 LIMIT :limit
@@ -260,13 +277,14 @@ def unified_search():
                 subtitle = r.category or ''
                 if r.source_citation and not r.source_citation.strip().startswith('{'):
                     subtitle = r.source_citation
+                desc = r.ci_summary if r.ci_summary else (r.description or '')
                 results.append({
                     'type': 'reporting',
                     'id': r.id,
                     'slug': r.slug,
                     'title': r.title,
                     'body_section': r.body_section,
-                    'description': r.description,
+                    'description': desc,
                     'subtitle': subtitle,
                     'url': f'/reporting-template/{r.slug}',
                     'similarity': float(r.sim) if r.sim else 0,
@@ -278,17 +296,22 @@ def unified_search():
             tmpl_sql = text("""
                 SELECT rt.id, rt.slug, rt.title, rt.category, rt.body_section,
                        rt.description,
+                       COALESCE(ci.summary, '') AS ci_summary,
                        GREATEST(
                            similarity(rt.title, :query),
-                           COALESCE(similarity(rt.keywords, :query), 0)
+                           COALESCE(similarity(rt.keywords, :query), 0),
+                           COALESCE(similarity(ci.search_tags, lower(:query)), 0) * 0.8
                        ) AS sim
                 FROM radiology_template rt
+                LEFT JOIN content_intelligence ci ON ci.content_type = 'radiology_template' AND ci.content_id = rt.id
                 WHERE rt.is_available = TRUE
                   AND (
                       similarity(rt.title, :query) > 0.1
                       OR similarity(rt.keywords, :query) > 0.1
                       OR rt.title ILIKE :like_query
                       OR rt.keywords ILIKE :like_query
+                      OR similarity(ci.search_tags, lower(:query)) > 0.15
+                      OR ci.search_tags ILIKE :like_query
                   )
                 ORDER BY sim DESC
                 LIMIT :limit
@@ -298,13 +321,14 @@ def unified_search():
             }).fetchall()
 
             for r in tmpl_results:
+                desc = r.ci_summary if r.ci_summary else (r.description or '')
                 results.append({
                     'type': 'template',
                     'id': r.id,
                     'slug': r.slug,
                     'title': r.title,
                     'body_section': r.body_section,
-                    'description': r.description,
+                    'description': desc,
                     'subtitle': r.category or 'Radiology Template',
                     'url': f'/radiology-template/view/{r.id}',
                     'similarity': float(r.sim) if r.sim else 0,
@@ -315,11 +339,14 @@ def unified_search():
             anat_sql = text("""
                 SELECT ra.id, ra.slug, ra.title, ra.body_section,
                        ra.description, ra.keywords,
+                       COALESCE(ci.summary, '') AS ci_summary,
                        GREATEST(
                            similarity(ra.title, :query),
-                           COALESCE(similarity(ra.keywords, :query), 0)
+                           COALESCE(similarity(ra.keywords, :query), 0),
+                           COALESCE(similarity(ci.search_tags, lower(:query)), 0) * 0.8
                        ) AS sim
                 FROM reporting_algorithm ra
+                LEFT JOIN content_intelligence ci ON ci.content_type = 'anatomy_snippet' AND ci.content_id = ra.id
                 WHERE ra.is_available = TRUE
                   AND ra.origin = 'anatomy_cache'
                   AND (
@@ -327,6 +354,8 @@ def unified_search():
                       OR similarity(ra.keywords, :query) > 0.1
                       OR ra.title ILIKE :like_query
                       OR ra.keywords ILIKE :like_query
+                      OR similarity(ci.search_tags, lower(:query)) > 0.15
+                      OR ci.search_tags ILIKE :like_query
                   )
                 ORDER BY sim DESC
                 LIMIT :limit
@@ -336,13 +365,14 @@ def unified_search():
             }).fetchall()
 
             for r in anat_results:
+                desc = r.ci_summary if r.ci_summary else (r.description or '')
                 results.append({
                     'type': 'anatomy',
                     'id': r.id,
                     'slug': r.slug,
                     'title': r.title,
                     'body_section': r.body_section,
-                    'description': r.description,
+                    'description': desc,
                     'subtitle': 'Anatomy Snippet',
                     'url': f'/anatomy-snippets/{r.slug}',
                     'similarity': float(r.sim) if r.sim else 0,
@@ -353,17 +383,22 @@ def unified_search():
             pearl_sql = text("""
                 SELECT rp.id, rp.pearl_text, rp.body_section, rp.modality,
                        rp.tags, rp.is_verified,
+                       COALESCE(ci.summary, '') AS ci_summary,
                        GREATEST(
                            similarity(rp.pearl_text, :query),
-                           COALESCE(similarity(rp.tags, :query), 0)
+                           COALESCE(similarity(rp.tags, :query), 0),
+                           COALESCE(similarity(ci.search_tags, lower(:query)), 0) * 0.8
                        ) AS sim
                 FROM radiology_pearl rp
+                LEFT JOIN content_intelligence ci ON ci.content_type = 'radiology_pearl' AND ci.content_id = rp.id
                 WHERE rp.is_verified = TRUE
                   AND (
                       similarity(rp.pearl_text, :query) > 0.1
                       OR similarity(rp.tags, :query) > 0.1
                       OR rp.pearl_text ILIKE :like_query
                       OR rp.tags ILIKE :like_query
+                      OR similarity(ci.search_tags, lower(:query)) > 0.15
+                      OR ci.search_tags ILIKE :like_query
                   )
                 ORDER BY sim DESC
                 LIMIT :limit
@@ -389,18 +424,22 @@ def unified_search():
         if filter_type in ('', 'protocol'):
             proto_sql = text("""
                 SELECT cp.id, cp.title, cp.category, cp.keywords,
-                       cp.description,
+                       COALESCE(ci.summary, '') AS ci_summary,
                        GREATEST(
                            similarity(cp.title, :query),
-                           COALESCE(similarity(cp.keywords, :query), 0)
+                           COALESCE(similarity(cp.keywords, :query), 0),
+                           COALESCE(similarity(ci.search_tags, lower(:query)), 0) * 0.8
                        ) AS sim
                 FROM clinical_protocol cp
-                WHERE cp.is_available = TRUE
+                LEFT JOIN content_intelligence ci ON ci.content_type = 'protocol' AND ci.content_id = cp.id
+                WHERE cp.is_published = TRUE
                   AND (
                       similarity(cp.title, :query) > 0.1
                       OR similarity(cp.keywords, :query) > 0.1
                       OR cp.title ILIKE :like_query
                       OR cp.keywords ILIKE :like_query
+                      OR similarity(ci.search_tags, lower(:query)) > 0.15
+                      OR ci.search_tags ILIKE :like_query
                   )
                 ORDER BY sim DESC
                 LIMIT :limit
@@ -410,11 +449,12 @@ def unified_search():
             }).fetchall()
 
             for r in proto_results:
+                desc = r.ci_summary if r.ci_summary else (r.keywords or '')
                 results.append({
                     'type': 'protocol',
                     'id': r.id,
                     'title': r.title,
-                    'description': r.description or '',
+                    'description': desc,
                     'subtitle': r.category or 'Protocol',
                     'url': f'/radiology-protocols/view/{r.id}',
                     'similarity': float(r.sim) if r.sim else 0,
@@ -661,7 +701,7 @@ def _fallback_search(query, filter_type, limit):
 
     if filter_type in ('', 'protocol'):
         protos = ClinicalProtocol.query.filter(
-            ClinicalProtocol.is_available == True,
+            ClinicalProtocol.is_published == True,
             db.or_(
                 ClinicalProtocol.title.ilike(like),
                 ClinicalProtocol.keywords.ilike(like),
@@ -671,7 +711,7 @@ def _fallback_search(query, filter_type, limit):
             results.append({
                 'type': 'protocol', 'id': p.id,
                 'title': p.title,
-                'description': p.description or '',
+                'description': p.keywords or '',
                 'subtitle': p.category or 'Protocol',
                 'url': f'/radiology-protocols/view/{p.id}',
                 'similarity': 0.5,
