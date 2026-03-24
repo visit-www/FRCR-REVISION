@@ -57,6 +57,165 @@
     color: #fff;
     font-weight: 600;
 }
+/* Mobile sub-items (indented) */
+.mobile-sub-item {
+    padding-left: 36px !important;
+    font-size: 0.9rem;
+    background: transparent;
+    color: rgba(255,255,255,0.75);
+}
+.mobile-sub-item:hover,
+.mobile-sub-item:focus {
+    background: rgba(255,255,255,0.08);
+    color: #fff;
+}
+.mobile-sub-item.active {
+    color: #fff;
+    font-weight: 600;
+}
+
+/* ==================== NAV DROPDOWNS ==================== */
+.tool-nav-dropdown {
+    position: relative;
+    display: inline-block;
+}
+.tool-nav-dropdown-menu {
+    border-radius: 12px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+    border: 1px solid #e9ecef;
+    min-width: 220px;
+    padding: 6px 0;
+    background: #fff;
+    margin-top: 4px !important;
+}
+.tool-nav-dropdown-menu .dropdown-item {
+    font-size: 0.85rem;
+    color: var(--brand-text-primary, #2c3e50);
+    padding: 8px 16px;
+    border-radius: 0;
+    transition: background 0.15s, color 0.15s;
+}
+.tool-nav-dropdown-menu .dropdown-item:hover,
+.tool-nav-dropdown-menu .dropdown-item:focus {
+    background: #f0f4f7;
+    color: #5E899E;
+}
+.tool-nav-dropdown-menu .dropdown-item.fw-bold {
+    color: #5E899E;
+}
+
+/* ==================== NAV SEARCH ==================== */
+.tool-nav-search-wrapper input {
+    width: 200px;
+    border-radius: 16px;
+    font-size: 0.8rem;
+    padding: 4px 14px;
+    border: 1px solid #dce4ea;
+    background: #fff;
+    transition: width 0.25s ease, box-shadow 0.25s ease;
+}
+.tool-nav-search-wrapper input:focus {
+    width: 280px;
+    box-shadow: 0 0 0 3px rgba(94,137,158,0.15);
+    border-color: #5E899E;
+    outline: none;
+}
+@media (min-width: 992px) and (max-width: 1200px) {
+    .tool-nav-search-wrapper input { width: 160px; }
+    .tool-nav-search-wrapper input:focus { width: 220px; }
+}
+
+/* ==================== GLOBAL SEARCH RESULTS ==================== */
+.global-search-results {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 400px;
+    max-height: 400px;
+    overflow-y: auto;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.14);
+    border: 1px solid #e9ecef;
+    z-index: 1050;
+    margin-top: 6px;
+}
+.global-search-result-item {
+    display: flex;
+    align-items: center;
+    padding: 10px 14px;
+    text-decoration: none;
+    color: var(--brand-text-primary, #2c3e50);
+    border-bottom: 1px solid #f0f2f5;
+    transition: background 0.12s;
+    gap: 10px;
+}
+.global-search-result-item:last-child {
+    border-bottom: none;
+}
+.global-search-result-item:hover {
+    background: #f7f9fb;
+    color: var(--brand-text-primary, #2c3e50);
+}
+.global-search-result-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 0.85rem;
+}
+.global-search-result-text {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+}
+.global-search-result-title {
+    font-size: 0.88rem;
+    font-weight: 500;
+    line-height: 1.3;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.global-search-result-desc {
+    font-size: 0.75rem;
+    color: var(--brand-text-secondary, #5a6270);
+    line-height: 1.3;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin-top: 1px;
+}
+.global-search-type-badge {
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.global-search-empty,
+.global-search-loading {
+    padding: 20px;
+    text-align: center;
+    color: var(--brand-text-secondary, #5a6270);
+    font-size: 0.85rem;
+}
+.global-search-loading i {
+    color: #5E899E;
+}
+@media (max-width: 991px) {
+    .global-search-results {
+        width: calc(100vw - 48px);
+        left: 0;
+        right: 0;
+    }
+}
 
 /* ==================== GLOBAL LINK STYLES ==================== */
 /* Remove underline on hover for all links */
@@ -5612,4 +5771,43 @@ body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     vertical-align: baseline;
     white-space: nowrap;
+}
+
+/* ==================== STUDY MODE Q&A CONTENT ==================== */
+/* Ensures study flashcards render with same formatting as case view */
+.study-qa-content h4 {
+    color: var(--brand-primary);
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-top: 0.8rem;
+    margin-bottom: 0.4rem;
+}
+.study-qa-content h4:first-child {
+    margin-top: 0;
+}
+.study-qa-content p {
+    margin-bottom: 0.5rem;
+}
+.study-qa-content ul, .study-qa-content ol {
+    margin-bottom: 0.5rem;
+    padding-left: 1.5rem;
+}
+.study-qa-content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0.5rem 0;
+    font-size: 0.9rem;
+}
+.study-qa-content table th,
+.study-qa-content table td {
+    border: 1px solid #dee2e6;
+    padding: 0.4rem 0.6rem;
+}
+.study-qa-content table th {
+    background: rgba(94, 137, 158, 0.08);
+    font-weight: 600;
+}
+.study-qa-content hr {
+    border-top: 2px solid var(--brand-primary);
+    margin: 0.5rem 0;
 }

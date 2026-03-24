@@ -20,8 +20,8 @@
                 <a href="/smart-reporter" class="btn btn-outline-secondary btn-sm">
                     <i class="fas fa-file-medical me-1"></i>Smart Reporter
                 </a>
-                <a href="{{ url_for('protocol.oncall_helper') }}" class="btn btn-outline-secondary btn-sm">
-                    <i class="fas fa-headset me-1"></i>On-Call Helper
+                <a href="/radiology-protocols" class="btn btn-outline-secondary btn-sm">
+                    <i class="fas fa-shield-alt me-1"></i>Protocols
                 </a>
                 {% if current_user.is_authenticated and current_user.role and current_user.role.value == 'admin' %}
                 <a href="/incidental-findings/admin" class="btn btn-outline-warning btn-sm ms-auto">
@@ -36,7 +36,7 @@
                     <i class="fas fa-tools" style="font-size:1.4rem;color:#fff;"></i>
                 </div>
                 <h2 class="mt-1 mb-1" style="color:#2c3e50;">Radiology Tools</h2>
-                <p class="text-muted mb-0" style="max-width:500px;margin:0 auto;">Guideline-based calculators, grading systems, classifications and scoring systems for daily radiology reporting</p>
+                <p class="text-muted mb-0" style="max-width:540px;margin:0 auto;">Guideline-based management tools, calculators, classifications and decision engines for daily radiology reporting</p>
             </div>
 
             <!-- Search Box -->
@@ -55,54 +55,79 @@
             <!-- Search Results -->
             <div id="searchResults" class="d-none mb-4"></div>
 
+            <!-- Category Filter Bar -->
+            {% if grouped %}
+            <div class="mb-4" id="categoryFilterBar">
+                <div class="d-flex flex-wrap gap-2 align-items-center">
+                    <button class="btn btn-sm cat-filter-btn active" data-cat="all" style="background:#5E899E;color:#fff;">
+                        <i class="fas fa-th-large me-1"></i>All
+                    </button>
+                    {% for cat_slug, cat_name, cat_color, cat_pastel, cat_icon in tool_categories %}
+                    {% if cat_slug in grouped %}
+                    <button class="btn btn-sm cat-filter-btn" data-cat="{{ cat_slug }}" data-color="{{ cat_color }}" data-pastel="{{ cat_pastel }}"
+                            style="background:{{ cat_pastel }};color:{{ cat_color }};">
+                        <i class="fas {{ cat_icon }} me-1"></i><span class="d-none d-md-inline">{{ cat_name }}</span><span class="d-md-none">{{ cat_name.split(' ')[0] }}</span>
+                    </button>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
             <!-- Browse by Category -->
             {% if grouped %}
             <div id="browseCategories">
-                {% set cat_icons = {'Guidelines': 'fa-book-medical', 'Calculator': 'fa-calculator',
-                                    'Classification': 'fa-layer-group', 'Scoring': 'fa-star-half-alt'} %}
-                {% for category, calcs in grouped.items() %}
-                <div class="mb-4">
-                    <div class="d-flex align-items-center mb-2">
-                        <div class="d-inline-flex align-items-center justify-content-center rounded me-2"
-                             style="width:28px;height:28px;background:#f0f7fa;">
-                            <i class="fas {{ cat_icons.get(category, 'fa-folder-open') }}" style="font-size:0.8rem;color:#5E899E;"></i>
+                {% for cat_slug, cat_name, cat_color, cat_pastel, cat_icon in tool_categories %}
+                {% if cat_slug in grouped %}
+                <div class="mb-5 cat-section" data-cat="{{ cat_slug }}">
+                    <div class="d-flex align-items-center mb-3">
+                        <span class="cat-header-icon" style="background:{{ cat_pastel }};color:{{ cat_color }};">
+                            <i class="fas {{ cat_icon }}"></i>
+                        </span>
+                        <div class="ms-2">
+                            <h5 class="mb-0" style="color:#2c3e50;">{{ cat_name }}</h5>
+                            <small class="text-muted">{{ grouped[cat_slug]|length }} tool{{ 's' if grouped[cat_slug]|length != 1 }}</small>
                         </div>
-                        <h6 class="mb-0 fw-semibold" style="color:#2c3e50;">{{ category }}</h6>
-                        <span class="badge bg-light text-muted border ms-2" style="font-size:0.65rem;">{{ calcs|length }}</span>
                     </div>
-                    <div class="row g-2">
-                        {% for calc in calcs %}
+                    <div class="row g-3">
+                        {% for calc in grouped[cat_slug] %}
                         <div class="col-md-6 col-lg-4">
                             <a href="{{ url_for('radiology_tools.view_calculator', slug=calc.slug) }}"
-                               class="rt-tool-card d-block text-decoration-none h-100">
-                                <div class="d-flex align-items-start gap-2">
-                                    <i class="fas fa-calculator mt-1 flex-shrink-0" style="color:#5E899E;font-size:0.85rem;"></i>
-                                    <div class="flex-grow-1" style="min-width:0;">
-                                        <div class="fw-semibold" style="color:#2c3e50;font-size:0.88rem;line-height:1.3;">{{ calc.finding_name }}</div>
-                                        {% if calc.description %}
-                                        <p class="text-muted mb-0 mt-1" style="font-size:0.75rem;line-height:1.4;">{{ calc.description|truncate(80) }}</p>
-                                        {% endif %}
-                                        <div class="d-flex align-items-center gap-2 mt-1 flex-wrap">
-                                            {% if calc.verified_at %}
-                                            <span style="font-size:0.62rem;color:#198754;"><i class="fas fa-check-circle me-1"></i>Verified</span>
-                                            {% endif %}
+                               class="text-decoration-none tool-card-link">
+                                <div class="tool-card h-100">
+                                    <div class="tool-card-body">
+                                        <div class="d-flex align-items-start">
+                                            <span class="tool-icon-circle" style="background:{{ cat_pastel }};color:{{ cat_color }};">
+                                                <i class="fas {{ cat_icon }}"></i>
+                                            </span>
+                                            <div class="ms-3 flex-grow-1" style="min-width:0;">
+                                                <h6 class="tool-card-title mb-1">{{ calc.finding_name }}</h6>
+                                                {% if calc.description %}
+                                                <p class="tool-card-desc mb-0">{{ calc.description|truncate(90) }}</p>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        <div class="d-flex align-items-center gap-2 mt-2 pt-2 flex-wrap" style="border-top:1px solid #f0f0f0;">
                                             {% if calc.body_section %}
-                                            <span class="badge bg-light text-muted border" style="font-size:0.58rem;">{{ calc.body_section }}</span>
+                                            <span class="tool-body-badge">{{ calc.body_section }}</span>
+                                            {% endif %}
+                                            {% if calc.verified_at %}
+                                            <small style="color:#198754;font-size:0.72rem;"><i class="fas fa-check-circle me-1"></i>Verified</small>
                                             {% endif %}
                                         </div>
                                     </div>
-                                    <i class="fas fa-chevron-right text-muted flex-shrink-0 mt-1" style="font-size:0.6rem;opacity:0.4;"></i>
                                 </div>
                             </a>
                         </div>
                         {% endfor %}
                     </div>
                 </div>
+                {% endif %}
                 {% endfor %}
             </div>
             {% else %}
             <div class="text-center py-5">
-                <i class="fas fa-tools" style="font-size: 2.5rem; color: #dee2e6;"></i>
+                <i class="fas fa-tools" style="font-size:2.5rem;color:#dee2e6;"></i>
                 <h5 class="text-muted mt-3">No radiology tools available yet</h5>
                 <p class="text-muted small">Radiology tools will be generated and verified by admin radiologists.</p>
             </div>
@@ -118,35 +143,95 @@
         </div>
     </div>
 </div>
-
-<style>
-.rt-tool-card {
-    padding: 12px 14px;
-    border-radius: 10px;
-    border: 1px solid #e9ecef;
-    background: #fff;
-    transition: all 0.15s ease;
-}
-.rt-tool-card:hover {
-    border-color: #5E899E;
-    box-shadow: 0 2px 8px rgba(94,137,158,0.12);
-    transform: translateY(-1px);
-}
-.rt-tool-card:hover .fa-chevron-right {
-    opacity: 0.8 !important;
-    color: #5E899E !important;
-}
-</style>
 {% endblock %}
 
 {% block scripts %}
+<style>
+/* Category filter pills */
+.cat-filter-btn {
+    border: none;
+    border-radius: 20px;
+    padding: 5px 14px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    background: #f0f1f3;
+    color: #5a6270;
+}
+.cat-filter-btn:hover {
+    filter: brightness(0.95);
+}
+.cat-filter-btn.active {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+}
+/* Category header icon */
+.cat-header-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px; height: 40px; min-width: 40px;
+    border-radius: 12px;
+    font-size: 1rem;
+}
+/* Tool card */
+.tool-card {
+    background: #fff;
+    border-radius: 12px;
+    border: none;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+.tool-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+}
+.tool-card-body {
+    padding: 16px 16px 14px;
+}
+.tool-card-link { color: inherit; }
+/* Icon circle */
+.tool-icon-circle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px; height: 38px; min-width: 38px;
+    border-radius: 50%;
+    font-size: 0.9rem;
+}
+.tool-card-title {
+    color: #2c3e50;
+    font-size: 0.92rem;
+    font-weight: 600;
+    line-height: 1.35;
+}
+.tool-card-desc {
+    color: #7c8a96;
+    font-size: 0.78rem;
+    line-height: 1.4;
+}
+/* Body section badge */
+.tool-body-badge {
+    display: inline-block;
+    padding: 1px 8px;
+    border-radius: 10px;
+    font-size: 0.68rem;
+    font-weight: 500;
+    background: #f0f7fa;
+    color: #5E899E;
+}
+</style>
 <script>
+var CAT_META = {{ cat_meta|tojson }};
+
 document.addEventListener('DOMContentLoaded', function() {
     var searchInput = document.getElementById('searchInput');
     var searchResults = document.getElementById('searchResults');
     var browseCategories = document.getElementById('browseCategories');
+    var filterBar = document.getElementById('categoryFilterBar');
     var searchTimeout = null;
 
+    // ==================== SEARCH ====================
     searchInput.addEventListener('input', function() {
         var q = this.value.trim();
         clearTimeout(searchTimeout);
@@ -154,6 +239,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (q.length < 2) {
             searchResults.classList.add('d-none');
             if (browseCategories) browseCategories.classList.remove('d-none');
+            if (filterBar) filterBar.classList.remove('d-none');
             return;
         }
 
@@ -162,33 +248,94 @@ document.addEventListener('DOMContentLoaded', function() {
                 .then(function(r) { return r.json(); })
                 .then(function(results) {
                     if (browseCategories) browseCategories.classList.add('d-none');
+                    if (filterBar) filterBar.classList.add('d-none');
                     searchResults.classList.remove('d-none');
 
                     if (results.length === 0) {
                         searchResults.innerHTML =
                             '<div class="text-center py-4 text-muted">' +
                             '<i class="fas fa-search d-block mb-2" style="font-size:1.5rem;"></i>' +
-                            'No radiology tools found matching "' + q + '"</div>';
+                            'No radiology tools found matching "' + escHtml(q) + '"</div>';
                         return;
                     }
 
-                    searchResults.innerHTML = results.map(function(r) {
-                        return '<a href="' + r.url + '" class="rt-tool-card d-block text-decoration-none mb-2">' +
-                            '<div class="d-flex align-items-center">' +
-                            '<i class="fas fa-calculator me-3" style="font-size:1rem;color:#5E899E;"></i>' +
-                            '<div class="flex-grow-1">' +
-                            '<div class="fw-semibold" style="color:#2c3e50;">' + r.finding_name + '</div>' +
-                            (r.description ? '<small class="text-muted">' + r.description + '</small>' : '') +
-                            '</div>' +
-                            '<i class="fas fa-chevron-right text-muted ms-2" style="font-size:0.7rem;opacity:0.4;"></i>' +
-                            '</div></a>';
-                    }).join('');
+                    searchResults.innerHTML = '<div class="row g-3">' + results.map(function(r) {
+                        var mc = r.mapped_category || 'management_guidelines';
+                        var ci = CAT_META[mc] || {name: 'Tool', color: '#5E899E', pastel: '#e4eff4', icon: 'fa-tools'};
+                        return '<div class="col-md-6 col-lg-4">' +
+                            '<a href="' + r.url + '" class="text-decoration-none tool-card-link">' +
+                            '<div class="tool-card h-100"><div class="tool-card-body">' +
+                            '<div class="d-flex align-items-start">' +
+                            '<span class="tool-icon-circle" style="background:' + ci.pastel + ';color:' + ci.color + ';">' +
+                            '<i class="fas ' + ci.icon + '"></i></span>' +
+                            '<div class="ms-3 flex-grow-1">' +
+                            '<h6 class="tool-card-title mb-1">' + escHtml(r.finding_name) + '</h6>' +
+                            (r.description ? '<p class="tool-card-desc mb-0">' + escHtml(r.description) + '</p>' : '') +
+                            '</div></div>' +
+                            '<div class="d-flex align-items-center gap-2 mt-2 pt-2 flex-wrap" style="border-top:1px solid #f0f0f0;">' +
+                            '<span class="badge" style="background:' + ci.pastel + ';color:' + ci.color + ';font-weight:600;font-size:0.68rem;">' + ci.name + '</span>' +
+                            (r.body_section ? '<span class="tool-body-badge">' + escHtml(r.body_section) + '</span>' : '') +
+                            '</div></div></div></a></div>';
+                    }).join('') + '</div>';
                 })
                 .catch(function() {
                     searchResults.innerHTML = '<div class="alert alert-danger">Search failed.</div>';
                 });
         }, 300);
     });
+
+    function escHtml(str) {
+        if (!str) return '';
+        var d = document.createElement('div');
+        d.textContent = str;
+        return d.innerHTML;
+    }
+
+    // ==================== CATEGORY FILTER ====================
+    if (filterBar) {
+        var filterBtns = filterBar.querySelectorAll('.cat-filter-btn');
+        var catSections = document.querySelectorAll('.cat-section');
+
+        filterBtns.forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var cat = this.dataset.cat;
+                var color = this.dataset.color;
+
+                // Reset all buttons to pastel
+                filterBtns.forEach(function(b) {
+                    b.classList.remove('active');
+                    if (b.dataset.cat === 'all') {
+                        b.style.background = '#e4eff4';
+                        b.style.color = '#5E899E';
+                    } else {
+                        b.style.background = b.dataset.pastel || '#f0f1f3';
+                        b.style.color = b.dataset.color || '#5a6270';
+                    }
+                    b.style.boxShadow = '';
+                });
+
+                // Activate clicked button
+                this.classList.add('active');
+                if (cat === 'all') {
+                    this.style.background = '#5E899E';
+                    this.style.color = '#fff';
+                } else if (color) {
+                    this.style.background = color;
+                    this.style.color = '#fff';
+                    this.style.boxShadow = '0 2px 8px ' + color + '33';
+                }
+
+                // Show/hide sections
+                catSections.forEach(function(sec) {
+                    if (cat === 'all' || sec.dataset.cat === cat) {
+                        sec.style.display = '';
+                    } else {
+                        sec.style.display = 'none';
+                    }
+                });
+            });
+        });
+    }
 });
 </script>
 {% endblock %}

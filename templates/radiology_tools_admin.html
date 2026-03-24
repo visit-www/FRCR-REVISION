@@ -129,10 +129,10 @@
                         <label class="form-label">Category</label>
                         <select class="form-select" id="genCategory" onchange="toggleCustomCategory(this, 'genCustomCategory')">
                             <option value="">Select category...</option>
-                            <option value="Guidelines">Guidelines</option>
-                            <option value="Calculator">Calculator</option>
-                            <option value="Classification">Classification</option>
-                            <option value="Scoring">Scoring</option>
+                            <option value="management_guidelines">Management Guidelines</option>
+                            <option value="calculators">Calculators</option>
+                            <option value="classifications">Classifications</option>
+                            <option value="decision_tools">Decision Tools</option>
                             <option value="custom">Custom...</option>
                         </select>
                         <input type="text" class="form-control mt-1 d-none" id="genCustomCategory" placeholder="Enter custom category">
@@ -183,10 +183,10 @@
                         <label class="form-label">Category</label>
                         <select class="form-select" id="manCategory" onchange="toggleCustomCategory(this, 'manCustomCategory')">
                             <option value="">Select...</option>
-                            <option value="Guidelines">Guidelines</option>
-                            <option value="Calculator">Calculator</option>
-                            <option value="Classification">Classification</option>
-                            <option value="Scoring">Scoring</option>
+                            <option value="management_guidelines">Management Guidelines</option>
+                            <option value="calculators">Calculators</option>
+                            <option value="classifications">Classifications</option>
+                            <option value="decision_tools">Decision Tools</option>
                             <option value="custom">Custom...</option>
                         </select>
                         <input type="text" class="form-control mt-1 d-none" id="manCustomCategory" placeholder="Custom category">
@@ -232,7 +232,7 @@
 <script>
 // ==================== CATEGORY DROPDOWN ====================
 
-var STANDARD_CATEGORIES = ['Guidelines', 'Calculator', 'Classification', 'Scoring'];
+var STANDARD_CATEGORIES = ['management_guidelines', 'calculators', 'classifications', 'decision_tools'];
 
 function toggleCustomCategory(select, inputId) {
     var customInput = document.getElementById(inputId);

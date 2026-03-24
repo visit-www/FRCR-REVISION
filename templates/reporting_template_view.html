@@ -1,6 +1,8 @@
 {% extends 'base.html' %}
-{% block tool_active_templates %}active{% endblock %}
-{% block mobile_active_templates %}active{% endblock %}
+{% block tool_active_templates %}{% if nav_active != 'algorithms' %}active{% endif %}{% endblock %}
+{% block mobile_active_templates %}{% if nav_active != 'algorithms' %}active{% endif %}{% endblock %}
+{% block tool_active_algorithms %}{% if nav_active == 'algorithms' %}active{% endif %}{% endblock %}
+{% block mobile_active_algorithms %}{% if nav_active == 'algorithms' %}active{% endif %}{% endblock %}
 
 {% block mobile_breadcrumb %}
 <li class="breadcrumb-item">

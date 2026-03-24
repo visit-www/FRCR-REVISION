@@ -60,6 +60,11 @@
                         {% endif %}
                     </a>
                 {% endif %}
+                {% if current_user.is_authenticated %}
+                <a href="/suggest-case" class="btn btn-brand-secondary btn-sm shadow-sm">
+                    <i class="fas fa-lightbulb me-2"></i>Suggest a Case
+                </a>
+                {% endif %}
             </div>
         </div>
         <div class="col-lg-4 mt-3 mt-lg-0">

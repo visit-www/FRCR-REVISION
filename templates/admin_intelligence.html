@@ -1,0 +1,302 @@
+{% extends 'base.html' %}
+{% block title %}Intelligence Admin - RadInsights{% endblock %}
+
+{% block mobile_breadcrumb %}
+<li class="breadcrumb-item">
+    <a href="/admin-dashboard" class="text-white text-decoration-none">Admin</a>
+</li>
+<li class="breadcrumb-item active text-white-50">Intelligence</li>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row">
+        <div class="col-12">
+
+            <div class="d-flex flex-wrap gap-2 mb-3">
+                <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary btn-sm">
+                    <i class="fas fa-home me-1"></i>Dashboard
+                </a>
+                <a href="/admin-dashboard" class="btn btn-outline-secondary btn-sm">
+                    <i class="fas fa-shield-alt me-1"></i>Admin Dashboard
+                </a>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-start mb-4">
+                <div>
+                    <h2 class="mb-1"><i class="fas fa-lightbulb me-2" style="color: var(--brand-primary);"></i>RadInsight Intelligence</h2>
+                    <p class="text-muted mb-0">Manage AI-captured clinical knowledge from Smart Reporter sessions</p>
+                </div>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-brand-primary btn-sm" onclick="processPending()" id="processPendingBtn">
+                        <i class="fas fa-cog me-1"></i>Process Pending
+                    </button>
+                    <button class="btn btn-brand-neutral btn-sm" onclick="backfillCI()" id="backfillBtn">
+                        <i class="fas fa-database me-1"></i>Build Intelligence
+                    </button>
+                </div>
+            </div>
+
+            <!-- Stats Row -->
+            <div class="row g-3 mb-4">
+                <div class="col-6 col-md-3">
+                    <div class="card border-0 shadow-sm text-center p-3">
+                        <div style="font-size: 1.5rem; font-weight: 700; color: var(--brand-text-primary);">{{ stats.total }}</div>
+                        <small class="text-muted">Total Records</small>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="card border-0 shadow-sm text-center p-3">
+                        <div style="font-size: 1.5rem; font-weight: 700; color: #ffc107;">{{ stats.pending }}</div>
+                        <small class="text-muted">Pending</small>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="card border-0 shadow-sm text-center p-3">
+                        <div style="font-size: 1.5rem; font-weight: 700; color: var(--brand-neutral);">{{ stats.processed }}</div>
+                        <small class="text-muted">Processed</small>
+                    </div>
+                </div>
+                <div class="col-6 col-md-3">
+                    <div class="card border-0 shadow-sm text-center p-3">
+                        <div style="font-size: 1.5rem; font-weight: 700; color: #198754;">{{ stats.verified }}</div>
+                        <small class="text-muted">Verified</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filters -->
+            <div class="d-flex flex-wrap gap-2 mb-3">
+                <a href="/admin/intelligence" class="btn btn-sm {{ 'btn-brand-neutral' if not status_filter and not verified_filter else 'btn-outline-secondary' }}">All</a>
+                <a href="/admin/intelligence?status=pending" class="btn btn-sm {{ 'btn-warning' if status_filter == 'pending' else 'btn-outline-warning' }}">Pending</a>
+                <a href="/admin/intelligence?status=processed" class="btn btn-sm {{ 'btn-brand-neutral' if status_filter == 'processed' else 'btn-outline-secondary' }}">Processed</a>
+                <a href="/admin/intelligence?verified=true" class="btn btn-sm {{ 'btn-success' if verified_filter == 'true' else 'btn-outline-success' }}">Verified</a>
+                <a href="/admin/intelligence?status=failed" class="btn btn-sm {{ 'btn-danger' if status_filter == 'failed' else 'btn-outline-danger' }}">Failed</a>
+            </div>
+
+            <!-- Records Table -->
+            <div class="card shadow-sm border-0" style="border-top: 3px solid var(--brand-primary) !important;">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead style="background: rgba(233, 99, 4, 0.06);">
+                            <tr>
+                                <th style="max-width: 250px;">Diagnosis</th>
+                                <th>Body Section</th>
+                                <th>Modality</th>
+                                <th style="max-width: 250px;">Notes Preview</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for r in records %}
+                            <tr id="ugi-row-{{ r.id }}">
+                                <td style="max-width: 250px;">
+                                    <div class="text-truncate fw-semibold" style="max-width: 250px;" title="{{ r.diagnosis or r.raw_teaching_point[:100] }}">
+                                        {{ r.diagnosis or r.raw_teaching_point[:60] + '...' }}
+                                    </div>
+                                    <small class="text-muted" style="font-size: 0.7rem;">
+                                        {% if r.created_at %}{{ r.created_at.strftime('%d %b %Y') }}{% endif %}
+                                    </small>
+                                </td>
+                                <td><small>{{ r.body_section or '---' }}</small></td>
+                                <td><small>{{ r.modality or '---' }}</small></td>
+                                <td style="max-width: 250px;">
+                                    {% set notes_list = r.get_notes() %}
+                                    {% if notes_list %}
+                                    <div class="text-truncate" style="max-width: 250px; font-size: 0.85rem;" title="{{ notes_list[0] }}">
+                                        {{ notes_list[0][:80] }}{% if notes_list[0]|length > 80 %}...{% endif %}
+                                    </div>
+                                    {% if notes_list|length > 1 %}
+                                    <small class="text-muted">+{{ notes_list|length - 1 }} more</small>
+                                    {% endif %}
+                                    {% else %}
+                                    <small class="text-muted fst-italic">Not yet processed</small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if r.is_verified %}
+                                    <span class="badge bg-success"><i class="fas fa-shield-alt me-1"></i>Verified</span>
+                                    {% elif r.processing_status == 'processed' %}
+                                    <span class="badge" style="background: var(--brand-neutral); color: white;"><i class="fas fa-check me-1"></i>Processed</span>
+                                    {% elif r.processing_status == 'pending' %}
+                                    <span class="badge bg-warning text-dark"><i class="fas fa-clock me-1"></i>Pending</span>
+                                    {% elif r.processing_status == 'failed' %}
+                                    <span class="badge bg-danger"><i class="fas fa-times me-1"></i>Failed</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">{{ r.processing_status }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <button class="btn btn-outline-secondary" onclick="viewRecord({{ r.id }})" title="View Details">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                        {% if r.processing_status == 'processed' and not r.is_verified %}
+                                        <button class="btn btn-outline-success" onclick="verifyRecord({{ r.id }}, this)" title="Verify">
+                                            <i class="fas fa-check"></i>
+                                        </button>
+                                        {% endif %}
+                                        <button class="btn btn-outline-danger" onclick="deleteRecord({{ r.id }}, this)" title="Delete">
+                                            <i class="fas fa-trash-alt"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                            {% if not records %}
+                            <tr>
+                                <td colspan="6" class="text-center py-4 text-muted">
+                                    <i class="fas fa-lightbulb fa-2x mb-2 d-block" style="opacity: 0.3;"></i>
+                                    No records found. Intelligence is captured automatically from Smart Reporter sessions.
+                                </td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- View Detail Modal -->
+<div class="modal fade" id="detailModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content app-content-modal">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-lightbulb me-2"></i>RadInsight Note</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="detailModalBody">
+                <div class="text-center py-4"><i class="fas fa-spinner fa-spin"></i> Loading...</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function viewRecord(id) {
+    var modal = new bootstrap.Modal(document.getElementById('detailModal'));
+    var body = document.getElementById('detailModalBody');
+    body.innerHTML = '<div class="text-center py-4"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
+    modal.show();
+
+    fetch('/admin/intelligence/api/' + id)
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            var html = '<div class="mb-3"><strong>Diagnosis:</strong> ' + (d.diagnosis || 'N/A') + '</div>';
+            html += '<div class="row mb-3"><div class="col-4"><strong>Modality:</strong> ' + (d.modality || 'N/A') + '</div>';
+            html += '<div class="col-4"><strong>Body Section:</strong> ' + (d.body_section || 'N/A') + '</div>';
+            html += '<div class="col-4"><strong>Status:</strong> ' + d.processing_status + '</div></div>';
+
+            if (d.raw_teaching_point) {
+                html += '<div class="mb-3"><strong>Raw Teaching Point:</strong><div class="bg-light p-2 rounded mt-1" style="font-size: 0.9rem;">' + d.raw_teaching_point + '</div></div>';
+            }
+
+            if (d.notes && d.notes.length) {
+                html += '<div class="mb-3"><strong>Notes:</strong><ul class="mb-0">';
+                d.notes.forEach(function(n) { html += '<li>' + n + '</li>'; });
+                html += '</ul></div>';
+            }
+
+            if (d.pitfalls && d.pitfalls.length) {
+                html += '<div class="mb-3"><strong>Pitfalls:</strong><ul class="mb-0 text-danger">';
+                d.pitfalls.forEach(function(p) { html += '<li>' + p + '</li>'; });
+                html += '</ul></div>';
+            }
+
+            if (d.enriched_differentials && d.enriched_differentials.length) {
+                html += '<div class="mb-3"><strong>Enriched Differentials:</strong><ul class="mb-0">';
+                d.enriched_differentials.forEach(function(dd) {
+                    html += '<li><strong>' + dd.name + ':</strong> ' + dd.distinguishing_features + '</li>';
+                });
+                html += '</ul></div>';
+            }
+
+            if (d.search_tags) {
+                html += '<div class="mb-3"><strong>Search Tags:</strong> ';
+                d.search_tags.split(',').forEach(function(t) {
+                    html += '<span class="badge bg-light text-muted border me-1">' + t.trim() + '</span>';
+                });
+                html += '</div>';
+            }
+
+            body.innerHTML = html;
+        })
+        .catch(function() { body.innerHTML = '<div class="alert alert-danger">Failed to load record.</div>'; });
+}
+
+function verifyRecord(id, btn) {
+    if (!confirm('Verify this record? It will become visible in search results.')) return;
+    btn.disabled = true;
+    fetch('/admin/intelligence/api/' + id + '/verify', { method: 'POST' })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            if (d.success) {
+                var row = document.getElementById('ugi-row-' + id);
+                if (row) {
+                    var statusCell = row.querySelector('td:nth-child(5)');
+                    statusCell.innerHTML = '<span class="badge bg-success"><i class="fas fa-shield-alt me-1"></i>Verified</span>';
+                    btn.closest('.btn-group').removeChild(btn);
+                }
+            }
+        })
+        .catch(function() { alert('Failed to verify.'); btn.disabled = false; });
+}
+
+function deleteRecord(id, btn) {
+    if (!confirm('Delete this record? This cannot be undone.')) return;
+    btn.disabled = true;
+    fetch('/admin/intelligence/api/' + id, { method: 'DELETE' })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            if (d.success) {
+                var row = document.getElementById('ugi-row-' + id);
+                if (row) row.remove();
+            }
+        })
+        .catch(function() { alert('Failed to delete.'); btn.disabled = false; });
+}
+
+function processPending() {
+    var btn = document.getElementById('processPendingBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Processing...';
+
+    fetch('/admin/intelligence/api/process-pending', { method: 'POST' })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            alert(d.message);
+            if (d.processed > 0) location.reload();
+            else { btn.disabled = false; btn.innerHTML = '<i class="fas fa-cog me-1"></i>Process Pending'; }
+        })
+        .catch(function() {
+            alert('Processing failed.');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-cog me-1"></i>Process Pending';
+        });
+}
+
+function backfillCI() {
+    var btn = document.getElementById('backfillBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Building...';
+
+    fetch('/api/admin/backfill-intelligence', { method: 'POST' })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            alert(d.message);
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-database me-1"></i>Build Intelligence';
+        })
+        .catch(function() {
+            alert('Backfill failed.');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-database me-1"></i>Build Intelligence';
+        });
+}
+</script>
+{% endblock %}

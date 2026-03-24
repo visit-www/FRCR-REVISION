@@ -85,6 +85,7 @@ from models import ClinicalProtocol, OnCallQueryLog, IncidentalFindingCalculator
 from models import RadiologyTemplate, ReportingAlgorithm  # New split tables (Feb 2026)
 from models import ContentRequest  # User content requests (Feb 2026)
 from models import RadiologyPearl  # Radiology pearls from teaching points
+from models import ContentIntelligence, UserGeneratedIntelligence  # Intelligence layer
 from models import case_algorithm_links, case_template_links, case_pearl_links, case_calculator_links, content_links  # Knowledge linking
 from auth import auth_bp
 from backup_routes import backup_bp
@@ -1977,8 +1978,8 @@ def get_study_cards():
     for c in due_cards:
         cards.append({
             'question_id': c.question_id,
-            'question_text': _strip_html_tags(c.question_text),
-            'answer_text': _strip_html_tags(c.answer_text),
+            'question_text': c.question_text or '',
+            'answer_text': c.answer_text or '',
             'case_id': c.case_id,
             'diagnosis': c.diagnosis,
             'module': c.module.value if c.module else None,
@@ -2017,8 +2018,8 @@ def get_study_cards():
         for c in new_cards:
             cards.append({
                 'question_id': c.question_id,
-                'question_text': _strip_html_tags(c.question_text),
-                'answer_text': _strip_html_tags(c.answer_text),
+                'question_text': c.question_text or '',
+                'answer_text': c.answer_text or '',
                 'case_id': c.case_id,
                 'diagnosis': c.diagnosis,
                 'module': c.module.value if c.module else None,

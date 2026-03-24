@@ -24,35 +24,69 @@ if_bp = Blueprint('radiology_tools', __name__, url_prefix='/incidental-findings'
 
 # ==================== PUBLIC ROUTES ====================
 
+# New canonical categories: (slug, display_name, accent_color, pastel_color, icon)
+TOOL_CATEGORIES = [
+    ('management_guidelines', 'Management Guidelines', '#1b6ec2', '#e1edfb', 'fa-book-medical'),
+    ('calculators',           'Calculators',           '#e96304', '#fdeee4', 'fa-calculator'),
+    ('classifications',       'Classifications',       '#7c3aed', '#ece4f6', 'fa-layer-group'),
+    ('decision_tools',        'Decision Tools',        '#198754', '#e2f2e8', 'fa-project-diagram'),
+]
+
+# Map old DB categories → new category slugs
+_CAT_MAP = {
+    # Old standard categories
+    'Guidelines': 'management_guidelines',
+    'Classification': 'classifications',
+    'Calculator': 'calculators',
+    'Scoring': 'calculators',
+    # New canonical slugs (identity)
+    'management_guidelines': 'management_guidelines',
+    'calculators': 'calculators',
+    'classifications': 'classifications',
+    'decision_tools': 'decision_tools',
+    # Organ-based categories from batch_tools → management_guidelines
+    'thyroid': 'management_guidelines',
+    'renal': 'management_guidelines',
+    'hepatic': 'management_guidelines',
+    'pancreatic': 'management_guidelines',
+    'ovarian': 'management_guidelines',
+    'pulmonary': 'management_guidelines',
+    'splenic': 'management_guidelines',
+    'hepatobiliary': 'management_guidelines',
+    'mediastinal': 'management_guidelines',
+    # Scoring / calculators / reference
+    'scoring': 'calculators',
+    'vascular': 'calculators',
+    'dose': 'calculators',
+    'reference': 'calculators',
+}
+
+# Build metadata dict for template convenience
+_CAT_META = {slug: {'name': name, 'color': color, 'pastel': pastel, 'icon': icon}
+             for slug, name, color, pastel, icon in TOOL_CATEGORIES}
+
+
 @if_bp.route('/')
 @login_required
 def finder():
-    """Main incidental findings finder page."""
+    """Main radiology tools browse page."""
     calculators = IncidentalFindingCalculator.query.filter_by(
         is_available=True
     ).order_by(
-        IncidentalFindingCalculator.category,
         IncidentalFindingCalculator.finding_name
     ).all()
 
-    # Group by category with defined ordering
+    # Group by new canonical category
     grouped = {}
     for calc in calculators:
-        cat = calc.category or 'Other'
+        cat = _CAT_MAP.get(calc.category or '', 'management_guidelines')
         grouped.setdefault(cat, []).append(calc)
-
-    CATEGORY_ORDER = ['Guidelines', 'Classification', 'Calculator', 'Scoring']
-    grouped_sorted = {}
-    for cat in CATEGORY_ORDER:
-        if cat in grouped:
-            grouped_sorted[cat] = grouped[cat]
-    for cat in sorted(grouped.keys()):
-        if cat not in grouped_sorted:
-            grouped_sorted[cat] = grouped[cat]
 
     return render_template('radiology_tools_user.html',
                            calculators=calculators,
-                           grouped=grouped_sorted)
+                           grouped=grouped,
+                           tool_categories=TOOL_CATEGORIES,
+                           cat_meta=_CAT_META)
 
 
 @if_bp.route('/<slug>')
@@ -136,6 +170,7 @@ def search_calculators():
                 'category': r.category, 'body_section': r.body_section,
                 'description': r.description, 'guideline_source': r.guideline_source,
                 'url': f'/incidental-findings/{r.slug}',
+                'mapped_category': _CAT_MAP.get(r.category or '', 'management_guidelines'),
             }
             for r in results
         ])
@@ -155,6 +190,7 @@ def search_calculators():
                 'category': c.category, 'body_section': c.body_section,
                 'description': c.description, 'guideline_source': c.guideline_source,
                 'url': f'/incidental-findings/{c.slug}',
+                'mapped_category': _CAT_MAP.get(c.category or '', 'management_guidelines'),
             }
             for c in calcs
         ])

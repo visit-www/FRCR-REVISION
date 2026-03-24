@@ -23,6 +23,7 @@ from models import (
     TNMCalculatorContent, ClinicalProtocol,
     IncidentalFindingCalculator, AJCCDiseaseSite, AJCCBodySection,
     User, AiPrelimCaseData, ContentRequest, RadiologyPearl,
+    ContentIntelligence, UserGeneratedIntelligence,
 )
 from access_control import require_admin
 from clinical_tool_generator import extract_html_content
@@ -384,12 +385,131 @@ def unified_search():
                     'similarity': float(r.sim) if r.sim else 0,
                 })
 
+        # Search clinical protocols
+        if filter_type in ('', 'protocol'):
+            proto_sql = text("""
+                SELECT cp.id, cp.title, cp.category, cp.keywords,
+                       cp.description,
+                       GREATEST(
+                           similarity(cp.title, :query),
+                           COALESCE(similarity(cp.keywords, :query), 0)
+                       ) AS sim
+                FROM clinical_protocol cp
+                WHERE cp.is_available = TRUE
+                  AND (
+                      similarity(cp.title, :query) > 0.1
+                      OR similarity(cp.keywords, :query) > 0.1
+                      OR cp.title ILIKE :like_query
+                      OR cp.keywords ILIKE :like_query
+                  )
+                ORDER BY sim DESC
+                LIMIT :limit
+            """)
+            proto_results = db.session.execute(proto_sql, {
+                'query': query, 'like_query': f'%{query}%', 'limit': limit
+            }).fetchall()
+
+            for r in proto_results:
+                results.append({
+                    'type': 'protocol',
+                    'id': r.id,
+                    'title': r.title,
+                    'description': r.description or '',
+                    'subtitle': r.category or 'Protocol',
+                    'url': f'/radiology-protocols/view/{r.id}',
+                    'similarity': float(r.sim) if r.sim else 0,
+                })
+
+        # Search TNM Essentials (AJCC disease sites)
+        if filter_type in ('', 'tnm_case'):
+            tnm_sql = text("""
+                SELECT ds.id, ds.disease_name, ds.slug AS disease_slug,
+                       bs.section_name, bs.slug AS section_slug,
+                       GREATEST(
+                           similarity(ds.disease_name, :query),
+                           COALESCE(similarity(bs.section_name, :query), 0)
+                       ) AS sim
+                FROM ajcc_disease_site ds
+                JOIN ajcc_body_section bs ON ds.body_section_id = bs.id
+                WHERE (
+                    similarity(ds.disease_name, :query) > 0.1
+                    OR ds.disease_name ILIKE :like_query
+                )
+                ORDER BY sim DESC
+                LIMIT :limit
+            """)
+            tnm_results = db.session.execute(tnm_sql, {
+                'query': query, 'like_query': f'%{query}%', 'limit': limit
+            }).fetchall()
+
+            for r in tnm_results:
+                results.append({
+                    'type': 'tnm_case',
+                    'id': r.id,
+                    'title': r.disease_name,
+                    'body_section': r.section_name,
+                    'description': f'TNM Essentials — {r.section_name}',
+                    'subtitle': 'AJCC 9th Edition',
+                    'url': f'/tnm/{r.section_slug}/{r.disease_slug}',
+                    'similarity': float(r.sim) if r.sim else 0,
+                })
+
+        # Search verified+processed UGI (RadInsight Notes)
+        if filter_type in ('', 'intelligence'):
+            ugi_sql = text("""
+                SELECT ugi.id, ugi.diagnosis, ugi.body_section, ugi.modality,
+                       ugi.notes, ugi.search_tags,
+                       GREATEST(
+                           COALESCE(similarity(ugi.diagnosis, :query), 0),
+                           COALESCE(similarity(ugi.search_tags, :query), 0)
+                       ) AS sim
+                FROM user_generated_intelligence ugi
+                WHERE ugi.is_verified = TRUE
+                  AND ugi.processing_status = 'processed'
+                  AND (
+                      similarity(ugi.diagnosis, :query) > 0.1
+                      OR similarity(ugi.search_tags, :query) > 0.1
+                      OR ugi.diagnosis ILIKE :like_query
+                      OR ugi.search_tags ILIKE :like_query
+                  )
+                ORDER BY sim DESC
+                LIMIT :limit
+            """)
+            ugi_results = db.session.execute(ugi_sql, {
+                'query': query, 'like_query': f'%{query}%', 'limit': limit
+            }).fetchall()
+
+            for r in ugi_results:
+                # Show first note bullet as description preview
+                notes_preview = ''
+                if r.notes:
+                    try:
+                        notes_list = json.loads(r.notes)
+                        if notes_list:
+                            notes_preview = notes_list[0][:120]
+                    except (json.JSONDecodeError, TypeError):
+                        pass
+                results.append({
+                    'type': 'intelligence',
+                    'id': r.id,
+                    'title': r.diagnosis or 'RadInsight Note',
+                    'body_section': r.body_section,
+                    'description': notes_preview,
+                    'subtitle': r.modality or 'RadInsight Note',
+                    'url': f'/admin/intelligence?highlight={r.id}',
+                    'similarity': float(r.sim) if r.sim else 0,
+                })
+
     except Exception as exc:
         logger.warning(f"pg_trgm unified search failed, falling back to ILIKE: {exc}")
         results = _fallback_search(query, filter_type, limit)
 
-    # Sort all results by similarity descending
-    results.sort(key=lambda r: r.get('similarity', 0), reverse=True)
+    # Sort by similarity descending, with type priority as tiebreaker
+    TYPE_PRIORITY = {
+        'case': 0, 'protocol': 1, 'reporting': 2, 'template': 3,
+        'oncologic': 4, 'tnm_case': 5, 'incidental': 6, 'anatomy': 7, 'pearl': 8, 'intelligence': 9,
+    }
+    results.sort(key=lambda r: (-r.get('similarity', 0), TYPE_PRIORITY.get(r.get('type'), 99)))
 
     total = len(results)
     paginated = results[offset:offset + limit]
@@ -536,6 +656,64 @@ def _fallback_search(query, filter_type, limit):
                 'description': p.modality or '',
                 'subtitle': 'Radiology Pearl',
                 'url': '/radiology-pearls',
+                'similarity': 0.5,
+            })
+
+    if filter_type in ('', 'protocol'):
+        protos = ClinicalProtocol.query.filter(
+            ClinicalProtocol.is_available == True,
+            db.or_(
+                ClinicalProtocol.title.ilike(like),
+                ClinicalProtocol.keywords.ilike(like),
+            ),
+        ).limit(limit).all()
+        for p in protos:
+            results.append({
+                'type': 'protocol', 'id': p.id,
+                'title': p.title,
+                'description': p.description or '',
+                'subtitle': p.category or 'Protocol',
+                'url': f'/radiology-protocols/view/{p.id}',
+                'similarity': 0.5,
+            })
+
+    if filter_type in ('', 'tnm_case'):
+        sites = AJCCDiseaseSite.query.filter(
+            AJCCDiseaseSite.disease_name.ilike(like),
+        ).limit(limit).all()
+        for s in sites:
+            bs = AJCCBodySection.query.get(s.body_section_id)
+            results.append({
+                'type': 'tnm_case', 'id': s.id,
+                'title': s.disease_name,
+                'body_section': bs.section_name if bs else '',
+                'description': f'TNM Essentials — {bs.section_name if bs else ""}',
+                'subtitle': 'AJCC 9th Edition',
+                'url': f'/tnm/{bs.slug if bs else "unknown"}/{s.slug}',
+                'similarity': 0.5,
+            })
+
+    if filter_type in ('', 'intelligence'):
+        ugis = UserGeneratedIntelligence.query.filter(
+            UserGeneratedIntelligence.is_verified == True,
+            UserGeneratedIntelligence.processing_status == 'processed',
+            db.or_(
+                UserGeneratedIntelligence.diagnosis.ilike(like),
+                UserGeneratedIntelligence.search_tags.ilike(like),
+            ),
+        ).limit(limit).all()
+        for u in ugis:
+            notes_preview = ''
+            notes_list = u.get_notes()
+            if notes_list:
+                notes_preview = notes_list[0][:120]
+            results.append({
+                'type': 'intelligence', 'id': u.id,
+                'title': u.diagnosis or 'RadInsight Note',
+                'body_section': u.body_section,
+                'description': notes_preview,
+                'subtitle': u.modality or 'RadInsight Note',
+                'url': f'/admin/intelligence?highlight={u.id}',
                 'similarity': 0.5,
             })
 
@@ -1060,10 +1238,14 @@ def view_reporting_template(slug):
             if template.source_citation.strip():
                 resources['references'] = [{'source': template.source_citation.strip(), 'version': '', 'url': ''}]
 
+    # Determine which nav tab to highlight based on referrer context
+    nav_active = request.args.get('from', 'templates')
+
     return render_template('reporting_template_view.html',
                            template=template,
                            content=content,
-                           resources=resources)
+                           resources=resources,
+                           nav_active=nav_active)
 
 
 @reporting_bp.route('/reporting-template/embed/<slug>')
@@ -1606,6 +1788,176 @@ def delete_radiology_template(template_id):
     return jsonify({'success': True, 'message': f'Template "{title}" deleted.'})
 
 
+# ==================== INTELLIGENCE ADMIN ROUTES ====================
+
+
+@reporting_bp.route('/admin/intelligence')
+@login_required
+@require_admin
+def admin_intelligence():
+    """Admin page for managing UserGeneratedIntelligence records."""
+    status_filter = request.args.get('status', '')
+    body_section_filter = request.args.get('body_section', '')
+    verified_filter = request.args.get('verified', '')
+
+    query = UserGeneratedIntelligence.query
+
+    if status_filter:
+        query = query.filter(UserGeneratedIntelligence.processing_status == status_filter)
+    if body_section_filter:
+        query = query.filter(UserGeneratedIntelligence.body_section == body_section_filter)
+    if verified_filter == 'true':
+        query = query.filter(UserGeneratedIntelligence.is_verified == True)
+    elif verified_filter == 'false':
+        query = query.filter(UserGeneratedIntelligence.is_verified == False)
+
+    records = query.order_by(UserGeneratedIntelligence.created_at.desc()).all()
+
+    # Stats
+    total = UserGeneratedIntelligence.query.count()
+    pending = UserGeneratedIntelligence.query.filter_by(processing_status='pending').count()
+    processed = UserGeneratedIntelligence.query.filter_by(processing_status='processed').count()
+    verified = UserGeneratedIntelligence.query.filter_by(is_verified=True).count()
+
+    return render_template('admin_intelligence.html',
+                           records=records,
+                           stats={'total': total, 'pending': pending, 'processed': processed, 'verified': verified},
+                           status_filter=status_filter,
+                           body_section_filter=body_section_filter,
+                           verified_filter=verified_filter)
+
+
+@reporting_bp.route('/admin/intelligence/api/<int:record_id>', methods=['GET'])
+@login_required
+@require_admin
+def get_intelligence_record(record_id):
+    """Get full details of a UGI record."""
+    ugi = UserGeneratedIntelligence.query.get_or_404(record_id)
+    return jsonify(ugi.to_dict())
+
+
+@reporting_bp.route('/admin/intelligence/api/<int:record_id>/verify', methods=['POST'])
+@login_required
+@require_admin
+def verify_intelligence_record(record_id):
+    """Verify a UGI record (makes it visible in search)."""
+    ugi = UserGeneratedIntelligence.query.get_or_404(record_id)
+    ugi.is_verified = True
+    ugi.verified_by_user_id = current_user.id
+    ugi.verified_at = datetime.utcnow()
+    ugi.updated_at = datetime.utcnow()
+    db.session.commit()
+    return jsonify({'success': True, 'message': f'Record #{record_id} verified.'})
+
+
+@reporting_bp.route('/admin/intelligence/api/<int:record_id>', methods=['DELETE'])
+@login_required
+@require_admin
+def delete_intelligence_record(record_id):
+    """Delete a UGI record."""
+    ugi = UserGeneratedIntelligence.query.get_or_404(record_id)
+    db.session.delete(ugi)
+    db.session.commit()
+    return jsonify({'success': True, 'message': f'Record #{record_id} deleted.'})
+
+
+@reporting_bp.route('/admin/intelligence/api/process-pending', methods=['POST'])
+@login_required
+@require_admin
+def process_pending_intelligence():
+    """Process up to 20 pending UGI records via Haiku."""
+    from ai_intelligence import process_ugi_for_record
+
+    pending = UserGeneratedIntelligence.query.filter(
+        UserGeneratedIntelligence.processing_status.in_(['pending', 'failed'])
+    ).order_by(UserGeneratedIntelligence.created_at.asc()).limit(20).all()
+
+    if not pending:
+        return jsonify({'success': True, 'message': 'No pending records to process.', 'processed': 0})
+
+    processed_count = 0
+    for ugi in pending:
+        if process_ugi_for_record(ugi.id):
+            processed_count += 1
+
+    return jsonify({
+        'success': True,
+        'message': f'Processed {processed_count} of {len(pending)} records.',
+        'processed': processed_count,
+        'total_attempted': len(pending),
+    })
+
+
+@reporting_bp.route('/api/admin/backfill-intelligence', methods=['POST'])
+@login_required
+@require_admin
+def backfill_content_intelligence():
+    """Process up to 20 content items without intelligence records."""
+    from ai_intelligence import process_content_intelligence
+
+    # Find content items missing CI records
+    content_types = [
+        ('case', Case, 'diagnosis', lambda c: c.discussion or '',
+         lambda c: c.body_part.value if c.body_part else '',
+         Case.status == CaseStatus.PUBLISHED),
+        ('protocol', ClinicalProtocol, 'title', lambda c: (c.content_html or '') + ' ' + (c.keywords or ''),
+         lambda c: '', ClinicalProtocol.is_available == True),
+        ('reporting_algorithm', ReportingAlgorithm, 'title', lambda c: (c.description or '') + ' ' + (c.keywords or ''),
+         lambda c: c.body_section or '',
+         db.and_(ReportingAlgorithm.is_available == True, ReportingAlgorithm.origin == 'admin')),
+    ]
+
+    processed_count = 0
+    errors = 0
+
+    for ctype, model_cls, title_field, content_fn, section_fn, extra_filter in content_types:
+        if processed_count >= 20:
+            break
+
+        existing_ids = {ci.content_id for ci in
+                        ContentIntelligence.query.filter_by(content_type=ctype).all()}
+
+        items = model_cls.query.filter(extra_filter).all()
+        for item in items:
+            if processed_count >= 20:
+                break
+            if item.id in existing_ids:
+                continue
+
+            try:
+                result = process_content_intelligence(
+                    content_type=ctype,
+                    content_id=item.id,
+                    title=getattr(item, title_field, 'Untitled'),
+                    body_section=section_fn(item),
+                    content_text=content_fn(item),
+                )
+                ci = ContentIntelligence(
+                    content_type=ctype,
+                    content_id=item.id,
+                    summary=result['summary'],
+                    search_tags=result['search_tags'],
+                    cross_links_json=result.get('cross_links_json'),
+                    processing_model=result['processing_model'],
+                    processing_tokens=result['processing_tokens'],
+                    processed_at=datetime.utcnow(),
+                )
+                db.session.add(ci)
+                db.session.commit()
+                processed_count += 1
+            except Exception as exc:
+                db.session.rollback()
+                logger.error(f"Backfill CI failed for {ctype}:{item.id}: {exc}")
+                errors += 1
+
+    return jsonify({
+        'success': True,
+        'message': f'Processed {processed_count} items ({errors} errors).',
+        'processed': processed_count,
+        'errors': errors,
+    })
+
+
 # ==================== SMART REPORTER ROUTES ====================
 
 
@@ -1847,6 +2199,38 @@ def smart_reporter_quick_review():
     })
 
 
+def _capture_ugi_silently(insights, modality, body_section, clinical_question, exam_type, user_id):
+    """Silently save teaching_point + differentials as UGI. Never raises."""
+    try:
+        import hashlib
+        teaching_point = (insights.get('teaching_point') or '').strip()
+        differentials = insights.get('differentials_to_consider') or []
+        if not teaching_point or len(teaching_point) < 30:
+            return
+        # SHA-256 dedup
+        hash_input = teaching_point.lower() + json.dumps(sorted(differentials) if differentials else []).lower()
+        content_hash = hashlib.sha256(hash_input.encode('utf-8')).hexdigest()
+        if UserGeneratedIntelligence.query.filter_by(content_hash=content_hash).first():
+            return  # duplicate
+        ugi = UserGeneratedIntelligence(
+            content_hash=content_hash,
+            raw_teaching_point=teaching_point,
+            raw_differentials=json.dumps(differentials) if differentials else None,
+            modality=modality or None,
+            body_section=body_section or None,
+            clinical_question=clinical_question or None,
+            exam_type=exam_type or None,
+            processing_status='pending',
+            created_by_user_id=user_id,
+        )
+        db.session.add(ugi)
+        db.session.commit()
+        logger.info(f"UGI captured silently for user {user_id}: {teaching_point[:60]}...")
+    except Exception as exc:
+        db.session.rollback()
+        logger.warning(f"UGI silent capture failed (non-blocking): {exc}")
+
+
 @reporting_bp.route('/api/smart-reporter/ai-assist', methods=['POST'])
 @login_required
 def smart_reporter_ai_assist():
@@ -1894,13 +2278,25 @@ def smart_reporter_ai_assist():
                  model=result.get('model', ''), input_summary=question[:500],
                  input_tokens=result.get('input_tokens'), output_tokens=result.get('output_tokens'))
 
+    # Silently capture teaching point + differentials as UGI (never blocks response)
+    insights = result.get('insights') or {}
+    if insights.get('teaching_point'):
+        _capture_ugi_silently(
+            insights=insights,
+            modality=modality,
+            body_section=body_section,
+            clinical_question=clinical_question,
+            exam_type=data.get('exam_type', ''),
+            user_id=current_user.id,
+        )
+
     return jsonify({
         'success': True,
         'response_type': result.get('response_type', 'advisory'),
         'corrections': result.get('corrections', []),
         'answer': result.get('answer', ''),
         'report_text': result.get('report_text', ''),
-        'insights': result.get('insights', {}),
+        'insights': insights,
         'remaining_requests': remaining,
     })
 

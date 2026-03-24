@@ -2,241 +2,143 @@
 {% block title %}Dashboard - RadInsights{% endblock %}
 
 {% block content %}
-<div class="container py-4">
+<div class="container py-4" style="max-width: 900px;">
     <!-- Disclaimer -->
-    <div class="p-2 rounded mb-3" style="background: #f8f9fa; border: 1px solid #e9ecef;">
+    <div class="p-2 rounded mb-4" style="background: #f8f9fa; border: 1px solid #e9ecef;">
         <small class="text-muted">
             <i class="fas fa-shield-alt me-1" style="color: #e96304;"></i>
             <strong>RadInsights</strong> is an educational platform for Consultant Radiologists and Radiology trainees. It is not intended as a diagnostic or clinical decision-making tool.
         </small>
     </div>
-    <!-- Main Action Cards -->
-    <div class="row g-4">
-        <!-- FEATURED: Balanced Revision Card -->
-        <div class="col-lg-6">
-            <div class="card h-100 shadow-sm border-0 hover-card"
-                 style="transition: transform 0.2s ease; cursor: pointer;"
-                 onclick="window.location.href='/revision/start-balanced'">
-                <div class="card-body d-flex flex-column p-4">
-                    <div class="mb-3 text-center">
-                        <i class="fas fa-shuffle" style="font-size: 3rem; color: #e96304;"></i>
-                        <h3 class="mt-2 mb-1 text-card-title">Balanced Revision</h3>
-                        <p class="mb-0 text-muted small">Smart case selection</p>
-                    </div>
-                    <p class="small text-muted flex-grow-1">
-                        <i class="fas fa-check-circle me-1" style="color: #a8d5ba;"></i>6 cases - one from each module<br>
-                        <i class="fas fa-check-circle me-1" style="color: #a8d5ba;"></i>Prioritises unseen cases<br>
-                        <i class="fas fa-check-circle me-1" style="color: #a8d5ba;"></i>Balanced coverage
-                    </p>
-                    <a href="/revision/start-balanced" class="btn btn-brand-primary w-100 mt-auto">
-                        <i class="fas fa-play me-2"></i>Start Revision
-                    </a>
+
+    <!-- Global Search Card -->
+    <div class="card border-0 shadow-sm mb-4" style="border-radius: 14px;">
+        <div class="card-body text-center py-4 px-4">
+            <h2 class="text-section-title mb-1">Intelligent Search</h2>
+            <p class="text-muted small mb-3">Search cases, algorithms, templates, tools, protocols, pearls, and more</p>
+            <div class="position-relative mx-auto" style="max-width: 560px;">
+                <div class="input-group">
+                    <span class="input-group-text bg-white border-end-0" style="border-radius: 24px 0 0 24px; border-color: #dce4ea;">
+                        <i class="fas fa-search text-muted"></i>
+                    </span>
+                    <input type="text" id="dashboardSearch" class="form-control form-control-lg border-start-0" placeholder="e.g. splenic trauma, CT pulmonary angiogram..." autocomplete="off" style="border-radius: 0 24px 24px 0; border-color: #dce4ea; font-size: 1rem;">
                 </div>
+                <div id="dashboardSearchResults" class="global-search-results d-none" style="left: 0; right: 0; width: 100%;"></div>
             </div>
         </div>
-        <!-- Module Selection Card -->
-        <div class="col-lg-6">
-            <div class="card h-100 shadow-sm border-0 hover-card"
-                 style="transition: transform 0.2s ease; cursor: pointer;"
-                 onclick="window.location.href='{{ url_for('modules_view') }}'">
-                <div class="card-body d-flex flex-column p-4">
-                    <div class="mb-3 text-center">
-                        <i class="fas fa-th-large" style="font-size: 3rem; color: #a8d5ba;"></i>
-                        <h3 class="mt-2 mb-1 text-card-title">Select Module to Revise</h3>
-                        <p class="mb-0 text-muted small">Practice by specialty</p>
-                    </div>
-
-                    <p class="small text-muted flex-grow-1">
-                        Choose from 6 core specialties: Cardiothoracic, Musculoskeletal,
-                        Gastrointestinal, Genitourinary, Paediatric, or CNS & Head & Neck.
-                    </p>
-
-                    <a href="{{ url_for('modules_view') }}" class="btn btn-brand-success w-100 mt-auto">
-                        <i class="fas fa-layer-group me-2"></i>Browse Modules
-                    </a>
-                </div>
-            </div>
-        </div>
-
-        <!-- All Cases Card -->
-        <div class="col-lg-6">
-            <div class="card h-100 shadow-sm border-0 hover-card"
-                 style="transition: transform 0.2s ease; cursor: pointer;"
-                 onclick="window.location.href='{{ url_for('all_cases_view') }}'">
-                <div class="card-body d-flex flex-column p-4">
-                    <div class="mb-3 text-center">
-                        <i class="fas fa-folder-open" style="font-size: 3rem; color: #5E899E;"></i>
-                        <h3 class="mt-2 mb-1 text-card-title">Browse All Cases</h3>
-                        <p class="mb-0 text-muted small">Search and filter the complete case library</p>
-                    </div>
-
-                    <p class="small text-muted flex-grow-1">
-                        Access all available cases with advanced search by diagnosis,
-                        keywords, body part, and module. Track your progress with notes and highlights.
-                    </p>
-
-                    <a href="{{ url_for('all_cases_view') }}" class="btn btn-brand-neutral w-100 mt-auto">
-                        <i class="fas fa-book-medical me-2"></i>View All Cases
-                    </a>
-                </div>
-            </div>
-        </div>
-
-        <!-- TNM Staging Browser Card -->
-        <div class="col-lg-6">
-            <div class="card h-100 shadow-sm border-0 hover-card"
-                 style="transition: transform 0.2s ease; cursor: pointer;"
-                 onclick="window.location.href='/tnm'">
-                <div class="card-body d-flex flex-column p-4">
-                    <div class="mb-3 text-center">
-                        <i class="fas fa-dna" style="font-size: 3rem; color: #ffc107;"></i>
-                        <h3 class="mt-2 mb-1 text-card-title">TNM Staging Browser</h3>
-                        <p class="mb-0 text-muted small">AJCC cancer staging reference</p>
-                    </div>
-
-                    <p class="small text-muted flex-grow-1">
-                        Browse AJCC TNM cancer staging data organised by body section and disease.
-                        Quick reference tables, staging criteria, and explanatory notes.
-                    </p>
-
-                    <a href="/tnm" class="btn btn-brand-secondary w-100 mt-auto">
-                        <i class="fas fa-sitemap me-2"></i>Browse TNM
-                    </a>
-                </div>
-            </div>
-        </div>
-
-        <!-- Study Mode Card -->
-        <div class="col-lg-6">
-            <div class="card h-100 shadow-sm border-0 hover-card"
-                 style="transition: transform 0.2s ease; cursor: pointer;"
-                 onclick="window.location.href='/study'">
-                <div class="card-body d-flex flex-column p-4">
-                    <div class="mb-3 text-center">
-                        <i class="fas fa-brain" style="font-size: 3rem; color: #a8d5ba;"></i>
-                        <h3 class="mt-2 mb-1 text-card-title">Study Mode</h3>
-                        <p class="mb-0 text-muted small" id="studySubtitle">Spaced repetition</p>
-                    </div>
-                    <p class="small text-muted flex-grow-1">
-                        <i class="fas fa-check-circle me-1" style="color: #a8d5ba;"></i>Flashcard-based Q&A review<br>
-                        <i class="fas fa-check-circle me-1" style="color: #a8d5ba;"></i>SM-2 spaced repetition algorithm<br>
-                        <i class="fas fa-check-circle me-1" style="color: #a8d5ba;"></i>Track mastery by module
-                    </p>
-                    <a href="/study" class="btn btn-brand-success w-100 mt-auto">
-                        <i class="fas fa-play me-2"></i>Start Studying
-                    </a>
-                </div>
-            </div>
-        </div>
-
-        <!-- Suggest a Case Card -->
-        <div class="col-lg-6">
-            <div class="card h-100 shadow-sm border-0 hover-card"
-                 style="transition: transform 0.2s ease; cursor: pointer;"
-                 onclick="window.location.href='/suggest-case'">
-                <div class="card-body d-flex flex-column p-4">
-                    <div class="mb-3 text-center">
-                        <i class="fas fa-lightbulb" style="font-size: 3rem; color: #ffc107;"></i>
-                        <h3 class="mt-2 mb-1 text-card-title">Suggest a Case</h3>
-                        <p class="mb-0 text-muted small">Contribute to the case library</p>
-                    </div>
-                    <p class="small text-muted flex-grow-1">
-                        <i class="fas fa-check-circle me-1" style="color: #a8d5ba;"></i>Enter diagnosis and metadata<br>
-                        <i class="fas fa-check-circle me-1" style="color: #a8d5ba;"></i>RadInsights Intelligence generates discussion and Q&amp;A<br>
-                        <i class="fas fa-check-circle me-1" style="color: #a8d5ba;"></i>Upload images and submit for review
-                    </p>
-                    <a href="/suggest-case" class="btn btn-brand-secondary w-100 mt-auto">
-                        <i class="fas fa-plus-circle me-2"></i>Suggest a Case
-                    </a>
-                </div>
-            </div>
-        </div>
-
-        <!-- Smart Reporter Card -->
-        <div class="col-lg-12">
-            <div class="card h-100 shadow-sm border-0 hover-card"
-                 style="transition: transform 0.2s ease; cursor: pointer;"
-                 onclick="window.location.href='/smart-reporter'">
-                <div class="card-body d-flex flex-column p-4">
-                    <div class="mb-3 text-center">
-                        <i class="fas fa-file-medical" style="font-size: 3rem; color: #e96304;"></i>
-                        <h3 class="mt-2 mb-1 text-card-title">Smart Reporter</h3>
-                        <p class="mb-0 text-muted small">RadInsight Intelligence powered scan reporting</p>
-                    </div>
-                    <p class="small text-muted flex-grow-1">
-                        <i class="fas fa-check-circle me-1" style="color: #a8d5ba;"></i>Step-by-step guided scan reading<br>
-                        <i class="fas fa-check-circle me-1" style="color: #a8d5ba;"></i>Auto-generated PACS-ready reports<br>
-                        <i class="fas fa-check-circle me-1" style="color: #a8d5ba;"></i>Ask RadInsight Intelligence to refine your report
-                    </p>
-                    <a href="/smart-reporter" class="btn btn-brand-primary w-100 mt-auto">
-                        <i class="fas fa-file-medical me-2"></i>Start Reporting
-                    </a>
-                </div>
-            </div>
-        </div>
-
     </div>
 
-    <!-- Recent Activity / Quick Stats -->
-    <div class="row g-4 mt-3">
-        <div class="col-md-4">
-            <div class="card border-0 shadow-sm">
-                <div class="card-body text-center">
-                    <div style="font-size: 2rem; color: #e96304;">
-                        <i class="fas fa-sticky-note"></i>
+    <!-- Two-Card Row: Smart Reporter + Progress -->
+    <div class="row g-4 mb-4">
+        <!-- Smart Reporter -->
+        <div class="col-md-6">
+            <div class="card h-100 border-0 shadow-sm hover-card" style="border-radius: 14px; cursor: pointer;" onclick="window.location.href='/smart-reporter'">
+                <div class="card-body d-flex flex-column align-items-center text-center p-4">
+                    <div class="mb-3" style="width: 64px; height: 64px; border-radius: 50%; background: rgba(233,99,4,0.1); display: flex; align-items: center; justify-content: center;">
+                        <i class="fas fa-file-medical" style="font-size: 1.6rem; color: #e96304;"></i>
                     </div>
-                    <h4 class="mt-2 mb-1">{{ notes_count }}</h4>
-                    <p class="text-muted small mb-0">My Notes</p>
+                    <h5 class="mb-1" style="color: var(--brand-text-primary, #2c3e50);">Smart Reporter</h5>
+                    <p class="text-muted small flex-grow-1 mb-3">AI-guided scan reporting with structured templates, decision trees, and instant report generation.</p>
+                    <a href="/smart-reporter" class="btn btn-brand-primary btn-sm w-100 mt-auto">
+                        <i class="fas fa-play me-1"></i>Start Reporting
+                    </a>
                 </div>
             </div>
         </div>
-        
-        <div class="col-md-4">
-            <div class="card border-0 shadow-sm">
-                <div class="card-body text-center">
-                    <div style="font-size: 2rem; color: #a8d5ba;">
-                        <i class="fas fa-highlighter"></i>
+
+        <!-- Your Progress -->
+        <div class="col-md-6">
+            <div class="card h-100 border-0 shadow-sm hover-card" style="border-radius: 14px; cursor: pointer;" onclick="window.location.href='/study'">
+                <div class="card-body d-flex flex-column align-items-center text-center p-4">
+                    <div class="mb-3" style="width: 64px; height: 64px; border-radius: 50%; background: rgba(168,213,186,0.25); display: flex; align-items: center; justify-content: center;">
+                        <i class="fas fa-brain" style="font-size: 1.6rem; color: #198754;"></i>
                     </div>
-                    <h4 class="mt-2 mb-1">{{ highlights_count }}</h4>
-                    <p class="text-muted small mb-0">Highlights</p>
+                    <h5 class="mb-1" style="color: var(--brand-text-primary, #2c3e50);">Your Progress</h5>
+                    <p class="text-muted small mb-3" id="progressSubtitle">Spaced repetition study</p>
+                    <!-- Stats Row -->
+                    <div class="d-flex justify-content-around w-100 mb-3">
+                        <div class="text-center">
+                            <div id="statDueToday" style="font-size: 1.5rem; font-weight: 700; color: #e96304;">-</div>
+                            <div class="text-muted" style="font-size: 0.7rem;">Due Today</div>
+                        </div>
+                        <div class="text-center">
+                            <div id="statMastered" style="font-size: 1.5rem; font-weight: 700; color: #198754;">-</div>
+                            <div class="text-muted" style="font-size: 0.7rem;">Mastered</div>
+                        </div>
+                        <div class="text-center">
+                            <div id="statAccuracy" style="font-size: 1.5rem; font-weight: 700; color: #5E899E;">-</div>
+                            <div class="text-muted" style="font-size: 0.7rem;">Accuracy</div>
+                        </div>
+                    </div>
+                    <a href="/study" class="btn btn-brand-success btn-sm w-100 mt-auto">
+                        <i class="fas fa-play me-1"></i>Continue Studying
+                    </a>
                 </div>
             </div>
         </div>
-        
-        <div class="col-md-4">
-            <div class="card border-0 shadow-sm">
-                <div class="card-body text-center">
-                    <div style="font-size: 2rem;">
-                        <i class="fas fa-check-circle"></i>
-                    </div>
-                    <h4 class="mt-2 mb-1">{{ reviewed_count }}</h4>
-                    <p class="text-muted small mb-0">Cases Reviewed</p>
-                </div>
-            </div>
+    </div>
+
+    <!-- Quick Access Pills -->
+    <div class="text-center mb-4">
+        <div class="d-flex flex-wrap justify-content-center gap-2">
+            <a href="/cases" class="btn btn-outline-secondary btn-sm" style="border-radius: 16px; font-size: 0.82rem;"><i class="fas fa-book-medical me-1"></i>Cases</a>
+            <a href="/tnm" class="btn btn-outline-secondary btn-sm" style="border-radius: 16px; font-size: 0.82rem;"><i class="fas fa-layer-group me-1"></i>TNM Staging</a>
+            <a href="/knowledge-hub" class="btn btn-outline-secondary btn-sm" style="border-radius: 16px; font-size: 0.82rem;"><i class="fas fa-book-open me-1"></i>Knowledge Hub</a>
+            <a href="/tnm-calculator" class="btn btn-outline-secondary btn-sm" style="border-radius: 16px; font-size: 0.82rem;"><i class="fas fa-dna me-1"></i>TNM Calculators</a>
+            <a href="/incidental-findings" class="btn btn-outline-secondary btn-sm" style="border-radius: 16px; font-size: 0.82rem;"><i class="fas fa-tools me-1"></i>Radiology Tools</a>
+            <a href="/radiology-protocols" class="btn btn-outline-secondary btn-sm" style="border-radius: 16px; font-size: 0.82rem;"><i class="fas fa-clipboard-list me-1"></i>Protocols</a>
         </div>
+    </div>
+
+    <!-- Stats Footer -->
+    <div class="text-center text-muted small" style="font-size: 0.8rem;">
+        <i class="fas fa-sticky-note me-1" style="color: #e96304;"></i>{{ notes_count }} notes
+        <span class="mx-2">|</span>
+        <i class="fas fa-highlighter me-1" style="color: #a8d5ba;"></i>{{ highlights_count }} highlights
+        <span class="mx-2">|</span>
+        <i class="fas fa-check-circle me-1" style="color: #5E899E;"></i>{{ reviewed_count }} cases reviewed
     </div>
 </div>
 
 <style>
 .hover-card:hover {
-    transform: translateY(-5px);
+    transform: translateY(-4px);
     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12) !important;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.hover-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 </style>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Init dashboard search
+    if (window.initGlobalSearch) {
+        initGlobalSearch('dashboardSearch', 'dashboardSearchResults');
+    }
+
+    // Fetch study stats
     fetch('/api/study/stats')
         .then(function(r) { return r.json(); })
         .then(function(data) {
-            var el = document.getElementById('studySubtitle');
-            if (!el) return;
-            if (data.due_today > 0) {
-                el.textContent = data.due_today + ' card' + (data.due_today !== 1 ? 's' : '') + ' due today';
-                el.style.color = '#e96304';
-                el.style.fontWeight = '600';
-            } else if (data.total_progress > 0) {
-                el.textContent = 'All caught up!';
+            var due = document.getElementById('statDueToday');
+            var mastered = document.getElementById('statMastered');
+            var accuracy = document.getElementById('statAccuracy');
+            var subtitle = document.getElementById('progressSubtitle');
+
+            if (due) due.textContent = data.due_today != null ? data.due_today : '0';
+            if (mastered) mastered.textContent = data.mastered != null ? data.mastered : '0';
+            if (accuracy) {
+                var pct = data.accuracy != null ? Math.round(data.accuracy) + '%' : '-';
+                accuracy.textContent = pct;
+            }
+            if (subtitle && data.due_today > 0) {
+                subtitle.textContent = data.due_today + ' card' + (data.due_today !== 1 ? 's' : '') + ' due today';
+                subtitle.style.color = '#e96304';
+                subtitle.style.fontWeight = '600';
+            } else if (subtitle && data.total_progress > 0) {
+                subtitle.textContent = 'All caught up!';
             }
         })
         .catch(function() {});

@@ -77,14 +77,14 @@
                     <!-- Question -->
                     <div class="flex-grow-1 mb-3">
                         <h5 class="text-muted mb-2"><i class="fas fa-question-circle me-1"></i> Question</h5>
-                        <p id="questionText" class="fs-5 mb-0"></p>
+                        <div id="questionText" class="fs-5 mb-0 study-qa-content"></div>
                     </div>
 
                     <!-- Answer (hidden) -->
                     <div id="answerSection" style="display: none;" class="flex-grow-1 mb-3">
                         <hr>
                         <h5 class="text-muted mb-2"><i class="fas fa-lightbulb me-1" style="color: #ffc107;"></i> Answer</h5>
-                        <p id="answerText" class="fs-5 mb-0"></p>
+                        <div id="answerText" class="fs-5 mb-0 study-qa-content"></div>
                     </div>
 
                     <!-- Show/Hide Answer Button -->
@@ -163,6 +163,29 @@
 </div>
 
 <script>
+/**
+ * Render study card content with same formatting as case view.
+ * Handles HTML content, markdown bold (**text**), and plain text.
+ */
+function renderStudyContent(content) {
+    if (!content) return '';
+
+    // Handle <hr> tags escaped by TinyMCE
+    content = content.replace(/<p>\s*&lt;hr\s*\/?&gt;\s*<\/p>/gi,
+        '<hr style="border-top: 2px solid #e96304; margin: 0.5rem 0;">');
+    content = content.replace(/<hr\s*\/?>/gi,
+        '<hr style="border-top: 2px solid #e96304; margin: 0.5rem 0;">');
+
+    // Convert markdown **bold** to <h4> (only in text parts, not inside HTML tags)
+    var parts = content.split(/(<[^>]+>)/);
+    content = parts.map(function(part) {
+        if (part.startsWith('<') && part.endsWith('>')) return part;
+        return part.replace(/\*\*([^*]+?)\*\*/g, '<h4>$1</h4>');
+    }).join('');
+
+    return content;
+}
+
 let cards = [];
 let currentIndex = 0;
 let answered = 0;
@@ -211,8 +234,8 @@ function displayCard(idx) {
 
     document.getElementById('cardModule').textContent = card.module || '';
     document.getElementById('cardStatus').textContent = card.is_new ? 'New' : 'Review';
-    document.getElementById('questionText').textContent = card.question_text;
-    document.getElementById('answerText').textContent = card.answer_text;
+    document.getElementById('questionText').innerHTML = renderStudyContent(card.question_text);
+    document.getElementById('answerText').innerHTML = renderStudyContent(card.answer_text);
 
     document.getElementById('answerSection').style.display = 'none';
     document.getElementById('showAnswerBtn').style.display = 'block';

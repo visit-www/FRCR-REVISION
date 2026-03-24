@@ -71,14 +71,14 @@ def _parse_display_source(source_citation):
 @protocol_bp.route('/on-call-helper')
 @login_required
 def oncall_helper():
-    """Main on-call helper page with search interface."""
-    return render_template('oncall_helper.html')
+    """Retired: redirect to protocol browse (protocols now in unified search)."""
+    return redirect('/radiology-protocols', code=302)
 
 
 @protocol_bp.route('/on-call-helper/api/search')
 @login_required
 def autocomplete_search():
-    """Autocomplete search for protocols (lightweight)."""
+    """Autocomplete search for protocols (lightweight). Kept for backward compat."""
     query = request.args.get('q', '').strip()
     if len(query) < 2:
         return jsonify([])
@@ -88,37 +88,22 @@ def autocomplete_search():
     return jsonify(results)
 
 
+# DEPRECATED (Mar 2026): AI query feature retired — protocols now searchable
+# via unified search (/api/algorithms/search?type=protocol). Kept for audit trail.
+# @protocol_bp.route('/on-call-helper/api/query', methods=['POST'])
+# @login_required
+# def submit_query():
+#     """Submit an on-call helper query and get AI-formatted response."""
+#     ...
 @protocol_bp.route('/on-call-helper/api/query', methods=['POST'])
 @login_required
 def submit_query():
-    """Submit an on-call helper query and get AI-formatted response."""
-    data = request.get_json()
-    if not data or not data.get('query', '').strip():
-        return jsonify({'error': 'Query text is required.'}), 400
-
-    query_text = data['query'].strip()
-    if len(query_text) > 1000:
-        return jsonify({'error': 'Query too long (max 1000 characters).'}), 400
-
-    try:
-        from ai_protocol_helper import generate_oncall_response
-        result = generate_oncall_response(
-            query_text=query_text,
-            user_id=current_user.id,
-        )
-        return jsonify(result)
-
-    except Exception as exc:
-        logger.error(f"On-call helper error for user {current_user.id}: {exc}")
-        return jsonify({
-            'error': str(exc),
-            'answer_html': (
-                '<div class="alert alert-danger">'
-                '<i class="fas fa-exclamation-circle me-2"></i>'
-                f'Error: {str(exc)}'
-                '</div>'
-            ),
-        }), 500
+    """DEPRECATED: AI query retired. Returns message directing to unified search."""
+    return jsonify({
+        'error': 'The AI query feature has been retired. '
+                 'Protocols are now searchable via the main search bar.',
+        'deprecated': True,
+    }), 410
 
 
 @protocol_bp.route('/on-call-helper/api/history')

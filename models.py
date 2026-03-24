@@ -2928,6 +2928,160 @@ class RadiologyPearl(db.Model):
         return f'<RadiologyPearl {self.id} verified={self.is_verified}>'
 
 
+# ==================== CONTENT INTELLIGENCE ====================
+
+class ContentIntelligence(db.Model):
+    """AI-processed metadata for admin content (summaries, tags, cross-links)."""
+    __tablename__ = 'content_intelligence'
+
+    id = db.Column(db.Integer, primary_key=True)
+    content_type = db.Column(db.String(50), nullable=False, index=True)  # case, protocol, reporting_algorithm, radiology_template, radiology_tool, radiology_pearl, anatomy_snippet
+    content_id = db.Column(db.Integer, nullable=False, index=True)
+    summary = db.Column(db.Text, nullable=False)  # 2-line AI summary for search results
+    search_tags = db.Column(db.Text)  # comma-separated keywords
+    cross_links_json = db.Column(db.Text)  # JSON: [{type, id, title, relevance}]
+    processing_model = db.Column(db.String(100))
+    processing_tokens = db.Column(db.Integer)
+    processed_at = db.Column(db.DateTime)
+    is_verified = db.Column(db.Boolean, default=False)
+    verified_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    verified_at = db.Column(db.DateTime)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (
+        db.UniqueConstraint('content_type', 'content_id', name='uq_content_intelligence'),
+    )
+
+    verified_by = db.relationship('User', foreign_keys=[verified_by_user_id])
+
+    def get_cross_links(self):
+        if not self.cross_links_json:
+            return []
+        try:
+            return json.loads(self.cross_links_json)
+        except (json.JSONDecodeError, TypeError):
+            return []
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'content_type': self.content_type,
+            'content_id': self.content_id,
+            'summary': self.summary,
+            'search_tags': self.search_tags,
+            'cross_links': self.get_cross_links(),
+            'processing_model': self.processing_model,
+            'processing_tokens': self.processing_tokens,
+            'processed_at': self.processed_at.isoformat() if self.processed_at else None,
+            'is_verified': self.is_verified,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+
+    def __repr__(self):
+        return f'<ContentIntelligence {self.content_type}:{self.content_id} verified={self.is_verified}>'
+
+
+class UserGeneratedIntelligence(db.Model):
+    """Structured clinical knowledge silently captured from Smart Reporter insights."""
+    __tablename__ = 'user_generated_intelligence'
+
+    id = db.Column(db.Integer, primary_key=True)
+    content_hash = db.Column(db.String(64), unique=True, nullable=False)  # SHA-256 dedup
+
+    # Source metadata (from Smart Reporter session)
+    modality = db.Column(db.String(100))
+    exam_type = db.Column(db.String(200))  # e.g. "CT Abdomen Pelvis"
+    body_section = db.Column(db.String(100))
+    clinical_question = db.Column(db.Text)
+
+    # Raw inputs (saved verbatim from AI assist)
+    raw_teaching_point = db.Column(db.Text, nullable=False)
+    raw_differentials = db.Column(db.Text)  # JSON array
+
+    # Haiku-processed structured fields
+    diagnosis = db.Column(db.String(300))
+    notes = db.Column(db.Text)  # JSON array of practical knowledge bullets
+    pitfalls = db.Column(db.Text)  # JSON array of pitfall bullets
+    enriched_differentials = db.Column(db.Text)  # JSON: [{name, distinguishing_features}]
+    search_tags = db.Column(db.Text)  # comma-separated
+
+    # Processing
+    processing_model = db.Column(db.String(100))
+    processing_tokens = db.Column(db.Integer)
+    processed_at = db.Column(db.DateTime)  # null if pending
+    processing_status = db.Column(db.String(20), default='pending')  # pending/processed/failed/discarded
+
+    # Verification
+    is_verified = db.Column(db.Boolean, default=False)
+    verified_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    verified_at = db.Column(db.DateTime)
+
+    # Provenance
+    created_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    created_by = db.relationship('User', foreign_keys=[created_by_user_id])
+    verified_by = db.relationship('User', foreign_keys=[verified_by_user_id])
+
+    def get_notes(self):
+        if not self.notes:
+            return []
+        try:
+            return json.loads(self.notes)
+        except (json.JSONDecodeError, TypeError):
+            return []
+
+    def get_pitfalls(self):
+        if not self.pitfalls:
+            return []
+        try:
+            return json.loads(self.pitfalls)
+        except (json.JSONDecodeError, TypeError):
+            return []
+
+    def get_enriched_differentials(self):
+        if not self.enriched_differentials:
+            return []
+        try:
+            return json.loads(self.enriched_differentials)
+        except (json.JSONDecodeError, TypeError):
+            return []
+
+    def get_raw_differentials(self):
+        if not self.raw_differentials:
+            return []
+        try:
+            return json.loads(self.raw_differentials)
+        except (json.JSONDecodeError, TypeError):
+            return []
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'diagnosis': self.diagnosis,
+            'modality': self.modality,
+            'exam_type': self.exam_type,
+            'body_section': self.body_section,
+            'clinical_question': self.clinical_question,
+            'raw_teaching_point': self.raw_teaching_point,
+            'raw_differentials': self.get_raw_differentials(),
+            'notes': self.get_notes(),
+            'pitfalls': self.get_pitfalls(),
+            'enriched_differentials': self.get_enriched_differentials(),
+            'search_tags': self.search_tags,
+            'processing_status': self.processing_status,
+            'processing_model': self.processing_model,
+            'is_verified': self.is_verified,
+            'created_by_user_id': self.created_by_user_id,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+
+    def __repr__(self):
+        return f'<UserGeneratedIntelligence {self.id} status={self.processing_status} verified={self.is_verified}>'
+
+
 # ==================== AI AUDIT LOG ====================
 
 class AIAuditLog(db.Model):
