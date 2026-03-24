@@ -1204,7 +1204,7 @@ def unified_ai_assist(report_text, question, clinical_question='', modality='',
         model=effective_model,
         max_tokens=4000,
         temperature=0.3,
-        timeout=45,
+        timeout=90,
     )
 
     parsed = _parse_assist_response(text, question)
