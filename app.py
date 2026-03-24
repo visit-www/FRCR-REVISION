@@ -857,6 +857,17 @@ with app.app_context():
         _add_col_if_missing('incidental_finding_calculator', 'created_by_user_id', 'created_by_user_id INTEGER')
         _add_col_if_missing('incidental_finding_calculator', 'last_edit_note', 'last_edit_note VARCHAR(500)')
 
+        # Widen guideline_source from VARCHAR(300) to TEXT (now stores JSON with references)
+        try:
+            with db.engine.connect() as conn:
+                conn.execute(text(
+                    'ALTER TABLE incidental_finding_calculator '
+                    'ALTER COLUMN guideline_source TYPE TEXT'
+                ))
+                conn.commit()
+        except Exception:
+            pass  # already TEXT or table doesn't exist
+
         # -- reporting_algorithm: modality --
         _add_col_if_missing('reporting_algorithm', 'modality', 'modality VARCHAR(200)')
 

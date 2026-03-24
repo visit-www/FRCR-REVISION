@@ -3002,7 +3002,7 @@ class IncidentalFindingCalculator(db.Model):
     keywords = db.Column(db.Text, nullable=True)  # for pg_trgm search
     calculator_html = db.Column(db.Text, nullable=True)  # interactive decision tree HTML
     algorithm_html = db.Column(db.Text, nullable=True)  # extracted algorithm/reference
-    guideline_source = db.Column(db.String(300), nullable=True)  # e.g. "Fleischner Society 2017"
+    guideline_source = db.Column(db.Text, nullable=True)  # JSON with references, linked_cases, etc.
     guideline_version = db.Column(db.String(100), nullable=True)
     guideline_url = db.Column(db.String(1000), nullable=True)
     is_available = db.Column(db.Boolean, default=False, nullable=False, index=True)

@@ -313,14 +313,14 @@
 {% endif %}
 
 <!-- Preview Modal -->
-<div class="modal fade" id="previewModal" tabindex="-1">
+<div class="modal fade app-content-modal" id="previewModal" tabindex="-1">
     <div class="modal-dialog modal-xl">
         <div class="modal-content">
-            <div class="modal-header" style="background: linear-gradient(135deg, {% if origin_filter == 'anatomy_cache' %}#6f42c1, #8b5cf6{% else %}#e96304, #ff8534{% endif %}); color: #fff;">
+            <div class="modal-header">
                 <h5 class="modal-title" id="previewTitle">
                     <i class="fas fa-eye"></i> {% if origin_filter == 'anatomy_cache' %}Snippet{% else %}Algorithm{% endif %} Preview
                 </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body p-0">
                 <iframe id="previewFrame" style="width: 100%; height: 70vh; border: none;"></iframe>

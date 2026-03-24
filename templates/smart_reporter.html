@@ -2435,6 +2435,26 @@ document.addEventListener('DOMContentLoaded', function() {
                         </div>
                         <small class="text-muted d-block mt-1 text-decoration-line-through">${escapeHtml(s.original)} → ${escapeHtml(s.suggested)}</small>
                     </div>`;
+            } else if (s.editing) {
+                html += `
+                    <div class="p-2 mb-2 rounded" style="background: #fff3cd; border: 1px solid #ffc107;">
+                        <div class="d-flex justify-content-between align-items-start mb-1">
+                            <span class="badge" style="background: ${typeColor}; font-size: 0.65rem;">${s.type}</span>
+                            <small class="text-muted" style="font-size: 0.7rem;">${escapeHtml(s.reason)}</small>
+                        </div>
+                        <div class="mb-2">
+                            <small class="d-block"><span style="background: #ffcdd2; padding: 1px 3px; border-radius: 2px; text-decoration: line-through;">${escapeHtml(s.original)}</span></small>
+                            <input type="text" id="suggestionEdit_${i}" class="form-control form-control-sm mt-1" value="${escapeHtml(s.suggested)}" style="font-size: 0.85rem;">
+                        </div>
+                        <div class="d-flex gap-1">
+                            <button class="btn btn-sm btn-outline-success py-0 px-2" onclick="acceptSuggestion(${i})" style="font-size: 0.75rem;">
+                                <i class="fas fa-check me-1"></i>Accept
+                            </button>
+                            <button class="btn btn-sm btn-outline-secondary py-0 px-2" onclick="cancelEditSuggestion(${i})" style="font-size: 0.75rem;">
+                                Cancel
+                            </button>
+                        </div>
+                    </div>`;
             } else {
                 html += `
                     <div class="p-2 mb-2 rounded suggestion-card" style="background: #fff8e1; border: 1px solid #ffe082; cursor: default;">
@@ -2449,6 +2469,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         <div class="d-flex gap-1">
                             <button class="btn btn-sm btn-outline-success py-0 px-2" onclick="acceptSuggestion(${i})" style="font-size: 0.75rem;">
                                 <i class="fas fa-check me-1"></i>Accept
+                            </button>
+                            <button class="btn btn-sm btn-outline-warning py-0 px-2" onclick="editSuggestion(${i})" style="font-size: 0.75rem;">
+                                <i class="fas fa-pen me-1"></i>Edit
                             </button>
                             <button class="btn btn-sm btn-outline-secondary py-0 px-2" onclick="rejectSuggestion(${i})" style="font-size: 0.75rem;">
                                 <i class="fas fa-times me-1"></i>Reject
@@ -2469,8 +2492,31 @@ document.addEventListener('DOMContentLoaded', function() {
     window.acceptSuggestion = function(index) {
         const s = state.suggestions[index];
         if (!s || s.status !== 'pending') return;
+        if (s.editing) {
+            const input = document.getElementById('suggestionEdit_' + index);
+            if (input) s.suggested = input.value;
+            s.editing = false;
+        }
         s.status = 'accepted';
         applyAcceptedSuggestions();
+        renderSuggestions();
+    };
+
+    window.editSuggestion = function(index) {
+        const s = state.suggestions[index];
+        if (!s || s.status !== 'pending') return;
+        s.editing = true;
+        renderSuggestions();
+        setTimeout(function() {
+            var el = document.getElementById('suggestionEdit_' + index);
+            if (el) el.focus();
+        }, 50);
+    };
+
+    window.cancelEditSuggestion = function(index) {
+        const s = state.suggestions[index];
+        if (!s) return;
+        s.editing = false;
         renderSuggestions();
     };
 
@@ -2955,6 +3001,21 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div class="d-flex justify-content-between"><span class="badge" style="background: ${color}; font-size: 0.65rem;">${typeLabel}</span><i class="fas fa-times text-muted small"></i></div>
                     <small class="text-muted d-block mt-1 text-decoration-line-through">${escapeHtml(c.original)} → ${escapeHtml(c.suggested)}</small>
                 </div>`;
+            } else if (c.editing) {
+                html += `<div class="p-2 mb-2 rounded" style="background: #fff3cd; border: 1px solid #ffc107;">
+                    <div class="d-flex justify-content-between align-items-start mb-1">
+                        <span class="badge" style="background: ${color}; font-size: 0.65rem;">${typeLabel}</span>
+                        <small class="text-muted" style="font-size: 0.7rem;">${escapeHtml(c.reason)}</small>
+                    </div>
+                    <div class="mb-2">
+                        <small class="d-block"><span style="background: #ffcdd2; padding: 1px 3px; border-radius: 2px; text-decoration: line-through;">${escapeHtml(c.original)}</span></small>
+                        <input type="text" id="correctionEdit_${i}" class="form-control form-control-sm mt-1" value="${escapeHtml(c.suggested)}" style="font-size: 0.85rem;">
+                    </div>
+                    <div class="d-flex gap-1">
+                        <button class="btn btn-sm btn-outline-success py-0 px-2" onclick="acceptCorrection(${i})" style="font-size: 0.75rem;"><i class="fas fa-check me-1"></i>Accept</button>
+                        <button class="btn btn-sm btn-outline-secondary py-0 px-2" onclick="cancelEditCorrection(${i})" style="font-size: 0.75rem;">Cancel</button>
+                    </div>
+                </div>`;
             } else {
                 html += `<div class="p-2 mb-2 rounded" style="background: #fff8e1; border: 1px solid #ffe082;">
                     <div class="d-flex justify-content-between align-items-start mb-1">
@@ -2967,6 +3028,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                     <div class="d-flex gap-1">
                         <button class="btn btn-sm btn-outline-success py-0 px-2" onclick="acceptCorrection(${i})" style="font-size: 0.75rem;"><i class="fas fa-check me-1"></i>Accept</button>
+                        <button class="btn btn-sm btn-outline-warning py-0 px-2" onclick="editCorrection(${i})" style="font-size: 0.75rem;"><i class="fas fa-pen me-1"></i>Edit</button>
                         <button class="btn btn-sm btn-outline-secondary py-0 px-2" onclick="rejectCorrection(${i})" style="font-size: 0.75rem;"><i class="fas fa-times me-1"></i>Reject</button>
                     </div>
                 </div>`;
@@ -2978,8 +3040,31 @@ document.addEventListener('DOMContentLoaded', function() {
     window.acceptCorrection = function(index) {
         const c = state.aiAssistCorrections[index];
         if (!c || c.status !== 'pending') return;
+        if (c.editing) {
+            const input = document.getElementById('correctionEdit_' + index);
+            if (input) c.suggested = input.value;
+            c.editing = false;
+        }
         c.status = 'accepted';
         applyAiAssistCorrections();
+        renderAiAssistCorrections();
+    };
+
+    window.editCorrection = function(index) {
+        const c = state.aiAssistCorrections[index];
+        if (!c || c.status !== 'pending') return;
+        c.editing = true;
+        renderAiAssistCorrections();
+        setTimeout(function() {
+            var el = document.getElementById('correctionEdit_' + index);
+            if (el) el.focus();
+        }, 50);
+    };
+
+    window.cancelEditCorrection = function(index) {
+        const c = state.aiAssistCorrections[index];
+        if (!c) return;
+        c.editing = false;
         renderAiAssistCorrections();
     };
 

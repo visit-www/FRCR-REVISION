@@ -1165,6 +1165,8 @@ def knowledge_hub():
         pearl_count=len(pearls),
         snippet_count=len(snippets),
         is_admin=is_admin,
+        cloudinary_cloud_name=os.environ.get('CLOUDINARY_CLOUD_NAME', ''),
+        cloudinary_upload_preset=os.environ.get('CLOUDINARY_UPLOAD_PRESET', ''),
     )
 
 
