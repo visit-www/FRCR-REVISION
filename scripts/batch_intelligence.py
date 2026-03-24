@@ -22,8 +22,21 @@ from datetime import datetime
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-NEON_URL = os.getenv('DATABASE_URL') or os.getenv('NEON_URL') or \
-    "postgresql://neondb_owner:npg_DsKL8RFtw2zI@ep-frosty-sound-ahg70oqy-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require"
+# Load .env files (same order as app.py)
+from pathlib import Path
+from dotenv import load_dotenv
+_env_dir = Path(__file__).resolve().parent.parent
+load_dotenv(_env_dir / '.env', override=True)
+load_dotenv(_env_dir / '.env.local', override=True)
+
+NEON_URL = (
+    os.getenv('DATABASE_URL')
+    or os.getenv('NEON_URL')
+    or os.getenv('POSTGRES_URL')
+    or os.getenv('frcr_revision_db_DATABASE_URL')
+    or os.getenv('frcr_revision_db_POSTGRES_URL')
+    or os.getenv('frcr_revision_db_POSTGRES_URL_NON_POOLING')
+)
 
 
 # Content type → (table, title_field, content_fields_sql, extra_where)
@@ -34,15 +47,15 @@ CONTENT_TYPE_MAP = {
         'content_sql': "COALESCE(discussion, '')",
         'id_field': 'id',
         'body_section_field': "CAST(body_part AS TEXT)",
-        'where': "status = 'published' AND discussion IS NOT NULL AND discussion != ''",
+        'where': "status = 'PUBLISHED' AND discussion IS NOT NULL AND discussion != ''",
     },
     'protocol': {
         'table': 'clinical_protocol',
         'title_field': 'title',
         'content_sql': "COALESCE(content_html, '') || ' ' || COALESCE(keywords, '')",
         'id_field': 'id',
-        'body_section_field': 'NULL',
-        'where': "is_available = TRUE",
+        'body_section_field': 'body_section',
+        'where': "is_published = TRUE",
     },
     'reporting_algorithm': {
         'table': 'reporting_algorithm',
