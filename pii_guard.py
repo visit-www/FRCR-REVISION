@@ -47,7 +47,7 @@ SKIP_ROUTE_PREFIXES = (
     '/login',
     '/register',
     '/api/backup',
-    '/on-call-helper/admin/',
+    '/radiology-protocols/admin/',
     '/incidental-findings/admin/',
     '/admin/reporting-algorithms/',
 )

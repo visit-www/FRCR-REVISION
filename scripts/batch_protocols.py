@@ -26,41 +26,43 @@ NEON_URL = os.getenv('DATABASE_URL') or os.getenv('NEON_URL') or \
     "postgresql://neondb_owner:npg_DsKL8RFtw2zI@ep-frosty-sound-ahg70oqy-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require"
 
 # (title, category, source_citation)
-# Categories: emergency, routine, safety, contrast, criteria, staging, anatomy, dose
+# Categories: acute_emergency, diagnostic_algorithms, interventional, pre_procedural,
+# intra_procedural, post_procedural, contrast_safety, mri_safety, radiation_protection,
+# special_populations, medication_risk, adverse_events
 BATCH_LIST = [
     # === PHASE 1: Contrast + Emergency (10) ===
-    ('Acute Contrast Reaction Management (Anaphylaxis)', 'emergency', 'ACR Manual on Contrast Media 2024'),
-    ('Contrast in Renal Impairment (eGFR Guidelines)', 'safety', 'ACR/RCR/ESUR Guidelines'),
-    ('Metformin and Iodinated Contrast', 'safety', 'ESUR/RCR Guidelines'),
-    ('MRI Gadolinium in Renal Impairment (NSF Risk)', 'safety', 'ACR Group Classification'),
-    ('Contrast Premedication Regimen (High-Risk Patients)', 'safety', 'ACR Manual on Contrast Media 2024'),
-    ('Acute Stroke Imaging Pathway (< 4.5h and Extended Window)', 'emergency', 'RCR/AHA Guidelines'),
-    ('Whole-Body CT Polytrauma Protocol', 'emergency', 'ESER Dual-Track Approach'),
-    ('Spinal Clearance Protocol (NEXUS/Canadian Rules)', 'emergency', 'NEXUS/Canadian C-Spine Rules'),
-    ('MRI Safety Screening Questionnaire (Zones I-IV)', 'safety', 'ACR MR Safety Manual 2024'),
-    ('NAI Skeletal Survey Protocol', 'emergency', 'RCR 2018 Guidelines'),
+    ('Acute Contrast Reaction Management (Anaphylaxis)', 'adverse_events', 'ACR Manual on Contrast Media 2024'),
+    ('Contrast in Renal Impairment (eGFR Guidelines)', 'contrast_safety', 'ACR/RCR/ESUR Guidelines'),
+    ('Metformin and Iodinated Contrast', 'medication_risk', 'ESUR/RCR Guidelines'),
+    ('MRI Gadolinium in Renal Impairment (NSF Risk)', 'contrast_safety', 'ACR Group Classification'),
+    ('Contrast Premedication Regimen (High-Risk Patients)', 'contrast_safety', 'ACR Manual on Contrast Media 2024'),
+    ('Acute Stroke Imaging Pathway (< 4.5h and Extended Window)', 'acute_emergency', 'RCR/AHA Guidelines'),
+    ('Whole-Body CT Polytrauma Protocol', 'acute_emergency', 'ESER Dual-Track Approach'),
+    ('Spinal Clearance Protocol (NEXUS/Canadian Rules)', 'acute_emergency', 'NEXUS/Canadian C-Spine Rules'),
+    ('MRI Safety Screening Questionnaire (Zones I-IV)', 'mri_safety', 'ACR MR Safety Manual 2024'),
+    ('NAI Skeletal Survey Protocol', 'acute_emergency', 'RCR 2018 Guidelines'),
     # === PHASE 2: Expanded (10) ===
-    ('Contrast Extravasation Management', 'emergency', 'ACR Manual on Contrast Media'),
-    ('Breastfeeding and Contrast', 'safety', 'ACR/ESUR Guidelines'),
-    ('Thyroid and Iodinated Contrast', 'safety', 'Thyroid Storm Risk in Hyperthyroidism'),
-    ('Mechanical Thrombectomy Imaging Criteria', 'emergency', 'AHA/ASA Guidelines'),
-    ('TIA Imaging Pathway', 'emergency', 'NICE/RCR Guidelines'),
-    ('NAI Head Imaging Algorithm', 'emergency', 'RCR 2018 Guidelines'),
-    ('Paediatric CT Dose Optimisation', 'safety', 'Image Gently / ALARA'),
-    ('Paediatric Sedation Protocol (MRI/CT)', 'safety', 'RCR/RCPCH Guidelines'),
-    ('UTI Imaging Pathway (Paediatric, NICE)', 'routine', 'NICE CG54 Update'),
-    ('Biopsy Pre-Procedure Checklist (RADPASS)', 'routine', 'SIR/BSIR Guidelines'),
+    ('Contrast Extravasation Management', 'adverse_events', 'ACR Manual on Contrast Media'),
+    ('Breastfeeding and Contrast', 'special_populations', 'ACR/ESUR Guidelines'),
+    ('Thyroid and Iodinated Contrast', 'contrast_safety', 'Thyroid Storm Risk in Hyperthyroidism'),
+    ('Mechanical Thrombectomy Imaging Criteria', 'acute_emergency', 'AHA/ASA Guidelines'),
+    ('TIA Imaging Pathway', 'acute_emergency', 'NICE/RCR Guidelines'),
+    ('NAI Head Imaging Algorithm', 'acute_emergency', 'RCR 2018 Guidelines'),
+    ('Paediatric CT Dose Optimisation', 'radiation_protection', 'Image Gently / ALARA'),
+    ('Paediatric Sedation Protocol (MRI/CT)', 'special_populations', 'RCR/RCPCH Guidelines'),
+    ('UTI Imaging Pathway (Paediatric, NICE)', 'diagnostic_algorithms', 'NICE CG54 Update'),
+    ('Biopsy Pre-Procedure Checklist (RADPASS)', 'pre_procedural', 'SIR/BSIR Guidelines'),
     # === PHASE 3: Specialist (10) ===
-    ('Anticoagulation Management (Pre-IR Procedure)', 'routine', 'SIR/BSIR Risk Stratification'),
-    ('Drain Insertion Protocol', 'routine', 'Seldinger Technique / BSIR'),
-    ('Post-Procedure Observation', 'routine', 'SIR Standards'),
-    ('Nephrostomy Protocol', 'routine', 'BSIR Guidelines'),
-    ('MRI Conditional Implant Checklist', 'safety', 'ACR MR Safety Manual'),
-    ('MRI in Pregnancy', 'safety', 'ACR/RCR Guidelines'),
-    ('Claustrophobia Management', 'routine', 'RCR Best Practice'),
-    ('Intussusception Air Reduction Protocol', 'emergency', 'Paediatric Radiology Guidelines'),
-    ('Cerebral Venous Thrombosis Imaging Pathway', 'emergency', 'AHA/ASA CVT Guidelines'),
-    ('Contrast Allergy Referral Pathway', 'safety', 'Immunology Testing Pathway'),
+    ('Anticoagulation Management (Pre-IR Procedure)', 'pre_procedural', 'SIR/BSIR Risk Stratification'),
+    ('Drain Insertion Protocol', 'interventional', 'Seldinger Technique / BSIR'),
+    ('Post-Procedure Observation', 'post_procedural', 'SIR Standards'),
+    ('Nephrostomy Protocol', 'interventional', 'BSIR Guidelines'),
+    ('MRI Conditional Implant Checklist', 'mri_safety', 'ACR MR Safety Manual'),
+    ('MRI in Pregnancy', 'special_populations', 'ACR/RCR Guidelines'),
+    ('Claustrophobia Management', 'intra_procedural', 'RCR Best Practice'),
+    ('Intussusception Air Reduction Protocol', 'acute_emergency', 'Paediatric Radiology Guidelines'),
+    ('Cerebral Venous Thrombosis Imaging Pathway', 'acute_emergency', 'AHA/ASA CVT Guidelines'),
+    ('Contrast Allergy Referral Pathway', 'adverse_events', 'Immunology Testing Pathway'),
 ]
 
 
@@ -90,7 +92,7 @@ def generate_and_sync(title, category, source_citation=''):
     print("  Calling Claude API (this takes 30-60 seconds)...")
 
     from app import app
-    from ai_oncall_helper import generate_protocol_content
+    from ai_protocol_helper import generate_protocol_content
 
     with app.app_context():
         result = generate_protocol_content(

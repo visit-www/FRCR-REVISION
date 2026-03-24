@@ -1,11 +1,19 @@
 """
-On-Call Helper Routes
+Protocol Routes
 
-Flask blueprint for the On-Call Session Helper feature.
-Provides clinical protocol search, AI-formatted answers, and admin protocol management.
+Flask blueprint for clinical protocols (admin CRUD, user browse, AI generation)
+and the On-Call Query Helper (protocol-backed AI search).
+
+URL structure:
+  /radiology-protocols           — user browse page (in app.py, uses PROTOCOL_CATEGORIES)
+  /radiology-protocols/admin     — admin management page
+  /radiology-protocols/admin/api — admin CRUD API
+  /radiology-protocols/view/<id> — individual protocol view
+  /on-call-helper                — on-call query search interface
+  /on-call-helper/api/*          — on-call query API
 """
 
-from flask import Blueprint, request, render_template, jsonify
+from flask import Blueprint, request, render_template, jsonify, redirect
 from flask_login import login_required, current_user
 from datetime import datetime
 import json
@@ -17,19 +25,41 @@ from access_control import require_admin
 
 logger = logging.getLogger(__name__)
 
-oncall_bp = Blueprint('oncall', __name__, url_prefix='/on-call-helper')
+# Shared protocol category definitions — (slug, display_name, color, icon)
+PROTOCOL_CATEGORIES = [
+    ('acute_emergency', 'Acute & Emergency Imaging Pathways', '#dc3545', 'fa-ambulance'),
+    ('diagnostic_algorithms', 'Diagnostic Imaging Algorithms', '#5E899E', 'fa-project-diagram'),
+    ('interventional', 'Interventional Radiology Protocols', '#6b46c1', 'fa-syringe'),
+    ('pre_procedural', 'Pre-Procedural Risk Assessment', '#e96304', 'fa-clipboard-check'),
+    ('intra_procedural', 'Intra-Procedural Safety', '#d63384', 'fa-heartbeat'),
+    ('post_procedural', 'Post-Procedural Care', '#198754', 'fa-notes-medical'),
+    ('contrast_safety', 'Contrast Media Safety', '#0d6efd', 'fa-tint'),
+    ('mri_safety', 'MRI Safety', '#6610f2', 'fa-magnet'),
+    ('radiation_protection', 'Radiation Protection', '#fd7e14', 'fa-radiation'),
+    ('special_populations', 'Special Populations', '#20c997', 'fa-baby'),
+    ('medication_risk', 'Medication & Systemic Risk', '#ffc107', 'fa-pills'),
+    ('adverse_events', 'Adverse Event Management', '#dc3545', 'fa-exclamation-triangle'),
+]
+
+# Quick lookup dicts
+CATEGORY_MAP = {slug: {'name': name, 'color': color, 'icon': icon}
+                for slug, name, color, icon in PROTOCOL_CATEGORIES}
+CATEGORY_ORDER = [slug for slug, _, _, _ in PROTOCOL_CATEGORIES]
+
+# No url_prefix — each route specifies its full path
+protocol_bp = Blueprint('protocol', __name__)
 
 
-# ==================== PUBLIC ROUTES ====================
+# ==================== ON-CALL QUERY HELPER ====================
 
-@oncall_bp.route('/')
+@protocol_bp.route('/on-call-helper')
 @login_required
 def oncall_helper():
     """Main on-call helper page with search interface."""
     return render_template('oncall_helper.html')
 
 
-@oncall_bp.route('/api/search')
+@protocol_bp.route('/on-call-helper/api/search')
 @login_required
 def autocomplete_search():
     """Autocomplete search for protocols (lightweight)."""
@@ -37,12 +67,12 @@ def autocomplete_search():
     if len(query) < 2:
         return jsonify([])
 
-    from ai_oncall_helper import search_protocols_autocomplete
+    from ai_protocol_helper import search_protocols_autocomplete
     results = search_protocols_autocomplete(query, limit=8)
     return jsonify(results)
 
 
-@oncall_bp.route('/api/query', methods=['POST'])
+@protocol_bp.route('/on-call-helper/api/query', methods=['POST'])
 @login_required
 def submit_query():
     """Submit an on-call helper query and get AI-formatted response."""
@@ -55,7 +85,7 @@ def submit_query():
         return jsonify({'error': 'Query too long (max 1000 characters).'}), 400
 
     try:
-        from ai_oncall_helper import generate_oncall_response
+        from ai_protocol_helper import generate_oncall_response
         result = generate_oncall_response(
             query_text=query_text,
             user_id=current_user.id,
@@ -75,14 +105,14 @@ def submit_query():
         }), 500
 
 
-@oncall_bp.route('/api/history')
+@protocol_bp.route('/on-call-helper/api/history')
 @login_required
 def query_history():
     """Get user's recent on-call query history."""
     limit = request.args.get('limit', 20, type=int)
     limit = min(limit, 50)
 
-    from ai_oncall_helper import get_query_history
+    from ai_protocol_helper import get_query_history
     queries = get_query_history(current_user.id, limit=limit)
 
     return jsonify([
@@ -96,7 +126,7 @@ def query_history():
     ])
 
 
-@oncall_bp.route('/api/history/<int:log_id>')
+@protocol_bp.route('/on-call-helper/api/history/<int:log_id>')
 @login_required
 def get_query_detail(log_id):
     """Get a specific past query and its full response."""
@@ -119,7 +149,47 @@ def get_query_detail(log_id):
     })
 
 
-@oncall_bp.route('/protocol/<int:protocol_id>')
+# ==================== USER-FACING BROWSE & SEARCH ====================
+
+@protocol_bp.route('/radiology-protocols')
+@login_required
+def radiology_protocols_index():
+    """User-facing browse page for clinical protocols."""
+    protocols = ClinicalProtocol.query.filter_by(is_published=True).order_by(ClinicalProtocol.title).all()
+    grouped = {}
+    for p in protocols:
+        cat = p.category or 'Other'
+        grouped.setdefault(cat, []).append(p)
+    return render_template('radiology_protocols_user.html',
+                           grouped=grouped,
+                           protocols=protocols,
+                           protocol_categories=PROTOCOL_CATEGORIES,
+                           category_map=CATEGORY_MAP)
+
+
+@protocol_bp.route('/radiology-protocols/api/search')
+@login_required
+def radiology_protocols_search():
+    """Search published clinical protocols."""
+    q = request.args.get('q', '').strip()
+    if len(q) < 2:
+        return jsonify([])
+    protocols = ClinicalProtocol.query.filter(
+        ClinicalProtocol.is_published == True,
+        db.or_(
+            ClinicalProtocol.title.ilike(f'%{q}%'),
+            ClinicalProtocol.keywords.ilike(f'%{q}%'),
+        )
+    ).order_by(ClinicalProtocol.title).limit(20).all()
+    return jsonify([{
+        'id': p.id, 'title': p.title, 'category': p.category,
+        'url': f'/radiology-protocols/view/{p.id}'
+    } for p in protocols])
+
+
+# ==================== PROTOCOL VIEW ====================
+
+@protocol_bp.route('/radiology-protocols/view/<int:protocol_id>')
 @login_required
 def view_protocol(protocol_id):
     """Individual protocol view page."""
@@ -163,7 +233,7 @@ def view_protocol(protocol_id):
 
 # ==================== ADMIN: PROTOCOL MANAGEMENT ====================
 
-@oncall_bp.route('/admin/protocols')
+@protocol_bp.route('/radiology-protocols/admin')
 @require_admin
 def admin_protocols():
     """Admin page for managing clinical protocols."""
@@ -180,11 +250,13 @@ def admin_protocols():
     return render_template('admin_protocols.html',
                            protocols=protocols,
                            categories=categories,
+                           protocol_categories=PROTOCOL_CATEGORIES,
+                           category_map=CATEGORY_MAP,
                            cloudinary_cloud_name=os.environ.get('CLOUDINARY_CLOUD_NAME', ''),
                            cloudinary_upload_preset=os.environ.get('CLOUDINARY_UPLOAD_PRESET', ''))
 
 
-@oncall_bp.route('/admin/protocols/api', methods=['GET'])
+@protocol_bp.route('/radiology-protocols/admin/api', methods=['GET'])
 @require_admin
 def list_protocols_api():
     """API: List all protocols with optional category filter."""
@@ -198,7 +270,7 @@ def list_protocols_api():
     return jsonify([p.to_dict() for p in protocols])
 
 
-@oncall_bp.route('/admin/protocols/api', methods=['POST'])
+@protocol_bp.route('/radiology-protocols/admin/api', methods=['POST'])
 @require_admin
 def create_protocol():
     """API: Create a new clinical protocol."""
@@ -232,7 +304,7 @@ def create_protocol():
     return jsonify(protocol.to_dict()), 201
 
 
-@oncall_bp.route('/admin/protocols/api/<int:protocol_id>', methods=['GET'])
+@protocol_bp.route('/radiology-protocols/admin/api/<int:protocol_id>', methods=['GET'])
 @require_admin
 def get_protocol(protocol_id):
     """API: Get a single protocol."""
@@ -240,7 +312,7 @@ def get_protocol(protocol_id):
     return jsonify(protocol.to_dict())
 
 
-@oncall_bp.route('/admin/protocols/api/<int:protocol_id>', methods=['PUT'])
+@protocol_bp.route('/radiology-protocols/admin/api/<int:protocol_id>', methods=['PUT'])
 @require_admin
 def update_protocol(protocol_id):
     """API: Update a clinical protocol."""
@@ -277,7 +349,7 @@ def update_protocol(protocol_id):
     return jsonify(protocol.to_dict())
 
 
-@oncall_bp.route('/admin/protocols/api/<int:protocol_id>', methods=['DELETE'])
+@protocol_bp.route('/radiology-protocols/admin/api/<int:protocol_id>', methods=['DELETE'])
 @require_admin
 def delete_protocol(protocol_id):
     """API: Delete a clinical protocol."""
@@ -287,7 +359,7 @@ def delete_protocol(protocol_id):
     return jsonify({'success': True, 'message': f'Protocol "{protocol.title}" deleted.'})
 
 
-@oncall_bp.route('/admin/protocols/api/<int:protocol_id>/verify', methods=['POST'])
+@protocol_bp.route('/radiology-protocols/admin/api/<int:protocol_id>/verify', methods=['POST'])
 @require_admin
 def verify_protocol(protocol_id):
     """API: Mark a protocol as verified by the current admin."""
@@ -304,7 +376,7 @@ def verify_protocol(protocol_id):
     })
 
 
-@oncall_bp.route('/admin/protocols/generate', methods=['POST'])
+@protocol_bp.route('/radiology-protocols/admin/generate', methods=['POST'])
 @require_admin
 def generate_protocol():
     """API: Generate a clinical protocol using AI, save as draft for admin review."""
@@ -322,7 +394,7 @@ def generate_protocol():
     additional_context = (data.get('additional_context') or '').strip()
 
     try:
-        from ai_oncall_helper import generate_protocol_content
+        from ai_protocol_helper import generate_protocol_content
         result = generate_protocol_content(
             title=title,
             category=category,
@@ -360,7 +432,7 @@ def generate_protocol():
     })
 
 
-@oncall_bp.route('/admin/protocols/api/<int:protocol_id>/unpublish', methods=['POST'])
+@protocol_bp.route('/radiology-protocols/admin/api/<int:protocol_id>/unpublish', methods=['POST'])
 @require_admin
 def unpublish_protocol(protocol_id):
     """API: Unpublish a protocol (keep in DB but hide from search)."""
@@ -372,3 +444,17 @@ def unpublish_protocol(protocol_id):
         'success': True,
         'message': f'Protocol "{protocol.title}" unpublished.',
     })
+
+
+# ==================== LEGACY REDIRECTS ====================
+
+@protocol_bp.route('/on-call-helper/admin/protocols')
+@login_required
+def _redirect_admin_protocols():
+    return redirect('/radiology-protocols/admin', code=301)
+
+
+@protocol_bp.route('/on-call-helper/protocol/<int:protocol_id>')
+@login_required
+def _redirect_view_protocol(protocol_id):
+    return redirect(f'/radiology-protocols/view/{protocol_id}', code=301)

@@ -3,7 +3,7 @@
 
 {% block mobile_breadcrumb %}
 <li class="breadcrumb-item">
-    <a href="{{ url_for('oncall.oncall_helper') }}" class="text-white text-decoration-none">On-Call Helper</a>
+    <a href="{{ url_for('protocol.oncall_helper') }}" class="text-white text-decoration-none">On-Call Helper</a>
 </li>
 <li class="breadcrumb-item active text-white-50">Manage Protocols</li>
 {% endblock %}
@@ -18,7 +18,7 @@
                 <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary btn-sm">
                     <i class="fas fa-home me-1"></i>Dashboard
                 </a>
-                <a href="{{ url_for('oncall.oncall_helper') }}" class="btn btn-outline-secondary btn-sm">
+                <a href="{{ url_for('protocol.oncall_helper') }}" class="btn btn-outline-secondary btn-sm">
                     <i class="fas fa-headset me-1"></i>On-Call Helper
                 </a>
             </div>
@@ -47,7 +47,9 @@
                         <span class="small text-muted me-2">Filter:</span>
                         <button class="btn btn-sm btn-outline-secondary filter-btn active" data-category="all">All ({{ protocols|length }})</button>
                         {% for cat in categories %}
-                        <button class="btn btn-sm btn-outline-secondary filter-btn" data-category="{{ cat }}">{{ cat|capitalize }}</button>
+                        <button class="btn btn-sm btn-outline-secondary filter-btn" data-category="{{ cat }}">
+                            {% if cat in category_map %}<i class="fas {{ category_map[cat].icon }} me-1" style="color: {{ category_map[cat].color }};"></i>{{ category_map[cat].name }}{% else %}{{ cat|capitalize }}{% endif %}
+                        </button>
                         {% endfor %}
                     </div>
                 </div>
@@ -73,7 +75,15 @@
                                     <div class="fw-semibold">{{ p.title }}</div>
                                     <small class="text-muted">{{ p.keywords[:80] }}{% if p.keywords|length > 80 %}...{% endif %}</small>
                                 </td>
-                                <td><span class="badge bg-light text-dark border">{{ p.category }}</span></td>
+                                <td>
+                                    {% if p.category in category_map %}
+                                    <span class="badge" style="background: {{ category_map[p.category].color }}; color: #fff;">
+                                        <i class="fas {{ category_map[p.category].icon }} me-1"></i>{{ category_map[p.category].name }}
+                                    </span>
+                                    {% else %}
+                                    <span class="badge bg-light text-dark border">{{ p.category }}</span>
+                                    {% endif %}
+                                </td>
                                 <td>
                                     <small>{{ p.source_citation }}</small>
                                     {% if p.guideline_version %}
@@ -149,14 +159,9 @@
                     <div class="col-md-4">
                         <label class="form-label">Category <span class="text-danger">*</span></label>
                         <select class="form-select" id="protocolCategory">
-                            <option value="contrast">Contrast</option>
-                            <option value="scoring">Scoring</option>
-                            <option value="staging">Staging</option>
-                            <option value="criteria">Criteria</option>
-                            <option value="emergency">Emergency</option>
-                            <option value="anatomy">Anatomy</option>
-                            <option value="dose">Dose</option>
-                            <option value="safety">Safety</option>
+                            {% for slug, name, color, icon in protocol_categories %}
+                            <option value="{{ slug }}">{{ name }}</option>
+                            {% endfor %}
                         </select>
                     </div>
                     <div class="col-md-4">
@@ -285,18 +290,9 @@
                     <div class="col-md-4">
                         <label class="form-label fw-semibold">Category <span class="text-danger">*</span></label>
                         <select class="form-select" id="aiCategory">
-                            <option value="scoring">Scoring</option>
-                            <option value="grading">Grading</option>
-                            <option value="staging">Staging</option>
-                            <option value="criteria">Criteria</option>
-                            <option value="emergency">Emergency</option>
-                            <option value="pathway">Pathway</option>
-                            <option value="imaging_features">Imaging Features</option>
-                            <option value="management_support">Management Support</option>
-                            <option value="contrast">Contrast</option>
-                            <option value="dose">Dose</option>
-                            <option value="safety">Safety</option>
-                            <option value="anatomy">Anatomy</option>
+                            {% for slug, name, color, icon in protocol_categories %}
+                            <option value="{{ slug }}">{{ name }}</option>
+                            {% endfor %}
                         </select>
                     </div>
                     <div class="col-md-4">
@@ -707,7 +703,7 @@ function resetModal() {
     document.getElementById('modalTitle').textContent = 'Add Clinical Protocol';
     document.getElementById('protocolId').value = '';
     document.getElementById('protocolTitle').value = '';
-    document.getElementById('protocolCategory').value = 'scoring';
+    document.getElementById('protocolCategory').value = 'acute_emergency';
     document.getElementById('protocolKeywords').value = '';
     document.getElementById('protocolContentHtml').value = '';
     document.getElementById('protocolContentStructured').value = '';
@@ -718,7 +714,7 @@ function resetModal() {
 }
 
 function editProtocol(id) {
-    fetch('/on-call-helper/admin/protocols/api/' + id)
+    fetch('/radiology-protocols/admin/api/' + id)
         .then(function(r) { return r.json(); })
         .then(function(p) {
             document.getElementById('modalTitle').textContent = 'Edit Protocol';
@@ -764,7 +760,7 @@ function saveProtocol() {
         is_published: document.getElementById('protocolPublished').checked,
     };
 
-    var url = id ? '/on-call-helper/admin/protocols/api/' + id : '/on-call-helper/admin/protocols/api';
+    var url = id ? '/radiology-protocols/admin/api/' + id : '/radiology-protocols/admin/api';
     var method = id ? 'PUT' : 'POST';
 
     fetch(url, {
@@ -782,21 +778,21 @@ function saveProtocol() {
 
 function verifyProtocol(id) {
     if (!confirm('Verify and publish this protocol?')) return;
-    fetch('/on-call-helper/admin/protocols/api/' + id + '/verify', { method: 'POST' })
+    fetch('/radiology-protocols/admin/api/' + id + '/verify', { method: 'POST' })
         .then(function(r) { return r.json(); })
         .then(function() { location.reload(); });
 }
 
 function unpublishProtocol(id) {
     if (!confirm('Unpublish this protocol?')) return;
-    fetch('/on-call-helper/admin/protocols/api/' + id + '/unpublish', { method: 'POST' })
+    fetch('/radiology-protocols/admin/api/' + id + '/unpublish', { method: 'POST' })
         .then(function(r) { return r.json(); })
         .then(function() { location.reload(); });
 }
 
 function deleteProtocol(id, title) {
     if (!confirm('Delete protocol "' + title + '"? This cannot be undone.')) return;
-    fetch('/on-call-helper/admin/protocols/api/' + id, { method: 'DELETE' })
+    fetch('/radiology-protocols/admin/api/' + id, { method: 'DELETE' })
         .then(function(r) { return r.json(); })
         .then(function() { location.reload(); });
 }
@@ -817,7 +813,7 @@ function generateProtocolAI() {
 
     var resources = collectResources('ai');
 
-    fetch('/on-call-helper/admin/protocols/generate', {
+    fetch('/radiology-protocols/admin/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

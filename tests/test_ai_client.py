@@ -89,9 +89,9 @@ class TestErrorHierarchy:
         from ai_prelim import AiPrelimError
         assert issubclass(AiPrelimError, AIClientError)
 
-    def test_oncall_error_is_ai_client_error(self):
-        from ai_oncall_helper import OnCallHelperError
-        assert issubclass(OnCallHelperError, AIClientError)
+    def test_protocol_error_is_ai_client_error(self):
+        from ai_protocol_helper import ProtocolHelperError
+        assert issubclass(ProtocolHelperError, AIClientError)
 
     def test_catch_specific_as_base(self):
         """Module errors should be catchable via base AIClientError."""

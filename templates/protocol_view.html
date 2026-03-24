@@ -3,7 +3,7 @@
 
 {% block mobile_breadcrumb %}
 <li class="breadcrumb-item">
-    <a href="{{ url_for('oncall.oncall_helper') }}" class="text-white text-decoration-none">On-Call Helper</a>
+    <a href="{{ url_for('protocol.oncall_helper') }}" class="text-white text-decoration-none">On-Call Helper</a>
 </li>
 <li class="breadcrumb-item active text-white-50">{{ protocol.title[:40] }}</li>
 {% endblock %}
@@ -17,7 +17,7 @@
                 <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary btn-sm">
                     <i class="fas fa-home me-1"></i>Dashboard
                 </a>
-                <a href="{{ url_for('oncall.oncall_helper') }}" class="btn btn-outline-secondary btn-sm">
+                <a href="{{ url_for('protocol.oncall_helper') }}" class="btn btn-outline-secondary btn-sm">
                     <i class="fas fa-headset me-1"></i>On-Call Helper
                 </a>
                 <a href="/smart-reporter?context=protocol&id={{ protocol.id }}&title={{ protocol.title|urlencode }}"

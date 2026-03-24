@@ -2461,7 +2461,7 @@ def smart_reporter_relevant_content():
                 'color': '#5E899E',
                 'title': p.title,
                 'subtitle': p.category or '',
-                'url': f'/on-call-helper/protocol/{p.id}',
+                'url': f'/radiology-protocols/view/{p.id}',
             })
     except Exception:
         pass

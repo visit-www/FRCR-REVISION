@@ -289,7 +289,7 @@
             // Skip auth/admin/backup routes
             const urlStr = typeof url === 'string' ? url : url.toString();
             const skipPrefixes = ['/auth/', '/api/admin/', '/api/backup', '/login', '/register',
-                '/on-call-helper/admin/', '/incidental-findings/admin/', '/admin/reporting-algorithms/'];
+                '/radiology-protocols/admin/', '/incidental-findings/admin/', '/admin/reporting-algorithms/'];
             if (skipPrefixes.some(function(p) { return urlStr.includes(p); })) {
                 return originalFetch.call(this, url, options);
             }

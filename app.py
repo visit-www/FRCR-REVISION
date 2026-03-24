@@ -99,7 +99,7 @@ admin_tnm_bp, tnm_bp = get_blueprints()
 # TNM Calculator - standalone clinical-grade calculator module
 from tnm_calculator.routes import tnm_calc_bp
 from case_dicom_viewer import init_app as init_case_dicom, get_blueprint as get_case_dicom_bp
-from oncall_routes import oncall_bp
+from protocol_routes import protocol_bp
 from reporting_routes import reporting_bp
 from radiology_tools import if_bp
 from ai_prelim import AiPrelimError, generate_prelim_case_data
@@ -846,6 +846,33 @@ with app.app_context():
         _add_col_if_missing('clinical_protocol', 'created_by_user_id', 'created_by_user_id INTEGER')
         _add_col_if_missing('clinical_protocol', 'updated_at', 'updated_at TIMESTAMP')
 
+        # -- Migrate old protocol category slugs to new 12-category system --
+        _OLD_TO_NEW_CATEGORY = {
+            'emergency': 'acute_emergency',
+            'contrast': 'contrast_safety',
+            'safety': 'mri_safety',
+            'dose': 'radiation_protection',
+            'routine': 'diagnostic_algorithms',
+            'scoring': 'diagnostic_algorithms',
+            'grading': 'diagnostic_algorithms',
+            'criteria': 'diagnostic_algorithms',
+            'staging': 'diagnostic_algorithms',
+            'pathway': 'acute_emergency',
+            'anatomy': 'diagnostic_algorithms',
+            'imaging_features': 'diagnostic_algorithms',
+            'management_support': 'post_procedural',
+        }
+        if 'clinical_protocol' in insp.get_table_names():
+            for _old_cat, _new_cat in _OLD_TO_NEW_CATEGORY.items():
+                try:
+                    with db.engine.connect() as conn:
+                        conn.execute(text(
+                            'UPDATE clinical_protocol SET category = :new_cat WHERE category = :old_cat'
+                        ), {'old_cat': _old_cat, 'new_cat': _new_cat})
+                        conn.commit()
+                except Exception:
+                    pass
+
         # -- incidental_finding_calculator --
         _add_col_if_missing('incidental_finding_calculator', 'body_section', 'body_section VARCHAR(100)')
         _add_col_if_missing('incidental_finding_calculator', 'category', 'category VARCHAR(100)')
@@ -1048,7 +1075,7 @@ app.register_blueprint(tnm_bp)  # AJCC TNM staging system - public routes
 app.register_blueprint(tnm_calc_bp)  # TNM Calculator - standalone clinical-grade calculator
 init_case_dicom(app)
 app.register_blueprint(get_case_dicom_bp())  # Case DICOM Viewer - OneDrive image stacks
-app.register_blueprint(oncall_bp)  # On-Call Session Helper - curated clinical protocols
+app.register_blueprint(protocol_bp)  # Clinical Protocols + On-Call Helper
 app.register_blueprint(reporting_bp)  # Algorithm Finder + Non-oncologic reporting templates
 app.register_blueprint(if_bp)  # Radiology Tools - guideline-based calculators (URL: /incidental-findings)
 
@@ -1758,39 +1785,8 @@ def view_revision_case(session_id, case_index):
                          next_url=next_url)
 
 
-# ==================== RADIOLOGY PROTOCOLS (USER-FACING) ====================
 
-
-@app.route('/radiology-protocols')
-@login_required
-def radiology_protocols_index():
-    """User-facing browse page for clinical protocols."""
-    protocols = ClinicalProtocol.query.filter_by(is_published=True).order_by(ClinicalProtocol.title).all()
-    grouped = {}
-    for p in protocols:
-        cat = p.category or 'Other'
-        grouped.setdefault(cat, []).append(p)
-    return render_template('radiology_protocols_user.html', grouped=grouped, protocols=protocols)
-
-
-@app.route('/radiology-protocols/api/search')
-@login_required
-def radiology_protocols_search():
-    """Search published clinical protocols."""
-    q = request.args.get('q', '').strip()
-    if len(q) < 2:
-        return jsonify([])
-    protocols = ClinicalProtocol.query.filter(
-        ClinicalProtocol.is_published == True,
-        db.or_(
-            ClinicalProtocol.title.ilike(f'%{q}%'),
-            ClinicalProtocol.keywords.ilike(f'%{q}%'),
-        )
-    ).order_by(ClinicalProtocol.title).limit(20).all()
-    return jsonify([{
-        'id': p.id, 'title': p.title, 'category': p.category,
-        'url': f'/on-call-helper/protocol/{p.id}'
-    } for p in protocols])
+# Radiology protocols routes moved to protocol_routes.py (protocol_bp blueprint)
 
 
 # ==================== SPACED REPETITION STUDY SYSTEM ====================
@@ -6191,7 +6187,7 @@ Allow: /
 Disallow: /api/
 Disallow: /auth/
 Disallow: /admin/
-Disallow: /on-call-helper/admin/
+Disallow: /radiology-protocols/admin/
 Disallow: /incidental-findings/admin/
 Disallow: /api/admin/
 Disallow: /api/backup/

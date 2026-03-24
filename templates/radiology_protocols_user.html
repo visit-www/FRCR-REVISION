@@ -1,10 +1,10 @@
 {% extends 'base.html' %}
-{% block title %}Radiology Protocols - RadInsights{% endblock %}
+{% block title %}Radiology Protocols, Safety & Quality - RadInsights{% endblock %}
 {% block tool_active_protocols %}active{% endblock %}
 {% block mobile_active_protocols %}active{% endblock %}
 
 {% block mobile_breadcrumb %}
-<li class="breadcrumb-item active text-white-50">Radiology Protocols</li>
+<li class="breadcrumb-item active text-white-50">Protocols & Safety</li>
 {% endblock %}
 
 {% block content %}
@@ -32,7 +32,7 @@
                     <i class="fas fa-tools me-1"></i>Radiology Tools
                 </a>
                 {% if current_user.is_authenticated and current_user.role and current_user.role.value == 'admin' %}
-                <a href="/on-call-helper/admin/protocols" class="btn btn-outline-warning btn-sm ms-auto">
+                <a href="/radiology-protocols/admin" class="btn btn-outline-warning btn-sm ms-auto">
                     <i class="fas fa-cogs me-1"></i>Manage Protocols
                 </a>
                 {% endif %}
@@ -40,8 +40,8 @@
 
             <div class="text-center mb-4">
                 <i class="fas fa-clipboard-list" style="font-size: 2.5rem; color: #5E899E;"></i>
-                <h2 class="mt-2 mb-1">Radiology Protocols</h2>
-                <p class="text-muted">Evidence-based clinical protocols and guidelines for radiology practice, covering contrast safety, emergency pathways, paediatric imaging and interventional procedures</p>
+                <h2 class="mt-2 mb-1">Radiology Protocols, Safety & Quality</h2>
+                <p class="text-muted">Evidence-based protocols covering emergency pathways, contrast and MRI safety, radiation protection, interventional procedures, and special populations</p>
             </div>
 
             <!-- Clinical Disclaimer -->
@@ -73,10 +73,47 @@
             <!-- Search Results -->
             <div id="searchResults" class="d-none mb-4"></div>
 
-            <!-- Browse by Category -->
+            <!-- Browse by Category (ordered) -->
             {% if grouped %}
             <div id="browseCategories">
+                {% for cat_slug, cat_name, cat_color, cat_icon in protocol_categories %}
+                {% if cat_slug in grouped %}
+                <div class="mb-4">
+                    <h5 class="mb-3">
+                        <i class="fas {{ cat_icon }} me-2" style="color: {{ cat_color }};"></i>
+                        {{ cat_name }}
+                    </h5>
+                    <div class="row g-3">
+                        {% for p in grouped[cat_slug] %}
+                        <div class="col-md-6 col-lg-4">
+                            <div class="card border-0 shadow-sm hover-card h-100"
+                                 style="cursor: pointer; transition: transform 0.2s ease; border-left: 4px solid {{ cat_color }} !important;"
+                                 onclick="window.location.href='/radiology-protocols/view/{{ p.id }}'">
+                                <div class="card-body">
+                                    <h6 class="mb-2">
+                                        <i class="fas fa-file-alt me-1" style="color: {{ cat_color }};"></i>
+                                        {{ p.title }}
+                                    </h6>
+                                    {% if p.source_citation %}
+                                    <small class="text-muted">
+                                        <i class="fas fa-book me-1"></i>{{ p.source_citation }}
+                                    </small>
+                                    {% endif %}
+                                    {% if p.verified_at %}
+                                    <br><small class="text-success"><i class="fas fa-check-circle me-1"></i>Verified</small>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+                {% endfor %}
+
+                {# Show any protocols with unmapped categories at the end #}
                 {% for category, protos in grouped.items() %}
+                {% if category not in category_map %}
                 <div class="mb-4">
                     <h5 class="mb-3">
                         <i class="fas fa-folder-open me-2" style="color: #5E899E;"></i>
@@ -86,8 +123,8 @@
                         {% for p in protos %}
                         <div class="col-md-6 col-lg-4">
                             <div class="card border-0 shadow-sm hover-card h-100"
-                                 style="cursor: pointer; transition: transform 0.2s ease;"
-                                 onclick="window.location.href='/on-call-helper/protocol/{{ p.id }}'">
+                                 style="cursor: pointer; transition: transform 0.2s ease; border-left: 4px solid #5E899E !important;"
+                                 onclick="window.location.href='/radiology-protocols/view/{{ p.id }}'">
                                 <div class="card-body">
                                     <h6 class="mb-2">
                                         <i class="fas fa-file-alt me-1" style="color: #5E899E;"></i>
@@ -107,6 +144,7 @@
                         {% endfor %}
                     </div>
                 </div>
+                {% endif %}
                 {% endfor %}
             </div>
             {% else %}
@@ -123,6 +161,8 @@
 
 {% block scripts %}
 <script>
+var CATEGORY_MAP = {{ category_map|tojson }};
+
 document.addEventListener('DOMContentLoaded', function() {
     const searchInput = document.getElementById('searchInput');
     const searchResults = document.getElementById('searchResults');
@@ -155,21 +195,23 @@ document.addEventListener('DOMContentLoaded', function() {
                         return;
                     }
 
-                    searchResults.innerHTML = results.map(r => `
-                        <div class="card border-0 shadow-sm mb-3 hover-card" style="cursor: pointer; transition: transform 0.2s ease;"
+                    searchResults.innerHTML = results.map(r => {
+                        var catInfo = CATEGORY_MAP[r.category] || {name: r.category, color: '#5E899E', icon: 'fa-file-alt'};
+                        return `
+                        <div class="card border-0 shadow-sm mb-3 hover-card" style="cursor: pointer; transition: transform 0.2s ease; border-left: 4px solid ${catInfo.color} !important;"
                              onclick="window.location.href='${r.url}'">
                             <div class="card-body py-3">
                                 <div class="d-flex align-items-center">
-                                    <i class="fas fa-file-alt me-3" style="font-size: 1.3rem; color: #5E899E;"></i>
+                                    <i class="fas ${catInfo.icon} me-3" style="font-size: 1.3rem; color: ${catInfo.color};"></i>
                                     <div>
                                         <h6 class="mb-0">${r.title}</h6>
-                                        <small class="text-muted"><span class="badge" style="background: #5E899E;">${r.category}</span></small>
+                                        <small class="text-muted"><span class="badge" style="background: ${catInfo.color};">${catInfo.name}</span></small>
                                     </div>
                                     <i class="fas fa-chevron-right text-muted ms-auto"></i>
                                 </div>
                             </div>
-                        </div>
-                    `).join('');
+                        </div>`;
+                    }).join('');
                 })
                 .catch(() => {
                     searchResults.innerHTML = '<div class="alert alert-danger">Search failed.</div>';
