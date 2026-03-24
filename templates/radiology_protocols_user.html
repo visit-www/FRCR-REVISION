@@ -73,27 +73,47 @@
             <!-- Search Results -->
             <div id="searchResults" class="d-none mb-4"></div>
 
+            {% set pastel_map = {
+                'acute_emergency': '#fde8e8',
+                'diagnostic_algorithms': '#e4eff4',
+                'interventional': '#ece4f6',
+                'pre_procedural': '#fdeee4',
+                'intra_procedural': '#f8e3ef',
+                'post_procedural': '#e2f2e8',
+                'contrast_safety': '#e1edfb',
+                'mri_safety': '#ebe2fb',
+                'radiation_protection': '#fef0e1',
+                'special_populations': '#e0f5ef',
+                'medication_risk': '#fef8e1',
+                'adverse_events': '#fde8e8'
+            } %}
+
+            <!-- Category Filter Bar -->
+            {% if grouped %}
+            <div class="mb-4" id="categoryFilterBar">
+                <div class="d-flex flex-wrap gap-2 align-items-center">
+                    <button class="btn btn-sm cat-filter-btn active" data-cat="all" style="background: #5E899E; color: #fff;">
+                        <i class="fas fa-th-large me-1"></i>All
+                    </button>
+                    {% for cat_slug, cat_name, cat_color, cat_icon in protocol_categories %}
+                    {% if cat_slug in grouped %}
+                    <button class="btn btn-sm cat-filter-btn" data-cat="{{ cat_slug }}" data-color="{{ cat_color }}" data-pastel="{{ pastel_map[cat_slug] }}"
+                            style="background: {{ pastel_map[cat_slug] }}; color: {{ cat_color }};">
+                        <i class="fas {{ cat_icon }} me-1"></i><span class="d-none d-md-inline">{{ cat_name }}</span><span class="d-md-none">{{ cat_name.split(' ')[0] }}</span>
+                    </button>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
             <!-- Browse by Category (ordered) -->
             {% if grouped %}
             <div id="browseCategories">
-                {% set pastel_map = {
-                    'acute_emergency': '#fde8e8',
-                    'diagnostic_algorithms': '#e4eff4',
-                    'interventional': '#ece4f6',
-                    'pre_procedural': '#fdeee4',
-                    'intra_procedural': '#f8e3ef',
-                    'post_procedural': '#e2f2e8',
-                    'contrast_safety': '#e1edfb',
-                    'mri_safety': '#ebe2fb',
-                    'radiation_protection': '#fef0e1',
-                    'special_populations': '#e0f5ef',
-                    'medication_risk': '#fef8e1',
-                    'adverse_events': '#fde8e8'
-                } %}
                 {% for cat_slug, cat_name, cat_color, cat_icon in protocol_categories %}
                 {% if cat_slug in grouped %}
                 {% set pastel = pastel_map.get(cat_slug, '#f0f0f0') %}
-                <div class="mb-5">
+                <div class="mb-5 cat-section" data-cat="{{ cat_slug }}">
                     <div class="d-flex align-items-center mb-3">
                         <span class="cat-header-icon" style="background: {{ pastel }}; color: {{ cat_color }};">
                             <i class="fas {{ cat_icon }}"></i>
@@ -108,7 +128,6 @@
                         <div class="col-md-6 col-lg-4">
                             <a href="/radiology-protocols/view/{{ p.id }}" class="text-decoration-none protocol-card-link">
                                 <div class="protocol-card h-100">
-                                    <div class="protocol-card-accent" style="background: {{ cat_color }};"></div>
                                     <div class="protocol-card-body">
                                         <div class="d-flex align-items-start">
                                             <span class="protocol-icon-circle" style="background: {{ pastel }}; color: {{ cat_color }};">
@@ -116,9 +135,9 @@
                                             </span>
                                             <div class="ms-3 flex-grow-1">
                                                 <h6 class="protocol-card-title mb-1">{{ p.title }}</h6>
-                                                {% if p.source_citation %}
+                                                {% if p.display_source %}
                                                 <small class="protocol-card-source">
-                                                    <i class="fas fa-book me-1"></i>{{ p.source_citation }}
+                                                    <i class="fas fa-book me-1"></i>{{ p.display_source }}
                                                 </small>
                                                 {% endif %}
                                             </div>
@@ -141,7 +160,7 @@
                 {# Unmapped categories fallback #}
                 {% for category, protos in grouped.items() %}
                 {% if category not in category_map %}
-                <div class="mb-5">
+                <div class="mb-5 cat-section" data-cat="{{ category }}">
                     <div class="d-flex align-items-center mb-3">
                         <span class="cat-header-icon" style="background: #e4eff4; color: #5E899E;">
                             <i class="fas fa-folder-open"></i>
@@ -156,7 +175,6 @@
                         <div class="col-md-6 col-lg-4">
                             <a href="/radiology-protocols/view/{{ p.id }}" class="text-decoration-none protocol-card-link">
                                 <div class="protocol-card h-100">
-                                    <div class="protocol-card-accent" style="background: #5E899E;"></div>
                                     <div class="protocol-card-body">
                                         <div class="d-flex align-items-start">
                                             <span class="protocol-icon-circle" style="background: #e4eff4; color: #5E899E;">
@@ -164,9 +182,9 @@
                                             </span>
                                             <div class="ms-3 flex-grow-1">
                                                 <h6 class="protocol-card-title mb-1">{{ p.title }}</h6>
-                                                {% if p.source_citation %}
+                                                {% if p.display_source %}
                                                 <small class="protocol-card-source">
-                                                    <i class="fas fa-book me-1"></i>{{ p.source_citation }}
+                                                    <i class="fas fa-book me-1"></i>{{ p.display_source }}
                                                 </small>
                                                 {% endif %}
                                             </div>
@@ -200,6 +218,23 @@
 
 {% block scripts %}
 <style>
+/* Category filter buttons — soft pastel default, solid on active */
+.cat-filter-btn {
+    border: none;
+    border-radius: 20px;
+    padding: 5px 14px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    background: #f0f1f3;
+    color: #5a6270;
+}
+.cat-filter-btn:hover {
+    filter: brightness(0.95);
+}
+.cat-filter-btn.active {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+}
 /* Category header icon */
 .cat-header-icon {
     display: inline-flex;
@@ -209,12 +244,11 @@
     border-radius: 12px;
     font-size: 1rem;
 }
-/* Protocol card — white, no outline, bottom accent bar */
+/* Protocol card — white, no outline, icon-only color */
 .protocol-card {
-    position: relative;
     background: #fff;
     border-radius: 12px;
-    overflow: hidden;
+    border: none;
     cursor: pointer;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
     box-shadow: 0 1px 4px rgba(0,0,0,0.06);
@@ -222,10 +256,6 @@
 .protocol-card:hover {
     transform: translateY(-3px);
     box-shadow: 0 8px 24px rgba(0,0,0,0.1);
-}
-.protocol-card-accent {
-    height: 4px;
-    width: 100%;
 }
 .protocol-card-body {
     padding: 16px 16px 14px;
@@ -282,6 +312,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (q.length < 2) {
             searchResults.classList.add('d-none');
             if (browseCategories) browseCategories.classList.remove('d-none');
+            if (filterBar) filterBar.classList.remove('d-none');
             return;
         }
 
@@ -290,6 +321,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 .then(r => r.json())
                 .then(results => {
                     if (browseCategories) browseCategories.classList.add('d-none');
+                    if (filterBar) filterBar.classList.add('d-none');
                     searchResults.classList.remove('d-none');
 
                     if (results.length === 0) {
@@ -308,7 +340,6 @@ document.addEventListener('DOMContentLoaded', function() {
                         <div class="col-md-6 col-lg-4">
                             <a href="${r.url}" class="text-decoration-none protocol-card-link">
                                 <div class="protocol-card h-100">
-                                    <div class="protocol-card-accent" style="background: ${ci.color};"></div>
                                     <div class="protocol-card-body">
                                         <div class="d-flex align-items-start">
                                             <span class="protocol-icon-circle" style="background: ${pastel}; color: ${ci.color};">
@@ -332,6 +363,54 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
         }, 300);
     });
+
+    // Category filter buttons
+    const filterBar = document.getElementById('categoryFilterBar');
+    if (filterBar) {
+        const filterBtns = filterBar.querySelectorAll('.cat-filter-btn');
+        const catSections = document.querySelectorAll('.cat-section');
+
+        filterBtns.forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                const cat = this.dataset.cat;
+                const color = this.dataset.color;
+                const pastel = this.dataset.pastel;
+
+                // Reset all buttons to pastel
+                filterBtns.forEach(function(b) {
+                    b.classList.remove('active');
+                    if (b.dataset.cat === 'all') {
+                        b.style.background = '#e4eff4';
+                        b.style.color = '#5E899E';
+                    } else {
+                        b.style.background = b.dataset.pastel || '#f0f1f3';
+                        b.style.color = b.dataset.color || '#5a6270';
+                    }
+                    b.style.boxShadow = '';
+                });
+
+                // Activate clicked button with solid color
+                this.classList.add('active');
+                if (cat === 'all') {
+                    this.style.background = '#5E899E';
+                    this.style.color = '#fff';
+                } else if (color) {
+                    this.style.background = color;
+                    this.style.color = '#fff';
+                    this.style.boxShadow = '0 2px 8px ' + color + '33';
+                }
+
+                // Show/hide sections
+                catSections.forEach(function(sec) {
+                    if (cat === 'all' || sec.dataset.cat === cat) {
+                        sec.style.display = '';
+                    } else {
+                        sec.style.display = 'none';
+                    }
+                });
+            });
+        });
+    }
 });
 </script>
 {% endblock %}

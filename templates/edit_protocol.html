@@ -1,0 +1,740 @@
+{% extends 'base.html' %}
+{% block tool_active_protocols %}active{% endblock %}
+{% block mobile_active_protocols %}active{% endblock %}
+{% from 'partials/resource_fields.html' import resource_styles %}
+
+{% block mobile_breadcrumb %}
+<li class="breadcrumb-item">
+    <a href="/radiology-protocols/admin" class="text-white text-decoration-none">Manage Protocols</a>
+</li>
+<li class="breadcrumb-item active text-white-50">Edit</li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3 px-4">
+    <!-- Top Bar -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="d-flex align-items-center gap-3">
+            <a href="/radiology-protocols/admin" class="btn btn-outline-secondary btn-sm">
+                <i class="fas fa-arrow-left me-1"></i>Back
+            </a>
+            <div>
+                <h5 class="mb-0" id="pageTitle">{{ protocol.title }}</h5>
+                <small class="text-muted">Protocol #{{ protocol.id }}</small>
+            </div>
+        </div>
+        <div class="d-flex gap-2 align-items-center">
+            <span id="saveStatus" class="text-muted small"></span>
+            <button class="btn btn-outline-info btn-sm" id="regenerateBtn" onclick="showRegeneratePanel()">
+                <i class="fas fa-sync-alt me-1"></i><span class="d-none d-md-inline">Regenerate with AI</span>
+            </button>
+            {% if not protocol.verified_at %}
+            <button class="btn btn-outline-success btn-sm" onclick="verifyProtocol()">
+                <i class="fas fa-check me-1"></i>Verify & Publish
+            </button>
+            {% endif %}
+            <button class="btn btn-sm" id="saveBtn" onclick="saveAll()"
+                    style="background: #5E899E; border-color: #5E899E; color: #fff;">
+                <i class="fas fa-save me-1"></i>Save
+            </button>
+        </div>
+    </div>
+
+    <!-- Regenerate Panel (hidden by default) -->
+    <div class="card border-0 shadow-sm mb-3 d-none" id="regeneratePanel">
+        <div class="card-header py-2 d-flex justify-content-between align-items-center"
+             style="background: linear-gradient(135deg, #e4eff4, #f0f7fa);">
+            <span class="fw-semibold small">
+                <i class="fas fa-sync-alt me-1" style="color: #5E899E;"></i>
+                Regenerate Protocol with AI
+            </span>
+            <button class="btn btn-sm btn-outline-secondary border-0" onclick="hideRegeneratePanel()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="card-body py-3">
+            <p class="small text-muted mb-2">
+                Regenerates using the current title, category, and linked content. Add extra context, reference URLs, or PDFs below to guide the AI.
+            </p>
+            <div class="mb-3">
+                <label class="form-label small fw-semibold">Additional Context / Instructions <small class="text-muted">(optional)</small></label>
+                <textarea class="form-control form-control-sm" id="regenContext" rows="3"
+                          placeholder="e.g. Focus more on paediatric dosing, include ACR 2024 updates, add flowchart for triage..."></textarea>
+            </div>
+            <div class="mb-3">
+                <label class="form-label small fw-semibold">Reference URLs <small class="text-muted">(optional — content will be fetched for AI context)</small></label>
+                <div id="regenUrlContainer">
+                    <div class="input-group input-group-sm mb-1 regen-url-row">
+                        <input type="url" class="form-control regen-url-input" placeholder="https://...">
+                        <button class="btn btn-outline-danger btn-sm" type="button" onclick="this.closest('.regen-url-row').remove()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-secondary mt-1" onclick="addRegenUrl()">
+                    <i class="fas fa-plus me-1"></i>Add URL
+                </button>
+            </div>
+            <div class="mb-3">
+                <label class="form-label small fw-semibold">Reference PDFs <small class="text-muted">(optional — uploaded for AI context)</small></label>
+                <input type="file" class="form-control form-control-sm" id="regenPdfUpload" accept=".pdf" multiple onchange="uploadRegenPDFs(this)">
+                <div id="regenPdfProgress" class="d-none mt-1">
+                    <div class="progress" style="height: 4px;">
+                        <div class="progress-bar bg-warning" style="width: 0%"></div>
+                    </div>
+                </div>
+                <div id="regenPdfChips" class="d-flex flex-wrap gap-1 mt-1"></div>
+            </div>
+            <div class="d-flex gap-2 mt-3">
+                <button class="btn btn-sm btn-brand-neutral" id="regenGoBtn" onclick="doRegenerate()">
+                    <i class="fas fa-sync-alt me-1"></i>Regenerate Now
+                </button>
+                <button class="btn btn-sm btn-outline-secondary" onclick="hideRegeneratePanel()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Metadata (collapsible) -->
+    <div class="card border-0 shadow-sm mb-3">
+        <div class="card-header bg-white py-2 d-flex justify-content-between align-items-center"
+             data-bs-toggle="collapse" data-bs-target="#metadataPanel" role="button"
+             style="cursor: pointer;">
+            <span class="fw-semibold small">
+                <i class="fas fa-cog me-1 text-muted"></i>Metadata
+            </span>
+            <i class="fas fa-chevron-down small text-muted" id="metaChevron"></i>
+        </div>
+        <div class="collapse" id="metadataPanel">
+            <div class="card-body py-3">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label small fw-semibold">Title</label>
+                        <input type="text" class="form-control form-control-sm" id="editTitle"
+                               value="{{ protocol.title }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label small fw-semibold">Category</label>
+                        <select class="form-select form-select-sm" id="editCategory">
+                            {% for slug, name, color, icon in protocol_categories %}
+                            <option value="{{ slug }}" {{ 'selected' if protocol.category == slug }}>{{ name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small fw-semibold">Body Section</label>
+                        <select class="form-select form-select-sm" id="editBodySection">
+                            <option value="">Select...</option>
+                            {% for bs in ['Brain','Head and Neck','Thorax','Cardiovascular','Breast','Abdomen','Pelvis','Spine','Musculoskeletal','Multisystem'] %}
+                            <option value="{{ bs }}" {{ 'selected' if protocol.body_section == bs }}>{{ bs }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label small fw-semibold">Keywords</label>
+                        <input type="text" class="form-control form-control-sm" id="editKeywords"
+                               value="{{ protocol.keywords or '' }}" placeholder="comma-separated">
+                    </div>
+                    <div class="col-md-1">
+                        <label class="form-label small fw-semibold">Status</label>
+                        <div class="form-check form-switch mt-1">
+                            <input class="form-check-input" type="checkbox" id="editPublished"
+                                   {{ 'checked' if protocol.is_published }}>
+                            <label class="form-check-label small" for="editPublished">Published</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Linked Content (collapsible) -->
+    <div class="card border-0 shadow-sm mb-3">
+        <div class="card-header bg-white py-2 d-flex justify-content-between align-items-center"
+             data-bs-toggle="collapse" data-bs-target="#linkedContentPanel" role="button"
+             style="cursor: pointer;">
+            <span class="fw-semibold small">
+                <i class="fas fa-link me-1 text-muted"></i>Linked Content
+            </span>
+            <i class="fas fa-chevron-down small text-muted" id="linkedChevron"></i>
+        </div>
+        <div class="collapse" id="linkedContentPanel">
+            <div class="card-body py-3">
+                <div class="input-group input-group-sm mb-2">
+                    <span class="input-group-text bg-white border-end-0" style="font-size: 0.8rem;">
+                        <i class="fas fa-search text-muted"></i>
+                    </span>
+                    <input type="text" class="form-control border-start-0" id="editContentSearch"
+                           placeholder="Search cases, algorithms, templates, pearls, TNM calculators..."
+                           autocomplete="off">
+                </div>
+                <div id="editContentResults" class="search-results-dropdown d-none"></div>
+                <div id="editLinkedContent" class="d-flex flex-wrap gap-1"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Image Upload (collapsible) -->
+    <div class="card border-0 shadow-sm mb-3">
+        <div class="card-header bg-white py-2 d-flex justify-content-between align-items-center"
+             data-bs-toggle="collapse" data-bs-target="#imageUploadPanel" role="button"
+             style="cursor: pointer;">
+            <span class="fw-semibold small">
+                <i class="fas fa-image me-1 text-muted"></i>Insert Image
+            </span>
+            <i class="fas fa-chevron-down small text-muted"></i>
+        </div>
+        <div class="collapse" id="imageUploadPanel">
+            <div class="card-body py-3">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-6">
+                        <label class="form-label small fw-semibold">Upload Image</label>
+                        <input type="file" class="form-control form-control-sm" id="imageUploadInput"
+                               accept="image/*" onchange="uploadImageToCloudinary(this)">
+                        <small class="text-muted">Upload to Cloudinary and insert into editor</small>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label small fw-semibold">Alt text (optional)</label>
+                        <input type="text" class="form-control form-control-sm" id="imageAltText"
+                               placeholder="e.g. Contrast reaction flowchart">
+                    </div>
+                    <div class="col-md-2">
+                        <div id="imageUploadStatus" class="small text-muted"></div>
+                    </div>
+                </div>
+                <div id="uploadedImagesGallery" class="mt-3 d-flex flex-wrap gap-2"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Editor -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-body p-0">
+            <textarea id="htmlEditor" style="visibility: hidden;">{{ protocol.content_html or '' }}</textarea>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    var CLOUDINARY_CLOUD_NAME = {{ cloudinary_cloud_name|default('', true)|tojson }};
+    var CLOUDINARY_UPLOAD_PRESET = {{ cloudinary_upload_preset|default('', true)|tojson }};
+</script>
+{{ resource_styles() }}
+<script src="{{ url_for('static', filename='js/admin-resource-helpers.js') }}"></script>
+<script src="{{ url_for('static', filename='tinymce.min.js') }}"></script>
+<script>
+var PROTOCOL_ID = {{ protocol.id }};
+var PROTOCOL_SOURCE_CITATION = {{ (protocol.source_citation or '')|tojson }};
+var _isDirty = false;
+var _tinyMCEReady = false;
+
+// Parse existing resources — preserve references and pdfs across saves
+var _existingResources = (function() {
+    try {
+        var p = JSON.parse(PROTOCOL_SOURCE_CITATION);
+        if (typeof p === 'string') p = JSON.parse(p);
+        return (typeof p === 'object' && p !== null) ? p : {};
+    } catch(e) { return {}; }
+})();
+
+// ==================== TINYMCE CONTENT STYLES ====================
+
+var EDITOR_CONTENT_STYLE = `
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        font-size: 14px;
+        line-height: 1.6;
+    }
+    a { text-decoration: none !important; }
+    a:hover { text-decoration: underline !important; }
+    table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+    th { background-color: #f8f9fa; font-weight: 600; }
+    img { max-width: 100%; height: auto; border-radius: 8px; margin: 0.5rem 0; }
+    .clinical-note, .key-finding, .differential-dx, .teaching-pearl, .pitfall, .normal-variant, .staging-info, .comparison-box { margin: 1.1rem 0; padding: 10px 16px; background: transparent; border: none; border-radius: 0; font-size: 0.95em; line-height: 1.7; }
+    .clinical-note { border-left: 3px solid #5E899E; }
+    .key-finding { border-left: 3px solid #28a745; }
+    .differential-dx { border-left: 3px solid #7952b3; }
+    .teaching-pearl { border-left: 3px solid #e9a304; }
+    .pitfall { border-left: 3px solid #dc3545; }
+    .normal-variant { border-left: 3px solid #17a2b8; }
+    .staging-info { border-left: 3px solid #c8d6e5; }
+    .comparison-box { border-left: 3px solid #adb5bd; }
+    .diagnosis-box { margin: 1.2rem 0; padding: 14px 18px; background: #fdf8f3; border: none; border-left: 4px solid #e96304; border-radius: 0; font-weight: normal; font-size: 1em; line-height: 1.7; }
+    .highlight-yellow { background-color: #fff3cd; padding: 1px 4px; border-radius: 2px; }
+    .highlight-green { background-color: #d4edda; padding: 1px 4px; border-radius: 2px; }
+    .highlight-red { background-color: #f8d7da; padding: 1px 4px; border-radius: 2px; }
+    .highlight-blue { background-color: #d1ecf1; padding: 1px 4px; border-radius: 2px; }
+    .important-text { color: #c0392b; font-weight: 600; }
+    .subtle-text { color: #6c757d; font-size: 0.9em; }
+    .indent-block { margin: 0.5rem 0 0.5rem 1.5rem; padding: 8px 12px; border-left: 3px solid #dee2e6; color: #495057; }
+    .image-finding { margin: 0.75rem 0; padding: 10px 14px; background: #f8f9fa; border-left: 3px solid #e96304; border-radius: 4px; font-size: 0.95em; }
+    .measurement { display: inline-block; background: #e2e8f0; padding: 2px 8px; border-radius: 4px; font-family: monospace; font-size: 0.9em; color: #2d3748; }
+    .anatomy-label { display: inline-block; background: #5E899E; color: #fff; padding: 1px 9px; border-radius: 10px; font-size: 0.82em; font-weight: 600; letter-spacing: 0.3px; white-space: nowrap; }
+    .anatomy-pearl { margin: 1rem 0; padding: 12px 16px; background: #f0f7fa; border-left: 4px solid #5E899E; border-radius: 0 6px 6px 0; }
+`;
+
+// ==================== TINYMCE INIT ====================
+
+function initTinyMCE() {
+    tinymce.init({
+        selector: '#htmlEditor',
+        height: 600,
+        min_height: 400,
+        menubar: 'edit view insert format tools',
+        toolbar: 'undo redo | blocks styles | bold italic underline strikethrough | numlist bullist indent outdent | table link image code removeformat',
+        plugins: 'table link image code autoresize lists',
+        base_url: 'https://cdn.jsdelivr.net/npm/tinymce@6',
+        relative_urls: false,
+        convert_urls: false,
+        remove_script_host: false,
+        remove_trailing_brs: true,
+        remove_linebreaks: false,
+        extended_valid_elements: 'div[*],span[*],sup[*],i[*],a[*],img[*],style[*],script[*]',
+        valid_children: '+body[style|script]',
+        custom_elements: '~style,~script',
+        style_formats_merge: true,
+        style_formats: [
+            { title: 'Callout Boxes', items: [
+                { title: 'Clinical Note', block: 'div', classes: 'clinical-note' },
+                { title: 'Key Finding', block: 'div', classes: 'key-finding' },
+                { title: 'Teaching Pearl', block: 'div', classes: 'teaching-pearl' },
+                { title: 'Pitfall', block: 'div', classes: 'pitfall' },
+                { title: 'Differential Dx', block: 'div', classes: 'differential-dx' },
+                { title: 'Normal Variant', block: 'div', classes: 'normal-variant' },
+            ]},
+            { title: 'Diagnostic Boxes', items: [
+                { title: 'Diagnosis Box', block: 'div', classes: 'diagnosis-box' },
+                { title: 'Staging Info', block: 'div', classes: 'staging-info' },
+                { title: 'Comparison Box', block: 'div', classes: 'comparison-box' },
+                { title: 'Image Finding', block: 'div', classes: 'image-finding' },
+                { title: 'Anatomy Pearl', block: 'div', classes: 'anatomy-pearl' },
+            ]},
+            { title: 'Text Emphasis', items: [
+                { title: 'Highlight Yellow', inline: 'span', classes: 'highlight-yellow' },
+                { title: 'Highlight Green', inline: 'span', classes: 'highlight-green' },
+                { title: 'Highlight Red', inline: 'span', classes: 'highlight-red' },
+                { title: 'Highlight Blue', inline: 'span', classes: 'highlight-blue' },
+                { title: 'Important Text', inline: 'span', classes: 'important-text' },
+                { title: 'Subtle Text', inline: 'span', classes: 'subtle-text' },
+            ]},
+            { title: 'Radiology', items: [
+                { title: 'Measurement', inline: 'span', classes: 'measurement' },
+                { title: 'Anatomy Label', inline: 'span', classes: 'anatomy-label' },
+                { title: 'Indent Block', block: 'div', classes: 'indent-block' },
+            ]},
+        ],
+        table_advtab: false,
+        table_cell_advtab: false,
+        table_default_attributes: { border: '1', class: 'table table-sm table-bordered' },
+        image_advtab: true,
+        link_assume_external_targets: true,
+        content_css: 'default',
+        skin: 'oxide',
+        content_style: EDITOR_CONTENT_STYLE,
+        images_upload_handler: function(blobInfo, progress) {
+            return new Promise(function(resolve, reject) {
+                if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {
+                    reject('Cloudinary not configured');
+                    return;
+                }
+                var formData = new FormData();
+                formData.append('file', blobInfo.blob(), blobInfo.filename());
+                formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+                formData.append('folder', 'radinsights/protocols');
+
+                var xhr = new XMLHttpRequest();
+                xhr.open('POST', 'https://api.cloudinary.com/v1_1/' + CLOUDINARY_CLOUD_NAME + '/image/upload');
+                xhr.upload.onprogress = function(e) {
+                    if (e.lengthComputable) progress(Math.round(e.loaded / e.total * 100));
+                };
+                xhr.onload = function() {
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        var json = JSON.parse(xhr.responseText);
+                        if (json.secure_url) {
+                            resolve(json.secure_url);
+                            addToGallery(json.secure_url);
+                        } else {
+                            reject('Upload failed: no URL returned');
+                        }
+                    } else {
+                        reject('Upload failed: HTTP ' + xhr.status);
+                    }
+                };
+                xhr.onerror = function() { reject('Upload error'); };
+                xhr.send(formData);
+            });
+        },
+        setup: function(editor) {
+            editor.on('init', function() {
+                _tinyMCEReady = true;
+            });
+            editor.on('change keyup', function() {
+                _isDirty = true;
+            });
+            editor.addShortcut('meta+s', 'Save', function() {
+                saveAll();
+            });
+        }
+    });
+}
+
+// ==================== LINKED CONTENT (from chips) ====================
+
+function collectLinkedContent() {
+    var res = {
+        linked_cases: [],
+        linked_tnm: [],
+        linked_algorithms: [],
+        linked_templates: [],
+        linked_pearls: [],
+    };
+    var container = document.getElementById('editLinkedContent');
+    if (!container) return res;
+    container.querySelectorAll('.resource-chip').forEach(function(chip) {
+        try {
+            var data = JSON.parse(chip.dataset.json);
+            var lt = chip.dataset.linkType || '';
+            if (lt === 'case') res.linked_cases.push(data);
+            else if (lt === 'calculator' || lt === 'tnm') res.linked_tnm.push(data);
+            else if (lt === 'reporting_algorithm') res.linked_algorithms.push(data);
+            else if (lt === 'radiology_template') res.linked_templates.push(data);
+            else if (lt === 'pearl') res.linked_pearls.push(data);
+        } catch(e) {}
+    });
+    return res;
+}
+
+// ==================== SAVE ====================
+
+function saveAll() {
+    var btn = document.getElementById('saveBtn');
+    var status = document.getElementById('saveStatus');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Saving...';
+
+    var editor = tinymce.get('htmlEditor');
+    var htmlContent = editor ? editor.getContent() : document.getElementById('htmlEditor').value;
+
+    // Merge: keep existing references + pdfs, update linked content from panel
+    var linked = collectLinkedContent();
+    var merged = {
+        references: _existingResources.references || [],
+        pdfs: _existingResources.pdfs || [],
+        linked_cases: linked.linked_cases,
+        linked_tnm: linked.linked_tnm,
+        linked_algorithms: linked.linked_algorithms,
+        linked_templates: linked.linked_templates,
+        linked_pearls: linked.linked_pearls,
+    };
+
+    fetch('/radiology-protocols/admin/api/' + PROTOCOL_ID, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            title: document.getElementById('editTitle').value,
+            category: document.getElementById('editCategory').value,
+            body_section: document.getElementById('editBodySection').value,
+            keywords: document.getElementById('editKeywords').value,
+            content_html: htmlContent,
+            is_published: document.getElementById('editPublished').checked,
+            source_citation: JSON.stringify(merged),
+        }),
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(result) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-save me-1"></i>Save';
+        if (result.error) {
+            status.innerHTML = '<span class="text-danger"><i class="fas fa-exclamation-circle me-1"></i>' + result.error + '</span>';
+        } else {
+            _isDirty = false;
+            // Update cached resources so future saves preserve correctly
+            _existingResources = merged;
+            status.innerHTML = '<span class="text-success"><i class="fas fa-check me-1"></i>Saved</span>';
+            document.getElementById('pageTitle').textContent = document.getElementById('editTitle').value;
+            setTimeout(function() { status.innerHTML = ''; }, 3000);
+        }
+    })
+    .catch(function(err) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-save me-1"></i>Save';
+        status.innerHTML = '<span class="text-danger">Save failed</span>';
+    });
+}
+
+// ==================== VERIFY ====================
+
+function verifyProtocol() {
+    if (!confirm('Verify and publish this protocol?')) return;
+    fetch('/radiology-protocols/admin/api/' + PROTOCOL_ID + '/verify', { method: 'POST' })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.error) { alert(data.error); return; }
+            location.reload();
+        });
+}
+
+// ==================== REGENERATE ====================
+
+function showRegeneratePanel() {
+    var panel = document.getElementById('regeneratePanel');
+    panel.classList.remove('d-none');
+    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function hideRegeneratePanel() {
+    document.getElementById('regeneratePanel').classList.add('d-none');
+}
+
+function addRegenUrl() {
+    var container = document.getElementById('regenUrlContainer');
+    var row = document.createElement('div');
+    row.className = 'input-group input-group-sm mb-1 regen-url-row';
+    row.innerHTML =
+        '<input type="url" class="form-control regen-url-input" placeholder="https://...">' +
+        '<button class="btn btn-outline-danger btn-sm" type="button" onclick="this.closest(\'.regen-url-row\').remove()">' +
+            '<i class="fas fa-times"></i>' +
+        '</button>';
+    container.appendChild(row);
+}
+
+function collectRegenUrls() {
+    var urls = [];
+    document.querySelectorAll('#regenUrlContainer .regen-url-input').forEach(function(input) {
+        var v = input.value.trim();
+        if (v) urls.push(v);
+    });
+    return urls;
+}
+
+function collectRegenPdfs() {
+    var pdfs = [];
+    document.querySelectorAll('#regenPdfChips .resource-chip').forEach(function(chip) {
+        try { pdfs.push(JSON.parse(chip.dataset.json)); } catch(e) {}
+    });
+    return pdfs;
+}
+
+function uploadRegenPDFs(input) {
+    var files = Array.from(input.files);
+    if (!files.length) return;
+    if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {
+        alert('PDF upload not configured.');
+        input.value = '';
+        return;
+    }
+    for (var i = 0; i < files.length; i++) {
+        if (!files[i].name.toLowerCase().endsWith('.pdf')) {
+            alert(files[i].name + ' is not a PDF.');
+            input.value = '';
+            return;
+        }
+        if (files[i].size > 10 * 1024 * 1024) {
+            alert(files[i].name + ' exceeds 10 MB limit.');
+            input.value = '';
+            return;
+        }
+    }
+    var progressDiv = document.getElementById('regenPdfProgress');
+    var progressBar = progressDiv.querySelector('.progress-bar');
+    var idx = 0;
+    function uploadNext() {
+        if (idx >= files.length) {
+            progressDiv.classList.add('d-none');
+            input.value = '';
+            return;
+        }
+        var file = files[idx];
+        progressDiv.classList.remove('d-none');
+        progressBar.style.width = '0%';
+        progressBar.textContent = (idx + 1) + '/' + files.length;
+        var formData = new FormData();
+        formData.append('file', file);
+        formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+        formData.append('folder', 'frcr_revision/admin_pdfs');
+        var xhr = new XMLHttpRequest();
+        xhr.upload.onprogress = function(e) {
+            if (e.lengthComputable) progressBar.style.width = Math.round((e.loaded / e.total) * 100) + '%';
+        };
+        xhr.onload = function() {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                var data = JSON.parse(xhr.responseText);
+                addChip('regenPdfChips', { url: data.secure_url, name: file.name, public_id: data.public_id, size: file.size }, 'pdf');
+            } else {
+                alert('Upload failed for ' + file.name);
+            }
+            idx++;
+            uploadNext();
+        };
+        xhr.onerror = function() { alert('Upload failed for ' + file.name); idx++; uploadNext(); };
+        xhr.open('POST', 'https://api.cloudinary.com/v1_1/' + CLOUDINARY_CLOUD_NAME + '/raw/upload');
+        xhr.send(formData);
+    }
+    uploadNext();
+}
+
+function doRegenerate() {
+    var ctx = document.getElementById('regenContext').value.trim();
+    var btn = document.getElementById('regenGoBtn');
+    var status = document.getElementById('saveStatus');
+
+    if (!confirm('Regenerate this protocol? Current HTML content will be replaced with new AI-generated content.')) return;
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Regenerating...';
+    status.innerHTML = '<span class="text-info"><i class="fas fa-spinner fa-spin me-1"></i>Regenerating (this may take up to 90s)...</span>';
+
+    // Build source_citation with URLs and PDFs for AI context
+    var regenResources = {
+        references: collectRegenUrls().map(function(u) { return { source: u, url: u, version: '' }; }),
+        pdfs: collectRegenPdfs(),
+    };
+    var scJson = JSON.stringify(regenResources);
+
+    fetch('/radiology-protocols/admin/api/' + PROTOCOL_ID + '/regenerate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ additional_context: ctx, source_citation: scJson }),
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-sync-alt me-1"></i>Regenerate Now';
+        if (data.error) {
+            status.innerHTML = '<span class="text-danger"><i class="fas fa-exclamation-circle me-1"></i>' + data.error + '</span>';
+            return;
+        }
+        var editor = tinymce.get('htmlEditor');
+        if (editor && data.content_html) {
+            editor.setContent(data.content_html);
+            _isDirty = true;
+        }
+        if (data.keywords) {
+            document.getElementById('editKeywords').value = data.keywords;
+        }
+        // Store the regen resources so they're preserved on next save
+        _existingResources.references = regenResources.references;
+        _existingResources.pdfs = regenResources.pdfs;
+        hideRegeneratePanel();
+        status.innerHTML = '<span class="text-success"><i class="fas fa-check me-1"></i>Regenerated! Review and Save when ready.</span>';
+        setTimeout(function() { status.innerHTML = ''; }, 5000);
+    })
+    .catch(function(err) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-sync-alt me-1"></i>Regenerate Now';
+        status.innerHTML = '<span class="text-danger">Regeneration failed</span>';
+    });
+}
+
+// ==================== IMAGE UPLOAD ====================
+
+function addToGallery(url) {
+    var gallery = document.getElementById('uploadedImagesGallery');
+    var thumb = document.createElement('div');
+    thumb.className = 'position-relative';
+    thumb.innerHTML = '<img src="' + url + '" style="width: 80px; height: 80px; object-fit: cover; border-radius: 6px; border: 2px solid #dee2e6;">'
+        + '<button class="btn btn-sm btn-danger position-absolute top-0 end-0 p-0" style="width: 18px; height: 18px; font-size: 0.6rem; line-height: 1;" onclick="this.parentElement.remove()" title="Remove thumbnail"><i class="fas fa-times"></i></button>';
+    gallery.appendChild(thumb);
+}
+
+function uploadImageToCloudinary(input) {
+    if (!input.files || !input.files[0]) return;
+    if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_UPLOAD_PRESET) {
+        alert('Cloudinary not configured. Set CLOUDINARY_CLOUD_NAME and CLOUDINARY_UPLOAD_PRESET.');
+        return;
+    }
+
+    var file = input.files[0];
+    var status = document.getElementById('imageUploadStatus');
+    status.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Uploading...';
+
+    var formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+    formData.append('folder', 'radinsights/protocols');
+
+    fetch('https://api.cloudinary.com/v1_1/' + CLOUDINARY_CLOUD_NAME + '/image/upload', {
+        method: 'POST',
+        body: formData
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.secure_url) {
+            var altText = document.getElementById('imageAltText').value || file.name;
+            var imgTag = '<img src="' + data.secure_url + '" alt="' + altText + '" style="max-width: 100%; border-radius: 8px; margin: 1rem 0;" />';
+
+            var editor = tinymce.get('htmlEditor');
+            if (editor) {
+                editor.insertContent(imgTag);
+                _isDirty = true;
+            }
+
+            addToGallery(data.secure_url);
+
+            status.innerHTML = '<i class="fas fa-check text-success me-1"></i>Uploaded!';
+            setTimeout(function() { status.textContent = ''; }, 3000);
+        } else {
+            status.innerHTML = '<i class="fas fa-exclamation-triangle text-danger me-1"></i>Upload failed';
+        }
+        input.value = '';
+        document.getElementById('imageAltText').value = '';
+    })
+    .catch(function() {
+        status.innerHTML = '<i class="fas fa-exclamation-triangle text-danger me-1"></i>Upload error';
+        input.value = '';
+    });
+}
+
+// ==================== INIT ====================
+
+window.addEventListener('beforeunload', function(e) {
+    if (_isDirty) {
+        e.preventDefault();
+        e.returnValue = '';
+    }
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Load existing linked content chips (only linked content — not refs/pdfs)
+    var r = _existingResources;
+    (r.linked_cases || []).forEach(function(c) { addContentChip('editLinkedContent', c, 'case'); });
+    (r.linked_tnm || []).forEach(function(t) { addContentChip('editLinkedContent', t, 'calculator'); });
+    (r.linked_algorithms || []).forEach(function(a) { addContentChip('editLinkedContent', a, 'reporting_algorithm'); });
+    (r.linked_templates || []).forEach(function(t) { addContentChip('editLinkedContent', t, 'radiology_template'); });
+    (r.linked_pearls || []).forEach(function(p) { addContentChip('editLinkedContent', p, 'pearl'); });
+
+    // Init TinyMCE
+    initTinyMCE();
+
+    // Collapse chevron animation
+    var metaPanel = document.getElementById('metadataPanel');
+    metaPanel.addEventListener('show.bs.collapse', function() {
+        document.getElementById('metaChevron').style.transform = 'rotate(180deg)';
+    });
+    metaPanel.addEventListener('hide.bs.collapse', function() {
+        document.getElementById('metaChevron').style.transform = 'rotate(0deg)';
+    });
+    var linkedPanel = document.getElementById('linkedContentPanel');
+    linkedPanel.addEventListener('show.bs.collapse', function() {
+        document.getElementById('linkedChevron').style.transform = 'rotate(180deg)';
+    });
+    linkedPanel.addEventListener('hide.bs.collapse', function() {
+        document.getElementById('linkedChevron').style.transform = 'rotate(0deg)';
+    });
+});
+
+// Global keyboard shortcut (outside TinyMCE)
+document.addEventListener('keydown', function(e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        saveAll();
+    }
+});
+</script>
+<style>
+    #metaChevron, #linkedChevron { transition: transform 0.2s ease; }
+    .tox-tinymce { border-radius: 8px !important; }
+</style>
+{% endblock %}

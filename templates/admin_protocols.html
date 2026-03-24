@@ -1,5 +1,7 @@
 {% extends 'base.html' %}
 {% block title %}Admin Protocols - RadInsights{% endblock %}
+{% block tool_active_protocols %}active{% endblock %}
+{% block mobile_active_protocols %}active{% endblock %}
 
 {% block mobile_breadcrumb %}
 <li class="breadcrumb-item">
@@ -102,9 +104,9 @@
                                 </td>
                                 <td>
                                     <div class="btn-group btn-group-sm">
-                                        <button class="btn btn-outline-primary" onclick="editProtocol({{ p.id }})" title="Edit">
+                                        <a href="/radiology-protocols/admin/edit/{{ p.id }}" class="btn btn-outline-primary" title="Edit">
                                             <i class="fas fa-edit"></i>
-                                        </button>
+                                        </a>
                                         {% if not p.verified_at %}
                                         <button class="btn btn-outline-success" onclick="verifyProtocol({{ p.id }})" title="Verify & Publish">
                                             <i class="fas fa-check"></i>
@@ -221,30 +223,6 @@
                 </div>
 
                 <div class="mb-3">
-                    <label class="form-label small fw-semibold">Linked Cases</label>
-                    <div class="input-group input-group-sm mb-2">
-                        <input type="text" class="form-control" id="protoCaseSearch" placeholder="Search cases..." autocomplete="off">
-                        <button class="btn btn-outline-secondary" type="button" onclick="searchItems('protoCaseSearch', 'protoCaseResults', 'case')">
-                            <i class="fas fa-search"></i>
-                        </button>
-                    </div>
-                    <div id="protoCaseResults" class="search-results-dropdown d-none"></div>
-                    <div id="protoLinkedCases" class="d-flex flex-wrap gap-1"></div>
-                </div>
-
-                <div class="mb-3">
-                    <label class="form-label small fw-semibold">Linked TNM Calculators</label>
-                    <div class="input-group input-group-sm mb-2">
-                        <input type="text" class="form-control" id="protoTnmSearch" placeholder="Search TNM calculators..." autocomplete="off">
-                        <button class="btn btn-outline-secondary" type="button" onclick="searchItems('protoTnmSearch', 'protoTnmResults', 'algorithm')">
-                            <i class="fas fa-search"></i>
-                        </button>
-                    </div>
-                    <div id="protoTnmResults" class="search-results-dropdown d-none"></div>
-                    <div id="protoLinkedTnm" class="d-flex flex-wrap gap-1"></div>
-                </div>
-
-                <div class="mb-3">
                     <label class="form-label small fw-semibold">Reference PDFs</label>
                     <div class="mb-2">
                         <input type="file" class="form-control form-control-sm" id="protoPdfUpload" accept=".pdf" onchange="uploadPDF(this, 'protoLinkedPdfs', 'protoPdfProgress')">
@@ -328,30 +306,6 @@
                     <button type="button" class="btn btn-sm btn-outline-secondary mt-1" onclick="addReferenceRow('aiRefsContainer')">
                         <i class="fas fa-plus me-1"></i>Add Reference
                     </button>
-                </div>
-
-                <div class="mb-3">
-                    <label class="form-label small fw-semibold">Linked Cases</label>
-                    <div class="input-group input-group-sm mb-2">
-                        <input type="text" class="form-control" id="aiCaseSearch" placeholder="Search cases..." autocomplete="off">
-                        <button class="btn btn-outline-secondary" type="button" onclick="searchItems('aiCaseSearch', 'aiCaseResults', 'case')">
-                            <i class="fas fa-search"></i>
-                        </button>
-                    </div>
-                    <div id="aiCaseResults" class="search-results-dropdown d-none"></div>
-                    <div id="aiLinkedCases" class="d-flex flex-wrap gap-1"></div>
-                </div>
-
-                <div class="mb-3">
-                    <label class="form-label small fw-semibold">Linked TNM Calculators</label>
-                    <div class="input-group input-group-sm mb-2">
-                        <input type="text" class="form-control" id="aiTnmSearch" placeholder="Search TNM calculators..." autocomplete="off">
-                        <button class="btn btn-outline-secondary" type="button" onclick="searchItems('aiTnmSearch', 'aiTnmResults', 'algorithm')">
-                            <i class="fas fa-search"></i>
-                        </button>
-                    </div>
-                    <div id="aiTnmResults" class="search-results-dropdown d-none"></div>
-                    <div id="aiLinkedTnm" class="d-flex flex-wrap gap-1"></div>
                 </div>
 
                 <div class="mb-3">
@@ -440,18 +394,11 @@ function parseResources(val) {
         return empty;
     }
 }
-function collectResources(prefix) {
-    return { references: getReferences(prefix + 'RefsContainer'), linked_cases: getChips(prefix + 'LinkedCases'), linked_tnm: getChips(prefix + 'LinkedTnm'), pdfs: getChips(prefix + 'LinkedPdfs') };
-}
 function loadAllResources(prefix, sourceCitation) {
     var res = parseResources(sourceCitation);
     loadReferences(prefix + 'RefsContainer', sourceCitation);
-    var c = document.getElementById(prefix + 'LinkedCases'); c.innerHTML = '';
-    res.linked_cases.forEach(function(item) { addChip(prefix + 'LinkedCases', item, 'case'); });
-    var t = document.getElementById(prefix + 'LinkedTnm'); t.innerHTML = '';
-    res.linked_tnm.forEach(function(item) { addChip(prefix + 'LinkedTnm', item, 'tnm'); });
-    var p = document.getElementById(prefix + 'LinkedPdfs'); p.innerHTML = '';
-    res.pdfs.forEach(function(item) { addChip(prefix + 'LinkedPdfs', item, 'pdf'); });
+    var p = document.getElementById(prefix + 'LinkedPdfs');
+    if (p) { p.innerHTML = ''; res.pdfs.forEach(function(item) { addChip(prefix + 'LinkedPdfs', item, 'pdf'); }); }
 }
 function addChip(containerId, data, type) {
     var container = document.getElementById(containerId);
@@ -472,47 +419,7 @@ function getChips(containerId) {
     return items;
 }
 
-var searchTimeout = null;
-function searchItems(inputId, resultsId, type) {
-    var query = document.getElementById(inputId).value.trim();
-    if (query.length < 2) { document.getElementById(resultsId).classList.add('d-none'); return; }
-    clearTimeout(searchTimeout);
-    searchTimeout = setTimeout(function() {
-        fetch('/api/cases/search?type=' + type + '&q=' + encodeURIComponent(query) + '&limit=10')
-            .then(function(r) { return r.json(); })
-            .then(function(results) {
-                var container = document.getElementById(resultsId);
-                container.innerHTML = '';
-                if (results.length === 0) { container.innerHTML = '<div class="search-result-item text-muted">No results found</div>'; container.classList.remove('d-none'); return; }
-                results.forEach(function(item) {
-                    var div = document.createElement('div');
-                    div.className = 'search-result-item';
-                    if (type === 'case') div.innerHTML = '<i class="fas fa-book-medical me-1" style="color: #5E899E;"></i><strong>' + escHtml(item.case_number) + '</strong>: ' + escHtml(item.diagnosis || '');
-                    else div.innerHTML = '<i class="fas fa-sitemap me-1" style="color: #e96304;"></i><strong>' + escHtml(item.cancer_name || item.slug) + '</strong>' + (item.body_section ? ' <small class="text-muted">(' + escHtml(item.body_section) + ')</small>' : '');
-                    div.onclick = function() {
-                        var chipsId = type === 'algorithm' ? inputId.replace('TnmSearch', 'LinkedTnm') : inputId.replace('CaseSearch', 'LinkedCases');
-                        var existing = getChips(chipsId);
-                        var isDup = existing.some(function(e) { return type === 'case' ? e.id === item.id : e.slug === item.slug; });
-                        if (!isDup) addChip(chipsId, item, type === 'algorithm' ? 'tnm' : 'case');
-                        container.classList.add('d-none');
-                        document.getElementById(inputId).value = '';
-                    };
-                    container.appendChild(div);
-                });
-                container.classList.remove('d-none');
-            });
-    }, 300);
-}
-
 document.addEventListener('DOMContentLoaded', function() {
-    document.querySelectorAll('[id$="CaseSearch"], [id$="TnmSearch"]').forEach(function(input) {
-        input.addEventListener('keydown', function(e) { if (e.key === 'Enter') e.preventDefault(); });
-        input.addEventListener('input', function() {
-            var resultsId = this.id.replace('Search', 'Results');
-            var type = this.id.includes('Tnm') ? 'algorithm' : 'case';
-            searchItems(this.id, resultsId, type);
-        });
-    });
     addReferenceRow('aiRefsContainer');
 });
 
@@ -744,7 +651,10 @@ function saveProtocol() {
         catch (e) { alert('Invalid JSON in Structured Data field.'); return; }
     }
 
-    var resources = collectResources('proto');
+    var resources = {
+        references: getReferences('protoRefsContainer'),
+        pdfs: getChips('protoLinkedPdfs'),
+    };
 
     var data = {
         title: document.getElementById('protocolTitle').value,
@@ -811,7 +721,10 @@ function generateProtocolAI() {
     btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Generating...';
     warningsDiv.classList.add('d-none');
 
-    var resources = collectResources('ai');
+    var resources = {
+        references: getReferences('aiRefsContainer'),
+        pdfs: getChips('aiLinkedPdfs'),
+    };
 
     fetch('/radiology-protocols/admin/generate', {
         method: 'POST',

@@ -20,63 +20,17 @@
 </div>
 
 <div class="mb-3">
-    <label class="form-label small fw-semibold">Linked Cases</label>
+    <label class="form-label small fw-semibold">Link Content</label>
     <div class="input-group input-group-sm mb-2">
-        <input type="text" class="form-control" id="{{ prefix }}CaseSearch" placeholder="Search cases..." autocomplete="off">
-        <button class="btn btn-outline-secondary" type="button" onclick="searchItems('{{ prefix }}CaseSearch', '{{ prefix }}CaseResults', 'case')">
-            <i class="fas fa-search"></i>
-        </button>
+        <span class="input-group-text bg-white border-end-0" style="font-size: 0.8rem;">
+            <i class="fas fa-search text-muted"></i>
+        </span>
+        <input type="text" class="form-control border-start-0" id="{{ prefix }}ContentSearch"
+               placeholder="Search cases, algorithms, templates, pearls, TNM calculators..."
+               autocomplete="off">
     </div>
-    <div id="{{ prefix }}CaseResults" class="search-results-dropdown d-none"></div>
-    <div id="{{ prefix }}LinkedCases" class="d-flex flex-wrap gap-1"></div>
-</div>
-
-<div class="mb-3">
-    <label class="form-label small fw-semibold">Linked TNM Calculators</label>
-    <div class="input-group input-group-sm mb-2">
-        <input type="text" class="form-control" id="{{ prefix }}TnmSearch" placeholder="Search TNM calculators..." autocomplete="off">
-        <button class="btn btn-outline-secondary" type="button" onclick="searchItems('{{ prefix }}TnmSearch', '{{ prefix }}TnmResults', 'algorithm')">
-            <i class="fas fa-search"></i>
-        </button>
-    </div>
-    <div id="{{ prefix }}TnmResults" class="search-results-dropdown d-none"></div>
-    <div id="{{ prefix }}LinkedTnm" class="d-flex flex-wrap gap-1"></div>
-</div>
-
-<div class="mb-3">
-    <label class="form-label small fw-semibold">Linked Reporting Algorithms</label>
-    <div class="input-group input-group-sm mb-2">
-        <input type="text" class="form-control" id="{{ prefix }}AlgorithmSearch" placeholder="Search reporting algorithms..." autocomplete="off">
-        <button class="btn btn-outline-secondary" type="button" onclick="searchItems('{{ prefix }}AlgorithmSearch', '{{ prefix }}AlgorithmResults', 'reporting_algorithm')">
-            <i class="fas fa-search"></i>
-        </button>
-    </div>
-    <div id="{{ prefix }}AlgorithmResults" class="search-results-dropdown d-none"></div>
-    <div id="{{ prefix }}LinkedAlgorithms" class="d-flex flex-wrap gap-1"></div>
-</div>
-
-<div class="mb-3">
-    <label class="form-label small fw-semibold">Linked Radiology Templates</label>
-    <div class="input-group input-group-sm mb-2">
-        <input type="text" class="form-control" id="{{ prefix }}TemplateSearch" placeholder="Search radiology templates..." autocomplete="off">
-        <button class="btn btn-outline-secondary" type="button" onclick="searchItems('{{ prefix }}TemplateSearch', '{{ prefix }}TemplateResults', 'radiology_template')">
-            <i class="fas fa-search"></i>
-        </button>
-    </div>
-    <div id="{{ prefix }}TemplateResults" class="search-results-dropdown d-none"></div>
-    <div id="{{ prefix }}LinkedTemplates" class="d-flex flex-wrap gap-1"></div>
-</div>
-
-<div class="mb-3">
-    <label class="form-label small fw-semibold">Linked Pearls</label>
-    <div class="input-group input-group-sm mb-2">
-        <input type="text" class="form-control" id="{{ prefix }}PearlSearch" placeholder="Search radiology pearls..." autocomplete="off">
-        <button class="btn btn-outline-secondary" type="button" onclick="searchItems('{{ prefix }}PearlSearch', '{{ prefix }}PearlResults', 'pearl')">
-            <i class="fas fa-search"></i>
-        </button>
-    </div>
-    <div id="{{ prefix }}PearlResults" class="search-results-dropdown d-none"></div>
-    <div id="{{ prefix }}LinkedPearls" class="d-flex flex-wrap gap-1"></div>
+    <div id="{{ prefix }}ContentResults" class="search-results-dropdown d-none"></div>
+    <div id="{{ prefix }}LinkedContent" class="d-flex flex-wrap gap-1"></div>
 </div>
 
 <div class="mb-3">
@@ -101,6 +55,7 @@
     .resource-chip { display: inline-flex; align-items: center; gap: 0.3rem; padding: 0.2rem 0.5rem; border-radius: 1rem; font-size: 0.78rem; border: 1px solid #dee2e6; background: #f8f9fa; }
     .resource-chip .remove-chip { cursor: pointer; color: #dc3545; font-size: 0.7rem; }
     .resource-chip .remove-chip:hover { color: #a71d2a; }
+    .resource-chip .chip-type-badge { font-size: 0.6rem; padding: 0 4px; border-radius: 3px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; }
     .reference-row { animation: fadeIn 0.15s ease-in; }
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 </style>

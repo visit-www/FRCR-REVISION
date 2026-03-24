@@ -85,7 +85,7 @@ from models import ClinicalProtocol, OnCallQueryLog, IncidentalFindingCalculator
 from models import RadiologyTemplate, ReportingAlgorithm  # New split tables (Feb 2026)
 from models import ContentRequest  # User content requests (Feb 2026)
 from models import RadiologyPearl  # Radiology pearls from teaching points
-from models import case_algorithm_links, case_template_links, case_pearl_links, content_links  # Knowledge linking
+from models import case_algorithm_links, case_template_links, case_pearl_links, case_calculator_links, content_links  # Knowledge linking
 from auth import auth_bp
 from backup_routes import backup_bp
 from admin_routes import admin_bp
@@ -845,6 +845,7 @@ with app.app_context():
         _add_col_if_missing('clinical_protocol', 'verified_at', 'verified_at TIMESTAMP')
         _add_col_if_missing('clinical_protocol', 'created_by_user_id', 'created_by_user_id INTEGER')
         _add_col_if_missing('clinical_protocol', 'updated_at', 'updated_at TIMESTAMP')
+        _widen_col_to_text('clinical_protocol', 'source_citation')
 
         # -- Migrate old protocol category slugs to new 12-category system --
         _OLD_TO_NEW_CATEGORY = {
@@ -3959,7 +3960,7 @@ def get_algorithm_linked_cases(algorithm_id):
 
 
 # ==================== UNIVERSAL CONTENT LINKING API ====================
-_VALID_CONTENT_TYPES = ('case', 'pearl', 'algorithm')
+_VALID_CONTENT_TYPES = ('case', 'pearl', 'algorithm', 'template', 'calculator')
 
 def _resolve_content_item(ctype, cid):
     """Resolve a content type + id to a display dict, or None if not found."""
@@ -3998,6 +3999,28 @@ def _resolve_content_item(ctype, cid):
             'subtitle': ' | '.join(filter(None, [a.body_section, a.origin])),
             'icon': 'fa-bone', 'color': '#6f42c1',
             'url': f'/{slug_prefix}/{a.slug}' if a.slug else None,
+        }
+    elif ctype == 'template':
+        t = RadiologyTemplate.query.get(cid)
+        if not t:
+            return None
+        return {
+            'link_type': 'template', 'id': t.id,
+            'title': t.title or '',
+            'subtitle': ' | '.join(filter(None, [t.body_section, t.modality])),
+            'icon': 'fa-file-alt', 'color': '#17a2b8',
+            'url': f'/radiology-templates/{t.slug}' if t.slug else None,
+        }
+    elif ctype == 'calculator':
+        c = TNMCalculatorContent.query.get(cid)
+        if not c:
+            return None
+        return {
+            'link_type': 'calculator', 'id': c.id,
+            'title': c.cancer_name or c.slug or '',
+            'subtitle': c.body_section or '',
+            'icon': 'fa-sitemap', 'color': '#e96304',
+            'url': f'/tnm-calculator/{c.slug}' if c.slug else None,
         }
     return None
 
@@ -4064,6 +4087,18 @@ def get_content_links(content_type, content_id):
         ).all()
         for r in legacy_rows:
             _add('case', r.case_id)
+    elif content_type == 'template':
+        legacy_rows = db.session.execute(
+            db.select(case_template_links.c.case_id).where(case_template_links.c.template_id == content_id)
+        ).all()
+        for r in legacy_rows:
+            _add('case', r.case_id)
+    elif content_type == 'calculator':
+        legacy_rows = db.session.execute(
+            db.select(case_calculator_links.c.case_id).where(case_calculator_links.c.calculator_id == content_id)
+        ).all()
+        for r in legacy_rows:
+            _add('case', r.case_id)
     elif content_type == 'case':
         # Case → pearls
         pearl_rows = db.session.execute(
@@ -4077,6 +4112,18 @@ def get_content_links(content_type, content_id):
         ).all()
         for r in algo_rows:
             _add('algorithm', r.algorithm_id)
+        # Case → templates
+        tmpl_rows = db.session.execute(
+            db.select(case_template_links.c.template_id).where(case_template_links.c.case_id == content_id)
+        ).all()
+        for r in tmpl_rows:
+            _add('template', r.template_id)
+        # Case → calculators
+        calc_rows = db.session.execute(
+            db.select(case_calculator_links.c.calculator_id).where(case_calculator_links.c.case_id == content_id)
+        ).all()
+        for r in calc_rows:
+            _add('calculator', r.calculator_id)
 
     return jsonify(items)
 
@@ -4146,6 +4193,36 @@ def add_content_link(content_type, content_id):
                 return jsonify({'error': 'Already linked'}), 400
             db.session.execute(case_algorithm_links.insert().values(
                 case_id=case_side, algorithm_id=other_id,
+                created_by_user_id=current_user.id,
+            ))
+            db.session.commit()
+            return jsonify(target_resolved)
+        elif other_type == 'template':
+            exists = db.session.execute(
+                db.select(case_template_links.c.id).where(
+                    case_template_links.c.case_id == case_side,
+                    case_template_links.c.template_id == other_id,
+                )
+            ).first()
+            if exists:
+                return jsonify({'error': 'Already linked'}), 400
+            db.session.execute(case_template_links.insert().values(
+                case_id=case_side, template_id=other_id,
+                created_by_user_id=current_user.id,
+            ))
+            db.session.commit()
+            return jsonify(target_resolved)
+        elif other_type == 'calculator':
+            exists = db.session.execute(
+                db.select(case_calculator_links.c.id).where(
+                    case_calculator_links.c.case_id == case_side,
+                    case_calculator_links.c.calculator_id == other_id,
+                )
+            ).first()
+            if exists:
+                return jsonify({'error': 'Already linked'}), 400
+            db.session.execute(case_calculator_links.insert().values(
+                case_id=case_side, calculator_id=other_id,
                 created_by_user_id=current_user.id,
             ))
             db.session.commit()
@@ -4220,6 +4297,22 @@ def delete_content_link(content_type, content_id):
                 case_algorithm_links.delete().where(
                     case_algorithm_links.c.case_id == case_side,
                     case_algorithm_links.c.algorithm_id == other_id,
+                )
+            )
+            deleted = True
+        elif other_type == 'template':
+            db.session.execute(
+                case_template_links.delete().where(
+                    case_template_links.c.case_id == case_side,
+                    case_template_links.c.template_id == other_id,
+                )
+            )
+            deleted = True
+        elif other_type == 'calculator':
+            db.session.execute(
+                case_calculator_links.delete().where(
+                    case_calculator_links.c.case_id == case_side,
+                    case_calculator_links.c.calculator_id == other_id,
                 )
             )
             deleted = True
@@ -4582,7 +4675,7 @@ def search_cases_for_linking():
     results = []
 
     # ── Cases ──
-    if search_type in ('all', 'related', 'similar'):
+    if search_type in ('all', 'case', 'related', 'similar'):
         cases_query = Case.query.filter(
             db.or_(
                 Case.diagnosis.ilike(f'%{query}%'),

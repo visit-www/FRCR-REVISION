@@ -1,9 +1,12 @@
 {% extends 'base.html' %}
 {% block title %}Protocol - RadInsights{% endblock %}
+{% block tool_active_protocols %}active{% endblock %}
+{% block mobile_active_protocols %}active{% endblock %}
+{% from 'partials/resource_fields.html' import resource_styles %}
 
 {% block mobile_breadcrumb %}
 <li class="breadcrumb-item">
-    <a href="{{ url_for('protocol.oncall_helper') }}" class="text-white text-decoration-none">On-Call Helper</a>
+    <a href="/radiology-protocols" class="text-white text-decoration-none">Protocols</a>
 </li>
 <li class="breadcrumb-item active text-white-50">{{ protocol.title[:40] }}</li>
 {% endblock %}
@@ -17,13 +20,18 @@
                 <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary btn-sm">
                     <i class="fas fa-home me-1"></i>Dashboard
                 </a>
-                <a href="{{ url_for('protocol.oncall_helper') }}" class="btn btn-outline-secondary btn-sm">
-                    <i class="fas fa-headset me-1"></i>On-Call Helper
+                <a href="/radiology-protocols" class="btn btn-outline-secondary btn-sm">
+                    <i class="fas fa-clipboard-list me-1"></i>Protocols
                 </a>
                 <a href="/smart-reporter?context=protocol&id={{ protocol.id }}&title={{ protocol.title|urlencode }}"
                    class="btn btn-sm btn-brand-primary">
                     <i class="fas fa-file-medical me-1"></i>Use in Report
                 </a>
+                {% if current_user.is_authenticated and current_user.role and current_user.role.value == 'admin' %}
+                <a href="/radiology-protocols/admin/edit/{{ protocol.id }}" class="btn btn-outline-warning btn-sm ms-auto">
+                    <i class="fas fa-edit me-1"></i>Edit Protocol
+                </a>
+                {% endif %}
             </div>
 
             <!-- Protocol Header -->
@@ -31,7 +39,10 @@
                 <h4 class="mb-1">{{ protocol.title }}</h4>
                 <div class="d-flex flex-wrap gap-2 align-items-center">
                     {% if protocol.category %}
-                    <span class="badge" style="background: #5E899E;">{{ protocol.category }}</span>
+                    {% set cat_info = category_map.get(protocol.category, {}) %}
+                    <span class="badge" style="background: {{ cat_info.get('color', '#5E899E') }};">
+                        <i class="fas {{ cat_info.get('icon', 'fa-file-alt') }} me-1"></i>{{ cat_info.get('name', protocol.category) }}
+                    </span>
                     {% endif %}
                     {% if protocol.body_section %}
                     <span class="badge bg-light text-dark border">{{ protocol.body_section }}</span>
@@ -43,7 +54,8 @@
             </div>
 
             <!-- Resources -->
-            {% if resources and (resources.references or resources.linked_cases or resources.linked_tnm or resources.pdfs) %}
+            {% set has_linked = resources and (resources.references or resources.linked_cases or resources.linked_tnm or resources.linked_algorithms or resources.linked_templates or resources.linked_pearls or resources.pdfs) %}
+            {% if has_linked %}
             <div class="alert alert-info border-0 py-2 mb-3">
                 <small>
                     {% if resources.references %}
@@ -55,19 +67,35 @@
                     {% endfor %}
                     {% endif %}
                 </small>
-                {% if resources.linked_cases or resources.linked_tnm or resources.pdfs %}
+                {% set has_badges = resources.linked_cases or resources.linked_tnm or resources.linked_algorithms or resources.linked_templates or resources.linked_pearls or resources.pdfs %}
+                {% if has_badges %}
                 <div class="mt-1 d-flex flex-wrap gap-2">
-                    {% for c in resources.linked_cases %}
+                    {% for c in resources.linked_cases or [] %}
                     <a href="/view-case/{{ c.id }}" class="badge bg-light text-dark border text-decoration-none">
                         <i class="fas fa-book-medical me-1" style="color: #5E899E;"></i>{{ c.case_number }}: {{ c.diagnosis[:40] }}
                     </a>
                     {% endfor %}
-                    {% for t in resources.linked_tnm %}
+                    {% for t in resources.linked_tnm or [] %}
                     <a href="/tnm-calculator/{{ t.slug }}" class="badge bg-light text-dark border text-decoration-none">
                         <i class="fas fa-sitemap me-1" style="color: #e96304;"></i>{{ t.cancer_name or t.slug }}
                     </a>
                     {% endfor %}
-                    {% for p in resources.pdfs %}
+                    {% for a in resources.linked_algorithms or [] %}
+                    <a href="/reporting-algorithms/{{ a.slug }}" class="badge bg-light text-dark border text-decoration-none">
+                        <i class="fas fa-project-diagram me-1" style="color: #5E899E;"></i>{{ a.title[:50] }}
+                    </a>
+                    {% endfor %}
+                    {% for t in resources.linked_templates or [] %}
+                    <a href="/radiology-templates/{{ t.slug }}" class="badge bg-light text-dark border text-decoration-none">
+                        <i class="fas fa-file-alt me-1" style="color: #17a2b8;"></i>{{ t.title[:50] }}
+                    </a>
+                    {% endfor %}
+                    {% for p in resources.linked_pearls or [] %}
+                    <span class="badge bg-light text-dark border">
+                        <i class="fas fa-gem me-1" style="color: #6b46c1;"></i>{{ p.pearl_text[:60] }}
+                    </span>
+                    {% endfor %}
+                    {% for p in resources.pdfs or [] %}
                     <a href="{{ p.url }}" target="_blank" rel="noopener" class="badge bg-light text-dark border text-decoration-none">
                         <i class="fas fa-file-pdf me-1" style="color: #dc3545;"></i>{{ p.name }}
                     </a>
@@ -87,6 +115,36 @@
                 </small>
             </div>
             {% endif %}
+
+            <!-- Link Content Panel (collapsible) -->
+            <div class="card border-0 shadow-sm mb-3">
+                <div class="card-header bg-white py-2 d-flex justify-content-between align-items-center"
+                     data-bs-toggle="collapse" data-bs-target="#viewLinkPanel" role="button"
+                     style="cursor: pointer;">
+                    <span class="fw-semibold small">
+                        <i class="fas fa-link me-1" style="color: #5E899E;"></i>Link Content
+                    </span>
+                    <i class="fas fa-chevron-down small text-muted" id="viewLinkChevron"></i>
+                </div>
+                <div class="collapse" id="viewLinkPanel">
+                    <div class="card-body py-3">
+                        <p class="text-muted small mb-2">
+                            Search and link related cases, algorithms, templates, pearls, or TNM calculators to this protocol.
+                        </p>
+                        <div class="input-group input-group-sm mb-2">
+                            <span class="input-group-text bg-white border-end-0" style="font-size: 0.8rem;">
+                                <i class="fas fa-search text-muted"></i>
+                            </span>
+                            <input type="text" class="form-control border-start-0" id="viewLinkSearch"
+                                   placeholder="Search cases, algorithms, templates, pearls, TNM calculators..."
+                                   autocomplete="off">
+                        </div>
+                        <div id="viewLinkResults" class="search-results-dropdown d-none"></div>
+                        <div id="viewLinkedContent" class="d-flex flex-wrap gap-1 mt-2"></div>
+                        <div id="viewLinkStatus" class="small mt-1"></div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -154,4 +212,224 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+{{ resource_styles() }}
+<script src="{{ url_for('static', filename='js/admin-resource-helpers.js') }}"></script>
+<script>
+var PROTOCOL_ID = {{ protocol.id }};
+var PROTOCOL_RESOURCES = {{ resources_json|safe }};
+
+// ==================== CONTENT TYPE META ====================
+var _META = {
+    'case':                { icon: 'fa-book-medical',    color: '#5E899E', badge: 'Case',      badgeBg: '#e4eff4', linkType: 'case' },
+    'calculator':          { icon: 'fa-sitemap',         color: '#e96304', badge: 'TNM',       badgeBg: '#fdeee4', linkType: 'calculator' },
+    'reporting_algorithm': { icon: 'fa-project-diagram', color: '#5E899E', badge: 'Algorithm', badgeBg: '#e4eff4', linkType: 'reporting_algorithm' },
+    'radiology_template':  { icon: 'fa-file-alt',        color: '#17a2b8', badge: 'Template',  badgeBg: '#e1edfb', linkType: 'radiology_template' },
+    'pearl':               { icon: 'fa-gem',             color: '#6b46c1', badge: 'Pearl',     badgeBg: '#ece4f6', linkType: 'pearl' },
+};
+
+// ==================== LOAD EXISTING LINKED CONTENT ====================
+
+function loadExistingLinks() {
+    var container = document.getElementById('viewLinkedContent');
+    container.innerHTML = '';
+    var r = PROTOCOL_RESOURCES || {};
+    var _map = [
+        ['linked_cases', 'case'],
+        ['linked_tnm', 'calculator'],
+        ['linked_algorithms', 'reporting_algorithm'],
+        ['linked_templates', 'radiology_template'],
+        ['linked_pearls', 'pearl'],
+    ];
+    _map.forEach(function(entry) {
+        (r[entry[0]] || []).forEach(function(item) {
+            addViewChip(item, entry[1]);
+        });
+    });
+}
+
+function addViewChip(item, linkType) {
+    var container = document.getElementById('viewLinkedContent');
+    var meta = _META[linkType] || { icon: 'fa-link', color: '#6c757d', badge: linkType, badgeBg: '#f0f1f3' };
+
+    var label = '';
+    if (linkType === 'case') {
+        label = (item.case_number || '#' + item.id) + ': ' + (item.diagnosis || '').substring(0, 50);
+    } else if (linkType === 'calculator') {
+        label = item.cancer_name || item.slug || 'Calculator';
+    } else if (linkType === 'pearl') {
+        var tmp = document.createElement('div');
+        tmp.innerHTML = item.pearl_text || item.title || 'Pearl';
+        label = (tmp.textContent || tmp.innerText || 'Pearl').substring(0, 60);
+    } else {
+        label = (item.title || item.name || item.slug || '').substring(0, 60);
+    }
+
+    var chip = document.createElement('span');
+    chip.className = 'resource-chip';
+    chip.dataset.itemId = item.id || item.slug || '';
+    chip.dataset.linkType = linkType;
+    chip.innerHTML =
+        '<i class="fas ' + meta.icon + '" style="color: ' + meta.color + ';"></i>' +
+        '<span class="chip-type-badge" style="background: ' + meta.badgeBg + '; color: ' + meta.color + ';">' + meta.badge + '</span>' +
+        '<span>' + escHtml(label) + '</span>' +
+        '<span class="remove-chip" title="Remove"><i class="fas fa-times-circle"></i></span>';
+    container.appendChild(chip);
+}
+
+// ==================== SEARCH + ADD ====================
+
+var _viewSearchTimeout = null;
+
+function viewSearch() {
+    var input = document.getElementById('viewLinkSearch');
+    var query = input.value.trim();
+    var resultsEl = document.getElementById('viewLinkResults');
+    if (query.length < 2) {
+        resultsEl.classList.add('d-none');
+        return;
+    }
+
+    clearTimeout(_viewSearchTimeout);
+    _viewSearchTimeout = setTimeout(function() {
+        fetch('/api/cases/search?type=all&q=' + encodeURIComponent(query) + '&limit=15')
+            .then(function(r) { return r.json(); })
+            .then(function(results) {
+                resultsEl.innerHTML = '';
+                if (results.length === 0) {
+                    resultsEl.innerHTML = '<div class="search-result-item text-muted">No results found</div>';
+                    resultsEl.classList.remove('d-none');
+                    return;
+                }
+                results.forEach(function(item) {
+                    var lt = item.link_type || '';
+                    var meta = _META[lt] || { icon: 'fa-link', color: '#6c757d', badge: lt, badgeBg: '#f0f1f3' };
+
+                    var label = '';
+                    if (lt === 'case') {
+                        label = '<strong>' + escHtml(item.case_number) + '</strong>: ' + escHtml(item.diagnosis || '');
+                    } else if (lt === 'calculator') {
+                        label = '<strong>' + escHtml(item.cancer_name || item.slug) + '</strong>';
+                    } else if (lt === 'pearl') {
+                        var pearlText = (item.title || '').replace(/<[^>]+>/g, '').substring(0, 80);
+                        label = '<strong>' + escHtml(pearlText || 'Pearl #' + item.id) + '</strong>';
+                    } else {
+                        label = '<strong>' + escHtml(item.title || item.name || item.slug || '') + '</strong>';
+                        if (item.body_section || item.category) label += ' <small class="text-muted">(' + escHtml(item.body_section || item.category || '') + ')</small>';
+                    }
+
+                    var div = document.createElement('div');
+                    div.className = 'search-result-item d-flex align-items-center gap-2';
+                    div.innerHTML =
+                        '<i class="fas ' + meta.icon + '" style="color: ' + meta.color + '; width: 16px; text-align: center;"></i>' +
+                        '<span class="chip-type-badge" style="background: ' + meta.badgeBg + '; color: ' + meta.color + '; font-size: 0.6rem; padding: 0 4px; border-radius: 3px; font-weight: 600; text-transform: uppercase;">' + meta.badge + '</span>' +
+                        '<span class="flex-grow-1">' + label + '</span>';
+
+                    div.onclick = function() {
+                        // Check for duplicate
+                        var existing = document.querySelectorAll('#viewLinkedContent .resource-chip');
+                        var isDuplicate = false;
+                        existing.forEach(function(chip) {
+                            if (String(chip.dataset.itemId) === String(item.id) && chip.dataset.linkType === lt) isDuplicate = true;
+                        });
+                        if (isDuplicate) {
+                            resultsEl.classList.add('d-none');
+                            input.value = '';
+                            return;
+                        }
+                        // POST link to server immediately
+                        linkItem(lt, item);
+                        resultsEl.classList.add('d-none');
+                        input.value = '';
+                    };
+                    resultsEl.appendChild(div);
+                });
+                resultsEl.classList.remove('d-none');
+            });
+    }, 300);
+}
+
+function linkItem(linkType, item) {
+    var statusEl = document.getElementById('viewLinkStatus');
+    statusEl.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Linking...';
+
+    fetch('/radiology-protocols/view/' + PROTOCOL_ID + '/link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ link_type: linkType, item: item }),
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.error) {
+            statusEl.innerHTML = '<span class="text-warning"><i class="fas fa-exclamation-circle me-1"></i>' + escHtml(data.error) + '</span>';
+        } else {
+            addViewChip(item, linkType);
+            statusEl.innerHTML = '<span class="text-success"><i class="fas fa-check me-1"></i>Linked!</span>';
+        }
+        setTimeout(function() { statusEl.innerHTML = ''; }, 3000);
+    })
+    .catch(function() {
+        statusEl.innerHTML = '<span class="text-danger">Link failed</span>';
+        setTimeout(function() { statusEl.innerHTML = ''; }, 3000);
+    });
+}
+
+// ==================== REMOVE CHIP (event delegation) ====================
+
+document.getElementById('viewLinkedContent').addEventListener('click', function(e) {
+    var removeBtn = e.target.closest('.remove-chip');
+    if (!removeBtn) return;
+    var chip = removeBtn.closest('.resource-chip');
+    if (!chip) return;
+
+    var itemId = chip.dataset.itemId;
+    var linkType = chip.dataset.linkType;
+    var statusEl = document.getElementById('viewLinkStatus');
+
+    fetch('/radiology-protocols/view/' + PROTOCOL_ID + '/link', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ link_type: linkType, item_id: itemId }),
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            chip.remove();
+            statusEl.innerHTML = '<span class="text-success"><i class="fas fa-check me-1"></i>Removed</span>';
+        } else {
+            statusEl.innerHTML = '<span class="text-danger">' + escHtml(data.error || 'Remove failed') + '</span>';
+        }
+        setTimeout(function() { statusEl.innerHTML = ''; }, 3000);
+    })
+    .catch(function() {
+        statusEl.innerHTML = '<span class="text-danger">Remove failed</span>';
+        setTimeout(function() { statusEl.innerHTML = ''; }, 3000);
+    });
+});
+
+// ==================== INIT ====================
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadExistingLinks();
+
+    // Custom search handler (NOT auto-init from admin-resource-helpers)
+    var searchInput = document.getElementById('viewLinkSearch');
+    searchInput.addEventListener('keydown', function(e) { if (e.key === 'Enter') e.preventDefault(); });
+    searchInput.addEventListener('input', viewSearch);
+
+    // Chevron animation
+    var panel = document.getElementById('viewLinkPanel');
+    panel.addEventListener('show.bs.collapse', function() {
+        document.getElementById('viewLinkChevron').style.transform = 'rotate(180deg)';
+    });
+    panel.addEventListener('hide.bs.collapse', function() {
+        document.getElementById('viewLinkChevron').style.transform = 'rotate(0deg)';
+    });
+});
+</script>
+<style>
+    #viewLinkChevron { transition: transform 0.2s ease; }
+</style>
 {% endblock %}

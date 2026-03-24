@@ -2542,7 +2542,7 @@ class ClinicalProtocol(db.Model):
     keywords = db.Column(db.Text, nullable=False)  # comma-separated, for pg_trgm search
     content_structured = db.Column(db.Text, nullable=True)  # JSONB-style structured data
     content_html = db.Column(db.Text, nullable=True)  # rich formatted reference content
-    source_citation = db.Column(db.String(500), nullable=False)
+    source_citation = db.Column(db.Text, nullable=False)
     guideline_version = db.Column(db.String(100), nullable=True)
     source_url = db.Column(db.String(1000), nullable=True)
     body_section = db.Column(db.String(100), nullable=True)

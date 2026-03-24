@@ -603,7 +603,8 @@ If any answer is no, revise before output."""
 
 
 def _format_resources_for_prompt(resources_json):
-    """Parse unified resources JSON and format for AI prompt context."""
+    """Parse unified resources JSON, fetch URL content, extract PDF text,
+    and format for AI prompt context with preference instruction."""
     if not resources_json or not resources_json.strip():
         return 'Not specified'
 
@@ -618,36 +619,88 @@ def _format_resources_for_prompt(resources_json):
     if not isinstance(parsed, dict):
         return 'Not specified'
 
-    parts = []
+    sections = []
 
+    # References — fetch URL content where available
     refs = parsed.get('references', [])
     if refs:
-        parts.append('REFERENCES:')
+        ref_lines = []
         for i, ref in enumerate(refs, 1):
             line = f"  {i}. {ref.get('source', 'Unknown')}"
             if ref.get('version'):
                 line += f" ({ref['version']})"
             if ref.get('url'):
                 line += f" — {ref['url']}"
-            parts.append(line)
+                try:
+                    from clinical_tool_generator import fetch_url_content
+                    fetched = fetch_url_content(ref['url'])
+                    if fetched:
+                        line += f"\n     Content:\n     {fetched[:4000]}"
+                except Exception as exc:
+                    logger.warning("Failed to fetch URL %s: %s", ref['url'], exc)
+            ref_lines.append(line)
+        if ref_lines:
+            sections.append("REFERENCES:\n" + "\n".join(ref_lines))
 
+    # Linked cases
     cases = parsed.get('linked_cases', [])
     if cases:
-        parts.append('\nLINKED CASES (for context):')
-        for c in cases:
-            parts.append(f"  - Case {c.get('case_number', '')}: {c.get('diagnosis', '')}")
+        case_lines = [f"  - Case {c.get('case_number', '')}: {c.get('diagnosis', '')}"
+                      for c in cases if isinstance(c, dict)]
+        if case_lines:
+            sections.append("LINKED CASES:\n" + "\n".join(case_lines))
 
+    # Linked TNM calculators
     tnm = parsed.get('linked_tnm', [])
     if tnm:
-        parts.append('\nLINKED TNM CALCULATORS:')
-        for t in tnm:
-            parts.append(f"  - {t.get('cancer_name', t.get('slug', ''))}")
+        tnm_lines = [f"  - {t.get('cancer_name', t.get('slug', ''))}"
+                     for t in tnm if isinstance(t, dict)]
+        if tnm_lines:
+            sections.append("LINKED TNM CALCULATORS:\n" + "\n".join(tnm_lines))
 
+    # PDFs — download from Cloudinary and extract text
     pdfs = parsed.get('pdfs', [])
     if pdfs:
-        parts.append(f'\nREFERENCE PDFs: {len(pdfs)} PDF document(s) provided as additional context')
+        pdf_parts = []
+        for pdf in pdfs:
+            if not isinstance(pdf, dict) or not pdf.get('url'):
+                continue
+            pdf_name = pdf.get('name', 'uploaded document')
+            try:
+                import tempfile
+                from clinical_tool_generator import extract_pdf_text
+                resp = requests.get(pdf['url'], timeout=15)
+                resp.raise_for_status()
+                tmp = tempfile.NamedTemporaryFile(delete=False, suffix='.pdf')
+                tmp.write(resp.content)
+                tmp.close()
+                text = extract_pdf_text(tmp.name)
+                try:
+                    os.unlink(tmp.name)
+                except Exception:
+                    pass
+                if text:
+                    pdf_parts.append(f"  [PDF: {pdf_name}]\n  {text[:6000]}")
+                else:
+                    pdf_parts.append(f"  [PDF: {pdf_name}] (text extraction unavailable)")
+            except Exception as exc:
+                logger.warning("Failed to extract PDF text from %s: %s", pdf_name, exc)
+                pdf_parts.append(f"  [PDF: {pdf_name}] (download/extraction failed)")
+        if pdf_parts:
+            sections.append("REFERENCE PDFs:\n" + "\n\n".join(pdf_parts))
 
-    return '\n'.join(parts) if parts else 'Not specified'
+    if not sections:
+        return 'Not specified'
+
+    return (
+        "\n\n=== REFERENCE MATERIALS ===\n"
+        "Use the following references to ground your output in evidence. "
+        "Where references conflict with general knowledge, prefer the references. "
+        "However, also draw on your broader medical knowledge — do not limit "
+        "your response exclusively to these references.\n\n"
+        + "\n\n".join(sections)
+        + "\n=== END REFERENCES ===\n"
+    )
 
 
 def generate_protocol_content(title, category, source_citation='', additional_context=''):
@@ -678,6 +731,9 @@ def generate_protocol_content(title, category, source_citation='', additional_co
         "temperature": 0.2,
         "system": (
             "You are a clinical protocol generator for a radiology decision support app. "
+            "When reference materials are provided, use them as your primary source of truth "
+            "and cite specific details where relevant. Also draw on your broader medical "
+            "knowledge to fill gaps — do not limit your output exclusively to the references. "
             "Output valid JSON only. No markdown. No text outside the JSON object."
         ),
         "messages": [

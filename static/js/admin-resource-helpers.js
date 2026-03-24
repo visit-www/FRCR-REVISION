@@ -1,8 +1,8 @@
 /**
- * Admin Resource Helpers — Shared JS for IF Calculator and Reporting Template admin pages.
+ * Admin Resource Helpers — Shared JS for admin pages.
  *
- * Provides: reference rows, resource chips (cases, TNM, PDFs), search, PDF upload,
- * resource collection/parsing, and HTML escaping.
+ * Provides: reference rows, resource chips, unified content search,
+ * PDF upload, resource collection/parsing, and HTML escaping.
  *
  * Requires: CLOUDINARY_CLOUD_NAME and CLOUDINARY_UPLOAD_PRESET globals for PDF upload.
  */
@@ -12,6 +12,7 @@
 function addReferenceRow(containerId, data) {
     data = data || {};
     var container = document.getElementById(containerId);
+    if (!container) return;
     var row = document.createElement('div');
     row.className = 'reference-row d-flex gap-2 mb-2 align-items-start';
     row.innerHTML =
@@ -48,6 +49,7 @@ function getReferences(containerId) {
 
 function loadReferences(containerId, sourceCitation) {
     var container = document.getElementById(containerId);
+    if (!container) return;
     container.innerHTML = '';
     var refs = parseResources(sourceCitation).references;
     if (refs.length === 0) refs = [{ source: '', version: '', url: '' }];
@@ -61,7 +63,6 @@ function parseResources(val) {
     if (!val) return empty;
     try {
         var parsed = JSON.parse(val);
-        // Handle double-encoded JSON strings
         if (typeof parsed === 'string') parsed = JSON.parse(parsed);
         if (Array.isArray(parsed)) {
             return { references: parsed, linked_cases: [], linked_tnm: [], linked_algorithms: [], linked_templates: [], linked_pearls: [], pdfs: [] };
@@ -83,20 +84,57 @@ function parseResources(val) {
     }
 }
 
+// ==================== COLLECT / LOAD (unified) ====================
+
 function collectResources(prefix) {
     var res = {
         references: getReferences(prefix + 'RefsContainer'),
-        linked_cases: getChips(prefix + 'LinkedCases'),
-        linked_tnm: getChips(prefix + 'LinkedTnm'),
+        linked_cases: [],
+        linked_tnm: [],
+        linked_algorithms: [],
+        linked_templates: [],
+        linked_pearls: [],
         pdfs: getChips(prefix + 'LinkedPdfs')
     };
-    // Include new content types if their containers exist
-    var algoContainer = document.getElementById(prefix + 'LinkedAlgorithms');
-    if (algoContainer) res.linked_algorithms = getChips(prefix + 'LinkedAlgorithms');
-    var tmplContainer = document.getElementById(prefix + 'LinkedTemplates');
-    if (tmplContainer) res.linked_templates = getChips(prefix + 'LinkedTemplates');
-    var pearlContainer = document.getElementById(prefix + 'LinkedPearls');
-    if (pearlContainer) res.linked_pearls = getChips(prefix + 'LinkedPearls');
+
+    // Unified LinkedContent container — sort chips by their data-link-type
+    var contentContainer = document.getElementById(prefix + 'LinkedContent');
+    if (contentContainer) {
+        var chips = contentContainer.querySelectorAll('.resource-chip');
+        chips.forEach(function(chip) {
+            try {
+                var data = JSON.parse(chip.dataset.json);
+                var lt = chip.dataset.linkType || '';
+                if (lt === 'case') res.linked_cases.push(data);
+                else if (lt === 'calculator' || lt === 'tnm') res.linked_tnm.push(data);
+                else if (lt === 'reporting_algorithm') res.linked_algorithms.push(data);
+                else if (lt === 'radiology_template') res.linked_templates.push(data);
+                else if (lt === 'pearl') res.linked_pearls.push(data);
+            } catch(e) {}
+        });
+    }
+
+    // Legacy: also collect from old per-type containers if they exist
+    var oldContainers = {
+        'LinkedCases': 'linked_cases',
+        'LinkedTnm': 'linked_tnm',
+        'LinkedAlgorithms': 'linked_algorithms',
+        'LinkedTemplates': 'linked_templates',
+        'LinkedPearls': 'linked_pearls'
+    };
+    for (var suffix in oldContainers) {
+        var el = document.getElementById(prefix + suffix);
+        if (el) {
+            var key = oldContainers[suffix];
+            getChips(prefix + suffix).forEach(function(item) {
+                // Avoid duplicates
+                if (!res[key].some(function(x) { return x.id === item.id; })) {
+                    res[key].push(item);
+                }
+            });
+        }
+    }
+
     return res;
 }
 
@@ -104,40 +142,89 @@ function loadAllResources(prefix, sourceCitation) {
     var res = parseResources(sourceCitation);
     loadReferences(prefix + 'RefsContainer', sourceCitation);
 
-    var casesContainer = document.getElementById(prefix + 'LinkedCases');
-    casesContainer.innerHTML = '';
-    res.linked_cases.forEach(function(c) { addChip(prefix + 'LinkedCases', c, 'case'); });
-
-    var tnmContainer = document.getElementById(prefix + 'LinkedTnm');
-    tnmContainer.innerHTML = '';
-    res.linked_tnm.forEach(function(t) { addChip(prefix + 'LinkedTnm', t, 'tnm'); });
-
+    // Load PDFs
     var pdfsContainer = document.getElementById(prefix + 'LinkedPdfs');
-    pdfsContainer.innerHTML = '';
-    res.pdfs.forEach(function(p) { addChip(prefix + 'LinkedPdfs', p, 'pdf'); });
+    if (pdfsContainer) {
+        pdfsContainer.innerHTML = '';
+        res.pdfs.forEach(function(p) { addChip(prefix + 'LinkedPdfs', p, 'pdf'); });
+    }
 
-    // Load new content types if containers exist
-    var algoContainer = document.getElementById(prefix + 'LinkedAlgorithms');
-    if (algoContainer) {
-        algoContainer.innerHTML = '';
-        (res.linked_algorithms || []).forEach(function(a) { addChip(prefix + 'LinkedAlgorithms', a, 'algorithm_link'); });
+    // Load all linked content into unified container
+    var contentContainer = document.getElementById(prefix + 'LinkedContent');
+    if (contentContainer) {
+        contentContainer.innerHTML = '';
+        res.linked_cases.forEach(function(c) { addContentChip(prefix + 'LinkedContent', c, 'case'); });
+        res.linked_tnm.forEach(function(t) { addContentChip(prefix + 'LinkedContent', t, 'calculator'); });
+        res.linked_algorithms.forEach(function(a) { addContentChip(prefix + 'LinkedContent', a, 'reporting_algorithm'); });
+        res.linked_templates.forEach(function(t) { addContentChip(prefix + 'LinkedContent', t, 'radiology_template'); });
+        res.linked_pearls.forEach(function(p) { addContentChip(prefix + 'LinkedContent', p, 'pearl'); });
     }
-    var tmplContainer = document.getElementById(prefix + 'LinkedTemplates');
-    if (tmplContainer) {
-        tmplContainer.innerHTML = '';
-        (res.linked_templates || []).forEach(function(t) { addChip(prefix + 'LinkedTemplates', t, 'template_link'); });
-    }
-    var pearlContainer = document.getElementById(prefix + 'LinkedPearls');
-    if (pearlContainer) {
-        pearlContainer.innerHTML = '';
-        (res.linked_pearls || []).forEach(function(p) { addChip(prefix + 'LinkedPearls', p, 'pearl_link'); });
-    }
+
+    // Legacy: load into old per-type containers if they exist
+    var legacyMap = [
+        ['LinkedCases', res.linked_cases, 'case'],
+        ['LinkedTnm', res.linked_tnm, 'tnm'],
+        ['LinkedAlgorithms', res.linked_algorithms, 'algorithm_link'],
+        ['LinkedTemplates', res.linked_templates, 'template_link'],
+        ['LinkedPearls', res.linked_pearls, 'pearl_link'],
+    ];
+    legacyMap.forEach(function(entry) {
+        var el = document.getElementById(prefix + entry[0]);
+        if (el) {
+            el.innerHTML = '';
+            entry[1].forEach(function(item) { addChip(prefix + entry[0], item, entry[2]); });
+        }
+    });
 }
 
 // ==================== CHIPS ====================
 
+// Type metadata for unified chips
+var CONTENT_TYPE_META = {
+    'case':                 { icon: 'fa-book-medical', color: '#5E899E', badge: 'Case', badgeBg: '#e4eff4' },
+    'calculator':           { icon: 'fa-sitemap',      color: '#e96304', badge: 'TNM',  badgeBg: '#fdeee4' },
+    'tnm':                  { icon: 'fa-sitemap',      color: '#e96304', badge: 'TNM',  badgeBg: '#fdeee4' },
+    'reporting_algorithm':  { icon: 'fa-project-diagram', color: '#5E899E', badge: 'Algorithm', badgeBg: '#e4eff4' },
+    'anatomy_snippet':      { icon: 'fa-bone',         color: '#6f42c1', badge: 'Anatomy', badgeBg: '#ece4f6' },
+    'radiology_template':   { icon: 'fa-file-alt',     color: '#17a2b8', badge: 'Template', badgeBg: '#e1edfb' },
+    'pearl':                { icon: 'fa-gem',          color: '#6b46c1', badge: 'Pearl', badgeBg: '#ece4f6' },
+    'reference':            { icon: 'fa-bookmark',     color: '#6c757d', badge: 'Ref',   badgeBg: '#f0f1f3' },
+};
+
+function addContentChip(containerId, data, linkType) {
+    var container = document.getElementById(containerId);
+    if (!container) return;
+    var meta = CONTENT_TYPE_META[linkType] || { icon: 'fa-link', color: '#6c757d', badge: linkType, badgeBg: '#f0f1f3' };
+
+    var label = '';
+    if (linkType === 'case') {
+        label = (data.case_number || '#' + data.id) + ': ' + (data.diagnosis || '').substring(0, 50);
+    } else if (linkType === 'calculator' || linkType === 'tnm') {
+        label = data.cancer_name || data.slug || 'Calculator';
+    } else if (linkType === 'pearl') {
+        var tmp = document.createElement('div');
+        tmp.innerHTML = data.pearl_text || data.title || 'Pearl';
+        label = (tmp.textContent || tmp.innerText || 'Pearl').substring(0, 60);
+    } else {
+        label = (data.title || data.name || data.slug || '').substring(0, 60);
+    }
+
+    var chip = document.createElement('span');
+    chip.className = 'resource-chip';
+    chip.dataset.json = JSON.stringify(data);
+    chip.dataset.linkType = linkType;
+    chip.innerHTML =
+        '<i class="fas ' + meta.icon + '" style="color: ' + meta.color + ';"></i>' +
+        '<span class="chip-type-badge" style="background: ' + meta.badgeBg + '; color: ' + meta.color + ';">' + meta.badge + '</span>' +
+        '<span>' + escHtml(label) + '</span>' +
+        '<span class="remove-chip" onclick="this.parentElement.remove()" title="Remove"><i class="fas fa-times-circle"></i></span>';
+    container.appendChild(chip);
+}
+
+// Legacy chip function (for PDF chips and backward compat)
 function addChip(containerId, data, type) {
     var container = document.getElementById(containerId);
+    if (!container) return;
     var chip = document.createElement('span');
     chip.className = 'resource-chip';
     chip.dataset.json = JSON.stringify(data);
@@ -171,7 +258,9 @@ function addChip(containerId, data, type) {
 }
 
 function getChips(containerId) {
-    var chips = document.querySelectorAll('#' + containerId + ' .resource-chip');
+    var el = document.getElementById(containerId);
+    if (!el) return [];
+    var chips = el.querySelectorAll('.resource-chip');
     var items = [];
     chips.forEach(function(chip) {
         try { items.push(JSON.parse(chip.dataset.json)); } catch(e) {}
@@ -179,10 +268,78 @@ function getChips(containerId) {
     return items;
 }
 
-// ==================== SEARCH ====================
+// ==================== UNIFIED CONTENT SEARCH ====================
 
 var _searchTimeout = null;
 
+function searchContent(inputId, resultsId, chipsId) {
+    var query = document.getElementById(inputId).value.trim();
+    if (query.length < 2) {
+        document.getElementById(resultsId).classList.add('d-none');
+        return;
+    }
+
+    clearTimeout(_searchTimeout);
+    _searchTimeout = setTimeout(function() {
+        fetch('/api/cases/search?type=all&q=' + encodeURIComponent(query) + '&limit=15')
+            .then(function(r) { return r.json(); })
+            .then(function(results) {
+                var container = document.getElementById(resultsId);
+                container.innerHTML = '';
+                if (results.length === 0) {
+                    container.innerHTML = '<div class="search-result-item text-muted">No results found</div>';
+                    container.classList.remove('d-none');
+                    return;
+                }
+                results.forEach(function(item) {
+                    var lt = item.link_type || '';
+                    var meta = CONTENT_TYPE_META[lt] || { icon: 'fa-link', color: '#6c757d', badge: lt, badgeBg: '#f0f1f3' };
+
+                    var label = '';
+                    if (lt === 'case') {
+                        label = '<strong>' + escHtml(item.case_number) + '</strong>: ' + escHtml(item.diagnosis || '');
+                    } else if (lt === 'calculator') {
+                        label = '<strong>' + escHtml(item.cancer_name || item.slug) + '</strong>';
+                        if (item.body_section) label += ' <small class="text-muted">(' + escHtml(item.body_section) + ')</small>';
+                    } else if (lt === 'pearl') {
+                        var pearlText = (item.title || '').replace(/<[^>]+>/g, '').substring(0, 80);
+                        label = '<strong>' + escHtml(pearlText || 'Pearl #' + item.id) + '</strong>';
+                    } else {
+                        label = '<strong>' + escHtml(item.title || item.name || item.slug || '') + '</strong>';
+                        if (item.body_section || item.category) label += ' <small class="text-muted">(' + escHtml(item.body_section || item.category || '') + ')</small>';
+                    }
+
+                    var div = document.createElement('div');
+                    div.className = 'search-result-item d-flex align-items-center gap-2';
+                    div.innerHTML =
+                        '<i class="fas ' + meta.icon + '" style="color: ' + meta.color + '; width: 16px; text-align: center;"></i>' +
+                        '<span class="chip-type-badge" style="background: ' + meta.badgeBg + '; color: ' + meta.color + '; font-size: 0.6rem; padding: 0 4px; border-radius: 3px; font-weight: 600; text-transform: uppercase;">' + meta.badge + '</span>' +
+                        '<span class="flex-grow-1">' + label + '</span>';
+
+                    div.onclick = function() {
+                        // Check for duplicate
+                        var existing = document.querySelectorAll('#' + chipsId + ' .resource-chip');
+                        var isDuplicate = false;
+                        existing.forEach(function(chip) {
+                            try {
+                                var d = JSON.parse(chip.dataset.json);
+                                if (d.id === item.id && chip.dataset.linkType === lt) isDuplicate = true;
+                            } catch(e) {}
+                        });
+                        if (!isDuplicate) {
+                            addContentChip(chipsId, item, lt);
+                        }
+                        container.classList.add('d-none');
+                        document.getElementById(inputId).value = '';
+                    };
+                    container.appendChild(div);
+                });
+                container.classList.remove('d-none');
+            });
+    }, 300);
+}
+
+// Legacy per-type search (kept for backward compat with old templates)
 function searchItems(inputId, resultsId, type) {
     var query = document.getElementById(inputId).value.trim();
     if (query.length < 2) {
@@ -220,7 +377,6 @@ function searchItems(inputId, resultsId, type) {
                         div.innerHTML = '<i class="fas fa-link me-1 text-muted"></i><strong>' + escHtml(item.title || item.name || item.slug || '') + '</strong>';
                     }
                     div.onclick = function() {
-                        // Map search type to chip container and chip type
                         var chipsId, chipType;
                         if (type === 'algorithm') {
                             chipsId = inputId.replace('TnmSearch', 'LinkedTnm');
@@ -239,9 +395,7 @@ function searchItems(inputId, resultsId, type) {
                             chipType = 'pearl_link';
                         }
                         var existing = getChips(chipsId);
-                        var isDuplicate = existing.some(function(e) {
-                            return e.id === item.id;
-                        });
+                        var isDuplicate = existing.some(function(e) { return e.id === item.id; });
                         if (!isDuplicate) {
                             addChip(chipsId, item, chipType);
                         }
@@ -268,7 +422,6 @@ function uploadPDFs(input, chipsContainerId, progressId) {
         return;
     }
 
-    // Validate all files first
     for (var i = 0; i < files.length; i++) {
         if (!files[i].name.toLowerCase().endsWith('.pdf')) {
             alert(files[i].name + ' is not a PDF. Only PDF files are allowed.');
@@ -285,7 +438,6 @@ function uploadPDFs(input, chipsContainerId, progressId) {
     var progressDiv = document.getElementById(progressId);
     var progressBar = progressDiv.querySelector('.progress-bar');
 
-    // Upload files sequentially
     var idx = 0;
     function uploadNext() {
         if (idx >= files.length) {
@@ -350,7 +502,16 @@ function escAttr(str) {
 // ==================== AUTO-INIT ====================
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Map input ID suffixes to search types
+    // Attach unified content search to all ContentSearch inputs
+    document.querySelectorAll('[id$="ContentSearch"]').forEach(function(input) {
+        input.addEventListener('keydown', function(e) { if (e.key === 'Enter') e.preventDefault(); });
+        input.addEventListener('input', function() {
+            var prefix = this.id.replace('ContentSearch', '');
+            searchContent(this.id, prefix + 'ContentResults', prefix + 'LinkedContent');
+        });
+    });
+
+    // Legacy: attach per-type search to old-style inputs if they exist
     var _searchTypeMap = {
         'CaseSearch': 'case',
         'TnmSearch': 'algorithm',
@@ -358,12 +519,8 @@ document.addEventListener('DOMContentLoaded', function() {
         'TemplateSearch': 'radiology_template',
         'PearlSearch': 'pearl'
     };
-
-    // Attach Enter key prevention + live search to all search inputs
     document.querySelectorAll('[id$="CaseSearch"], [id$="TnmSearch"], [id$="AlgorithmSearch"], [id$="TemplateSearch"], [id$="PearlSearch"]').forEach(function(input) {
-        input.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter') e.preventDefault();
-        });
+        input.addEventListener('keydown', function(e) { if (e.key === 'Enter') e.preventDefault(); });
         input.addEventListener('input', function() {
             var resultsId = this.id.replace('Search', 'Results');
             var type = 'case';
