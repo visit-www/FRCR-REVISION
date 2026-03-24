@@ -76,8 +76,23 @@
             <!-- Browse by Category (ordered) -->
             {% if grouped %}
             <div id="browseCategories">
+                {% set pastel_map = {
+                    'acute_emergency': '#fde8e8',
+                    'diagnostic_algorithms': '#e4eff4',
+                    'interventional': '#ece4f6',
+                    'pre_procedural': '#fdeee4',
+                    'intra_procedural': '#f8e3ef',
+                    'post_procedural': '#e2f2e8',
+                    'contrast_safety': '#e1edfb',
+                    'mri_safety': '#ebe2fb',
+                    'radiation_protection': '#fef0e1',
+                    'special_populations': '#e0f5ef',
+                    'medication_risk': '#fef8e1',
+                    'adverse_events': '#fde8e8'
+                } %}
                 {% for cat_slug, cat_name, cat_color, cat_icon in protocol_categories %}
                 {% if cat_slug in grouped %}
+                {% set pastel = pastel_map.get(cat_slug, '#f0f0f0') %}
                 <div class="mb-4">
                     <h5 class="mb-3">
                         <i class="fas {{ cat_icon }} me-2" style="color: {{ cat_color }};"></i>
@@ -86,24 +101,27 @@
                     <div class="row g-3">
                         {% for p in grouped[cat_slug] %}
                         <div class="col-md-6 col-lg-4">
-                            <div class="card border-0 shadow-sm hover-card h-100"
-                                 style="cursor: pointer; transition: transform 0.2s ease; border-left: 4px solid {{ cat_color }} !important;"
-                                 onclick="window.location.href='/radiology-protocols/view/{{ p.id }}'">
-                                <div class="card-body">
-                                    <h6 class="mb-2">
-                                        <i class="fas fa-file-alt me-1" style="color: {{ cat_color }};"></i>
-                                        {{ p.title }}
-                                    </h6>
-                                    {% if p.source_citation %}
-                                    <small class="text-muted">
-                                        <i class="fas fa-book me-1"></i>{{ p.source_citation }}
-                                    </small>
-                                    {% endif %}
-                                    {% if p.verified_at %}
-                                    <br><small class="text-success"><i class="fas fa-check-circle me-1"></i>Verified</small>
-                                    {% endif %}
+                            <a href="/radiology-protocols/view/{{ p.id }}" class="text-decoration-none protocol-card-link">
+                                <div class="card border-0 shadow-sm h-100 protocol-card"
+                                     style="background: {{ pastel }}; border-top: 3px solid {{ cat_color }} !important;">
+                                    <div class="card-body pb-2">
+                                        <div class="d-flex align-items-start mb-2">
+                                            <span class="protocol-icon-badge me-2" style="background: {{ cat_color }};">
+                                                <i class="fas {{ cat_icon }}"></i>
+                                            </span>
+                                            <h6 class="mb-0 flex-grow-1" style="color: #2c3e50; line-height: 1.35;">{{ p.title }}</h6>
+                                        </div>
+                                        {% if p.source_citation %}
+                                        <small class="text-muted d-block mt-1">
+                                            <i class="fas fa-book me-1"></i>{{ p.source_citation }}
+                                        </small>
+                                        {% endif %}
+                                        {% if p.verified_at %}
+                                        <small class="d-inline-block mt-1" style="color: #198754;"><i class="fas fa-check-circle me-1"></i>Verified</small>
+                                        {% endif %}
+                                    </div>
                                 </div>
-                            </div>
+                            </a>
                         </div>
                         {% endfor %}
                     </div>
@@ -122,24 +140,27 @@
                     <div class="row g-3">
                         {% for p in protos %}
                         <div class="col-md-6 col-lg-4">
-                            <div class="card border-0 shadow-sm hover-card h-100"
-                                 style="cursor: pointer; transition: transform 0.2s ease; border-left: 4px solid #5E899E !important;"
-                                 onclick="window.location.href='/radiology-protocols/view/{{ p.id }}'">
-                                <div class="card-body">
-                                    <h6 class="mb-2">
-                                        <i class="fas fa-file-alt me-1" style="color: #5E899E;"></i>
-                                        {{ p.title }}
-                                    </h6>
-                                    {% if p.source_citation %}
-                                    <small class="text-muted">
-                                        <i class="fas fa-book me-1"></i>{{ p.source_citation }}
-                                    </small>
-                                    {% endif %}
-                                    {% if p.verified_at %}
-                                    <br><small class="text-success"><i class="fas fa-check-circle me-1"></i>Verified</small>
-                                    {% endif %}
+                            <a href="/radiology-protocols/view/{{ p.id }}" class="text-decoration-none protocol-card-link">
+                                <div class="card border-0 shadow-sm h-100 protocol-card"
+                                     style="background: #e4eff4; border-top: 3px solid #5E899E !important;">
+                                    <div class="card-body pb-2">
+                                        <div class="d-flex align-items-start mb-2">
+                                            <span class="protocol-icon-badge me-2" style="background: #5E899E;">
+                                                <i class="fas fa-folder-open"></i>
+                                            </span>
+                                            <h6 class="mb-0 flex-grow-1" style="color: #2c3e50; line-height: 1.35;">{{ p.title }}</h6>
+                                        </div>
+                                        {% if p.source_citation %}
+                                        <small class="text-muted d-block mt-1">
+                                            <i class="fas fa-book me-1"></i>{{ p.source_citation }}
+                                        </small>
+                                        {% endif %}
+                                        {% if p.verified_at %}
+                                        <small class="d-inline-block mt-1" style="color: #198754;"><i class="fas fa-check-circle me-1"></i>Verified</small>
+                                        {% endif %}
+                                    </div>
                                 </div>
-                            </div>
+                            </a>
                         </div>
                         {% endfor %}
                     </div>
@@ -160,8 +181,46 @@
 {% endblock %}
 
 {% block scripts %}
+<style>
+.protocol-card {
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    border-radius: 10px !important;
+}
+.protocol-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.12) !important;
+}
+.protocol-card-link { color: inherit; }
+.protocol-icon-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    min-width: 30px;
+    border-radius: 8px;
+    color: #fff;
+    font-size: 0.8rem;
+    margin-top: 1px;
+}
+</style>
 <script>
 var CATEGORY_MAP = {{ category_map|tojson }};
+var PASTEL_MAP = {
+    'acute_emergency': '#fde8e8',
+    'diagnostic_algorithms': '#e4eff4',
+    'interventional': '#ece4f6',
+    'pre_procedural': '#fdeee4',
+    'intra_procedural': '#f8e3ef',
+    'post_procedural': '#e2f2e8',
+    'contrast_safety': '#e1edfb',
+    'mri_safety': '#ebe2fb',
+    'radiation_protection': '#fef0e1',
+    'special_populations': '#e0f5ef',
+    'medication_risk': '#fef8e1',
+    'adverse_events': '#fde8e8'
+};
 
 document.addEventListener('DOMContentLoaded', function() {
     const searchInput = document.getElementById('searchInput');
@@ -195,23 +254,29 @@ document.addEventListener('DOMContentLoaded', function() {
                         return;
                     }
 
-                    searchResults.innerHTML = results.map(r => {
+                    searchResults.innerHTML = '<div class="row g-3">' + results.map(r => {
                         var catInfo = CATEGORY_MAP[r.category] || {name: r.category, color: '#5E899E', icon: 'fa-file-alt'};
+                        var pastel = PASTEL_MAP[r.category] || '#f0f0f0';
                         return `
-                        <div class="card border-0 shadow-sm mb-3 hover-card" style="cursor: pointer; transition: transform 0.2s ease; border-left: 4px solid ${catInfo.color} !important;"
-                             onclick="window.location.href='${r.url}'">
-                            <div class="card-body py-3">
-                                <div class="d-flex align-items-center">
-                                    <i class="fas ${catInfo.icon} me-3" style="font-size: 1.3rem; color: ${catInfo.color};"></i>
-                                    <div>
-                                        <h6 class="mb-0">${r.title}</h6>
-                                        <small class="text-muted"><span class="badge" style="background: ${catInfo.color};">${catInfo.name}</span></small>
+                        <div class="col-md-6 col-lg-4">
+                            <a href="${r.url}" class="text-decoration-none protocol-card-link">
+                                <div class="card border-0 shadow-sm h-100 protocol-card"
+                                     style="background: ${pastel}; border-top: 3px solid ${catInfo.color} !important;">
+                                    <div class="card-body pb-2">
+                                        <div class="d-flex align-items-start mb-2">
+                                            <span class="protocol-icon-badge me-2" style="background: ${catInfo.color};">
+                                                <i class="fas ${catInfo.icon}"></i>
+                                            </span>
+                                            <h6 class="mb-0 flex-grow-1" style="color: #2c3e50; line-height: 1.35;">${r.title}</h6>
+                                        </div>
+                                        <small class="text-muted">
+                                            <span class="badge" style="background: ${catInfo.color}; font-weight: 500;">${catInfo.name}</span>
+                                        </small>
                                     </div>
-                                    <i class="fas fa-chevron-right text-muted ms-auto"></i>
                                 </div>
-                            </div>
+                            </a>
                         </div>`;
-                    }).join('');
+                    }).join('') + '</div>';
                 })
                 .catch(() => {
                     searchResults.innerHTML = '<div class="alert alert-danger">Search failed.</div>';
