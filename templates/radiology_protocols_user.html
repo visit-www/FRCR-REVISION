@@ -93,31 +93,40 @@
                 {% for cat_slug, cat_name, cat_color, cat_icon in protocol_categories %}
                 {% if cat_slug in grouped %}
                 {% set pastel = pastel_map.get(cat_slug, '#f0f0f0') %}
-                <div class="mb-4">
-                    <h5 class="mb-3">
-                        <i class="fas {{ cat_icon }} me-2" style="color: {{ cat_color }};"></i>
-                        {{ cat_name }}
-                    </h5>
+                <div class="mb-5">
+                    <div class="d-flex align-items-center mb-3">
+                        <span class="cat-header-icon" style="background: {{ pastel }}; color: {{ cat_color }};">
+                            <i class="fas {{ cat_icon }}"></i>
+                        </span>
+                        <div class="ms-2">
+                            <h5 class="mb-0" style="color: #2c3e50;">{{ cat_name }}</h5>
+                            <small class="text-muted">{{ grouped[cat_slug]|length }} protocol{{ 's' if grouped[cat_slug]|length != 1 }}</small>
+                        </div>
+                    </div>
                     <div class="row g-3">
                         {% for p in grouped[cat_slug] %}
                         <div class="col-md-6 col-lg-4">
                             <a href="/radiology-protocols/view/{{ p.id }}" class="text-decoration-none protocol-card-link">
-                                <div class="card border-0 shadow-sm h-100 protocol-card"
-                                     style="background: {{ pastel }}; border-top: 3px solid {{ cat_color }} !important;">
-                                    <div class="card-body pb-2">
-                                        <div class="d-flex align-items-start mb-2">
-                                            <span class="protocol-icon-badge me-2" style="background: {{ cat_color }};">
+                                <div class="protocol-card h-100">
+                                    <div class="protocol-card-accent" style="background: {{ cat_color }};"></div>
+                                    <div class="protocol-card-body">
+                                        <div class="d-flex align-items-start">
+                                            <span class="protocol-icon-circle" style="background: {{ pastel }}; color: {{ cat_color }};">
                                                 <i class="fas {{ cat_icon }}"></i>
                                             </span>
-                                            <h6 class="mb-0 flex-grow-1" style="color: #2c3e50; line-height: 1.35;">{{ p.title }}</h6>
+                                            <div class="ms-3 flex-grow-1">
+                                                <h6 class="protocol-card-title mb-1">{{ p.title }}</h6>
+                                                {% if p.source_citation %}
+                                                <small class="protocol-card-source">
+                                                    <i class="fas fa-book me-1"></i>{{ p.source_citation }}
+                                                </small>
+                                                {% endif %}
+                                            </div>
                                         </div>
-                                        {% if p.source_citation %}
-                                        <small class="text-muted d-block mt-1">
-                                            <i class="fas fa-book me-1"></i>{{ p.source_citation }}
-                                        </small>
-                                        {% endif %}
                                         {% if p.verified_at %}
-                                        <small class="d-inline-block mt-1" style="color: #198754;"><i class="fas fa-check-circle me-1"></i>Verified</small>
+                                        <div class="mt-2 pt-2" style="border-top: 1px solid #f0f0f0;">
+                                            <small style="color: #198754;"><i class="fas fa-check-circle me-1"></i>Verified</small>
+                                        </div>
                                         {% endif %}
                                     </div>
                                 </div>
@@ -129,34 +138,43 @@
                 {% endif %}
                 {% endfor %}
 
-                {# Show any protocols with unmapped categories at the end #}
+                {# Unmapped categories fallback #}
                 {% for category, protos in grouped.items() %}
                 {% if category not in category_map %}
-                <div class="mb-4">
-                    <h5 class="mb-3">
-                        <i class="fas fa-folder-open me-2" style="color: #5E899E;"></i>
-                        {{ category|capitalize }}
-                    </h5>
+                <div class="mb-5">
+                    <div class="d-flex align-items-center mb-3">
+                        <span class="cat-header-icon" style="background: #e4eff4; color: #5E899E;">
+                            <i class="fas fa-folder-open"></i>
+                        </span>
+                        <div class="ms-2">
+                            <h5 class="mb-0" style="color: #2c3e50;">{{ category|capitalize }}</h5>
+                            <small class="text-muted">{{ protos|length }} protocol{{ 's' if protos|length != 1 }}</small>
+                        </div>
+                    </div>
                     <div class="row g-3">
                         {% for p in protos %}
                         <div class="col-md-6 col-lg-4">
                             <a href="/radiology-protocols/view/{{ p.id }}" class="text-decoration-none protocol-card-link">
-                                <div class="card border-0 shadow-sm h-100 protocol-card"
-                                     style="background: #e4eff4; border-top: 3px solid #5E899E !important;">
-                                    <div class="card-body pb-2">
-                                        <div class="d-flex align-items-start mb-2">
-                                            <span class="protocol-icon-badge me-2" style="background: #5E899E;">
+                                <div class="protocol-card h-100">
+                                    <div class="protocol-card-accent" style="background: #5E899E;"></div>
+                                    <div class="protocol-card-body">
+                                        <div class="d-flex align-items-start">
+                                            <span class="protocol-icon-circle" style="background: #e4eff4; color: #5E899E;">
                                                 <i class="fas fa-folder-open"></i>
                                             </span>
-                                            <h6 class="mb-0 flex-grow-1" style="color: #2c3e50; line-height: 1.35;">{{ p.title }}</h6>
+                                            <div class="ms-3 flex-grow-1">
+                                                <h6 class="protocol-card-title mb-1">{{ p.title }}</h6>
+                                                {% if p.source_citation %}
+                                                <small class="protocol-card-source">
+                                                    <i class="fas fa-book me-1"></i>{{ p.source_citation }}
+                                                </small>
+                                                {% endif %}
+                                            </div>
                                         </div>
-                                        {% if p.source_citation %}
-                                        <small class="text-muted d-block mt-1">
-                                            <i class="fas fa-book me-1"></i>{{ p.source_citation }}
-                                        </small>
-                                        {% endif %}
                                         {% if p.verified_at %}
-                                        <small class="d-inline-block mt-1" style="color: #198754;"><i class="fas fa-check-circle me-1"></i>Verified</small>
+                                        <div class="mt-2 pt-2" style="border-top: 1px solid #f0f0f0;">
+                                            <small style="color: #198754;"><i class="fas fa-check-circle me-1"></i>Verified</small>
+                                        </div>
                                         {% endif %}
                                     </div>
                                 </div>
@@ -182,27 +200,56 @@
 
 {% block scripts %}
 <style>
-.protocol-card {
-    cursor: pointer;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-    border-radius: 10px !important;
-}
-.protocol-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 6px 20px rgba(0,0,0,0.12) !important;
-}
-.protocol-card-link { color: inherit; }
-.protocol-icon-badge {
+/* Category header icon */
+.cat-header-icon {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 30px;
-    height: 30px;
-    min-width: 30px;
-    border-radius: 8px;
-    color: #fff;
-    font-size: 0.8rem;
-    margin-top: 1px;
+    width: 40px; height: 40px; min-width: 40px;
+    border-radius: 12px;
+    font-size: 1rem;
+}
+/* Protocol card — white, no outline, bottom accent bar */
+.protocol-card {
+    position: relative;
+    background: #fff;
+    border-radius: 12px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+.protocol-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+}
+.protocol-card-accent {
+    height: 4px;
+    width: 100%;
+}
+.protocol-card-body {
+    padding: 16px 16px 14px;
+}
+.protocol-card-link { color: inherit; }
+/* Icon circle — pastel bg, accent text */
+.protocol-icon-circle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 38px; height: 38px; min-width: 38px;
+    border-radius: 50%;
+    font-size: 0.9rem;
+}
+.protocol-card-title {
+    color: #2c3e50;
+    font-size: 0.92rem;
+    font-weight: 600;
+    line-height: 1.35;
+}
+.protocol-card-source {
+    color: #7c8a96;
+    font-size: 0.78rem;
+    display: block;
 }
 </style>
 <script>
@@ -255,23 +302,25 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
 
                     searchResults.innerHTML = '<div class="row g-3">' + results.map(r => {
-                        var catInfo = CATEGORY_MAP[r.category] || {name: r.category, color: '#5E899E', icon: 'fa-file-alt'};
+                        var ci = CATEGORY_MAP[r.category] || {name: r.category, color: '#5E899E', icon: 'fa-file-alt'};
                         var pastel = PASTEL_MAP[r.category] || '#f0f0f0';
                         return `
                         <div class="col-md-6 col-lg-4">
                             <a href="${r.url}" class="text-decoration-none protocol-card-link">
-                                <div class="card border-0 shadow-sm h-100 protocol-card"
-                                     style="background: ${pastel}; border-top: 3px solid ${catInfo.color} !important;">
-                                    <div class="card-body pb-2">
-                                        <div class="d-flex align-items-start mb-2">
-                                            <span class="protocol-icon-badge me-2" style="background: ${catInfo.color};">
-                                                <i class="fas ${catInfo.icon}"></i>
+                                <div class="protocol-card h-100">
+                                    <div class="protocol-card-accent" style="background: ${ci.color};"></div>
+                                    <div class="protocol-card-body">
+                                        <div class="d-flex align-items-start">
+                                            <span class="protocol-icon-circle" style="background: ${pastel}; color: ${ci.color};">
+                                                <i class="fas ${ci.icon}"></i>
                                             </span>
-                                            <h6 class="mb-0 flex-grow-1" style="color: #2c3e50; line-height: 1.35;">${r.title}</h6>
+                                            <div class="ms-3 flex-grow-1">
+                                                <h6 class="protocol-card-title mb-1">${r.title}</h6>
+                                                <small class="protocol-card-source">
+                                                    <span class="badge" style="background: ${pastel}; color: ${ci.color}; font-weight: 600;">${ci.name}</span>
+                                                </small>
+                                            </div>
                                         </div>
-                                        <small class="text-muted">
-                                            <span class="badge" style="background: ${catInfo.color}; font-weight: 500;">${catInfo.name}</span>
-                                        </small>
                                     </div>
                                 </div>
                             </a>
