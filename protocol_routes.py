@@ -20,7 +20,7 @@ import json
 import os
 import logging
 
-from models import db, ClinicalProtocol, OnCallQueryLog
+from models import db, ClinicalProtocol, OnCallQueryLog, ContentIntelligence
 from access_control import require_admin
 
 logger = logging.getLogger(__name__)
@@ -264,11 +264,24 @@ def view_protocol(protocol_id):
 
     resources_json = json.dumps(resources) if resources else '{}'
 
+    # Load AI cross-links
+    ai_cross_links = []
+    try:
+        ci = ContentIntelligence.query.filter_by(
+            content_type='protocol', content_id=protocol.id
+        ).first()
+        if ci and ci.cross_links_json:
+            _links = json.loads(ci.cross_links_json)
+            ai_cross_links = [l for l in _links if l.get('url')]
+    except Exception:
+        pass
+
     return render_template('protocol_view.html',
                            protocol=protocol,
                            resources=resources,
                            resources_json=resources_json,
-                           category_map=CATEGORY_MAP)
+                           category_map=CATEGORY_MAP,
+                           ai_cross_links=ai_cross_links)
 
 
 # ==================== STUDENT LINK/UNLINK API ====================

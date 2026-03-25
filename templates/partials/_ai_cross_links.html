@@ -1,0 +1,40 @@
+{# AI Cross-Links partial — include on any content view page.
+   Expects: ai_cross_links (list of {type, id, title, url, relevance})
+#}
+{% if ai_cross_links %}
+<div class="container-fluid py-2">
+    <div class="row">
+        <div class="col-12">
+            <div class="ai-cross-links-card p-3 rounded mb-3">
+                <div class="d-flex align-items-center mb-2">
+                    <i class="fas fa-project-diagram me-2" style="color: var(--brand-neutral);"></i>
+                    <strong class="small" style="color: var(--brand-text-primary);">Related Content (AI)</strong>
+                </div>
+                <div class="d-flex flex-wrap gap-2">
+                    {% for link in ai_cross_links %}
+                    {% set type_meta = {
+                        'case':                {'icon': 'fa-book-medical',    'color': '#5E899E', 'bg': '#e4eff4', 'label': 'Case'},
+                        'protocol':            {'icon': 'fa-shield-alt',      'color': '#dc3545', 'bg': '#fce4e4', 'label': 'Protocol'},
+                        'reporting_algorithm': {'icon': 'fa-project-diagram', 'color': '#5E899E', 'bg': '#e4eff4', 'label': 'Algorithm'},
+                        'radiology_template':  {'icon': 'fa-clipboard-list',  'color': '#2e7d5e', 'bg': '#e0f0e8', 'label': 'Template'},
+                        'radiology_tool':      {'icon': 'fa-tools',           'color': '#e96304', 'bg': '#fdeee4', 'label': 'Tool'},
+                        'radiology_pearl':     {'icon': 'fa-gem',             'color': '#b8860b', 'bg': '#fdf5e1', 'label': 'Pearl'},
+                        'anatomy_snippet':     {'icon': 'fa-bone',            'color': '#6b46c1', 'bg': '#ece4f6', 'label': 'Anatomy'},
+                    } %}
+                    {% set meta = type_meta.get(link.type, {'icon': 'fa-link', 'color': '#6c757d', 'bg': '#f0f1f3', 'label': link.type}) %}
+                    <a href="{{ link.url }}"
+                       class="ai-cross-link-badge text-decoration-none"
+                       style="background: {{ meta.bg }}; color: {{ meta.color }}; border: 1px solid {{ meta.color }}20;"
+                       title="{{ link.relevance or '' }}"
+                       data-bs-toggle="tooltip" data-bs-placement="top">
+                        <i class="fas {{ meta.icon }} me-1"></i>
+                        <span class="ai-cross-link-type">{{ meta.label }}</span>
+                        <span class="ai-cross-link-title">{{ link.title[:60] }}</span>
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}

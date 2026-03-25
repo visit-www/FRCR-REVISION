@@ -92,6 +92,23 @@ def process_content_intelligence(content_type, content_id, title, body_section, 
     }
 
 
+def _build_url(ctype, match):
+    """Build a frontend URL for a resolved cross-link match."""
+    TYPE_URL_MAP = {
+        'case': lambda m: f'/view-case/{m.id}',
+        'protocol': lambda m: f'/radiology-protocols/view/{m.id}',
+        'reporting_algorithm': lambda m: f'/reporting-template/{m.slug}',
+        'radiology_template': lambda m: f'/radiology-template/view/{m.id}',
+        'radiology_tool': lambda m: f'/incidental-findings/{m.slug}',
+        'radiology_pearl': lambda m: '/radiology-pearls',
+        'anatomy_snippet': lambda m: f'/anatomy-snippets/{m.slug}',
+    }
+    try:
+        return TYPE_URL_MAP[ctype](match)
+    except Exception:
+        return None
+
+
 def resolve_cross_links(cross_link_hints):
     """Resolve title_hint strings to actual content IDs via ILIKE search.
 
@@ -99,7 +116,7 @@ def resolve_cross_links(cross_link_hints):
         cross_link_hints: list of {type, title_hint, relevance}
 
     Returns:
-        list of {type, id, title, relevance} with resolved IDs
+        list of {type, id, title, url, relevance} with resolved IDs
     """
     if not cross_link_hints:
         return []
@@ -131,10 +148,12 @@ def resolve_cross_links(cross_link_hints):
             field = getattr(model_cls, title_field)
             match = model_cls.query.filter(field.ilike(f'%{title_hint}%')).first()
             if match:
+                url = _build_url(ctype, match)
                 resolved.append({
                     'type': ctype,
                     'id': id_fn(match),
                     'title': getattr(match, title_field, '')[:100],
+                    'url': url,
                     'relevance': hint.get('relevance', ''),
                 })
         except Exception:

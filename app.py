@@ -3039,8 +3039,21 @@ def view_case(case_id):
     except Exception:
         pass
     
-    return render_template('view_case.html', 
-                         case=case, 
+    # Load AI cross-links
+    ai_cross_links = []
+    try:
+        ci = ContentIntelligence.query.filter_by(
+            content_type='case', content_id=case_id
+        ).first()
+        if ci and ci.cross_links_json:
+            import json as _json
+            _links = _json.loads(ci.cross_links_json)
+            ai_cross_links = [l for l in _links if l.get('url')]
+    except Exception:
+        pass
+
+    return render_template('view_case.html',
+                         case=case,
                          user_note=user_note,
                          previous_case_id=prev_case_id,
                          next_case_id=next_case_id,
@@ -3048,7 +3061,8 @@ def view_case(case_id):
                          nav_params=nav_params,
                          nav_query_string=nav_query_string,
                          show_tnm_tab=show_tnm_tab,
-                         tnm_staging_url=tnm_staging_url)
+                         tnm_staging_url=tnm_staging_url,
+                         ai_cross_links=ai_cross_links)
 
 
 # Body part groups for edit-case dropdown (group label -> enum names; must match models.BodyPart)

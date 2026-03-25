@@ -13,7 +13,7 @@ import os
 import re
 import logging
 
-from models import db, IncidentalFindingCalculator
+from models import db, IncidentalFindingCalculator, ContentIntelligence
 from access_control import require_admin
 from clinical_tool_generator import extract_html_content
 
@@ -125,10 +125,23 @@ def view_calculator(slug):
             if source_field.strip() and not source_field.strip().startswith('{'):
                 resources['references'] = [{'source': source_field.strip(), 'version': '', 'url': ''}]
 
+    # Load AI cross-links
+    ai_cross_links = []
+    try:
+        ci = ContentIntelligence.query.filter_by(
+            content_type='radiology_tool', content_id=calculator.id
+        ).first()
+        if ci and ci.cross_links_json:
+            _links = _json.loads(ci.cross_links_json)
+            ai_cross_links = [l for l in _links if l.get('url')]
+    except Exception:
+        pass
+
     return render_template('radiology_tools_viewer.html',
                            calculator=calculator,
                            content=content,
-                           resources=resources)
+                           resources=resources,
+                           ai_cross_links=ai_cross_links)
 
 
 @if_bp.route('/api/search')

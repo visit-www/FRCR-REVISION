@@ -30,6 +30,21 @@ from clinical_tool_generator import extract_html_content
 
 logger = logging.getLogger(__name__)
 
+
+def _get_ai_cross_links(content_type, content_id):
+    """Load resolved cross-links from ContentIntelligence for a content item."""
+    ci = ContentIntelligence.query.filter_by(
+        content_type=content_type, content_id=content_id
+    ).first()
+    if not ci or not ci.cross_links_json:
+        return []
+    try:
+        links = json.loads(ci.cross_links_json)
+        return [link for link in links if link.get('url')]
+    except (json.JSONDecodeError, TypeError):
+        return []
+
+
 # ==================== MODALITY NORMALIZATION ====================
 _MODALITY_MAP = {
     'ct': 'CT', 'ct scan': 'CT', 'computed tomography': 'CT',
@@ -1285,7 +1300,8 @@ def view_reporting_template(slug):
                            template=template,
                            content=content,
                            resources=resources,
-                           nav_active=nav_active)
+                           nav_active=nav_active,
+                           ai_cross_links=_get_ai_cross_links('reporting_algorithm', template.id))
 
 
 @reporting_bp.route('/reporting-template/embed/<slug>')
@@ -1418,7 +1434,8 @@ def view_anatomy_snippet(slug):
         ReportingAlgorithm.is_available == True,
     ).first_or_404()
 
-    return render_template('anatomy_snippet_view.html', snippet=snippet)
+    return render_template('anatomy_snippet_view.html', snippet=snippet,
+                           ai_cross_links=_get_ai_cross_links('anatomy_snippet', snippet.id))
 
 
 @reporting_bp.route('/radiology-pearls')
@@ -1478,7 +1495,8 @@ def view_radiology_template(template_id):
             if t.source_citation.strip():
                 resources['references'] = [{'source': t.source_citation.strip(), 'version': '', 'url': ''}]
 
-    return render_template('radiology_template_view.html', template=t, resources=resources)
+    return render_template('radiology_template_view.html', template=t, resources=resources,
+                           ai_cross_links=_get_ai_cross_links('radiology_template', t.id))
 
 
 # ==================== ADMIN: REPORTING ALGORITHM MANAGEMENT ====================

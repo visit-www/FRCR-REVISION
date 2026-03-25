@@ -5811,3 +5811,38 @@ body {
     border-top: 2px solid var(--brand-primary);
     margin: 0.5rem 0;
 }
+
+/* ==================== AI CROSS-LINKS ==================== */
+.ai-cross-links-card {
+    background: #f8fafb;
+    border: 1px solid #e4edf2;
+}
+.ai-cross-link-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.65rem;
+    border-radius: 20px;
+    font-size: 0.78rem;
+    font-weight: 500;
+    line-height: 1.4;
+    transition: opacity 0.15s, box-shadow 0.15s;
+    white-space: nowrap;
+    max-width: 320px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.ai-cross-link-badge:hover {
+    opacity: 0.85;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.12);
+}
+.ai-cross-link-type {
+    font-weight: 700;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    margin-right: 0.35rem;
+}
+.ai-cross-link-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
