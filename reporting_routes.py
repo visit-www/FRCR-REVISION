@@ -1438,6 +1438,45 @@ def view_anatomy_snippet(slug):
                            ai_cross_links=_get_ai_cross_links('anatomy_snippet', snippet.id))
 
 
+@reporting_bp.route('/api/anatomy-snippets/search')
+@login_required
+def search_anatomy_snippets():
+    """Return cached anatomy snippets matching body_section and/or keyword query.
+
+    Query params:
+        body_section (str): Filter by body section (ILIKE match)
+        q (str): Free-text search on title and keywords
+        limit (int): Max results (default 10, max 20)
+    """
+    body_section = (request.args.get('body_section') or '').strip()
+    q = (request.args.get('q') or '').strip()
+    limit = min(int(request.args.get('limit', 10)), 20)
+
+    query = ReportingAlgorithm.query.filter(
+        ReportingAlgorithm.origin == 'anatomy_cache',
+        ReportingAlgorithm.is_available == True,
+    )
+
+    if body_section:
+        query = query.filter(ReportingAlgorithm.body_section.ilike(f'%{body_section}%'))
+    if q:
+        query = query.filter(db.or_(
+            ReportingAlgorithm.title.ilike(f'%{q}%'),
+            ReportingAlgorithm.keywords.ilike(f'%{q}%'),
+        ))
+
+    snippets = query.order_by(ReportingAlgorithm.title).limit(limit).all()
+
+    return jsonify([{
+        'id': s.id,
+        'slug': s.slug,
+        'title': s.title,
+        'body_section': s.body_section,
+        'modality': s.modality,
+        'description': (s.description or '')[:200],
+    } for s in snippets])
+
+
 @reporting_bp.route('/radiology-pearls')
 @login_required
 def browse_radiology_pearls():
@@ -1959,7 +1998,7 @@ def backfill_content_intelligence():
          lambda c: c.body_part.value if c.body_part else '',
          Case.status == CaseStatus.PUBLISHED),
         ('protocol', ClinicalProtocol, 'title', lambda c: (c.content_html or '') + ' ' + (c.keywords or ''),
-         lambda c: '', ClinicalProtocol.is_available == True),
+         lambda c: '', ClinicalProtocol.is_published == True),
         ('reporting_algorithm', ReportingAlgorithm, 'title', lambda c: (c.description or '') + ' ' + (c.keywords or ''),
          lambda c: c.body_section or '',
          db.and_(ReportingAlgorithm.is_available == True, ReportingAlgorithm.origin == 'admin')),
@@ -1972,10 +2011,16 @@ def backfill_content_intelligence():
         if processed_count >= 20:
             break
 
-        existing_ids = {ci.content_id for ci in
-                        ContentIntelligence.query.filter_by(content_type=ctype).all()}
+        try:
+            existing_ids = {ci.content_id for ci in
+                            ContentIntelligence.query.filter_by(content_type=ctype).all()}
+            items = model_cls.query.filter(extra_filter).all()
+        except Exception as exc:
+            logger.error(f"Backfill CI: failed to query {ctype}: {exc}")
+            db.session.rollback()
+            errors += 1
+            continue
 
-        items = model_cls.query.filter(extra_filter).all()
         for item in items:
             if processed_count >= 20:
                 break

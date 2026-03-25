@@ -676,9 +676,12 @@
                                         <p class="text-muted small mb-2">CT/MRI, anatomy diagrams, and concept diagrams. All CC-licensed.</p>
                                         <div id="anatomyCuratedImagesList" class="d-flex flex-wrap gap-3"></div>
                                     </div>
-                                    <h6 class="mb-3"><i class="fas fa-bone me-2" style="color: #5E899E;"></i>Anatomy Resources</h6>
-                                    <p class="text-muted small mb-3">Curated external anatomy resources relevant to this case's body region.</p>
-                                    
+                                    <!-- DB Anatomy Snippets (AI-generated, cached) -->
+                                    <div id="anatomySnippetsContainer" class="mb-4" style="display: none;"></div>
+
+                                    <h6 class="mb-3"><i class="fas fa-bone me-2" style="color: #5E899E;"></i>External Anatomy Resources</h6>
+                                    <p class="text-muted small mb-3">Curated deep links to anatomy viewers and tutorials matched to this case.</p>
+
                                     <!-- Resources will be loaded based on case body part/module -->
                                     <div id="anatomyResourcesContainer">
                                         <div class="text-center py-3">
@@ -8240,9 +8243,24 @@
             return;
         }
         if (anatomyResourcesLoaded) return;
-        
+
         // Show loading state
         container.innerHTML = '<div class="text-center py-3"><i class="fas fa-spinner fa-spin me-2"></i>Loading anatomy resources...</div>';
+
+        // Get case context (lowercase for matching)
+        const caseBodyPart = ('{{ case.body_part.value if case and case.body_part else "" }}').toLowerCase();
+        const caseModule = ('{{ case.module.value if case and case.module else "" }}').toLowerCase();
+        const caseDiagnosisLower = (typeof caseDiagnosis !== 'undefined' ? (caseDiagnosis || '') : '').toLowerCase();
+
+        // Map case body_part to the DB body_section values used by anatomy_cache
+        const BODY_SECTION_MAP = {
+            'head': 'Head and Neck', 'brain': 'Brain', 'neck': 'Head and Neck',
+            'head and neck': 'Head and Neck', 'chest': 'Thorax', 'thorax': 'Thorax',
+            'abdomen': 'Abdomen', 'pelvis': 'Pelvis', 'spine': 'Spine',
+            'musculoskeletal': 'Musculoskeletal', 'msk': 'Musculoskeletal',
+            'cardiovascular': 'Cardiovascular', 'breast': 'Breast',
+        };
+        const bodySection = BODY_SECTION_MAP[caseBodyPart] || BODY_SECTION_MAP[caseModule] || '';
 
         // Load curated reference images for this case
         const caseId = {{ case.id if case else 'null' }};
@@ -8283,164 +8301,180 @@
                 }
             } catch (e) { console.warn('[Anatomy] Curated images load failed:', e); }
         }
-        
+
+        // --- DB Anatomy Snippets ---
+        const snippetsContainer = document.getElementById('anatomySnippetsContainer');
+        if (snippetsContainer && bodySection) {
+            try {
+                const snippetRes = await fetch('/api/anatomy-snippets/search?body_section=' + encodeURIComponent(bodySection) + '&limit=6', { credentials: 'include' });
+                if (snippetRes.ok) {
+                    const snippets = await snippetRes.json();
+                    if (snippets.length > 0) {
+                        let shtml = '<h6 class="mb-2"><i class="fas fa-brain me-2" style="color: #6f42c1;"></i>Anatomy Snippets</h6>';
+                        shtml += '<p class="text-muted small mb-2">AI-generated anatomy references matching this case\'s body region.</p>';
+                        shtml += '<div class="d-flex flex-wrap gap-2 mb-2">';
+                        for (const s of snippets) {
+                            const modalityBadge = s.modality ? `<span class="badge bg-light text-muted" style="font-size:0.7em;">${s.modality}</span>` : '';
+                            shtml += `
+                                <a href="/anatomy-snippets/${s.slug}" target="_blank" rel="noopener" class="text-decoration-none" style="width: calc(50% - 0.25rem); min-width: 200px;">
+                                    <div class="p-2 rounded border" style="background: rgba(111, 66, 193, 0.06); border-color: rgba(111, 66, 193, 0.25) !important;">
+                                        <div class="d-flex align-items-start gap-2">
+                                            <i class="fas fa-bone mt-1" style="color: #6f42c1; font-size: 0.85em;"></i>
+                                            <div class="flex-grow-1 overflow-hidden">
+                                                <div style="color: #6f42c1; font-weight: 500; font-size: 0.9em;" class="text-truncate">${s.title}</div>
+                                                <div class="d-flex gap-1 mt-1 flex-wrap">
+                                                    <span class="badge" style="font-size:0.65em; background: rgba(111, 66, 193, 0.15); color: #6f42c1;">${s.body_section || ''}</span>
+                                                    ${modalityBadge}
+                                                </div>
+                                            </div>
+                                            <i class="fas fa-external-link-alt text-muted" style="font-size: 0.7em; margin-top: 4px;"></i>
+                                        </div>
+                                    </div>
+                                </a>`;
+                        }
+                        shtml += '</div>';
+                        snippetsContainer.innerHTML = shtml;
+                        snippetsContainer.style.display = 'block';
+                    }
+                }
+            } catch (e) { console.warn('[Anatomy] Snippet search failed:', e); }
+        }
+
+        // --- External Anatomy Resources ---
         try {
-            // Load anatomy resources via API (more reliable than static path)
-            const response = await fetch('/resources/api/anatomy-resources', {
-                credentials: 'include'
-            });
+            const response = await fetch('/resources/api/anatomy-resources', { credentials: 'include' });
             if (!response.ok) throw new Error('Failed to load anatomy resources');
-            
+
             const data = await response.json();
-            
-            // Get case context (lowercase for matching)
-            const caseBodyPart = ('{{ case.body_part.value if case and case.body_part else "" }}').toLowerCase();
-            const caseModule = ('{{ case.module.value if case and case.module else "" }}').toLowerCase();
-            const caseDiagnosisLower = (typeof caseDiagnosis !== 'undefined' ? (caseDiagnosis || '') : '').toLowerCase();
-            
-            // Use keyword mappings from JSON for better matching (fallback if missing)
+
             const DEFAULT_KEYWORDS = {
-                "Head": ["head","brain","skull","cranial","cerebral","pituitary"],
-                "Neck": ["neck","cervical","thyroid","head and neck"],
-                "Chest": ["chest","thorax","lung","mediastinum","cardiac","heart"],
-                "Abdomen": ["abdomen","liver","spleen","kidney","pancreas","bowel","gastro"],
-                "Pelvis": ["pelvis","bladder","uterus","ovary","prostate","breast","gynae"],
-                "Spine": ["spine","vertebra","lumbar","thoracic","cervical","cord"],
-                "MSK": ["knee","shoulder","ankle","elbow","wrist","hip","bone","msk","limb"]
+                "Head": ["head","brain","skull","cranial","cerebral","pituitary","temporal","sinus","orbit"],
+                "Neck": ["neck","cervical","thyroid","head and neck","pharynx","larynx","salivary"],
+                "Chest": ["chest","thorax","lung","mediastinum","cardiac","heart","pulmonary","pleural"],
+                "Abdomen": ["abdomen","liver","spleen","kidney","pancreas","bowel","gastro","biliary","hepatic","renal"],
+                "Pelvis": ["pelvis","bladder","uterus","ovary","prostate","breast","gynae","rectum"],
+                "Spine": ["spine","vertebra","lumbar","thoracic","cervical","cord","sacral"],
+                "MSK": ["knee","shoulder","ankle","elbow","wrist","hip","bone","msk","limb","musculoskeletal"]
             };
             const bodyPartKeywords = data.body_part_keywords || DEFAULT_KEYWORDS;
-            
-            // Find which body regions this case matches
-            // Priority 1: body part mentioned in diagnosis (e.g. "lung cancer" -> lung, "breast carcinoma" -> breast)
-            // Priority 2: fall back to case body_part and module if diagnosis yields nothing
+
             let matchedRegions = [];
-            
             const matchFromText = (text) => {
                 const regions = [];
                 for (const [region, keywords] of Object.entries(bodyPartKeywords)) {
-                    const keywordsLower = keywords.map(k => k.toLowerCase());
-                    if (keywordsLower.some(kw => text.includes(kw))) {
+                    if (keywords.map(k => k.toLowerCase()).some(kw => text.includes(kw))) {
                         regions.push(region.toLowerCase());
                     }
                 }
                 return regions;
             };
-            
-            if (caseDiagnosisLower.trim()) {
-                matchedRegions = matchFromText(caseDiagnosisLower);
-            }
+
+            if (caseDiagnosisLower.trim()) matchedRegions = matchFromText(caseDiagnosisLower);
             if (matchedRegions.length === 0 && (caseBodyPart || caseModule)) {
                 matchedRegions = matchFromText(caseBodyPart + ' ' + caseModule);
             }
-            
-            // Categorize: case-specific matches (NOT "All") first, then other specific, then generic "All"
+
+            // Also match sub_region tags from diagnosis text
+            const matchSubRegion = (resource) => {
+                if (!resource.sub_region || !resource.sub_region.length) return false;
+                const textToSearch = caseDiagnosisLower + ' ' + caseBodyPart + ' ' + caseModule;
+                return resource.sub_region.some(sr => textToSearch.includes(sr.toLowerCase().replace(/_/g, ' ')));
+            };
+
             const specificMatches = [];
             const otherSpecific = [];
             const genericAll = [];
-            
+
             for (const resource of data.resources || []) {
                 const resourceBodyParts = (resource.body_parts || []).map(bp => bp.toLowerCase());
                 const isGenericAll = resourceBodyParts.includes('all');
-                const isCaseMatch = !isGenericAll && matchedRegions.some(region => 
-                    resourceBodyParts.includes(region)
+                const isCaseMatch = !isGenericAll && (
+                    matchedRegions.some(region => resourceBodyParts.includes(region)) || matchSubRegion(resource)
                 );
-                
+
                 if (isCaseMatch) {
                     specificMatches.push({ ...resource, isMatch: true });
                 } else if (isGenericAll) {
-                    genericAll.push({ ...resource, isMatch: false });  // Never mark generic as "Relevant"
+                    genericAll.push({ ...resource, isMatch: false });
                 } else {
                     otherSpecific.push({ ...resource, isMatch: false });
                 }
             }
-            
-            // Build display order: case-specific first, then other specific by category, then generic at bottom
+
             const grouped = {};
             for (const resource of [...specificMatches, ...otherSpecific]) {
                 const category = (resource.body_parts?.[0]) || 'General';
-                if (!grouped[category]) {
-                    grouped[category] = { resources: [], hasMatch: false };
-                }
+                if (!grouped[category]) grouped[category] = { resources: [], hasMatch: false };
                 grouped[category].resources.push(resource);
                 if (resource.isMatch) grouped[category].hasMatch = true;
             }
-            
-            // Sort: matched categories first, then alphabetically. "All" goes last.
+
             const sortedCategories = Object.entries(grouped)
                 .sort((a, b) => {
                     if (a[1].hasMatch !== b[1].hasMatch) return b[1].hasMatch ? 1 : -1;
                     return a[0].localeCompare(b[0]);
                 });
-            
-            // Add generic "All" section at the bottom (collapsed by default if we have case-specific matches)
+
             if (genericAll.length > 0) {
                 sortedCategories.push(['General reference', { resources: genericAll, hasMatch: false }]);
             }
-            
-            // Build HTML - case-specific matches shown first with clear labeling
+
             let html = '';
             if (specificMatches.length > 0) {
                 html += `<div class="alert alert-success py-2 px-3 mb-3 small" style="background: rgba(40, 167, 69, 0.12); border: 1px solid rgba(40, 167, 69, 0.4);">
                     <i class="fas fa-check-circle me-2" style="color: #28a745;"></i>
-                    <strong>${specificMatches.length} resource${specificMatches.length !== 1 ? 's' : ''} relevant to this case</strong> (from diagnosis/body part)
+                    <strong>${specificMatches.length} resource${specificMatches.length !== 1 ? 's' : ''} relevant to this case</strong>
                 </div>`;
             } else if (matchedRegions.length === 0) {
                 html += `<div class="alert alert-light border py-2 px-3 mb-3 small">
                     <i class="fas fa-info-circle me-2 text-muted"></i>
-                    No body part detected from diagnosis. Showing general anatomy references.
-                </div>`;
-            } else {
-                html += `<div class="alert alert-light border py-2 px-3 mb-3 small">
-                    <i class="fas fa-info-circle me-2 text-muted"></i>
-                    No case-specific resources for detected regions (${matchedRegions.join(', ')}). General references below.
+                    No body part detected from diagnosis. Showing all anatomy references.
                 </div>`;
             }
-            
+
             for (const [categoryName, { resources, hasMatch }] of sortedCategories) {
-                const badgeHtml = hasMatch 
-                    ? '<span class="badge bg-success ms-2" style="font-size: 0.7em;">Relevant to case</span>' 
+                const badgeHtml = hasMatch
+                    ? '<span class="badge bg-success ms-2" style="font-size: 0.7em;">Relevant</span>'
                     : (categoryName === 'General reference' ? '<span class="badge bg-secondary ms-2" style="font-size: 0.7em;">General</span>' : '');
-                
+
                 html += `
                     <div class="anatomy-category mb-3 ${hasMatch ? 'matched' : ''}">
-                        <h6 class="mb-2" style="color: ${hasMatch ? '#28a745' : '#5E899E'};">
+                        <h6 class="mb-2" style="color: ${hasMatch ? '#28a745' : 'var(--brand-neutral, #5E899E)'};">
                             <i class="fas fa-${hasMatch ? 'star' : 'folder-open'} me-1"></i>${categoryName}${badgeHtml}
                         </h6>
                         <div class="ps-3">
                 `;
-                
+
                 for (const resource of resources) {
                     const modalities = (resource.modalities || []).join(', ');
-                    const borderColor = resource.isMatch ? '#28a745' : '#5E899E';
-                    
+                    const borderColor = resource.isMatch ? '#28a745' : 'var(--brand-neutral, #5E899E)';
+                    const sourceBadge = resource.source ? `<span class="badge bg-light text-muted ms-1" style="font-size: 0.65em;">${resource.source}</span>` : '';
+
                     html += `
                         <div class="anatomy-link mb-2 p-2 rounded" style="background: #f8f9fa; border-left: 3px solid ${borderColor};">
-                            <a href="${resource.url}" target="_blank" rel="noopener" style="color: #5E899E; font-weight: 500; text-decoration: none;">
+                            <a href="${resource.url}" target="_blank" rel="noopener" style="color: var(--brand-neutral, #5E899E); font-weight: 500; text-decoration: none;">
                                 <i class="fas fa-external-link-alt me-1" style="font-size: 0.8em;"></i>${resource.title}
                             </a>
                             ${modalities ? `<span class="badge bg-light text-muted ms-2" style="font-size: 0.7em;">${modalities}</span>` : ''}
+                            ${sourceBadge}
                             ${resource.description ? `<br><small class="text-muted">${resource.description}</small>` : ''}
                         </div>
                     `;
                 }
-                
+
                 html += '</div></div>';
             }
-            
+
             if (!html) {
-                html = `
-                    <div class="text-center py-3 text-muted">
-                        <i class="fas fa-info-circle me-2"></i>No anatomy resources available.
-                    </div>
-                `;
+                html = '<div class="text-center py-3 text-muted"><i class="fas fa-info-circle me-2"></i>No anatomy resources available.</div>';
             }
-            
+
             container.innerHTML = html;
             anatomyResourcesLoaded = true;
-            
+
         } catch (error) {
             console.error('[Anatomy] Error loading resources:', error);
-            anatomyResourcesLoaded = false;  // Allow retry on next tab click
+            anatomyResourcesLoaded = false;
             container.innerHTML = `
                 <div class="text-center py-3">
                     <i class="fas fa-exclamation-triangle text-warning me-2"></i>

@@ -267,14 +267,17 @@ function processPending() {
     btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Processing...';
 
     fetch('/admin/intelligence/api/process-pending', { method: 'POST' })
-        .then(function(r) { return r.json(); })
+        .then(function(r) {
+            if (!r.ok) throw new Error('Server error (' + r.status + ')');
+            return r.json();
+        })
         .then(function(d) {
             alert(d.message);
             if (d.processed > 0) location.reload();
             else { btn.disabled = false; btn.innerHTML = '<i class="fas fa-cog me-1"></i>Process Pending'; }
         })
-        .catch(function() {
-            alert('Processing failed.');
+        .catch(function(err) {
+            alert('Processing failed: ' + (err.message || 'Unknown error'));
             btn.disabled = false;
             btn.innerHTML = '<i class="fas fa-cog me-1"></i>Process Pending';
         });
@@ -286,14 +289,17 @@ function backfillCI() {
     btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Building...';
 
     fetch('/api/admin/backfill-intelligence', { method: 'POST' })
-        .then(function(r) { return r.json(); })
+        .then(function(r) {
+            if (!r.ok) throw new Error('Server error (' + r.status + ')');
+            return r.json();
+        })
         .then(function(d) {
             alert(d.message);
             btn.disabled = false;
             btn.innerHTML = '<i class="fas fa-database me-1"></i>Build Intelligence';
         })
-        .catch(function() {
-            alert('Backfill failed.');
+        .catch(function(err) {
+            alert('Backfill failed: ' + (err.message || 'Unknown error'));
             btn.disabled = false;
             btn.innerHTML = '<i class="fas fa-database me-1"></i>Build Intelligence';
         });
