@@ -21,15 +21,42 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
+NEON_URL = (
+    os.getenv('DATABASE_URL')
+    or os.getenv('frcr_revision_db_DATABASE_URL')
+    or "postgresql://neondb_owner:npg_DsKL8RFtw2zI@ep-frosty-sound-ahg70oqy-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require"
+)
+
+
 def main():
     parser = argparse.ArgumentParser(description='Resolve cross-link hints to content IDs')
     parser.add_argument('--dry-run', action='store_true', help='Show what would be resolved without writing')
     args = parser.parse_args()
 
-    # Import app for DB context
+    # Force Neon: monkey-patch load_dotenv BEFORE importing app.py
+    # app.py calls load_dotenv(.env.local, override=True) at module level,
+    # which would reset USE_LOCAL_DB=1. We prevent that by wrapping it.
+    import dotenv
+    _real_load = dotenv.load_dotenv
+    def _neon_load(dotenv_path=None, override=False, **kw):
+        result = _real_load(dotenv_path, override=override, **kw)
+        # Always force Neon after any dotenv load
+        os.environ['USE_LOCAL_DB'] = '0'
+        os.environ['DATABASE_URL'] = NEON_URL
+        return result
+    dotenv.load_dotenv = _neon_load
+
+    neon_uri = NEON_URL.replace('postgres://', 'postgresql://')
+    os.environ['USE_LOCAL_DB'] = '0'
+    os.environ['DATABASE_URL'] = NEON_URL
+    print(f"Connecting to Neon: {neon_uri[:60]}...")
+
     from app import app
     from models import db, ContentIntelligence
     from ai_intelligence import resolve_cross_links
+
+    # Restore original
+    dotenv.load_dotenv = _real_load
 
     with app.app_context():
         records = ContentIntelligence.query.filter(
