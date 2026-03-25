@@ -1929,8 +1929,12 @@ def admin_intelligence():
 @require_admin
 def get_intelligence_record(record_id):
     """Get full details of a UGI record."""
-    ugi = UserGeneratedIntelligence.query.get_or_404(record_id)
-    return jsonify(ugi.to_dict())
+    try:
+        ugi = UserGeneratedIntelligence.query.get_or_404(record_id)
+        return jsonify(ugi.to_dict())
+    except Exception as exc:
+        logger.error(f"get_intelligence_record({record_id}) failed: {exc}")
+        return jsonify({'error': str(exc)}), 500
 
 
 @reporting_bp.route('/admin/intelligence/api/<int:record_id>/verify', methods=['POST'])
@@ -1963,26 +1967,30 @@ def delete_intelligence_record(record_id):
 @require_admin
 def process_pending_intelligence():
     """Process up to 20 pending UGI records via Haiku."""
-    from ai_intelligence import process_ugi_for_record
+    try:
+        from ai_intelligence import process_ugi_for_record
 
-    pending = UserGeneratedIntelligence.query.filter(
-        UserGeneratedIntelligence.processing_status.in_(['pending', 'failed'])
-    ).order_by(UserGeneratedIntelligence.created_at.asc()).limit(20).all()
+        pending = UserGeneratedIntelligence.query.filter(
+            UserGeneratedIntelligence.processing_status.in_(['pending', 'failed'])
+        ).order_by(UserGeneratedIntelligence.created_at.asc()).limit(20).all()
 
-    if not pending:
-        return jsonify({'success': True, 'message': 'No pending records to process.', 'processed': 0})
+        if not pending:
+            return jsonify({'success': True, 'message': 'No pending records to process.', 'processed': 0})
 
-    processed_count = 0
-    for ugi in pending:
-        if process_ugi_for_record(ugi.id):
-            processed_count += 1
+        processed_count = 0
+        for ugi in pending:
+            if process_ugi_for_record(ugi.id):
+                processed_count += 1
 
-    return jsonify({
-        'success': True,
-        'message': f'Processed {processed_count} of {len(pending)} records.',
-        'processed': processed_count,
-        'total_attempted': len(pending),
-    })
+        return jsonify({
+            'success': True,
+            'message': f'Processed {processed_count} of {len(pending)} records.',
+            'processed': processed_count,
+            'total_attempted': len(pending),
+        })
+    except Exception as exc:
+        logger.error(f"process_pending_intelligence failed: {exc}")
+        return jsonify({'error': str(exc), 'message': f'Processing failed: {exc}'}), 500
 
 
 @reporting_bp.route('/api/admin/backfill-intelligence', methods=['POST'])
@@ -1990,6 +1998,14 @@ def process_pending_intelligence():
 @require_admin
 def backfill_content_intelligence():
     """Process up to 20 content items without intelligence records."""
+    try:
+        return _do_backfill_intelligence()
+    except Exception as exc:
+        logger.error(f"backfill_content_intelligence top-level error: {exc}")
+        return jsonify({'error': str(exc), 'message': f'Backfill failed: {exc}'}), 500
+
+
+def _do_backfill_intelligence():
     from ai_intelligence import process_content_intelligence
 
     # Find content items missing CI records

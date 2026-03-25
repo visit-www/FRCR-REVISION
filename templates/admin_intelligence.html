@@ -178,40 +178,53 @@
 
 {% block extra_js %}
 <script>
+function escapeHtml(text) {
+    if (!text) return '';
+    var div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
 function viewRecord(id) {
-    var modal = new bootstrap.Modal(document.getElementById('detailModal'));
+    var el = document.getElementById('detailModal');
+    var modal = bootstrap.Modal.getOrCreateInstance(el);
     var body = document.getElementById('detailModalBody');
     body.innerHTML = '<div class="text-center py-4"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
     modal.show();
 
     fetch('/admin/intelligence/api/' + id)
-        .then(function(r) { return r.json(); })
+        .then(function(r) {
+            if (!r.ok) throw new Error('Server returned ' + r.status);
+            return r.json();
+        })
         .then(function(d) {
-            var html = '<div class="mb-3"><strong>Diagnosis:</strong> ' + (d.diagnosis || 'N/A') + '</div>';
-            html += '<div class="row mb-3"><div class="col-4"><strong>Modality:</strong> ' + (d.modality || 'N/A') + '</div>';
-            html += '<div class="col-4"><strong>Body Section:</strong> ' + (d.body_section || 'N/A') + '</div>';
-            html += '<div class="col-4"><strong>Status:</strong> ' + d.processing_status + '</div></div>';
+            var html = '<div class="mb-3"><strong>Diagnosis:</strong> ' + escapeHtml(d.diagnosis || 'N/A') + '</div>';
+            html += '<div class="row mb-3"><div class="col-4"><strong>Modality:</strong> ' + escapeHtml(d.modality || 'N/A') + '</div>';
+            html += '<div class="col-4"><strong>Body Section:</strong> ' + escapeHtml(d.body_section || 'N/A') + '</div>';
+            html += '<div class="col-4"><strong>Status:</strong> <span class="badge ' +
+                (d.processing_status === 'processed' ? 'bg-info' : d.processing_status === 'pending' ? 'bg-warning text-dark' : 'bg-secondary') +
+                '">' + escapeHtml(d.processing_status) + '</span></div></div>';
 
             if (d.raw_teaching_point) {
-                html += '<div class="mb-3"><strong>Raw Teaching Point:</strong><div class="bg-light p-2 rounded mt-1" style="font-size: 0.9rem;">' + d.raw_teaching_point + '</div></div>';
+                html += '<div class="mb-3"><strong>Raw Teaching Point:</strong><div class="bg-light p-2 rounded mt-1" style="font-size: 0.9rem;">' + escapeHtml(d.raw_teaching_point) + '</div></div>';
             }
 
             if (d.notes && d.notes.length) {
                 html += '<div class="mb-3"><strong>Notes:</strong><ul class="mb-0">';
-                d.notes.forEach(function(n) { html += '<li>' + n + '</li>'; });
+                d.notes.forEach(function(n) { html += '<li>' + escapeHtml(n) + '</li>'; });
                 html += '</ul></div>';
             }
 
             if (d.pitfalls && d.pitfalls.length) {
                 html += '<div class="mb-3"><strong>Pitfalls:</strong><ul class="mb-0 text-danger">';
-                d.pitfalls.forEach(function(p) { html += '<li>' + p + '</li>'; });
+                d.pitfalls.forEach(function(p) { html += '<li>' + escapeHtml(p) + '</li>'; });
                 html += '</ul></div>';
             }
 
             if (d.enriched_differentials && d.enriched_differentials.length) {
                 html += '<div class="mb-3"><strong>Enriched Differentials:</strong><ul class="mb-0">';
                 d.enriched_differentials.forEach(function(dd) {
-                    html += '<li><strong>' + dd.name + ':</strong> ' + dd.distinguishing_features + '</li>';
+                    html += '<li><strong>' + escapeHtml(dd.name) + ':</strong> ' + escapeHtml(dd.distinguishing_features) + '</li>';
                 });
                 html += '</ul></div>';
             }
@@ -219,21 +232,31 @@ function viewRecord(id) {
             if (d.search_tags) {
                 html += '<div class="mb-3"><strong>Search Tags:</strong> ';
                 d.search_tags.split(',').forEach(function(t) {
-                    html += '<span class="badge bg-light text-muted border me-1">' + t.trim() + '</span>';
+                    html += '<span class="badge bg-light text-muted border me-1">' + escapeHtml(t.trim()) + '</span>';
                 });
                 html += '</div>';
             }
 
+            if (d.processing_status === 'pending') {
+                html += '<div class="alert alert-warning mt-3 mb-0"><i class="fas fa-info-circle me-1"></i>This record is pending AI processing. Click <strong>Process Pending</strong> to enrich it.</div>';
+            }
+
             body.innerHTML = html;
         })
-        .catch(function() { body.innerHTML = '<div class="alert alert-danger">Failed to load record.</div>'; });
+        .catch(function(err) {
+            console.error('viewRecord error:', err);
+            body.innerHTML = '<div class="alert alert-danger">Failed to load record: ' + escapeHtml(err.message) + '</div>';
+        });
 }
 
 function verifyRecord(id, btn) {
     if (!confirm('Verify this record? It will become visible in search results.')) return;
     btn.disabled = true;
     fetch('/admin/intelligence/api/' + id + '/verify', { method: 'POST' })
-        .then(function(r) { return r.json(); })
+        .then(function(r) {
+            if (!r.ok) throw new Error('Server returned ' + r.status);
+            return r.json();
+        })
         .then(function(d) {
             if (d.success) {
                 var row = document.getElementById('ugi-row-' + id);
@@ -244,21 +267,32 @@ function verifyRecord(id, btn) {
                 }
             }
         })
-        .catch(function() { alert('Failed to verify.'); btn.disabled = false; });
+        .catch(function(err) {
+            console.error('verifyRecord error:', err);
+            alert('Failed to verify: ' + (err.message || 'Unknown error'));
+            btn.disabled = false;
+        });
 }
 
 function deleteRecord(id, btn) {
     if (!confirm('Delete this record? This cannot be undone.')) return;
     btn.disabled = true;
     fetch('/admin/intelligence/api/' + id, { method: 'DELETE' })
-        .then(function(r) { return r.json(); })
+        .then(function(r) {
+            if (!r.ok) throw new Error('Server returned ' + r.status);
+            return r.json();
+        })
         .then(function(d) {
             if (d.success) {
                 var row = document.getElementById('ugi-row-' + id);
                 if (row) row.remove();
             }
         })
-        .catch(function() { alert('Failed to delete.'); btn.disabled = false; });
+        .catch(function(err) {
+            console.error('deleteRecord error:', err);
+            alert('Failed to delete: ' + (err.message || 'Unknown error'));
+            btn.disabled = false;
+        });
 }
 
 function processPending() {
@@ -268,7 +302,7 @@ function processPending() {
 
     fetch('/admin/intelligence/api/process-pending', { method: 'POST' })
         .then(function(r) {
-            if (!r.ok) throw new Error('Server error (' + r.status + ')');
+            if (!r.ok) return r.text().then(function(t) { throw new Error('Server error (' + r.status + '): ' + t.substring(0, 200)); });
             return r.json();
         })
         .then(function(d) {
@@ -277,6 +311,7 @@ function processPending() {
             else { btn.disabled = false; btn.innerHTML = '<i class="fas fa-cog me-1"></i>Process Pending'; }
         })
         .catch(function(err) {
+            console.error('processPending error:', err);
             alert('Processing failed: ' + (err.message || 'Unknown error'));
             btn.disabled = false;
             btn.innerHTML = '<i class="fas fa-cog me-1"></i>Process Pending';
@@ -290,15 +325,17 @@ function backfillCI() {
 
     fetch('/api/admin/backfill-intelligence', { method: 'POST' })
         .then(function(r) {
-            if (!r.ok) throw new Error('Server error (' + r.status + ')');
+            if (!r.ok) return r.text().then(function(t) { throw new Error('Server error (' + r.status + '): ' + t.substring(0, 200)); });
             return r.json();
         })
         .then(function(d) {
             alert(d.message);
+            if (d.processed > 0) location.reload();
             btn.disabled = false;
             btn.innerHTML = '<i class="fas fa-database me-1"></i>Build Intelligence';
         })
         .catch(function(err) {
+            console.error('backfillCI error:', err);
             alert('Backfill failed: ' + (err.message || 'Unknown error'));
             btn.disabled = false;
             btn.innerHTML = '<i class="fas fa-database me-1"></i>Build Intelligence';
