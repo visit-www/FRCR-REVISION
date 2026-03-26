@@ -308,16 +308,12 @@ def update_calculator(calc_id):
     if not data:
         return jsonify({'error': 'JSON body required.'}), 400
 
-    from app import sanitize_clinical_html
-    _html_fields = {'calculator_html', 'algorithm_html'}
     for field in ['finding_name', 'body_section', 'category', 'description', 'keywords',
                   'calculator_html', 'algorithm_html', 'guideline_source', 'guideline_version',
                   'guideline_url', 'last_edit_note']:
         if field in data:
             val = data[field]
             val = val.strip() if isinstance(val, str) else val
-            if field in _html_fields and isinstance(val, str):
-                val = sanitize_clinical_html(val)
             setattr(calculator, field, val)
 
     if 'is_available' in data:

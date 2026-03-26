@@ -77,6 +77,8 @@ def generate_if_calculator_html(finding_name, guideline_source='', category='',
         existing.generation_model = result['model']
         existing.generated_at = datetime.utcnow()
         existing.is_available = False
+        existing.verified_at = None
+        existing.verified_by_user_id = None
         existing.updated_at = datetime.utcnow()
         db.session.commit()
         calc_id = existing.id
