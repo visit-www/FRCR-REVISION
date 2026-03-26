@@ -841,13 +841,21 @@ REQUIREMENTS:
    - Include at top: "Clinical Decision Support Tool -- verify against current guidelines before clinical use"
    - Include guideline citation and version
 
+8. CODE CORRECTNESS (CRITICAL)
+   - Every HTML attribute MUST be properly closed (e.g., <label for="fieldId">Text</label>)
+   - JavaScript variable names MUST be consistent throughout (e.g., if you declare reportText, never misspell it as reporText or reportext)
+   - All text strings MUST be complete — never truncate words mid-spelling
+   - Test every function name reference: if you define generateReport(), every onclick must use that exact name
+   - All HTML tags must be properly opened AND closed (e.g., <em>text</em>, not >text</em>)
+   - All comments must be complete (e.g., "// Calculate recommendation", not "//lculate recommendation")
+
 OUTPUT:
 Return ONLY the complete HTML document. No markdown code fences. No explanatory text.
 Start with <!DOCTYPE html> and end with </html>.
 
 The calculator should be comprehensive enough that a radiologist can use it during reporting
 to determine the correct management recommendation and generate appropriate report language.
-Minimum 1500 lines of well-structured HTML/CSS/JS.
+Prioritise correctness and completeness over length.
 """
 
 REPORTING_TEMPLATE_PROMPT = """You are an expert radiology consultant creating an interactive reporting decision tree.
@@ -926,13 +934,21 @@ REQUIREMENTS:
    - Include at top: "Clinical Decision Support Tool -- verify against current guidelines and institutional protocols before clinical use"
    - Include source citation
 
+8. CODE CORRECTNESS (CRITICAL)
+   - Every HTML attribute MUST be properly closed (e.g., <label for="fieldId">Text</label>)
+   - JavaScript variable names MUST be consistent throughout (e.g., if you declare reportText, never misspell it as reporText or reportext)
+   - All text strings MUST be complete — never truncate words mid-spelling
+   - Test every function name reference: if you define generateReport(), every onclick must use that exact name
+   - All HTML tags must be properly opened AND closed (e.g., <em>text</em>, not >text</em>)
+   - All comments must be complete (e.g., "// Calculate recommendation", not "//lculate recommendation")
+
 OUTPUT:
 Return ONLY the complete HTML document. No markdown code fences. No explanatory text.
 Start with <!DOCTYPE html> and end with </html>.
 
 The template should be comprehensive enough that a radiologist can use it during reporting
 to systematically document findings and generate a structured report.
-Minimum 1500 lines of well-structured HTML/CSS/JS.
+Prioritise correctness and completeness over length.
 """
 
 
@@ -1017,7 +1033,18 @@ def generate_clinical_tool(topic, mode='full_tool', context=None, resources=None
     )
 
     html = _strip_markdown_fences(text)
+
+    # Detect truncated output (hit max_tokens before completing HTML)
+    if not html.rstrip().endswith('</html>'):
+        logger.warning("Generated HTML appears truncated (does not end with </html>). "
+                       "Output tokens: %d / max: %d", token_count, 20000)
+        # Try to salvage by closing the document
+        html = html.rstrip() + '\n</script>\n</body>\n</html>'
+
     is_valid, warnings = validate_quality(html, tool_type)
+    if token_count >= 19500:
+        warnings.append(f'Output may be truncated ({token_count} tokens used, near 20000 limit)')
+
     algorithm_html = extract_algorithm_summary(html, topic, tool_type)
 
     return {

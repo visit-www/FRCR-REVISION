@@ -113,6 +113,14 @@ def call_claude(system_prompt, user_prompt, model=None, max_tokens=4000,
     if not text:
         raise exc("No text in API response.")
 
+    # Check if output was truncated due to max_tokens
+    stop_reason = result.get("stop_reason", "")
+    if stop_reason == "max_tokens":
+        logger.warning(
+            "API output truncated (hit max_tokens=%d). Output may be incomplete.",
+            max_tokens,
+        )
+
     token_count = result.get("usage", {}).get("output_tokens", 0)
     return text, effective_model, token_count
 
