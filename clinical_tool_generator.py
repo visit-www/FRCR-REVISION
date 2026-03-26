@@ -848,6 +848,7 @@ REQUIREMENTS:
    - Test every function name reference: if you define generateReport(), every onclick must use that exact name
    - All HTML tags must be properly opened AND closed (e.g., <em>text</em>, not >text</em>)
    - All comments must be complete (e.g., "// Calculate recommendation", not "//lculate recommendation")
+   - All external links with target="_blank" MUST include rel="noopener" (e.g., <a href="..." target="_blank" rel="noopener">)
 
 OUTPUT:
 Return ONLY the complete HTML document. No markdown code fences. No explanatory text.
@@ -941,6 +942,7 @@ REQUIREMENTS:
    - Test every function name reference: if you define generateReport(), every onclick must use that exact name
    - All HTML tags must be properly opened AND closed (e.g., <em>text</em>, not >text</em>)
    - All comments must be complete (e.g., "// Calculate recommendation", not "//lculate recommendation")
+   - All external links with target="_blank" MUST include rel="noopener" (e.g., <a href="..." target="_blank" rel="noopener">)
 
 OUTPUT:
 Return ONLY the complete HTML document. No markdown code fences. No explanatory text.
