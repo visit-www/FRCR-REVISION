@@ -129,9 +129,9 @@
                                 </td>
                                 <td>
                                     <div class="btn-group btn-group-sm">
-                                        <button class="btn btn-outline-secondary" onclick="viewRecord({{ r.id }})" title="View Details">
+                                        <a href="/admin/intelligence/{{ r.id }}" class="btn btn-outline-secondary" title="View Details">
                                             <i class="fas fa-eye"></i>
-                                        </button>
+                                        </a>
                                         {% if r.processing_status == 'processed' and not r.is_verified %}
                                         <button class="btn btn-outline-success" onclick="verifyRecord({{ r.id }}, this)" title="Verify">
                                             <i class="fas fa-check"></i>
@@ -160,95 +160,10 @@
     </div>
 </div>
 
-<!-- View Detail Modal -->
-<div class="modal fade" id="detailModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content app-content-modal">
-            <div class="modal-header">
-                <h5 class="modal-title"><i class="fas fa-lightbulb me-2"></i>RadInsight Note</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body" id="detailModalBody">
-                <div class="text-center py-4"><i class="fas fa-spinner fa-spin"></i> Loading...</div>
-            </div>
-        </div>
-    </div>
-</div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-function escapeHtml(text) {
-    if (!text) return '';
-    var div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
-function viewRecord(id) {
-    var el = document.getElementById('detailModal');
-    var modal = bootstrap.Modal.getOrCreateInstance(el);
-    var body = document.getElementById('detailModalBody');
-    body.innerHTML = '<div class="text-center py-4"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
-    modal.show();
-
-    fetch('/admin/intelligence/api/' + id)
-        .then(function(r) {
-            if (!r.ok) throw new Error('Server returned ' + r.status);
-            return r.json();
-        })
-        .then(function(d) {
-            var html = '<div class="mb-3"><strong>Diagnosis:</strong> ' + escapeHtml(d.diagnosis || 'N/A') + '</div>';
-            html += '<div class="row mb-3"><div class="col-4"><strong>Modality:</strong> ' + escapeHtml(d.modality || 'N/A') + '</div>';
-            html += '<div class="col-4"><strong>Body Section:</strong> ' + escapeHtml(d.body_section || 'N/A') + '</div>';
-            html += '<div class="col-4"><strong>Status:</strong> <span class="badge ' +
-                (d.processing_status === 'processed' ? 'bg-info' : d.processing_status === 'pending' ? 'bg-warning text-dark' : 'bg-secondary') +
-                '">' + escapeHtml(d.processing_status) + '</span></div></div>';
-
-            if (d.raw_teaching_point) {
-                html += '<div class="mb-3"><strong>Raw Teaching Point:</strong><div class="bg-light p-2 rounded mt-1" style="font-size: 0.9rem;">' + escapeHtml(d.raw_teaching_point) + '</div></div>';
-            }
-
-            if (d.notes && d.notes.length) {
-                html += '<div class="mb-3"><strong>Notes:</strong><ul class="mb-0">';
-                d.notes.forEach(function(n) { html += '<li>' + escapeHtml(n) + '</li>'; });
-                html += '</ul></div>';
-            }
-
-            if (d.pitfalls && d.pitfalls.length) {
-                html += '<div class="mb-3"><strong>Pitfalls:</strong><ul class="mb-0 text-danger">';
-                d.pitfalls.forEach(function(p) { html += '<li>' + escapeHtml(p) + '</li>'; });
-                html += '</ul></div>';
-            }
-
-            if (d.enriched_differentials && d.enriched_differentials.length) {
-                html += '<div class="mb-3"><strong>Enriched Differentials:</strong><ul class="mb-0">';
-                d.enriched_differentials.forEach(function(dd) {
-                    html += '<li><strong>' + escapeHtml(dd.name) + ':</strong> ' + escapeHtml(dd.distinguishing_features) + '</li>';
-                });
-                html += '</ul></div>';
-            }
-
-            if (d.search_tags) {
-                html += '<div class="mb-3"><strong>Search Tags:</strong> ';
-                d.search_tags.split(',').forEach(function(t) {
-                    html += '<span class="badge bg-light text-muted border me-1">' + escapeHtml(t.trim()) + '</span>';
-                });
-                html += '</div>';
-            }
-
-            if (d.processing_status === 'pending') {
-                html += '<div class="alert alert-warning mt-3 mb-0"><i class="fas fa-info-circle me-1"></i>This record is pending AI processing. Click <strong>Process Pending</strong> to enrich it.</div>';
-            }
-
-            body.innerHTML = html;
-        })
-        .catch(function(err) {
-            console.error('viewRecord error:', err);
-            body.innerHTML = '<div class="alert alert-danger">Failed to load record: ' + escapeHtml(err.message) + '</div>';
-        });
-}
-
 function verifyRecord(id, btn) {
     if (!confirm('Verify this record? It will become visible in search results.')) return;
     btn.disabled = true;

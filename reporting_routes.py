@@ -1924,6 +1924,15 @@ def admin_intelligence():
                            verified_filter=verified_filter)
 
 
+@reporting_bp.route('/admin/intelligence/<int:record_id>')
+@login_required
+@require_admin
+def view_intelligence_record(record_id):
+    """Dedicated view page for a single UGI record."""
+    record = UserGeneratedIntelligence.query.get_or_404(record_id)
+    return render_template('view_intelligence.html', record=record)
+
+
 @reporting_bp.route('/admin/intelligence/api/<int:record_id>', methods=['GET'])
 @login_required
 @require_admin

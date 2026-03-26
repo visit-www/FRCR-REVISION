@@ -9,6 +9,7 @@ URL prefix: /incidental-findings (kept for backward compatibility).
 from flask import Blueprint, request, render_template, jsonify
 from flask_login import login_required, current_user
 from datetime import datetime
+import json
 import os
 import re
 import logging
@@ -368,16 +369,26 @@ def generate_calculator():
     if not finding_name:
         return jsonify({'error': 'finding_name is required.'}), 400
 
+    # Parse guideline_source JSON into resources dict for URL/PDF fetching
+    resources = None
+    guideline_source = data.get('guideline_source', '')
+    if guideline_source:
+        try:
+            resources = json.loads(guideline_source) if isinstance(guideline_source, str) else guideline_source
+        except (json.JSONDecodeError, TypeError):
+            pass
+
     try:
         from .generator import generate_if_calculator_html
         result = generate_if_calculator_html(
             finding_name=finding_name,
-            guideline_source=data.get('guideline_source', ''),
+            guideline_source=guideline_source,
             category=data.get('category', ''),
             body_section=data.get('body_section', ''),
             additional_context=data.get('additional_context', ''),
             user_id=current_user.id,
             overwrite=data.get('overwrite', False),
+            resources=resources,
         )
         return jsonify(result)
 
