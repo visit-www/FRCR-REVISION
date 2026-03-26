@@ -209,6 +209,13 @@
 .global-search-loading i {
     color: #5E899E;
 }
+.global-search-hint {
+    padding: 6px 14px;
+    font-size: 0.78rem;
+    color: var(--brand-text-secondary, #5a6270);
+    background: rgba(94, 137, 158, 0.08);
+    border-bottom: 1px solid rgba(0,0,0,0.06);
+}
 @media (max-width: 991px) {
     .global-search-results {
         width: calc(100vw - 48px);

@@ -63,6 +63,160 @@ _MODALITY_MAP = {
     'fluoroscopy': 'Fluoroscopy', 'fluoro': 'Fluoroscopy',
 }
 
+# ==================== SEARCH SYNONYM EXPANSION ====================
+# Each tuple is a group of synonyms. The LONGEST term is used as the canonical
+# form for pg_trgm similarity() scoring; the original short-form is kept as an
+# extra ILIKE pattern so abbreviations still match keywords/tags.
+_SYNONYM_GROUPS = [
+    # --- Clinical abbreviations ---
+    ('pe', 'pulmonary embolism'),
+    ('dvt', 'deep vein thrombosis'),
+    ('sah', 'subarachnoid haemorrhage', 'subarachnoid hemorrhage'),
+    ('sdh', 'subdural haematoma', 'subdural hematoma'),
+    ('edh', 'epidural haematoma', 'epidural hematoma', 'extradural haematoma', 'extradural hematoma'),
+    ('ich', 'intracerebral haemorrhage', 'intracerebral hemorrhage'),
+    ('aaa', 'abdominal aortic aneurysm'),
+    ('taa', 'thoracic aortic aneurysm'),
+    ('rcc', 'renal cell carcinoma'),
+    ('hcc', 'hepatocellular carcinoma'),
+    ('nsclc', 'non-small cell lung cancer', 'non small cell lung cancer'),
+    ('sclc', 'small cell lung cancer'),
+    ('crc', 'colorectal cancer', 'colorectal carcinoma'),
+    ('scc', 'squamous cell carcinoma'),
+    ('bcc', 'basal cell carcinoma'),
+    ('gist', 'gastrointestinal stromal tumour', 'gastrointestinal stromal tumor'),
+    ('nac', 'necrotising acute cholecystitis', 'necrotizing acute cholecystitis', 'acute cholecystitis'),
+    ('ivc', 'inferior vena cava'),
+    ('svc', 'superior vena cava'),
+    ('sma', 'superior mesenteric artery'),
+    ('cbd', 'common bile duct'),
+    ('nph', 'normal pressure hydrocephalus'),
+    ('avf', 'arteriovenous fistula'),
+    ('avm', 'arteriovenous malformation'),
+    ('tia', 'transient ischaemic attack', 'transient ischemic attack'),
+    ('acs', 'acute coronary syndrome'),
+    ('copd', 'chronic obstructive pulmonary disease'),
+    ('ild', 'interstitial lung disease'),
+    ('ipf', 'idiopathic pulmonary fibrosis'),
+    ('uip', 'usual interstitial pneumonia'),
+    ('nsip', 'nonspecific interstitial pneumonia', 'non-specific interstitial pneumonia'),
+    ('op', 'organising pneumonia', 'organizing pneumonia', 'cryptogenic organizing pneumonia'),
+    ('dip', 'desquamative interstitial pneumonia'),
+    ('pah', 'pulmonary arterial hypertension'),
+    ('ards', 'acute respiratory distress syndrome'),
+    ('ggo', 'ground glass opacity', 'ground-glass opacity'),
+
+    # --- Guideline / classification systems ---
+    ('fleischner', 'fleischner society', 'pulmonary nodule follow-up', 'lung nodule guidelines'),
+    ('bosniak', 'bosniak classification', 'renal cyst classification'),
+    ('li-rads', 'lirads', 'liver imaging reporting and data system', 'liver imaging'),
+    ('lung-rads', 'lungrads', 'lung imaging reporting and data system'),
+    ('bi-rads', 'birads', 'breast imaging reporting and data system'),
+    ('pi-rads', 'pirads', 'prostate imaging reporting and data system'),
+    ('ti-rads', 'tirads', 'thyroid imaging reporting and data system'),
+    ('o-rads', 'orads', 'ovarian-adnexal reporting and data system'),
+    ('ni-rads', 'nirads', 'neck imaging reporting and data system'),
+
+    # --- Scoring systems ---
+    ('aspects', 'alberta stroke programme early ct score', 'stroke ct score'),
+    ('agatston', 'agatston score', 'coronary calcium score', 'calcium scoring'),
+    ('child-pugh', 'child pugh', 'child-pugh score', 'liver cirrhosis score'),
+    ('meld', 'model for end-stage liver disease'),
+    ('recist', 'response evaluation criteria in solid tumors', 'response evaluation criteria in solid tumours'),
+
+    # --- Technique / anatomy associations ---
+    ('chemical shift', 'chemical shift imaging', 'in-phase out-of-phase', 'adrenal adenoma mri'),
+    ('diffusion weighted', 'dwi', 'diffusion-weighted imaging', 'diffusion restriction'),
+    ('dynamic contrast', 'dce', 'dynamic contrast enhanced', 'perfusion mri'),
+    ('fat sat', 'fat saturation', 'fat-suppressed'),
+    ('stir', 'short tau inversion recovery', 'stir sequence'),
+    ('flair', 'fluid attenuated inversion recovery'),
+    ('mrcp', 'magnetic resonance cholangiopancreatography'),
+    ('mra', 'magnetic resonance angiography'),
+    ('cta', 'ct angiography', 'ct angiogram'),
+    ('ctpa', 'ct pulmonary angiography', 'ct pulmonary angiogram'),
+    ('hrct', 'high resolution ct', 'high-resolution ct'),
+
+    # --- Fracture classifications ---
+    ('weber', 'weber classification', 'ankle fracture classification'),
+    ('salter-harris', 'salter harris', 'salter-harris classification', 'paediatric fracture classification', 'pediatric fracture classification'),
+    ('garden', 'garden classification', 'femoral neck fracture classification'),
+    ('neer', 'neer classification', 'proximal humerus fracture classification'),
+    ('schatzker', 'schatzker classification', 'tibial plateau fracture classification'),
+    ('denis', 'denis classification', 'spinal fracture classification', 'thoracolumbar fracture classification'),
+    ('aoc', 'ao classification', 'ao/ota fracture classification'),
+
+    # --- UK / US spelling variants ---
+    ('haemorrhage', 'hemorrhage'),
+    ('haematoma', 'hematoma'),
+    ('oedema', 'edema'),
+    ('anaemia', 'anemia'),
+    ('leukaemia', 'leukemia'),
+    ('oesophagus', 'esophagus'),
+    ('oesophageal', 'esophageal'),
+    ('paediatric', 'pediatric'),
+    ('gynaecological', 'gynecological', 'gynaecologic', 'gynecologic'),
+    ('tumour', 'tumor'),
+    ('colour', 'color'),
+    ('favour', 'favor'),
+    ('ischaemic', 'ischemic'),
+    ('ischaemia', 'ischemia'),
+    ('anaesthesia', 'anesthesia'),
+    ('coeliac', 'celiac'),
+    ('foetus', 'fetus'),
+    ('foetal', 'fetal'),
+    ('fibre', 'fiber'),
+    ('grey', 'gray'),
+    ('programme', 'program'),
+    ('organising', 'organizing'),
+    ('necrotising', 'necrotizing'),
+    ('characterise', 'characterize'),
+    ('standardise', 'standardize'),
+    ('minimise', 'minimize'),
+    ('specialise', 'specialize'),
+]
+
+# Build lookup: for any term in a group, maps to all other terms in that group
+_SYNONYM_LOOKUP = {}
+for _group in _SYNONYM_GROUPS:
+    _lower_group = tuple(t.lower() for t in _group)
+    for _term in _lower_group:
+        if _term not in _SYNONYM_LOOKUP:
+            _SYNONYM_LOOKUP[_term] = set()
+        _SYNONYM_LOOKUP[_term].update(_lower_group)
+
+
+def _expand_search_query(query):
+    """Expand a search query using synonym groups.
+
+    Returns (canonical_query, like_raw):
+    - canonical_query: longest synonym (best for pg_trgm similarity scoring)
+    - like_raw: '%alternate_term%' for ILIKE, catches the OTHER form.
+      Returns None if no expansion happened.
+
+    Examples:
+        "PE"           → ("pulmonary embolism", "%pe%")
+        "haemorrhage"  → ("haemorrhage",        "%hemorrhage%")
+        "hemorrhage"   → ("haemorrhage",        "%hemorrhage%")
+        "liver"        → ("liver",              None)
+    """
+    lower_q = query.lower().strip()
+    if lower_q in _SYNONYM_LOOKUP:
+        synonyms = _SYNONYM_LOOKUP[lower_q]
+        canonical = max(synonyms, key=len)
+        if canonical != lower_q:
+            # User typed a short form / alternate — canonical expands it,
+            # like_raw keeps the original so abbreviations in keywords match
+            return canonical, f'%{lower_q}%'
+        else:
+            # User typed the longest form — pick shortest alternate
+            # (abbreviation or alternate spelling) for like_raw
+            others = sorted((s for s in synonyms if s != lower_q), key=len)
+            if others:
+                return lower_q, f'%{others[0]}%'
+    return query, None
+
+
 def normalize_modality(raw):
     """Normalize modality string to canonical form. Handles compound like 'CT/MRI'."""
     if not raw or not raw.strip():
@@ -119,16 +273,21 @@ def unified_search():
     Returns results grouped by type: case, oncologic, incidental, reporting.
     Cases with published discussions are the PRIMARY source.
     """
-    query = request.args.get('q', '').strip()
+    raw_query = request.args.get('q', '').strip()
     filter_type = request.args.get('type', '')
     limit = request.args.get('limit', 20, type=int)
     limit = min(limit, 50)
     offset = request.args.get('offset', 0, type=int)
     offset = max(offset, 0)
 
-    if len(query) < 2:
-        return jsonify({'results': [], 'query': query, 'total': 0, 'offset': 0, 'has_more': False})
+    if len(raw_query) < 2:
+        return jsonify({'results': [], 'query': raw_query, 'total': 0, 'offset': 0, 'has_more': False})
 
+    query, like_raw = _expand_search_query(raw_query)
+    like_query = f'%{query}%'
+    # When no synonym expansion, like_raw falls back to like_query (no-op extra OR)
+    if like_raw is None:
+        like_raw = like_query
     results = []
 
     try:
@@ -156,14 +315,16 @@ def unified_search():
                   AND (
                       similarity(lower(c.diagnosis), lower(:query)) > 0.1
                       OR c.diagnosis ILIKE :like_query
+                      OR c.diagnosis ILIKE :like_raw
                       OR similarity(ci.search_tags, lower(:query)) > 0.15
                       OR ci.search_tags ILIKE :like_query
+                      OR ci.search_tags ILIKE :like_raw
                   )
                 ORDER BY sim DESC
                 LIMIT :limit
             """)
             case_results = db.session.execute(case_sql, {
-                'query': query, 'like_query': f'%{query}%', 'limit': limit
+                'query': query, 'like_query': like_query, 'like_raw': like_raw, 'limit': limit
             }).fetchall()
 
             for r in case_results:
@@ -192,12 +353,13 @@ def unified_search():
                   AND (
                       similarity(tc.cancer_name, :query) > 0.1
                       OR tc.cancer_name ILIKE :like_query
+                      OR tc.cancer_name ILIKE :like_raw
                   )
                 ORDER BY sim DESC
                 LIMIT :limit
             """)
             onc_results = db.session.execute(onc_sql, {
-                'query': query, 'like_query': f'%{query}%', 'limit': limit
+                'query': query, 'like_query': like_query, 'like_raw': like_raw, 'limit': limit
             }).fetchall()
 
             for r in onc_results:
@@ -231,15 +393,18 @@ def unified_search():
                       similarity(ifc.finding_name, :query) > 0.1
                       OR similarity(ifc.keywords, :query) > 0.1
                       OR ifc.finding_name ILIKE :like_query
+                      OR ifc.finding_name ILIKE :like_raw
                       OR ifc.keywords ILIKE :like_query
+                      OR ifc.keywords ILIKE :like_raw
                       OR similarity(ci.search_tags, lower(:query)) > 0.15
                       OR ci.search_tags ILIKE :like_query
+                      OR ci.search_tags ILIKE :like_raw
                   )
                 ORDER BY sim DESC
                 LIMIT :limit
             """)
             if_results = db.session.execute(if_sql, {
-                'query': query, 'like_query': f'%{query}%', 'limit': limit
+                'query': query, 'like_query': like_query, 'like_raw': like_raw, 'limit': limit
             }).fetchall()
 
             for r in if_results:
@@ -276,15 +441,18 @@ def unified_search():
                       similarity(ra.title, :query) > 0.1
                       OR similarity(ra.keywords, :query) > 0.1
                       OR ra.title ILIKE :like_query
+                      OR ra.title ILIKE :like_raw
                       OR ra.keywords ILIKE :like_query
+                      OR ra.keywords ILIKE :like_raw
                       OR similarity(ci.search_tags, lower(:query)) > 0.15
                       OR ci.search_tags ILIKE :like_query
+                      OR ci.search_tags ILIKE :like_raw
                   )
                 ORDER BY sim DESC
                 LIMIT :limit
             """)
             rt_results = db.session.execute(rt_sql, {
-                'query': query, 'like_query': f'%{query}%', 'limit': limit
+                'query': query, 'like_query': like_query, 'like_raw': like_raw, 'limit': limit
             }).fetchall()
 
             for r in rt_results:
@@ -324,15 +492,18 @@ def unified_search():
                       similarity(rt.title, :query) > 0.1
                       OR similarity(rt.keywords, :query) > 0.1
                       OR rt.title ILIKE :like_query
+                      OR rt.title ILIKE :like_raw
                       OR rt.keywords ILIKE :like_query
+                      OR rt.keywords ILIKE :like_raw
                       OR similarity(ci.search_tags, lower(:query)) > 0.15
                       OR ci.search_tags ILIKE :like_query
+                      OR ci.search_tags ILIKE :like_raw
                   )
                 ORDER BY sim DESC
                 LIMIT :limit
             """)
             tmpl_results = db.session.execute(tmpl_sql, {
-                'query': query, 'like_query': f'%{query}%', 'limit': limit
+                'query': query, 'like_query': like_query, 'like_raw': like_raw, 'limit': limit
             }).fetchall()
 
             for r in tmpl_results:
@@ -368,15 +539,18 @@ def unified_search():
                       similarity(ra.title, :query) > 0.1
                       OR similarity(ra.keywords, :query) > 0.1
                       OR ra.title ILIKE :like_query
+                      OR ra.title ILIKE :like_raw
                       OR ra.keywords ILIKE :like_query
+                      OR ra.keywords ILIKE :like_raw
                       OR similarity(ci.search_tags, lower(:query)) > 0.15
                       OR ci.search_tags ILIKE :like_query
+                      OR ci.search_tags ILIKE :like_raw
                   )
                 ORDER BY sim DESC
                 LIMIT :limit
             """)
             anat_results = db.session.execute(anat_sql, {
-                'query': query, 'like_query': f'%{query}%', 'limit': limit
+                'query': query, 'like_query': like_query, 'like_raw': like_raw, 'limit': limit
             }).fetchall()
 
             for r in anat_results:
@@ -411,15 +585,18 @@ def unified_search():
                       similarity(rp.pearl_text, :query) > 0.1
                       OR similarity(rp.tags, :query) > 0.1
                       OR rp.pearl_text ILIKE :like_query
+                      OR rp.pearl_text ILIKE :like_raw
                       OR rp.tags ILIKE :like_query
+                      OR rp.tags ILIKE :like_raw
                       OR similarity(ci.search_tags, lower(:query)) > 0.15
                       OR ci.search_tags ILIKE :like_query
+                      OR ci.search_tags ILIKE :like_raw
                   )
                 ORDER BY sim DESC
                 LIMIT :limit
             """)
             pearl_results = db.session.execute(pearl_sql, {
-                'query': query, 'like_query': f'%{query}%', 'limit': limit
+                'query': query, 'like_query': like_query, 'like_raw': like_raw, 'limit': limit
             }).fetchall()
 
             for r in pearl_results:
@@ -452,15 +629,18 @@ def unified_search():
                       similarity(cp.title, :query) > 0.1
                       OR similarity(cp.keywords, :query) > 0.1
                       OR cp.title ILIKE :like_query
+                      OR cp.title ILIKE :like_raw
                       OR cp.keywords ILIKE :like_query
+                      OR cp.keywords ILIKE :like_raw
                       OR similarity(ci.search_tags, lower(:query)) > 0.15
                       OR ci.search_tags ILIKE :like_query
+                      OR ci.search_tags ILIKE :like_raw
                   )
                 ORDER BY sim DESC
                 LIMIT :limit
             """)
             proto_results = db.session.execute(proto_sql, {
-                'query': query, 'like_query': f'%{query}%', 'limit': limit
+                'query': query, 'like_query': like_query, 'like_raw': like_raw, 'limit': limit
             }).fetchall()
 
             for r in proto_results:
@@ -489,12 +669,13 @@ def unified_search():
                 WHERE (
                     similarity(ds.disease_name, :query) > 0.1
                     OR ds.disease_name ILIKE :like_query
+                    OR ds.disease_name ILIKE :like_raw
                 )
                 ORDER BY sim DESC
                 LIMIT :limit
             """)
             tnm_results = db.session.execute(tnm_sql, {
-                'query': query, 'like_query': f'%{query}%', 'limit': limit
+                'query': query, 'like_query': like_query, 'like_raw': like_raw, 'limit': limit
             }).fetchall()
 
             for r in tnm_results:
@@ -525,13 +706,15 @@ def unified_search():
                       similarity(ugi.diagnosis, :query) > 0.1
                       OR similarity(ugi.search_tags, :query) > 0.1
                       OR ugi.diagnosis ILIKE :like_query
+                      OR ugi.diagnosis ILIKE :like_raw
                       OR ugi.search_tags ILIKE :like_query
+                      OR ugi.search_tags ILIKE :like_raw
                   )
                 ORDER BY sim DESC
                 LIMIT :limit
             """)
             ugi_results = db.session.execute(ugi_sql, {
-                'query': query, 'like_query': f'%{query}%', 'limit': limit
+                'query': query, 'like_query': like_query, 'like_raw': like_raw, 'limit': limit
             }).fetchall()
 
             for r in ugi_results:
@@ -557,7 +740,7 @@ def unified_search():
 
     except Exception as exc:
         logger.warning(f"pg_trgm unified search failed, falling back to ILIKE: {exc}")
-        results = _fallback_search(query, filter_type, limit)
+        results = _fallback_search(query, filter_type, limit, raw_query=raw_query)
 
     # Sort by similarity descending, with type priority as tiebreaker
     TYPE_PRIORITY = {
@@ -569,27 +752,37 @@ def unified_search():
     total = len(results)
     paginated = results[offset:offset + limit]
 
-    return jsonify({
+    response = {
         'results': paginated,
-        'query': query,
+        'query': raw_query,
         'total': total,
         'offset': offset,
         'limit': limit,
         'has_more': (offset + limit) < total,
-    })
+    }
+    if query.lower() != raw_query.lower():
+        response['expanded_to'] = query
+    return jsonify(response)
 
 
-def _fallback_search(query, filter_type, limit):
+def _fallback_search(query, filter_type, limit, raw_query=None):
     """Fallback ILIKE search for SQLite compatibility."""
     results = []
-    like = f'%{query}%'
+    # Build list of ILIKE patterns: canonical form + raw form (if different)
+    likes = [f'%{query}%']
+    if raw_query and raw_query.lower() != query.lower():
+        likes.append(f'%{raw_query}%')
+
+    def _or_ilike(column):
+        """Build OR condition across all synonym ILIKE patterns for a column."""
+        return db.or_(*[column.ilike(l) for l in likes])
 
     if filter_type in ('', 'case'):
         cases = Case.query.filter(
             Case.status == CaseStatus.PUBLISHED,
             Case.discussion.isnot(None),
             Case.discussion != '',
-            Case.diagnosis.ilike(like),
+            _or_ilike(Case.diagnosis),
         ).limit(limit).all()
         for c in cases:
             results.append({
@@ -606,7 +799,7 @@ def _fallback_search(query, filter_type, limit):
     if filter_type in ('', 'oncologic'):
         calcs = TNMCalculatorContent.query.filter(
             TNMCalculatorContent.is_available == True,
-            TNMCalculatorContent.cancer_name.ilike(like),
+            _or_ilike(TNMCalculatorContent.cancer_name),
         ).limit(limit).all()
         for c in calcs:
             results.append({
@@ -622,8 +815,8 @@ def _fallback_search(query, filter_type, limit):
         ifs = IncidentalFindingCalculator.query.filter(
             IncidentalFindingCalculator.is_available == True,
             db.or_(
-                IncidentalFindingCalculator.finding_name.ilike(like),
-                IncidentalFindingCalculator.keywords.ilike(like),
+                _or_ilike(IncidentalFindingCalculator.finding_name),
+                _or_ilike(IncidentalFindingCalculator.keywords),
             ),
         ).limit(limit).all()
         for f in ifs:
@@ -641,8 +834,8 @@ def _fallback_search(query, filter_type, limit):
             ReportingAlgorithm.is_available == True,
             ReportingAlgorithm.origin == 'admin',
             db.or_(
-                ReportingAlgorithm.title.ilike(like),
-                ReportingAlgorithm.keywords.ilike(like),
+                _or_ilike(ReportingAlgorithm.title),
+                _or_ilike(ReportingAlgorithm.keywords),
             ),
         ).limit(limit).all()
         for t in templates:
@@ -662,8 +855,8 @@ def _fallback_search(query, filter_type, limit):
         tmpls = RadiologyTemplate.query.filter(
             RadiologyTemplate.is_available == True,
             db.or_(
-                RadiologyTemplate.title.ilike(like),
-                RadiologyTemplate.keywords.ilike(like),
+                _or_ilike(RadiologyTemplate.title),
+                _or_ilike(RadiologyTemplate.keywords),
             ),
         ).limit(limit).all()
         for t in tmpls:
@@ -681,8 +874,8 @@ def _fallback_search(query, filter_type, limit):
             ReportingAlgorithm.is_available == True,
             ReportingAlgorithm.origin == 'anatomy_cache',
             db.or_(
-                ReportingAlgorithm.title.ilike(like),
-                ReportingAlgorithm.keywords.ilike(like),
+                _or_ilike(ReportingAlgorithm.title),
+                _or_ilike(ReportingAlgorithm.keywords),
             ),
         ).limit(limit).all()
         for a in anats:
@@ -699,8 +892,8 @@ def _fallback_search(query, filter_type, limit):
         pearls = RadiologyPearl.query.filter(
             RadiologyPearl.is_verified == True,
             db.or_(
-                RadiologyPearl.pearl_text.ilike(like),
-                RadiologyPearl.tags.ilike(like),
+                _or_ilike(RadiologyPearl.pearl_text),
+                _or_ilike(RadiologyPearl.tags),
             ),
         ).limit(limit).all()
         for p in pearls:
@@ -718,8 +911,8 @@ def _fallback_search(query, filter_type, limit):
         protos = ClinicalProtocol.query.filter(
             ClinicalProtocol.is_published == True,
             db.or_(
-                ClinicalProtocol.title.ilike(like),
-                ClinicalProtocol.keywords.ilike(like),
+                _or_ilike(ClinicalProtocol.title),
+                _or_ilike(ClinicalProtocol.keywords),
             ),
         ).limit(limit).all()
         for p in protos:
@@ -734,7 +927,7 @@ def _fallback_search(query, filter_type, limit):
 
     if filter_type in ('', 'tnm_case'):
         sites = AJCCDiseaseSite.query.filter(
-            AJCCDiseaseSite.disease_name.ilike(like),
+            _or_ilike(AJCCDiseaseSite.disease_name),
         ).limit(limit).all()
         for s in sites:
             bs = AJCCBodySection.query.get(s.body_section_id)
@@ -753,8 +946,8 @@ def _fallback_search(query, filter_type, limit):
             UserGeneratedIntelligence.is_verified == True,
             UserGeneratedIntelligence.processing_status == 'processed',
             db.or_(
-                UserGeneratedIntelligence.diagnosis.ilike(like),
-                UserGeneratedIntelligence.search_tags.ilike(like),
+                _or_ilike(UserGeneratedIntelligence.diagnosis),
+                _or_ilike(UserGeneratedIntelligence.search_tags),
             ),
         ).limit(limit).all()
         for u in ugis:

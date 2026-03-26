@@ -27,12 +27,15 @@
         };
     }
 
-    function renderResults(results, container) {
+    function renderResults(results, container, expandedTo) {
         if (!results.length) {
             container.innerHTML = '<div class="global-search-empty"><i class="fas fa-search me-2"></i>No results found</div>';
             return;
         }
         var html = '';
+        if (expandedTo) {
+            html += '<div class="global-search-hint"><i class="fas fa-lightbulb me-1"></i>Including results for <strong>' + escapeHtml(expandedTo) + '</strong></div>';
+        }
         results.forEach(function (r) {
             var cfg = TYPE_CONFIG[r.type] || TYPE_CONFIG.case;
             var url = r.url || '#';
@@ -88,7 +91,7 @@
                 .then(function (r) { return r.json(); })
                 .then(function (data) {
                     if (input.value.trim() !== q) return;  // stale
-                    renderResults(data.results || [], resultsEl);
+                    renderResults(data.results || [], resultsEl, data.expanded_to);
                     resultsEl.classList.remove('d-none');
                 })
                 .catch(function () {
