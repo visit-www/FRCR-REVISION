@@ -1591,8 +1591,6 @@ def create_reporting_template():
     if existing:
         return jsonify({'error': f'Template with slug "{slug}" already exists.'}), 409
 
-    # Sanitize HTML content to strip script tags and event handlers
-    from app import sanitize_clinical_html
     _raw_template_html = data.get('template_html', '').strip() or None
     _raw_algorithm_html = data.get('algorithm_html', '').strip() or None
 
@@ -1609,8 +1607,8 @@ def create_reporting_template():
         body_section=data.get('body_section', '').strip() or None,
         description=data.get('description', '').strip() or None,
         keywords=data.get('keywords', '').strip() or None,
-        template_html=sanitize_clinical_html(_raw_template_html),
-        algorithm_html=sanitize_clinical_html(_raw_algorithm_html),
+        template_html=_raw_template_html,
+        algorithm_html=_raw_algorithm_html,
         source_citation=data.get('source_citation', '').strip() or None,
         guideline_version=data.get('guideline_version', '').strip() or None,
         is_available=data.get('is_available', False),
@@ -1652,15 +1650,11 @@ def update_reporting_template(template_id):
     if not data:
         return jsonify({'error': 'JSON body required.'}), 400
 
-    from app import sanitize_clinical_html
-    _html_fields = {'template_html', 'algorithm_html'}
     for field in ['title', 'category', 'body_section', 'modality', 'description', 'keywords',
                   'template_html', 'algorithm_html', 'source_citation', 'guideline_version',
                   'last_edit_note']:
         if field in data:
             val = data[field].strip() if isinstance(data[field], str) else data[field]
-            if field in _html_fields and isinstance(val, str):
-                val = sanitize_clinical_html(val)
             if field == 'modality' and isinstance(val, str):
                 val = normalize_modality(val)
             setattr(template, field, val)
