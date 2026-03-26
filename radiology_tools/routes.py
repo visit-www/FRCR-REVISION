@@ -337,6 +337,16 @@ def update_calculator(calc_id):
     if 'is_available' in data:
         calculator.is_available = bool(data['is_available'])
 
+    # Auto-refresh keywords from HTML content if calculator_html was updated
+    if 'calculator_html' in data and data['calculator_html']:
+        from radiology_tools.generator import _extract_keywords_from_html
+        calculator.keywords = _extract_keywords_from_html(
+            data['calculator_html'],
+            finding_name=calculator.finding_name,
+            category=calculator.category or '',
+            guideline_source=calculator.guideline_source or '',
+        )
+
     calculator.updated_at = datetime.utcnow()
     db.session.commit()
 
