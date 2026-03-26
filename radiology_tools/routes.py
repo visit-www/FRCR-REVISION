@@ -226,6 +226,22 @@ def embed_calculator(slug):
 
 # ==================== ADMIN ROUTES ====================
 
+def _guideline_display(raw):
+    """Extract human-readable guideline text from raw guideline_source (may be JSON)."""
+    if not raw:
+        return None
+    try:
+        obj = json.loads(raw)
+        if isinstance(obj, dict):
+            refs = obj.get('references') or []
+            sources = [r.get('source') or r.get('url', '') for r in refs if isinstance(r, dict)]
+            sources = [s for s in sources if s]
+            return ', '.join(sources) if sources else None
+    except (json.JSONDecodeError, TypeError):
+        pass
+    return raw
+
+
 @if_bp.route('/admin')
 @require_admin
 def admin_list():
@@ -234,6 +250,8 @@ def admin_list():
         IncidentalFindingCalculator.category,
         IncidentalFindingCalculator.finding_name
     ).all()
+    for c in calculators:
+        c._guideline_display = _guideline_display(c.guideline_source)
     return render_template('radiology_tools_admin.html', calculators=calculators,
                            cloudinary_cloud_name=os.environ.get('CLOUDINARY_CLOUD_NAME', ''),
                            cloudinary_upload_preset=os.environ.get('CLOUDINARY_UPLOAD_PRESET', ''))

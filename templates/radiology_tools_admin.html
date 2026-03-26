@@ -62,7 +62,7 @@
                                     <small class="text-muted">{{ c.slug }}</small>
                                 </td>
                                 <td><span class="badge bg-light text-dark border">{{ c.category or 'N/A' }}</span></td>
-                                <td><small>{{ c.guideline_source or 'Not specified' }}</small></td>
+                                <td><small>{{ c._guideline_display or 'Not specified' }}</small></td>
                                 <td>
                                     {% if c.is_available %}
                                     <span class="badge bg-success"><i class="fas fa-check me-1"></i>Available</span>
