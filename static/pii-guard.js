@@ -126,10 +126,29 @@
     function redact(text, matches) {
         if (!matches || matches.length === 0) return text;
 
+        // Deduplicate overlapping matches — keep the larger span when two overlap
+        const byStart = [...matches].sort((a, b) => a.index - b.index || b.match.length - a.match.length);
+        const deduped = [];
+        for (const m of byStart) {
+            if (deduped.length === 0) { deduped.push(m); continue; }
+            const prev = deduped[deduped.length - 1];
+            var prevEnd = prev.index + prev.match.length;
+            var currEnd = m.index + m.match.length;
+            // If current is fully contained within or overlaps previous, merge by keeping wider span
+            if (m.index < prevEnd) {
+                if (currEnd > prevEnd) {
+                    // Current extends past previous — widen previous
+                    prev.match = text.substring(prev.index, currEnd);
+                }
+                continue; // Skip overlapping/contained match
+            }
+            deduped.push(m);
+        }
+
         // Sort by index descending so replacements don't shift positions
-        const sorted = [...matches].sort((a, b) => b.index - a.index);
+        deduped.sort((a, b) => b.index - a.index);
         let result = text;
-        for (const m of sorted) {
+        for (const m of deduped) {
             result = result.substring(0, m.index) + '[REDACTED]' + result.substring(m.index + m.match.length);
         }
         return result;
