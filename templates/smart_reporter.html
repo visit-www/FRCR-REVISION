@@ -984,8 +984,22 @@ document.addEventListener('DOMContentLoaded', function() {
 
         var action = await PIIGuard.showPIIModal(result.matches);
         if (action === 'redact') {
-            editor.value = PIIGuard.redact(editor.value, result.matches);
-            showToast('Patient data removed from your text. Please review and re-submit.', 'success');
+            var cleaned = PIIGuard.redact(editor.value, result.matches);
+            if (cleaned !== editor.value) {
+                editor.value = cleaned;
+                showToast('Patient data removed from your text. Please review and re-submit.', 'success');
+            } else {
+                // Fallback: manual string replacement if redact didn't change the text
+                var fallback = editor.value;
+                for (var i = 0; i < result.matches.length; i++) {
+                    var m = result.matches[i].match;
+                    if (m && fallback.indexOf(m) !== -1) {
+                        fallback = fallback.split(m).join('[REDACTED]');
+                    }
+                }
+                editor.value = fallback;
+                showToast('Patient data removed from your text. Please review and re-submit.', 'success');
+            }
         }
         return true; // Always block — user must review cleaned text before re-submitting
     }
@@ -1003,8 +1017,21 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (displayMatches.length > 0 && window.PIIGuard) {
             PIIGuard.showPIIModal(displayMatches).then(function(action) {
-                if (action === 'redact' && editor && clientMatches.length > 0) {
-                    editor.value = PIIGuard.redact(editorText, clientMatches);
+                if (action === 'redact' && editor) {
+                    var matchesToRedact = clientMatches.length > 0 ? clientMatches : displayMatches;
+                    var cleaned = PIIGuard.redact(editor.value, matchesToRedact);
+                    if (cleaned === editor.value) {
+                        // Fallback: manual string replacement
+                        var fb = editor.value;
+                        for (var i = 0; i < matchesToRedact.length; i++) {
+                            var mt = matchesToRedact[i].match;
+                            if (mt && fb.indexOf(mt) !== -1) {
+                                fb = fb.split(mt).join('[REDACTED]');
+                            }
+                        }
+                        cleaned = fb;
+                    }
+                    editor.value = cleaned;
                     showToast('Patient data removed. Please review and re-submit.', 'success');
                 }
             });
