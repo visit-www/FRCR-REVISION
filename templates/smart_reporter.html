@@ -965,11 +965,25 @@ document.addEventListener('DOMContentLoaded', function() {
     // Active AbortController for cancelling in-flight AI requests
     let activeAIController = null;
 
-    function cancelAIRequest() {
+    window.cancelAIRequest = function() {
         if (activeAIController) {
             activeAIController.abort();
             activeAIController = null;
         }
+    };
+
+    // Handle server-side PII blocked responses — show detailed modal instead of generic toast
+    function handlePIIResponse(data) {
+        if (!data.pii_blocked) return false;
+        var matches = (data.pii_detected || []).map(function(d) {
+            return { type: d.type, match: d.match, description: d.type + ' detected' };
+        });
+        if (matches.length > 0 && window.PIIGuard) {
+            PIIGuard.showPIIModal(matches);
+        } else {
+            showToast(data.error || 'Patient data detected. Please remove before submitting.', 'error');
+        }
+        return true;
     }
 
     // ==================== SCENE MANAGEMENT ====================
@@ -1291,9 +1305,9 @@ document.addEventListener('DOMContentLoaded', function() {
             btn.disabled = false;
             document.getElementById('walkthroughLoading').classList.add('d-none');
 
-            if (data.error) {
+            if (data.pii_blocked || data.error) {
                 document.getElementById('walkthroughSetup').classList.remove('d-none');
-                showToast(data.error, 'error');
+                if (!handlePIIResponse(data)) showToast(data.error, 'error');
                 return;
             }
 
@@ -2393,8 +2407,8 @@ document.addEventListener('DOMContentLoaded', function() {
             btn.disabled = false;
             document.getElementById('reviewLoading').classList.add('d-none');
 
-            if (data.error) {
-                showToast(data.error, 'error');
+            if (data.pii_blocked || data.error) {
+                if (!handlePIIResponse(data)) showToast(data.error, 'error');
                 return;
             }
 
@@ -2682,8 +2696,8 @@ document.addEventListener('DOMContentLoaded', function() {
             btn.disabled = false;
             document.getElementById('askClaudeLoading').classList.add('d-none');
 
-            if (data.error) {
-                showToast(data.error, 'error');
+            if (data.pii_blocked || data.error) {
+                if (!handlePIIResponse(data)) showToast(data.error, 'error');
                 return;
             }
 
@@ -3518,9 +3532,9 @@ document.addEventListener('DOMContentLoaded', function() {
             btnPrimary.disabled = false;
             document.getElementById('walkthroughLoading').classList.add('d-none');
 
-            if (data.error) {
+            if (data.pii_blocked || data.error) {
                 document.getElementById('walkthroughSetup').classList.remove('d-none');
-                showToast(data.error, 'error');
+                if (!handlePIIResponse(data)) showToast(data.error, 'error');
                 return;
             }
 
