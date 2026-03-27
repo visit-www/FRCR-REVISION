@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 import os
 import secrets
 import logging
+import requests as http_requests
 import cloudinary
 import cloudinary.uploader
 
@@ -821,6 +822,184 @@ def logout_redirect():
 def account_deactivated_page():
     """Show account deactivated/recovery page"""
     return render_template('account_deactivated.html')
+
+
+# ==================== GOOGLE OAUTH 2.0 ====================
+
+GOOGLE_AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth'
+GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token'
+GOOGLE_USERINFO_URL = 'https://www.googleapis.com/oauth2/v2/userinfo'
+
+
+@auth_bp.route('/google', methods=['GET'])
+def google_login():
+    """Initiate Google OAuth 2.0 flow"""
+    client_id = os.getenv('GOOGLE_CLIENT_ID')
+    if not client_id:
+        logger.error("GOOGLE_CLIENT_ID not configured")
+        return redirect('/auth/login?error=google_not_configured')
+
+    # CSRF state token
+    state = secrets.token_urlsafe(32)
+    session['google_oauth_state'] = state
+
+    # Build redirect URI
+    app_url = os.getenv('APP_URL', 'https://www.radinsights.xyz').rstrip('/')
+    redirect_uri = f"{app_url}/auth/google/callback"
+
+    from urllib.parse import urlencode
+    params = {
+        'client_id': client_id,
+        'redirect_uri': redirect_uri,
+        'response_type': 'code',
+        'scope': 'openid email profile',
+        'state': state,
+        'access_type': 'online',
+        'prompt': 'select_account',
+    }
+    return redirect(f"{GOOGLE_AUTH_URL}?{urlencode(params)}")
+
+
+@auth_bp.route('/google/callback', methods=['GET'])
+def google_callback():
+    """Handle Google OAuth 2.0 callback"""
+    error = request.args.get('error')
+    if error:
+        logger.warning(f"Google OAuth error: {error}")
+        return redirect('/auth/login?error=google_auth_cancelled')
+
+    # Verify CSRF state
+    state = request.args.get('state')
+    stored_state = session.pop('google_oauth_state', None)
+    if not state or state != stored_state:
+        logger.warning("Google OAuth state mismatch")
+        return redirect('/auth/login?error=google_auth_failed')
+
+    code = request.args.get('code')
+    if not code:
+        return redirect('/auth/login?error=google_auth_failed')
+
+    client_id = os.getenv('GOOGLE_CLIENT_ID')
+    client_secret = os.getenv('GOOGLE_CLIENT_SECRET')
+    app_url = os.getenv('APP_URL', 'https://www.radinsights.xyz').rstrip('/')
+    redirect_uri = f"{app_url}/auth/google/callback"
+
+    # Exchange code for tokens
+    try:
+        token_resp = http_requests.post(GOOGLE_TOKEN_URL, data={
+            'code': code,
+            'client_id': client_id,
+            'client_secret': client_secret,
+            'redirect_uri': redirect_uri,
+            'grant_type': 'authorization_code',
+        }, timeout=10)
+
+        if token_resp.status_code != 200:
+            logger.error(f"Google token exchange failed: {token_resp.status_code} {token_resp.text[:200]}")
+            return redirect('/auth/login?error=google_auth_failed')
+
+        token_data = token_resp.json()
+        access_token = token_data.get('access_token')
+        if not access_token:
+            logger.error("No access_token in Google response")
+            return redirect('/auth/login?error=google_auth_failed')
+
+    except Exception as e:
+        logger.error(f"Google token exchange exception: {e}")
+        return redirect('/auth/login?error=google_auth_failed')
+
+    # Fetch user info
+    try:
+        userinfo_resp = http_requests.get(GOOGLE_USERINFO_URL, headers={
+            'Authorization': f'Bearer {access_token}'
+        }, timeout=10)
+
+        if userinfo_resp.status_code != 200:
+            logger.error(f"Google userinfo failed: {userinfo_resp.status_code}")
+            return redirect('/auth/login?error=google_auth_failed')
+
+        userinfo = userinfo_resp.json()
+    except Exception as e:
+        logger.error(f"Google userinfo exception: {e}")
+        return redirect('/auth/login?error=google_auth_failed')
+
+    google_id = userinfo.get('id')
+    email = (userinfo.get('email') or '').strip().lower()
+    name = userinfo.get('name') or email.split('@')[0]
+    picture = userinfo.get('picture')
+    verified_email = userinfo.get('verified_email', False)
+
+    if not google_id or not email:
+        logger.error("Missing google_id or email from Google userinfo")
+        return redirect('/auth/login?error=google_auth_failed')
+
+    if not verified_email:
+        logger.warning(f"Google email not verified: {email}")
+        return redirect('/auth/login?error=google_email_not_verified')
+
+    # Look up user by google_id or email
+    user = User.query.filter_by(google_id=google_id).first()
+    if not user:
+        user = User.query.filter_by(email=email).first()
+
+    try:
+        if user:
+            # Existing user — link google_id if not already set
+            if not user.google_id:
+                user.google_id = google_id
+            # Update profile picture if user doesn't have one
+            if not user.profile_picture and picture:
+                user.profile_picture = picture
+            user.last_login = datetime.utcnow()
+            db.session.commit()
+        else:
+            # New user — auto-create as student
+            user = User(
+                email=email,
+                full_name=name,
+                google_id=google_id,
+                role=UserRole.STUDENT,
+                is_admin=False,
+                is_active=True,
+            )
+            # Set unusable password (random hash — cannot be used for password login)
+            from werkzeug.security import generate_password_hash
+            user.password_hash = generate_password_hash(secrets.token_hex(32))
+            if picture:
+                user.profile_picture = picture
+            user.last_login = datetime.utcnow()
+            db.session.add(user)
+            db.session.commit()
+
+        # Check soft-deleted account
+        if user.is_deleted:
+            return redirect('/auth/login?error=account_deactivated')
+
+        if not user.is_active:
+            return redirect('/auth/login?error=account_disabled')
+
+        # Admin with 2FA — require TOTP verification
+        if user.role == UserRole.ADMIN and user.totp_enabled and user.totp_secret:
+            from flask import session as flask_session
+            flask_session['pending_2fa_user_id'] = user.id
+            flask_session['2fa_remember'] = False
+            flask_session['2fa_request_time'] = datetime.utcnow().isoformat()
+            flask_session['2fa_attempts'] = 0
+            return redirect('/auth/verify-2fa')
+
+        # Normal login
+        from flask import session as flask_session
+        flask_session.permanent = True
+        flask_session['last_activity'] = datetime.utcnow().isoformat()
+        login_user(user, remember=False)
+
+        logger.info(f"Google OAuth login successful for {email}")
+        return redirect('/')
+
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Google OAuth DB error: {e}", exc_info=True)
+        return redirect('/auth/login?error=google_auth_failed')
 
 
 # ==================== STUDENT ACCOUNT SOFT DELETE & RECOVERY ====================

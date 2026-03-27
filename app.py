@@ -914,6 +914,9 @@ with app.app_context():
         _add_col_if_missing('user', 'totp_enabled', 'totp_enabled BOOLEAN DEFAULT false NOT NULL')
         _add_col_if_missing('user', 'totp_backup_codes', 'totp_backup_codes TEXT')
 
+        # -- user: Google OAuth --
+        _add_col_if_missing('user', 'google_id', 'google_id VARCHAR(255)')
+
         # -- user: Widen token columns VARCHAR(255) → TEXT for encrypted storage --
         for _token_col in ['notion_access_token', 'anki_api_key']:
             _widen_col_to_text('user', _token_col)
