@@ -534,8 +534,10 @@ def verify_2fa():
         return jsonify({'error': 'Invalid request'}), 400
 
     code = str(data.get('code', '')).strip()
-    if not code or len(code) != 6 or not code.isdigit():
-        return jsonify({'error': 'Please enter a 6-digit code'}), 400
+    is_backup_code = len(code) == 8 and all(c in '0123456789abcdef' for c in code.lower())
+    is_totp_code = len(code) == 6 and code.isdigit()
+    if not code or (not is_totp_code and not is_backup_code):
+        return jsonify({'error': 'Please enter a 6-digit code or 8-character backup code'}), 400
 
     # Check attempt limit
     attempts = flask_session.get('2fa_attempts', 0)
@@ -552,8 +554,33 @@ def verify_2fa():
         return jsonify({'error': 'Invalid session. Please log in again.'}), 401
 
     import pyotp
-    totp = pyotp.TOTP(user.totp_secret)
-    if not totp.verify(code, valid_window=1):
+    import hashlib
+    import json as json_mod
+
+    totp_valid = False
+    backup_used = False
+    backup_remaining = 0
+
+    if is_totp_code:
+        totp = pyotp.TOTP(user.totp_secret)
+        totp_valid = totp.verify(code, valid_window=2)
+
+    if not totp_valid and is_backup_code and user.totp_backup_codes:
+        # Try backup code
+        code_hash = hashlib.sha256(code.lower().encode()).hexdigest()
+        try:
+            stored_hashes = json_mod.loads(user.totp_backup_codes)
+            if code_hash in stored_hashes:
+                stored_hashes.remove(code_hash)
+                user.totp_backup_codes = json_mod.dumps(stored_hashes) if stored_hashes else None
+                db.session.commit()
+                totp_valid = True
+                backup_used = True
+                backup_remaining = len(stored_hashes)
+        except (json_mod.JSONDecodeError, TypeError):
+            pass
+
+    if not totp_valid:
         flask_session['2fa_attempts'] = attempts + 1
         remaining = 5 - (attempts + 1)
         return jsonify({
@@ -573,7 +600,12 @@ def verify_2fa():
     login_user(user, remember=bool(remember))
 
     logger.info(f'Admin 2FA verified for user {user.email}')
-    return jsonify({'success': True, 'message': 'Login successful'}), 200
+    response = {'success': True, 'message': 'Login successful'}
+    if backup_used:
+        response['warning'] = f'Logged in with backup code. {backup_remaining} code{"s" if backup_remaining != 1 else ""} remaining.'
+        response['backup_used'] = True
+        response['backup_remaining'] = backup_remaining
+    return jsonify(response), 200
 
 
 @auth_bp.route('/session/refresh', methods=['POST'])

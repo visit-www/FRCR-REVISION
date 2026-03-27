@@ -195,6 +195,12 @@
             </button>
         </form>
 
+        <div class="text-center mt-2" style="font-size: 13px;">
+            <a href="#" id="toggleBackupCode" style="color: var(--brand-text-secondary); text-decoration: none;">
+                Lost your authenticator? Use a backup code
+            </a>
+        </div>
+
         <div class="back-link">
             <a href="/auth/login"><i class="fas fa-arrow-left"></i> Back to login</a>
         </div>
@@ -206,15 +212,53 @@
         const verifyBtn = document.getElementById('verifyBtn');
         const verifyText = document.getElementById('verifyText');
         const alertContainer = document.getElementById('alertContainer');
+        const toggleLink = document.getElementById('toggleBackupCode');
+        const codeLabel = document.querySelector('.form-label');
+        const subtitleP = document.querySelector('.logo-section p');
+        let backupMode = false;
 
-        // Only allow digits
-        codeInput.addEventListener('input', function() {
-            this.value = this.value.replace(/\D/g, '').slice(0, 6);
+        // Toggle between TOTP and backup code mode
+        toggleLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            backupMode = !backupMode;
+            codeInput.value = '';
+            if (backupMode) {
+                toggleLink.textContent = 'Use authenticator code instead';
+                codeLabel.textContent = 'Backup Code';
+                subtitleP.textContent = 'Enter one of your 8-character backup codes';
+                codeInput.maxLength = 8;
+                codeInput.placeholder = 'a3f1b92c';
+                codeInput.inputMode = 'text';
+                codeInput.pattern = '[0-9a-fA-F]{8}';
+                codeInput.style.letterSpacing = '4px';
+                codeInput.style.fontSize = '20px';
+            } else {
+                toggleLink.textContent = 'Lost your authenticator? Use a backup code';
+                codeLabel.textContent = 'Verification Code';
+                subtitleP.textContent = 'Enter the 6-digit code from your authenticator app';
+                codeInput.maxLength = 6;
+                codeInput.placeholder = '000000';
+                codeInput.inputMode = 'numeric';
+                codeInput.pattern = '[0-9]{6}';
+                codeInput.style.letterSpacing = '8px';
+                codeInput.style.fontSize = '24px';
+            }
+            codeInput.focus();
         });
 
-        // Auto-submit when 6 digits entered
+        // Filter input based on mode
         codeInput.addEventListener('input', function() {
-            if (this.value.length === 6) {
+            if (backupMode) {
+                this.value = this.value.replace(/[^0-9a-fA-F]/g, '').slice(0, 8).toLowerCase();
+            } else {
+                this.value = this.value.replace(/\D/g, '').slice(0, 6);
+            }
+        });
+
+        // Auto-submit when expected length entered
+        codeInput.addEventListener('input', function() {
+            const expectedLen = backupMode ? 8 : 6;
+            if (this.value.length === expectedLen) {
                 tfaForm.dispatchEvent(new Event('submit', { cancelable: true }));
             }
         });
@@ -225,8 +269,10 @@
             const code = codeInput.value.trim();
             alertContainer.innerHTML = '';
 
-            if (!code || code.length !== 6 || !/^\d{6}$/.test(code)) {
-                showAlert('Please enter a 6-digit code', 'danger');
+            const validTotp = code.length === 6 && /^\d{6}$/.test(code);
+            const validBackup = code.length === 8 && /^[0-9a-f]{8}$/.test(code);
+            if (!code || (!validTotp && !validBackup)) {
+                showAlert(backupMode ? 'Please enter an 8-character backup code' : 'Please enter a 6-digit code', 'danger');
                 return;
             }
 
@@ -244,8 +290,13 @@
                 const data = await response.json();
 
                 if (response.ok) {
-                    showAlert('Verified! Redirecting...', 'success');
-                    setTimeout(() => { window.location.href = '/'; }, 500);
+                    if (data.backup_used) {
+                        showAlert(data.warning || 'Logged in with backup code.', 'success');
+                        setTimeout(() => { window.location.href = '/'; }, 2500);
+                    } else {
+                        showAlert('Verified! Redirecting...', 'success');
+                        setTimeout(() => { window.location.href = '/'; }, 500);
+                    }
                 } else if (data.locked) {
                     showAlert(data.error, 'danger');
                     setTimeout(() => { window.location.href = '/auth/login'; }, 2000);

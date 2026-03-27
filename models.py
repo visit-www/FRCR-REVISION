@@ -278,6 +278,7 @@ class User(UserMixin, db.Model):
     # === 2FA TOTP (admin only) ===
     totp_secret = db.Column(EncryptedText(), nullable=True)  # Base32 TOTP secret (encrypted at rest)
     totp_enabled = db.Column(db.Boolean, default=False)       # Whether 2FA is active
+    totp_backup_codes = db.Column(EncryptedText(), nullable=True)  # JSON list of hashed backup codes
 
     # Password recovery
     recovery_token = db.Column(db.String(255), unique=True, nullable=True)

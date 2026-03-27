@@ -2404,15 +2404,28 @@ def enable_2fa():
         return jsonify({'error': 'Please enter the 6-digit code from your authenticator app'}), 400
 
     totp = pyotp.TOTP(secret)
-    if not totp.verify(code, valid_window=1):
+    if not totp.verify(code, valid_window=2):
         return jsonify({'error': 'Invalid code. Please check your authenticator app and try again.'}), 400
+
+    import secrets as secrets_mod
+    import hashlib
 
     current_user.totp_secret = secret
     current_user.totp_enabled = True
+
+    # Generate 8 backup codes
+    plaintext_codes = [secrets_mod.token_hex(4) for _ in range(8)]
+    hashed_codes = [hashlib.sha256(c.encode()).hexdigest() for c in plaintext_codes]
+    current_user.totp_backup_codes = json.dumps(hashed_codes)
+
     db.session.commit()
 
     logger.info(f'2FA enabled for admin user {current_user.email}')
-    return jsonify({'success': True, 'message': '2FA has been enabled'}), 200
+    return jsonify({
+        'success': True,
+        'message': '2FA has been enabled',
+        'backup_codes': plaintext_codes
+    }), 200
 
 
 @admin_bp.route('/2fa/disable', methods=['POST'])
@@ -2433,11 +2446,12 @@ def disable_2fa():
         return jsonify({'error': 'Please enter your current 6-digit code'}), 400
 
     totp = pyotp.TOTP(current_user.totp_secret)
-    if not totp.verify(code, valid_window=1):
+    if not totp.verify(code, valid_window=2):
         return jsonify({'error': 'Invalid code. 2FA was not disabled.'}), 400
 
     current_user.totp_secret = None
     current_user.totp_enabled = False
+    current_user.totp_backup_codes = None
     db.session.commit()
 
     logger.info(f'2FA disabled for admin user {current_user.email}')
@@ -2448,8 +2462,51 @@ def disable_2fa():
 @require_admin
 def get_2fa_status():
     """Get current 2FA status for the logged-in admin."""
+    has_backup = False
+    if current_user.totp_backup_codes:
+        try:
+            codes = json.loads(current_user.totp_backup_codes)
+            has_backup = len(codes) > 0
+        except (json.JSONDecodeError, TypeError):
+            pass
     return jsonify({
         'enabled': bool(current_user.totp_enabled),
+        'has_backup_codes': has_backup,
+    }), 200
+
+
+@admin_bp.route('/2fa/regenerate-backup-codes', methods=['POST'])
+@require_admin
+def regenerate_backup_codes():
+    """Regenerate backup codes — requires a valid TOTP code."""
+    import pyotp
+    import secrets as secrets_mod
+    import hashlib
+
+    if not current_user.totp_enabled or not current_user.totp_secret:
+        return jsonify({'error': '2FA is not enabled'}), 400
+
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'Invalid request'}), 400
+
+    code = str(data.get('code', '')).strip()
+    if not code or len(code) != 6 or not code.isdigit():
+        return jsonify({'error': 'Please enter your current 6-digit code'}), 400
+
+    totp = pyotp.TOTP(current_user.totp_secret)
+    if not totp.verify(code, valid_window=2):
+        return jsonify({'error': 'Invalid code'}), 400
+
+    plaintext_codes = [secrets_mod.token_hex(4) for _ in range(8)]
+    hashed_codes = [hashlib.sha256(c.encode()).hexdigest() for c in plaintext_codes]
+    current_user.totp_backup_codes = json.dumps(hashed_codes)
+    db.session.commit()
+
+    logger.info(f'Backup codes regenerated for admin user {current_user.email}')
+    return jsonify({
+        'success': True,
+        'backup_codes': plaintext_codes
     }), 200
 
 

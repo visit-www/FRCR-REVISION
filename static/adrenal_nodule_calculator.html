@@ -1,0 +1,1316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Adrenal Nodule Management Calculator</title>
+    <style>
+        :root {
+            --brand-primary: #e96304;
+            --brand-neutral: #5E899E;
+            --brand-bg-offwhite: #fdfdfb;
+            --brand-border: #c5cad1;
+            --brand-text-primary: #2c3e50;
+            --brand-success: #27ae60;
+            --brand-warning: #f39c12;
+            --brand-danger: #e74c3c;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: var(--brand-text-primary);
+            background-color: var(--brand-bg-offwhite);
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, var(--brand-primary), #d4540a);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+
+        .disclaimer {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 12px;
+            margin: 20px;
+            border-radius: 6px;
+            font-size: 14px;
+            color: #856404;
+        }
+
+        .criteria-box {
+            background: #e8f4f8;
+            border: 1px solid var(--brand-neutral);
+            border-left: 4px solid var(--brand-neutral);
+            padding: 16px 20px;
+            margin: 0 20px;
+            border-radius: 6px;
+        }
+
+        .criteria-box h3 {
+            color: var(--brand-neutral);
+            font-size: 15px;
+            margin-bottom: 8px;
+        }
+
+        .criteria-box ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .criteria-box ul li {
+            padding: 3px 0;
+            font-size: 14px;
+        }
+
+        .criteria-box ul li::before {
+            content: "\2713  ";
+            color: var(--brand-neutral);
+            font-weight: 700;
+        }
+
+        .content {
+            padding: 20px;
+        }
+
+        .section {
+            margin-bottom: 30px;
+            border: 1px solid var(--brand-border);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .section-header {
+            background: var(--brand-neutral);
+            color: white;
+            padding: 12px 16px;
+            font-weight: 600;
+            font-size: 16px;
+        }
+
+        .section-content {
+            padding: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--brand-text-primary);
+        }
+
+        .form-group input[type="number"],
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--brand-border);
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .form-group input[type="number"]:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--brand-primary);
+            box-shadow: 0 0 0 2px rgba(233, 99, 4, 0.2);
+        }
+
+        .checkbox-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-top: 10px;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .checkbox-item input[type="checkbox"],
+        .checkbox-item input[type="radio"] {
+            width: 18px;
+            height: 18px;
+        }
+
+        .radio-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .radio-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px;
+            border: 1px solid var(--brand-border);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .radio-item:hover {
+            background-color: #f8f9fa;
+        }
+
+        .radio-item input[type="radio"] {
+            margin: 0;
+        }
+
+        .conditional-section {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            border-left: 4px solid var(--brand-primary);
+        }
+
+        .washout-calculator {
+            background: #e8f4f8;
+            border: 1px solid var(--brand-neutral);
+            border-radius: 6px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .washout-inputs {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .washout-results {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .washout-result {
+            padding: 10px;
+            border-radius: 4px;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .result-section {
+            background: #f8f9fa;
+            border-left: 4px solid var(--brand-primary);
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .result-category {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .result-recommendation {
+            font-size: 16px;
+            margin-bottom: 15px;
+        }
+
+        .result-followup {
+            background: white;
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid var(--brand-border);
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+            text-align: center;
+        }
+
+        .btn-primary {
+            background: var(--brand-primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #d4540a;
+        }
+
+        .btn-secondary {
+            background: var(--brand-neutral);
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #4a7a8a;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 120px;
+            padding: 12px;
+            border: 1px solid var(--brand-border);
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 13px;
+            resize: vertical;
+        }
+
+        .algorithm-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        .algorithm-table th,
+        .algorithm-table td {
+            padding: 12px;
+            text-align: left;
+            border: 1px solid var(--brand-border);
+        }
+
+        .algorithm-table th {
+            background: var(--brand-neutral);
+            color: white;
+            font-weight: 600;
+        }
+
+        .algorithm-table tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+
+        .pitfalls-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .pitfalls-list li {
+            padding: 10px;
+            margin-bottom: 8px;
+            background: #fff3cd;
+            border-left: 4px solid var(--brand-warning);
+            border-radius: 4px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .status-benign {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-indeterminate {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status-suspicious {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .mri-section {
+            background: #f0f0f8;
+            border: 1px solid #b0b0d0;
+            border-radius: 6px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .mri-results {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .mri-result {
+            padding: 10px;
+            border-radius: 4px;
+            text-align: center;
+            font-weight: 600;
+            background: #f8f9fa;
+            border: 1px solid var(--brand-border);
+        }
+
+        @media (max-width: 600px) {
+            .washout-inputs {
+                grid-template-columns: 1fr;
+            }
+
+            .washout-results {
+                grid-template-columns: 1fr;
+            }
+
+            .mri-results {
+                grid-template-columns: 1fr;
+            }
+
+            .btn-group {
+                flex-direction: column;
+            }
+        }
+
+        /* Algorithm flowchart */
+        .algo-step {
+            margin-bottom: 0;
+            border: 1px solid var(--brand-border);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .algo-step + .algo-step {
+            margin-top: -1px;
+            border-top-left-radius: 0;
+            border-top-right-radius: 0;
+        }
+
+        .algo-step:first-of-type {
+            border-radius: 6px 6px 0 0;
+        }
+
+        .algo-step:last-of-type {
+            border-radius: 0 0 6px 6px;
+        }
+
+        .algo-step-header {
+            padding: 10px 16px;
+            font-weight: 700;
+            font-size: 14px;
+            color: white;
+        }
+
+        .algo-step-1 { background: var(--brand-success); color: #155724; }
+        .algo-step-2 { background: var(--brand-warning); color: #533f03; }
+        .algo-step-3 { background: var(--brand-danger); }
+
+        .algo-step-body {
+            padding: 16px;
+            background: white;
+        }
+
+        .algo-question {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: var(--brand-text-primary);
+        }
+
+        .algo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 10px;
+        }
+
+        .algo-grid-narrow {
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        }
+
+        .algo-card {
+            border-radius: 6px;
+            padding: 12px;
+            border: 1px solid;
+        }
+
+        .algo-card.algo-benign {
+            background: #f0faf3;
+            border-color: #b7e4c7;
+        }
+
+        .algo-card.algo-indeterminate {
+            background: #fefbf0;
+            border-color: #f5e6a3;
+        }
+
+        .algo-card.algo-suspicious {
+            background: #fdf0f0;
+            border-color: #f5c6cb;
+        }
+
+        .algo-card-title {
+            font-weight: 700;
+            font-size: 13px;
+            margin-bottom: 4px;
+            color: var(--brand-text-primary);
+        }
+
+        .algo-card-detail {
+            font-size: 12px;
+            color: #5a6270;
+            margin-bottom: 6px;
+        }
+
+        .algo-card-action {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--brand-neutral);
+        }
+
+        .algo-arrow {
+            text-align: center;
+            padding: 10px 0 2px;
+            font-size: 13px;
+            font-weight: 600;
+            color: #5a6270;
+        }
+
+        @media (max-width: 600px) {
+            .algo-grid, .algo-grid-narrow {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media print {
+            .btn, .btn-group {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Adrenal Nodule Management Calculator</h1>
+            <p>Evidence-based decision support for adrenal incidentalomas</p>
+        </div>
+
+        <div class="disclaimer">
+            <strong>Clinical Decision Support Tool</strong> — Verify against current guidelines before clinical use. Based on Radiology Assistant guidelines for adrenal lesion characterization.
+        </div>
+
+        <div class="criteria-box">
+            <h3>Definition — Adrenal Incidentaloma</h3>
+            <ul>
+                <li>Incidental adrenal mass &gt;10 mm detected on imaging not performed for suspected adrenal disease</li>
+                <li>No prior history of cancer</li>
+                <li>Non-functional (no clinical signs of hormone excess)</li>
+            </ul>
+        </div>
+
+        <div class="content">
+            <!-- Patient and Lesion Characteristics -->
+            <div class="section">
+                <div class="section-header">Patient and Lesion Characteristics</div>
+                <div class="section-content">
+                    <div class="form-group">
+                        <label for="lesionSize">Lesion Size (cm)</label>
+                        <input type="number" id="lesionSize" min="0.1" max="20" step="0.1" placeholder="Enter size in cm">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="patientAge">Patient Age (years)</label>
+                        <input type="number" id="patientAge" min="1" max="120" placeholder="Enter age">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Cancer History</label>
+                        <div class="radio-group">
+                            <div class="radio-item">
+                                <input type="radio" id="cancerNo" name="cancerHistory" value="no">
+                                <label for="cancerNo">No cancer history</label>
+                            </div>
+                            <div class="radio-item">
+                                <input type="radio" id="cancerYes" name="cancerHistory" value="yes">
+                                <label for="cancerYes">Known cancer history</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="lesionSide">Lesion Location</label>
+                        <select id="lesionSide">
+                            <option value="">Select location</option>
+                            <option value="right">Right adrenal</option>
+                            <option value="left">Left adrenal</option>
+                            <option value="bilateral">Bilateral</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Imaging Characteristics -->
+            <div class="section">
+                <div class="section-header">Imaging Characteristics</div>
+                <div class="section-content">
+                    <div class="form-group">
+                        <label for="unenhancedHU">Unenhanced CT Attenuation (HU)</label>
+                        <input type="number" id="unenhancedHU" min="-50" max="100" placeholder="Enter HU value">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Lesion Characteristics (check all that apply)</label>
+                        <div class="checkbox-group">
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="wellDefined">
+                                <label for="wellDefined">Well-defined margins</label>
+                            </div>
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="homogeneous">
+                                <label for="homogeneous">Homogeneous</label>
+                            </div>
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="calcifications">
+                                <label for="calcifications">Calcifications present</label>
+                            </div>
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="cystic">
+                                <label for="cystic">Cystic components</label>
+                            </div>
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="hemorrhage">
+                                <label for="hemorrhage">Hemorrhage/high attenuation</label>
+                            </div>
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="myelolipoma">
+                                <label for="myelolipoma">Macroscopic fat (myelolipoma)</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Enhancement Pattern</label>
+                        <div class="radio-group">
+                            <div class="radio-item">
+                                <input type="radio" id="noEnhancement" name="enhancement" value="none">
+                                <label for="noEnhancement">No enhancement (&lt;10 HU difference)</label>
+                            </div>
+                            <div class="radio-item">
+                                <input type="radio" id="mildEnhancement" name="enhancement" value="mild">
+                                <label for="mildEnhancement">Mild enhancement (10-20 HU)</label>
+                            </div>
+                            <div class="radio-item">
+                                <input type="radio" id="moderateEnhancement" name="enhancement" value="moderate">
+                                <label for="moderateEnhancement">Moderate enhancement (20-40 HU)</label>
+                            </div>
+                            <div class="radio-item">
+                                <input type="radio" id="avidEnhancement" name="enhancement" value="avid">
+                                <label for="avidEnhancement">Avid enhancement (&gt;40 HU)</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Prior Imaging Comparison</label>
+                        <div class="radio-group">
+                            <div class="radio-item">
+                                <input type="radio" id="noPrior" name="priorImaging" value="none">
+                                <label for="noPrior">No prior imaging available</label>
+                            </div>
+                            <div class="radio-item">
+                                <input type="radio" id="stable" name="priorImaging" value="stable">
+                                <label for="stable">Stable &gt;12 months</label>
+                            </div>
+                            <div class="radio-item">
+                                <input type="radio" id="growing" name="priorImaging" value="growing">
+                                <label for="growing">Increasing in size</label>
+                            </div>
+                            <div class="radio-item">
+                                <input type="radio" id="new" name="priorImaging" value="new">
+                                <label for="new">New lesion</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Washout Calculator -->
+            <div class="section">
+                <div class="section-header">Adrenal Washout Calculator</div>
+                <div class="section-content">
+                    <p>For indeterminate lesions (unenhanced HU &gt;10), calculate washout to diagnose lipid-poor adenomas:</p>
+
+                    <div class="washout-calculator">
+                        <div class="washout-inputs">
+                            <div class="form-group">
+                                <label for="preContrastHU">Pre-contrast HU</label>
+                                <input type="number" id="preContrastHU" min="-50" max="100" placeholder="HU">
+                            </div>
+                            <div class="form-group">
+                                <label for="arterialHU">Arterial phase HU</label>
+                                <input type="number" id="arterialHU" min="-50" max="200" placeholder="HU">
+                            </div>
+                            <div class="form-group">
+                                <label for="delayedHU">Delayed phase HU (15 min)</label>
+                                <input type="number" id="delayedHU" min="-50" max="200" placeholder="HU">
+                            </div>
+                        </div>
+
+                        <button type="button" class="btn btn-secondary" onclick="calculateWashout()">Calculate Washout</button>
+
+                        <div class="washout-results">
+                            <div class="washout-result" id="absoluteWashout">
+                                <div>Absolute Washout</div>
+                                <div id="absoluteValue">--%</div>
+                                <div id="absoluteInterpretation">--</div>
+                            </div>
+                            <div class="washout-result" id="relativeWashout">
+                                <div>Relative Washout</div>
+                                <div id="relativeValue">--%</div>
+                                <div id="relativeInterpretation">--</div>
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 15px; font-size: 14px;">
+                            <strong>Adenoma criteria:</strong><br>
+                            &bull; Absolute washout &ge;60% OR<br>
+                            &bull; Relative washout &ge;40%<br>
+                            <em>External calculator: <a href="https://radiogyan.com/adrenal-washout-calculator/" target="_blank" rel="noopener">radiogyan.com/adrenal-washout-calculator/</a></em>
+                        </div>
+
+                        <div style="margin-top: 12px; font-size: 13px; color: #856404; background: #fff3cd; padding: 10px; border-radius: 4px;">
+                            <strong>Pitfall:</strong> Metastases from hypervascular primaries (RCC, HCC), pheochromocytomas, and adrenocortical carcinomas may show adenoma-like washout patterns.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MRI Chemical Shift Calculator -->
+            <div class="section">
+                <div class="section-header">MRI Chemical Shift Analysis</div>
+                <div class="section-content">
+                    <p>For indeterminate lesions, chemical shift MRI can identify intracellular lipid in lipid-poor adenomas:</p>
+
+                    <div class="mri-section">
+                        <div class="washout-inputs">
+                            <div class="form-group">
+                                <label for="adrenalInPhase">Adrenal SI (In-Phase)</label>
+                                <input type="number" id="adrenalInPhase" min="0" max="2000" placeholder="Signal intensity">
+                            </div>
+                            <div class="form-group">
+                                <label for="adrenalOutPhase">Adrenal SI (Out-of-Phase)</label>
+                                <input type="number" id="adrenalOutPhase" min="0" max="2000" placeholder="Signal intensity">
+                            </div>
+                            <div class="form-group">
+                                <label for="spleenInPhase">Spleen SI (In-Phase)</label>
+                                <input type="number" id="spleenInPhase" min="0" max="2000" placeholder="Signal intensity">
+                            </div>
+                            <div class="form-group">
+                                <label for="spleenOutPhase">Spleen SI (Out-of-Phase)</label>
+                                <input type="number" id="spleenOutPhase" min="0" max="2000" placeholder="Signal intensity">
+                            </div>
+                        </div>
+
+                        <button type="button" class="btn btn-secondary" onclick="calculateMRI()">Calculate Chemical Shift</button>
+
+                        <div class="mri-results">
+                            <div class="mri-result" id="asrResult">
+                                <div>Adrenal-to-Spleen Ratio (ASR)</div>
+                                <div id="asrValue">--</div>
+                                <div id="asrInterpretation">Adenoma if &lt;0.71</div>
+                            </div>
+                            <div class="mri-result" id="siIndexResult">
+                                <div>Signal Intensity Index</div>
+                                <div id="siIndexValue">--</div>
+                                <div id="siIndexInterpretation">Adenoma if &gt;16.5%</div>
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 12px; font-size: 13px; color: #555;">
+                            <strong>Note:</strong> Chemical shift imaging is less sensitive than washout CT, particularly when unenhanced density is &ge;20 HU.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Results and Recommendations -->
+            <div class="section">
+                <div class="section-header">Management Recommendation</div>
+                <div class="section-content">
+                    <div id="recommendationOutput" class="result-section">
+                        <div class="result-category" id="categoryOutput">Complete the form above for recommendation</div>
+                        <div class="result-recommendation" id="recommendationText"></div>
+                        <div class="result-followup" id="followupText"></div>
+                    </div>
+
+                    <div class="btn-group">
+                        <button type="button" id="generateReportBtn" class="btn btn-primary" onclick="generateReport()">Generate Report Language</button>
+                        <button type="button" class="btn btn-secondary" onclick="copyReport()">Copy Report Language</button>
+                        <button type="button" class="btn btn-secondary" onclick="printResults()">Print Results</button>
+                    </div>
+
+                    <div class="form-group" style="margin-top: 20px;">
+                        <label for="reportOutput">Generated Report Language</label>
+                        <textarea id="reportOutput" placeholder="Click 'Generate Report Language' to create copy-paste text for your radiology report..."></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Reference Materials -->
+            <div class="section">
+                <div class="section-header">Clinical Reference</div>
+                <div class="section-content">
+                    <h3>Management Algorithm</h3>
+
+                    <!-- Step 1 -->
+                    <div class="algo-step">
+                        <div class="algo-step-header algo-step-1">Step 1 — Benign features?</div>
+                        <div class="algo-step-body">
+                            <p class="algo-question">Can you confidently diagnose a benign lesion on current imaging?</p>
+                            <div class="algo-grid">
+                                <div class="algo-card algo-benign">
+                                    <div class="algo-card-title">Lipid-rich adenoma</div>
+                                    <div class="algo-card-detail">Unenhanced CT &le;10 HU</div>
+                                    <div class="algo-card-action">No follow-up</div>
+                                </div>
+                                <div class="algo-card algo-benign">
+                                    <div class="algo-card-title">Lipid-poor adenoma</div>
+                                    <div class="algo-card-detail">Absolute washout &ge;60% <em>or</em> relative &ge;40%<br>MRI: ASR &lt;0.71 <em>or</em> SI-index &gt;16.5%</div>
+                                    <div class="algo-card-action">No follow-up</div>
+                                </div>
+                                <div class="algo-card algo-benign">
+                                    <div class="algo-card-title">Myelolipoma</div>
+                                    <div class="algo-card-detail">Macroscopic fat on CT</div>
+                                    <div class="algo-card-action">No follow-up<br><small>Resect if &gt;7 cm / symptomatic</small></div>
+                                </div>
+                                <div class="algo-card algo-benign">
+                                    <div class="algo-card-title">Cyst / Haemorrhage</div>
+                                    <div class="algo-card-detail">Simple cyst or high-attenuation haematoma, no enhancement</div>
+                                    <div class="algo-card-action">No follow-up</div>
+                                </div>
+                                <div class="algo-card algo-benign">
+                                    <div class="algo-card-title">Stable &gt;12 months</div>
+                                    <div class="algo-card-detail">No interval change, no cancer history</div>
+                                    <div class="algo-card-action">No follow-up</div>
+                                </div>
+                                <div class="algo-card algo-benign">
+                                    <div class="algo-card-title">No enhancement</div>
+                                    <div class="algo-card-detail">&lt;10 HU change post-contrast</div>
+                                    <div class="algo-card-action">No follow-up</div>
+                                </div>
+                            </div>
+                            <div class="algo-arrow">If none of the above &darr;</div>
+                        </div>
+                    </div>
+
+                    <!-- Step 2 -->
+                    <div class="algo-step">
+                        <div class="algo-step-header algo-step-2">Step 2 — Indeterminate, 1-4 cm</div>
+                        <div class="algo-step-body">
+                            <p class="algo-question">Lesion is indeterminate. What is the size and cancer history?</p>
+                            <div class="algo-grid algo-grid-narrow">
+                                <div class="algo-card algo-indeterminate">
+                                    <div class="algo-card-title">1-2 cm, no cancer</div>
+                                    <div class="algo-card-action">12-month follow-up CT</div>
+                                    <div class="algo-card-detail"><small>Likely benign</small></div>
+                                </div>
+                                <div class="algo-card algo-indeterminate">
+                                    <div class="algo-card-title">1-4 cm</div>
+                                    <div class="algo-card-action">Dedicated adrenal CT washout or MRI chemical shift</div>
+                                </div>
+                                <div class="algo-card algo-suspicious">
+                                    <div class="algo-card-title">1-4 cm, washout &minus;ve, cancer history</div>
+                                    <div class="algo-card-action">PET-CT or biopsy</div>
+                                    <div class="algo-card-detail"><small>Exclude pheo biochemically before biopsy</small></div>
+                                </div>
+                            </div>
+                            <div class="algo-arrow">If &ge;4 cm &darr;</div>
+                        </div>
+                    </div>
+
+                    <!-- Step 3 -->
+                    <div class="algo-step">
+                        <div class="algo-step-header algo-step-3">Step 3 — Indeterminate, &ge;4 cm</div>
+                        <div class="algo-step-body">
+                            <p class="algo-question">Large indeterminate lesion — higher risk of ACC.</p>
+                            <div class="algo-grid algo-grid-narrow">
+                                <div class="algo-card algo-suspicious">
+                                    <div class="algo-card-title">No cancer history</div>
+                                    <div class="algo-card-action">Consider surgical resection</div>
+                                    <div class="algo-card-detail"><small>Do NOT biopsy if ACC suspected</small></div>
+                                </div>
+                                <div class="algo-card algo-suspicious">
+                                    <div class="algo-card-title">Cancer history</div>
+                                    <div class="algo-card-action">PET-CT or biopsy</div>
+                                    <div class="algo-card-detail"><small>Exclude pheo biochemically before biopsy</small></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h3 style="margin-top: 25px;">Recommended Biochemical Workup</h3>
+                    <table class="algorithm-table">
+                        <thead>
+                            <tr>
+                                <th>Test</th>
+                                <th>Indication</th>
+                                <th>Screens For</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>1 mg overnight dexamethasone suppression</td>
+                                <td>All incidentalomas</td>
+                                <td>Subclinical Cushing syndrome</td>
+                            </tr>
+                            <tr>
+                                <td>Plasma-free metanephrines</td>
+                                <td>All incidentalomas</td>
+                                <td>Pheochromocytoma</td>
+                            </tr>
+                            <tr>
+                                <td>Aldosterone/renin ratio</td>
+                                <td>If hypertension or hypokalaemia</td>
+                                <td>Conn syndrome</td>
+                            </tr>
+                            <tr>
+                                <td>Sex hormones &amp; steroid precursors</td>
+                                <td>If ACC suspected</td>
+                                <td>Adrenocortical carcinoma</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <h3 style="margin-top: 25px;">Common Pitfalls</h3>
+                    <ul class="pitfalls-list">
+                        <li><strong>Threshold confusion:</strong> 10 HU threshold is for unenhanced CT only. Enhanced CT values are not diagnostic.</li>
+                        <li><strong>Washout timing:</strong> Delayed phase must be at 15 minutes post-contrast. Earlier timing invalidates calculations.</li>
+                        <li><strong>Washout mimics:</strong> Metastases from RCC/HCC, pheochromocytomas, and ACC may show adenoma-like washout (&ge;60% absolute).</li>
+                        <li><strong>Heterogeneous lesions:</strong> Density measurements unreliable in lesions with hemorrhage, necrosis, or cystic components.</li>
+                        <li><strong>Size measurement:</strong> Use largest axial diameter. Small measurement errors can change management in borderline cases.</li>
+                        <li><strong>Biopsy contraindication:</strong> Never biopsy suspected pheochromocytoma. Consider biochemical workup first in appropriate clinical context.</li>
+                        <li><strong>Bilateral lesions:</strong> Consider genetic syndromes (MEN2, VHL) and endocrine evaluation, especially in younger patients.</li>
+                        <li><strong>Chemical shift limitation:</strong> MRI chemical shift is less sensitive than washout CT when unenhanced density &ge;20 HU.</li>
+                    </ul>
+
+                    <h3 style="margin-top: 25px;">Key Clinical Points</h3>
+                    <ul style="list-style-type: disc; margin-left: 20px;">
+                        <li>Adrenal incidentalomas found in 3% of abdominal CTs, up to 10% in elderly</li>
+                        <li>70% of adenomas are lipid-rich (&le;10 HU on unenhanced CT; sensitivity 70-79%, specificity 96-98%)</li>
+                        <li>30% of adenomas are lipid-poor and require washout analysis or MRI</li>
+                        <li>Adenoma washout criteria: absolute &ge;60% OR relative &ge;40%</li>
+                        <li>MRI chemical shift: ASR &lt;0.71 or SI-index &gt;16.5% suggests adenoma</li>
+                        <li>Size &ge;4 cm increases adrenocortical carcinoma risk — ACC typically &gt;6 cm, bulky, irregular with necrosis</li>
+                        <li>Pheochromocytoma: T2 "light bulb sign" in 65%; calcifications in 10%; never biopsy without biochemical workup</li>
+                        <li>Myelolipoma: macroscopic fat diagnostic; resect if &gt;7 cm, symptomatic, or complicated by bleeding</li>
+                        <li>PET-CT: sensitivity 100%, specificity 87-97% for malignancy (SUVmax cutoff 2.68-3.7)</li>
+                        <li>All incidentalomas warrant biochemical screening (dexamethasone suppression + plasma metanephrines)</li>
+                    </ul>
+
+                    <h3 style="margin-top: 25px;">Reference</h3>
+                    <p><strong>Primary Source:</strong> The Radiology Assistant - Characterization of Adrenal Lesions<br>
+                    <em>Available at: <a href="https://radiologyassistant.nl/abdomen/adrenals/lesion-characterization" target="_blank" rel="noopener">radiologyassistant.nl/abdomen/adrenals/lesion-characterization</a></em></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Calculate recommendation when inputs change
+        document.addEventListener('DOMContentLoaded', function() {
+            var inputs = document.querySelectorAll('input, select');
+            inputs.forEach(function(input) {
+                input.addEventListener('change', calculateRecommendation);
+                input.addEventListener('input', calculateRecommendation);
+            });
+
+            // Initial calculation
+            calculateRecommendation();
+        });
+
+        function calculateWashout() {
+            var preContrast = parseFloat(document.getElementById('preContrastHU').value);
+            var arterial = parseFloat(document.getElementById('arterialHU').value);
+            var delayed = parseFloat(document.getElementById('delayedHU').value);
+
+            if (isNaN(preContrast) || isNaN(arterial) || isNaN(delayed)) {
+                document.getElementById('absoluteValue').textContent = 'Enter all values';
+                document.getElementById('relativeValue').textContent = 'Enter all values';
+                document.getElementById('absoluteInterpretation').textContent = '';
+                document.getElementById('relativeInterpretation').textContent = '';
+                return;
+            }
+
+            // Absolute washout = [(arterial - delayed) / (arterial - precontrast)] x 100
+            var absoluteWashout = ((arterial - delayed) / (arterial - preContrast)) * 100;
+
+            // Relative washout = [(arterial - delayed) / arterial] x 100
+            var relativeWashout = ((arterial - delayed) / arterial) * 100;
+
+            document.getElementById('absoluteValue').textContent = absoluteWashout.toFixed(1) + '%';
+            document.getElementById('relativeValue').textContent = relativeWashout.toFixed(1) + '%';
+
+            // Interpretation
+            var absoluteResult = document.getElementById('absoluteWashout');
+            var relativeResult = document.getElementById('relativeWashout');
+
+            if (absoluteWashout >= 60) {
+                document.getElementById('absoluteInterpretation').textContent = 'Adenoma';
+                absoluteResult.className = 'washout-result status-benign';
+            } else {
+                document.getElementById('absoluteInterpretation').textContent = 'Non-adenoma';
+                absoluteResult.className = 'washout-result status-suspicious';
+            }
+
+            if (relativeWashout >= 40) {
+                document.getElementById('relativeInterpretation').textContent = 'Adenoma';
+                relativeResult.className = 'washout-result status-benign';
+            } else {
+                document.getElementById('relativeInterpretation').textContent = 'Non-adenoma';
+                relativeResult.className = 'washout-result status-suspicious';
+            }
+
+            // Trigger recommendation recalculation
+            calculateRecommendation();
+        }
+
+        function calculateMRI() {
+            var adrenalIn = parseFloat(document.getElementById('adrenalInPhase').value);
+            var adrenalOut = parseFloat(document.getElementById('adrenalOutPhase').value);
+            var spleenIn = parseFloat(document.getElementById('spleenInPhase').value);
+            var spleenOut = parseFloat(document.getElementById('spleenOutPhase').value);
+
+            if (isNaN(adrenalIn) || isNaN(adrenalOut) || isNaN(spleenIn) || isNaN(spleenOut)) {
+                document.getElementById('asrValue').textContent = 'Enter all values';
+                document.getElementById('siIndexValue').textContent = 'Enter all values';
+                return;
+            }
+
+            // ASR = (adrenal out/spleen out) / (adrenal in/spleen in)
+            var asr = (adrenalOut / spleenOut) / (adrenalIn / spleenIn);
+
+            // SI Index = [(SI in-phase - SI out-of-phase) / SI in-phase] x 100
+            var siIndex = ((adrenalIn - adrenalOut) / adrenalIn) * 100;
+
+            document.getElementById('asrValue').textContent = asr.toFixed(3);
+            document.getElementById('siIndexValue').textContent = siIndex.toFixed(1) + '%';
+
+            var asrEl = document.getElementById('asrResult');
+            var siEl = document.getElementById('siIndexResult');
+
+            if (asr < 0.71) {
+                document.getElementById('asrInterpretation').textContent = 'Suggests adenoma';
+                asrEl.className = 'mri-result status-benign';
+            } else {
+                document.getElementById('asrInterpretation').textContent = 'Non-adenoma';
+                asrEl.className = 'mri-result status-suspicious';
+            }
+
+            if (siIndex > 16.5) {
+                document.getElementById('siIndexInterpretation').textContent = 'Suggests adenoma';
+                siEl.className = 'mri-result status-benign';
+            } else {
+                document.getElementById('siIndexInterpretation').textContent = 'Non-adenoma';
+                siEl.className = 'mri-result status-suspicious';
+            }
+
+            calculateRecommendation();
+        }
+
+        function calculateRecommendation() {
+            var size = parseFloat(document.getElementById('lesionSize').value);
+            var age = parseInt(document.getElementById('patientAge').value);
+            var cancerHistoryEl = document.querySelector('input[name="cancerHistory"]:checked');
+            var cancerHistory = cancerHistoryEl ? cancerHistoryEl.value : undefined;
+            var unenhancedHU = parseFloat(document.getElementById('unenhancedHU').value);
+            var enhancementEl = document.querySelector('input[name="enhancement"]:checked');
+            var enhancement = enhancementEl ? enhancementEl.value : undefined;
+            var priorImagingEl = document.querySelector('input[name="priorImaging"]:checked');
+            var priorImaging = priorImagingEl ? priorImagingEl.value : undefined;
+
+            // Check for benign characteristics
+            var wellDefined = document.getElementById('wellDefined').checked;
+            var homogeneous = document.getElementById('homogeneous').checked;
+            var calcifications = document.getElementById('calcifications').checked;
+            var cystic = document.getElementById('cystic').checked;
+            var hemorrhage = document.getElementById('hemorrhage').checked;
+            var myelolipoma = document.getElementById('myelolipoma').checked;
+
+            // Get washout results if available
+            var absoluteWashoutText = document.getElementById('absoluteValue').textContent;
+            var relativeWashoutText = document.getElementById('relativeValue').textContent;
+            var absoluteWashout = parseFloat(absoluteWashoutText);
+            var relativeWashout = parseFloat(relativeWashoutText);
+
+            // Get MRI results if available
+            var asrText = document.getElementById('asrValue').textContent;
+            var siIndexText = document.getElementById('siIndexValue').textContent;
+            var asr = parseFloat(asrText);
+            var siIndex = parseFloat(siIndexText);
+            var mriAdenoma = (!isNaN(asr) && asr < 0.71) || (!isNaN(siIndex) && siIndex > 16.5);
+
+            var category = '';
+            var recommendation = '';
+            var followup = '';
+            var statusClass = '';
+
+            // Decision logic based on guidelines
+            if (myelolipoma) {
+                category = 'Benign - Myelolipoma';
+                recommendation = 'Typical benign lesion with macroscopic fat content.';
+                followup = 'No follow-up required. Consider resection if >7 cm, symptomatic, or complicated by bleeding.';
+                statusClass = 'status-benign';
+            } else if (cystic && !enhancement) {
+                category = 'Benign - Simple Cyst';
+                recommendation = 'Simple adrenal cyst with no enhancement.';
+                followup = 'No follow-up required.';
+                statusClass = 'status-benign';
+            } else if (hemorrhage && enhancement === 'none') {
+                category = 'Benign - Hemorrhage/Hematoma';
+                recommendation = 'Consistent with adrenal hemorrhage or hematoma.';
+                followup = 'No follow-up required if appropriate clinical history.';
+                statusClass = 'status-benign';
+            } else if (priorImaging === 'stable' && cancerHistory !== 'yes') {
+                category = 'Benign - Stable Lesion';
+                recommendation = 'Lesion stable for >12 months without cancer history.';
+                followup = 'No follow-up required.';
+                statusClass = 'status-benign';
+            } else if (enhancement === 'none') {
+                category = 'Benign - No Enhancement';
+                recommendation = 'No significant enhancement (<10 HU difference).';
+                followup = 'No follow-up required.';
+                statusClass = 'status-benign';
+            } else if (!isNaN(unenhancedHU) && unenhancedHU <= 10) {
+                category = 'Benign - Lipid-rich Adenoma';
+                recommendation = 'Unenhanced attenuation \u226410 HU diagnostic of lipid-rich adenoma (sensitivity 70-79%, specificity 96-98%).';
+                followup = 'No follow-up required.';
+                statusClass = 'status-benign';
+            } else if ((!isNaN(absoluteWashout) && absoluteWashout >= 60) || (!isNaN(relativeWashout) && relativeWashout >= 40)) {
+                category = 'Benign - Lipid-poor Adenoma (Washout)';
+                recommendation = 'Washout characteristics consistent with lipid-poor adenoma.';
+                followup = 'No follow-up required. Note: metastases from hypervascular primaries (RCC, HCC), pheochromocytomas, and ACC may mimic adenoma washout.';
+                statusClass = 'status-benign';
+            } else if (mriAdenoma) {
+                category = 'Benign - Lipid-poor Adenoma (MRI)';
+                recommendation = 'Chemical shift MRI demonstrates signal drop consistent with lipid-poor adenoma.';
+                followup = 'No follow-up required.';
+                statusClass = 'status-benign';
+            } else if (!isNaN(size)) {
+                // Size-based recommendations for indeterminate lesions
+                if (size >= 4) {
+                    if (cancerHistory === 'yes') {
+                        category = 'Indeterminate - Large Lesion with Cancer History';
+                        recommendation = 'Large adrenal lesion (\u22654 cm) in patient with cancer history.';
+                        followup = 'Consider PET-CT (sensitivity 100%, specificity 87-97%) or biopsy for further characterization. Exclude pheochromocytoma biochemically before biopsy.';
+                        statusClass = 'status-suspicious';
+                    } else {
+                        category = 'Indeterminate - Large Lesion';
+                        recommendation = 'Large adrenal lesion (\u22654 cm) with increased risk of adrenocortical carcinoma.';
+                        followup = 'Consider surgical resection. ACC typically >6 cm, bulky, irregular with necrosis. Do not biopsy if ACC suspected.';
+                        statusClass = 'status-suspicious';
+                    }
+                } else if (size >= 1 && size < 4) {
+                    if (cancerHistory !== 'yes' && size <= 2) {
+                        category = 'Indeterminate - Small Lesion, No Cancer History';
+                        recommendation = 'Small indeterminate lesion (1-2 cm) without cancer history.';
+                        followup = 'Probably benign. Consider 12-month follow-up CT.';
+                        statusClass = 'status-indeterminate';
+                    } else {
+                        category = 'Indeterminate - Requires Further Characterization';
+                        recommendation = 'Indeterminate lesion requiring additional imaging.';
+                        followup = 'Perform dedicated adrenal CT with washout or MRI chemical shift to exclude lipid-poor adenoma.';
+                        statusClass = 'status-indeterminate';
+                    }
+                } else {
+                    category = 'Indeterminate - Small Lesion';
+                    recommendation = 'Small indeterminate adrenal lesion.';
+                    followup = 'Consider follow-up or additional characterization based on clinical context.';
+                    statusClass = 'status-indeterminate';
+                }
+            } else {
+                category = 'Incomplete Assessment';
+                recommendation = 'Please complete the form for specific recommendations.';
+                followup = 'Enter lesion size and characteristics above.';
+                statusClass = 'status-indeterminate';
+            }
+
+            // Update display
+            document.getElementById('categoryOutput').textContent = category;
+            document.getElementById('recommendationText').textContent = recommendation;
+            document.getElementById('followupText').textContent = followup;
+
+            var resultSection = document.getElementById('recommendationOutput');
+            resultSection.className = 'result-section ' + statusClass;
+        }
+
+        function generateReport() {
+            var size = parseFloat(document.getElementById('lesionSize').value);
+            var side = document.getElementById('lesionSide').value;
+            var unenhancedHU = parseFloat(document.getElementById('unenhancedHU').value);
+            var enhancementEl = document.querySelector('input[name="enhancement"]:checked');
+            var enhancement = enhancementEl ? enhancementEl.value : undefined;
+            var cancerHistoryEl = document.querySelector('input[name="cancerHistory"]:checked');
+            var cancerHistory = cancerHistoryEl ? cancerHistoryEl.value : undefined;
+            var priorImagingEl = document.querySelector('input[name="priorImaging"]:checked');
+            var priorImaging = priorImagingEl ? priorImagingEl.value : undefined;
+
+            // Check characteristics
+            var myelolipoma = document.getElementById('myelolipoma').checked;
+            var cystic = document.getElementById('cystic').checked;
+            var hemorrhage = document.getElementById('hemorrhage').checked;
+            var calcifications = document.getElementById('calcifications').checked;
+            var wellDefined = document.getElementById('wellDefined').checked;
+            var homogeneous = document.getElementById('homogeneous').checked;
+
+            // Get washout if available
+            var absoluteWashoutText = document.getElementById('absoluteValue').textContent;
+            var relativeWashoutText = document.getElementById('relativeValue').textContent;
+            var absoluteWashout = parseFloat(absoluteWashoutText);
+            var relativeWashout = parseFloat(relativeWashoutText);
+
+            var reportText = '';
+
+            // Start with basic description
+            if (!isNaN(size) && side) {
+                var sideText = side === 'bilateral' ? 'bilateral adrenal' : side + ' adrenal';
+                reportText += 'There is a ' + size + ' cm ' + sideText + ' nodule';
+
+                if (wellDefined) reportText += ' with well-defined margins';
+                if (homogeneous) reportText += ' demonstrating homogeneous attenuation';
+
+                // Add specific characteristics
+                if (myelolipoma) {
+                    reportText += ' containing macroscopic fat, consistent with a myelolipoma. This is a benign lesion requiring no follow-up.';
+                } else if (cystic && enhancement === 'none') {
+                    reportText += ' with simple cystic characteristics and no enhancement, consistent with a benign adrenal cyst. No follow-up required.';
+                } else if (hemorrhage) {
+                    reportText += ' with high attenuation suggesting hemorrhage or hematoma. If clinically appropriate, no follow-up required.';
+                } else if (!isNaN(unenhancedHU)) {
+                    if (unenhancedHU <= 10) {
+                        reportText += ' demonstrating low unenhanced attenuation (' + unenhancedHU + ' HU), consistent with a lipid-rich adenoma. No follow-up required.';
+                    } else {
+                        reportText += ' with unenhanced attenuation of ' + unenhancedHU + ' HU';
+
+                        if (!isNaN(absoluteWashout) || !isNaN(relativeWashout)) {
+                            if ((absoluteWashout >= 60) || (relativeWashout >= 40)) {
+                                reportText += '. Washout analysis demonstrates ';
+                                if (!isNaN(absoluteWashout)) reportText += 'absolute washout of ' + absoluteWashout.toFixed(1) + '%';
+                                if (!isNaN(relativeWashout)) {
+                                    if (!isNaN(absoluteWashout)) reportText += ' and ';
+                                    reportText += 'relative washout of ' + relativeWashout.toFixed(1) + '%';
+                                }
+                                reportText += ', consistent with a lipid-poor adenoma. No follow-up required.';
+                            } else {
+                                reportText += '. Washout analysis does not meet criteria for adenoma';
+                                if (size >= 4) {
+                                    if (cancerHistory === 'yes') {
+                                        reportText += '. Given the large size and cancer history, consider PET-CT or biopsy for further characterization.';
+                                    } else {
+                                        reportText += '. Given the large size (\u22654 cm), consider surgical resection due to increased risk of adrenocortical carcinoma.';
+                                    }
+                                } else {
+                                    reportText += '. Further evaluation or follow-up may be warranted based on clinical context.';
+                                }
+                            }
+                        } else {
+                            // No washout data available
+                            if (size >= 4) {
+                                if (cancerHistory === 'yes') {
+                                    reportText += '. This large lesion in a patient with cancer history requires further characterization with dedicated adrenal imaging, PET-CT, or biopsy.';
+                                } else {
+                                    reportText += '. This large lesion (\u22654 cm) should be considered for surgical resection due to increased risk of adrenocortical carcinoma.';
+                                }
+                            } else if (size >= 1) {
+                                reportText += '. Recommend dedicated adrenal CT with washout analysis or MRI chemical shift to exclude lipid-poor adenoma.';
+                            } else {
+                                reportText += '. Consider follow-up or additional characterization based on clinical context.';
+                            }
+                        }
+                    }
+                } else {
+                    // No HU value provided
+                    reportText += '. ';
+                    if (enhancement === 'none') {
+                        reportText += 'No significant enhancement is demonstrated. No follow-up required.';
+                    } else if (priorImaging === 'stable' && cancerHistory !== 'yes') {
+                        reportText += 'This lesion is stable compared to prior imaging for greater than 12 months. No follow-up required.';
+                    } else {
+                        reportText += 'Further characterization with unenhanced CT or dedicated adrenal imaging is recommended.';
+                    }
+                }
+
+                // Add calcification note if present
+                if (calcifications) {
+                    reportText += ' Calcifications are noted within the lesion.';
+                }
+
+            } else {
+                reportText = 'Please complete the lesion size and location fields to generate report language.';
+            }
+
+            document.getElementById('reportOutput').value = reportText;
+        }
+
+        function copyReport() {
+            var reportTextArea = document.getElementById('reportOutput');
+            reportTextArea.select();
+            reportTextArea.setSelectionRange(0, 99999);
+
+            try {
+                document.execCommand('copy');
+
+                // Visual feedback
+                var btn = event.target;
+                var originalText = btn.textContent;
+                btn.textContent = 'Copied!';
+                btn.style.backgroundColor = '#27ae60';
+
+                setTimeout(function() {
+                    btn.textContent = originalText;
+                    btn.style.backgroundColor = '';
+                }, 2000);
+            } catch (err) {
+                alert('Copy failed. Please select and copy the text manually.');
+            }
+        }
+
+        function printResults() {
+            window.print();
+        }
+
+        // Auto-fill unenhanced HU when washout pre-contrast is entered
+        document.getElementById('preContrastHU').addEventListener('input', function() {
+            var preContrastValue = this.value;
+            var unenhancedInput = document.getElementById('unenhancedHU');
+
+            if (preContrastValue && !unenhancedInput.value) {
+                unenhancedInput.value = preContrastValue;
+                calculateRecommendation();
+            }
+        });
+    </script>
+</body>
+</html>

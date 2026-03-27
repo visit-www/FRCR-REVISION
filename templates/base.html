@@ -17,6 +17,8 @@
     <meta name="theme-color" content="#5E899E">
     <meta name="msapplication-TileColor" content="#5E899E">
     <meta name="msapplication-config" content="/browserconfig.xml">
+    <!--google verfication-->
+    <meta name="google-site-verification" content="8TwRzcRIJRfiYcJtYPXwLKEfwNeAA27DlOYxaOZJdqA" />
     
     <!-- Apple iOS Specific PWA Meta Tags -->
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -79,58 +81,43 @@
                 </div>
                 
                 {% if current_user.is_authenticated %}
-                <!-- Mobile Tool Navigation (grouped, hidden on desktop) -->
+                <!-- Mobile Tool Navigation (side menu, hidden on desktop) -->
                 <div class="d-lg-none mb-3">
-                    <!-- Mobile Search -->
-                    <div class="mb-3 position-relative">
-                        <input type="text" id="mobileNavSearchInput" class="form-control form-control-sm" placeholder="Intelligent Search..." autocomplete="off" style="background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25); color: #fff; border-radius: 16px;">
-                        <div id="mobileNavSearchResults" class="global-search-results d-none"></div>
-                    </div>
-
                     <div class="list-group list-group-flush mobile-tool-nav">
-                        <!-- Practice -->
-                        <a href="/study" class="list-group-item list-group-item-action border-0 px-0 py-2 {{ 'active' if _practice_active }}">
-                            <i class="fas fa-brain me-2" style="color: #198754; width: 20px; text-align: center;"></i>Practice
+                        <a href="/cases" class="list-group-item list-group-item-action border-0 px-0 py-2 {% block mobile_active_cases %}{% endblock %}">
+                            <i class="fas fa-book-medical me-2" style="color: #5E899E; width: 20px; text-align: center;"></i>Browse Cases
                         </a>
-
-                        <!-- Learn (collapsible) -->
-                        <a href="#mobileLearnCollapse" class="list-group-item list-group-item-action border-0 px-0 py-2 {{ 'active' if _learn_active }}" data-bs-toggle="collapse" role="button" aria-expanded="{{ 'true' if _learn_active else 'false' }}">
-                            <i class="fas fa-graduation-cap me-2" style="color: #5E899E; width: 20px; text-align: center;"></i>Learn
-                            <i class="fas fa-chevron-down float-end mt-1" style="font-size: 0.7rem; opacity: 0.6;"></i>
+                        <a href="/knowledge-hub" class="list-group-item list-group-item-action border-0 px-0 py-2 {% block mobile_active_knowledge_hub %}{% endblock %}{% block mobile_active_anatomy %}{% endblock %}{% block mobile_active_pearls %}{% endblock %}">
+                            <i class="fas fa-book-medical me-2" style="color: #6b46c1; width: 20px; text-align: center;"></i>Knowledge Hub
                         </a>
-                        <div class="collapse {{ 'show' if _learn_active }}" id="mobileLearnCollapse">
-                            <a href="/cases" class="list-group-item list-group-item-action border-0 py-1 mobile-sub-item {{ 'active' if 'active' in self.tool_active_cases() }}">
-                                <i class="fas fa-book-medical me-2" style="color: #5E899E; width: 16px; text-align: center;"></i>Cases
-                            </a>
-                            <a href="/tnm" class="list-group-item list-group-item-action border-0 py-1 mobile-sub-item {{ 'active' if 'active' in self.tool_active_tnm_staging() }}">
-                                <i class="fas fa-layer-group me-2" style="color: #6b46c1; width: 16px; text-align: center;"></i>Oncology
-                            </a>
-                            <a href="/knowledge-hub" class="list-group-item list-group-item-action border-0 py-1 mobile-sub-item {{ 'active' if 'active' in (self.tool_active_knowledge_hub() ~ self.tool_active_anatomy() ~ self.tool_active_pearls()) }}">
-                                <i class="fas fa-book-open me-2" style="color: #5E899E; width: 16px; text-align: center;"></i>Knowledge Hub
-                            </a>
-                        </div>
-
-                        <!-- Report -->
-                        <a href="/smart-reporter" class="list-group-item list-group-item-action border-0 px-0 py-2 {{ 'active' if _report_active }}">
-                            <i class="fas fa-file-medical me-2" style="color: #e96304; width: 20px; text-align: center;"></i>Report
+                    
+                        <a href="/tnm" class="list-group-item list-group-item-action border-0 px-0 py-2 {% block mobile_active_tnm_staging %}{% endblock %}">
+                            <i class="fas fa-layer-group me-2" style="color: #6b46c1; width: 20px; text-align: center;"></i>TNM Staging
                         </a>
-
-                        <!-- Reference (collapsible) -->
-                        <a href="#mobileRefCollapse" class="list-group-item list-group-item-action border-0 px-0 py-2 {{ 'active' if _reference_active }}" data-bs-toggle="collapse" role="button" aria-expanded="{{ 'true' if _reference_active else 'false' }}">
-                            <i class="fas fa-book-open me-2" style="color: #1b6ec2; width: 20px; text-align: center;"></i>Reference
-                            <i class="fas fa-chevron-down float-end mt-1" style="font-size: 0.7rem; opacity: 0.6;"></i>
+                       
+                        <a href="/tnm-calculator" class="list-group-item list-group-item-action border-0 px-0 py-2 {% block mobile_active_tnm %}{% endblock %}">
+                            <i class="fas fa-dna me-2" style="color: #6b46c1; width: 20px; text-align: center;"></i>TNM Calculators
                         </a>
-                        <div class="collapse {{ 'show' if _reference_active }}" id="mobileRefCollapse">
-                            <a href="/incidental-findings" class="list-group-item list-group-item-action border-0 py-1 mobile-sub-item {{ 'active' if 'active' in self.tool_active_if() }}">
-                                <i class="fas fa-tools me-2" style="color: #e96304; width: 16px; text-align: center;"></i>Radiology Tools
-                            </a>
-                            <a href="/radiology-protocols" class="list-group-item list-group-item-action border-0 py-1 mobile-sub-item {{ 'active' if 'active' in self.tool_active_protocols() }}">
-                                <i class="fas fa-clipboard-list me-2" style="color: #2e86ab; width: 16px; text-align: center;"></i>Protocols & Safety
-                            </a>
-                            <a href="/tnm-calculator" class="list-group-item list-group-item-action border-0 py-1 mobile-sub-item {{ 'active' if 'active' in self.tool_active_tnm() }}">
-                                <i class="fas fa-dna me-2" style="color: #6b46c1; width: 16px; text-align: center;"></i>TNM Calculators
-                            </a>
-                        </div>
+                        <a href="/incidental-findings" class="list-group-item list-group-item-action border-0 px-0 py-2 {% block mobile_active_if %}{% endblock %}">
+                            <i class="fas fa-tools me-2" style="color: #e96304; width: 20px; text-align: center;"></i>Radiology Tools
+                        </a>
+                        <a href="/radiology-protocols" class="list-group-item list-group-item-action border-0 px-0 py-2 {% block mobile_active_protocols %}{% endblock %}">
+                            <i class="fas fa-clipboard-list me-2" style="color: #2e86ab; width: 20px; text-align: center;"></i>Protocols
+                        </a>
+                        <a href="/reporting-templates" class="list-group-item list-group-item-action border-0 px-0 py-2 {% block mobile_active_templates %}{% endblock %}">
+                            <i class="fas fa-clipboard-list me-2" style="color: #a8d5ba; width: 20px; text-align: center;"></i>Templates
+                        </a>
+                        <a href="/reporting-algorithms" class="list-group-item list-group-item-action border-0 px-0 py-2 {% block mobile_active_algorithms %}{% endblock %}">
+                            <i class="fas fa-project-diagram me-2" style="color: #5E899E; width: 20px; text-align: center;"></i>Reporting Algorithms
+                        </a>
+                       
+                       
+                        <a href="/smart-reporter" class="list-group-item list-group-item-action border-0 px-0 py-2 {% block mobile_active_reporter %}{% endblock %}">
+                            <i class="fas fa-file-medical me-2" style="color: #5E899E; width: 20px; text-align: center;"></i>Smart Reporter
+                        </a>
+                        <a href="/study" class="list-group-item list-group-item-action border-0 px-0 py-2 {% block mobile_active_study %}{% endblock %}">
+                            <i class="fas fa-graduation-cap me-2" style="color: #198754; width: 20px; text-align: center;"></i>Study Mode
+                        </a>
                     </div>
                     <hr class="my-2" style="border-color: rgba(255,255,255,0.2);">
                 </div>
@@ -195,8 +182,7 @@
         </div>
     </nav>
 
-    <!-- Hero Banner (visitors only) -->
-    {% if not current_user.is_authenticated %}
+    <!-- Hero Banner -->
     <div class="hero-banner">
         <div class="hero-overlay"></div>
         <div class="hero-content">
@@ -204,69 +190,48 @@
                 <div class="row h-100 align-items-center">
                     <div class="col-lg-8 mx-auto text-center">
                         <h1 class="hero-title">RadInsights</h1>
-                        <p class="hero-subtitle">Your companion for radiology learning, reporting, and exam preparation</p>
+                        <p class="hero-subtitle">Your companion for daily reproting, radiology learning and exam preparation</p>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-    {% endif %}
-
-    {# ── Backward-compatible block definitions (hidden, consumed by child templates) ── #}
-    <span class="d-none" aria-hidden="true">{% block tool_active_cases %}{% endblock %}{% block tool_active_tnm %}{% endblock %}{% block tool_active_tnm_staging %}{% endblock %}{% block tool_active_if %}{% endblock %}{% block tool_active_templates %}{% endblock %}{% block tool_active_algorithms %}{% endblock %}{% block tool_active_knowledge_hub %}{% endblock %}{% block tool_active_anatomy %}{% endblock %}{% block tool_active_pearls %}{% endblock %}{% block tool_active_protocols %}{% endblock %}{% block tool_active_reporter %}{% endblock %}{% block tool_active_study %}{% endblock %}{% block mobile_active_cases %}{% endblock %}{% block mobile_active_tnm %}{% endblock %}{% block mobile_active_tnm_staging %}{% endblock %}{% block mobile_active_if %}{% endblock %}{% block mobile_active_templates %}{% endblock %}{% block mobile_active_algorithms %}{% endblock %}{% block mobile_active_knowledge_hub %}{% endblock %}{% block mobile_active_anatomy %}{% endblock %}{% block mobile_active_pearls %}{% endblock %}{% block mobile_active_protocols %}{% endblock %}{% block mobile_active_reporter %}{% endblock %}{% block mobile_active_study %}{% endblock %}</span>
-
-    {# ── Compute group-level active states from child block content ── #}
-    {% set _practice_active = 'active' in self.tool_active_study() %}
-    {% set _learn_active = 'active' in (self.tool_active_cases() ~ self.tool_active_tnm_staging() ~ self.tool_active_knowledge_hub() ~ self.tool_active_anatomy() ~ self.tool_active_pearls()) %}
-    {% set _report_active = 'active' in (self.tool_active_reporter() ~ self.tool_active_templates() ~ self.tool_active_algorithms()) %}
-    {% set _reference_active = 'active' in (self.tool_active_if() ~ self.tool_active_protocols() ~ self.tool_active_tnm()) %}
 
     {% if current_user.is_authenticated %}
-    <!-- Tool Navigation Bar (4 grouped items + search) -->
+    <!-- Tool Navigation Bar -->
     <div class="tool-nav-bar">
         <div class="container-fluid">
-            <div class="d-flex flex-wrap align-items-center justify-content-center gap-1 gap-md-2">
-                <!-- Practice -->
-                <a href="/study" class="tool-nav-link {{ 'active' if _practice_active }}">
-                    <i class="fas fa-brain me-1" style="color: {{ '#fff' if _practice_active else '#198754' }};"></i><span class="d-none d-sm-inline">Practice</span><span class="d-sm-none">Practice</span>
+            <div class="d-flex flex-wrap justify-content-center gap-1 gap-md-2">
+                <a href="/cases" class="tool-nav-link {% block tool_active_cases %}{% endblock %}">
+                    <i class="fas fa-book-medical me-1"></i><span class="d-none d-sm-inline">Browse Cases</span><span class="d-sm-none">Cases</span>
                 </a>
-
-                <!-- Learn (dropdown) -->
-                <div class="tool-nav-dropdown">
-                    <a href="#" class="tool-nav-link {{ 'active' if _learn_active }}" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="fas fa-graduation-cap me-1" style="color: {{ '#fff' if _learn_active else '#5E899E' }};"></i><span class="d-none d-sm-inline">Learn</span><span class="d-sm-none">Learn</span>
-                        <i class="fas fa-chevron-down ms-1" style="font-size: 0.6rem;"></i>
-                    </a>
-                    <ul class="dropdown-menu tool-nav-dropdown-menu">
-                        <li><a class="dropdown-item {{ 'fw-bold' if 'active' in self.tool_active_cases() }}" href="/cases"><i class="fas fa-book-medical me-2" style="color: #5E899E; width: 16px; text-align: center;"></i>Cases</a></li>
-                        <li><a class="dropdown-item {{ 'fw-bold' if 'active' in self.tool_active_tnm_staging() }}" href="/tnm"><i class="fas fa-layer-group me-2" style="color: #6b46c1; width: 16px; text-align: center;"></i>Oncology</a></li>
-                        <li><a class="dropdown-item {{ 'fw-bold' if 'active' in (self.tool_active_knowledge_hub() ~ self.tool_active_anatomy() ~ self.tool_active_pearls()) }}" href="/knowledge-hub"><i class="fas fa-book-open me-2" style="color: #5E899E; width: 16px; text-align: center;"></i>Knowledge Hub</a></li>
-                    </ul>
-                </div>
-
-                <!-- Report -->
-                <a href="/smart-reporter" class="tool-nav-link {{ 'active' if _report_active }}">
-                    <i class="fas fa-file-medical me-1" style="color: {{ '#fff' if _report_active else '#e96304' }};"></i><span class="d-none d-sm-inline">Report</span><span class="d-sm-none">Report</span>
+                <a href="/tnm-calculator" class="tool-nav-link {% block tool_active_tnm %}{% endblock %}">
+                    <i class="fas fa-dna me-1"></i><span class="d-none d-sm-inline">TNM Calculators</span><span class="d-sm-none">TNM Calc</span>
                 </a>
-
-                <!-- Reference (dropdown) -->
-                <div class="tool-nav-dropdown">
-                    <a href="#" class="tool-nav-link {{ 'active' if _reference_active }}" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="fas fa-book-open me-1" style="color: {{ '#fff' if _reference_active else '#1b6ec2' }};"></i><span class="d-none d-sm-inline">Reference</span><span class="d-sm-none">Ref</span>
-                        <i class="fas fa-chevron-down ms-1" style="font-size: 0.6rem;"></i>
-                    </a>
-                    <ul class="dropdown-menu tool-nav-dropdown-menu">
-                        <li><a class="dropdown-item {{ 'fw-bold' if 'active' in self.tool_active_if() }}" href="/incidental-findings"><i class="fas fa-tools me-2" style="color: #e96304; width: 16px; text-align: center;"></i>Radiology Tools</a></li>
-                        <li><a class="dropdown-item {{ 'fw-bold' if 'active' in self.tool_active_protocols() }}" href="/radiology-protocols"><i class="fas fa-clipboard-list me-2" style="color: #2e86ab; width: 16px; text-align: center;"></i>Protocols & Safety</a></li>
-                        <li><a class="dropdown-item {{ 'fw-bold' if 'active' in self.tool_active_tnm() }}" href="/tnm-calculator"><i class="fas fa-dna me-2" style="color: #6b46c1; width: 16px; text-align: center;"></i>TNM Calculators</a></li>
-                    </ul>
-                </div>
-
-                <!-- Search (desktop only) -->
-                <div class="tool-nav-search-wrapper d-none d-lg-block ms-2 position-relative">
-                    <input type="text" id="navSearchInput" class="form-control form-control-sm" placeholder="Intelligent Search..." autocomplete="off">
-                    <div id="navSearchResults" class="global-search-results d-none"></div>
-                </div>
+                <a href="/tnm" class="tool-nav-link {% block tool_active_tnm_staging %}{% endblock %}">
+                    <i class="fas fa-layer-group me-1"></i><span class="d-none d-sm-inline">TNM Staging</span><span class="d-sm-none">Staging</span>
+                </a>
+                <a href="/incidental-findings" class="tool-nav-link {% block tool_active_if %}{% endblock %}">
+                    <i class="fas fa-tools me-1"></i><span class="d-none d-sm-inline">Radiology Tools</span><span class="d-sm-none">Tools</span>
+                </a>
+                <a href="/reporting-templates" class="tool-nav-link {% block tool_active_templates %}{% endblock %}">
+                    <i class="fas fa-clipboard-list me-1"></i><span class="d-none d-sm-inline">Templates</span><span class="d-sm-none">Templates</span>
+                </a>
+                <a href="/reporting-algorithms" class="tool-nav-link {% block tool_active_algorithms %}{% endblock %}">
+                    <i class="fas fa-project-diagram me-1"></i><span class="d-none d-sm-inline">Reporting Algorithms</span><span class="d-sm-none">Algorithms</span>
+                </a>
+                <a href="/knowledge-hub" class="tool-nav-link {% block tool_active_knowledge_hub %}{% endblock %}{% block tool_active_anatomy %}{% endblock %}{% block tool_active_pearls %}{% endblock %}">
+                    <i class="fas fa-book-medical me-1"></i><span class="d-none d-sm-inline">Knowledge Hub</span><span class="d-sm-none">Hub</span>
+                </a>
+                <a href="/radiology-protocols" class="tool-nav-link {% block tool_active_protocols %}{% endblock %}">
+                    <i class="fas fa-clipboard-list me-1"></i><span class="d-none d-sm-inline">Protocols</span><span class="d-sm-none">Protocols</span>
+                </a>
+                <a href="/smart-reporter" class="tool-nav-link {% block tool_active_reporter %}{% endblock %}">
+                    <i class="fas fa-file-medical me-1"></i><span class="d-none d-sm-inline">Smart Reporter</span><span class="d-sm-none">Reporter</span>
+                </a>
+                <a href="/study" class="tool-nav-link {% block tool_active_study %}{% endblock %}">
+                    <i class="fas fa-graduation-cap me-1"></i><span class="d-none d-sm-inline">Study Mode</span><span class="d-sm-none">Study</span>
+                </a>
             </div>
         </div>
     </div>
@@ -319,7 +284,7 @@
                         <h6 class="footer-title mb-2">
                             <i class="fas fa-stethoscope me-2"></i>RadInsights
                         </h6>
-                        <p class="footer-text small">Supporting radiologists and trainees with case-based learning, reporting tools, and exam preparation.</p>
+                        <p class="footer-text small">Supporting radiologists and trainees with reporting tools, case-based learning and exam preparation.</p>
                     </div>
                     <div class="col-md-4 mb-3 mb-md-0 text-center">
                         <h6 class="footer-title mb-2">Contact</h6>
@@ -329,7 +294,7 @@
                         </p>
                     </div>
                     <div class="col-md-4 text-center text-center">
-                        <h6 class="footer-title mb-2">Developed By</h6>
+                        <h6 class="footer-title mb-2">Lead Developer</h6>
                         <p class="footer-text small">
                             <i class="fas fa-user-md me-2"></i>
                             <a href="{{ url_for('cv') }}" class="footer-link">Dr Gaurav S.P Gupta, MBBS, MD, FRCR</a>
@@ -490,19 +455,6 @@
     <!-- Backup Reminder System -->
     {% if current_user.is_authenticated %}
     <script src="{{ url_for('static', filename='backup-reminder.js') }}"></script>
-    {% endif %}
-
-    <!-- Global Search -->
-    {% if current_user.is_authenticated %}
-    <script src="{{ url_for('static', filename='js/global-search.js') }}"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            if (window.initGlobalSearch) {
-                initGlobalSearch('navSearchInput', 'navSearchResults');
-                initGlobalSearch('mobileNavSearchInput', 'mobileNavSearchResults');
-            }
-        });
-    </script>
     {% endif %}
 
     <!-- Global PII Guard — intercepts all fetch POST/PUT for patient data -->
