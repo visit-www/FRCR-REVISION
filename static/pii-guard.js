@@ -55,13 +55,23 @@
         },
         {
             type: 'Patient Name',
-            regex: /\b(?:Mr|Mrs|Ms|Miss)\.?\s+[A-Z][a-zA-Z'-]+(?:\s+[A-Z][a-zA-Z'-]+){1,3}(?=\s*(?:[,;.\n|]|\bage\b|\bgender\b|\bsex\b|\bdob\b|\bpresented\b|\battended\b|\bwas\b|\bis\b|\bhas\b|$))/g,
+            regex: /\b(?:Mr|Mrs|Ms|Miss)\.?\s*[A-Za-z][a-zA-Z'-]+(?:\s+[A-Za-z][a-zA-Z'-]+){1,3}(?=\s*(?:[,;.\n|]|\bage\b|\bgender\b|\bsex\b|\bdob\b|\bpresented\b|\battended\b|\bwas\b|\bis\b|\bhas\b|$))/g,
             description: 'Patient name with title detected'
         },
         {
             type: 'Patient Name',
             regex: /\b(?:patient\s*name|pt\s*name)\s*[:=\-]\s*[A-Za-z][A-Za-z'-]+(?:\s+[A-Za-z][A-Za-z'-]+){0,3}(?=\s*(?:[,;.\n|]|\bage\b|\bgender\b|\bsex\b|\bdob\b|\baddress\b|\bmrn\b|\bnhs\b|$))/gi,
             description: 'Possible patient name detected'
+        },
+        {
+            type: 'Patient Name',
+            regex: /\d{1,3}[-\s]?year[-\s]?old\b[^.\n]{0,30}?([A-Z][a-zA-Z'-]+(?:\s+[A-Z][a-zA-Z'-]+){1,3})(?=\s*(?:[,;.\n|]|\bpresented\b|\battended\b|\bwas\b|\bis\b|\bhas\b|\bwith\b|$))/g,
+            description: 'Patient name after age context detected'
+        },
+        {
+            type: 'Patient Name',
+            regex: /\b[Pp](?:atient|t)\s+([A-Z][a-zA-Z'-]+(?:\s+[A-Z][a-zA-Z'-]+){1,3})(?=\s*(?:[,;.\n|]|\bpresented\b|\battended\b|\bwas\b|\bis\b|\bhas\b|\bwith\b|$))/g,
+            description: 'Patient name after keyword detected'
         },
         {
             type: 'Patient Age',
