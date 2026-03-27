@@ -78,6 +78,9 @@ PII_PATTERNS = [
         r'\b(?:address|addr|home)\s*[:=\-]\s*[A-Za-z0-9][A-Za-z0-9\s,.\'\-]{5,}', re.IGNORECASE)),
     ('UK National Insurance Number', re.compile(
         r'\b[A-Z]{2}\d{6}[A-D]\b', re.IGNORECASE)),
+    # IPv4 address (HIPAA Safe Harbor identifier #16)
+    ('IP Address', re.compile(
+        r'\b(?:(?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)\.){3}(?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)\b')),
     # Indian Aadhaar number (12 digits in 4-4-4 groups)
     ('Aadhaar Number', re.compile(r'\b\d{4}\s?\d{4}\s?\d{4}\b')),
     # Indian PAN card (ABCDE1234F format)

@@ -114,6 +114,11 @@
             description: 'UK National Insurance Number detected'
         },
         {
+            type: 'IP Address',
+            regex: /\b(?:(?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)\.){3}(?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)\b/g,
+            description: 'IP address detected (HIPAA identifier)'
+        },
+        {
             type: 'Aadhaar Number',
             regex: /\b\d{4}\s?\d{4}\s?\d{4}\b/g,
             description: 'Indian Aadhaar number detected'
@@ -272,6 +277,7 @@
             'Patient Gender': '#e96304',
             'Patient Address': '#6b46c1',
             'UK National Insurance Number': '#dc3545',
+            'IP Address': '#6b46c1',
             'Aadhaar Number': '#dc3545',
             'PAN Card': '#dc3545'
         };
