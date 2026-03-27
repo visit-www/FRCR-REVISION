@@ -14,20 +14,20 @@
             --text-dark: #2c3e50;
             --peach: #ffb088;
         }
-        
+
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
-        
+
         body {
             font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
             background: #f8f9fa;
             color: var(--text-dark);
             line-height: 1.7;
         }
-        
+
         /* Hero Section */
         .about-hero {
             background: linear-gradient(135deg, var(--petroleum-blue) 0%, #1a3d47 100%);
@@ -36,7 +36,7 @@
             position: relative;
             overflow: hidden;
         }
-        
+
         .about-hero::before {
             content: '';
             position: absolute;
@@ -47,33 +47,33 @@
             background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
             opacity: 0.5;
         }
-        
+
         .about-hero .container {
             position: relative;
             z-index: 1;
         }
-        
+
         .hero-title {
             font-size: 3rem;
             font-weight: 700;
             margin-bottom: 1rem;
         }
-        
+
         .hero-subtitle {
             font-size: 1.25rem;
             opacity: 0.9;
-            max-width: 600px;
+            max-width: 700px;
         }
-        
+
         /* Section Styling */
         .section {
             padding: 5rem 0;
         }
-        
+
         .section-alt {
             background: white;
         }
-        
+
         .section-title {
             font-size: 2rem;
             font-weight: 700;
@@ -82,7 +82,7 @@
             position: relative;
             display: inline-block;
         }
-        
+
         .section-title::after {
             content: '';
             position: absolute;
@@ -93,56 +93,121 @@
             background: linear-gradient(90deg, var(--brand-primary), var(--peach));
             border-radius: 2px;
         }
-        
+
         .section-subtitle {
             color: #666;
             font-size: 1.1rem;
             margin-bottom: 2rem;
         }
-        
-        /* Philosophy Cards */
-        .philosophy-card {
+
+        /* Introduction prose */
+        .intro-prose {
+            font-size: 1.05rem;
+            line-height: 1.9;
+            color: #444;
+        }
+
+        .intro-prose p {
+            margin-bottom: 1.25rem;
+        }
+
+        /* Pillar Detail Cards */
+        .pillar-detail {
             background: white;
             border-radius: 16px;
             padding: 2rem;
             height: 100%;
             box-shadow: 0 4px 20px rgba(0,0,0,0.06);
             border: 1px solid #eee;
+            border-left: 5px solid var(--petroleum-blue);
             transition: all 0.3s ease;
         }
-        
-        .philosophy-card:hover {
+
+        .pillar-detail:hover {
             transform: translateY(-4px);
             box-shadow: 0 12px 40px rgba(0,0,0,0.1);
         }
-        
-        .philosophy-icon {
+
+        .pillar-detail.pillar-teal { border-left-color: var(--petroleum-blue); }
+        .pillar-detail.pillar-purple { border-left-color: #7c3aed; }
+        .pillar-detail.pillar-orange { border-left-color: var(--brand-primary); }
+        .pillar-detail.pillar-green { border-left-color: #059669; }
+
+        .pillar-icon {
             width: 60px;
             height: 60px;
-            background: linear-gradient(135deg, var(--petroleum-blue) 0%, #3d7a8c 100%);
             border-radius: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
             margin-bottom: 1.5rem;
         }
-        
-        .philosophy-icon i {
+
+        .pillar-icon i {
             font-size: 1.5rem;
             color: white;
         }
-        
-        .philosophy-card h4 {
+
+        .pillar-icon.icon-teal { background: linear-gradient(135deg, var(--petroleum-blue) 0%, #3d7a8c 100%); }
+        .pillar-icon.icon-purple { background: linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%); }
+        .pillar-icon.icon-orange { background: linear-gradient(135deg, var(--brand-primary) 0%, var(--peach) 100%); }
+        .pillar-icon.icon-green { background: linear-gradient(135deg, #059669 0%, #34d399 100%); }
+
+        .pillar-detail h4 {
             color: var(--text-dark);
             font-weight: 600;
             margin-bottom: 1rem;
         }
-        
-        .philosophy-card p {
+
+        .pillar-detail p, .pillar-detail ul {
             color: #666;
             font-size: 0.95rem;
         }
-        
+
+        .pillar-detail ul {
+            padding-left: 1.2rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .pillar-detail ul li {
+            margin-bottom: 0.4rem;
+        }
+
+        /* Security Section */
+        .security-item {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 1.25rem;
+        }
+
+        .security-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--petroleum-blue) 0%, #3d7a8c 100%);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 1rem;
+            flex-shrink: 0;
+        }
+
+        .security-icon i {
+            color: white;
+            font-size: 1rem;
+        }
+
+        .security-text strong {
+            display: block;
+            color: var(--text-dark);
+            margin-bottom: 0.2rem;
+        }
+
+        .security-text span {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
         /* Design Principles */
         .design-block {
             background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
@@ -151,9 +216,9 @@
             position: relative;
             overflow: hidden;
         }
-        
+
         .design-block::before {
-            content: '"';
+            content: '\201C';
             position: absolute;
             top: 20px;
             left: 30px;
@@ -163,7 +228,7 @@
             font-family: Georgia, serif;
             line-height: 1;
         }
-        
+
         .design-quote {
             font-size: 1.15rem;
             line-height: 1.9;
@@ -171,13 +236,13 @@
             position: relative;
             z-index: 1;
         }
-        
+
         .design-principles-list {
             list-style: none;
             padding: 0;
             margin-top: 2rem;
         }
-        
+
         .design-principles-list li {
             display: flex;
             align-items: flex-start;
@@ -187,7 +252,7 @@
             border-radius: 12px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.04);
         }
-        
+
         .principle-icon {
             width: 40px;
             height: 40px;
@@ -199,66 +264,69 @@
             margin-right: 1rem;
             flex-shrink: 0;
         }
-        
+
         .principle-icon i {
             color: white;
             font-size: 1rem;
         }
-        
+
         .principle-text strong {
             display: block;
             color: var(--text-dark);
             margin-bottom: 0.25rem;
         }
-        
+
         .principle-text span {
             color: #666;
             font-size: 0.9rem;
         }
-        
-        /* Features Grid */
-        .feature-item {
-            display: flex;
-            align-items: flex-start;
-            margin-bottom: 1.5rem;
-        }
-        
-        .feature-icon {
-            width: 48px;
-            height: 48px;
-            background: linear-gradient(135deg, var(--brand-secondary) 0%, #7fc49a 100%);
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-right: 1rem;
-            flex-shrink: 0;
-        }
-        
-        .feature-icon i {
+
+        /* CTA Section */
+        .cta-section {
+            background: linear-gradient(135deg, #1a3d47 0%, var(--petroleum-blue) 50%, #2c7a5c 100%);
             color: white;
-            font-size: 1.2rem;
+            text-align: center;
         }
-        
-        .feature-text h5 {
-            color: var(--text-dark);
-            font-size: 1rem;
+
+        .cta-section h2 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+
+        .cta-section p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            max-width: 600px;
+            margin: 0 auto 2rem;
+        }
+
+        .cta-btn {
+            display: inline-block;
+            padding: 0.85rem 2.5rem;
+            background: var(--brand-primary);
+            color: white;
+            text-decoration: none;
+            border-radius: 30px;
             font-weight: 600;
-            margin-bottom: 0.25rem;
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 20px rgba(233, 99, 4, 0.3);
         }
-        
-        .feature-text p {
-            color: #666;
-            font-size: 0.9rem;
-            margin-bottom: 0;
+
+        .cta-btn:hover {
+            background: #d45800;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(233, 99, 4, 0.4);
         }
-        
+
         /* Developer Section */
         .developer-section {
             background: linear-gradient(135deg, var(--petroleum-blue) 0%, #1a3d47 100%);
             color: white;
         }
-        
+
         .developer-card {
             background: rgba(255,255,255,0.1);
             backdrop-filter: blur(10px);
@@ -266,7 +334,7 @@
             padding: 3rem;
             border: 1px solid rgba(255,255,255,0.1);
         }
-        
+
         .developer-photo {
             width: 200px;
             height: 200px;
@@ -275,26 +343,26 @@
             border: 5px solid rgba(255,255,255,0.2);
             box-shadow: 0 10px 40px rgba(0,0,0,0.3);
         }
-        
+
         .developer-name {
             font-size: 1.8rem;
             font-weight: 700;
             margin-top: 1.5rem;
             margin-bottom: 0.25rem;
         }
-        
+
         .developer-title {
             color: var(--brand-secondary);
             font-size: 1rem;
             margin-bottom: 1.5rem;
         }
-        
+
         .developer-bio {
             font-size: 1rem;
             line-height: 1.8;
             opacity: 0.9;
         }
-        
+
         .developer-links {
             display: flex;
             justify-content: center;
@@ -302,7 +370,7 @@
             margin-top: 2rem;
             flex-wrap: wrap;
         }
-        
+
         .developer-link {
             display: inline-flex;
             align-items: center;
@@ -315,23 +383,23 @@
             transition: all 0.3s ease;
             border: 1px solid rgba(255,255,255,0.2);
         }
-        
+
         .developer-link:hover {
             background: rgba(255,255,255,0.2);
             color: white;
             transform: translateY(-2px);
         }
-        
+
         .developer-link i {
             margin-right: 0.5rem;
             font-size: 1rem;
         }
-        
+
         .developer-link.linkedin { background: rgba(10, 102, 194, 0.3); }
         .developer-link.radiopaedia { background: rgba(233, 99, 4, 0.3); }
         .developer-link.kaggle { background: rgba(32, 190, 255, 0.3); }
         .developer-link.app { background: rgba(168, 213, 186, 0.3); }
-        
+
         /* Expertise Tags */
         .expertise-tags {
             display: flex;
@@ -340,7 +408,7 @@
             justify-content: center;
             margin-top: 1.5rem;
         }
-        
+
         .expertise-tag {
             background: rgba(255,255,255,0.1);
             padding: 0.4rem 1rem;
@@ -348,7 +416,7 @@
             font-size: 0.8rem;
             border: 1px solid rgba(255,255,255,0.15);
         }
-        
+
         /* Footer */
         .about-footer {
             background: var(--text-dark);
@@ -356,16 +424,16 @@
             padding: 2rem 0;
             text-align: center;
         }
-        
+
         .about-footer a {
             color: var(--brand-secondary);
             text-decoration: none;
         }
-        
+
         .about-footer a:hover {
             text-decoration: underline;
         }
-        
+
         /* Back Button */
         .back-btn {
             position: fixed;
@@ -384,12 +452,12 @@
             z-index: 1000;
             transition: all 0.3s ease;
         }
-        
+
         .back-btn:hover {
             transform: scale(1.1);
             color: var(--brand-primary);
         }
-        
+
         /* Responsive */
         @media (max-width: 768px) {
             .hero-title { font-size: 2rem; }
@@ -397,6 +465,7 @@
             .design-block { padding: 2rem; }
             .developer-card { padding: 2rem; }
             .developer-photo { width: 150px; height: 150px; }
+            .pillar-detail { margin-bottom: 1rem; }
         }
     </style>
 </head>
@@ -406,7 +475,7 @@
         <i class="fas fa-arrow-left"></i>
     </a>
 
-    <!-- Hero Section -->
+    <!-- 1. Hero Section -->
     <section class="about-hero">
         <div class="container">
             <div class="row align-items-center">
@@ -416,145 +485,186 @@
                         <h1 class="hero-title mb-0">About RadInsights</h1>
                     </div>
                     <p class="hero-subtitle">
-                        A purpose-built learning platform for radiologists progressing from structured education 
-                        to clinical authority — designed with calm correctness at its core.
+                        Born at the intersection of radiology, coding, artificial intelligence, and a relentless pursuit of excellence.
                     </p>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- Philosophy Section -->
+    <!-- 2. Introduction Section -->
     <section class="section">
         <div class="container">
-            <h2 class="section-title">Our Philosophy</h2>
-            <p class="section-subtitle">Built on the belief that effective learning mirrors effective diagnosis — focused, structured, and clear.</p>
-            
-            <div class="row g-4">
-                <div class="col-md-6 col-lg-3">
-                    <div class="philosophy-card">
-                        <div class="philosophy-icon">
-                            <i class="fas fa-crosshairs"></i>
-                        </div>
-                        <h4>Focused Learning</h4>
-                        <p>Every feature serves a purpose. No distractions, no noise — just the tools you need to master radiology cases systematically.</p>
-                    </div>
-                </div>
-                <div class="col-md-6 col-lg-3">
-                    <div class="philosophy-card">
-                        <div class="philosophy-icon">
-                            <i class="fas fa-layer-group"></i>
-                        </div>
-                        <h4>Structured Progression</h4>
-                        <p>From modules to cases to detailed discussions — content is organised to mirror the cognitive journey from novice to expert.</p>
-                    </div>
-                </div>
-                <div class="col-md-6 col-lg-3">
-                    <div class="philosophy-card">
-                        <div class="philosophy-icon">
-                            <i class="fas fa-highlighter"></i>
-                        </div>
-                        <h4>Active Engagement</h4>
-                        <p>Notes, highlights, and annotations make learning personal. Your insights become part of your revision journey.</p>
-                    </div>
-                </div>
-                <div class="col-md-6 col-lg-3">
-                    <div class="philosophy-card">
-                        <div class="philosophy-icon">
-                            <i class="fas fa-users"></i>
-                        </div>
-                        <h4>Community Wisdom</h4>
-                        <p>Discussion forums enable peer learning. Share insights, ask questions, and learn from the collective experience.</p>
+            <div class="row justify-content-center">
+                <div class="col-lg-10">
+                    <h2 class="section-title">Our Vision</h2>
+                    <p class="section-subtitle">More than a platform &mdash; a companion for every radiologist's journey.</p>
+
+                    <div class="intro-prose">
+                        <p>
+                            RadInsights leverages the best minds in radiology alongside cutting-edge technology to create a
+                            platform that genuinely serves the profession. It is built to empower confidence in daily reporting,
+                            grounded in the belief that the best radiologists remain students for life.
+                        </p>
+                        <p>
+                            Whether you are navigating a complex case or revisiting a concept you last studied years ago,
+                            RadInsights clarifies, contextualises, and promotes active learning &mdash; even in the middle
+                            of a busy reporting session. It is designed so that learning is not a separate activity but an
+                            integral part of clinical work.
+                        </p>
+                        <p>
+                            RadInsights began as a focused FRCR 2B viva preparation tool: a personal project to organise
+                            cases, practise structured answers, and build the pattern recognition needed for the exam.
+                            Over time it has grown into a comprehensive platform that supports trainees, consultants,
+                            and reporting radiologists across all stages of their careers.
+                        </p>
                     </div>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- Purpose Section -->
+    <!-- 3. Four Pillars Section -->
     <section class="section section-alt">
         <div class="container">
+            <h2 class="section-title">The Four Pillars</h2>
+            <p class="section-subtitle">Everything RadInsights offers is built around four core pillars.</p>
+
+            <div class="row g-4">
+                <!-- Pillar 1: Case-Based Learning -->
+                <div class="col-md-6">
+                    <div class="pillar-detail pillar-teal">
+                        <div class="pillar-icon icon-teal">
+                            <i class="fas fa-book-medical"></i>
+                        </div>
+                        <h4>Case-Based Learning</h4>
+                        <p>
+                            Cases bridge the gap between textbook knowledge and clinical application. Each case is
+                            designed to simulate real diagnostic encounters, building the pattern recognition that
+                            defines expert radiology practice.
+                        </p>
+                        <ul>
+                            <li>Image stacks with full diagnostic details and structured discussions</li>
+                            <li>Full-text article links for deeper reading</li>
+                            <li>Personal note-taking and Notion integration for extended study</li>
+                            <li>Discussion forums for peer learning and community insights</li>
+                            <li>Q&A format modelled after FRCR 2B viva-style questions</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Pillar 2: Oncology & TNM Staging -->
+                <div class="col-md-6">
+                    <div class="pillar-detail pillar-purple">
+                        <div class="pillar-icon icon-purple">
+                            <i class="fas fa-dna"></i>
+                        </div>
+                        <h4>Oncology &amp; TNM Staging</h4>
+                        <p>
+                            TNM Essentials is a one-stop resource for staging concepts &mdash; bringing together
+                            everything a reporting radiologist needs to stage accurately and confidently.
+                        </p>
+                        <ul>
+                            <li>30+ dedicated calculators for real-time TNM staging across all major cancers</li>
+                            <li>Staging rationale and crash courses for each disease site</li>
+                            <li>Designed for busy consultants who need staging clarity at the workstation</li>
+                            <li>Integrated with case-based learning for contextual oncology education</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Pillar 3: AI-Powered Reporting -->
+                <div class="col-md-6">
+                    <div class="pillar-detail pillar-orange">
+                        <div class="pillar-icon icon-orange">
+                            <i class="fas fa-file-medical"></i>
+                        </div>
+                        <h4>AI-Powered Reporting</h4>
+                        <p>
+                            <strong>RadInsights Intelligence</strong> &mdash; paste your report, click
+                            "Ask RadIntelligence", and receive feedback like a skilled consultant reviewing your work:
+                            strengths, areas for improvement, and targeted teaching points.
+                        </p>
+                        <ul>
+                            <li><strong>Next Seat Consultant Radiologist Tutor</strong> &mdash; an AI chat companion with contextual pills: teach me, find references, generate SBAs &amp; Q&A</li>
+                            <li>Reporting templates for structured copy-paste into PACS</li>
+                            <li>Interactive decision-tree algorithms for systematic reporting</li>
+                            <li>Type directly or dictate-and-paste from your PACS workstation</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Pillar 4: Clinical Resource Hub -->
+                <div class="col-md-6">
+                    <div class="pillar-detail pillar-green">
+                        <div class="pillar-icon icon-green">
+                            <i class="fas fa-book-open"></i>
+                        </div>
+                        <h4>Clinical Resource Hub</h4>
+                        <p>
+                            A curated library of the clinical tools, guidelines, and reference material that
+                            radiologists reach for every day &mdash; accessible from one place.
+                        </p>
+                        <ul>
+                            <li>Clinical calculators (e.g. adrenal washout, LI-RADS) and commonly used guidelines</li>
+                            <li>Radiology protocols: guidelines, classifications, and safety protocols</li>
+                            <li>Radiology tools: clinical management aids, scoring systems, and incidental findings workflows</li>
+                            <li>Anatomy snippets and radiology pearls for quick reference</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 4. Security & Privacy Section -->
+    <section class="section">
+        <div class="container">
             <div class="row align-items-center">
-                <div class="col-lg-6 mb-4 mb-lg-0">
-                    <h2 class="section-title">Purpose & Aim</h2>
-                    <p class="section-subtitle">Bridging the gap between textbook knowledge and clinical confidence.</p>
-                    
-                    <p style="margin-bottom: 1.5rem;">
-                        RadInsights supports trainees and consultants in building pattern recognition, 
-                        systematic reporting, and clinical reasoning. Whether you use it for daily reporting, 
-                        subspecialty learning (e.g. hepatobiliary, oncology), or exam preparation — including 
-                        the FRCR — the app is designed to fit your workflow.
-                    </p>
-                    
-                    <p style="margin-bottom: 1.5rem;">
-                        Unlike generic study platforms, RadInsights understands that radiology learning is 
-                        inherently visual, case-based, and iterative. Each feature — from the image viewer 
-                        to the structured Q&A format — simulates the real diagnostic process: observe, analyse, 
-                        conclude, discuss.
-                    </p>
-                    
-                    <p>
-                        The goal is to build the pattern recognition, systematic approach, and clinical 
-                        reasoning that define an excellent radiologist — in training, in the reporting room, 
-                        and at the exam.
+                <div class="col-lg-5 mb-4 mb-lg-0">
+                    <h2 class="section-title">Security &amp; Privacy</h2>
+                    <p class="section-subtitle">Privacy-first architecture, built to protect patients and professionals.</p>
+                    <p style="color: #666; font-size: 0.95rem;">
+                        RadInsights processes clinical text to support your reporting workflow but
+                        <strong>does not store or retain patient data</strong>. All AI features are designed as
+                        clinical documentation support tools &mdash; never as autonomous diagnostic devices.
                     </p>
                 </div>
-                <div class="col-lg-6">
-                    <div class="row g-3">
-                        <div class="col-12">
-                            <div class="feature-item">
-                                <div class="feature-icon">
-                                    <i class="fas fa-images"></i>
-                                </div>
-                                <div class="feature-text">
-                                    <h5>Case-Based Learning</h5>
-                                    <p>Real radiological cases with images, diagnoses, and structured discussions to build pattern recognition.</p>
-                                </div>
-                            </div>
+                <div class="col-lg-7">
+                    <div class="security-item">
+                        <div class="security-icon">
+                            <i class="fas fa-shield-alt"></i>
                         </div>
-                        <div class="col-12">
-                            <div class="feature-item">
-                                <div class="feature-icon">
-                                    <i class="fas fa-question-circle"></i>
-                                </div>
-                                <div class="feature-text">
-                                    <h5>Structured Q&A</h5>
-                                    <p>Question-and-answer pairs that mirror viva format, preparing you for clinical discussions.</p>
-                                </div>
-                            </div>
+                        <div class="security-text">
+                            <strong>PII Protection</strong>
+                            <span>Active detection and blocking of identifiable patient data, aligned with HIPAA standards and Royal College of Radiologists (RCR) guidance. No patient data is stored or transmitted.</span>
                         </div>
-                        <div class="col-12">
-                            <div class="feature-item">
-                                <div class="feature-icon">
-                                    <i class="fas fa-pen"></i>
-                                </div>
-                                <div class="feature-text">
-                                    <h5>Personal Notes & Highlights</h5>
-                                    <p>Create your own annotations, highlight key points, and build a personalised revision library.</p>
-                                </div>
-                            </div>
+                    </div>
+                    <div class="security-item">
+                        <div class="security-icon">
+                            <i class="fas fa-gavel"></i>
                         </div>
-                        <div class="col-12">
-                            <div class="feature-item">
-                                <div class="feature-icon">
-                                    <i class="fas fa-comments"></i>
-                                </div>
-                                <div class="feature-text">
-                                    <h5>Discussion Forums</h5>
-                                    <p>Engage with peers, share insights, and learn from community discussions on each case.</p>
-                                </div>
-                            </div>
+                        <div class="security-text">
+                            <strong>Regulatory Classification</strong>
+                            <span>Clinical documentation support tool (Class I). Not an autonomous diagnostic device. No ambient voice technology. All outputs require human professional validation.</span>
                         </div>
-                        <div class="col-12">
-                            <div class="feature-item">
-                                <div class="feature-icon">
-                                    <i class="fas fa-plug"></i>
-                                </div>
-                                <div class="feature-text">
-                                    <h5>External Integrations</h5>
-                                    <p>Connect with Notion for extended notes and Anki for spaced repetition flashcards.</p>
-                                </div>
-                            </div>
+                    </div>
+                    <div class="security-item">
+                        <div class="security-icon">
+                            <i class="fas fa-lock"></i>
+                        </div>
+                        <div class="security-text">
+                            <strong>Authentication &amp; Access</strong>
+                            <span>Two-factor authentication, secure session management, and role-based access controls to protect your account and data.</span>
+                        </div>
+                    </div>
+                    <div class="security-item">
+                        <div class="security-icon">
+                            <i class="fas fa-search"></i>
+                        </div>
+                        <div class="security-text">
+                            <strong>AI-Driven Search</strong>
+                            <span>Intelligent search across all content types &mdash; cases, algorithms, templates, tools, and pearls &mdash; without compromising patient privacy.</span>
                         </div>
                     </div>
                 </div>
@@ -562,23 +672,22 @@
         </div>
     </section>
 
-    <!-- Design Principles Section -->
-    <section class="section">
+    <!-- 5. Design Philosophy Section -->
+    <section class="section section-alt">
         <div class="container">
             <h2 class="section-title">Design Philosophy</h2>
-            <p class="section-subtitle">Visual identity that reflects the precision and clarity of expert diagnosis.</p>
-            
+            <p class="section-subtitle">"Simple is Superb" &mdash; the principle behind every design decision.</p>
+
             <div class="design-block">
                 <p class="design-quote">
                     RadInsights is built for radiologists progressing from structured learning to clinical authority.
-                    Its visual identity reflects this transition through <strong>deliberate restraint</strong>. The mark is based on the idea of 
-                    <strong>electromagnetic field coherence</strong>: multiple influences resolving into a single point of clarity. 
-                    Rather than illustrating radiology or education directly, the identity removes explanation in favour of 
-                    <strong>inevitability</strong>. What remains is quiet structure, balance, and focus — qualities shared by effective 
-                    diagnosis and expert clinical judgement. The result is a symbol that does not compete for attention, 
-                    but earns trust through <strong>calm correctness</strong>.
+                    Its visual identity reflects this transition through <strong>deliberate restraint</strong>.
+                    Content is cross-linked, AI-driven search connects every resource, and users can request
+                    new content directly &mdash; because the best tools adapt to the people who use them.
+                    What remains is quiet structure, balance, and focus: qualities shared by effective
+                    diagnosis and expert clinical judgement.
                 </p>
-                
+
                 <ul class="design-principles-list">
                     <li>
                         <div class="principle-icon">
@@ -595,7 +704,7 @@
                         </div>
                         <div class="principle-text">
                             <strong>Coherence Over Complexity</strong>
-                            <span>Multiple concepts resolve into single, clear actions — like multiple findings leading to one diagnosis.</span>
+                            <span>Multiple concepts resolve into single, clear actions &mdash; like multiple findings leading to one diagnosis.</span>
                         </div>
                     </li>
                     <li>
@@ -613,7 +722,7 @@
                         </div>
                         <div class="principle-text">
                             <strong>Calm Correctness</strong>
-                            <span>Trust is built through reliability and precision — the same qualities that define clinical excellence.</span>
+                            <span>Trust is built through reliability and precision &mdash; the same qualities that define clinical excellence.</span>
                         </div>
                     </li>
                 </ul>
@@ -621,19 +730,34 @@
         </div>
     </section>
 
-    <!-- Developer Section -->
+    <!-- 6. Getting Started Section -->
+    <section class="section cta-section">
+        <div class="container">
+            <h2>Get Started with RadInsights</h2>
+            <p>
+                Sign up with your email or Google account for a free trial. We believe every radiologist
+                deserves a companion that grows with them &mdash; accessible, affordable, and built by
+                radiologists for radiologists.
+            </p>
+            <a href="/auth/register" class="cta-btn">
+                <i class="fas fa-user-plus me-2"></i>Sign Up Free
+            </a>
+        </div>
+    </section>
+
+    <!-- 7. Developer Section -->
     <section class="section developer-section">
         <div class="container">
             <div class="row justify-content-center">
                 <div class="col-lg-10">
                     <div class="developer-card text-center">
-                        <img src="https://res.cloudinary.com/dx7b7chvn/image/upload/v1769503548/frcr-rev-logo-transp_o2hmrq.png" 
-                             alt="Dr. Gaurav Gaurav" 
+                        <img src="https://res.cloudinary.com/dx7b7chvn/image/upload/v1769503548/frcr-rev-logo-transp_o2hmrq.png"
+                             alt="Dr. Gaurav Gaurav"
                              class="developer-photo">
-                        
+
                         <h3 class="developer-name">Dr. Gaurav Gaurav</h3>
                         <p class="developer-title">MD, FRCR | Consultant Radiologist | Founder, Eralight Limited</p>
-                        
+
                         <div class="expertise-tags">
                             <span class="expertise-tag"><i class="fas fa-user-md me-1"></i>Breast Imaging</span>
                             <span class="expertise-tag"><i class="fas fa-female me-1"></i>Women's Imaging</span>
@@ -642,32 +766,32 @@
                             <span class="expertise-tag"><i class="fas fa-code me-1"></i>Web Development</span>
                             <span class="expertise-tag"><i class="fas fa-clipboard-check me-1"></i>Quality & Audit</span>
                         </div>
-                        
+
                         <div class="row justify-content-center mt-4">
                             <div class="col-lg-9">
                                 <p class="developer-bio">
-                                    An experienced Radiologist with a demonstrated history of working in the hospital and 
-                                    healthcare industry. Specialising in Head and Neck Imaging, Breast Imaging and Women's Imaging, his broader 
-                                    areas of interest include Artificial Intelligence, Healthcare Consulting, Healthcare 
-                                    Information Technology (HIT), Picture Archiving and Communication Systems (PACS), 
+                                    An experienced Radiologist with a demonstrated history of working in the hospital and
+                                    healthcare industry. Specialising in Head and Neck Imaging, Breast Imaging and Women's Imaging, his broader
+                                    areas of interest include Artificial Intelligence, Healthcare Consulting, Healthcare
+                                    Information Technology (HIT), Picture Archiving and Communication Systems (PACS),
                                     Healthcare Management, Web Development, and Medical Writing.
                                 </p>
                                 <p class="developer-bio mt-3">
-                                    With a Doctor of Medicine (MD) and Fellowship of the Royal College of Radiologists (FRCR), 
-                                    Dr. Gaurav is passionate about <strong>democratising healthcare and data</strong> and 
-                                    <strong>redefining medical care</strong>. Currently serving as Quality and Auditing Officer, 
-                                    he plays a key role in formulating policies and protocols for efficient working of 
+                                    With a Doctor of Medicine (MD) and Fellowship of the Royal College of Radiologists (FRCR),
+                                    Dr. Gaurav is passionate about <strong>democratising healthcare and data</strong> and
+                                    <strong>redefining medical care</strong>. Currently serving as Quality and Auditing Officer,
+                                    he plays a key role in formulating policies and protocols for efficient working of
                                     Diagnostic Imaging departments.
                                 </p>
                                 <p class="developer-bio mt-3">
-                                    Coding , Artifial intelligence are his hobbies. His other hobbies include reading, writing,Pyschology, Philosophy and Metaphysics.
-                                    He is scientist with a passion in understanding the nature of reality and the universe. He is poet and likes to dwell into natue of existence and the universe through poetry and his writings.
-                                    He is also founder of Sehar Awakening, Sehar Sacred Expiereces and Sehar Sacred Spaces. He is also a mentor and a coach to many young people and professionals in the field of healthcare and technology and metaphysics.
-                                    "Doctor by profession , Mystic by heart" : this is how his many freinds describe him.
+                                    Coding and Artificial Intelligence are his hobbies. His other interests include reading, writing, Psychology, Philosophy, and Metaphysics.
+                                    He is a scientist with a passion for understanding the nature of reality and the universe. He is a poet who likes to explore the nature of existence through poetry and his writings.
+                                    He is also the founder of Sehar Awakening, Sehar Sacred Experiences, and Sehar Sacred Spaces. He is a mentor and coach to many young people and professionals in the field of healthcare, technology, and metaphysics.
+                                    "Doctor by profession, Mystic by heart" &mdash; this is how his many friends describe him.
                                 </p>
                             </div>
                         </div>
-                        
+
                         <div class="developer-links">
                             <a href="https://www.linkedin.com/in/dr-gaurav-g-06346179/" target="_blank" class="developer-link linkedin">
                                 <i class="fab fa-linkedin"></i>LinkedIn
@@ -688,7 +812,7 @@
         </div>
     </section>
 
-    <!-- Footer -->
+    <!-- 8. Footer -->
     <footer class="about-footer">
         <div class="container">
             <p class="mb-2">
@@ -697,8 +821,8 @@
             </p>
             <p class="mb-0 small">
                 &copy; 2026 Eralight Limited. All rights reserved.<br>
-                <a href="/">Return to App</a> | 
-                <a href="/privacy">Privacy Policy</a> | 
+                <a href="/">Return to App</a> |
+                <a href="/privacy">Privacy Policy</a> |
                 <a href="/terms">Terms of Use</a>
             </p>
         </div>
