@@ -972,14 +972,26 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     };
 
-    // Handle server-side PII blocked responses — show detailed modal instead of generic toast
+    // Handle server-side PII blocked responses — show detailed modal with redact option
     function handlePIIResponse(data) {
         if (!data.pii_blocked) return false;
-        var matches = (data.pii_detected || []).map(function(d) {
-            return { type: d.type, match: d.match, description: d.type + ' detected' };
-        });
-        if (matches.length > 0 && window.PIIGuard) {
-            PIIGuard.showPIIModal(matches);
+        // Re-scan editor text client-side to get exact match positions for redaction
+        var editor = document.getElementById('editorInput');
+        var editorText = editor ? editor.value : '';
+        var clientMatches = (window.PIIGuard && editorText) ? PIIGuard.scan(editorText).matches : [];
+        // Fall back to server-provided matches for display if client scan finds nothing
+        var displayMatches = clientMatches.length > 0 ? clientMatches :
+            (data.pii_detected || []).map(function(d) {
+                return { type: d.type, match: d.match, description: d.type + ' detected' };
+            });
+
+        if (displayMatches.length > 0 && window.PIIGuard) {
+            PIIGuard.showPIIModal(displayMatches).then(function(action) {
+                if (action === 'redact' && editor && clientMatches.length > 0) {
+                    editor.value = PIIGuard.redact(editorText, clientMatches);
+                    showToast('Patient data removed from your text. Please submit again.', 'success');
+                }
+            });
         } else {
             showToast(data.error || 'Patient data detected. Please remove before submitting.', 'error');
         }
