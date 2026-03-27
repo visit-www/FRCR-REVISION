@@ -972,14 +972,30 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     };
 
-    // Handle server-side PII blocked responses — show detailed modal with redact option
+    // Pre-fetch PII check — scans editor text BEFORE any AI call.
+    // Returns true if PII was found (caller should abort). Returns false if clean.
+    async function checkEditorPII() {
+        if (!window.PIIGuard) return false;
+        var editor = document.getElementById('editorInput');
+        if (!editor || !editor.value.trim()) return false;
+
+        var result = PIIGuard.scan(editor.value);
+        if (!result.hasPII) return false;
+
+        var action = await PIIGuard.showPIIModal(result.matches);
+        if (action === 'redact') {
+            editor.value = PIIGuard.redact(editor.value, result.matches);
+            showToast('Patient data removed from your text. Please review and re-submit.', 'success');
+        }
+        return true; // Always block — user must review cleaned text before re-submitting
+    }
+
+    // Safety net for server-side PII catches (if client-side misses something)
     function handlePIIResponse(data) {
         if (!data.pii_blocked) return false;
-        // Re-scan editor text client-side to get exact match positions for redaction
         var editor = document.getElementById('editorInput');
         var editorText = editor ? editor.value : '';
         var clientMatches = (window.PIIGuard && editorText) ? PIIGuard.scan(editorText).matches : [];
-        // Fall back to server-provided matches for display if client scan finds nothing
         var displayMatches = clientMatches.length > 0 ? clientMatches :
             (data.pii_detected || []).map(function(d) {
                 return { type: d.type, match: d.match, description: d.type + ' detected' };
@@ -989,7 +1005,7 @@ document.addEventListener('DOMContentLoaded', function() {
             PIIGuard.showPIIModal(displayMatches).then(function(action) {
                 if (action === 'redact' && editor && clientMatches.length > 0) {
                     editor.value = PIIGuard.redact(editorText, clientMatches);
-                    showToast('Patient data removed from your text. Please submit again.', 'success');
+                    showToast('Patient data removed. Please review and re-submit.', 'success');
                 }
             });
         } else {
@@ -2458,13 +2474,14 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    window.reviewReport = function() {
+    window.reviewReport = async function() {
         const input = document.getElementById('editorInput');
         const text = input.value.trim();
         if (!text) {
             showToast('Please enter your report text first.', 'warning');
             return;
         }
+        if (await checkEditorPII()) return;
         doReviewReport();
     };
 
@@ -2670,7 +2687,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // ==================== ASK RADINSIGHT ====================
 
-    window.askClaude = function() {
+    window.askClaude = async function() {
         const input = document.getElementById('askClaudeInput');
         const question = input.value.trim();
         if (!question) return;
@@ -2678,6 +2695,7 @@ document.addEventListener('DOMContentLoaded', function() {
             showToast('Please enter your report text first.', 'warning');
             return;
         }
+        if (await checkEditorPII()) return;
 
         const btn = document.getElementById('btnAskClaude');
         btn.disabled = true;
