@@ -20,7 +20,7 @@
         },
         {
             type: 'MRN / Hospital ID',
-            regex: /\b(?:MRN|mrn|Mrn|hospital\s*(?:id|no|number|#)|hosp\s*id)[:\s#]*\d{4,10}\b/gi,
+            regex: /\b(?:MRN|UHID|hospital\s*(?:id|no|number|#)|hosp\s*id|patient\s*id)[:\s#]*\d{4,10}\b/gi,
             description: 'Medical Record Number detected'
         },
         {
@@ -35,8 +35,13 @@
         },
         {
             type: 'Phone Number',
-            regex: /\b(?:\+44|0)\d{4}[\s-]?\d{5,6}\b/g,
+            regex: /\b(?:phone|tel|mobile|cell|contact|ph)\s*[:=\-#]?\s*\+?[(\d][\d\s\-.()]{7,15}\d/gi,
             description: 'Phone number detected'
+        },
+        {
+            type: 'Phone Number',
+            regex: /\+\d{1,3}[\s.-]?\d{4,5}[\s.-]?\d{4,6}\b/g,
+            description: 'International phone number detected'
         },
         {
             type: 'Email Address',

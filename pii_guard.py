@@ -18,12 +18,17 @@ PII_PATTERNS = [
     ('NHS Number', re.compile(r'\b\d{3}[-\s]?\d{3}[-\s]?\d{4}\b')),
     ('US SSN', re.compile(r'\b\d{3}-\d{2}-\d{4}\b')),
     ('MRN / Hospital ID', re.compile(
-        r'\b(?:MRN|mrn|Mrn|hospital\s*(?:id|no|number|#)|hosp\s*id)[:\s#]*\d{4,10}\b', re.IGNORECASE)),
+        r'\b(?:MRN|UHID|hospital\s*(?:id|no|number|#)|hosp\s*id|patient\s*id)[:\s#]*\d{4,10}\b', re.IGNORECASE)),
     ('Date of Birth', re.compile(
         r'\b(?:DOB|dob|D\.O\.B|born|date\s*of\s*birth|birth\s*date)[:\s]*\d{1,2}[/\-.]\d{1,2}[/\-.]\d{2,4}\b',
         re.IGNORECASE)),
     ('UK Postcode', re.compile(r'\b[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}\b', re.IGNORECASE)),
-    ('Phone Number', re.compile(r'\b(?:\+44|0)\d{4}[\s-]?\d{5,6}\b')),
+    # Phone with keyword anchor (phone:, tel:, mobile: etc.)
+    ('Phone Number', re.compile(
+        r'\b(?:phone|tel|mobile|cell|contact|ph)\s*[:=\-#]?\s*\+?[(\d][\d\s\-.()]{7,15}\d',
+        re.IGNORECASE)),
+    # International phone (+country code)
+    ('Phone Number', re.compile(r'\+\d{1,3}[\s.-]?\d{4,5}[\s.-]?\d{4,6}\b')),
     ('Email Address', re.compile(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b')),
     # Patient name with title (Mr/Mrs/Dr etc) — lookahead stops at boundary words
     ('Patient Name', re.compile(
