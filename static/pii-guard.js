@@ -18,8 +18,13 @@
     const PII_PATTERNS = [
         {
             type: 'NHS Number',
-            regex: /\b\d{3}[-\s]?\d{3}[-\s]?\d{4}\b/g,
+            regex: /\bNHS\s*(?:no|number|#)?[:\s]+\d{3}[-\s]?\d{3}[-\s]?\d{4}\b/gi,
             description: 'NHS number detected'
+        },
+        {
+            type: 'NHS Number',
+            regex: /\b\d{3}[-\s]\d{3}[-\s]\d{4}\b/g,
+            description: 'NHS number detected (format)'
         },
         {
             type: 'US SSN',
@@ -45,6 +50,16 @@
             type: 'Phone Number',
             regex: /\b(?:phone|tel|mobile|cell|contact|ph)\s*[:=\-#]?\s*\+?[(\d][\d\s\-.()]{7,15}\d/gi,
             description: 'Phone number detected'
+        },
+        {
+            type: 'Phone Number',
+            regex: /\b(?:his|her|my|their|the)\s+(?:number|no|contact)\s+(?:is|was)\s*:?\s*\+?[\d][\d\s\-.()]{6,15}\d\b/gi,
+            description: 'Phone number detected (context)'
+        },
+        {
+            type: 'Phone Number',
+            regex: /\bnumber\s+(?:is|was)\s*:?\s*\+?[\d][\d\s\-.()]{6,15}\d\b/gi,
+            description: 'Phone number detected (keyword)'
         },
         {
             type: 'Phone Number',
@@ -92,6 +107,17 @@
                 "g"
             ),
             description: 'Patient name after keyword detected'
+        },
+        {
+            type: 'Patient Name',
+            regex: new RegExp(
+                "\\b[Tt]his\\s+is\\s+"
+                + _NAME_STOP + "[A-Z][a-zA-Z'\\-]{2,}"
+                + "(?:\\s+" + _NAME_STOP + "[A-Z][a-zA-Z'\\-]+){1,3}"
+                + "(?=\\s*,?\\s+(?:a\\s+|an\\s+)?\\d{1,3}[\\-\\s]?years?[\\-\\s]?old\\b)",
+                "g"
+            ),
+            description: 'Patient name after introduction detected'
         },
         {
             type: 'Patient Age',

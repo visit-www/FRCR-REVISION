@@ -24,7 +24,11 @@ _NAME_STOP = (
 )
 
 PII_PATTERNS = [
-    ('NHS Number', re.compile(r'\b\d{3}[-\s]?\d{3}[-\s]?\d{4}\b')),
+    # NHS with keyword anchor (separators optional)
+    ('NHS Number', re.compile(
+        r'\bNHS\s*(?:no|number|#)?[:\s]+\d{3}[-\s]?\d{3}[-\s]?\d{4}\b', re.IGNORECASE)),
+    # NHS by format only (separators REQUIRED to avoid confusion with bare phone numbers)
+    ('NHS Number', re.compile(r'\b\d{3}[-\s]\d{3}[-\s]\d{4}\b')),
     ('US SSN', re.compile(r'\b\d{3}-\d{2}-\d{4}\b')),
     ('MRN / Hospital ID', re.compile(
         r'\b(?:MRN|UHID|hospital\s*(?:id|no|number|#)|hosp\s*id|patient\s*id)[:\s#]*\d{4,10}\b', re.IGNORECASE)),
@@ -35,6 +39,14 @@ PII_PATTERNS = [
     # Phone with keyword anchor (phone:, tel:, mobile: etc.)
     ('Phone Number', re.compile(
         r'\b(?:phone|tel|mobile|cell|contact|ph)\s*[:=\-#]?\s*\+?[(\d][\d\s\-.()]{7,15}\d',
+        re.IGNORECASE)),
+    # Phone with pronoun context (His number is 9876543210)
+    ('Phone Number', re.compile(
+        r'\b(?:his|her|my|their|the)\s+(?:number|no|contact)\s+(?:is|was)\s*:?\s*\+?[\d][\d\s\-.()]{6,15}\d\b',
+        re.IGNORECASE)),
+    # Phone with "number is" keyword (number is 9876543210)
+    ('Phone Number', re.compile(
+        r'\bnumber\s+(?:is|was)\s*:?\s*\+?[\d][\d\s\-.()]{6,15}\d\b',
         re.IGNORECASE)),
     # International phone (+country code)
     ('Phone Number', re.compile(r'\+\d{1,3}[\s.-]?\d{4,5}[\s.-]?\d{4,6}\b')),
@@ -66,6 +78,13 @@ PII_PATTERNS = [
         + _NAME_STOP + r'([A-Z][a-zA-Z\'-]+'
         + r'(?:\s+' + _NAME_STOP + r'[A-Z][a-zA-Z\'-]+){0,3})'
         + r'(?=\s*(?:[,;.\n|/()]|\d|\bpresented\b|\battended\b|\bwas\b|\bis\b|\bhas\b|\bwith\b|\bfor\b|$))'
+    )),
+    # Name introduced with "This is" + age context (This is Ramesh Gupta, 60-year-old)
+    ('Patient Name', re.compile(
+        r'\b[Tt]his\s+is\s+'
+        + _NAME_STOP + r'[A-Z][a-zA-Z\'-]{2,}'
+        + r'(?:\s+' + _NAME_STOP + r'[A-Z][a-zA-Z\'-]+){1,3}'
+        + r'(?=\s*,?\s+(?:a\s+|an\s+)?\d{1,3}[-\s]?years?[-\s]?old\b)'
     )),
     # Patient age
     ('Patient Age', re.compile(
