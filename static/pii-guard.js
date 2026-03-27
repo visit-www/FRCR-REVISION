@@ -360,10 +360,13 @@
             const contentType = (options.headers && (options.headers['Content-Type'] || options.headers['content-type'])) || '';
             if (!contentType.includes('application/json')) return originalFetch.call(this, url, options);
 
-            // Skip auth/admin/backup routes
+            // Skip auth/admin/backup routes and Smart Reporter AI routes
+            // (Smart Reporter has its own checkEditorPII pre-check that cleans the textarea)
             const urlStr = typeof url === 'string' ? url : url.toString();
             const skipPrefixes = ['/auth/', '/api/admin/', '/api/backup', '/login', '/register',
-                '/radiology-protocols/admin/', '/incidental-findings/admin/', '/admin/reporting-algorithms/'];
+                '/radiology-protocols/admin/', '/incidental-findings/admin/', '/admin/reporting-algorithms/',
+                '/api/smart-reporter/ai-assist', '/api/smart-reporter/quick-review',
+                '/api/smart-reporter/generate-tree', '/api/smart-reporter/anatomy'];
             if (skipPrefixes.some(function(p) { return urlStr.includes(p); })) {
                 return originalFetch.call(this, url, options);
             }
