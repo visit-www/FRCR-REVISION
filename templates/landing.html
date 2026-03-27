@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RadInsights — Radiology Learning & Reporting Platform</title>
+    <meta name="description" content="RadInsights empowers radiologists with case-based learning, AI-driven reporting, TNM staging calculators, and clinical tools. Built for daily reporting, subspecialty learning, and FRCR exam preparation.">
+    <!-- Google Site Verification -->
+    <meta name="google-site-verification" content="8TwRzcRIJRfiYcJtYPXwLKEfwNeAA27DlOYxaOZJdqA" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="icon" type="image/png" href="https://res.cloudinary.com/dx7b7chvn/image/upload/v1769022136/icon-192x192_zkqtvu.png">
+    <style>
+        :root {
+            --brand-primary: #e96304;
+            --brand-neutral: #5E899E;
+            --brand-success: #a8d5ba;
+            --brand-bg: #fdfdfb;
+            --brand-text-primary: #2c3e50;
+            --brand-text-secondary: #5a6270;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            color: var(--brand-text-primary);
+            line-height: 1.7;
+            background: var(--brand-bg);
+        }
+
+        /* ── Hero ── */
+        .hero {
+            background: linear-gradient(135deg, #5E899E 0%, #3d6575 50%, #2c5060 100%);
+            color: #fff;
+            padding: 80px 0 70px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at 30% 40%, rgba(255,255,255,0.06) 0%, transparent 60%);
+        }
+
+        .hero-logo {
+            width: 100px;
+            height: 100px;
+            border-radius: 16px;
+            object-fit: contain;
+            margin-bottom: 20px;
+            filter: drop-shadow(0 4px 12px rgba(0,0,0,0.2));
+        }
+
+        .hero h1 {
+            font-size: 2.8rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            margin-bottom: 12px;
+        }
+
+        .hero .tagline {
+            font-size: 1.15rem;
+            opacity: 0.9;
+            max-width: 600px;
+            margin: 0 auto 32px;
+            font-weight: 400;
+            line-height: 1.6;
+        }
+
+        .hero-cta { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+
+        .btn-hero-primary {
+            background: var(--brand-primary);
+            color: #fff;
+            border: none;
+            padding: 12px 36px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 15px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        .btn-hero-primary:hover {
+            background: #c75002;
+            color: #fff;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(233,99,4,0.3);
+        }
+
+        .btn-hero-secondary {
+            background: rgba(255,255,255,0.15);
+            color: #fff;
+            border: 1.5px solid rgba(255,255,255,0.4);
+            padding: 12px 36px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 15px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        .btn-hero-secondary:hover {
+            background: rgba(255,255,255,0.25);
+            color: #fff;
+        }
+
+        /* ── Sections ── */
+        .section { padding: 60px 0; }
+        .section-alt { background: #f5f7f9; }
+
+        .section-title {
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: var(--brand-text-primary);
+            margin-bottom: 8px;
+        }
+
+        .section-subtitle {
+            color: var(--brand-text-secondary);
+            font-size: 1rem;
+            margin-bottom: 40px;
+            max-width: 640px;
+        }
+
+        /* ── Pillar Cards ── */
+        .pillar-card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 32px 28px;
+            height: 100%;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+            border: 1px solid rgba(0,0,0,0.04);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .pillar-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+        }
+
+        .pillar-icon {
+            width: 56px;
+            height: 56px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            margin-bottom: 18px;
+        }
+
+        .pillar-card h3 {
+            font-size: 1.15rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: var(--brand-text-primary);
+        }
+
+        .pillar-card p {
+            font-size: 0.92rem;
+            color: var(--brand-text-secondary);
+            line-height: 1.65;
+            margin-bottom: 0;
+        }
+
+        /* ── Philosophy ── */
+        .philosophy-text {
+            font-size: 1.05rem;
+            color: var(--brand-text-secondary);
+            line-height: 1.8;
+            max-width: 720px;
+        }
+
+        .philosophy-text em {
+            color: var(--brand-text-primary);
+            font-style: normal;
+            font-weight: 600;
+        }
+
+        /* ── Trust Bar ── */
+        .trust-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 24px;
+            justify-content: center;
+        }
+
+        .trust-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.88rem;
+            color: var(--brand-text-secondary);
+        }
+
+        .trust-item i { color: var(--brand-success); font-size: 1rem; }
+
+        /* ── CTA Section ── */
+        .cta-section {
+            background: linear-gradient(135deg, var(--brand-text-primary) 0%, #1a2a36 100%);
+            color: #fff;
+            padding: 60px 0;
+            text-align: center;
+        }
+
+        .cta-section h2 { font-size: 1.6rem; font-weight: 700; margin-bottom: 10px; }
+        .cta-section p { opacity: 0.8; margin-bottom: 28px; font-size: 1rem; }
+
+        /* ── Footer ── */
+        .landing-footer {
+            background: #1a2a36;
+            color: rgba(255,255,255,0.5);
+            padding: 24px 0;
+            text-align: center;
+            font-size: 0.82rem;
+        }
+
+        .landing-footer a {
+            color: var(--brand-success);
+            text-decoration: none;
+        }
+
+        .landing-footer a:hover { text-decoration: underline; }
+
+        /* ── Responsive ── */
+        @media (max-width: 768px) {
+            .hero { padding: 50px 0 45px; }
+            .hero h1 { font-size: 2rem; }
+            .hero .tagline { font-size: 1rem; padding: 0 16px; }
+            .section { padding: 40px 0; }
+            .pillar-card { padding: 24px 20px; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Hero -->
+    <section class="hero">
+        <div class="container position-relative">
+            <img src="https://res.cloudinary.com/dx7b7chvn/image/upload/v1769503548/frcr-rev-logo-transp_o2hmrq.png" alt="RadInsights" class="hero-logo">
+            <h1>RadInsights</h1>
+            <p class="tagline">
+                Empowering radiologists to report with confidence, learn with purpose, and grow without limits.
+            </p>
+            <div class="hero-cta">
+                <a href="/auth/login" class="btn-hero-primary">Sign In</a>
+                <a href="/auth/register" class="btn-hero-secondary">Create Account</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Introduction -->
+    <section class="section">
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-lg-8 text-center">
+                    <p class="philosophy-text">
+                        RadInsights was born at the intersection of a passion for radiology, coding, and artificial intelligence.
+                        It is a platform that leverages <em>cutting-edge technology</em> and <em>the best minds in radiology</em>
+                        to make radiology engaging and a lifelong pursuit. The platform is designed to improve the quality and confidence
+                        of your daily reporting, while embracing the philosophy that the best radiologists remain students for life.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Four Pillars -->
+    <section class="section section-alt">
+        <div class="container">
+            <div class="text-center mb-2">
+                <h2 class="section-title">Four Pillars</h2>
+                <p class="section-subtitle mx-auto">From case-based learning to AI-driven reporting, every feature is built with the working radiologist in mind.</p>
+            </div>
+
+            <div class="row g-4">
+                <!-- Pillar 1: Cases -->
+                <div class="col-md-6 col-lg-3">
+                    <div class="pillar-card">
+                        <div class="pillar-icon" style="background: rgba(94,137,158,0.12); color: var(--brand-neutral);">
+                            <i class="fas fa-book-medical"></i>
+                        </div>
+                        <h3>Case-Based Learning</h3>
+                        <p>
+                            Each case bridges the gap between textbook knowledge and clinical practice. Structured as FRCR 2B viva-style questions,
+                            cases are crafted to be easy to read, understand, retain, and apply. Enhanced with image stacks, article links,
+                            note-taking, and Notion integration.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Pillar 2: Oncology -->
+                <div class="col-md-6 col-lg-3">
+                    <div class="pillar-card">
+                        <div class="pillar-icon" style="background: rgba(107,70,193,0.1); color: #6b46c1;">
+                            <i class="fas fa-dna"></i>
+                        </div>
+                        <h3>Oncology & TNM Staging</h3>
+                        <p>
+                            Oncology does not need to be intimidating. The TNM Essentials module is a one-stop resource for staging concepts.
+                            Over 30 dedicated calculators enable real-time staging with clear rationale and concise crash courses on
+                            TNM classification.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Pillar 3: Smart Reporting -->
+                <div class="col-md-6 col-lg-3">
+                    <div class="pillar-card">
+                        <div class="pillar-icon" style="background: rgba(233,99,4,0.1); color: var(--brand-primary);">
+                            <i class="fas fa-file-medical"></i>
+                        </div>
+                        <h3>AI-Powered Reporting</h3>
+                        <p>
+                            RadInsights Intelligence reviews your report like a skilled consultant at your side. It highlights strengths,
+                            areas for improvement, and provides targeted teaching points. Complemented by an ever-growing library of
+                            structured templates and interactive decision-tree algorithms.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Pillar 4: Resources -->
+                <div class="col-md-6 col-lg-3">
+                    <div class="pillar-card">
+                        <div class="pillar-icon" style="background: rgba(168,213,186,0.25); color: #2d8a5e;">
+                            <i class="fas fa-book-open"></i>
+                        </div>
+                        <h3>Clinical Resources</h3>
+                        <p>
+                            A comprehensive resource hub with clinical calculators, contrast media protocols, adverse reaction management,
+                            and incidental finding tools. Guidelines and safety protocols are organized for instant access during reporting.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Philosophy & Trust -->
+    <section class="section">
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-lg-8 text-center">
+                    <h2 class="section-title mb-3">Simple is Superb</h2>
+                    <p class="philosophy-text mx-auto mb-4">
+                        Every aspect of the platform is designed to be intuitive, efficient, and user-friendly.
+                        All content is intelligently cross-linked, allowing seamless navigation. A powerful AI-driven search engine
+                        enables instant access to content and resources across the entire platform. A dedicated section allows
+                        users to request specific content, ensuring the platform evolves in collaboration with its users.
+                    </p>
+
+                    <div class="trust-bar mt-4">
+                        <div class="trust-item">
+                            <i class="fas fa-shield-halved"></i>
+                            <span>HIPAA & RCR aligned PII protection</span>
+                        </div>
+                        <div class="trust-item">
+                            <i class="fas fa-lock"></i>
+                            <span>No patient data stored or transmitted</span>
+                        </div>
+                        <div class="trust-item">
+                            <i class="fas fa-user-shield"></i>
+                            <span>Two-factor authentication</span>
+                        </div>
+                        <div class="trust-item">
+                            <i class="fas fa-search"></i>
+                            <span>AI-powered intelligent search</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="cta-section">
+        <div class="container">
+            <h2>Begin Your Journey</h2>
+            <p>Built by a radiologist, for radiologists. The manifestation of a radiologist's Ikigai.</p>
+            <div class="hero-cta">
+                <a href="/auth/register" class="btn-hero-primary">Get Started</a>
+                <a href="{{ url_for('about') }}" class="btn-hero-secondary">Learn More</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="landing-footer">
+        <div class="container">
+            <div class="d-flex flex-wrap justify-content-center gap-3 mb-2">
+                <a href="{{ url_for('about') }}"><i class="fas fa-info-circle me-1"></i>About</a>
+                <span style="opacity: 0.3;">|</span>
+                <a href="{{ url_for('privacy_policy') }}"><i class="fas fa-shield-alt me-1"></i>Privacy Policy</a>
+                <span style="opacity: 0.3;">|</span>
+                <a href="{{ url_for('terms_of_use') }}"><i class="fas fa-file-contract me-1"></i>Terms of Use</a>
+                <span style="opacity: 0.3;">|</span>
+                <a href="mailto:support@eralight.com"><i class="fas fa-envelope me-1"></i>Contact</a>
+            </div>
+            <p class="mb-0">&copy; 2026 RadInsights. All rights reserved.</p>
+        </div>
+    </footer>
+
+</body>
+</html>

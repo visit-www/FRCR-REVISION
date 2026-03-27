@@ -1281,7 +1281,7 @@ def index():
     """Smart dashboard - students see student dashboard, admins can access admin features"""
     if current_user.is_authenticated:
         return redirect(url_for('dashboard'))
-    return redirect(url_for('auth.login'))
+    return render_template('landing.html')
 
 
 @app.route('/privacy')
