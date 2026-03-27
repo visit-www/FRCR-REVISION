@@ -30,10 +30,14 @@ PII_PATTERNS = [
     # International phone (+country code)
     ('Phone Number', re.compile(r'\+\d{1,3}[\s.-]?\d{4,5}[\s.-]?\d{4,6}\b')),
     ('Email Address', re.compile(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b')),
-    # Patient name with title (Mr/Mrs/Dr etc) — lookahead stops at boundary words
+    # Patient name with keyword prefix + title (patient name: Mr Smith)
     ('Patient Name', re.compile(
         r'\b(?:patient\s*name|patient|pt\s*name|pt|name)\s*[:=\-]\s*(?:Mr|Mrs|Ms|Miss|Dr|Prof)\.?\s*[A-Za-z][A-Za-z\'-]+(?:\s+[A-Za-z][A-Za-z\'-]+){0,3}(?=\s*(?:[,;.\n|]|\bage\b|\bgender\b|\bsex\b|\bdob\b|\baddress\b|\bmrn\b|\bnhs\b|$))',
         re.IGNORECASE)),
+    # Patient name with title in prose (Mr. Suresh Kumar, presented...) — no keyword prefix needed
+    # Only Mr/Mrs/Ms/Miss (not Dr/Prof — those are often referring physicians)
+    ('Patient Name', re.compile(
+        r'\b(?:Mr|Mrs|Ms|Miss)\.?\s+[A-Z][a-zA-Z\'-]+(?:\s+[A-Z][a-zA-Z\'-]+){1,3}(?=\s*(?:[,;.\n|]|\bage\b|\bgender\b|\bsex\b|\bdob\b|\bpresented\b|\battended\b|\bwas\b|\bis\b|\bhas\b|$))')),
     # Patient name without title (requires "patient name:" or "pt name:" prefix)
     ('Patient Name', re.compile(
         r'\b(?:patient\s*name|pt\s*name)\s*[:=\-]\s*[A-Za-z][A-Za-z\'-]+(?:\s+[A-Za-z][A-Za-z\'-]+){0,3}(?=\s*(?:[,;.\n|]|\bage\b|\bgender\b|\bsex\b|\bdob\b|\baddress\b|\bmrn\b|\bnhs\b|$))',

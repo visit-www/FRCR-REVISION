@@ -51,7 +51,12 @@
         {
             type: 'Patient Name',
             regex: /\b(?:patient\s*name|patient|pt\s*name|pt|name)\s*[:=\-]\s*(?:Mr|Mrs|Ms|Miss|Dr|Prof)\.?\s*[A-Za-z][A-Za-z'-]+(?:\s+[A-Za-z][A-Za-z'-]+){0,3}(?=\s*(?:[,;.\n|]|\bage\b|\bgender\b|\bsex\b|\bdob\b|\baddress\b|\bmrn\b|\bnhs\b|$))/gi,
-            description: 'Possible patient name detected (with title)'
+            description: 'Possible patient name detected (with keyword + title)'
+        },
+        {
+            type: 'Patient Name',
+            regex: /\b(?:Mr|Mrs|Ms|Miss)\.?\s+[A-Z][a-zA-Z'-]+(?:\s+[A-Z][a-zA-Z'-]+){1,3}(?=\s*(?:[,;.\n|]|\bage\b|\bgender\b|\bsex\b|\bdob\b|\bpresented\b|\battended\b|\bwas\b|\bis\b|\bhas\b|$))/g,
+            description: 'Patient name with title detected'
         },
         {
             type: 'Patient Name',
