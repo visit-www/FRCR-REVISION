@@ -7,6 +7,14 @@
     'use strict';
 
     // ======================== PII PATTERNS ========================
+
+    // Common English words that must NOT be treated as parts of a person's name.
+    // Used as a per-word negative lookahead in name-detection patterns.
+    var _NAME_STOP = "(?!(?:for|was|is|has|had|the|with|by|and|or|in|at|to|of|on|an|a"
+        + "|this|that|no|who|will|may|should|could|would|not|been|being"
+        + "|reviewed|presented|attended|referred|consulted|evaluated|diagnosed"
+        + "|from|about|into|over|under|after|before|during|through)\\b)";
+
     const PII_PATTERNS = [
         {
             type: 'NHS Number',
@@ -55,7 +63,13 @@
         },
         {
             type: 'Patient Name',
-            regex: /\b(?:Mr|Mrs|Ms|Miss)\.?\s*[A-Za-z][a-zA-Z'-]+(?:\s+[A-Za-z][a-zA-Z'-]+){1,3}(?=\s*(?:[,;.\n|]|\bage\b|\bgender\b|\bsex\b|\bdob\b|\bpresented\b|\battended\b|\bwas\b|\bis\b|\bhas\b|$))/g,
+            regex: new RegExp(
+                "\\b(?:Mr|Mrs|Ms|Miss|Dr|Prof)\\b\\.?\\s*"
+                + _NAME_STOP + "[A-Za-z][a-zA-Z'\\-]+"
+                + "(?:\\s+" + _NAME_STOP + "[A-Za-z][a-zA-Z'\\-]+){0,3}"
+                + "(?=\\s*(?:[,;.\\n|/()]|\\d|\\bage\\b|\\bgender\\b|\\bsex\\b|\\bdob\\b|\\bpresented\\b|\\battended\\b|\\bwas\\b|\\bis\\b|\\bhas\\b|\\bfor\\b|\\bwith\\b|\\breviewed\\b|\\breferred\\b|$))",
+                "g"
+            ),
             description: 'Patient name with title detected'
         },
         {
@@ -70,7 +84,13 @@
         },
         {
             type: 'Patient Name',
-            regex: /\b[Pp](?:atient|t)\s+([A-Z][a-zA-Z'-]+(?:\s+[A-Z][a-zA-Z'-]+){1,3})(?=\s*(?:[,;.\n|]|\bpresented\b|\battended\b|\bwas\b|\bis\b|\bhas\b|\bwith\b|$))/g,
+            regex: new RegExp(
+                "\\b[Pp](?:atient|t)(?:\\s*[:=\\-]\\s*|\\s+)"
+                + _NAME_STOP + "([A-Z][a-zA-Z'\\-]+"
+                + "(?:\\s+" + _NAME_STOP + "[A-Z][a-zA-Z'\\-]+){0,3})"
+                + "(?=\\s*(?:[,;.\\n|/()]|\\d|\\bpresented\\b|\\battended\\b|\\bwas\\b|\\bis\\b|\\bhas\\b|\\bwith\\b|\\bfor\\b|$))",
+                "g"
+            ),
             description: 'Patient name after keyword detected'
         },
         {

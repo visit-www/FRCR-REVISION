@@ -14,6 +14,15 @@ logger = logging.getLogger(__name__)
 
 # ======================== PII PATTERNS ========================
 
+# Common English words that must NOT be treated as parts of a person's name.
+# Used as a per-word negative lookahead in name-detection patterns.
+_NAME_STOP = (
+    r'(?!(?:for|was|is|has|had|the|with|by|and|or|in|at|to|of|on|an|a'
+    r'|this|that|no|who|will|may|should|could|would|not|been|being'
+    r'|reviewed|presented|attended|referred|consulted|evaluated|diagnosed'
+    r'|from|about|into|over|under|after|before|during|through)\b)'
+)
+
 PII_PATTERNS = [
     ('NHS Number', re.compile(r'\b\d{3}[-\s]?\d{3}[-\s]?\d{4}\b')),
     ('US SSN', re.compile(r'\b\d{3}-\d{2}-\d{4}\b')),
@@ -34,10 +43,14 @@ PII_PATTERNS = [
     ('Patient Name', re.compile(
         r'\b(?:patient\s*name|patient|pt\s*name|pt|name)\s*[:=\-]\s*(?:Mr|Mrs|Ms|Miss|Dr|Prof)\.?\s*[A-Za-z][A-Za-z\'-]+(?:\s+[A-Za-z][A-Za-z\'-]+){0,3}(?=\s*(?:[,;.\n|]|\bage\b|\bgender\b|\bsex\b|\bdob\b|\baddress\b|\bmrn\b|\bnhs\b|$))',
         re.IGNORECASE)),
-    # Patient name with title in prose (Mr. Suresh Kumar / Mr.Suresh / Mr uresh)
-    # Only Mr/Mrs/Ms/Miss (not Dr/Prof — those are often referring physicians)
+    # Patient name with title in prose (Mr. Suresh Kumar / Dr. Amit Singh)
+    # Per-word stopword filter prevents "Dr. Amit Singh for evaluation" matching "for"
     ('Patient Name', re.compile(
-        r'\b(?:Mr|Mrs|Ms|Miss)\.?\s*[A-Za-z][a-zA-Z\'-]+(?:\s+[A-Za-z][a-zA-Z\'-]+){1,3}(?=\s*(?:[,;.\n|]|\bage\b|\bgender\b|\bsex\b|\bdob\b|\bpresented\b|\battended\b|\bwas\b|\bis\b|\bhas\b|$))')),
+        r'\b(?:Mr|Mrs|Ms|Miss|Dr|Prof)\b\.?\s*'
+        + _NAME_STOP + r'[A-Za-z][a-zA-Z\'-]+'
+        + r'(?:\s+' + _NAME_STOP + r'[A-Za-z][a-zA-Z\'-]+){0,3}'
+        + r'(?=\s*(?:[,;.\n|/()]|\d|\bage\b|\bgender\b|\bsex\b|\bdob\b|\bpresented\b|\battended\b|\bwas\b|\bis\b|\bhas\b|\bfor\b|\bwith\b|\breviewed\b|\breferred\b|$))'
+    )),
     # Patient name without title (requires "patient name:" or "pt name:" prefix)
     ('Patient Name', re.compile(
         r'\b(?:patient\s*name|pt\s*name)\s*[:=\-]\s*[A-Za-z][A-Za-z\'-]+(?:\s+[A-Za-z][A-Za-z\'-]+){0,3}(?=\s*(?:[,;.\n|]|\bage\b|\bgender\b|\bsex\b|\bdob\b|\baddress\b|\bmrn\b|\bnhs\b|$))',
@@ -47,11 +60,13 @@ PII_PATTERNS = [
         r'\d{1,3}[-\s]?year[-\s]?old\b[^.\n]{0,30}?'
         r'([A-Z][a-zA-Z\'-]+(?:\s+[A-Z][a-zA-Z\'-]+){1,3})'
         r'(?=\s*(?:[,;.\n|]|\bpresented\b|\battended\b|\bwas\b|\bis\b|\bhas\b|\bwith\b|$))')),
-    # Bare name after "patient" / "pt" keyword without colon
+    # Bare name after "patient"/"pt" keyword (with or without colon/separator)
     ('Patient Name', re.compile(
-        r'\b[Pp](?:atient|t)\s+'
-        r'([A-Z][a-zA-Z\'-]+(?:\s+[A-Z][a-zA-Z\'-]+){1,3})'
-        r'(?=\s*(?:[,;.\n|]|\bpresented\b|\battended\b|\bwas\b|\bis\b|\bhas\b|\bwith\b|$))')),
+        r'\b[Pp](?:atient|t)(?:\s*[:=\-]\s*|\s+)'
+        + _NAME_STOP + r'([A-Z][a-zA-Z\'-]+'
+        + r'(?:\s+' + _NAME_STOP + r'[A-Z][a-zA-Z\'-]+){0,3})'
+        + r'(?=\s*(?:[,;.\n|/()]|\d|\bpresented\b|\battended\b|\bwas\b|\bis\b|\bhas\b|\bwith\b|\bfor\b|$))'
+    )),
     # Patient age
     ('Patient Age', re.compile(
         r'\b(?:age|aged)\s*[:=\-]\s*\d{1,3}\b', re.IGNORECASE)),
