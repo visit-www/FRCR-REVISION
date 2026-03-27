@@ -45,13 +45,43 @@
         },
         {
             type: 'Patient Name',
-            regex: /\b(?:patient|pt|name)[:\s]+(?:Mr|Mrs|Ms|Miss|Dr)\.?\s*[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+\b/gi,
+            regex: /\b(?:patient\s*name|patient|pt\s*name|pt|name)\s*[:=\-]\s*(?:Mr|Mrs|Ms|Miss|Dr|Prof)\.?\s*[A-Za-z][A-Za-z'-]+(?:\s+[A-Za-z][A-Za-z'-]+){0,3}(?=\s*(?:[,;.\n|]|\bage\b|\bgender\b|\bsex\b|\bdob\b|\baddress\b|\bmrn\b|\bnhs\b|$))/gi,
+            description: 'Possible patient name detected (with title)'
+        },
+        {
+            type: 'Patient Name',
+            regex: /\b(?:patient\s*name|pt\s*name)\s*[:=\-]\s*[A-Za-z][A-Za-z'-]+(?:\s+[A-Za-z][A-Za-z'-]+){0,3}(?=\s*(?:[,;.\n|]|\bage\b|\bgender\b|\bsex\b|\bdob\b|\baddress\b|\bmrn\b|\bnhs\b|$))/gi,
             description: 'Possible patient name detected'
+        },
+        {
+            type: 'Patient Age',
+            regex: /\b(?:age|aged)\s*[:=\-]\s*\d{1,3}\b/gi,
+            description: 'Patient age detected'
+        },
+        {
+            type: 'Patient Gender',
+            regex: /\b(?:gender|sex)\s*[:=\-]\s*(?:male|female|m|f|other|non-binary)\b/gi,
+            description: 'Patient gender detected'
+        },
+        {
+            type: 'Patient Address',
+            regex: /\b(?:address|addr|home)\s*[:=\-]\s*[A-Za-z0-9][A-Za-z0-9\s,.''-]{5,}/gi,
+            description: 'Patient address detected'
         },
         {
             type: 'UK National Insurance Number',
             regex: /\b[A-Z]{2}\d{6}[A-D]\b/gi,
             description: 'UK National Insurance Number detected'
+        },
+        {
+            type: 'Aadhaar Number',
+            regex: /\b\d{4}\s?\d{4}\s?\d{4}\b/g,
+            description: 'Indian Aadhaar number detected'
+        },
+        {
+            type: 'PAN Card',
+            regex: /\b[A-Z]{5}\d{4}[A-Z]\b/g,
+            description: 'Indian PAN card number detected'
         }
     ];
 
@@ -182,7 +212,12 @@
             'Phone Number': '#0d6efd',
             'Email Address': '#0d6efd',
             'Patient Name': '#dc3545',
-            'UK National Insurance Number': '#dc3545'
+            'Patient Age': '#e96304',
+            'Patient Gender': '#e96304',
+            'Patient Address': '#6b46c1',
+            'UK National Insurance Number': '#dc3545',
+            'Aadhaar Number': '#dc3545',
+            'PAN Card': '#dc3545'
         };
 
         return unique.map(m => {

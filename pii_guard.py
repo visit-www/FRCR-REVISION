@@ -25,11 +25,29 @@ PII_PATTERNS = [
     ('UK Postcode', re.compile(r'\b[A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2}\b', re.IGNORECASE)),
     ('Phone Number', re.compile(r'\b(?:\+44|0)\d{4}[\s-]?\d{5,6}\b')),
     ('Email Address', re.compile(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b')),
+    # Patient name with title (Mr/Mrs/Dr etc) — lookahead stops at boundary words
     ('Patient Name', re.compile(
-        r'\b(?:patient|pt|name)[:\s]+(?:Mr|Mrs|Ms|Miss|Dr)\.?\s*[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+\b',
+        r'\b(?:patient\s*name|patient|pt\s*name|pt|name)\s*[:=\-]\s*(?:Mr|Mrs|Ms|Miss|Dr|Prof)\.?\s*[A-Za-z][A-Za-z\'-]+(?:\s+[A-Za-z][A-Za-z\'-]+){0,3}(?=\s*(?:[,;.\n|]|\bage\b|\bgender\b|\bsex\b|\bdob\b|\baddress\b|\bmrn\b|\bnhs\b|$))',
         re.IGNORECASE)),
+    # Patient name without title (requires "patient name:" or "pt name:" prefix)
+    ('Patient Name', re.compile(
+        r'\b(?:patient\s*name|pt\s*name)\s*[:=\-]\s*[A-Za-z][A-Za-z\'-]+(?:\s+[A-Za-z][A-Za-z\'-]+){0,3}(?=\s*(?:[,;.\n|]|\bage\b|\bgender\b|\bsex\b|\bdob\b|\baddress\b|\bmrn\b|\bnhs\b|$))',
+        re.IGNORECASE)),
+    # Patient age
+    ('Patient Age', re.compile(
+        r'\b(?:age|aged)\s*[:=\-]\s*\d{1,3}\b', re.IGNORECASE)),
+    # Patient gender/sex
+    ('Patient Gender', re.compile(
+        r'\b(?:gender|sex)\s*[:=\-]\s*(?:male|female|m|f|other|non-binary)\b', re.IGNORECASE)),
+    # Patient address
+    ('Patient Address', re.compile(
+        r'\b(?:address|addr|home)\s*[:=\-]\s*[A-Za-z0-9][A-Za-z0-9\s,.\'\-]{5,}', re.IGNORECASE)),
     ('UK National Insurance Number', re.compile(
         r'\b[A-Z]{2}\d{6}[A-D]\b', re.IGNORECASE)),
+    # Indian Aadhaar number (12 digits in 4-4-4 groups)
+    ('Aadhaar Number', re.compile(r'\b\d{4}\s?\d{4}\s?\d{4}\b')),
+    # Indian PAN card (ABCDE1234F format)
+    ('PAN Card', re.compile(r'\b[A-Z]{5}\d{4}[A-Z]\b')),
 ]
 
 # Keys in JSON payloads that are safe to skip

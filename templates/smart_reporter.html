@@ -275,6 +275,9 @@
                     </div>
                     <h5 class="text-muted">Generating your scan reading algorithm...</h5>
                     <p class="text-muted small">This may take 15-30 seconds.</p>
+                    <button class="btn btn-sm btn-outline-secondary mt-2" onclick="cancelAIRequest()">
+                        <i class="fas fa-times me-1"></i>Cancel
+                    </button>
                 </div>
 
                 <!-- Step-by-step walkthrough -->
@@ -497,6 +500,9 @@
                         <div id="reviewLoading" class="d-none text-center py-3 mb-3">
                             <div class="spinner-border spinner-border-sm" style="color: #e96304;" role="status"></div>
                             <small class="text-muted ms-2">Quick check: spelling, grammar, and phrasing...</small>
+                            <button class="btn btn-sm btn-outline-secondary ms-3" onclick="cancelAIRequest()" style="font-size: 0.75rem; padding: 0.15rem 0.5rem;">
+                                <i class="fas fa-times me-1"></i>Cancel
+                            </button>
                         </div>
 
                         <!-- Output Box (shown after review) -->
@@ -631,6 +637,9 @@
                                 <div id="askClaudeLoading" class="d-none text-center py-3">
                                     <div class="spinner-border spinner-border-sm" style="color: #e96304;" role="status"></div>
                                     <small class="text-muted ms-2">Reviewing your report and preparing response...</small>
+                                    <button class="btn btn-sm btn-outline-secondary ms-3" onclick="cancelAIRequest()" style="font-size: 0.75rem; padding: 0.15rem 0.5rem;">
+                                        <i class="fas fa-times me-1"></i>Cancel
+                                    </button>
                                 </div>
 
                                 <!-- AI Assist Response (answer + report + corrections) -->
@@ -953,6 +962,16 @@ document.addEventListener('DOMContentLoaded', function() {
         externalContext: null,
     };
 
+    // Active AbortController for cancelling in-flight AI requests
+    let activeAIController = null;
+
+    function cancelAIRequest() {
+        if (activeAIController) {
+            activeAIController.abort();
+            activeAIController = null;
+        }
+    }
+
     // ==================== SCENE MANAGEMENT ====================
 
     window.showScene = function(scene) {
@@ -1253,6 +1272,9 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('walkthroughSetup').classList.add('d-none');
         document.getElementById('walkthroughLoading').classList.remove('d-none');
 
+        cancelAIRequest();
+        activeAIController = new AbortController();
+
         fetch('/api/smart-reporter/generate-tree', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1261,9 +1283,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 modality: modality,
                 body_section: bodySection,
             }),
+            signal: activeAIController.signal,
         })
         .then(r => r.json())
         .then(data => {
+            activeAIController = null;
             btn.disabled = false;
             document.getElementById('walkthroughLoading').classList.add('d-none');
 
@@ -1293,10 +1317,15 @@ document.addEventListener('DOMContentLoaded', function() {
             fetchRelatedForScene1();
         })
         .catch(err => {
+            activeAIController = null;
             btn.disabled = false;
             document.getElementById('walkthroughLoading').classList.add('d-none');
             document.getElementById('walkthroughSetup').classList.remove('d-none');
-            showToast('Generation failed. Please try again.', 'error');
+            if (err.name === 'AbortError') {
+                showToast('Generation cancelled.', 'info');
+            } else {
+                showToast('Generation failed. Please try again.', 'error');
+            }
         });
     };
 
@@ -1804,13 +1833,18 @@ document.addEventListener('DOMContentLoaded', function() {
         source.classList.add('d-none');
         document.getElementById('anatomyPanelTitle').textContent = 'Anatomy: ' + topic;
 
+        cancelAIRequest();
+        activeAIController = new AbortController();
+
         fetch('/api/smart-reporter/anatomy', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ topic: topic }),
+            signal: activeAIController.signal,
         })
         .then(function(r) { return r.json(); })
         .then(function(data) {
+            activeAIController = null;
             loading.classList.add('d-none');
 
             if (data.error) {
@@ -1826,10 +1860,15 @@ document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('anatomySourceText').textContent = sourceText;
             source.classList.remove('d-none');
         })
-        .catch(function() {
+        .catch(function(err) {
+            activeAIController = null;
             loading.classList.add('d-none');
             panel.classList.add('d-none');
-            showToast('Error loading anatomy snippet.', 'error');
+            if (err.name === 'AbortError') {
+                showToast('Anatomy request cancelled.', 'info');
+            } else {
+                showToast('Error loading anatomy snippet.', 'error');
+            }
         });
     };
 
@@ -2337,15 +2376,20 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('outputSection').classList.add('d-none');
         document.getElementById('suggestionsPanel').classList.add('d-none');
 
+        cancelAIRequest();
+        activeAIController = new AbortController();
+
         fetch('/api/smart-reporter/quick-review', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 report_text: text,
             }),
+            signal: activeAIController.signal,
         })
         .then(r => r.json())
         .then(data => {
+            activeAIController = null;
             btn.disabled = false;
             document.getElementById('reviewLoading').classList.add('d-none');
 
@@ -2376,10 +2420,15 @@ document.addEventListener('DOMContentLoaded', function() {
 
             renderSuggestions();
         })
-        .catch(() => {
+        .catch(err => {
+            activeAIController = null;
             btn.disabled = false;
             document.getElementById('reviewLoading').classList.add('d-none');
-            showToast('Review failed. Please try again.', 'error');
+            if (err.name === 'AbortError') {
+                showToast('Review cancelled.', 'info');
+            } else {
+                showToast('Review failed. Please try again.', 'error');
+            }
         });
     }
 
@@ -2618,13 +2667,18 @@ document.addEventListener('DOMContentLoaded', function() {
             assistPayload.external_context = state.externalContext;
         }
 
+        cancelAIRequest();
+        activeAIController = new AbortController();
+
         fetch('/api/smart-reporter/ai-assist', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(assistPayload),
+            signal: activeAIController.signal,
         })
         .then(r => r.json())
         .then(data => {
+            activeAIController = null;
             btn.disabled = false;
             document.getElementById('askClaudeLoading').classList.add('d-none');
 
@@ -2662,10 +2716,15 @@ document.addEventListener('DOMContentLoaded', function() {
             // Render 3 layers
             renderAiAssistResponse();
         })
-        .catch(() => {
+        .catch(err => {
+            activeAIController = null;
             btn.disabled = false;
             document.getElementById('askClaudeLoading').classList.add('d-none');
-            showToast('Failed to get response. Please try again.', 'error');
+            if (err.name === 'AbortError') {
+                showToast('Request cancelled.', 'info');
+            } else {
+                showToast('Failed to get response. Please try again.', 'error');
+            }
         });
     };
 
@@ -3439,6 +3498,9 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('walkthroughSetup').classList.add('d-none');
         document.getElementById('walkthroughLoading').classList.remove('d-none');
 
+        cancelAIRequest();
+        activeAIController = new AbortController();
+
         fetch('/api/smart-reporter/generate-tree', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -3447,9 +3509,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 modality: modality,
                 body_section: bodySection,
             }),
+            signal: activeAIController.signal,
         })
         .then(r => r.json())
         .then(data => {
+            activeAIController = null;
             btn.disabled = false;
             btnPrimary.disabled = false;
             document.getElementById('walkthroughLoading').classList.add('d-none');
@@ -3496,12 +3560,17 @@ document.addEventListener('DOMContentLoaded', function() {
 
             showToast('Full report generated with normal findings. Edit as needed.', 'success');
         })
-        .catch(() => {
+        .catch(err => {
+            activeAIController = null;
             btn.disabled = false;
             btnPrimary.disabled = false;
             document.getElementById('walkthroughLoading').classList.add('d-none');
             document.getElementById('walkthroughSetup').classList.remove('d-none');
-            showToast('Generation failed. Please try again.', 'error');
+            if (err.name === 'AbortError') {
+                showToast('Generation cancelled.', 'info');
+            } else {
+                showToast('Generation failed. Please try again.', 'error');
+            }
         });
     };
 
