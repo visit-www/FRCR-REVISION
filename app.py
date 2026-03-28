@@ -2395,7 +2395,7 @@ FRCR_MODULES = [
 
 def _learn_questions(question_type):
     """Shared logic for SBA and Viva browse pages."""
-    from models import LearningQuestion, LearningQuestionProgress
+    from models import LearningQuestion, LearningQuestionProgress, LearningQuestionReference
     from sqlalchemy import func
 
     section = request.args.get('section', '')
@@ -2430,6 +2430,8 @@ def _learn_questions(question_type):
 
     # User progress keyed by question ID
     user_progress = {}
+    # Eager-load references keyed by question ID
+    question_refs = {}
     if questions:
         q_ids = [q.id for q in questions]
         progress_rows = LearningQuestionProgress.query.filter(
@@ -2439,6 +2441,14 @@ def _learn_questions(question_type):
         user_progress = {p.learning_question_id: {
             'score': p.score, 'best_score': p.best_score, 'times_attempted': p.times_attempted
         } for p in progress_rows}
+
+        ref_rows = LearningQuestionReference.query.filter(
+            LearningQuestionReference.learning_question_id.in_(q_ids)
+        ).order_by(LearningQuestionReference.ref_number).all()
+        for r in ref_rows:
+            question_refs.setdefault(r.learning_question_id, []).append(r)
+
+    is_admin = current_user.is_authenticated and hasattr(current_user, 'role') and str(current_user.role.value) == 'admin'
 
     return render_template('learn_questions.html',
                            question_type=question_type,
@@ -2452,6 +2462,8 @@ def _learn_questions(question_type):
                            selected_modality=modality,
                            selected_module=module,
                            user_progress=user_progress,
+                           question_refs=question_refs,
+                           is_admin=is_admin,
                            total_count=LearningQuestion.query.filter_by(question_type=question_type).count())
 
 
@@ -2467,6 +2479,134 @@ def learn_sba():
 def learn_viva():
     """Browse Viva practice questions by body section, modality, and module."""
     return _learn_questions('viva')
+
+
+# --- Admin API: Learning Question CRUD ---
+
+@app.route('/api/learning/<int:question_id>', methods=['GET'])
+@login_required
+def get_learning_question(question_id):
+    """Fetch a learning question for the edit modal."""
+    from models import LearningQuestion, LearningQuestionReference
+    q = LearningQuestion.query.get_or_404(question_id)
+    refs = LearningQuestionReference.query.filter_by(
+        learning_question_id=question_id
+    ).order_by(LearningQuestionReference.ref_number).all()
+    return jsonify({
+        'id': q.id,
+        'question_type': q.question_type,
+        'title': q.title,
+        'body_section': q.body_section,
+        'modality': q.modality,
+        'module': q.module,
+        'html_content': q.html_content,
+        'source_report_context': q.source_report_context,
+        'created_at': q.created_at.isoformat() if q.created_at else None,
+        'references': [r.to_dict() for r in refs],
+    })
+
+
+@app.route('/api/learning/<int:question_id>', methods=['PUT'])
+@login_required
+def update_learning_question(question_id):
+    """Update a learning question (admin only)."""
+    from models import LearningQuestion, UserRole
+    if current_user.role != UserRole.ADMIN:
+        return jsonify({'error': 'Admin access required'}), 403
+
+    q = LearningQuestion.query.get_or_404(question_id)
+    data = request.get_json() or {}
+
+    if 'title' in data:
+        q.title = (data['title'] or '').strip() or None
+    if 'body_section' in data:
+        q.body_section = (data['body_section'] or '').strip() or None
+    if 'modality' in data:
+        q.modality = (data['modality'] or '').strip() or None
+    if 'module' in data:
+        q.module = (data['module'] or '').strip() or None
+    if 'html_content' in data:
+        new_html = (data['html_content'] or '').strip()
+        if new_html:
+            import hashlib
+            q.html_content = new_html
+            q.content_hash = hashlib.sha256(new_html.encode()).hexdigest()
+
+    db.session.commit()
+    return jsonify({'success': True, 'id': q.id})
+
+
+@app.route('/api/learning/<int:question_id>', methods=['DELETE'])
+@login_required
+def delete_learning_question(question_id):
+    """Delete a learning question (admin only). Cascade deletes refs and progress."""
+    from models import LearningQuestion, LearningQuestionProgress, UserRole
+    if current_user.role != UserRole.ADMIN:
+        return jsonify({'error': 'Admin access required'}), 403
+
+    q = LearningQuestion.query.get_or_404(question_id)
+    # Delete progress rows first (no cascade on that relationship)
+    LearningQuestionProgress.query.filter_by(learning_question_id=question_id).delete()
+    db.session.delete(q)  # cascade deletes references
+    db.session.commit()
+    return jsonify({'success': True})
+
+
+@app.route('/api/learning/<int:question_id>/references', methods=['GET'])
+@login_required
+def list_learning_references(question_id):
+    """List all references for a learning question."""
+    from models import LearningQuestionReference
+    refs = LearningQuestionReference.query.filter_by(
+        learning_question_id=question_id
+    ).order_by(LearningQuestionReference.ref_number).all()
+    return jsonify({'references': [r.to_dict() for r in refs]})
+
+
+@app.route('/api/learning/<int:question_id>/references', methods=['POST'])
+@login_required
+def add_learning_reference(question_id):
+    """Add a reference to a learning question (admin only)."""
+    from models import LearningQuestion, LearningQuestionReference, UserRole
+    if current_user.role != UserRole.ADMIN:
+        return jsonify({'error': 'Admin access required'}), 403
+
+    LearningQuestion.query.get_or_404(question_id)
+    data = request.get_json() or {}
+    title = (data.get('title') or '').strip()
+    url = (data.get('url') or '').strip()
+    if not title or not url:
+        return jsonify({'error': 'title and url are required'}), 400
+
+    max_ref = db.session.query(db.func.max(LearningQuestionReference.ref_number)).filter_by(
+        learning_question_id=question_id
+    ).scalar() or 0
+
+    ref = LearningQuestionReference(
+        learning_question_id=question_id,
+        ref_number=max_ref + 1,
+        title=title,
+        url=url,
+        journal=(data.get('journal') or '').strip() or None,
+        year=(data.get('year') or '').strip() or None,
+    )
+    db.session.add(ref)
+    db.session.commit()
+    return jsonify({'success': True, 'reference': ref.to_dict()}), 201
+
+
+@app.route('/api/learning/<int:question_id>/references/<int:ref_id>', methods=['DELETE'])
+@login_required
+def delete_learning_reference(question_id, ref_id):
+    """Delete a reference from a learning question (admin only)."""
+    from models import LearningQuestionReference, UserRole
+    if current_user.role != UserRole.ADMIN:
+        return jsonify({'error': 'Admin access required'}), 403
+
+    ref = LearningQuestionReference.query.filter_by(id=ref_id, learning_question_id=question_id).first_or_404()
+    db.session.delete(ref)
+    db.session.commit()
+    return jsonify({'success': True})
 
 
 @app.route('/modules')

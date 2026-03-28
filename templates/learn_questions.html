@@ -80,8 +80,8 @@
             <!-- Question Cards -->
             <div class="row g-3">
                 {% for q in questions %}
-                <div class="col-12">
-                    <div class="card border-0 shadow-sm">
+                <div class="col-12" id="qCard{{ q.id }}">
+                    <div class="card border-0 shadow-sm learn-card">
                         <div class="card-header bg-white border-0 py-2 px-3">
                             <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
                                 <div class="d-flex align-items-center gap-2">
@@ -95,6 +95,14 @@
                                     </small>
                                 </div>
                                 <div class="d-flex align-items-center gap-2">
+                                    {% if is_admin %}
+                                    <button class="btn btn-sm btn-outline-secondary py-0 px-1 admin-edit-btn" data-qid="{{ q.id }}" title="Edit question">
+                                        <i class="fas fa-pencil-alt" style="font-size: 0.7rem;"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger py-0 px-1 admin-delete-btn" data-qid="{{ q.id }}" title="Delete question">
+                                        <i class="fas fa-trash-alt" style="font-size: 0.7rem;"></i>
+                                    </button>
+                                    {% endif %}
                                     {% if user_progress.get(q.id) %}
                                     <span class="badge bg-light text-dark border" style="font-size: 0.65rem;" title="Attempted {{ user_progress[q.id].times_attempted }} time(s)">
                                         {% if question_type == 'sba' %}
@@ -121,6 +129,22 @@
                             <div class="learn-question-content" id="qContent{{ q.id }}">
                                 {{ q.html_content|safe }}
                             </div>
+                            <!-- References -->
+                            {% if question_refs.get(q.id) %}
+                            <div class="lq-references mt-2 pt-2" style="border-top: 1px solid #e9ecef;">
+                                <small class="fw-semibold text-muted"><i class="fas fa-book-open me-1"></i>References</small>
+                                <ul class="list-unstyled mb-0 mt-1">
+                                    {% for ref in question_refs[q.id] %}
+                                    <li class="mb-1" style="font-size: 0.78rem;">
+                                        <span class="text-muted">{{ ref.ref_number }}.</span>
+                                        <a href="{{ ref.url }}" target="_blank" rel="noopener" class="text-decoration-none">{{ ref.title }}</a>
+                                        {% if ref.journal %}<span class="text-muted fst-italic">- {{ ref.journal }}</span>{% endif %}
+                                        {% if ref.year %}<span class="text-muted">({{ ref.year }})</span>{% endif %}
+                                    </li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                            {% endif %}
                             <!-- Self-Assessment Panel -->
                             <div class="self-assess-panel d-none" id="assessPanel{{ q.id }}" data-qid="{{ q.id }}">
                                 <div class="d-flex flex-wrap align-items-center gap-2 mt-2 pt-2" style="border-top: 1px solid #e9ecef;">
@@ -165,6 +189,87 @@
     </div>
 </div>
 
+{% if is_admin %}
+<!-- Admin Edit Modal -->
+<div class="modal fade" id="editQuestionModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content app-content-modal">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-pencil-alt me-2"></i>Edit Question</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" style="background: var(--brand-bg-offwhite, #fdfdfb);">
+                <input type="hidden" id="editQId">
+                <!-- Metadata row -->
+                <div class="row g-2 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold small">Title</label>
+                        <input type="text" id="editQTitle" class="form-control form-control-sm">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label fw-semibold small">Body Section</label>
+                        <select id="editQSection" class="form-select form-select-sm">
+                            <option value="">--</option>
+                            {% for s in body_sections %}
+                            <option value="{{ s }}">{{ s }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label fw-semibold small">Modality</label>
+                        <select id="editQModality" class="form-select form-select-sm">
+                            <option value="">--</option>
+                            {% for m in modalities %}
+                            <option value="{{ m }}">{{ m }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label fw-semibold small">FRCR Module</label>
+                        <select id="editQModule" class="form-select form-select-sm">
+                            <option value="">--</option>
+                            {% for mod in frcr_modules %}
+                            <option value="{{ mod }}">{{ mod }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <!-- TinyMCE Editor -->
+                <label class="form-label fw-semibold small">HTML Content</label>
+                <textarea id="editQContent"></textarea>
+
+                <!-- References Section -->
+                <div class="mt-3 pt-3" style="border-top: 1px solid #dee2e6;">
+                    <h6 class="fw-semibold"><i class="fas fa-book-open me-1"></i>References</h6>
+                    <div id="editRefsList" class="mb-2"></div>
+                    <div class="row g-2 align-items-end">
+                        <div class="col-md-4">
+                            <input type="text" id="newRefTitle" class="form-control form-control-sm" placeholder="Reference title">
+                        </div>
+                        <div class="col-md-4">
+                            <input type="url" id="newRefUrl" class="form-control form-control-sm" placeholder="https://...">
+                        </div>
+                        <div class="col-md-2">
+                            <input type="text" id="newRefJournal" class="form-control form-control-sm" placeholder="Journal (optional)">
+                        </div>
+                        <div class="col-md-1">
+                            <input type="text" id="newRefYear" class="form-control form-control-sm" placeholder="Year">
+                        </div>
+                        <div class="col-md-1">
+                            <button class="btn btn-sm btn-brand-primary w-100" id="addRefBtn"><i class="fas fa-plus"></i></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-sm btn-modal-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-sm btn-modal-primary" id="saveEditBtn"><i class="fas fa-save me-1"></i>Save Changes</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <style>
     .btn-purple { background: #6b46c1; color: #fff; border-color: #6b46c1; }
     .btn-purple:hover { background: #5a3aa5; color: #fff; }
@@ -177,9 +282,35 @@
     .learn-question-content details { margin: 0.5rem 0; }
     .learn-question-content summary { cursor: pointer; font-weight: 600; color: var(--brand-primary); padding: 0.3rem 0; }
     .learn-question-content summary:hover { text-decoration: underline; }
-    .learn-question-content .sba-question { border-left: 3px solid #198754; padding-left: 1rem; margin-bottom: 1.5rem; }
-    .learn-question-content .sba-vignette { background: #f8f9fa; padding: 0.75rem; border-radius: 0.375rem; margin-bottom: 0.5rem; }
-    .learn-question-content .viva-exchange { border-left: 3px solid #6b46c1; padding-left: 1rem; margin-bottom: 1rem; }
+
+    /* Visual block styling for SBA questions */
+    .learn-question-content .sba-question {
+        border-left: 3px solid #198754;
+        padding: 0.75rem 1rem;
+        margin-bottom: 1.5rem;
+        background: #f8fdf9;
+        border-radius: 0 0.375rem 0.375rem 0;
+    }
+    .learn-question-content .sba-vignette {
+        background: #f0f4f8;
+        padding: 0.75rem;
+        border-radius: 0.375rem;
+        margin-bottom: 0.5rem;
+        border: 1px solid #e2e8f0;
+    }
+
+    /* Visual block styling for Viva exchanges */
+    .learn-question-content .viva-exchange {
+        border-left: 3px solid #6b46c1;
+        padding: 0.75rem 1rem;
+        margin-bottom: 1rem;
+        background: #faf8ff;
+        border-radius: 0 0.375rem 0.375rem 0;
+    }
+    .learn-question-content .viva-exchange:nth-child(even) {
+        background: #f5f0ff;
+    }
+
     .learn-question-content ol[type="A"] { padding-left: 1.5rem; }
     .learn-question-content ol[type="A"] li { margin-bottom: 0.25rem; }
     .learn-question-content .action-further-reading { margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid #e9ecef; font-size: 0.8rem; }
@@ -187,6 +318,21 @@
 
     .self-assess-panel .score-btn { font-size: 0.75rem; padding: 0.2rem 0.6rem; }
     .self-assess-saved { color: #198754; font-size: 0.8rem; font-weight: 600; }
+
+    /* Card hover effect */
+    .learn-card { transition: box-shadow 0.15s; }
+    .learn-card:hover { box-shadow: 0 .25rem .75rem rgba(0,0,0,.1) !important; }
+
+    /* References list */
+    .lq-references a { color: var(--brand-primary); }
+    .lq-references a:hover { text-decoration: underline !important; }
+
+    /* Admin buttons */
+    .admin-edit-btn, .admin-delete-btn { line-height: 1; border-radius: 0.25rem; }
+
+    /* Edit modal ref items */
+    .edit-ref-item { font-size: 0.82rem; padding: 0.35rem 0; border-bottom: 1px solid #f0f0f0; }
+    .edit-ref-item:last-child { border-bottom: none; }
 </style>
 
 <script>
@@ -244,6 +390,196 @@ document.addEventListener('DOMContentLoaded', function() {
             .catch(function() { btn.disabled = false; });
         });
     });
+
+    {% if is_admin %}
+    // ===================== ADMIN FUNCTIONALITY =====================
+
+    var _editTinyReady = false;
+    var _editQId = null;
+    var _editRefs = [];
+    var editModal = document.getElementById('editQuestionModal');
+    var bsEditModal = editModal ? new bootstrap.Modal(editModal) : null;
+
+    // Init TinyMCE when modal shown
+    if (editModal) {
+        editModal.addEventListener('shown.bs.modal', function() {
+            if (_editTinyReady) return;
+            tinymce.init({
+                selector: '#editQContent',
+                min_height: 350,
+                max_height: 550,
+                menubar: 'edit view insert format',
+                toolbar: 'undo redo | bold italic underline strikethrough | bullist numlist | link | removeformat | code',
+                plugins: 'lists link code',
+                base_url: 'https://cdn.jsdelivr.net/npm/tinymce@6',
+                relative_urls: false,
+                convert_urls: false,
+                remove_trailing_brs: true,
+                extended_valid_elements: 'div[*],span[*],a[*],details[*],summary[*],ol[*],li[*],p[*],h5[*],h6[*]',
+                valid_children: '+body[details],+details[summary|div|p|ol|ul|h5|h6]',
+                link_title: true,
+                link_assume_external_targets: true,
+                link_default_protocol: 'https',
+                content_style: 'body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; font-size: 14px; line-height: 1.6; } .sba-question { border-left: 3px solid #198754; padding: 0.75rem 1rem; margin-bottom: 1rem; background: #f8fdf9; } .viva-exchange { border-left: 3px solid #6b46c1; padding: 0.75rem 1rem; margin-bottom: 0.5rem; background: #faf8ff; } .sba-vignette { background: #f0f4f8; padding: 0.75rem; border-radius: 4px; margin-bottom: 0.5rem; }',
+                setup: function(editor) {
+                    editor.on('init', function() { _editTinyReady = true; });
+                }
+            });
+        });
+
+        editModal.addEventListener('hidden.bs.modal', function() {
+            if (tinymce.get('editQContent')) {
+                tinymce.get('editQContent').destroy();
+                _editTinyReady = false;
+            }
+        });
+    }
+
+    // Edit button click — fetch data, populate modal
+    document.querySelectorAll('.admin-edit-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            _editQId = btn.dataset.qid;
+            fetch('/api/learning/' + _editQId)
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                document.getElementById('editQId').value = data.id;
+                document.getElementById('editQTitle').value = data.title || '';
+                document.getElementById('editQSection').value = data.body_section || '';
+                document.getElementById('editQModality').value = data.modality || '';
+                document.getElementById('editQModule').value = data.module || '';
+                // Set content in textarea (TinyMCE will pick it up on init)
+                document.getElementById('editQContent').value = data.html_content || '';
+                _editRefs = data.references || [];
+                _renderEditRefs();
+                bsEditModal.show();
+                // If TinyMCE already inited, set content directly
+                setTimeout(function() {
+                    var ed = tinymce.get('editQContent');
+                    if (ed) ed.setContent(data.html_content || '');
+                }, 300);
+            });
+        });
+    });
+
+    function _renderEditRefs() {
+        var container = document.getElementById('editRefsList');
+        if (!_editRefs.length) {
+            container.innerHTML = '<small class="text-muted">No references yet.</small>';
+            return;
+        }
+        container.innerHTML = _editRefs.map(function(r) {
+            return '<div class="edit-ref-item d-flex align-items-center gap-2">' +
+                '<span class="text-muted">' + r.ref_number + '.</span>' +
+                '<a href="' + r.url + '" target="_blank" class="text-decoration-none flex-grow-1">' + r.title + '</a>' +
+                (r.journal ? '<span class="text-muted small fst-italic">' + r.journal + '</span>' : '') +
+                (r.year ? '<span class="text-muted small">(' + r.year + ')</span>' : '') +
+                '<button class="btn btn-sm btn-outline-danger py-0 px-1 del-ref-btn" data-refid="' + r.id + '"><i class="fas fa-times" style="font-size:0.65rem;"></i></button>' +
+                '</div>';
+        }).join('');
+
+        container.querySelectorAll('.del-ref-btn').forEach(function(b) {
+            b.addEventListener('click', function() {
+                var refId = b.dataset.refid;
+                fetch('/api/learning/' + _editQId + '/references/' + refId, {method: 'DELETE'})
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.success) {
+                        _editRefs = _editRefs.filter(function(x) { return String(x.id) !== String(refId); });
+                        _renderEditRefs();
+                    }
+                });
+            });
+        });
+    }
+
+    // Add reference
+    document.getElementById('addRefBtn').addEventListener('click', function() {
+        var title = document.getElementById('newRefTitle').value.trim();
+        var url = document.getElementById('newRefUrl').value.trim();
+        if (!title || !url) return;
+        var journal = document.getElementById('newRefJournal').value.trim();
+        var year = document.getElementById('newRefYear').value.trim();
+        fetch('/api/learning/' + _editQId + '/references', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({title: title, url: url, journal: journal, year: year})
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) {
+                _editRefs.push(data.reference);
+                _renderEditRefs();
+                document.getElementById('newRefTitle').value = '';
+                document.getElementById('newRefUrl').value = '';
+                document.getElementById('newRefJournal').value = '';
+                document.getElementById('newRefYear').value = '';
+            }
+        });
+    });
+
+    // Save edits
+    document.getElementById('saveEditBtn').addEventListener('click', function() {
+        var btn = this;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Saving...';
+
+        var ed = tinymce.get('editQContent');
+        var htmlContent = ed ? ed.getContent() : document.getElementById('editQContent').value;
+
+        fetch('/api/learning/' + _editQId, {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                title: document.getElementById('editQTitle').value.trim(),
+                body_section: document.getElementById('editQSection').value,
+                modality: document.getElementById('editQModality').value,
+                module: document.getElementById('editQModule').value,
+                html_content: htmlContent
+            })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) {
+                bsEditModal.hide();
+                location.reload();
+            } else {
+                alert('Error: ' + (data.error || 'Unknown error'));
+            }
+        })
+        .catch(function() { alert('Network error'); })
+        .finally(function() {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-save me-1"></i>Save Changes';
+        });
+    });
+
+    // Delete button
+    document.querySelectorAll('.admin-delete-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var qId = btn.dataset.qid;
+            if (!confirm('Delete this question permanently? This cannot be undone.')) return;
+            btn.disabled = true;
+            fetch('/api/learning/' + qId, {method: 'DELETE'})
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    var card = document.getElementById('qCard' + qId);
+                    if (card) card.remove();
+                } else {
+                    alert('Error: ' + (data.error || 'Unknown'));
+                    btn.disabled = false;
+                }
+            })
+            .catch(function() { btn.disabled = false; });
+        });
+    });
+
+    {% endif %}
 });
 </script>
+
+{% if is_admin %}
+<!-- TinyMCE -->
+<script src="{{ url_for('static', filename='tinymce.min.js') }}"></script>
+{% endif %}
 {% endblock %}

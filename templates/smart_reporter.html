@@ -454,6 +454,7 @@
 
                 <!-- Sticky Action Toolbar -->
                 <div id="editorToolbar" class="sr-editor-toolbar">
+                    <!-- Top row: AI tools -->
                     <div class="d-flex flex-wrap align-items-center gap-2">
                         <!-- Quick Check -->
                         <button class="btn btn-sm btn-brand-primary" id="btnReviewReport2" onclick="reviewReport()">
@@ -482,26 +483,25 @@
                                 <i class="fas fa-paper-plane"></i>
                             </button>
                         </div>
-                        <!-- Separator -->
-                        <div class="vr mx-1 d-none d-md-block" style="height: 20px; opacity: 0.3;"></div>
-                        <!-- Report Actions -->
-                        <div class="d-flex flex-wrap gap-1" id="reportActionButtons">
-                            <button class="btn report-action-btn" data-action="mdt" onclick="submitReportAction('mdt')" style="border-color:#e96304;color:#e96304;">
-                                <i class="fas fa-users"></i>MDT
-                            </button>
-                            <button class="btn report-action-btn" data-action="sba" onclick="submitReportAction('sba')" style="border-color:#198754;color:#198754;">
-                                <i class="fas fa-graduation-cap"></i>SBA
-                            </button>
-                            <button class="btn report-action-btn" data-action="viva" onclick="submitReportAction('viva')" style="border-color:#6b46c1;color:#6b46c1;">
-                                <i class="fas fa-comments"></i>Viva
-                            </button>
-                            <button class="btn report-action-btn" data-action="email_colleague" onclick="submitReportAction('email_colleague')" style="border-color:#5E899E;color:#5E899E;">
-                                <i class="fas fa-user-md"></i>Email Dr
-                            </button>
-                            <button class="btn report-action-btn" data-action="email_patient" onclick="submitReportAction('email_patient')" style="border-color:#0d6efd;color:#0d6efd;">
-                                <i class="fas fa-envelope"></i>Email Pt
-                            </button>
-                        </div>
+                    </div>
+                    <!-- Bottom row: Report Actions -->
+                    <div class="d-flex flex-wrap align-items-center gap-1 mt-1 pt-1" style="border-top: 1px solid #f0f0f0;">
+                        <small class="text-muted me-1" style="font-size: 0.65rem;"><i class="fas fa-bolt me-1"></i>Actions:</small>
+                        <button class="btn report-action-btn" data-action="mdt" onclick="submitReportAction('mdt')" style="border-color:#e96304;color:#e96304;">
+                            <i class="fas fa-users"></i>MDT
+                        </button>
+                        <button class="btn report-action-btn" data-action="sba" onclick="submitReportAction('sba')" style="border-color:#198754;color:#198754;">
+                            <i class="fas fa-graduation-cap"></i>SBA
+                        </button>
+                        <button class="btn report-action-btn" data-action="viva" onclick="submitReportAction('viva')" style="border-color:#6b46c1;color:#6b46c1;">
+                            <i class="fas fa-comments"></i>Viva
+                        </button>
+                        <button class="btn report-action-btn" data-action="email_colleague" onclick="submitReportAction('email_colleague')" style="border-color:#5E899E;color:#5E899E;">
+                            <i class="fas fa-user-md"></i>Email Dr
+                        </button>
+                        <button class="btn report-action-btn" data-action="email_patient" onclick="submitReportAction('email_patient')" style="border-color:#0d6efd;color:#0d6efd;">
+                            <i class="fas fa-envelope"></i>Email Pt
+                        </button>
                     </div>
                 </div>
 
@@ -682,29 +682,6 @@
                                     </button>
                                     <button class="btn btn-outline-secondary py-0 px-2 quick-ask-btn" style="font-size: 0.72rem;" data-instruction="Add recommendations if relevant for this report" onclick="quickAsk(this)">
                                         Recommendations
-                                    </button>
-                                </div>
-                                <!-- Report Actions (in-card duplicates) -->
-                                <div class="d-flex flex-wrap gap-1 mb-2">
-                                    <button class="btn report-action-btn" data-action="mdt" onclick="submitReportAction('mdt')"
-                                            style="border-color: #e96304; color: #e96304;">
-                                        <i class="fas fa-users"></i>MDT
-                                    </button>
-                                    <button class="btn report-action-btn" data-action="sba" onclick="submitReportAction('sba')"
-                                            style="border-color: #198754; color: #198754;">
-                                        <i class="fas fa-graduation-cap"></i>SBA
-                                    </button>
-                                    <button class="btn report-action-btn" data-action="viva" onclick="submitReportAction('viva')"
-                                            style="border-color: #6b46c1; color: #6b46c1;">
-                                        <i class="fas fa-comments"></i>Viva
-                                    </button>
-                                    <button class="btn report-action-btn" data-action="email_colleague" onclick="submitReportAction('email_colleague')"
-                                            style="border-color: #5E899E; color: #5E899E;">
-                                        <i class="fas fa-user-md"></i>Email Dr
-                                    </button>
-                                    <button class="btn report-action-btn" data-action="email_patient" onclick="submitReportAction('email_patient')"
-                                            style="border-color: #0d6efd; color: #0d6efd;">
-                                        <i class="fas fa-envelope"></i>Email Pt
                                     </button>
                                 </div>
                                 <!-- Anatomy quick-access with typeahead -->

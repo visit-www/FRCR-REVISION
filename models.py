@@ -2983,6 +2983,38 @@ class LearningQuestionProgress(db.Model):
         return f'<LearningQuestionProgress user={self.user_id} q={self.learning_question_id} score={self.score}>'
 
 
+class LearningQuestionReference(db.Model):
+    """URL references attached to learning questions (journal articles, guidelines, etc.)."""
+    __tablename__ = 'learning_question_reference'
+
+    id = db.Column(db.Integer, primary_key=True)
+    learning_question_id = db.Column(db.Integer, db.ForeignKey('learning_question.id'), nullable=False, index=True)
+    ref_number = db.Column(db.Integer, nullable=False)
+    title = db.Column(db.Text, nullable=False)
+    url = db.Column(db.Text, nullable=False)
+    journal = db.Column(db.String(500))
+    year = db.Column(db.String(10))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    question = db.relationship('LearningQuestion', backref=db.backref('references', cascade='all, delete-orphan'))
+
+    __table_args__ = (
+        db.UniqueConstraint('learning_question_id', 'ref_number', name='uq_lq_ref_number'),
+    )
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'learning_question_id': self.learning_question_id,
+            'ref_number': self.ref_number,
+            'title': self.title,
+            'url': self.url,
+            'journal': self.journal,
+            'year': self.year,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+
+
 # ==================== CONTENT INTELLIGENCE ====================
 
 class ContentIntelligence(db.Model):
