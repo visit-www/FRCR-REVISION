@@ -67,6 +67,10 @@ PII_PATTERNS = [
     ('Patient Name', re.compile(
         r'\b(?:patient\s*name|pt\s*name)\s*[:=\-]\s*[A-Za-z][A-Za-z\'-]+(?:\s+[A-Za-z][A-Za-z\'-]+){0,3}(?=\s*(?:[,;.\n|]|\bage\b|\bgender\b|\bsex\b|\bdob\b|\baddress\b|\bmrn\b|\bnhs\b|$))',
         re.IGNORECASE)),
+    # Bare "name:" keyword (no "patient"/"pt" prefix) — requires 2+ words to reduce false positives
+    ('Patient Name', re.compile(
+        r'\bname\s*[:=\-]\s*[A-Za-z][A-Za-z\'-]+(?:\s+[A-Za-z][A-Za-z\'-]+){1,3}(?=\s*(?:[,;.\n|]|\bage\b|\bgender\b|\bsex\b|\bdob\b|\baddress\b|\bmrn\b|\bnhs\b|\d|$))',
+        re.IGNORECASE)),
     # Bare name after "X-year-old" context (52-year-old male, Suresh Kumar, presented)
     ('Patient Name', re.compile(
         r'\d{1,3}[-\s]?year[-\s]?old\b[^.\n]{0,30}?'
@@ -86,6 +90,8 @@ PII_PATTERNS = [
         + r'(?:\s+' + _NAME_STOP + r'[A-Z][a-zA-Z\'-]+){1,3}'
         + r'(?=\s*,?\s+(?:a\s+|an\s+)?\d{1,3}[-\s]?years?[-\s]?old\b)'
     )),
+    # Bare 7-10 digit number on its own line (likely hospital number / MRN / NHS number)
+    ('Possible Patient ID', re.compile(r'^\d{7,10}$', re.MULTILINE)),
     # Patient age
     ('Patient Age', re.compile(
         r'\b(?:age|aged)\s*[:=\-]\s*\d{1,3}\b', re.IGNORECASE)),

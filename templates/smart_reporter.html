@@ -378,8 +378,8 @@
                         <h5 class="mb-0"><i class="fas fa-edit me-2" style="color: #5E899E;"></i>Report Editor</h5>
                         <button class="btn btn-sm btn-outline-secondary d-none d-lg-inline-flex align-items-center"
                                 id="btnViewToggle" onclick="toggleEditorView()" title="Toggle layout">
-                            <i class="fas fa-columns me-1" id="viewToggleIcon"></i>
-                            <span id="viewToggleLabel">Split View</span>
+                            <i class="fas fa-layer-group me-1" id="viewToggleIcon"></i>
+                            <span id="viewToggleLabel">Stack View</span>
                         </button>
                     </div>
                     <div class="d-flex align-items-center gap-2">
@@ -622,26 +622,25 @@
                                 </div>
                                 <!-- Report Actions (one-click AI transforms) -->
                                 <div class="d-flex flex-wrap gap-1 mb-2" id="reportActionButtons">
-                                    <small class="text-muted me-1" style="font-size: 0.65rem; line-height: 2;">Actions:</small>
-                                    <button class="btn py-0 px-2 report-action-btn" data-action="mdt" onclick="submitReportAction('mdt')"
-                                            style="font-size: 0.72rem; border: 1px solid #e96304; color: #e96304; background: transparent;">
-                                        <i class="fas fa-users me-1"></i>MDT
+                                    <button class="btn report-action-btn" data-action="mdt" onclick="submitReportAction('mdt')"
+                                            style="border-color: #e96304; color: #e96304;">
+                                        <i class="fas fa-users"></i>MDT
                                     </button>
-                                    <button class="btn py-0 px-2 report-action-btn" data-action="sba" onclick="submitReportAction('sba')"
-                                            style="font-size: 0.72rem; border: 1px solid #198754; color: #198754; background: transparent;">
-                                        <i class="fas fa-graduation-cap me-1"></i>SBA
+                                    <button class="btn report-action-btn" data-action="sba" onclick="submitReportAction('sba')"
+                                            style="border-color: #198754; color: #198754;">
+                                        <i class="fas fa-graduation-cap"></i>SBA
                                     </button>
-                                    <button class="btn py-0 px-2 report-action-btn" data-action="viva" onclick="submitReportAction('viva')"
-                                            style="font-size: 0.72rem; border: 1px solid #6b46c1; color: #6b46c1; background: transparent;">
-                                        <i class="fas fa-comments me-1"></i>Viva
+                                    <button class="btn report-action-btn" data-action="viva" onclick="submitReportAction('viva')"
+                                            style="border-color: #6b46c1; color: #6b46c1;">
+                                        <i class="fas fa-comments"></i>Viva
                                     </button>
-                                    <button class="btn py-0 px-2 report-action-btn" data-action="email_colleague" onclick="submitReportAction('email_colleague')"
-                                            style="font-size: 0.72rem; border: 1px solid #5E899E; color: #5E899E; background: transparent;">
-                                        <i class="fas fa-user-md me-1"></i>Email Dr
+                                    <button class="btn report-action-btn" data-action="email_colleague" onclick="submitReportAction('email_colleague')"
+                                            style="border-color: #5E899E; color: #5E899E;">
+                                        <i class="fas fa-user-md"></i>Email Dr
                                     </button>
-                                    <button class="btn py-0 px-2 report-action-btn" data-action="email_patient" onclick="submitReportAction('email_patient')"
-                                            style="font-size: 0.72rem; border: 1px solid #0d6efd; color: #0d6efd; background: transparent;">
-                                        <i class="fas fa-envelope me-1"></i>Email Pt
+                                    <button class="btn report-action-btn" data-action="email_patient" onclick="submitReportAction('email_patient')"
+                                            style="border-color: #0d6efd; color: #0d6efd;">
+                                        <i class="fas fa-envelope"></i>Email Pt
                                     </button>
                                 </div>
                                 <!-- Anatomy quick-access with typeahead -->
@@ -2937,6 +2936,37 @@ document.addEventListener('DOMContentLoaded', function() {
             content.innerHTML = data.html || '<p>No content generated.</p>';
             container.classList.remove('d-none');
             container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+            // Fetch internal DB resources related to the report
+            try {
+                const reportText = getCurrentReportText();
+                let q = '';
+                const lines = reportText.split('\n');
+                for (let i = 0; i < lines.length; i++) {
+                    const line = lines[i].replace(/^(INDICATION|TECHNIQUE|COMPARISON|FINDINGS|IMPRESSION|RECOMMENDATION):\s*/i, '').trim();
+                    if (line.length > 5) { q = line.substring(0, 80); break; }
+                }
+                if (q) {
+                    fetch('/api/smart-reporter/relevant-content?q=' + encodeURIComponent(q))
+                        .then(r => r.json())
+                        .then(relData => {
+                            if (relData.results && relData.results.length > 0) {
+                                let html = '<div class="action-internal-resources"><h6><i class="fas fa-database me-1"></i>Related Resources in RadInsights</h6><ul class="mb-0 ps-3" style="font-size:0.82rem;">';
+                                relData.results.slice(0, 5).forEach(r => {
+                                    html += '<li><a href="' + escapeHtmlSafe(r.url) + '" target="_blank">' + escapeHtmlSafe(r.title) + '</a></li>';
+                                });
+                                html += '</ul></div>';
+                                // Insert above the AI's Further Reading section
+                                const furtherReading = content.querySelector('.action-further-reading');
+                                if (furtherReading) {
+                                    furtherReading.insertAdjacentHTML('beforebegin', html);
+                                } else {
+                                    content.insertAdjacentHTML('beforeend', html);
+                                }
+                            }
+                        }).catch(() => {});
+                }
+            } catch(e) {}
         })
         .catch(err => {
             activeAIController = null;
@@ -3961,8 +3991,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // ==================== SPLIT / STACK VIEW TOGGLE ====================
 
     function getSavedViewMode() {
-        try { return localStorage.getItem('smartReporterViewMode') || 'stack'; }
-        catch(e) { return 'stack'; }
+        try { return localStorage.getItem('smartReporterViewMode') || 'split'; }
+        catch(e) { return 'split'; }
     }
 
     function saveViewMode(mode) {

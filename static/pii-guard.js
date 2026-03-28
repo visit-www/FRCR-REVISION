@@ -94,6 +94,11 @@
         },
         {
             type: 'Patient Name',
+            regex: /\bname\s*[:=\-]\s*[A-Za-z][A-Za-z'-]+(?:\s+[A-Za-z][A-Za-z'-]+){1,3}(?=\s*(?:[,;.\n|]|\bage\b|\bgender\b|\bsex\b|\bdob\b|\baddress\b|\bmrn\b|\bnhs\b|\d|$))/gi,
+            description: 'Possible patient name detected (name keyword)'
+        },
+        {
+            type: 'Patient Name',
             regex: /\d{1,3}[-\s]?year[-\s]?old\b[^.\n]{0,30}?([A-Z][a-zA-Z'-]+(?:\s+[A-Z][a-zA-Z'-]+){1,3})(?=\s*(?:[,;.\n|]|\bpresented\b|\battended\b|\bwas\b|\bis\b|\bhas\b|\bwith\b|$))/g,
             description: 'Patient name after age context detected'
         },
@@ -118,6 +123,11 @@
                 "g"
             ),
             description: 'Patient name after introduction detected'
+        },
+        {
+            type: 'Possible Patient ID',
+            regex: /^\d{7,10}$/gm,
+            description: 'Bare number on own line — likely hospital number or patient ID'
         },
         {
             type: 'Patient Age',
@@ -305,7 +315,8 @@
             'UK National Insurance Number': '#dc3545',
             'IP Address': '#6b46c1',
             'Aadhaar Number': '#dc3545',
-            'PAN Card': '#dc3545'
+            'PAN Card': '#dc3545',
+            'Possible Patient ID': '#dc3545'
         };
 
         return unique.map(m => {

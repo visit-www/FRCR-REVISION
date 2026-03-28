@@ -5915,3 +5915,61 @@ body {
         display: block !important;
     }
 }
+
+/* Report Action Buttons */
+.report-action-btn {
+    font-size: 0.65rem !important;
+    padding: 0 0.3rem !important;
+    line-height: 1.6;
+    background: transparent;
+    border-width: 1px;
+    border-style: solid;
+}
+.report-action-btn i {
+    margin-right: 0.2rem;
+}
+
+/* Report Action Further Reading */
+.action-further-reading {
+    margin-top: 1rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid #e9ecef;
+}
+.action-further-reading h6 {
+    font-size: 0.85rem;
+    color: #5E899E;
+}
+.action-further-reading a {
+    color: #0d6efd;
+    text-decoration: underline;
+}
+.action-internal-resources {
+    background: #f8f9fa;
+    border-radius: 4px;
+    padding: 0.5rem 0.75rem;
+    margin-bottom: 0.5rem;
+}
+.action-internal-resources h6 {
+    font-size: 0.85rem;
+    color: #5E899E;
+    margin-bottom: 0.4rem;
+}
+.action-internal-resources a {
+    color: var(--brand-primary);
+    text-decoration: none;
+}
+.action-internal-resources a:hover {
+    text-decoration: underline;
+}
+
+/* SBA Question Blocks */
+.sba-question {
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #e9ecef;
+}
+.sba-question:last-of-type {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}

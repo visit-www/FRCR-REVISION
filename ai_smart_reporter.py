@@ -183,7 +183,13 @@ UNIFIED_ASSIST_SYSTEM_PROMPT = (
     "- NEVER suggest the trainee add findings they didn't observe — you cannot see the images\n"
     "- NEVER pad or bulk out a report with generic normal findings just to make it look complete — "
     "if the trainee only mentioned liver, spleen, and kidneys, do NOT add sentences about the "
-    "pancreas, adrenals, bowel, or other organs they didn't mention\n\n"
+    "pancreas, adrenals, bowel, or other organs they didn't mention\n"
+    "- EXCEPTION — 'REST NORMAL' SHORTHAND: If the trainee writes 'rest normal', 'rest unremarkable', "
+    "'rest NAD', 'otherwise normal', 'remaining structures normal', or any similar phrase indicating "
+    "the remaining findings are normal — expand this into brief standard normal statements for the "
+    "expected organs/structures appropriate to the modality and body region. This IS the trainee "
+    "describing their findings via shorthand, not the AI inventing them. Keep each normal statement "
+    "to one concise sentence (e.g. 'The kidneys are unremarkable.' not a detailed description).\n\n"
     "Output valid JSON only. No markdown fences. No text outside the JSON object."
 )
 
@@ -1254,7 +1260,13 @@ REPORT_ACTION_SYSTEM_PROMPT = (
     "Output valid HTML only — no markdown, no code fences, no text outside HTML tags. "
     "Never include patient-identifiable information (names, dates of birth, hospital numbers). "
     "Never fabricate findings beyond what is explicitly stated in the provided report. "
-    "Use British English spelling throughout."
+    "Use British English spelling throughout.\n\n"
+    "End every response with a <div class='action-further-reading'> section containing "
+    "<h6>Further Reading</h6> and 2-3 external references. Use ONLY these sources: "
+    "Radiopaedia (https://radiopaedia.org/search?q=[search+terms]), "
+    "Radiology Assistant (https://radiologyassistant.nl/search?q=[search+terms]), "
+    "or PubMed for peer-reviewed articles (https://pubmed.ncbi.nlm.nih.gov/?term=[search+terms]). "
+    "Format as a <ul> with <a> links (target='_blank'). Choose search terms specific to the case findings."
 )
 
 ACTION_PROMPTS = {
@@ -1269,10 +1281,13 @@ ACTION_PROMPTS = {
         "Keep it under 150 words. Be direct and factual — this is for busy clinicians in a meeting."
     ),
     'sba': (
-        "Create an FRCR Part 2B style Single Best Answer (SBA) question based on this radiology report. "
-        "The question should test radiological knowledge relevant to the findings described.\n\n"
-        "Format as HTML:\n"
-        "<h5>FRCR 2B Practice SBA</h5>\n"
+        "Create **3** FRCR Part 2B style Single Best Answer (SBA) questions based on this radiology report. "
+        "Each question should test a DIFFERENT aspect of the case: e.g. one on imaging findings, "
+        "one on differential diagnosis, one on management/follow-up.\n\n"
+        "Format as HTML — wrap each question in a <div class='sba-question'>:\n"
+        "<h5>FRCR 2B Practice SBAs</h5>\n\n"
+        "<div class='sba-question'>\n"
+        "<h6>Question 1 of 3</h6>\n"
         "<div class='sba-vignette'>\n"
         "<p><strong>Clinical vignette:</strong> [2-3 sentence clinical scenario inspired by the report — "
         "change demographics, use a generic presentation. Do NOT copy the report verbatim.]</p>\n"
@@ -1288,8 +1303,10 @@ ACTION_PROMPTS = {
         "  <p><strong>Explanation:</strong> [2-3 paragraph explanation covering why the correct answer "
         "is right and why each distractor is wrong. Include relevant imaging features, classifications, "
         "or grading systems where applicable.]</p>\n"
-        "</details>\n\n"
-        "Make all 5 options plausible. The correct answer should require genuine radiological reasoning, "
+        "</details>\n"
+        "</div>\n\n"
+        "Repeat the above structure for Question 2 of 3 and Question 3 of 3.\n\n"
+        "Make all 5 options plausible in each question. The correct answer should require genuine radiological reasoning, "
         "not just pattern recognition. Pitch at FRCR 2B difficulty."
     ),
     'viva': (
@@ -1324,7 +1341,7 @@ ACTION_PROMPTS = {
         "<div class='email-content'>\n"
         "<p><strong>Subject:</strong> [Modality] [Body region] — [Key finding summary]</p>\n"
         "<hr>\n"
-        "<p>Dear Colleague,</p>\n"
+        "<p>Dear Dr [Name],</p>\n"
         "<p>[Opening — I am writing to inform you of the findings from the recent imaging of your patient.]</p>\n"
         "<p><strong>Key findings:</strong></p>\n"
         "<ul><li>[Pertinent findings — clear, jargon-appropriate for a clinician]</li></ul>\n"
@@ -1333,6 +1350,7 @@ ACTION_PROMPTS = {
         "<p>Please do not hesitate to contact me if you wish to discuss these findings further.</p>\n"
         "<p>Kind regards,<br>[Reporting Radiologist]</p>\n"
         "</div>\n\n"
+        "Use [Name] as a placeholder for the referring clinician's name. "
         "Use formal NHS professional tone. Be precise but avoid unnecessary jargon."
     ),
     'email_patient': (
@@ -1341,7 +1359,7 @@ ACTION_PROMPTS = {
         "Format as HTML:\n"
         "<h5>Letter to Patient</h5>\n"
         "<div class='email-content'>\n"
-        "<p>Dear Patient,</p>\n"
+        "<p>Dear [Patient Name],</p>\n"
         "<p>[Opening — explain what scan was performed and why, in simple terms]</p>\n"
         "<p><strong>What the scan showed:</strong></p>\n"
         "<p>[Explain findings in lay terms — avoid medical jargon. Where medical terms are "
@@ -1354,6 +1372,7 @@ ACTION_PROMPTS = {
         "or the department that arranged the scan.</p>\n"
         "<p>Yours sincerely,<br>The Radiology Department</p>\n"
         "</div>\n\n"
+        "Use [Patient Name] as a placeholder for the patient's name. "
         "Use a warm, reassuring tone. Aim for a reading age of 12-14 (NHS Accessible Information Standard). "
         "Never minimise serious findings, but frame them constructively."
     ),
@@ -1366,7 +1385,7 @@ ACTION_MODELS = {
 
 ACTION_TOKEN_LIMITS = {
     'mdt': 800,
-    'sba': 2000,
+    'sba': 4500,
     'viva': 2500,
     'email_colleague': 1500,
     'email_patient': 1500,
