@@ -2955,6 +2955,30 @@ class LearningQuestion(db.Model):
         return f'<LearningQuestion {self.id} type={self.question_type} section={self.body_section}>'
 
 
+class LearningQuestionProgress(db.Model):
+    """Tracks user self-assessment on SBA and Viva questions."""
+    __tablename__ = 'learning_question_progress'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+    learning_question_id = db.Column(db.Integer, db.ForeignKey('learning_question.id'), nullable=False, index=True)
+    score = db.Column(db.Integer, default=0)        # SBA: 0-3 correct; Viva: 1-3 confidence
+    best_score = db.Column(db.Integer, default=0)
+    times_attempted = db.Column(db.Integer, default=0)
+    last_attempted_at = db.Column(db.DateTime)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        db.UniqueConstraint('user_id', 'learning_question_id', name='uq_user_learning_question'),
+    )
+
+    user = db.relationship('User', foreign_keys=[user_id])
+    learning_question = db.relationship('LearningQuestion', foreign_keys=[learning_question_id])
+
+    def __repr__(self):
+        return f'<LearningQuestionProgress user={self.user_id} q={self.learning_question_id} score={self.score}>'
+
+
 # ==================== CONTENT INTELLIGENCE ====================
 
 class ContentIntelligence(db.Model):

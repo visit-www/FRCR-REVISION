@@ -1,0 +1,125 @@
+{% extends 'base.html' %}
+{% block title %}Practice - RadInsights{% endblock %}
+{% block tool_active_practice %}active{% endblock %}
+
+{% block mobile_breadcrumb %}
+<li class="breadcrumb-item active text-white-50">Practice</li>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4" style="max-width: 960px;">
+    <div class="text-center mb-4">
+        <h3 class="text-page-title mb-1"><i class="fas fa-brain me-2" style="color: #198754;"></i>Practice</h3>
+        <p class="text-muted">Sharpen your skills with spaced repetition, SBAs, and viva scenarios</p>
+    </div>
+
+    <div class="row g-4 mb-4">
+        <!-- Case Q&A Card -->
+        <div class="col-md-4">
+            <div class="card h-100 border-0 shadow-sm hover-card" style="border-radius: 14px; cursor: pointer;" onclick="window.location.href='/study'">
+                <div class="card-body d-flex flex-column align-items-center text-center p-4">
+                    <div class="mb-3" style="width: 64px; height: 64px; border-radius: 50%; background: rgba(168,213,186,0.25); display: flex; align-items: center; justify-content: center;">
+                        <i class="fas fa-brain" style="font-size: 1.6rem; color: #198754;"></i>
+                    </div>
+                    <h5 class="mb-1" style="color: var(--brand-text-primary, #2c3e50);">Case Q&A</h5>
+                    <p class="text-muted small flex-grow-1 mb-3">Spaced repetition flashcards from radiology cases — review questions daily to build long-term recall.</p>
+                    <div class="d-flex justify-content-around w-100 mb-3">
+                        <div class="text-center">
+                            <div style="font-size: 1.5rem; font-weight: 700; color: #e96304;">{{ qa_due_today }}</div>
+                            <div class="text-muted" style="font-size: 0.7rem;">Due Today</div>
+                        </div>
+                        <div class="text-center">
+                            <div style="font-size: 1.5rem; font-weight: 700; color: #198754;">{{ qa_mastered }}</div>
+                            <div class="text-muted" style="font-size: 0.7rem;">Mastered</div>
+                        </div>
+                        <div class="text-center">
+                            <div style="font-size: 1.5rem; font-weight: 700; color: #5E899E;">{{ qa_accuracy }}%</div>
+                            <div class="text-muted" style="font-size: 0.7rem;">Accuracy</div>
+                        </div>
+                    </div>
+                    <a href="/study" class="btn btn-brand-success btn-sm w-100 mt-auto">
+                        <i class="fas fa-play me-1"></i>Start Session
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- SBA Card -->
+        <div class="col-md-4">
+            <div class="card h-100 border-0 shadow-sm hover-card" style="border-radius: 14px; cursor: pointer;" onclick="window.location.href='/learn/sba'">
+                <div class="card-body d-flex flex-column align-items-center text-center p-4">
+                    <div class="mb-3" style="width: 64px; height: 64px; border-radius: 50%; background: rgba(168,213,186,0.25); display: flex; align-items: center; justify-content: center;">
+                        <i class="fas fa-graduation-cap" style="font-size: 1.6rem; color: #198754;"></i>
+                    </div>
+                    <h5 class="mb-1" style="color: var(--brand-text-primary, #2c3e50);">FRCR 2B SBA</h5>
+                    <p class="text-muted small flex-grow-1 mb-3">Single Best Answer question sets generated from real radiology reports — 3 SBAs per set.</p>
+                    <div class="d-flex justify-content-around w-100 mb-3">
+                        <div class="text-center">
+                            <div style="font-size: 1.5rem; font-weight: 700; color: #5E899E;">{{ sba_total }}</div>
+                            <div class="text-muted" style="font-size: 0.7rem;">Total Sets</div>
+                        </div>
+                        <div class="text-center">
+                            <div style="font-size: 1.5rem; font-weight: 700; color: #198754;">{{ sba_attempted }}</div>
+                            <div class="text-muted" style="font-size: 0.7rem;">Attempted</div>
+                        </div>
+                        <div class="text-center">
+                            <div style="font-size: 1.5rem; font-weight: 700; color: #e96304;">{{ sba_avg_score }}/3</div>
+                            <div class="text-muted" style="font-size: 0.7rem;">Avg Score</div>
+                        </div>
+                    </div>
+                    <a href="/learn/sba" class="btn btn-brand-success btn-sm w-100 mt-auto">
+                        <i class="fas fa-graduation-cap me-1"></i>Practice SBAs
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Viva Card -->
+        <div class="col-md-4">
+            <div class="card h-100 border-0 shadow-sm hover-card" style="border-radius: 14px; cursor: pointer;" onclick="window.location.href='/learn/viva'">
+                <div class="card-body d-flex flex-column align-items-center text-center p-4">
+                    <div class="mb-3" style="width: 64px; height: 64px; border-radius: 50%; background: rgba(107,70,193,0.1); display: flex; align-items: center; justify-content: center;">
+                        <i class="fas fa-comments" style="font-size: 1.6rem; color: #6b46c1;"></i>
+                    </div>
+                    <h5 class="mb-1" style="color: var(--brand-text-primary, #2c3e50);">FRCR 2B Viva</h5>
+                    <p class="text-muted small flex-grow-1 mb-3">Examiner-style viva scenarios with structured questions and model answers for self-assessment.</p>
+                    <div class="d-flex justify-content-around w-100 mb-3">
+                        <div class="text-center">
+                            <div style="font-size: 1.5rem; font-weight: 700; color: #5E899E;">{{ viva_total }}</div>
+                            <div class="text-muted" style="font-size: 0.7rem;">Total Sets</div>
+                        </div>
+                        <div class="text-center">
+                            <div style="font-size: 1.5rem; font-weight: 700; color: #6b46c1;">{{ viva_attempted }}</div>
+                            <div class="text-muted" style="font-size: 0.7rem;">Attempted</div>
+                        </div>
+                        <div class="text-center">
+                            <div style="font-size: 1.5rem; font-weight: 700; color: #e96304;">{{ viva_avg_score }}/3</div>
+                            <div class="text-muted" style="font-size: 0.7rem;">Avg Score</div>
+                        </div>
+                    </div>
+                    <a href="/learn/viva" class="btn btn-sm w-100 mt-auto" style="background: #6b46c1; color: #fff;">
+                        <i class="fas fa-comments me-1"></i>Practice Vivas
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="text-center text-muted small">
+        <i class="fas fa-lightbulb me-1" style="color: #ffc107;"></i>
+        SBA and Viva questions are automatically generated when you use Smart Reporter.
+        <a href="/smart-reporter" class="ms-1">Generate more</a>
+    </div>
+</div>
+
+<style>
+.hover-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12) !important;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.hover-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+</style>
+{% endblock %}

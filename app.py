@@ -2147,6 +2147,191 @@ def get_study_stats():
     })
 
 
+# ==================== PRACTICE LANDING PAGE ====================
+
+@app.route('/practice')
+@login_required
+def practice_landing():
+    """Practice landing page with Case Q&A, SBA, and Viva cards."""
+    from models import LearningQuestion, LearningQuestionProgress
+    from sqlalchemy import func
+    from datetime import date
+
+    user_id = current_user.id
+    today = date.today()
+
+    # Case Q&A stats (reuse study stats logic)
+    qa_due_today = UserQAProgress.query.filter(
+        UserQAProgress.user_id == user_id,
+        UserQAProgress.next_review_date <= today
+    ).count()
+    qa_mastered = UserQAProgress.query.filter(
+        UserQAProgress.user_id == user_id,
+        UserQAProgress.repetition_number >= 5,
+        UserQAProgress.interval_days >= 21
+    ).count()
+    total_correct = db.session.query(func.sum(UserQAProgress.times_correct)).filter(
+        UserQAProgress.user_id == user_id
+    ).scalar() or 0
+    total_incorrect = db.session.query(func.sum(UserQAProgress.times_incorrect)).filter(
+        UserQAProgress.user_id == user_id
+    ).scalar() or 0
+    total_attempts = total_correct + total_incorrect
+    qa_accuracy = round((total_correct / total_attempts * 100), 1) if total_attempts > 0 else 0
+
+    # SBA stats
+    sba_total = LearningQuestion.query.filter_by(question_type='sba').count()
+    sba_attempted = LearningQuestionProgress.query.join(LearningQuestion).filter(
+        LearningQuestionProgress.user_id == user_id,
+        LearningQuestion.question_type == 'sba'
+    ).count()
+    sba_avg = db.session.query(func.avg(LearningQuestionProgress.score)).join(LearningQuestion).filter(
+        LearningQuestionProgress.user_id == user_id,
+        LearningQuestion.question_type == 'sba'
+    ).scalar()
+    sba_avg_score = round(sba_avg, 1) if sba_avg else 0
+
+    # Viva stats
+    viva_total = LearningQuestion.query.filter_by(question_type='viva').count()
+    viva_attempted = LearningQuestionProgress.query.join(LearningQuestion).filter(
+        LearningQuestionProgress.user_id == user_id,
+        LearningQuestion.question_type == 'viva'
+    ).count()
+    viva_avg = db.session.query(func.avg(LearningQuestionProgress.score)).join(LearningQuestion).filter(
+        LearningQuestionProgress.user_id == user_id,
+        LearningQuestion.question_type == 'viva'
+    ).scalar()
+    viva_avg_score = round(viva_avg, 1) if viva_avg else 0
+
+    return render_template('practice_landing.html',
+        qa_due_today=qa_due_today,
+        qa_mastered=qa_mastered,
+        qa_accuracy=qa_accuracy,
+        sba_total=sba_total,
+        sba_attempted=sba_attempted,
+        sba_avg_score=sba_avg_score,
+        viva_total=viva_total,
+        viva_attempted=viva_attempted,
+        viva_avg_score=viva_avg_score)
+
+
+@app.route('/api/learning/progress', methods=['POST'])
+@login_required
+def record_learning_progress():
+    """Record SBA/Viva self-assessment score."""
+    from models import LearningQuestion, LearningQuestionProgress
+
+    data = request.get_json()
+    question_id = data.get('question_id')
+    score = data.get('score')
+
+    if question_id is None or score is None:
+        return jsonify({'error': 'question_id and score required'}), 400
+
+    # Validate question exists
+    question = LearningQuestion.query.get(question_id)
+    if not question:
+        return jsonify({'error': 'Question not found'}), 404
+
+    # Upsert progress
+    progress = LearningQuestionProgress.query.filter_by(
+        user_id=current_user.id,
+        learning_question_id=question_id
+    ).first()
+
+    if progress:
+        progress.score = score
+        progress.best_score = max(progress.best_score, score)
+        progress.times_attempted += 1
+        progress.last_attempted_at = datetime.utcnow()
+    else:
+        progress = LearningQuestionProgress(
+            user_id=current_user.id,
+            learning_question_id=question_id,
+            score=score,
+            best_score=score,
+            times_attempted=1,
+            last_attempted_at=datetime.utcnow()
+        )
+        db.session.add(progress)
+
+    db.session.commit()
+
+    return jsonify({
+        'success': True,
+        'score': progress.score,
+        'best_score': progress.best_score,
+        'times_attempted': progress.times_attempted
+    })
+
+
+@app.route('/api/practice/stats', methods=['GET'])
+@login_required
+def get_practice_stats():
+    """Aggregate practice stats for dashboard."""
+    from models import LearningQuestion, LearningQuestionProgress
+    from sqlalchemy import func
+    from datetime import date
+
+    user_id = current_user.id
+    today = date.today()
+
+    # Case Q&A
+    qa_due_today = UserQAProgress.query.filter(
+        UserQAProgress.user_id == user_id,
+        UserQAProgress.next_review_date <= today
+    ).count()
+    qa_mastered = UserQAProgress.query.filter(
+        UserQAProgress.user_id == user_id,
+        UserQAProgress.repetition_number >= 5,
+        UserQAProgress.interval_days >= 21
+    ).count()
+    total_correct = db.session.query(func.sum(UserQAProgress.times_correct)).filter(
+        UserQAProgress.user_id == user_id
+    ).scalar() or 0
+    total_incorrect = db.session.query(func.sum(UserQAProgress.times_incorrect)).filter(
+        UserQAProgress.user_id == user_id
+    ).scalar() or 0
+    total_attempts = total_correct + total_incorrect
+    qa_accuracy = round((total_correct / total_attempts * 100), 1) if total_attempts > 0 else 0
+
+    # SBA
+    sba_attempted = LearningQuestionProgress.query.join(LearningQuestion).filter(
+        LearningQuestionProgress.user_id == user_id,
+        LearningQuestion.question_type == 'sba'
+    ).count()
+    sba_avg = db.session.query(func.avg(LearningQuestionProgress.score)).join(LearningQuestion).filter(
+        LearningQuestionProgress.user_id == user_id,
+        LearningQuestion.question_type == 'sba'
+    ).scalar()
+
+    # Viva
+    viva_attempted = LearningQuestionProgress.query.join(LearningQuestion).filter(
+        LearningQuestionProgress.user_id == user_id,
+        LearningQuestion.question_type == 'viva'
+    ).count()
+    viva_avg = db.session.query(func.avg(LearningQuestionProgress.score)).join(LearningQuestion).filter(
+        LearningQuestionProgress.user_id == user_id,
+        LearningQuestion.question_type == 'viva'
+    ).scalar()
+
+    return jsonify({
+        'qa': {
+            'due_today': qa_due_today,
+            'mastered': qa_mastered,
+            'accuracy': qa_accuracy
+        },
+        'sba': {
+            'attempted': sba_attempted,
+            'avg_score': round(sba_avg, 1) if sba_avg else 0
+        },
+        'viva': {
+            'attempted': viva_attempted,
+            'avg_score': round(viva_avg, 1) if viva_avg else 0
+        }
+    })
+
+
 # ==================== LEARN: SBA & VIVA PRACTICE ====================
 
 LEARNING_BODY_SECTIONS = [
@@ -2166,7 +2351,7 @@ LEARNING_MODALITIES = [
 @login_required
 def learn_sba():
     """Browse SBA practice questions by body section and modality."""
-    from models import LearningQuestion
+    from models import LearningQuestion, LearningQuestionProgress
     from sqlalchemy import func
 
     section = request.args.get('section', '')
@@ -2188,6 +2373,18 @@ def learn_sba():
         .all()
     )
 
+    # User progress keyed by question ID
+    user_progress = {}
+    if questions:
+        q_ids = [q.id for q in questions]
+        progress_rows = LearningQuestionProgress.query.filter(
+            LearningQuestionProgress.user_id == current_user.id,
+            LearningQuestionProgress.learning_question_id.in_(q_ids)
+        ).all()
+        user_progress = {p.learning_question_id: {
+            'score': p.score, 'best_score': p.best_score, 'times_attempted': p.times_attempted
+        } for p in progress_rows}
+
     return render_template('learn_questions.html',
                            question_type='sba',
                            questions=questions,
@@ -2196,6 +2393,7 @@ def learn_sba():
                            section_counts=section_counts,
                            selected_section=section,
                            selected_modality=modality,
+                           user_progress=user_progress,
                            total_count=LearningQuestion.query.filter_by(question_type='sba').count())
 
 
@@ -2203,7 +2401,7 @@ def learn_sba():
 @login_required
 def learn_viva():
     """Browse Viva practice questions by body section and modality."""
-    from models import LearningQuestion
+    from models import LearningQuestion, LearningQuestionProgress
     from sqlalchemy import func
 
     section = request.args.get('section', '')
@@ -2225,6 +2423,18 @@ def learn_viva():
         .all()
     )
 
+    # User progress keyed by question ID
+    user_progress = {}
+    if questions:
+        q_ids = [q.id for q in questions]
+        progress_rows = LearningQuestionProgress.query.filter(
+            LearningQuestionProgress.user_id == current_user.id,
+            LearningQuestionProgress.learning_question_id.in_(q_ids)
+        ).all()
+        user_progress = {p.learning_question_id: {
+            'score': p.score, 'best_score': p.best_score, 'times_attempted': p.times_attempted
+        } for p in progress_rows}
+
     return render_template('learn_questions.html',
                            question_type='viva',
                            questions=questions,
@@ -2233,6 +2443,7 @@ def learn_viva():
                            section_counts=section_counts,
                            selected_section=section,
                            selected_modality=modality,
+                           user_progress=user_progress,
                            total_count=LearningQuestion.query.filter_by(question_type='viva').count())
 
 
