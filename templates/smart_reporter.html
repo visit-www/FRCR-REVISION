@@ -3940,6 +3940,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 body: formData
             });
             const data = await resp.json();
+            console.log('🎙️ Transcription response:', data);
+            console.log('🎙️ Audio blob size:', blob.size, 'bytes, type:', blob.type);
 
             if (data.success && data.text) {
                 const editor = document.getElementById('editorInput');
