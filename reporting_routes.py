@@ -2689,6 +2689,25 @@ def smart_reporter_report_action():
     })
 
 
+def _infer_frcr_module(body_section):
+    """Infer FRCR 2B module from body section."""
+    if not body_section:
+        return None
+    bs = body_section.strip().lower()
+    mapping = {
+        'thorax': 'Cardiothoracic and Vascular',
+        'cardiovascular': 'Cardiothoracic and Vascular',
+        'musculoskeletal': 'Musculoskeletal and Trauma',
+        'abdomen': 'Gastrointestinal',
+        'pelvis': 'Genitourinary, Adrenal, O&G and Breast',
+        'breast': 'Genitourinary, Adrenal, O&G and Breast',
+        'brain': 'CNS and Head & Neck',
+        'spine': 'CNS and Head & Neck',
+        'head and neck': 'CNS and Head & Neck',
+    }
+    return mapping.get(bs)
+
+
 def _capture_learning_question(question_type, html_content, body_section, modality,
                                report_text, user_id):
     """Silently save an SBA or Viva question set to the learning_question table."""
@@ -2703,10 +2722,14 @@ def _capture_learning_question(question_type, html_content, body_section, modali
     # Auto-generate a short title from the HTML
     title = _extract_learning_title(html_content, question_type)
 
+    # Auto-infer FRCR module from body section
+    module = _infer_frcr_module(body_section)
+
     q = LearningQuestion(
         question_type=question_type,
         body_section=body_section or None,
         modality=modality or None,
+        module=module,
         title=title,
         html_content=html_content,
         source_report_context=report_text[:200] if report_text else None,

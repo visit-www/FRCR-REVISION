@@ -37,6 +37,12 @@
                 <div class="card-body py-2 px-3">
                     <form method="GET" class="d-flex flex-wrap gap-2 align-items-center">
                         <small class="fw-semibold text-muted me-1"><i class="fas fa-filter me-1"></i>Filter:</small>
+                        <select name="module" class="form-select form-select-sm" style="max-width: 260px;" onchange="this.form.submit()">
+                            <option value="">All FRCR Modules</option>
+                            {% for mod in frcr_modules %}
+                            <option value="{{ mod }}" {{ 'selected' if mod == selected_module }}>{{ mod }}{% if module_counts.get(mod) %} ({{ module_counts[mod] }}){% endif %}</option>
+                            {% endfor %}
+                        </select>
                         <select name="section" class="form-select form-select-sm" style="max-width: 200px;" onchange="this.form.submit()">
                             <option value="">All Body Sections</option>
                             {% for s in body_sections %}
@@ -49,7 +55,7 @@
                             <option value="{{ m }}" {{ 'selected' if m == selected_modality }}>{{ m }}</option>
                             {% endfor %}
                         </select>
-                        {% if selected_section or selected_modality %}
+                        {% if selected_section or selected_modality or selected_module %}
                         <a href="{{ '/learn/sba' if question_type == 'sba' else '/learn/viva' }}" class="btn btn-sm btn-outline-secondary">
                             <i class="fas fa-times me-1"></i>Clear
                         </a>
@@ -97,6 +103,9 @@
                                         Best: {{ ['', 'Weak', 'OK', 'Strong'][user_progress[q.id].best_score] if user_progress[q.id].best_score <= 3 else user_progress[q.id].best_score }}
                                         {% endif %}
                                     </span>
+                                    {% endif %}
+                                    {% if q.module %}
+                                    <span class="badge" style="background: var(--brand-neutral, #5E899E); font-size: 0.65rem;">{{ q.module }}</span>
                                     {% endif %}
                                     {% if q.body_section %}
                                     <span class="badge" style="background: {{ '#198754' if question_type == 'sba' else '#6b46c1' }}; font-size: 0.65rem;">{{ q.body_section }}</span>

@@ -921,6 +921,9 @@ with app.app_context():
         # -- user: Onboarding tour --
         _add_col_if_missing('user', 'has_seen_tour', 'has_seen_tour BOOLEAN DEFAULT false NOT NULL')
 
+        # -- learning_question: FRCR module --
+        _add_col_if_missing('learning_question', 'module', 'module VARCHAR(100)')
+
         # -- user: Widen token columns VARCHAR(255) → TEXT for encrypted storage --
         for _token_col in ['notion_access_token', 'anki_api_key']:
             _widen_col_to_text('user', _token_col)
@@ -2380,29 +2383,48 @@ LEARNING_MODALITIES = [
 ]
 
 
-@app.route('/learn/sba')
-@login_required
-def learn_sba():
-    """Browse SBA practice questions by body section and modality."""
+FRCR_MODULES = [
+    'Cardiothoracic and Vascular',
+    'Musculoskeletal and Trauma',
+    'Gastrointestinal',
+    'Genitourinary, Adrenal, O&G and Breast',
+    'Paediatric',
+    'CNS and Head & Neck',
+]
+
+
+def _learn_questions(question_type):
+    """Shared logic for SBA and Viva browse pages."""
     from models import LearningQuestion, LearningQuestionProgress
     from sqlalchemy import func
 
     section = request.args.get('section', '')
     modality = request.args.get('modality', '')
+    module = request.args.get('module', '')
 
-    query = LearningQuestion.query.filter_by(question_type='sba')
+    query = LearningQuestion.query.filter_by(question_type=question_type)
     if section:
         query = query.filter_by(body_section=section)
     if modality:
         query = query.filter_by(modality=modality)
+    if module:
+        query = query.filter_by(module=module)
 
     questions = query.order_by(LearningQuestion.created_at.desc()).all()
 
     # Counts per section for sidebar
     section_counts = dict(
         db.session.query(LearningQuestion.body_section, func.count(LearningQuestion.id))
-        .filter_by(question_type='sba')
+        .filter_by(question_type=question_type)
         .group_by(LearningQuestion.body_section)
+        .all()
+    )
+
+    # Counts per module
+    module_counts = dict(
+        db.session.query(LearningQuestion.module, func.count(LearningQuestion.id))
+        .filter(LearningQuestion.question_type == question_type, LearningQuestion.module.isnot(None))
+        .group_by(LearningQuestion.module)
         .all()
     )
 
@@ -2419,65 +2441,32 @@ def learn_sba():
         } for p in progress_rows}
 
     return render_template('learn_questions.html',
-                           question_type='sba',
+                           question_type=question_type,
                            questions=questions,
                            body_sections=LEARNING_BODY_SECTIONS,
                            modalities=LEARNING_MODALITIES,
+                           frcr_modules=FRCR_MODULES,
                            section_counts=section_counts,
+                           module_counts=module_counts,
                            selected_section=section,
                            selected_modality=modality,
+                           selected_module=module,
                            user_progress=user_progress,
-                           total_count=LearningQuestion.query.filter_by(question_type='sba').count())
+                           total_count=LearningQuestion.query.filter_by(question_type=question_type).count())
+
+
+@app.route('/learn/sba')
+@login_required
+def learn_sba():
+    """Browse SBA practice questions by body section, modality, and module."""
+    return _learn_questions('sba')
 
 
 @app.route('/learn/viva')
 @login_required
 def learn_viva():
-    """Browse Viva practice questions by body section and modality."""
-    from models import LearningQuestion, LearningQuestionProgress
-    from sqlalchemy import func
-
-    section = request.args.get('section', '')
-    modality = request.args.get('modality', '')
-
-    query = LearningQuestion.query.filter_by(question_type='viva')
-    if section:
-        query = query.filter_by(body_section=section)
-    if modality:
-        query = query.filter_by(modality=modality)
-
-    questions = query.order_by(LearningQuestion.created_at.desc()).all()
-
-    # Counts per section for sidebar
-    section_counts = dict(
-        db.session.query(LearningQuestion.body_section, func.count(LearningQuestion.id))
-        .filter_by(question_type='viva')
-        .group_by(LearningQuestion.body_section)
-        .all()
-    )
-
-    # User progress keyed by question ID
-    user_progress = {}
-    if questions:
-        q_ids = [q.id for q in questions]
-        progress_rows = LearningQuestionProgress.query.filter(
-            LearningQuestionProgress.user_id == current_user.id,
-            LearningQuestionProgress.learning_question_id.in_(q_ids)
-        ).all()
-        user_progress = {p.learning_question_id: {
-            'score': p.score, 'best_score': p.best_score, 'times_attempted': p.times_attempted
-        } for p in progress_rows}
-
-    return render_template('learn_questions.html',
-                           question_type='viva',
-                           questions=questions,
-                           body_sections=LEARNING_BODY_SECTIONS,
-                           modalities=LEARNING_MODALITIES,
-                           section_counts=section_counts,
-                           selected_section=section,
-                           selected_modality=modality,
-                           user_progress=user_progress,
-                           total_count=LearningQuestion.query.filter_by(question_type='viva').count())
+    """Browse Viva practice questions by body section, modality, and module."""
+    return _learn_questions('viva')
 
 
 @app.route('/modules')

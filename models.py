@@ -2945,6 +2945,7 @@ class LearningQuestion(db.Model):
     question_type = db.Column(db.String(20), nullable=False, index=True)  # 'sba' or 'viva'
     body_section = db.Column(db.String(100), index=True)
     modality = db.Column(db.String(100))
+    module = db.Column(db.String(100), index=True)  # FRCR module (auto-inferred from body_section)
     title = db.Column(db.String(300))
     html_content = db.Column(db.Text, nullable=False)
     source_report_context = db.Column(db.Text)  # first 200 chars of source report
