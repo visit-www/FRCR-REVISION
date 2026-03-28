@@ -585,15 +585,19 @@ function updateRadiqCounter(data) {
     // Update both the always-visible counter and the response area counter
     const els = [document.getElementById('radiqUsageCounter'), document.getElementById('remainingCounter')];
     let html;
-    if (data.trial_expired) {
-        html = '<span style="color:#dc3545;">Trial expired &mdash; <a href="#" onclick="showUpgradeModal(\'trial_expired\');return false;" style="color:#e96304;">Upgrade</a></span>';
+
+    // Admin: clean "Unlimited" label
+    if (data.limit >= 9999) {
+        html = '<i class="fas fa-shield-alt me-1" style="color:var(--brand-neutral);"></i>Admin &mdash; Unlimited';
+    } else if (data.trial_expired) {
+        html = '<span style="color:#dc3545;"><i class="fas fa-exclamation-circle me-1"></i>Trial expired &mdash; <a href="#" onclick="showUpgradeModal(\'trial_expired\');return false;" style="color:#e96304;">Upgrade</a></span>';
     } else {
         const limit = data.limit;
         const remaining = data.remaining_requests;
         let color = '#28a745';
         if (remaining <= Math.ceil(limit * 0.1)) color = '#dc3545';
         else if (remaining <= Math.ceil(limit * 0.3)) color = '#ffc107';
-        html = `<span style="color:${color};">${remaining}/${limit} RadIQ queries this month</span>`;
+        html = `<i class="fas fa-bolt me-1" style="color:${color};"></i><span style="color:${color};">${remaining}/${limit} RadIQ queries this month</span>`;
         if (data.trial_days_left !== null && data.trial_days_left <= 3) {
             html += ` <span style="color:#ffc107;">&mdash; ${data.trial_days_left}d left in trial</span>`;
         }

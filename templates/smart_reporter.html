@@ -543,10 +543,11 @@
                                           style="font-family: 'Courier New', monospace; font-size: 0.9rem; line-height: 1.6;"></textarea>
                             </div>
                             <div class="card-footer bg-white border-0 py-2 px-3">
-                                <div class="d-flex flex-wrap gap-2 align-items-center">
+                                <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between">
                                     <button class="btn btn-sm btn-brand-primary" onclick="reviewReport()">
                                         <i class="fas fa-spell-check me-1"></i>Quick Check
                                     </button>
+                                    <small id="editorUsageCounter" class="text-muted" style="font-size: 0.78rem;"></small>
                                 </div>
                             </div>
                         </div>
@@ -657,7 +658,6 @@
                             <div class="card-header bg-white border-0 py-2">
                                 <div class="d-flex justify-content-between align-items-center">
                                     <small class="fw-semibold"><i class="fas fa-user-md me-1" style="color: #e96304;"></i>RadInsight Intelligence</small>
-                                    <small class="text-muted" id="askClaudeCounter"></small>
                                 </div>
                                 <div class="mt-1">
                                     <small class="text-muted" style="font-size: 0.7rem;"><i class="fas fa-info-circle me-1"></i>Powered by RadInsight Intelligence &mdash; a fine-tuned radiology specific model. Do not enter patient-identifiable data. <a href="/privacy" target="_blank">Privacy Policy</a></small>
@@ -3580,7 +3580,8 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     function updateAskClaudeCounter() {
-        const el = document.getElementById('askClaudeCounter');
+        const el = document.getElementById('editorUsageCounter');
+        if (!el) return;
         if (!state.usageData) {
             el.textContent = 'Loading...';
             return;
@@ -3588,10 +3589,16 @@ document.addEventListener('DOMContentLoaded', function() {
         const d = state.usageData;
         const remaining = d.sr_remaining;
         const limit = d.sr_limit;
-        const used = limit - remaining;
+
+        // Admin: show clean "Unlimited" label
+        if (limit >= 9999) {
+            el.innerHTML = '<i class="fas fa-shield-alt me-1" style="color:var(--brand-neutral);"></i>Admin &mdash; Unlimited';
+            state.askClaudeRemaining = remaining;
+            return;
+        }
 
         if (d.trial_expired) {
-            el.innerHTML = '<span style="color:#dc3545;">Trial expired &mdash; <a href="#" onclick="showUpgradeModal(\'trial_expired\');return false;" style="color:#e96304;">Upgrade</a></span>';
+            el.innerHTML = '<span style="color:#dc3545;"><i class="fas fa-exclamation-circle me-1"></i>Trial expired &mdash; <a href="#" onclick="showUpgradeModal(\'trial_expired\');return false;" style="color:#e96304;">Upgrade</a></span>';
             return;
         }
 
@@ -3600,14 +3607,14 @@ document.addEventListener('DOMContentLoaded', function() {
         if (remaining <= Math.ceil(limit * 0.1)) color = '#dc3545'; // red
         else if (remaining <= Math.ceil(limit * 0.3)) color = '#ffc107'; // yellow
 
-        let text = `<span style="color:${color};">${remaining}/${limit} AI actions this month</span>`;
+        let html = `<i class="fas fa-bolt me-1" style="color:${color};"></i><span style="color:${color};">${remaining}/${limit} AI actions this month</span>`;
 
         // Trial warning when ≤3 days left
         if (d.trial_days_left !== null && d.trial_days_left <= 3) {
-            text += ` <span style="color:#ffc107;">&mdash; ${d.trial_days_left}d left in trial</span>`;
+            html += ` <span style="color:#ffc107;">&mdash; ${d.trial_days_left}d left in trial</span>`;
         }
 
-        el.innerHTML = text;
+        el.innerHTML = html;
         state.askClaudeRemaining = remaining;
     }
 
