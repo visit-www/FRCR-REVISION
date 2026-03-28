@@ -620,6 +620,30 @@
                                         Recommendations
                                     </button>
                                 </div>
+                                <!-- Report Actions (one-click AI transforms) -->
+                                <div class="d-flex flex-wrap gap-1 mb-2" id="reportActionButtons">
+                                    <small class="text-muted me-1" style="font-size: 0.65rem; line-height: 2;">Actions:</small>
+                                    <button class="btn py-0 px-2 report-action-btn" data-action="mdt" onclick="submitReportAction('mdt')"
+                                            style="font-size: 0.72rem; border: 1px solid #e96304; color: #e96304; background: transparent;">
+                                        <i class="fas fa-users me-1"></i>MDT
+                                    </button>
+                                    <button class="btn py-0 px-2 report-action-btn" data-action="sba" onclick="submitReportAction('sba')"
+                                            style="font-size: 0.72rem; border: 1px solid #198754; color: #198754; background: transparent;">
+                                        <i class="fas fa-graduation-cap me-1"></i>SBA
+                                    </button>
+                                    <button class="btn py-0 px-2 report-action-btn" data-action="viva" onclick="submitReportAction('viva')"
+                                            style="font-size: 0.72rem; border: 1px solid #6b46c1; color: #6b46c1; background: transparent;">
+                                        <i class="fas fa-comments me-1"></i>Viva
+                                    </button>
+                                    <button class="btn py-0 px-2 report-action-btn" data-action="email_colleague" onclick="submitReportAction('email_colleague')"
+                                            style="font-size: 0.72rem; border: 1px solid #5E899E; color: #5E899E; background: transparent;">
+                                        <i class="fas fa-user-md me-1"></i>Email Dr
+                                    </button>
+                                    <button class="btn py-0 px-2 report-action-btn" data-action="email_patient" onclick="submitReportAction('email_patient')"
+                                            style="font-size: 0.72rem; border: 1px solid #0d6efd; color: #0d6efd; background: transparent;">
+                                        <i class="fas fa-envelope me-1"></i>Email Pt
+                                    </button>
+                                </div>
                                 <!-- Anatomy quick-access with typeahead -->
                                 <div class="mb-2" style="position: relative;">
                                     <div class="input-group input-group-sm">
@@ -715,6 +739,26 @@
                                         </div>
                                         <div id="aiAssistCorrectionsBody" style="max-height: 300px; overflow-y: auto;">
                                             <div id="aiAssistCorrectionsList"></div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Report Action Response -->
+                                <div id="reportActionResponse" class="d-none mb-3">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <small class="fw-semibold" id="reportActionLabel">
+                                            <i class="fas fa-users me-1"></i>MDT Summary
+                                        </small>
+                                    </div>
+                                    <div id="reportActionCard" class="p-2 rounded" style="border-left: 3px solid #e96304; background: #fff8f0;">
+                                        <div id="reportActionContent" style="font-size: 0.85rem; line-height: 1.5;"></div>
+                                        <div class="d-flex flex-wrap gap-2 mt-2">
+                                            <button class="btn btn-sm btn-outline-secondary" onclick="copyReportAction()">
+                                                <i class="fas fa-copy me-1"></i>Copy
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-secondary" onclick="dismissReportAction()">
+                                                Dismiss
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
@@ -2194,6 +2238,7 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('suggestionsPanel').classList.add('d-none');
         document.getElementById('aiAssistResponse').classList.add('d-none');
         document.getElementById('aiAssistInsightsSection').classList.add('d-none');
+        document.getElementById('reportActionResponse').classList.add('d-none');
         hideAllAdaptivePanels();
     }
 
@@ -2813,6 +2858,119 @@ document.addEventListener('DOMContentLoaded', function() {
             askClaude();
         }
     });
+
+    // ==================== REPORT ACTIONS ====================
+
+    const REPORT_ACTION_META = {
+        mdt:              { label: 'MDT Summary',          icon: 'fa-users',          border: '#e96304', bg: '#fff8f0' },
+        sba:              { label: 'FRCR 2B SBA',          icon: 'fa-graduation-cap', border: '#198754', bg: '#f0f9f4' },
+        viva:             { label: 'FRCR 2B Viva',         icon: 'fa-comments',       border: '#6b46c1', bg: '#f8f4ff' },
+        email_colleague:  { label: 'Email to Colleague',   icon: 'fa-user-md',        border: '#5E899E', bg: '#f0f7fa' },
+        email_patient:    { label: 'Email to Patient',     icon: 'fa-envelope',       border: '#0d6efd', bg: '#f0f4ff' },
+    };
+
+    window.submitReportAction = async function(action) {
+        const reportText = getCurrentReportText();
+        if (!reportText) {
+            showToast('Please enter your report text first.', 'warning');
+            return;
+        }
+        if (await checkEditorPII()) return;
+
+        const meta = REPORT_ACTION_META[action];
+        if (!meta) return;
+
+        // Disable all action buttons during request
+        document.querySelectorAll('.report-action-btn').forEach(b => b.disabled = true);
+        document.getElementById('askClaudeLoading').classList.remove('d-none');
+        document.getElementById('reportActionResponse').classList.add('d-none');
+
+        const payload = {
+            action: action,
+            report_text: reportText,
+            clinical_question: (document.getElementById('inputClinicalQuestion') || {}).value || '',
+            modality: (document.getElementById('inputModality') || {}).value || '',
+            body_section: (document.getElementById('inputBodySection') || {}).value || '',
+        };
+        // Pass accumulated insights if available
+        const ins = state.aiAssistInsights;
+        if (ins && (ins.teaching_point || ins.recommendation_check ||
+            (ins.differentials_to_consider && ins.differentials_to_consider.length))) {
+            payload.insights = ins;
+        }
+
+        cancelAIRequest();
+        activeAIController = new AbortController();
+
+        fetch('/api/smart-reporter/report-action', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+            signal: activeAIController.signal,
+        })
+        .then(r => r.json())
+        .then(data => {
+            activeAIController = null;
+            document.querySelectorAll('.report-action-btn').forEach(b => b.disabled = false);
+            document.getElementById('askClaudeLoading').classList.add('d-none');
+
+            if (data.pii_blocked || data.error) {
+                if (!handlePIIResponse(data)) showToast(data.error, 'error');
+                return;
+            }
+
+            if (data.remaining_requests !== undefined) {
+                state.askClaudeRemaining = data.remaining_requests;
+                updateAskClaudeCounter();
+            }
+
+            // Render into the report action card
+            const container = document.getElementById('reportActionResponse');
+            const label = document.getElementById('reportActionLabel');
+            const card = document.getElementById('reportActionCard');
+            const content = document.getElementById('reportActionContent');
+
+            label.innerHTML = '<i class="fas ' + meta.icon + ' me-1"></i>' + meta.label;
+            label.style.color = meta.border;
+            card.style.borderLeft = '3px solid ' + meta.border;
+            card.style.background = meta.bg;
+            content.innerHTML = data.html || '<p>No content generated.</p>';
+            container.classList.remove('d-none');
+            container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        })
+        .catch(err => {
+            activeAIController = null;
+            document.querySelectorAll('.report-action-btn').forEach(b => b.disabled = false);
+            document.getElementById('askClaudeLoading').classList.add('d-none');
+            if (err.name === 'AbortError') {
+                showToast('Request cancelled.', 'info');
+            } else {
+                showToast('Failed to generate action. Please try again.', 'error');
+            }
+        });
+    };
+
+    window.copyReportAction = function() {
+        const content = document.getElementById('reportActionContent');
+        if (!content) return;
+        // Copy as plain text
+        const text = content.innerText || content.textContent;
+        navigator.clipboard.writeText(text).then(function() {
+            showToast('Copied to clipboard.', 'success');
+        }).catch(function() {
+            // Fallback: select the text
+            const range = document.createRange();
+            range.selectNodeContents(content);
+            const sel = window.getSelection();
+            sel.removeAllRanges();
+            sel.addRange(range);
+            showToast('Text selected — use Ctrl+C to copy.', 'info');
+        });
+    };
+
+    window.dismissReportAction = function() {
+        document.getElementById('reportActionResponse').classList.add('d-none');
+    };
 
     // Helper: ensure the output box is visible and editable.
     // skipPopulate=true prevents auto-copying the draft (used by insert functions

@@ -275,6 +275,13 @@ RULES FOR ANSWER AND REPORT_TEXT:
    Example: "I added the external auditory canal soft tissue finding to your Findings section —
    your impression mentioned it but your body said 'normal'. I also moved the recommendation
    for follow-up from findings to the recommendations section."
+10. REPORT QUALITY BAR:
+   - Any diagnosis in the IMPRESSION must be explicitly described in FINDINGS with correct
+     anatomical localisation. Do not introduce new findings in the impression.
+   - Recommendations must be specific, clinically actionable, and reflect severity. Avoid generic
+     phrases like "clinical correlation recommended" unless genuinely justified.
+   - Before returning report_text, review it as a consultant who must sign it: Are positive findings
+     described accurately and concisely? Would you sign this without modification? If not, revise.
 
 RULES FOR INSIGHTS:
 1. Be specific and actionable, not generic platitudes.
@@ -1237,6 +1244,199 @@ def unified_ai_assist(report_text, question, clinical_question='', modality='',
     parsed['token_count'] = tokens
 
     return parsed
+
+
+# ==================== REPORT ACTIONS ====================
+
+REPORT_ACTION_SYSTEM_PROMPT = (
+    "You are a consultant radiologist educator working in the UK NHS. "
+    "You produce professional, defensible clinical content. "
+    "Output valid HTML only — no markdown, no code fences, no text outside HTML tags. "
+    "Never include patient-identifiable information (names, dates of birth, hospital numbers). "
+    "Never fabricate findings beyond what is explicitly stated in the provided report. "
+    "Use British English spelling throughout."
+)
+
+ACTION_PROMPTS = {
+    'mdt': (
+        "Produce a concise MDT (multidisciplinary team meeting) summary from this radiology report. "
+        "Format as a brief structured HTML summary with these sections:\n"
+        "<h5>MDT Summary</h5>\n"
+        "<p><strong>Indication:</strong> [1-2 sentences from clinical question/report context]</p>\n"
+        "<p><strong>Key Imaging Findings:</strong> [Bullet list of pertinent positives and negatives]</p>\n"
+        "<p><strong>Radiological Impression:</strong> [1-2 sentence conclusion]</p>\n"
+        "<p><strong>Suggested Next Step:</strong> [Single recommended action]</p>\n\n"
+        "Keep it under 150 words. Be direct and factual — this is for busy clinicians in a meeting."
+    ),
+    'sba': (
+        "Create an FRCR Part 2B style Single Best Answer (SBA) question based on this radiology report. "
+        "The question should test radiological knowledge relevant to the findings described.\n\n"
+        "Format as HTML:\n"
+        "<h5>FRCR 2B Practice SBA</h5>\n"
+        "<div class='sba-vignette'>\n"
+        "<p><strong>Clinical vignette:</strong> [2-3 sentence clinical scenario inspired by the report — "
+        "change demographics, use a generic presentation. Do NOT copy the report verbatim.]</p>\n"
+        "<p><strong>Question:</strong> [Clear, unambiguous question stem]</p>\n"
+        "</div>\n"
+        "<ol type='A'>\n"
+        "  <li>[Option A]</li>\n  <li>[Option B]</li>\n  <li>[Option C]</li>\n"
+        "  <li>[Option D]</li>\n  <li>[Option E]</li>\n"
+        "</ol>\n"
+        "<details>\n"
+        "  <summary><strong>Show Answer &amp; Explanation</strong></summary>\n"
+        "  <p><strong>Correct answer:</strong> [Letter]</p>\n"
+        "  <p><strong>Explanation:</strong> [2-3 paragraph explanation covering why the correct answer "
+        "is right and why each distractor is wrong. Include relevant imaging features, classifications, "
+        "or grading systems where applicable.]</p>\n"
+        "</details>\n\n"
+        "Make all 5 options plausible. The correct answer should require genuine radiological reasoning, "
+        "not just pattern recognition. Pitch at FRCR 2B difficulty."
+    ),
+    'viva': (
+        "Create an FRCR Part 2B style viva (oral examination) scenario based on this radiology report. "
+        "Write it as an examiner-candidate dialogue that progressively explores the case.\n\n"
+        "Format as HTML:\n"
+        "<h5>FRCR 2B Practice Viva</h5>\n"
+        "<p><em>Scenario: [Brief setup — modality, body region, clinical context]</em></p>\n\n"
+        "Then a series of exchanges:\n"
+        "<div class='viva-exchange'>\n"
+        "  <p><strong>Examiner:</strong> [Question — start with describe the findings, "
+        "then progress to differential, then investigation/management]</p>\n"
+        "  <details><summary><strong>Model Answer</strong></summary>\n"
+        "    <p>[Structured model answer the candidate should give]</p>\n"
+        "  </details>\n"
+        "</div>\n\n"
+        "Include 4-6 exchanges that progress from:\n"
+        "1. Describe the findings\n"
+        "2. What is your differential diagnosis?\n"
+        "3. What is the most likely diagnosis and why?\n"
+        "4. What further imaging/investigations would you recommend?\n"
+        "5. How would you manage this patient? (if applicable)\n"
+        "6. What are the key pitfalls or complications? (if applicable)\n\n"
+        "Model answers should be consultant-level, structured, and concise."
+    ),
+    'email_colleague': (
+        "Write a professional email from a reporting radiologist to the referring clinician "
+        "summarising the key findings of this radiology report. This is for urgent or significant "
+        "findings that warrant direct communication.\n\n"
+        "Format as HTML:\n"
+        "<h5>Email to Referring Clinician</h5>\n"
+        "<div class='email-content'>\n"
+        "<p><strong>Subject:</strong> [Modality] [Body region] — [Key finding summary]</p>\n"
+        "<hr>\n"
+        "<p>Dear Colleague,</p>\n"
+        "<p>[Opening — I am writing to inform you of the findings from the recent imaging of your patient.]</p>\n"
+        "<p><strong>Key findings:</strong></p>\n"
+        "<ul><li>[Pertinent findings — clear, jargon-appropriate for a clinician]</li></ul>\n"
+        "<p><strong>Impression:</strong> [1-2 sentences]</p>\n"
+        "<p><strong>Recommendation:</strong> [Suggested next steps]</p>\n"
+        "<p>Please do not hesitate to contact me if you wish to discuss these findings further.</p>\n"
+        "<p>Kind regards,<br>[Reporting Radiologist]</p>\n"
+        "</div>\n\n"
+        "Use formal NHS professional tone. Be precise but avoid unnecessary jargon."
+    ),
+    'email_patient': (
+        "Write a patient-friendly letter explaining the findings of this radiology report "
+        "in clear, accessible language. This is for a patient who may have limited medical knowledge.\n\n"
+        "Format as HTML:\n"
+        "<h5>Letter to Patient</h5>\n"
+        "<div class='email-content'>\n"
+        "<p>Dear Patient,</p>\n"
+        "<p>[Opening — explain what scan was performed and why, in simple terms]</p>\n"
+        "<p><strong>What the scan showed:</strong></p>\n"
+        "<p>[Explain findings in lay terms — avoid medical jargon. Where medical terms are "
+        "unavoidable, provide a brief explanation in parentheses.]</p>\n"
+        "<p><strong>What this means:</strong></p>\n"
+        "<p>[Simple explanation of the clinical significance]</p>\n"
+        "<p><strong>What happens next:</strong></p>\n"
+        "<p>[Next steps — follow-up appointments, further tests, or reassurance as appropriate]</p>\n"
+        "<p>If you have any questions or concerns about these results, please contact your GP "
+        "or the department that arranged the scan.</p>\n"
+        "<p>Yours sincerely,<br>The Radiology Department</p>\n"
+        "</div>\n\n"
+        "Use a warm, reassuring tone. Aim for a reading age of 12-14 (NHS Accessible Information Standard). "
+        "Never minimise serious findings, but frame them constructively."
+    ),
+}
+
+ACTION_MODELS = {
+    'mdt': os.getenv("CLAUDE_MODEL_FAST", "claude-haiku-4-5-20251001"),
+}
+# All others default to Sonnet via the general default
+
+ACTION_TOKEN_LIMITS = {
+    'mdt': 800,
+    'sba': 2000,
+    'viva': 2500,
+    'email_colleague': 1500,
+    'email_patient': 1500,
+}
+
+
+def generate_report_action(report_text, action, clinical_question='',
+                           modality='', body_section='', insights=None):
+    """
+    Generate a report-derived action (MDT summary, SBA, viva, email).
+
+    Returns (html_text, model_used, token_count).
+    """
+    if action not in ACTION_PROMPTS:
+        raise SmartReporterError(f"Unknown report action: {action}")
+
+    # Build insight context from existing AI insights (if available)
+    insight_context = ''
+    if insights:
+        parts = []
+        tp = insights.get('teaching_point', '')
+        if tp:
+            parts.append(f"Teaching point: {tp}")
+        diffs = insights.get('differentials_to_consider', [])
+        if diffs:
+            parts.append(f"Differentials to consider: {', '.join(diffs)}")
+        rec = insights.get('recommendation_check', '')
+        if rec:
+            parts.append(f"Recommendations: {rec}")
+        qa = insights.get('quality_assessment', '')
+        if qa:
+            parts.append(f"Quality assessment: {qa}")
+        if parts:
+            insight_context = (
+                "\n\nADDITIONAL CONTEXT FROM PRIOR AI ANALYSIS:\n"
+                + '\n'.join(f"- {p}" for p in parts)
+                + "\nUse this context to enrich your output where relevant."
+            )
+
+    context_line = ''
+    if clinical_question or modality or body_section:
+        context_parts = []
+        if clinical_question:
+            context_parts.append(f"Clinical question: {clinical_question}")
+        if modality:
+            context_parts.append(f"Modality: {modality}")
+        if body_section:
+            context_parts.append(f"Body section: {body_section}")
+        context_line = '\n' + ' | '.join(context_parts)
+
+    user_prompt = (
+        f"{ACTION_PROMPTS[action]}\n\n"
+        f"RADIOLOGY REPORT:\n{report_text}"
+        f"{context_line}"
+        f"{insight_context}"
+    )
+
+    model = ACTION_MODELS.get(action, os.getenv("CLAUDE_MODEL", "claude-sonnet-4-5-20250929"))
+    max_tokens = ACTION_TOKEN_LIMITS.get(action, 1500)
+
+    html_text, model_used, tokens = _call_claude(
+        system_prompt=REPORT_ACTION_SYSTEM_PROMPT,
+        user_prompt=user_prompt,
+        model=model,
+        max_tokens=max_tokens,
+        temperature=0.4,
+        timeout=60,
+    )
+
+    return html_text, model_used, tokens
 
 
 # ==================== RESPONSE PARSERS ====================

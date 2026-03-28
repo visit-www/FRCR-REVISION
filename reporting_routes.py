@@ -2619,6 +2619,62 @@ def smart_reporter_ai_assist():
     })
 
 
+ALLOWED_REPORT_ACTIONS = {'mdt', 'sba', 'viva', 'email_colleague', 'email_patient'}
+
+@reporting_bp.route('/api/smart-reporter/report-action', methods=['POST'])
+@login_required
+def smart_reporter_report_action():
+    """Generate a report-derived action (MDT summary, SBA, viva, email)."""
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'JSON body required.'}), 400
+
+    action = (data.get('action') or '').strip()
+    report_text = (data.get('report_text') or '').strip()
+
+    if action not in ALLOWED_REPORT_ACTIONS:
+        return jsonify({'error': f'Invalid action. Must be one of: {", ".join(sorted(ALLOWED_REPORT_ACTIONS))}'}), 400
+    if not report_text:
+        return jsonify({'error': 'Report text is required.'}), 400
+
+    ok, remaining, err = _check_ai_rate_limit()
+    if not ok:
+        return err
+
+    clinical_question = (data.get('clinical_question') or '')
+    modality = (data.get('modality') or '')
+    body_section = (data.get('body_section') or '')
+    insights = data.get('insights')
+
+    try:
+        from ai_smart_reporter import generate_report_action, SmartReporterError
+        html_text, model_used, token_count = generate_report_action(
+            report_text=report_text,
+            action=action,
+            clinical_question=clinical_question,
+            modality=modality,
+            body_section=body_section,
+            insights=insights,
+        )
+    except Exception as exc:
+        logger.error(f"Report action '{action}' failed: {exc}")
+        from models import log_ai_usage
+        log_ai_usage(current_user.id, f'report_action_{action}', provider='anthropic',
+                     input_summary=report_text[:200], status='error', error_message=str(exc))
+        return jsonify({'error': f'Report action failed: {exc}'}), 500
+
+    from models import log_ai_usage
+    log_ai_usage(current_user.id, f'report_action_{action}', provider='anthropic',
+                 model=model_used, input_summary=report_text[:200])
+
+    return jsonify({
+        'success': True,
+        'action': action,
+        'html': html_text,
+        'remaining_requests': remaining,
+    })
+
+
 @reporting_bp.route('/api/smart-reporter/route-intent', methods=['POST'])
 @login_required
 def smart_reporter_route_intent():
