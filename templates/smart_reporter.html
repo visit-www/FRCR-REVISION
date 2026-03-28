@@ -465,6 +465,15 @@
                         </button>
                         <!-- Separator -->
                         <div class="vr mx-1 d-none d-md-block" style="height: 20px; opacity: 0.3;"></div>
+                        <!-- Quick Ask shortcuts -->
+                        <div class="d-flex flex-wrap gap-1">
+                            <button class="btn btn-outline-secondary py-0 px-2 quick-ask-btn" style="font-size: 0.72rem;" data-instruction="Write the impression" onclick="quickAsk(this)">Impression</button>
+                            <button class="btn btn-outline-secondary py-0 px-2 quick-ask-btn" style="font-size: 0.72rem;" data-instruction="What am I missing?" onclick="quickAsk(this)">Missing?</button>
+                            <button class="btn btn-outline-secondary py-0 px-2 quick-ask-btn" style="font-size: 0.72rem;" data-instruction="Check for differentials" onclick="quickAsk(this)">Differentials</button>
+                            <button class="btn btn-outline-secondary py-0 px-2 quick-ask-btn" style="font-size: 0.72rem;" data-instruction="Add recommendations if relevant for this report" onclick="quickAsk(this)">Recommendations</button>
+                        </div>
+                        <!-- Separator -->
+                        <div class="vr mx-1 d-none d-md-block" style="height: 20px; opacity: 0.3;"></div>
                         <!-- Ask Claude inline -->
                         <div class="input-group input-group-sm" style="max-width: 300px; flex: 1; min-width: 180px;">
                             <input type="text" id="askClaudeInput" class="form-control form-control-sm"
@@ -659,19 +668,19 @@
                                     </button>
                                 </div>
                                 <div class="d-flex flex-wrap gap-1 mb-2" id="quickAskButtons">
-                                    <button class="btn btn-outline-secondary py-0 px-2 quick-ask-btn" style="font-size: 0.72rem;" data-instruction="Finalize this report" onclick="toggleQuickAsk(this)">
+                                    <button class="btn btn-outline-secondary py-0 px-2 quick-ask-btn" style="font-size: 0.72rem;" data-instruction="Finalize this report" onclick="quickAsk(this)">
                                         <i class="fas fa-check-circle me-1"></i>Finalize
                                     </button>
-                                    <button class="btn btn-outline-secondary py-0 px-2 quick-ask-btn" style="font-size: 0.72rem;" data-instruction="Write the impression" onclick="toggleQuickAsk(this)">
+                                    <button class="btn btn-outline-secondary py-0 px-2 quick-ask-btn" style="font-size: 0.72rem;" data-instruction="Write the impression" onclick="quickAsk(this)">
                                         Impression
                                     </button>
-                                    <button class="btn btn-outline-secondary py-0 px-2 quick-ask-btn" style="font-size: 0.72rem;" data-instruction="What am I missing?" onclick="toggleQuickAsk(this)">
+                                    <button class="btn btn-outline-secondary py-0 px-2 quick-ask-btn" style="font-size: 0.72rem;" data-instruction="What am I missing?" onclick="quickAsk(this)">
                                         Missing?
                                     </button>
-                                    <button class="btn btn-outline-secondary py-0 px-2 quick-ask-btn" style="font-size: 0.72rem;" data-instruction="Check for differentials" onclick="toggleQuickAsk(this)">
+                                    <button class="btn btn-outline-secondary py-0 px-2 quick-ask-btn" style="font-size: 0.72rem;" data-instruction="Check for differentials" onclick="quickAsk(this)">
                                         Differentials
                                     </button>
-                                    <button class="btn btn-outline-secondary py-0 px-2 quick-ask-btn" style="font-size: 0.72rem;" data-instruction="Add recommendations if relevant for this report" onclick="toggleQuickAsk(this)">
+                                    <button class="btn btn-outline-secondary py-0 px-2 quick-ask-btn" style="font-size: 0.72rem;" data-instruction="Add recommendations if relevant for this report" onclick="quickAsk(this)">
                                         Recommendations
                                     </button>
                                 </div>
@@ -3263,54 +3272,28 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     };
 
-    // Track selected quick-ask instructions
-    const _activeQuickAsks = new Set();
-
-    window.toggleQuickAsk = function(btn) {
+    // Quick Ask: set instruction and immediately send
+    window.quickAsk = function(btn) {
         const instruction = btn.getAttribute('data-instruction');
-        if (_activeQuickAsks.has(instruction)) {
-            _activeQuickAsks.delete(instruction);
+        if (!instruction) return;
+        const input = document.getElementById('askClaudeInput');
+        input.value = instruction;
+        // Briefly highlight the clicked button
+        btn.classList.remove('btn-outline-secondary');
+        btn.classList.add('btn-brand-primary');
+        setTimeout(function() {
             btn.classList.remove('btn-brand-primary');
             btn.classList.add('btn-outline-secondary');
-        } else {
-            _activeQuickAsks.add(instruction);
-            btn.classList.remove('btn-outline-secondary');
-            btn.classList.add('btn-brand-primary');
-        }
-        // Build combined instruction in the text field
-        _syncQuickAskInput();
+        }, 1500);
+        askClaude();
     };
 
-    function _syncQuickAskInput() {
-        const input = document.getElementById('askClaudeInput');
-        const freeText = input.getAttribute('data-free-text') || '';
-        const parts = Array.from(_activeQuickAsks);
-        if (freeText) parts.push(freeText);
-        input.value = parts.join('. ');
-        if (parts.length > 0) input.focus();
-    }
-
     function _clearQuickAskButtons() {
-        _activeQuickAsks.clear();
         document.querySelectorAll('.quick-ask-btn').forEach(function(btn) {
             btn.classList.remove('btn-brand-primary');
             btn.classList.add('btn-outline-secondary');
         });
     }
-
-    // Preserve free-typed text separately so toggle buttons don't overwrite it
-    (function() {
-        const input = document.getElementById('askClaudeInput');
-        if (!input) return;
-        input.addEventListener('input', function() {
-            // If user types manually, store any text not from quick-ask buttons
-            const quickParts = Array.from(_activeQuickAsks);
-            let raw = input.value;
-            quickParts.forEach(function(p) { raw = raw.replace(p, ''); });
-            raw = raw.replace(/\.\s*/g, ' ').trim();
-            input.setAttribute('data-free-text', raw);
-        });
-    })();
 
     // ==================== AI ASSIST RENDERING ====================
 
