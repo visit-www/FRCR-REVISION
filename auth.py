@@ -331,7 +331,8 @@ def register():
             # Create user
             user = User(email=email, full_name=full_name)
             user.set_password(password)
-            
+            user.trial_started_at = datetime.utcnow()
+
             if is_first_user:
                 user.is_admin = True
                 user.role = UserRole.ADMIN
@@ -962,6 +963,7 @@ def google_callback():
                 is_admin=False,
                 is_active=True,
             )
+            user.trial_started_at = datetime.utcnow()
             # Set unusable password (random hash — cannot be used for password login)
             from werkzeug.security import generate_password_hash
             user.password_hash = generate_password_hash(secrets.token_hex(32))

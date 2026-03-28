@@ -248,7 +248,7 @@ def generate_radiq_response(question, category, db_context=''):
         db_context: Optional string of relevant DB content to include in prompt
 
     Returns:
-        str: HTML-formatted response
+        dict: {html, model, output_tokens}
 
     Raises:
         RadIQError on validation or API failure
@@ -281,4 +281,8 @@ def generate_radiq_response(question, category, db_context=''):
     logger.info("RadIQ response generated: category=%s model=%s tokens=%d",
                 category, model_used, tokens)
 
-    return text
+    return {
+        'html': text,
+        'model': model_used,
+        'output_tokens': tokens,
+    }

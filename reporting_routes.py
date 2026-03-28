@@ -242,41 +242,137 @@ def normalize_modality(raw):
 
 reporting_bp = Blueprint('reporting', __name__)
 
-AI_DAILY_LIMIT = 50  # Max AI requests per user per day
+TIER_LIMITS = {
+    'free':     {'sr_monthly': 10,   'radiq_monthly': 5,   'trial_days': 7},
+    'standard': {'sr_monthly': 75,   'radiq_monthly': 20,  'trial_days': None},
+    'elite':    {'sr_monthly': 1500, 'radiq_monthly': 60,  'trial_days': None},
+}
 
 
-def _check_ai_rate_limit():
-    """Check and increment per-user daily AI usage. Returns (ok, remaining, error_response)."""
-    from datetime import date
+def _check_ai_rate_limit(usage_type='sr'):
+    """Tier-based monthly AI rate limit. Returns (ok, remaining, error_response)."""
+    from datetime import date, timedelta
+    from models import UserRole
+
+    # Admin bypass
+    if current_user.role == UserRole.ADMIN or getattr(current_user, 'is_superadmin', False):
+        return True, 9999, None
+
+    tier = getattr(current_user, 'subscription_tier', 'free') or 'free'
+    limits = TIER_LIMITS.get(tier, TIER_LIMITS['free'])
+
+    # Trial expiry check (free tier only, non-grandfathered)
+    if tier == 'free' and current_user.trial_started_at is not None:
+        trial_end = current_user.trial_started_at + timedelta(days=limits['trial_days'])
+        if datetime.utcnow() > trial_end:
+            return False, 0, (jsonify({
+                'error': 'Your 7-day free trial has ended. Upgrade to continue using AI features.',
+                'upgrade_required': True,
+                'trial_expired': True,
+            }), 429)
+
+    # Monthly reset — if usage_reset_date is in a different month/year, reset counters
     today = date.today()
-    if current_user.ai_usage_date != today:
-        current_user.ai_usage_date = today
+    reset_date = current_user.usage_reset_date
+    if reset_date is None or reset_date.month != today.month or reset_date.year != today.year:
+        current_user.sr_usage_month = 0
+        current_user.radiq_usage_month = 0
+        current_user.usage_reset_date = today
+
+    # Pick the right counter & limit
+    if usage_type == 'radiq':
+        used = current_user.radiq_usage_month or 0
+        limit = limits['radiq_monthly']
+    else:
+        used = current_user.sr_usage_month or 0
+        limit = limits['sr_monthly']
+
+    if used >= limit:
+        return False, 0, (jsonify({
+            'error': f'You have used all {limit} {"RadIQ queries" if usage_type == "radiq" else "Smart Reporter actions"} '
+                     f'for this month. Upgrade for more.',
+            'upgrade_required': True,
+            'trial_expired': False,
+            'limit': limit,
+            'tier': tier,
+        }), 429)
+
+    # Increment the appropriate counter
+    if usage_type == 'radiq':
+        current_user.radiq_usage_month = used + 1
+    else:
+        current_user.sr_usage_month = used + 1
+
+    # Also bump legacy daily counter for analytics
+    today_date = date.today()
+    if current_user.ai_usage_date != today_date:
+        current_user.ai_usage_date = today_date
         current_user.ai_usage_count = 0
-    if (current_user.ai_usage_count or 0) >= AI_DAILY_LIMIT:
-        return False, 0, jsonify({
-            'error': f'You have reached the daily limit of {AI_DAILY_LIMIT} AI requests. '
-                     'Please try again tomorrow.'
-        }), 429
     current_user.ai_usage_count = (current_user.ai_usage_count or 0) + 1
+
     try:
         db.session.commit()
     except Exception:
         db.session.rollback()
-    remaining = AI_DAILY_LIMIT - current_user.ai_usage_count
+
+    remaining = limit - (used + 1)
     return True, remaining, None
 
 
 @reporting_bp.route('/api/smart-reporter/ai-usage', methods=['GET'])
 @login_required
 def get_ai_usage():
-    """Return remaining AI requests for today without incrementing the counter."""
-    from datetime import date
+    """Return tier-aware AI usage info without incrementing counters."""
+    from datetime import date, timedelta
+    from models import UserRole
+
+    tier = getattr(current_user, 'subscription_tier', 'free') or 'free'
+    limits = TIER_LIMITS.get(tier, TIER_LIMITS['free'])
+
+    # Monthly reset check
     today = date.today()
-    if current_user.ai_usage_date != today:
-        remaining = AI_DAILY_LIMIT
+    reset_date = current_user.usage_reset_date
+    if reset_date is None or reset_date.month != today.month or reset_date.year != today.year:
+        sr_used = 0
+        radiq_used = 0
     else:
-        remaining = max(0, AI_DAILY_LIMIT - (current_user.ai_usage_count or 0))
-    return jsonify({'remaining_requests': remaining, 'daily_limit': AI_DAILY_LIMIT})
+        sr_used = current_user.sr_usage_month or 0
+        radiq_used = current_user.radiq_usage_month or 0
+
+    sr_limit = limits['sr_monthly']
+    radiq_limit = limits['radiq_monthly']
+
+    # Admin bypass
+    if current_user.role == UserRole.ADMIN or getattr(current_user, 'is_superadmin', False):
+        sr_used = 0
+        radiq_used = 0
+        sr_limit = 9999
+        radiq_limit = 9999
+
+    # Trial info
+    trial_expired = False
+    trial_days_left = None
+    if tier == 'free' and current_user.trial_started_at is not None:
+        trial_end = current_user.trial_started_at + timedelta(days=limits['trial_days'])
+        now = datetime.utcnow()
+        if now > trial_end:
+            trial_expired = True
+            trial_days_left = 0
+        else:
+            trial_days_left = (trial_end - now).days
+
+    return jsonify({
+        'sr_remaining': max(0, sr_limit - sr_used),
+        'sr_limit': sr_limit,
+        'radiq_remaining': max(0, radiq_limit - radiq_used),
+        'radiq_limit': radiq_limit,
+        'tier': tier,
+        'trial_expired': trial_expired,
+        'trial_days_left': trial_days_left,
+        # Legacy compat keys
+        'remaining_requests': max(0, sr_limit - sr_used),
+        'daily_limit': sr_limit,
+    })
 
 
 # ==================== ALGORITHM FINDER (Unified Search) ====================

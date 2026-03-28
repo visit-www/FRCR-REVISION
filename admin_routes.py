@@ -7,7 +7,7 @@ from flask import Blueprint, request, jsonify, render_template_string, render_te
 from flask_login import login_required, current_user
 from models import db, User, UserRole, SubscriptionStatus, CaseAuditLog, Case
 from access_control import require_admin, require_role, delete_user_completely, can_delete_user, upgrade_to_paid, downgrade_to_free
-from datetime import datetime
+from datetime import datetime, timedelta
 from sqlalchemy import or_, and_
 import logging
 import os
@@ -2508,6 +2508,163 @@ def regenerate_backup_codes():
         'success': True,
         'backup_codes': plaintext_codes
     }), 200
+
+
+# ============================================================================
+# AI COST TRACKER
+# ============================================================================
+
+# Anthropic pricing per million tokens (as of 2026)
+MODEL_COSTS = {
+    'claude-sonnet-4-5-20250929': {'input': 3.00, 'output': 15.00},
+    'claude-sonnet-4-20250514':   {'input': 3.00, 'output': 15.00},
+    'claude-haiku-4-5-20251001':  {'input': 0.80, 'output': 4.00},
+}
+# Fallback for unknown models
+DEFAULT_MODEL_COST = {'input': 3.00, 'output': 15.00}
+
+
+def _calc_cost(model, input_tokens, output_tokens):
+    """Calculate USD cost from model name and token counts."""
+    rates = DEFAULT_MODEL_COST
+    for key, val in MODEL_COSTS.items():
+        if key in (model or ''):
+            rates = val
+            break
+    inp = (input_tokens or 0) * rates['input'] / 1_000_000
+    out = (output_tokens or 0) * rates['output'] / 1_000_000
+    return round(inp + out, 6)
+
+
+@admin_bp.route('/ai-costs', methods=['GET'])
+@require_admin
+def ai_costs():
+    """
+    Aggregate AI usage costs from AIAuditLog.
+
+    Query params:
+        days  — lookback period (default 30)
+        user_id — optional single-user filter
+    """
+    from models import AIAuditLog
+    from sqlalchemy import func
+
+    days = request.args.get('days', 30, type=int)
+    days = min(max(days, 1), 365)
+    user_id_filter = request.args.get('user_id', type=int)
+
+    cutoff = datetime.utcnow() - timedelta(days=days)
+
+    try:
+        base_q = AIAuditLog.query.filter(AIAuditLog.created_at >= cutoff)
+        if user_id_filter:
+            base_q = base_q.filter(AIAuditLog.user_id == user_id_filter)
+
+        rows = base_q.all()
+
+        # ── Summary ──
+        total_requests = len(rows)
+        total_cost = sum(_calc_cost(r.model, r.input_tokens, r.output_tokens) for r in rows)
+        avg_cost = round(total_cost / total_requests, 6) if total_requests else 0
+
+        date_from = cutoff.strftime('%Y-%m-%d')
+        date_to = datetime.utcnow().strftime('%Y-%m-%d')
+
+        # ── By user ──
+        user_map = {}
+        for r in rows:
+            uid = r.user_id or 0
+            if uid not in user_map:
+                user_map[uid] = {'input_tokens': 0, 'output_tokens': 0, 'requests': 0}
+            user_map[uid]['input_tokens'] += r.input_tokens or 0
+            user_map[uid]['output_tokens'] += r.output_tokens or 0
+            user_map[uid]['requests'] += 1
+
+        # Batch-fetch usernames
+        user_ids = [uid for uid in user_map if uid]
+        users_by_id = {}
+        if user_ids:
+            for u in User.query.filter(User.id.in_(user_ids)).all():
+                users_by_id[u.id] = u
+
+        # Pre-calculate per-user costs using actual model data
+        user_costs = {}
+        for r in rows:
+            uid = r.user_id or 0
+            user_costs[uid] = user_costs.get(uid, 0) + _calc_cost(r.model, r.input_tokens, r.output_tokens)
+
+        by_user = []
+        for uid, data in user_map.items():
+            u = users_by_id.get(uid)
+            by_user.append({
+                'user_id': uid,
+                'username': u.full_name if u else ('System' if uid == 0 else 'Unknown'),
+                'email': u.email if u else '',
+                'requests': data['requests'],
+                'input_tokens': data['input_tokens'],
+                'output_tokens': data['output_tokens'],
+                'cost_usd': round(user_costs.get(uid, 0), 4),
+            })
+        by_user.sort(key=lambda x: -x['cost_usd'])
+
+        # ── By action ──
+        action_map = {}
+        for r in rows:
+            act = r.action or 'unknown'
+            if act not in action_map:
+                action_map[act] = {'requests': 0, 'cost': 0}
+            action_map[act]['requests'] += 1
+            action_map[act]['cost'] += _calc_cost(r.model, r.input_tokens, r.output_tokens)
+        by_action = [
+            {'action': act, 'requests': d['requests'], 'cost_usd': round(d['cost'], 4)}
+            for act, d in sorted(action_map.items(), key=lambda x: -x[1]['cost'])
+        ]
+
+        # ── By day ──
+        day_map = {}
+        for r in rows:
+            day_key = r.created_at.strftime('%Y-%m-%d') if r.created_at else 'unknown'
+            if day_key not in day_map:
+                day_map[day_key] = {'requests': 0, 'cost': 0}
+            day_map[day_key]['requests'] += 1
+            day_map[day_key]['cost'] += _calc_cost(r.model, r.input_tokens, r.output_tokens)
+        by_day = [
+            {'date': d, 'requests': v['requests'], 'cost_usd': round(v['cost'], 4)}
+            for d, v in sorted(day_map.items())
+        ]
+
+        # ── By model ──
+        model_map = {}
+        for r in rows:
+            m = r.model or 'unknown'
+            if m not in model_map:
+                model_map[m] = {'requests': 0, 'cost': 0, 'input_tokens': 0, 'output_tokens': 0}
+            model_map[m]['requests'] += 1
+            model_map[m]['input_tokens'] += r.input_tokens or 0
+            model_map[m]['output_tokens'] += r.output_tokens or 0
+            model_map[m]['cost'] += _calc_cost(r.model, r.input_tokens, r.output_tokens)
+        by_model = [
+            {'model': m, 'requests': d['requests'], 'cost_usd': round(d['cost'], 4),
+             'input_tokens': d['input_tokens'], 'output_tokens': d['output_tokens']}
+            for m, d in sorted(model_map.items(), key=lambda x: -x[1]['cost'])
+        ]
+
+        return jsonify({
+            'summary': {
+                'total_requests': total_requests,
+                'total_cost_usd': round(total_cost, 4),
+                'avg_cost_per_request': round(avg_cost, 6),
+                'date_range': {'from': date_from, 'to': date_to},
+            },
+            'by_user': by_user,
+            'by_action': by_action,
+            'by_day': by_day,
+            'by_model': by_model,
+        }), 200
+
+    except Exception as e:
+        logger.error(f"Error fetching AI costs: {e}")
+        return jsonify({'error': str(e)}), 500
 
 
 # ============================================================================

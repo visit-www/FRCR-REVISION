@@ -270,6 +270,13 @@ class User(UserMixin, db.Model):
     ai_usage_date = db.Column(db.Date, nullable=True)  # Date of last AI usage
     ai_usage_count = db.Column(db.Integer, default=0)   # Number of AI requests today
 
+    # === SUBSCRIPTION TIER & MONTHLY AI USAGE ===
+    subscription_tier = db.Column(db.String(20), default='free')   # 'free', 'standard', 'elite'
+    trial_started_at = db.Column(db.DateTime, nullable=True)       # NULL = grandfathered (no trial expiry)
+    sr_usage_month = db.Column(db.Integer, default=0)              # Smart Reporter actions this month
+    radiq_usage_month = db.Column(db.Integer, default=0)           # RadIQ queries this month
+    usage_reset_date = db.Column(db.Date, nullable=True)           # 1st of current billing month
+
     # === LOGIN RATE LIMITING (brute force protection) ===
     failed_login_count = db.Column(db.Integer, default=0)
     failed_login_last = db.Column(db.DateTime, nullable=True)

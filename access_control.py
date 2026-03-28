@@ -500,15 +500,16 @@ def can_delete_user(target_user, deleting_user=None):
 
 # ==================== SUBSCRIPTION HELPERS ====================
 
-def upgrade_to_paid(user, subscription_end_date=None):
+def upgrade_to_paid(user, subscription_end_date=None, tier='standard'):
     """Upgrade user to paid subscription"""
     from models import db
     from datetime import datetime
-    
+
     user.subscription_status = SubscriptionStatus.PAID
     user.payment_status = PaymentStatus.ACTIVE
     user.subscription_start_date = datetime.utcnow()
     user.subscription_end_date = subscription_end_date
+    user.subscription_tier = tier
     db.session.commit()
 
 
@@ -516,10 +517,11 @@ def downgrade_to_free(user):
     """Downgrade user to free subscription"""
     from models import db
     from datetime import datetime
-    
+
     user.subscription_status = SubscriptionStatus.FREE
     user.payment_status = PaymentStatus.CANCELED
     user.subscription_end_date = datetime.utcnow()
+    user.subscription_tier = 'free'
     db.session.commit()
 
 

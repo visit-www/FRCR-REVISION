@@ -905,6 +905,13 @@ with app.app_context():
         _add_col_if_missing('user', 'ai_usage_date', 'ai_usage_date DATE')
         _add_col_if_missing('user', 'ai_usage_count', 'ai_usage_count INTEGER DEFAULT 0')
 
+        # -- user: Subscription tier & monthly AI usage --
+        _add_col_if_missing('user', 'subscription_tier', "subscription_tier VARCHAR(20) DEFAULT 'free'")
+        _add_col_if_missing('user', 'trial_started_at', 'trial_started_at TIMESTAMP')
+        _add_col_if_missing('user', 'sr_usage_month', 'sr_usage_month INTEGER DEFAULT 0')
+        _add_col_if_missing('user', 'radiq_usage_month', 'radiq_usage_month INTEGER DEFAULT 0')
+        _add_col_if_missing('user', 'usage_reset_date', 'usage_reset_date DATE')
+
         # -- user: Login rate limiting (brute force protection) --
         _add_col_if_missing('user', 'failed_login_count', 'failed_login_count INTEGER DEFAULT 0')
         _add_col_if_missing('user', 'failed_login_last', 'failed_login_last TIMESTAMP')

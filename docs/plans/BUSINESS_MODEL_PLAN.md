@@ -1,50 +1,108 @@
 # RadInsights Business Model & Implementation Plan
 
-> **Last Updated:** January 25, 2026  
-> **Domain:** radinsights.xyz  
-> **Status:** Planning Phase
+> **Last Updated:** March 28, 2026
+> **Domain:** radinsights.xyz
+> **Status:** Planning Phase — Pricing Finalized
 
 ---
 
 ## Executive Summary
 
-Implement a freemium business model with 7-day trial, tiered subscriptions (monthly/annual), dual-currency support (INR via Razorpay, GBP via Stripe), and progressive upgrade CTAs.
+RadInsights uses a 3-tier freemium model (Free / Standard / Elite) with AI action-based limits. Pricing is designed around radiologist workflow patterns, where one report typically consumes ~2.5 AI actions (Smart Reporter walkthrough + finalize). Payment processing via Stripe (GBP) and Razorpay (INR) with geo-detection.
 
 ---
 
-## Business Model Summary
+## Pricing Structure
 
-### Tier Structure
+### Tier Overview
 
-| Tier | Price (INR) | Price (GBP) | Access |
-|------|-------------|-------------|--------|
-| Trial | Free / 7 days | Free / 7 days | Full access |
-| Free | Free | Free | Unlimited search, 3 case reads/month |
-| Monthly | ₹999/mo | £9.99/mo | Unlimited access |
-| Annual | ₹6,499/yr | £79.99/yr | Unlimited + priority |
+| Feature | Free | Standard | Elite |
+|---------|------|----------|-------|
+| **Launch Price** | £0 forever | **£9/month** | **£29/month** |
+| **Full Price** | £0 forever | £15/month | £45/month |
+| **Smart Reporter Actions** | 10/month | 75/month | 1,500/month |
+| **Estimated Reports** | ~4 reports | ~30 reports | ~600 reports |
+| **RadIQ Queries** | 5/month | 20/month | 60/month |
+| **Total AI Actions** | 15/month | 95/month | 1,560/month |
+| **Case Library** | Full access | Full access | Full access |
+| **TNM Calculators** | Full access | Full access | Full access |
+| **Radiology Tools** | Full access | Full access | Full access |
+| **Clinical Protocols** | Full access | Full access | Full access |
+| **Knowledge Hub** | Full access | Full access | Full access |
+| **Learning Questions** | Full access | Full access | Full access |
 
-### Revenue Streams
+### INR Pricing (India)
 
-**Primary (80%):**
-- Individual subscriptions (Razorpay for INR, Stripe for GBP)
-- Institutional licensing (manual initially)
+| Tier | Launch Price | Full Price |
+|------|-------------|------------|
+| Free | ₹0 forever | ₹0 forever |
+| Standard | ₹749/month | ₹1,249/month |
+| Elite | ₹2,399/month | ₹3,749/month |
 
-**Secondary (20%):**
-- Single case pass: ₹79 / £0.99
-- TNM Deep Dive packs: ₹1,499 / £14.99 per organ system
-- Mock exam packs: ₹1,999 / £19.99
+### AI Action Economics
+
+**Cost per AI action:** ~£0.016 ($0.02 USD) — Anthropic Claude Sonnet API
+- Smart Reporter walkthrough: 1 action per step (~2 steps average)
+- Finalize report: 1 action
+- **Average per report: ~2.5 AI actions**
+- RadIQ query: 1 action each
+- Quick Ask (impression, MDT, SBA, etc.): 1 action each
+
+### Tier Cost Analysis
+
+| Tier | Monthly Revenue | Max AI Cost | Gross Margin |
+|------|----------------|-------------|--------------|
+| Free | £0 | £0.24 (15 actions) | -£0.24 |
+| Standard (launch) | £9 | £1.52 (95 actions) | £7.48 (83%) |
+| Standard (full) | £15 | £1.52 (95 actions) | £13.48 (90%) |
+| Elite (launch) | £29 | £24.96 (1,560 actions) | £4.04 (14%) |
+| Elite (full) | £45 | £24.96 (1,560 actions) | £20.04 (45%) |
+
+> **Note:** Elite at launch price has thin margins if user exhausts all 1,500 SR actions. In practice, most users will use 50-70% of quota. At 70% usage, Elite launch margin rises to ~£11.52 (40%).
+
+### Usage Assumptions
+
+Based on real-world radiologist workflow data:
+- **Light user (Free):** Explores the platform, tries a few reports
+- **Standard user:** ~3-4 reports/day, 5 days/week = ~60-80 reports/month (needs ~150-200 SR actions; 75 covers ~30 reports)
+- **Elite user:** ~20-30 reports/day, 5 days/week = ~400-600 reports/month (needs ~1,000-1,500 SR actions)
+- **RadIQ usage:** Power users ask ~1-2 queries/day = ~20-40/month
+
+---
+
+## Revenue Streams
+
+### Primary (90%)
+- Individual subscriptions (Stripe for GBP, Razorpay for INR)
+- Institutional licensing (manual onboarding, bulk discounts)
+
+### Secondary (10%)
+- Future: Mock exam packs, CME credit packages
+- Future: API access for radiology departments
 
 ---
 
 ## Current State (Already Built)
 
-The codebase already has subscription infrastructure in `models.py`:
+The codebase has subscription infrastructure in `models.py`:
 
 - `SubscriptionStatus` enum: `FREE`, `PAID`, `CANCELED`
 - `PaymentStatus` enum: `NO_SUBSCRIPTION`, `ACTIVE`, `PAST_DUE`, `CANCELED`
 - `subscription_start_date`, `subscription_end_date` fields on User
 - Access control in `access_control.py` limiting FREE users to 2 cases/module
 - Helper functions: `upgrade_to_paid()`, `downgrade_to_free()`, `cancel_subscription()`
+- AI rate limiting: `ai_usage_date` + `ai_usage_count` on User model
+- `_check_ai_rate_limit()` in `reporting_routes.py` and `radiq_routes.py`
+
+### What Needs to Change
+
+1. **Rate limiting** — Currently flat 50/day for all users. Needs tier-based monthly limits:
+   - Separate counters for Smart Reporter and RadIQ
+   - Monthly reset instead of daily reset
+   - Tier-aware limit checking
+2. **Subscription tiers** — Add `STANDARD` and `ELITE` to `SubscriptionStatus` or create separate `SubscriptionTier` enum
+3. **Payment integration** — Stripe + Razorpay with webhook handling
+4. **Frontend** — Display tier-appropriate limits, upgrade CTAs
 
 ---
 
@@ -55,16 +113,15 @@ The codebase already has subscription infrastructure in `models.py`:
 │                         USER JOURNEY                                 │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                     │
-│   Sign Up → 7-Day Trial → Trial Ends?                               │
-│                              │                                       │
-│                    ┌─────────┴─────────┐                            │
-│                    │                   │                            │
-│              No Payment           Subscribe                         │
-│                    │                   │                            │
-│                    ▼                   ▼                            │
-│              Free Tier            Paid Tier                         │
+│   Sign Up → Free Tier (10 SR + 5 RadIQ/month)                       │
 │                    │                                                │
-│              Hit Read Limit? ──────► Upgrade Modal                  │
+│              Hit AI Limit? ──────► Upgrade Modal                    │
+│                    │                                                │
+│           ┌────────┴────────┐                                       │
+│           │                 │                                       │
+│       Standard            Elite                                     │
+│    75 SR + 20 RadIQ    1500 SR + 60 RadIQ                          │
+│       £9/month            £29/month                                 │
 │                                                                     │
 └─────────────────────────────────────────────────────────────────────┘
 
@@ -87,65 +144,95 @@ The codebase already has subscription infrastructure in `models.py`:
 │              │                   │                                  │
 │              └─────────┬─────────┘                                  │
 │                        ▼                                            │
-│              Update User: PAID                                      │
+│              Update User: tier + limits                             │
 │                                                                     │
 └─────────────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────────────┐
-│                       ACCESS CONTROL                                 │
+│                    AI RATE LIMITING                                   │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                     │
-│   View Case → Check Subscription                                    │
-│                      │                                              │
-│         ┌────────────┼────────────┐                                 │
-│         │            │            │                                 │
-│       PAID        TRIAL         FREE                                │
-│         │            │            │                                 │
-│         ▼            ▼            ▼                                 │
-│       Allow    Check Expiry   Monthly Reads Left?                   │
-│                     │            │                                  │
-│                     ▼        ┌───┴───┐                              │
-│                   Allow      │       │                              │
-│                           Yes       No                              │
-│                            │         │                              │
-│                            ▼         ▼                              │
-│                     Allow + Dec   Upgrade Modal                     │
+│   AI Request → Check Tier → Get Monthly Limit                       │
+│                                │                                    │
+│                    ┌───────────┼───────────┐                        │
+│                    │           │           │                        │
+│                  Free      Standard      Elite                      │
+│                    │           │           │                        │
+│                    ▼           ▼           ▼                        │
+│                 10 SR       75 SR      1500 SR                      │
+│                 5 RadIQ     20 RadIQ    60 RadIQ                   │
+│                    │                                                │
+│              Monthly Used < Limit?                                  │
+│                    │                                                │
+│              ┌─────┴─────┐                                          │
+│              │           │                                          │
+│            Yes          No                                          │
+│              │           │                                          │
+│              ▼           ▼                                          │
+│           Allow      Upgrade Modal                                  │
 │                                                                     │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Phase 1: Database & Model Updates
+## Phase 1: Tier-Based Rate Limiting
 
 ### New Fields for User Model
 
-Add to `models.py`:
-
 ```python
-# Payment gateway fields
-payment_gateway = db.Column(db.String(20), nullable=True)  # 'razorpay' or 'stripe'
-gateway_customer_id = db.Column(db.String(100), nullable=True)
-gateway_subscription_id = db.Column(db.String(100), nullable=True)
-preferred_currency = db.Column(db.String(3), default='INR')  # 'INR' or 'GBP'
+# Subscription tier
+subscription_tier = db.Column(db.String(20), default='free')  # 'free', 'standard', 'elite'
 
-# Trial period
-trial_ends_at = db.Column(db.DateTime, nullable=True)
-is_trial_used = db.Column(db.Boolean, default=False)
-
-# Monthly read tracking (for free tier)
-monthly_reads_count = db.Column(db.Integer, default=0)
-monthly_reads_reset_at = db.Column(db.DateTime, nullable=True)
+# Monthly AI usage tracking (replaces daily ai_usage_count)
+sr_usage_month = db.Column(db.Integer, default=0)       # Smart Reporter actions this month
+radiq_usage_month = db.Column(db.Integer, default=0)    # RadIQ queries this month
+usage_reset_date = db.Column(db.Date, nullable=True)     # 1st of current billing month
 ```
 
-### Update SubscriptionStatus Enum
+### Tier Limits Config
 
 ```python
-class SubscriptionStatus(enum.Enum):
-    TRIAL = "trial"      # NEW: 7-day full access
-    FREE = "free"        # Limited: 3 reads/month
-    PAID = "paid"        # Unlimited access
-    CANCELED = "canceled"
+TIER_LIMITS = {
+    'free':     {'sr_monthly': 10,   'radiq_monthly': 5},
+    'standard': {'sr_monthly': 75,   'radiq_monthly': 20},
+    'elite':    {'sr_monthly': 1500, 'radiq_monthly': 60},
+}
+```
+
+### Updated Rate Limit Check
+
+```python
+def _check_ai_rate_limit(usage_type='sr'):
+    """Check tier-based monthly AI usage."""
+    today = date.today()
+    # Reset on 1st of month or first use
+    if not current_user.usage_reset_date or current_user.usage_reset_date.month != today.month:
+        current_user.sr_usage_month = 0
+        current_user.radiq_usage_month = 0
+        current_user.usage_reset_date = today
+
+    tier = current_user.subscription_tier or 'free'
+    limits = TIER_LIMITS.get(tier, TIER_LIMITS['free'])
+
+    if usage_type == 'sr':
+        used = current_user.sr_usage_month or 0
+        limit = limits['sr_monthly']
+    else:
+        used = current_user.radiq_usage_month or 0
+        limit = limits['radiq_monthly']
+
+    if used >= limit:
+        return False, 0, upgrade_response(tier, usage_type)
+
+    # Increment
+    if usage_type == 'sr':
+        current_user.sr_usage_month = used + 1
+    else:
+        current_user.radiq_usage_month = used + 1
+    db.session.commit()
+
+    return True, limit - used - 1, None
 ```
 
 ---
@@ -153,8 +240,6 @@ class SubscriptionStatus(enum.Enum):
 ## Phase 2: Payment Gateway Integration
 
 ### New File: `payment_routes.py`
-
-**Endpoints:**
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
@@ -180,126 +265,91 @@ STRIPE_SECRET_KEY=sk_live_xxx
 STRIPE_PUBLISHABLE_KEY=pk_live_xxx
 STRIPE_WEBHOOK_SECRET=whsec_xxx
 
-# Plans (created in dashboards)
-RAZORPAY_PLAN_MONTHLY=plan_xxx
-RAZORPAY_PLAN_ANNUAL=plan_xxx
-STRIPE_PRICE_MONTHLY=price_xxx
-STRIPE_PRICE_ANNUAL=price_xxx
+# Stripe Price IDs
+STRIPE_PRICE_STANDARD_MONTHLY=price_xxx
+STRIPE_PRICE_ELITE_MONTHLY=price_xxx
 ```
 
 ---
 
-## Phase 3: Access Control Updates
+## Phase 3: Frontend Updates
 
-### Update `access_control.py`
+### Upgrade Modal
 
-Replace current "2 cases per module" logic with monthly read counter:
+When user hits AI limit:
+- Show current usage vs limit
+- "Upgrade to Standard for 75 AI actions/month" or "Upgrade to Elite for 1,500 AI actions/month"
+- CTA buttons linking to Stripe/Razorpay checkout
+- Launch pricing badge: "Limited time: £9/month (normally £15)"
 
-```python
-def can_view_case(case, user=None):
-    # Admin/Content Manager: always allowed
-    # Trial: full access if not expired
-    # Paid: full access
-    # Free: check monthly_reads_count < 3
-```
+### Counter Display
 
-### Add Monthly Reset Logic
+- Smart Reporter: Show "X/Y AI actions remaining this month"
+- RadIQ: Show "X/Y queries remaining this month"
+- Color coding: green (>50%), yellow (25-50%), red (<25%)
 
-Reset `monthly_reads_count` to 0 on the 1st of each month:
+### Pricing Page
 
-```python
-def reset_monthly_reads():
-    users = User.query.filter(
-        User.subscription_status == SubscriptionStatus.FREE
-    ).all()
-    for user in users:
-        user.monthly_reads_count = 0
-        user.monthly_reads_reset_at = datetime.utcnow()
-    db.session.commit()
-```
+- 3-column comparison (Free / Standard / Elite)
+- Launch pricing prominently displayed
+- Feature comparison table
+- Currency toggle (GBP/INR)
 
 ---
 
-## Phase 4: Frontend Components
-
-### New Templates/Pages
-
-| Page | Description |
-|------|-------------|
-| `templates/pricing.html` | Plan comparison with currency toggle |
-| `templates/checkout_success.html` | Post-payment confirmation |
-| `templates/billing.html` | Subscription management, cancel |
-
-### Upgrade Modal (Inject into Case View)
-
-When free user hits limit:
-- "You've used 3 of 3 free case reads this month"
-- "Upgrade to unlock unlimited cases"
-- CTA buttons for Monthly / Annual plans
-
-### Trial Banner
-
-For trial users:
-- "Trial ends in X days" banner at top
-- Progressive urgency (green → yellow → red)
-
----
-
-## Phase 5: Email Sequences
+## Phase 4: Email Sequences
 
 Using existing Resend integration in `auth.py`:
 
 | Trigger | Email |
 |---------|-------|
-| Trial Day 1 | Welcome + feature highlights |
-| Trial Day 5 | "2 days left" + upgrade benefits |
-| Trial Day 7 | Trial ended + special offer |
+| Sign Up | Welcome + feature highlights + Free tier info |
+| Hit Free Limit | "Upgrade to unlock more AI actions" |
 | Payment Failed | Retry prompt + account access warning |
 | Subscription Canceled | Feedback request + return offer |
+| Monthly Reset | Usage summary + tier recommendation |
 
 ---
 
 ## Implementation Checklist
 
-### Phase 1: Database
-- [ ] Add new User fields (payment_gateway, trial_ends_at, monthly_reads_count)
-- [ ] Update SubscriptionStatus enum to include TRIAL
-- [ ] Create database migration
-- [ ] Test migration locally and on Neon
+### Phase 1: Tier-Based Rate Limiting
+- [ ] Add `subscription_tier`, `sr_usage_month`, `radiq_usage_month`, `usage_reset_date` to User model
+- [ ] Add `_add_col_if_missing()` calls in `app.py` for new columns
+- [ ] Update `_check_ai_rate_limit()` in `reporting_routes.py` for tier-based monthly limits
+- [ ] Update `_check_ai_rate_limit()` in `radiq_routes.py` for tier-based monthly limits
+- [ ] Update `/api/smart-reporter/ai-usage` endpoint to return tier info
+- [ ] Update Smart Reporter counter display (monthly, tier-aware)
+- [ ] Test rate limiting per tier
 
 ### Phase 2: Payment Backend
-- [ ] Create payment_routes.py with Razorpay integration
-- [ ] Add Stripe integration for GBP
-- [ ] Implement webhook handlers
+- [ ] Create `payment_routes.py` with Stripe integration
+- [ ] Add Razorpay integration for INR
+- [ ] Implement webhook handlers (tier upgrade on payment)
 - [ ] Add geo-detection utility
-- [ ] Create subscription plans in Razorpay dashboard
-- [ ] Create price IDs in Stripe dashboard
+- [ ] Create Stripe price IDs for Standard/Elite
+- [ ] Create Razorpay plans for Standard/Elite
 
-### Phase 3: Access Control
-- [ ] Update can_view_case() for monthly read limits
-- [ ] Add monthly read reset logic
-- [ ] Update trial expiry check
-- [ ] Test access restrictions
-
-### Phase 4: Frontend
+### Phase 3: Frontend
 - [ ] Create pricing page with currency toggle
-- [ ] Add upgrade modal component
-- [ ] Add trial countdown banner
+- [ ] Add upgrade modal component (shown on limit hit)
 - [ ] Create billing management page
+- [ ] Update Smart Reporter to show monthly usage
+- [ ] Update RadIQ to show monthly usage
 - [ ] Style to match app branding (see STYLE_GUIDE.md)
 
-### Phase 5: Emails
-- [ ] Trial reminder sequences (Day 1, 5, 7)
+### Phase 4: Emails
+- [ ] Welcome email on sign up
+- [ ] Upgrade prompt on limit hit
 - [ ] Payment failure notifications
-- [ ] Subscription lifecycle emails
+- [ ] Monthly usage summary
 - [ ] Test email delivery
 
-### Phase 6: Testing & Launch
-- [ ] Test complete flow in Razorpay/Stripe test mode
-- [ ] A/B test trial length (7 vs 14 days)
-- [ ] A/B test read limit (3 vs 5 per month)
+### Phase 5: Testing & Launch
+- [ ] Test complete flow in Stripe/Razorpay test mode
+- [ ] Monitor AI usage patterns for first 2 weeks
+- [ ] Adjust limits if needed based on real usage data
 - [ ] Set up analytics for conversion tracking
-- [ ] Monitor conversion metrics
 
 ---
 
@@ -307,38 +357,30 @@ Using existing Resend integration in `auth.py`:
 
 | Metric | Target |
 |--------|--------|
-| Trial → Paid conversion | 15-25% |
-| Free → Paid conversion | 3-7% |
+| Free → Standard conversion | 10-20% |
+| Free → Elite conversion | 3-7% |
+| Standard → Elite upgrade | 15-25% |
 | Monthly churn | < 5% |
-| LTV (Annual) | ₹8,000 / £80-120 |
-| CAC payback | < 3 months |
-
----
-
-## Domain Configuration
-
-**Domain:** `radinsights.xyz`
-
-Once DNS propagates:
-1. Update `APP_URL` in Vercel environment variables to `https://www.radinsights.xyz`
-2. Update `.env` locally
-3. Redeploy application
-4. Test password reset emails use new domain
+| Average revenue per user | £12-18/month |
+| CAC payback | < 2 months |
 
 ---
 
 ## Competitive Positioning
 
 **Our Moat:**
-- TNM Intelligence + FRCR-specific structure
-- AI-generated staging summaries from radiologist perspective
+- AI-powered Smart Reporter with structured walkthrough
+- RadIQ consultant-level AI assistant
+- TNM Intelligence + 39 staging calculators
 - FRCR module-aligned case organization
-- Personal notes/highlights with case progression
+- Knowledge Hub (algorithms, templates, protocols, tools)
+- Personal study tracking with learning questions
 
 **What Competitors Don't Have:**
-- Radiopaedia: No FRCR-specific organization
-- Radiology Masterclass: No AI-powered features
-- Others: No personalized study tracking
+- Radiopaedia: No AI-powered reporting or structured learning
+- Radiology Masterclass: No interactive AI features
+- RefinedRad: No FRCR-specific structure or TNM intelligence
+- Others: No integrated knowledge hub + AI assistant combination
 
 ---
 
@@ -348,3 +390,5 @@ Once DNS propagates:
 - [STYLE_GUIDE.md](../STYLE_GUIDE.md) - Branding and styling
 - [USER_ROLES_WORKFLOWS.md](../USER_ROLES_WORKFLOWS.md) - Role permissions
 - [AI_INTEGRATION_REFERENCE.md](../AI_INTEGRATION_REFERENCE.md) - AI features
+- [content-creation-plan.md](../content-creation-plan.md) - Content generation roadmap
+- [AI_TOOLS_AND_COSTS.md](../AI_TOOLS_AND_COSTS.md) - AI cost analysis

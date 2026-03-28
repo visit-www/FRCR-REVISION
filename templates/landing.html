@@ -314,6 +314,14 @@
             color: var(--brand-text-secondary);
         }
 
+        .pricing-full-price {
+            font-size: 0.8rem;
+            color: var(--brand-text-secondary);
+            margin-top: -14px;
+            margin-bottom: 16px;
+            opacity: 0.7;
+        }
+
         .pricing-features {
             list-style: none;
             padding: 0;
@@ -537,7 +545,12 @@
         <div class="container">
             <div class="text-center mb-2">
                 <h2 class="section-title">Choose Your Plan</h2>
-                <p class="section-subtitle mx-auto">Start free, upgrade as you grow. Every plan includes full access to core learning resources.</p>
+                <p class="section-subtitle mx-auto">Try free for 7 days, then choose your plan. All plans include full access to cases, Knowledge Hub, TNM calculators, and clinical tools.</p>
+            </div>
+            <div class="text-center mb-4">
+                <span class="badge" style="background: linear-gradient(135deg, #e96304, #ffc107); color: #fff; font-size: 0.82rem; padding: 6px 18px; border-radius: 20px;">
+                    <i class="fas fa-rocket me-1"></i>Launch pricing &mdash; experience a revolution in radiology workflow
+                </span>
             </div>
 
             <div class="row g-4 justify-content-center">
@@ -547,50 +560,55 @@
                         <div class="pricing-badge" style="background: rgba(94,137,158,0.12); color: var(--brand-neutral);">
                             <i class="fas fa-compass me-1"></i>Free
                         </div>
-                        <div class="pricing-price">Free</div>
+                        <div class="pricing-price">Free<span> for 7 days</span></div>
                         <ul class="pricing-features">
-                            <li><i class="fas fa-check"></i>Browse cases & Knowledge Hub</li>
-                            <li><i class="fas fa-check"></i>SBA & Viva practice (5/day)</li>
+                            <li><i class="fas fa-check"></i>Browse all cases & Knowledge Hub</li>
+                            <li><i class="fas fa-check"></i>SBA & Viva practice questions</li>
                             <li><i class="fas fa-check"></i>All 39 TNM Calculators</li>
-                            <li><i class="fas fa-check"></i>Clinical Protocols & Tools</li>
-                            <li><i class="fas fa-check"></i>3 AI requests/day</li>
+                            <li><i class="fas fa-check"></i>Clinical Protocols & Radiology Tools</li>
+                            <li><i class="fas fa-check"></i>7-day free trial of all AI features</li>
+                            <li><i class="fas fa-check"></i>Smart Reporter: 10 AI actions/month</li>
+                            <li><i class="fas fa-check"></i>RadIQ: 5 queries/month</li>
                         </ul>
-                        <a href="/auth/register" class="btn-pricing" style="background: var(--brand-neutral); color: #fff;">Get Started</a>
+                        <a href="/auth/register" class="btn-pricing" style="background: var(--brand-neutral); color: #fff;">Start 7-Day Free Trial</a>
                     </div>
                 </div>
 
-                <!-- Standard (Mid) -->
+                <!-- Standard -->
                 <div class="col-md-6 col-lg-4">
                     <div class="pricing-card">
                         <div class="pricing-badge" style="background: rgba(233,99,4,0.1); color: var(--brand-primary);">
                             <i class="fas fa-user-md me-1"></i>Standard
                         </div>
                         <div class="pricing-price">&pound;9<span>/month</span></div>
+                        <div class="pricing-full-price">&pound;15/month after launch</div>
                         <ul class="pricing-features">
                             <li><i class="fas fa-check"></i>Everything in Free</li>
                             <li><i class="fas fa-check"></i>Unlimited cases & practice</li>
+                            <li><i class="fas fa-check"></i>Smart Reporter: 75 AI actions/month (~30 reports)</li>
+                            <li><i class="fas fa-check"></i>RadIQ: 20 queries/month</li>
+                            <li><i class="fas fa-check"></i>Save personal templates</li>
                             <li><i class="fas fa-check"></i>Full template & algorithm library</li>
                             <li><i class="fas fa-check"></i>Notes & Highlights</li>
-                            <li><i class="fas fa-check"></i>25 AI requests/day</li>
-                            <li><i class="fas fa-check"></i>Save personal templates</li>
                         </ul>
                         <a href="/auth/register" class="btn-pricing" style="background: var(--brand-primary); color: #fff;">Choose Standard</a>
                     </div>
                 </div>
 
-                <!-- Elite (Top) -->
+                <!-- Elite -->
                 <div class="col-md-6 col-lg-4">
                     <div class="pricing-card pricing-card-featured">
                         <div class="pricing-popular">Most Popular</div>
                         <div class="pricing-badge" style="background: rgba(107,70,193,0.1); color: #6b46c1;">
                             <i class="fas fa-crown me-1"></i>Elite
                         </div>
-                        <div class="pricing-price">&pound;19<span>/month</span></div>
+                        <div class="pricing-price">&pound;29<span>/month</span></div>
+                        <div class="pricing-full-price">&pound;45/month after launch</div>
                         <ul class="pricing-features">
                             <li><i class="fas fa-check"></i>Everything in Standard</li>
-                            <li><i class="fas fa-check"></i>50+ AI requests/day</li>
-                            <li><i class="fas fa-check"></i>Full RadIQ (all 6 tools)</li>
-                            <li><i class="fas fa-check"></i>Notion & Anki integration</li>
+                            <li><i class="fas fa-check"></i>Smart Reporter: 1,500 AI actions/month (~600 reports)</li>
+                            <li><i class="fas fa-check"></i>RadIQ: 60 queries/month</li>
+                            <li><i class="fas fa-check"></i>Voice dictation</li>
                             <li><i class="fas fa-check"></i>Priority content requests</li>
                             <li><i class="fas fa-check"></i>Early access to new features</li>
                         </ul>
@@ -605,7 +623,7 @@
     <section class="cta-section">
         <div class="container">
             <h2>Begin Your Journey</h2>
-            <p>Built by a radiologist, for radiologists. The manifestation of a radiologist's Ikigai.</p>
+            <p>Built by a radiologist, for radiologists. The manifestation of a radiologist's <span style="color: var(--brand-primary, #e96304); font-weight: 600;">Ikigai</span>.</p>
             <div class="hero-cta">
                 <a href="/auth/register" class="btn-hero-primary">Get Started</a>
                 <a href="{{ url_for('about') }}" class="btn-hero-secondary">Learn More</a>
@@ -678,7 +696,7 @@
         },
         {
             title: 'Choose Your Plan',
-            text: 'Start free with 3 AI requests per day. Upgrade to Standard or Elite for unlimited learning and full AI access.',
+            text: 'Start with a 7-day free trial of all AI features. Then choose Standard for 95 actions/month or Elite for 1,500+ actions. Lock in launch pricing before it increases.',
             selector: '#pricing-section',
             position: 'top',
             icon: 'fas fa-tags'

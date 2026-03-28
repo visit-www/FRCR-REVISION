@@ -83,6 +83,11 @@
             </button>
         </li>
         <li class="nav-item" role="presentation">
+            <button class="nav-link" id="ai-costs-tab" data-bs-toggle="tab" data-bs-target="#ai-costs-content" type="button" role="tab" aria-controls="ai-costs-content" aria-selected="false">
+                <i class="fas fa-dollar-sign"></i> AI Costs
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
             <button class="nav-link" id="monitoring-tab" data-bs-toggle="tab" data-bs-target="#monitoring-content" type="button" role="tab" aria-controls="monitoring-content" aria-selected="false">
                 <i class="fas fa-heartbeat"></i> Monitoring
             </button>
@@ -445,6 +450,136 @@
             </div>
         </div>
         <!-- End App Documents Tab -->
+
+        <!-- AI Costs Tab -->
+        <div class="tab-pane fade" id="ai-costs-content" role="tabpanel" aria-labelledby="ai-costs-tab">
+            <h2 class="mb-4 admin-section-title"><i class="fas fa-dollar-sign"></i> AI Cost Tracker</h2>
+
+            <!-- Period controls -->
+            <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+                <div class="btn-group" role="group">
+                    <button type="button" class="btn btn-outline-secondary btn-sm ai-cost-period-btn" data-days="7">7 Days</button>
+                    <button type="button" class="btn btn-brand-neutral btn-sm ai-cost-period-btn active" data-days="30">30 Days</button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm ai-cost-period-btn" data-days="90">90 Days</button>
+                </div>
+                <div class="d-flex gap-2 align-items-center">
+                    <select class="form-select form-select-sm" id="aiCostUserFilter" style="width: auto; min-width: 180px;">
+                        <option value="">All Users</option>
+                    </select>
+                    <button class="btn btn-outline-secondary btn-sm" id="aiCostExportBtn" title="Export CSV">
+                        <i class="fas fa-download me-1"></i> CSV
+                    </button>
+                </div>
+            </div>
+
+            <!-- Loading -->
+            <div id="ai-cost-loading" class="text-center py-5" style="display: none;">
+                <div class="spinner-border" style="color: var(--brand-neutral);" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+
+            <!-- Summary cards -->
+            <div id="ai-cost-summary" style="display: none;">
+                <div class="row mb-4">
+                    <div class="col-md-3 mb-3">
+                        <div class="admin-metric admin-metric-info">
+                            <h4 id="ai-cost-total">$0.00</h4>
+                            <small>Total Cost (USD)</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="admin-metric admin-metric-warning">
+                            <h4 id="ai-cost-requests">0</h4>
+                            <small>Total Requests</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="admin-metric admin-metric-success">
+                            <h4 id="ai-cost-avg-request">$0.00</h4>
+                            <small>Avg Cost / Request</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="admin-metric admin-metric-info">
+                            <h4 id="ai-cost-avg-user">$0.00</h4>
+                            <small>Avg Cost / User</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mb-4">
+                    <div class="col-md-6 mb-3">
+                        <div class="card admin-card">
+                            <div class="card-header admin-card-header admin-header-info">
+                                <h5 class="mb-0"><i class="fas fa-chart-line me-2"></i> Daily Cost Trend</h5>
+                            </div>
+                            <div class="card-body"><canvas id="aiCostDailyChart" height="250"></canvas></div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="card admin-card">
+                            <div class="card-header admin-card-header admin-header-info">
+                                <h5 class="mb-0"><i class="fas fa-chart-bar me-2"></i> Cost by Action</h5>
+                            </div>
+                            <div class="card-body"><canvas id="aiCostActionChart" height="250"></canvas></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row mb-4">
+                    <div class="col-md-6 mb-3">
+                        <div class="card admin-card">
+                            <div class="card-header admin-card-header admin-header-info">
+                                <h5 class="mb-0"><i class="fas fa-users me-2"></i> Top Users by Cost</h5>
+                            </div>
+                            <div class="card-body"><canvas id="aiCostUserChart" height="250"></canvas></div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="card admin-card">
+                            <div class="card-header admin-card-header admin-header-info">
+                                <h5 class="mb-0"><i class="fas fa-microchip me-2"></i> Model Split</h5>
+                            </div>
+                            <div class="card-body"><canvas id="aiCostModelChart" height="250"></canvas></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Per-user table -->
+                <div class="card admin-card mb-4">
+                    <div class="card-header admin-card-header admin-header-info">
+                        <h5 class="mb-0"><i class="fas fa-table me-2"></i> Per-User Breakdown</h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover table-sm mb-0" id="aiCostUserTable">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="cursor:pointer" data-sort="username">User <i class="fas fa-sort fa-xs"></i></th>
+                                        <th style="cursor:pointer" data-sort="email">Email <i class="fas fa-sort fa-xs"></i></th>
+                                        <th style="cursor:pointer" data-sort="requests">Requests <i class="fas fa-sort fa-xs"></i></th>
+                                        <th style="cursor:pointer" data-sort="input_tokens">In Tokens <i class="fas fa-sort fa-xs"></i></th>
+                                        <th style="cursor:pointer" data-sort="output_tokens">Out Tokens <i class="fas fa-sort fa-xs"></i></th>
+                                        <th style="cursor:pointer" data-sort="cost_usd">Cost (USD) <i class="fas fa-sort fa-xs"></i></th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Date range note -->
+                <div class="text-muted text-center mb-2" id="ai-cost-date-range" style="font-size: 0.85rem;"></div>
+            </div>
+
+            <div id="ai-cost-error" class="alert alert-danger" style="display: none;"></div>
+            <div id="ai-cost-empty" class="text-center text-muted py-5" style="display: none;">
+                <i class="fas fa-chart-pie fa-3x mb-3 d-block" style="color: var(--brand-neutral); opacity: 0.4;"></i>
+                No AI usage data found for this period.
+            </div>
+        </div>
+        <!-- End AI Costs Tab -->
 
         <!-- Monitoring Tab -->
         <div class="tab-pane fade" id="monitoring-content" role="tabpanel" aria-labelledby="monitoring-tab">
@@ -1810,6 +1945,308 @@
     }
 
     // ========================================================================
+    // AI COSTS TAB
+    // ========================================================================
+    (function() {
+        let aiCostDays = 30;
+        let aiCostUserId = '';
+        let aiCostData = null;
+        let aiCostLoaded = false;
+        let chartInstances = {};
+
+        // Lazy-load Chart.js on first tab open
+        let chartJsReady = false;
+        let chartJsLoading = false;
+
+        function loadChartJs() {
+            return new Promise((resolve, reject) => {
+                if (chartJsReady) return resolve();
+                if (chartJsLoading) {
+                    const check = setInterval(() => { if (chartJsReady) { clearInterval(check); resolve(); } }, 100);
+                    return;
+                }
+                chartJsLoading = true;
+                const script = document.createElement('script');
+                script.src = 'https://cdn.jsdelivr.net/npm/chart.js';
+                script.onload = () => { chartJsReady = true; resolve(); };
+                script.onerror = () => reject(new Error('Failed to load Chart.js'));
+                document.head.appendChild(script);
+            });
+        }
+
+        const aiCostsTabEl = document.getElementById('ai-costs-tab');
+        if (aiCostsTabEl) {
+            aiCostsTabEl.addEventListener('shown.bs.tab', function() {
+                if (!aiCostLoaded) loadAiCosts();
+            });
+        }
+
+        // Period buttons
+        document.querySelectorAll('.ai-cost-period-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.ai-cost-period-btn').forEach(b => {
+                    b.classList.remove('active', 'btn-brand-neutral');
+                    b.classList.add('btn-outline-secondary');
+                });
+                this.classList.add('active', 'btn-brand-neutral');
+                this.classList.remove('btn-outline-secondary');
+                aiCostDays = parseInt(this.dataset.days);
+                loadAiCosts();
+            });
+        });
+
+        // User filter
+        const userFilter = document.getElementById('aiCostUserFilter');
+        if (userFilter) {
+            userFilter.addEventListener('change', function() {
+                aiCostUserId = this.value;
+                loadAiCosts();
+            });
+        }
+
+        // Export CSV
+        document.getElementById('aiCostExportBtn')?.addEventListener('click', exportAiCostCsv);
+
+        async function loadAiCosts() {
+            const loading = document.getElementById('ai-cost-loading');
+            const summary = document.getElementById('ai-cost-summary');
+            const errorDiv = document.getElementById('ai-cost-error');
+            const emptyDiv = document.getElementById('ai-cost-empty');
+
+            loading.style.display = 'block';
+            summary.style.display = 'none';
+            errorDiv.style.display = 'none';
+            emptyDiv.style.display = 'none';
+
+            try {
+                let url = `/api/admin/ai-costs?days=${aiCostDays}`;
+                if (aiCostUserId) url += `&user_id=${aiCostUserId}`;
+                const resp = await fetch(url, { credentials: 'include' });
+                if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+                aiCostData = await resp.json();
+                loading.style.display = 'none';
+                aiCostLoaded = true;
+
+                if (aiCostData.summary.total_requests === 0) {
+                    emptyDiv.style.display = 'block';
+                    return;
+                }
+
+                summary.style.display = 'block';
+                renderAiCostSummary(aiCostData);
+
+                // Populate user filter if empty
+                if (userFilter.options.length <= 1 && aiCostData.by_user.length > 0) {
+                    aiCostData.by_user.forEach(u => {
+                        if (!u.user_id) return;
+                        const opt = document.createElement('option');
+                        opt.value = u.user_id;
+                        opt.textContent = u.username || u.email || `User #${u.user_id}`;
+                        userFilter.appendChild(opt);
+                    });
+                }
+
+                await loadChartJs();
+                renderAiCostCharts(aiCostData);
+                renderAiCostTable(aiCostData.by_user);
+            } catch (e) {
+                loading.style.display = 'none';
+                errorDiv.style.display = 'block';
+                errorDiv.innerHTML = '<i class="fas fa-times-circle me-1"></i> Failed to load AI cost data: ' + e.message;
+            }
+        }
+
+        function renderAiCostSummary(data) {
+            const s = data.summary;
+            document.getElementById('ai-cost-total').textContent = '$' + s.total_cost_usd.toFixed(2);
+            document.getElementById('ai-cost-requests').textContent = s.total_requests.toLocaleString();
+            document.getElementById('ai-cost-avg-request').textContent = '$' + s.avg_cost_per_request.toFixed(4);
+            const numUsers = data.by_user.filter(u => u.user_id).length || 1;
+            document.getElementById('ai-cost-avg-user').textContent = '$' + (s.total_cost_usd / numUsers).toFixed(2);
+            document.getElementById('ai-cost-date-range').textContent =
+                `Data from ${s.date_range.from} to ${s.date_range.to}`;
+        }
+
+        function destroyChart(key) {
+            if (chartInstances[key]) { chartInstances[key].destroy(); delete chartInstances[key]; }
+        }
+
+        const CHART_COLORS = ['#e96304', '#5E899E', '#ffc107', '#a8d5ba', '#6f42c1', '#d63384', '#20c997', '#0dcaf0', '#fd7e14', '#198754'];
+
+        function renderAiCostCharts(data) {
+            // Daily cost trend — line chart
+            destroyChart('daily');
+            const dailyCtx = document.getElementById('aiCostDailyChart').getContext('2d');
+            chartInstances['daily'] = new Chart(dailyCtx, {
+                type: 'line',
+                data: {
+                    labels: data.by_day.map(d => d.date),
+                    datasets: [{
+                        label: 'Cost (USD)',
+                        data: data.by_day.map(d => d.cost_usd),
+                        borderColor: '#e96304',
+                        backgroundColor: 'rgba(233,99,4,0.1)',
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 3,
+                    }, {
+                        label: 'Requests',
+                        data: data.by_day.map(d => d.requests),
+                        borderColor: '#5E899E',
+                        backgroundColor: 'transparent',
+                        borderDash: [5, 5],
+                        yAxisID: 'y1',
+                        tension: 0.3,
+                        pointRadius: 2,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    interaction: { mode: 'index', intersect: false },
+                    scales: {
+                        y: { beginAtZero: true, title: { display: true, text: 'Cost ($)' } },
+                        y1: { beginAtZero: true, position: 'right', grid: { drawOnChartArea: false }, title: { display: true, text: 'Requests' } },
+                    },
+                    plugins: { legend: { position: 'bottom' } }
+                }
+            });
+
+            // Cost by action — horizontal bar
+            destroyChart('action');
+            const actionCtx = document.getElementById('aiCostActionChart').getContext('2d');
+            chartInstances['action'] = new Chart(actionCtx, {
+                type: 'bar',
+                data: {
+                    labels: data.by_action.map(a => a.action.replace(/_/g, ' ')),
+                    datasets: [{
+                        label: 'Cost (USD)',
+                        data: data.by_action.map(a => a.cost_usd),
+                        backgroundColor: CHART_COLORS.slice(0, data.by_action.length),
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    indexAxis: 'y',
+                    scales: { x: { beginAtZero: true, title: { display: true, text: 'Cost ($)' } } },
+                    plugins: { legend: { display: false } }
+                }
+            });
+
+            // Top users — bar chart (top 10)
+            destroyChart('users');
+            const topUsers = data.by_user.filter(u => u.user_id).slice(0, 10);
+            const userCtx = document.getElementById('aiCostUserChart').getContext('2d');
+            chartInstances['users'] = new Chart(userCtx, {
+                type: 'bar',
+                data: {
+                    labels: topUsers.map(u => u.username || u.email || `#${u.user_id}`),
+                    datasets: [{
+                        label: 'Cost (USD)',
+                        data: topUsers.map(u => u.cost_usd),
+                        backgroundColor: '#5E899E',
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: { y: { beginAtZero: true, title: { display: true, text: 'Cost ($)' } } },
+                    plugins: { legend: { display: false } }
+                }
+            });
+
+            // Model split — doughnut
+            destroyChart('model');
+            const modelCtx = document.getElementById('aiCostModelChart').getContext('2d');
+            chartInstances['model'] = new Chart(modelCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: data.by_model.map(m => {
+                        const name = m.model || 'unknown';
+                        if (name.includes('sonnet')) return 'Sonnet';
+                        if (name.includes('haiku')) return 'Haiku';
+                        if (name.includes('opus')) return 'Opus';
+                        return name.length > 25 ? name.slice(0, 22) + '...' : name;
+                    }),
+                    datasets: [{
+                        data: data.by_model.map(m => m.cost_usd),
+                        backgroundColor: CHART_COLORS.slice(0, data.by_model.length),
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { position: 'bottom' },
+                        tooltip: {
+                            callbacks: {
+                                label: ctx => `${ctx.label}: $${ctx.parsed.toFixed(4)} (${data.by_model[ctx.dataIndex].requests} reqs)`
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Sortable per-user table
+        let sortCol = 'cost_usd';
+        let sortAsc = false;
+
+        function renderAiCostTable(users) {
+            const tbody = document.querySelector('#aiCostUserTable tbody');
+            const sorted = [...users].sort((a, b) => {
+                let va = a[sortCol], vb = b[sortCol];
+                if (typeof va === 'string') { va = va.toLowerCase(); vb = (vb || '').toLowerCase(); }
+                return sortAsc ? (va > vb ? 1 : -1) : (va < vb ? 1 : -1);
+            });
+            tbody.innerHTML = sorted.map(u => `
+                <tr>
+                    <td>${esc(u.username)}</td>
+                    <td><small class="text-muted">${esc(u.email)}</small></td>
+                    <td>${u.requests.toLocaleString()}</td>
+                    <td>${u.input_tokens.toLocaleString()}</td>
+                    <td>${u.output_tokens.toLocaleString()}</td>
+                    <td><strong>$${u.cost_usd.toFixed(4)}</strong></td>
+                </tr>
+            `).join('');
+        }
+
+        function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+
+        document.querySelectorAll('#aiCostUserTable th[data-sort]').forEach(th => {
+            th.addEventListener('click', function() {
+                const col = this.dataset.sort;
+                if (sortCol === col) { sortAsc = !sortAsc; } else { sortCol = col; sortAsc = false; }
+                if (aiCostData) renderAiCostTable(aiCostData.by_user);
+            });
+        });
+
+        function exportAiCostCsv() {
+            if (!aiCostData) return;
+            const rows = [['User', 'Email', 'Requests', 'Input Tokens', 'Output Tokens', 'Cost (USD)']];
+            aiCostData.by_user.forEach(u => {
+                rows.push([u.username, u.email, u.requests, u.input_tokens, u.output_tokens, u.cost_usd.toFixed(4)]);
+            });
+            rows.push([]);
+            rows.push(['Action', '', 'Requests', '', '', 'Cost (USD)']);
+            aiCostData.by_action.forEach(a => {
+                rows.push([a.action, '', a.requests, '', '', a.cost_usd.toFixed(4)]);
+            });
+            rows.push([]);
+            rows.push(['Date', '', 'Requests', '', '', 'Cost (USD)']);
+            aiCostData.by_day.forEach(d => {
+                rows.push([d.date, '', d.requests, '', '', d.cost_usd.toFixed(4)]);
+            });
+
+            const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `ai-costs-${aiCostDays}d-${new Date().toISOString().slice(0,10)}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+    })();
+
+    // ========================================================================
     // MONITORING TAB (Sentry)
     // ========================================================================
 
@@ -2378,6 +2815,11 @@
     color: #7a1c24;
 }
 
+.admin-metric-info {
+    border-left-color: #5E899E;
+    color: #3d5a6d;
+}
+
 /* Forum Management Styles */
 .forum-filter-btn {
     transition: all 0.2s ease;
@@ -2465,6 +2907,20 @@
 /* Monitoring Tab */
 #sentry-chart div:hover {
     opacity: 0.8;
+}
+
+/* AI Costs Tab */
+#ai-costs-content .admin-metric {
+    text-align: center;
+}
+#aiCostUserTable th {
+    font-size: 0.85rem;
+    white-space: nowrap;
+    user-select: none;
+}
+#aiCostUserTable td {
+    font-size: 0.85rem;
+    vertical-align: middle;
 }
 </style>
 {% endblock %}
