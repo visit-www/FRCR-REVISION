@@ -23,6 +23,11 @@
         },
         {
             type: 'NHS Number',
+            regex: /\bNHS\s*(?:no|number|#)?[:\s]+\d{6,10}\b/gi,
+            description: 'NHS number detected (short format)'
+        },
+        {
+            type: 'NHS Number',
             regex: /\b\d{3}[-\s]\d{3}[-\s]\d{4}\b/g,
             description: 'NHS number detected (format)'
         },
@@ -123,6 +128,16 @@
                 "g"
             ),
             description: 'Patient name after introduction detected'
+        },
+        {
+            type: 'Doctor / Clinician Name',
+            regex: /\b(?:referred\s+by|reporting\s+(?:radiologist|doctor|consultant)|reported\s+by|consultant|registrar|SpR|SHO|GP)\s*[:=\-]?\s*(?:Dr\.?\s+)?[A-Z][a-zA-Z'-]+(?:\s+[A-Z][a-zA-Z'-]+){0,3}/gi,
+            description: 'Referring/reporting clinician name detected'
+        },
+        {
+            type: 'Doctor / Clinician Name',
+            regex: /\bDr\.?\s+[A-Z][a-zA-Z'-]+(?:\s+[A-Z][a-zA-Z'-]+){1,3}\b/g,
+            description: 'Doctor name detected'
         },
         {
             type: 'Possible Patient ID',
@@ -309,6 +324,7 @@
             'Phone Number': '#0d6efd',
             'Email Address': '#0d6efd',
             'Patient Name': '#dc3545',
+            'Doctor / Clinician Name': '#e96304',
             'Patient Age': '#e96304',
             'Patient Gender': '#e96304',
             'Patient Address': '#6b46c1',

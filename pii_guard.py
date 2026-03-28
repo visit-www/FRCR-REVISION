@@ -27,6 +27,9 @@ PII_PATTERNS = [
     # NHS with keyword anchor (separators optional)
     ('NHS Number', re.compile(
         r'\bNHS\s*(?:no|number|#)?[:\s]+\d{3}[-\s]?\d{3}[-\s]?\d{4}\b', re.IGNORECASE)),
+    # NHS with keyword anchor (short format — 6-10 digits)
+    ('NHS Number', re.compile(
+        r'\bNHS\s*(?:no|number|#)?[:\s]+\d{6,10}\b', re.IGNORECASE)),
     # NHS by format only (separators REQUIRED to avoid confusion with bare phone numbers)
     ('NHS Number', re.compile(r'\b\d{3}[-\s]\d{3}[-\s]\d{4}\b')),
     ('US SSN', re.compile(r'\b\d{3}-\d{2}-\d{4}\b')),
@@ -90,6 +93,13 @@ PII_PATTERNS = [
         + r'(?:\s+' + _NAME_STOP + r'[A-Z][a-zA-Z\'-]+){1,3}'
         + r'(?=\s*,?\s+(?:a\s+|an\s+)?\d{1,3}[-\s]?years?[-\s]?old\b)'
     )),
+    # Doctor / clinician name with context keyword
+    ('Doctor / Clinician Name', re.compile(
+        r'\b(?:referred\s+by|reporting\s+(?:radiologist|doctor|consultant)|reported\s+by|consultant|registrar|SpR|SHO|GP)\s*[:=\-]?\s*(?:Dr\.?\s+)?[A-Z][a-zA-Z\'-]+(?:\s+[A-Z][a-zA-Z\'-]+){0,3}',
+        re.IGNORECASE)),
+    # Doctor name with Dr. title (requires 2+ name words)
+    ('Doctor / Clinician Name', re.compile(
+        r'\bDr\.?\s+[A-Z][a-zA-Z\'-]+(?:\s+[A-Z][a-zA-Z\'-]+){1,3}\b')),
     # Bare 7-10 digit number on its own line (likely hospital number / MRN / NHS number)
     ('Possible Patient ID', re.compile(r'^\d{7,10}$', re.MULTILINE)),
     # Patient age

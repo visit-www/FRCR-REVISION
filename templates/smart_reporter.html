@@ -460,7 +460,7 @@
                             <i class="fas fa-spell-check me-1"></i>Quick Check
                         </button>
                         <!-- Finalize -->
-                        <button class="btn btn-sm btn-outline-success" onclick="document.getElementById('askClaudeInput').value='Finalize this report'; askClaude();">
+                        <button class="btn btn-sm btn-outline-success" id="btnFinalizeToolbar" onclick="document.getElementById('askClaudeInput').value='Finalize this report'; askClaude();">
                             <i class="fas fa-check-circle me-1"></i>Finalize
                         </button>
                         <!-- Separator -->
@@ -494,6 +494,16 @@
                             </button>
                         </div>
                     </div>
+                </div>
+
+                <!-- PII Warning Bar (hidden by default) -->
+                <div id="piiWarningBar" class="d-none" style="background:#fff3cd;border:1px solid #ffc107;border-radius:0.375rem;padding:0.4rem 0.75rem;margin-bottom:0.75rem;cursor:pointer;" onclick="showPIIDetails()">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="fas fa-exclamation-triangle" style="color:#dc3545;"></i>
+                        <span style="font-size:0.82rem;color:#856404;"><strong>Patient data detected</strong> — remove PII before using AI features.</span>
+                        <span class="ms-auto badge bg-danger" id="piiMatchCount" style="font-size:0.7rem;"></span>
+                    </div>
+                    <div id="piiDetailsList" class="d-none mt-2 pt-2" style="border-top:1px solid #ffe69c;"></div>
                 </div>
 
                 <div class="row g-3" id="editorMainRow">
@@ -2598,6 +2608,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     window.reviewReport = async function() {
+        if (_piiBlocked) { showToast('Remove patient data before using AI features.', 'warning'); showPIIDetails(); return; }
         const input = document.getElementById('editorInput');
         const text = input.value.trim();
         if (!text) {
@@ -2819,6 +2830,7 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     window.askClaude = async function() {
+        if (_piiBlocked) { showToast('Remove patient data before using AI features.', 'warning'); showPIIDetails(); return; }
         const input = document.getElementById('askClaudeInput');
         const question = input.value.trim();
         if (!question) return;
@@ -2922,6 +2934,7 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     window.submitReportAction = async function(action) {
+        if (_piiBlocked) { showToast('Remove patient data before using AI features.', 'warning'); showPIIDetails(); return; }
         const reportText = getCurrentReportText();
         if (!reportText) {
             showToast('Please enter your report text first.', 'warning');
@@ -3528,10 +3541,79 @@ document.addEventListener('DOMContentLoaded', function() {
         return div.innerHTML;
     }
 
+    // ==================== LIVE PII SCANNER ====================
+    var _piiScanTimer = null;
+    var _piiBlocked = false;
+    var _lastPIIMatches = [];
+
+    function livePIIScan() {
+        if (!window.PIIGuard) return;
+        var editor = document.getElementById('editorInput');
+        if (!editor) return;
+        var text = editor.value || '';
+        var result = PIIGuard.scan(text);
+
+        var bar = document.getElementById('piiWarningBar');
+        var countBadge = document.getElementById('piiMatchCount');
+        var detailsList = document.getElementById('piiDetailsList');
+
+        if (result.hasPII && result.matches.length > 0) {
+            _piiBlocked = true;
+            _lastPIIMatches = result.matches;
+            bar.classList.remove('d-none');
+            countBadge.textContent = result.matches.length + ' item' + (result.matches.length !== 1 ? 's' : '');
+            detailsList.innerHTML = PIIGuard.getWarningHTML(result.matches);
+            _setPIIButtonState(true);
+        } else {
+            _piiBlocked = false;
+            _lastPIIMatches = [];
+            bar.classList.add('d-none');
+            detailsList.classList.add('d-none');
+            _setPIIButtonState(false);
+        }
+    }
+
+    function _setPIIButtonState(blocked) {
+        var btns = [
+            document.getElementById('btnReviewReport2'),
+            document.getElementById('btnAskClaude'),
+        ];
+        // Also get all mirror Ask Claude buttons and report action buttons
+        document.querySelectorAll('.sr-ask-mirror-btn, .report-action-btn, #btnFinalizeToolbar').forEach(function(b) {
+            btns.push(b);
+        });
+        var askInput = document.getElementById('askClaudeInput');
+
+        btns.forEach(function(btn) {
+            if (!btn) return;
+            if (blocked) {
+                btn.disabled = true;
+                btn.style.opacity = '0.4';
+                btn.style.pointerEvents = 'none';
+            } else {
+                btn.disabled = false;
+                btn.style.opacity = '';
+                btn.style.pointerEvents = '';
+            }
+        });
+        if (askInput) {
+            askInput.disabled = blocked;
+            askInput.style.opacity = blocked ? '0.4' : '';
+        }
+    }
+
+    window.showPIIDetails = function() {
+        var detailsList = document.getElementById('piiDetailsList');
+        detailsList.classList.toggle('d-none');
+    };
+
     // Auto-resize on editor input changes
     document.getElementById('editorInput').addEventListener('input', function() {
         state.inputText = this.value;
         autoResizeTextarea(this);
+        // Debounced PII scan
+        clearTimeout(_piiScanTimer);
+        _piiScanTimer = setTimeout(livePIIScan, 500);
     });
 
     document.getElementById('editorOutput').addEventListener('input', function() {
