@@ -1018,7 +1018,7 @@ document.addEventListener('DOMContentLoaded', function() {
             impression: '',
             recommendation: ''
         },
-        askClaudeRemaining: 50,
+        askClaudeRemaining: null,
         // AI Assist state
         aiAssistResponseType: 'advisory',  // 'advisory' or 'full_report'
         aiAssistAnswer: '',
@@ -3490,8 +3490,24 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function updateAskClaudeCounter() {
         const el = document.getElementById('askClaudeCounter');
-        el.textContent = `${state.askClaudeRemaining}/50 remaining today`;
+        if (state.askClaudeRemaining === null) {
+            el.textContent = 'Loading...';
+        } else {
+            el.textContent = `${state.askClaudeRemaining}/50 remaining today`;
+        }
     }
+
+    // Fetch actual remaining count on page load
+    fetch('/api/smart-reporter/ai-usage')
+        .then(r => r.json())
+        .then(data => {
+            state.askClaudeRemaining = data.remaining_requests;
+            updateAskClaudeCounter();
+        })
+        .catch(() => {
+            state.askClaudeRemaining = 50;
+            updateAskClaudeCounter();
+        });
 
     // ==================== (Session persistence removed — Phase 1 redesign) ====================
 

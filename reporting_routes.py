@@ -266,6 +266,19 @@ def _check_ai_rate_limit():
     return True, remaining, None
 
 
+@reporting_bp.route('/api/smart-reporter/ai-usage', methods=['GET'])
+@login_required
+def get_ai_usage():
+    """Return remaining AI requests for today without incrementing the counter."""
+    from datetime import date
+    today = date.today()
+    if current_user.ai_usage_date != today:
+        remaining = AI_DAILY_LIMIT
+    else:
+        remaining = max(0, AI_DAILY_LIMIT - (current_user.ai_usage_count or 0))
+    return jsonify({'remaining_requests': remaining, 'daily_limit': AI_DAILY_LIMIT})
+
+
 # ==================== ALGORITHM FINDER (Unified Search) ====================
 
 @reporting_bp.route('/api/algorithms/search')
