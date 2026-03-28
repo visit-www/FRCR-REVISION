@@ -325,11 +325,45 @@ function cancelRadIQRequest() {
     }
 }
 
+// ── Off-topic pre-filter ──
+function isOffTopicQuery(text) {
+    const lower = text.toLowerCase().trim();
+    // Very short queries are likely off-topic
+    if (lower.split(/\s+/).length <= 3) {
+        // Allow short radiology terms through
+        const radioTerms = /\b(ct|mri|xray|x-ray|ultrasound|us|pet|spect|mammogram|fluoroscopy|angiography|dose|contrast|scan|imaging|radiol|report|finding|lesion|tumour|tumor|fracture|nodule|mass|opacity|calcif|stone|effusion|pneumo|haemo|hemo|aorta|liver|kidney|lung|brain|spine|bone|chest|abdomen|pelvis|fleischner|bosniak|pirads|tirads|lurads|recist|tnm|stag|protocol|kv|mas|pitch|slice|recon|sequence|dwi|adc|flair|t1|t2|gadol|iodine|barium)\b/;
+        if (!radioTerms.test(lower)) {
+            // Check for obvious off-topic patterns
+            const offTopic = /\b(where is|capital of|recipe|weather|score|game|movie|song|who won|how tall|population|president|prime minister|currency|language|distance between|translate|code|python|javascript|html|css)\b/;
+            if (offTopic.test(lower)) return true;
+        }
+    }
+    // Longer queries — check for completely non-medical content
+    const offTopicLong = /^(what is the capital|where is|how do you cook|what.?s the weather|who played|who sang|tell me a joke|write a poem|write me a story)/i;
+    if (offTopicLong.test(lower)) return true;
+    return false;
+}
+
 // ── Submit Query ──
 async function submitQuery() {
     const question = document.getElementById('queryInput').value.trim();
     if (!question) return;
     if (!selectedCategory) return;
+
+    // Client-side off-topic filter — saves AI credit
+    if (isOffTopicQuery(question)) {
+        showResponse(
+            "<h5 class='radiq-title'>&#128161; Not a Radiology Query</h5>" +
+            "<p>This doesn't appear to be related to radiology or medical imaging. " +
+            "RadIQ is designed for clinical radiology queries — imaging protocols, " +
+            "reporting guidance, clinical appropriateness, and radiology workflow.</p>" +
+            "<p><strong>Try asking about:</strong> imaging indications, scan protocols, " +
+            "reporting templates, contrast guidelines, incidental findings, or " +
+            "clinical-radiological correlation.</p>",
+            null, []
+        );
+        return;
+    }
 
     const btn = document.getElementById('btnSubmitQuery');
     const spinner = document.getElementById('querySpinner');

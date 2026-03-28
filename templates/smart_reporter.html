@@ -1036,6 +1036,19 @@ document.addEventListener('DOMContentLoaded', function() {
         externalContext: null,
     };
 
+    // ── Off-topic pre-filter (saves AI credits) ──
+    function isOffTopicQuery(text) {
+        const lower = text.toLowerCase().trim();
+        const offTopicShort = /\b(where is|capital of|recipe|weather|score|game|movie|song|who won|how tall|population|president|prime minister|currency|language|distance between|translate|code|python|javascript|html|css)\b/;
+        const offTopicLong = /^(what is the capital|where is|how do you cook|what.?s the weather|who played|who sang|tell me a joke|write a poem|write me a story)/i;
+        if (offTopicShort.test(lower) || offTopicLong.test(lower)) {
+            // Allow if it also contains radiology terms
+            const radioTerms = /\b(ct|mri|xray|x-ray|ultrasound|scan|imaging|radiol|report|finding|lesion|tumour|tumor|fracture|nodule|mass|opacity|contrast|protocol|dose)\b/;
+            if (!radioTerms.test(lower)) return true;
+        }
+        return false;
+    }
+
     // Active AbortController for cancelling in-flight AI requests
     let activeAIController = null;
 
@@ -2869,6 +2882,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const input = document.getElementById('askClaudeInput');
         const question = input.value.trim();
         if (!question) return;
+        if (isOffTopicQuery(question)) {
+            showToast('That doesn\'t seem radiology-related. Try asking about imaging, reporting, or clinical correlation.', 'warning');
+            return;
+        }
         if (!getCurrentReportText()) {
             return;
         }
