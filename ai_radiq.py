@@ -77,9 +77,22 @@ RADIQ_SYSTEM_PROMPT = (
     "specific criteria, categories, management recommendations, and decision thresholds.\n"
     "- Do NOT paraphrase named protocols into generic advice. Be precise and authoritative.\n"
     "- If RELEVANT CONTENT FROM RADINSIGHTS DATABASE is provided below the query, "
-    "incorporate it into your response. Reference that the content is available in RadInsights.\n"
-    "- Cite specific guideline publications (journal, year, DOI if known) — not just "
-    "'based on general consensus'.\n"
+    "incorporate it into your response. Reference that the content is available in RadInsights.\n\n"
+
+    # ── References quality ──
+    "REFERENCES — CRITICAL RULES:\n"
+    "- NEVER write 'Based on general radiology consensus' or similar vague attributions.\n"
+    "- Every reference MUST be a specific, real publication with: Author(s)/Organisation, "
+    "Title, Journal/Publisher, Year. Include DOI or URL when you know it.\n"
+    "- Preferred sources: RCR iRefer, NICE guidelines, ACR Appropriateness Criteria, "
+    "ESUR guidelines, Fleischner Society, RSNA RadPrimer, Radiopaedia, AJR, Radiology, "
+    "European Radiology, BJR.\n"
+    "- Format each reference as a clickable link when a URL is available:\n"
+    "  <a href='URL' target='_blank' rel='noopener noreferrer'>Author — Title (Year)</a>\n"
+    "- If you genuinely cannot identify a specific publication for a point, cite the "
+    "most authoritative body (e.g. 'RCR Standards for Interpretation and Reporting, 2018') "
+    "— never use 'general consensus' or 'standard practice guidelines'.\n"
+    "- Aim for 3-5 references per response.\n"
 )
 
 # ── Category-specific instruction overlays ─────────────────────────────
@@ -98,7 +111,7 @@ CATEGORY_PROMPTS = {
         "   - Clear recommendation for follow-up, further imaging, or management\n"
         "   - Courteous sign-off: 'Yours sincerely, [Consultant Radiologist]'\n"
         "3. <h5>References</h5> — 2-4 guideline-level references (NICE, RCR, ACR etc). "
-        "Cite real references only — if unsure, write 'Based on general radiology consensus'.\n"
+        "Cite specific publications with author/org, title, journal/publisher, and year. Include clickable URLs where known.\n"
     ),
     'complaint': (
         "TASK: Help draft a response to a patient or clinical complaint.\n"
@@ -114,7 +127,7 @@ CATEGORY_PROMPTS = {
         "   - Professional, non-adversarial tone. Goal: rebuild trust while being honest.\n"
         "3. <h5>Lessons &amp; Actions</h5> — Actions taken or proposed to prevent recurrence.\n"
         "4. <h5>References</h5> — 2-4 guideline-level references. "
-        "Cite real references only — if unsure, write 'Based on general radiology consensus'.\n"
+        "Cite specific publications with author/org, title, journal/publisher, and year. Include clickable URLs where known.\n"
     ),
     'incident': (
         "TASK: Generate a complete Datix-style radiology incident/adverse event report.\n"
@@ -168,7 +181,7 @@ CATEGORY_PROMPTS = {
         "(tailored to the incident type). Present as ☐ items.\n\n"
         "8. <h5>References</h5> — 2-4 guideline-level references relevant to the incident type. "
         "Cite RCR, NPSA, NHS Improvement, ACR, or ESUR guidelines as appropriate. "
-        "Cite real references only — if unsure, write 'Based on general radiology consensus'.\n"
+        "Cite specific publications with author/org, title, journal/publisher, and year. Include clickable URLs where known.\n"
     ),
     'imaging_protocol': (
         "TASK: Provide a practical, copy-ready imaging protocol suitable for daily consultant vetting.\n"
@@ -206,7 +219,7 @@ CATEGORY_PROMPTS = {
         "3. <h5>Practical Guidance</h5> — Wrap in <div class='radiq-suggested-response'>. "
         "Actionable protocol parameters, technique guidance, or decision support.\n"
         "4. <h5>References</h5> — 2-4 guideline-level references. "
-        "Cite real references only — if unsure, write 'Based on general radiology consensus'.\n"
+        "Cite specific publications with author/org, title, journal/publisher, and year. Include clickable URLs where known.\n"
     ),
     'general': (
         "TASK: Provide balanced clinical advisory on a radiology question.\n"
@@ -220,7 +233,7 @@ CATEGORY_PROMPTS = {
         "Clear, actionable guidance: what to do (and what not to), "
         "red flags, escalation triggers, practical workflow advice.\n"
         "4. <h5>References</h5> — 2-4 guideline-level references (NICE, RCR, RSNA, ACR etc). "
-        "Cite real references only — if unsure, write 'Based on general radiology consensus'.\n"
+        "Cite specific publications with author/org, title, journal/publisher, and year. Include clickable URLs where known.\n"
     ),
 }
 

@@ -56,14 +56,22 @@ def radiq_landing():
 # ==================== QUERY SUBMISSION ====================
 
 def _find_relevant_db_content(question, category):
-    """Search DB for protocols, algorithms, and tools relevant to the user query."""
-    results = []
+    """Search DB for protocols, algorithms, and tools relevant to the user query.
+
+    Returns:
+        tuple: (prompt_context_str, list_of_link_dicts)
+            - prompt_context_str: text to inject into AI prompt
+            - link_dicts: [{'type': ..., 'title': ..., 'url': ..., 'icon': ..., 'color': ...}, ...]
+    """
+    import re
+    prompt_parts = []
+    links = []
     q = question.strip()
     if not q:
-        return ''
+        return '', []
 
     try:
-        # 1. Clinical Protocols — most relevant for protocol/radiographer/general queries
+        # 1. Clinical Protocols
         protocols = ClinicalProtocol.query.filter_by(is_published=True).filter(
             db.or_(
                 ClinicalProtocol.title.ilike(f'%{q[:80]}%'),
@@ -90,14 +98,20 @@ def _find_relevant_db_content(question, category):
         for p in protocols[:3]:
             content_preview = ''
             if p.content_html:
-                import re
                 content_preview = re.sub(r'<[^>]+>', '', p.content_html)[:500]
-            results.append(
+            prompt_parts.append(
                 f"[PROTOCOL] {p.title} (source: {p.source_citation or 'internal'})\n"
                 f"{content_preview}"
             )
+            links.append({
+                'type': 'Protocol',
+                'title': p.title,
+                'url': f'/radiology-protocols/view/{p.id}',
+                'icon': 'fa-clipboard-list',
+                'color': '#e96304',
+            })
 
-        # 2. Reporting Algorithms — useful for structured guidance
+        # 2. Reporting Algorithms
         algos = ReportingAlgorithm.query.filter_by(is_available=True).filter(
             db.or_(
                 ReportingAlgorithm.title.ilike(f'%{q[:80]}%'),
@@ -105,33 +119,68 @@ def _find_relevant_db_content(question, category):
             )
         ).limit(2).all()
         for a in algos:
-            results.append(
+            prompt_parts.append(
                 f"[ALGORITHM] {a.title} — {a.category or ''} ({a.body_section or ''})\n"
                 f"{(a.description or '')[:300]}"
             )
+            links.append({
+                'type': 'Algorithm',
+                'title': a.title,
+                'url': f'/reporting-template/{a.slug}' if a.slug else '#',
+                'icon': 'fa-sitemap',
+                'color': '#5E899E',
+            })
 
-        # 3. Radiology Tools (IF calculators) — for specific clinical tools
+        # 3. Radiology Tools (IF calculators)
         tools = IncidentalFindingCalculator.query.filter(
-            IncidentalFindingCalculator.title.ilike(f'%{q[:80]}%')
+            db.or_(
+                IncidentalFindingCalculator.title.ilike(f'%{q[:80]}%'),
+                IncidentalFindingCalculator.finding_name.ilike(f'%{q[:80]}%'),
+            )
         ).limit(2).all()
-        for t in tools:
-            results.append(
+
+        # If no match on full query, try individual keywords
+        if not tools:
+            words = [w for w in q.split() if len(w) >= 3]
+            for word in words[:5]:
+                found = IncidentalFindingCalculator.query.filter(
+                    db.or_(
+                        IncidentalFindingCalculator.title.ilike(f'%{word}%'),
+                        IncidentalFindingCalculator.finding_name.ilike(f'%{word}%'),
+                    )
+                ).limit(2).all()
+                for t in found:
+                    if t not in tools:
+                        tools.append(t)
+                if len(tools) >= 2:
+                    break
+
+        for t in tools[:2]:
+            prompt_parts.append(
                 f"[TOOL] {t.title} — {t.body_section or ''}"
             )
+            links.append({
+                'type': 'Tool',
+                'title': t.title,
+                'url': f'/incidental-findings/{t.slug}' if t.slug else '#',
+                'icon': 'fa-tools',
+                'color': '#198754',
+            })
 
     except Exception as e:
         logger.warning(f"DB content lookup for RadIQ failed (non-fatal): {e}")
 
-    if not results:
-        return ''
+    if not prompt_parts:
+        return '', []
 
-    return (
+    prompt_context = (
         "\n\nRELEVANT CONTENT FROM RADINSIGHTS DATABASE:\n"
         "The following resources exist in our database and may be relevant. "
         "Reference them in your response where appropriate, and mention they are "
         "available in RadInsights for the user to access.\n\n"
-        + "\n\n".join(results)
+        + "\n\n".join(prompt_parts)
     )
+    return prompt_context, links
 
 
 @radiq_bp.route('/api/radiq/query', methods=['POST'])
@@ -156,7 +205,7 @@ def radiq_query():
         return err
 
     # Look up relevant content in DB before calling AI
-    db_context = _find_relevant_db_content(question, category)
+    db_context, db_links = _find_relevant_db_content(question, category)
 
     try:
         response_html = generate_radiq_response(question, category, db_context=db_context)
@@ -177,12 +226,12 @@ def radiq_query():
     except Exception as e:
         db.session.rollback()
         logger.error("Failed to save RadIQ query: %s", e)
-        # Still return the response even if save fails
         return jsonify({
             'success': True,
             'response_html': response_html,
             'query_id': None,
             'remaining_requests': remaining,
+            'db_links': db_links,
         })
 
     return jsonify({
@@ -190,6 +239,7 @@ def radiq_query():
         'response_html': response_html,
         'query_id': query_record.id,
         'remaining_requests': remaining,
+        'db_links': db_links,
     })
 
 

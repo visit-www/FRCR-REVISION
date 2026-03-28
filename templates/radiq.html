@@ -133,6 +133,8 @@
                     </div>
                     <div class="card-body" id="responseContent" style="background: #fdfdfb;">
                     </div>
+                    <div id="dbLinksArea" class="d-none px-3 pb-3" style="background: #fdfdfb;">
+                    </div>
                     <div class="card-footer text-muted small" style="background: #f8f9fa;">
                         <span id="remainingCounter"></span>
                     </div>
@@ -349,7 +351,7 @@ async function submitQuery() {
             alert(data.error || 'Request failed. Please try again.');
             return;
         }
-        showResponse(data.response_html, data.remaining_requests);
+        showResponse(data.response_html, data.remaining_requests, data.db_links || []);
         loadHistory();
     } catch (err) {
         radiqController = null;
@@ -374,12 +376,36 @@ function linkifyUrls(html) {
 }
 
 // ── Display Response ──
-function showResponse(html, remaining) {
+function showResponse(html, remaining, dbLinks) {
     // Linkify any bare URLs the AI missed
     html = linkifyUrls(html);
     // Fix any double-wrapped links from linkify running on already-linked URLs
     html = html.replace(/<a [^>]*>(<a [^>]*>.*?<\/a>)<\/a>/g, '$1');
     document.getElementById('responseContent').innerHTML = html;
+
+    // Render DB resource links if any
+    var linksEl = document.getElementById('dbLinksArea');
+    if (dbLinks && dbLinks.length > 0) {
+        var linksHtml = '<div class="mt-3 pt-3" style="border-top: 1px solid #e9ecef;">' +
+            '<h6 style="font-size:0.82rem;color:#5E899E;margin-bottom:0.5rem;">' +
+            '<i class="fas fa-database me-1"></i>Related RadInsights Resources</h6>' +
+            '<div class="d-flex flex-wrap gap-2">';
+        dbLinks.forEach(function(link) {
+            linksHtml += '<a href="' + link.url + '" class="btn btn-sm" ' +
+                'style="border:1px solid ' + link.color + ';color:' + link.color +
+                ';font-size:0.78rem;border-radius:16px;text-decoration:none;" ' +
+                'target="_blank">' +
+                '<i class="fas ' + link.icon + ' me-1"></i>' +
+                link.title + '</a>';
+        });
+        linksHtml += '</div></div>';
+        linksEl.innerHTML = linksHtml;
+        linksEl.classList.remove('d-none');
+    } else {
+        linksEl.innerHTML = '';
+        linksEl.classList.add('d-none');
+    }
+
     document.getElementById('responseArea').classList.remove('d-none');
     document.getElementById('responsePlaceholder').classList.add('d-none');
     if (remaining != null) {
