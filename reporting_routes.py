@@ -16,6 +16,8 @@ import json
 import os
 import re
 import logging
+import requests as http_requests
+import time
 
 from models import (
     db, Case, CaseStatus, Question, Answer, CaseApprovalQueue,
@@ -24,6 +26,7 @@ from models import (
     IncidentalFindingCalculator, AJCCDiseaseSite, AJCCBodySection,
     User, AiPrelimCaseData, ContentRequest, RadiologyPearl,
     ContentIntelligence, UserGeneratedIntelligence,
+    SubscriptionStatus,
 )
 from access_control import require_admin
 from clinical_tool_generator import extract_html_content
@@ -4248,4 +4251,107 @@ def admin_generate_pearl():
         'tags': result['tags'],
         'model': result.get('model'),
         'token_count': result.get('token_count'),
+    })
+
+
+# ==================== VOICE DICTATION (Groq Whisper) ====================
+
+GROQ_WHISPER_URL = 'https://api.groq.com/openai/v1/audio/transcriptions'
+GROQ_WHISPER_MODEL = 'whisper-large-v3-turbo'
+GROQ_WHISPER_PROMPT = (
+    'Radiology report dictation. Medical terms: carcinoma, adenocarcinoma, '
+    'hepatocellular, metastasis, metastases, lymphadenopathy, cholangiocarcinoma, '
+    'BI-RADS, PI-RADS, LI-RADS, TI-RADS, Fleischner, RECIST, Bosniak, '
+    'peritoneal, retroperitoneal, mesenteric, parenchymal, hypodense, hyperdense, '
+    'hyperintense, hypointense, T1-weighted, T2-weighted, FLAIR, DWI, ADC, '
+    'pneumothorax, haemothorax, consolidation, atelectasis, bronchiectasis, '
+    'IMPRESSION, FINDINGS, CLINICAL INFORMATION, TECHNIQUE, COMPARISON'
+)
+MAX_AUDIO_SIZE_MB = 25  # Groq limit
+
+
+@reporting_bp.route('/api/smart-reporter/transcribe', methods=['POST'])
+@login_required
+def smart_reporter_transcribe():
+    """Voice dictation: transcribe audio via Groq Whisper turbo."""
+    # Subscription check — paid users only
+    if current_user.subscription_status != SubscriptionStatus.PAID:
+        return jsonify({
+            'error': 'Voice dictation is available for paid subscribers. '
+                     'Upgrade your plan to unlock this feature.'
+        }), 403
+
+    # Rate limit (shared with other AI features)
+    ok, remaining, err = _check_ai_rate_limit()
+    if not ok:
+        return err
+
+    # Validate audio file
+    audio_file = request.files.get('audio')
+    if not audio_file:
+        return jsonify({'error': 'No audio file provided.'}), 400
+
+    audio_data = audio_file.read()
+    if len(audio_data) > MAX_AUDIO_SIZE_MB * 1024 * 1024:
+        return jsonify({'error': f'Audio file too large (max {MAX_AUDIO_SIZE_MB}MB).'}), 400
+    if len(audio_data) < 100:
+        return jsonify({'error': 'Audio file is too small — no speech detected.'}), 400
+
+    groq_api_key = os.environ.get('GROQ_API_KEY')
+    if not groq_api_key:
+        logger.error('GROQ_API_KEY not configured')
+        return jsonify({'error': 'Voice dictation is not configured on this server.'}), 503
+
+    # Determine filename/content-type from upload
+    filename = audio_file.filename or 'dictation.webm'
+    content_type = audio_file.content_type or 'audio/webm'
+
+    start_time = time.time()
+    try:
+        resp = http_requests.post(
+            GROQ_WHISPER_URL,
+            headers={'Authorization': f'Bearer {groq_api_key}'},
+            files={'file': (filename, audio_data, content_type)},
+            data={
+                'model': GROQ_WHISPER_MODEL,
+                'language': 'en',
+                'response_format': 'text',
+                'prompt': GROQ_WHISPER_PROMPT,
+            },
+            timeout=30,
+        )
+        duration_ms = int((time.time() - start_time) * 1000)
+
+        if resp.status_code != 200:
+            logger.error(f'Groq Whisper error {resp.status_code}: {resp.text[:500]}')
+            return jsonify({'error': 'Transcription service returned an error. Please try again.'}), 502
+
+        transcribed_text = resp.text.strip()
+
+    except http_requests.exceptions.Timeout:
+        logger.error('Groq Whisper request timed out')
+        return jsonify({'error': 'Transcription timed out. Try a shorter recording.'}), 504
+    except Exception as exc:
+        logger.error(f'Groq Whisper request failed: {exc}')
+        return jsonify({'error': 'Transcription failed. Please try again.'}), 500
+
+    # Audit log
+    try:
+        from models import log_ai_usage
+        log_ai_usage(
+            user_id=current_user.id,
+            action='voice_transcribe',
+            provider='groq',
+            model=GROQ_WHISPER_MODEL,
+            input_summary=f'audio {len(audio_data)} bytes',
+            status='success',
+            duration_ms=duration_ms,
+        )
+    except Exception:
+        pass
+
+    return jsonify({
+        'success': True,
+        'text': transcribed_text,
+        'remaining_requests': remaining,
     })
