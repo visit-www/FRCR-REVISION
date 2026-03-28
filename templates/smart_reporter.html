@@ -2626,10 +2626,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     window.reviewReport = async function() {
         if (_piiBlocked) { showToast('Remove patient data before using AI features.', 'warning'); showPIIDetails(); return; }
-        const input = document.getElementById('editorInput');
-        const text = input.value.trim();
+        const text = getCurrentReportText();
         if (!text) {
-            showToast('Please enter your report text first.', 'warning');
             return;
         }
         if (await checkEditorPII()) return;
@@ -2993,7 +2991,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if (_piiBlocked) { showToast('Remove patient data before using AI features.', 'warning'); showPIIDetails(); return; }
         const reportText = getCurrentReportText();
         if (!reportText) {
-            showToast('Please enter your report text first.', 'warning');
             return;
         }
         if (await checkEditorPII()) return;
