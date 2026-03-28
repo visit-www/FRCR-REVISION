@@ -1,0 +1,394 @@
+{% extends 'base.html' %}
+{% block title %}RadIQ - RadInsights{% endblock %}
+{% block tool_active_radiq %}active{% endblock %}
+{% block mobile_active_radiq %}active{% endblock %}
+
+{% block mobile_breadcrumb %}
+<li class="breadcrumb-item active text-white-50">RadIQ</li>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4" id="radiqContainer">
+
+    <!-- Disclaimer -->
+    <div class="p-2 rounded mb-3" style="background: #f8f9fa; border: 1px solid #e9ecef;">
+        <small class="text-muted">
+            <i class="fas fa-shield-alt me-1" style="color: #e96304;"></i>
+            <strong>Professional Advisory Tool</strong> &mdash;
+            AI-generated guidance for educational and reference purposes. Always apply clinical judgement. Do not enter patient-identifiable data.
+        </small>
+    </div>
+
+    <div class="row">
+        <!-- ==================== LEFT COLUMN ==================== -->
+        <div class="col-lg-8">
+
+            <!-- Hero -->
+            <div class="text-center mb-4">
+                <i class="fas fa-robot" style="font-size: 2.5rem; color: #5E899E;"></i>
+                <h2 class="mt-2 mb-1">RadIQ</h2>
+                <p class="text-muted mb-0">Consultant-Level Intelligence for Radiologists</p>
+            </div>
+
+            <!-- Category Cards -->
+            <div id="categoryGrid" class="row g-3 mb-4">
+                <div class="col-12 col-md-6 col-lg-4">
+                    <div class="card border-0 shadow-sm h-100 radiq-category-card" data-category="gp_reply" role="button" tabindex="0">
+                        <div class="card-body text-center p-3">
+                            <i class="fas fa-envelope mb-2" style="font-size: 1.8rem; color: #5E899E;"></i>
+                            <h6 class="mb-1">GP Reply</h6>
+                            <small class="text-muted">Draft referral responses</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-md-6 col-lg-4">
+                    <div class="card border-0 shadow-sm h-100 radiq-category-card" data-category="complaint" role="button" tabindex="0">
+                        <div class="card-body text-center p-3">
+                            <i class="fas fa-exclamation-circle mb-2" style="font-size: 1.8rem; color: #dc3545;"></i>
+                            <h6 class="mb-1">Complaint Response</h6>
+                            <small class="text-muted">Handle patient complaints</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-md-6 col-lg-4">
+                    <div class="card border-0 shadow-sm h-100 radiq-category-card" data-category="incident" role="button" tabindex="0">
+                        <div class="card-body text-center p-3">
+                            <i class="fas fa-clipboard-list mb-2" style="font-size: 1.8rem; color: #e96304;"></i>
+                            <h6 class="mb-1">Incident Report</h6>
+                            <small class="text-muted">Datix-style reporting</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-md-6 col-lg-4">
+                    <div class="card border-0 shadow-sm h-100 radiq-category-card" data-category="radiographer" role="button" tabindex="0">
+                        <div class="card-body text-center p-3">
+                            <i class="fas fa-user-md mb-2" style="font-size: 1.8rem; color: #6b46c1;"></i>
+                            <h6 class="mb-1">Radiographer Request</h6>
+                            <small class="text-muted">Protocol justification</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-md-6 col-lg-4">
+                    <div class="card border-0 shadow-sm h-100 radiq-category-card" data-category="imaging_protocol" role="button" tabindex="0">
+                        <div class="card-body text-center p-3">
+                            <i class="fas fa-x-ray mb-2" style="font-size: 1.8rem; color: #0d6efd;"></i>
+                            <h6 class="mb-1">Imaging Protocol</h6>
+                            <small class="text-muted">Contrast, dose & technique</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-md-6 col-lg-4">
+                    <div class="card border-0 shadow-sm h-100 radiq-category-card" data-category="general" role="button" tabindex="0">
+                        <div class="card-body text-center p-3">
+                            <i class="fas fa-comments mb-2" style="font-size: 1.8rem; color: #198754;"></i>
+                            <h6 class="mb-1">General Query</h6>
+                            <small class="text-muted">Clinical advisory</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Query Input (hidden until category selected) -->
+            <div id="queryInputArea" class="d-none mb-4">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center mb-3">
+                            <span id="selectedCategoryBadge" class="badge me-2" style="background: #5E899E;"></span>
+                            <button class="btn btn-sm btn-outline-secondary" onclick="resetCategory()">
+                                <i class="fas fa-times me-1"></i>Change
+                            </button>
+                        </div>
+                        <textarea id="queryInput" class="form-control mb-3" rows="5"
+                                  placeholder="Describe your clinical scenario or question..."></textarea>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <button id="btnSubmitQuery" class="btn btn-brand-neutral" onclick="submitQuery()">
+                                <i class="fas fa-paper-plane me-1"></i>Submit to RadIQ
+                            </button>
+                            <div id="querySpinner" class="d-none">
+                                <div class="spinner-border spinner-border-sm text-secondary me-2" role="status"></div>
+                                <small class="text-muted">Generating response...</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Response Area (hidden until response received) -->
+            <div id="responseArea" class="d-none mb-4">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header" style="background: linear-gradient(135deg, #5E899E, #4D7A8D); color: #fff;">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span><i class="fas fa-robot me-2"></i>RadIQ Response</span>
+                            <div>
+                                <button class="btn btn-sm btn-outline-light me-1" onclick="copyResponse()" title="Copy response">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-light" onclick="newQuery()" title="New query">
+                                    <i class="fas fa-plus"></i> New Query
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body" id="responseContent" style="background: #fdfdfb;">
+                    </div>
+                    <div class="card-footer text-muted small" style="background: #f8f9fa;">
+                        <span id="remainingCounter"></span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ==================== RIGHT COLUMN ==================== -->
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header" style="background: linear-gradient(135deg, #5E899E, #4D7A8D); color: #fff;">
+                    <i class="fas fa-history me-2"></i>Recent Queries
+                </div>
+                <div class="card-body p-0" id="historyPanel" style="max-height: 600px; overflow-y: auto;">
+                    <div class="text-center py-4 text-muted" id="historyEmpty">
+                        <i class="fas fa-inbox" style="font-size: 1.5rem; opacity: 0.4;"></i>
+                        <p class="small mt-2 mb-0">Your queries will appear here</p>
+                    </div>
+                    <div id="historyList" class="list-group list-group-flush"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .radiq-category-card {
+        cursor: pointer;
+        transition: transform 0.15s, box-shadow 0.15s;
+        border: 2px solid transparent !important;
+    }
+    .radiq-category-card:hover, .radiq-category-card:focus {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.12) !important;
+        border-color: #5E899E !important;
+    }
+    .radiq-category-card.selected {
+        border-color: #5E899E !important;
+        background: rgba(94,137,158,0.06);
+    }
+    #responseContent h5 {
+        color: #2c3e50;
+        margin-top: 1rem;
+        margin-bottom: 0.5rem;
+        font-size: 1.05rem;
+    }
+    #responseContent h5:first-child {
+        margin-top: 0;
+    }
+    #responseContent ul {
+        padding-left: 1.2rem;
+    }
+    .radiq-suggested-response {
+        background: #f0f7fa;
+        border-left: 3px solid #5E899E;
+        padding: 0.75rem 1rem;
+        border-radius: 0 4px 4px 0;
+        margin: 0.5rem 0;
+        white-space: pre-line;
+    }
+    .radiq-history-item {
+        cursor: pointer;
+        transition: background 0.15s;
+        border: none;
+        border-bottom: 1px solid #f0f0f0;
+    }
+    .radiq-history-item:hover {
+        background: rgba(94,137,158,0.06);
+    }
+    .radiq-cat-badge {
+        font-size: 0.65rem;
+        padding: 2px 6px;
+        border-radius: 3px;
+        color: #fff;
+        display: inline-block;
+        margin-bottom: 2px;
+    }
+</style>
+
+<script>
+const CATEGORY_META = {
+    gp_reply:          { label: 'GP Reply',              color: '#5E899E', icon: 'fa-envelope' },
+    complaint:         { label: 'Complaint Response',    color: '#dc3545', icon: 'fa-exclamation-circle' },
+    incident:          { label: 'Incident Report',       color: '#e96304', icon: 'fa-clipboard-list' },
+    radiographer:      { label: 'Radiographer Request',  color: '#6b46c1', icon: 'fa-user-md' },
+    imaging_protocol:  { label: 'Imaging Protocol',      color: '#0d6efd', icon: 'fa-x-ray' },
+    general:           { label: 'General Query',         color: '#198754', icon: 'fa-comments' },
+};
+
+let selectedCategory = null;
+
+// ── Category Selection ──
+document.querySelectorAll('.radiq-category-card').forEach(card => {
+    card.addEventListener('click', () => selectCategory(card.dataset.category));
+    card.addEventListener('keydown', e => { if (e.key === 'Enter') selectCategory(card.dataset.category); });
+});
+
+function selectCategory(cat) {
+    selectedCategory = cat;
+    const meta = CATEGORY_META[cat];
+    document.querySelectorAll('.radiq-category-card').forEach(c => c.classList.remove('selected'));
+    document.querySelector(`[data-category="${cat}"]`).classList.add('selected');
+    const badge = document.getElementById('selectedCategoryBadge');
+    badge.textContent = meta.label;
+    badge.style.background = meta.color;
+    document.getElementById('queryInputArea').classList.remove('d-none');
+    document.getElementById('queryInput').focus();
+}
+
+function resetCategory() {
+    selectedCategory = null;
+    document.querySelectorAll('.radiq-category-card').forEach(c => c.classList.remove('selected'));
+    document.getElementById('queryInputArea').classList.add('d-none');
+    document.getElementById('responseArea').classList.add('d-none');
+}
+
+// ── Submit Query ──
+async function submitQuery() {
+    const question = document.getElementById('queryInput').value.trim();
+    if (!question) return;
+    if (!selectedCategory) return;
+
+    const btn = document.getElementById('btnSubmitQuery');
+    const spinner = document.getElementById('querySpinner');
+    btn.disabled = true;
+    spinner.classList.remove('d-none');
+    document.getElementById('responseArea').classList.add('d-none');
+
+    try {
+        const res = await fetch('/api/radiq/query', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ question, category: selectedCategory }),
+        });
+        const data = await res.json();
+        if (!res.ok || data.error) {
+            alert(data.error || 'Request failed. Please try again.');
+            return;
+        }
+        showResponse(data.response_html, data.remaining_requests);
+        loadHistory();
+    } catch (err) {
+        alert('Network error. Please try again.');
+    } finally {
+        btn.disabled = false;
+        spinner.classList.add('d-none');
+    }
+}
+
+// ── Display Response ──
+function showResponse(html, remaining) {
+    document.getElementById('responseContent').innerHTML = html;
+    document.getElementById('responseArea').classList.remove('d-none');
+    if (remaining != null) {
+        document.getElementById('remainingCounter').textContent =
+            `${remaining} AI request${remaining !== 1 ? 's' : ''} remaining today`;
+    }
+    document.getElementById('responseArea').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function copyResponse() {
+    const el = document.getElementById('responseContent');
+    const text = el.innerText || el.textContent;
+    navigator.clipboard.writeText(text).then(() => {
+        const btn = document.querySelector('#responseArea .fa-copy').parentElement;
+        const orig = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-check"></i>';
+        setTimeout(() => { btn.innerHTML = orig; }, 1500);
+    });
+}
+
+function newQuery() {
+    document.getElementById('queryInput').value = '';
+    document.getElementById('responseArea').classList.add('d-none');
+    document.getElementById('queryInput').focus();
+}
+
+// ── History ──
+async function loadHistory() {
+    try {
+        const res = await fetch('/api/radiq/history');
+        const data = await res.json();
+        const list = document.getElementById('historyList');
+        const empty = document.getElementById('historyEmpty');
+        list.innerHTML = '';
+        if (!data.queries || data.queries.length === 0) {
+            empty.classList.remove('d-none');
+            return;
+        }
+        empty.classList.add('d-none');
+        data.queries.forEach(q => {
+            const meta = CATEGORY_META[q.category] || CATEGORY_META.general;
+            const ago = timeAgo(q.created_at);
+            const truncQ = q.question.length > 60 ? q.question.substring(0, 60) + '...' : q.question;
+            const item = document.createElement('div');
+            item.className = 'radiq-history-item p-2';
+            item.innerHTML = `
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="flex-grow-1" onclick="showHistoryItem(${q.id})">
+                        <span class="radiq-cat-badge" style="background:${meta.color};">${meta.label}</span>
+                        <div class="small mt-1" style="color: #2c3e50;">${escHtml(truncQ)}</div>
+                        <div class="text-muted" style="font-size: 0.7rem;">${ago}</div>
+                    </div>
+                    <button class="btn btn-sm text-muted p-0 ms-2" onclick="deleteHistoryItem(${q.id}, this)" title="Delete">
+                        <i class="fas fa-times" style="font-size: 0.7rem;"></i>
+                    </button>
+                </div>`;
+            list.appendChild(item);
+        });
+    } catch (err) {
+        console.error('Failed to load history:', err);
+    }
+}
+
+async function showHistoryItem(id) {
+    try {
+        const res = await fetch(`/api/radiq/history/${id}`);
+        const q = await res.json();
+        if (q.error) return;
+        const meta = CATEGORY_META[q.category] || CATEGORY_META.general;
+        selectCategory(q.category);
+        document.getElementById('queryInput').value = q.question;
+        showResponse(q.response_text, null);
+    } catch (err) {
+        console.error('Failed to load query:', err);
+    }
+}
+
+async function deleteHistoryItem(id, btn) {
+    event.stopPropagation();
+    if (!confirm('Delete this saved query?')) return;
+    try {
+        const res = await fetch(`/api/radiq/history/${id}`, { method: 'DELETE' });
+        if (res.ok) loadHistory();
+    } catch (err) {
+        console.error('Failed to delete:', err);
+    }
+}
+
+function timeAgo(iso) {
+    if (!iso) return '';
+    const d = new Date(iso + (iso.includes('Z') ? '' : 'Z'));
+    const diff = (Date.now() - d.getTime()) / 1000;
+    if (diff < 60) return 'just now';
+    if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+    if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+    if (diff < 604800) return Math.floor(diff / 86400) + 'd ago';
+    return d.toLocaleDateString();
+}
+
+function escHtml(str) {
+    const d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
+}
+
+// Load history on page load
+document.addEventListener('DOMContentLoaded', loadHistory);
+</script>
+{% endblock %}

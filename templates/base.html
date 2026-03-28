@@ -117,9 +117,14 @@
                             <i class="fas fa-file-medical me-2" style="color: #e96304; width: 20px; text-align: center;"></i>Report
                         </a>
 
-                        <!-- Reference (collapsible) -->
+                        <!-- RadIQ -->
+                        <a href="/radiq" class="list-group-item list-group-item-action border-0 px-0 py-2 {% block mobile_active_radiq %}{% endblock %}">
+                            <i class="fas fa-robot me-2" style="color: #5E899E; width: 20px; text-align: center;"></i>RadIQ
+                        </a>
+
+                        <!-- Resources (collapsible) -->
                         <a href="#mobileRefCollapse" class="list-group-item list-group-item-action border-0 px-0 py-2" data-bs-toggle="collapse" role="button" aria-expanded="false">
-                            <i class="fas fa-book-open me-2" style="color: #1b6ec2; width: 20px; text-align: center;"></i>Reference
+                            <i class="fas fa-book-open me-2" style="color: #1b6ec2; width: 20px; text-align: center;"></i>Resources
                             <i class="fas fa-chevron-down float-end mt-1" style="font-size: 0.7rem; opacity: 0.6;"></i>
                         </a>
                         <div class="collapse" id="mobileRefCollapse">
@@ -213,12 +218,13 @@
     </div>
 
     <!-- Hidden block definitions for self.tool_active_*() lookups -->
-    <span class="d-none" aria-hidden="true">{% block tool_active_cases %}{% endblock %}{% block tool_active_tnm %}{% endblock %}{% block tool_active_tnm_staging %}{% endblock %}{% block tool_active_if %}{% endblock %}{% block tool_active_templates %}{% endblock %}{% block tool_active_algorithms %}{% endblock %}{% block tool_active_knowledge_hub %}{% endblock %}{% block tool_active_anatomy %}{% endblock %}{% block tool_active_pearls %}{% endblock %}{% block tool_active_protocols %}{% endblock %}{% block tool_active_reporter %}{% endblock %}{% block tool_active_study %}{% endblock %}</span>
+    <span class="d-none" aria-hidden="true">{% block tool_active_cases %}{% endblock %}{% block tool_active_tnm %}{% endblock %}{% block tool_active_tnm_staging %}{% endblock %}{% block tool_active_if %}{% endblock %}{% block tool_active_templates %}{% endblock %}{% block tool_active_algorithms %}{% endblock %}{% block tool_active_knowledge_hub %}{% endblock %}{% block tool_active_anatomy %}{% endblock %}{% block tool_active_pearls %}{% endblock %}{% block tool_active_protocols %}{% endblock %}{% block tool_active_reporter %}{% endblock %}{% block tool_active_study %}{% endblock %}{% block tool_active_radiq %}{% endblock %}</span>
 
     {% if current_user.is_authenticated %}
     {% set _practice_active = 'active' in self.tool_active_study() %}
     {% set _learn_active = 'active' in (self.tool_active_cases() ~ self.tool_active_tnm_staging() ~ self.tool_active_knowledge_hub() ~ self.tool_active_anatomy() ~ self.tool_active_pearls()) %}
     {% set _report_active = 'active' in (self.tool_active_reporter() ~ self.tool_active_templates() ~ self.tool_active_algorithms()) %}
+    {% set _radiq_active = 'active' in self.tool_active_radiq() %}
     {% set _reference_active = 'active' in (self.tool_active_if() ~ self.tool_active_protocols() ~ self.tool_active_tnm()) %}
     <!-- Tool Navigation Bar -->
     <div class="tool-nav-bar">
@@ -247,10 +253,15 @@
                     <i class="fas fa-file-medical me-1" style="color: {{ '#fff' if _report_active else '#e96304' }};"></i><span class="d-none d-sm-inline">Report</span><span class="d-sm-none">Report</span>
                 </a>
 
-                <!-- Reference (dropdown) -->
+                <!-- RadIQ -->
+                <a href="/radiq" class="tool-nav-link {{ 'active' if _radiq_active }}">
+                    <i class="fas fa-robot me-1" style="color: {{ '#fff' if _radiq_active else '#5E899E' }};"></i><span class="d-none d-sm-inline">RadIQ</span><span class="d-sm-none">RadIQ</span>
+                </a>
+
+                <!-- Resources (dropdown) -->
                 <div class="tool-nav-dropdown">
                     <a href="#" class="tool-nav-link {{ 'active' if _reference_active }}" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="fas fa-book-open me-1" style="color: {{ '#fff' if _reference_active else '#1b6ec2' }};"></i><span class="d-none d-sm-inline">Reference</span><span class="d-sm-none">Ref</span>
+                        <i class="fas fa-book-open me-1" style="color: {{ '#fff' if _reference_active else '#1b6ec2' }};"></i><span class="d-none d-sm-inline">Resources</span><span class="d-sm-none">Res</span>
                         <i class="fas fa-chevron-down ms-1" style="font-size: 0.6rem;"></i>
                     </a>
                     <ul class="dropdown-menu tool-nav-dropdown-menu">

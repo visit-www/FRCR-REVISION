@@ -1085,6 +1085,9 @@ app.register_blueprint(protocol_bp)  # Clinical Protocols + On-Call Helper
 app.register_blueprint(reporting_bp)  # Algorithm Finder + Non-oncologic reporting templates
 app.register_blueprint(if_bp)  # Radiology Tools - guideline-based calculators (URL: /incidental-findings)
 
+from radiq_routes import radiq_bp
+app.register_blueprint(radiq_bp)  # RadIQ - consultant-level AI assistant
+
 # Global PII guard — blocks patient-identifiable data in all POST/PUT JSON requests
 from pii_guard import create_pii_middleware
 create_pii_middleware(app)

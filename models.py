@@ -3300,3 +3300,31 @@ class SnippetImage(db.Model):
             'attribution': self.attribution,
             'created_at': self.created_at.isoformat() if self.created_at else None,
         }
+
+
+# ==================== RADIQ QUERY MODEL ====================
+
+class RadIQQuery(db.Model):
+    """Saved RadIQ queries — consultant-level AI advisory for radiologists."""
+    __tablename__ = 'radiq_query'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+    category = db.Column(db.String(50), nullable=False)  # gp_reply, complaint, incident, radiographer, imaging_protocol, general
+    question = db.Column(db.Text, nullable=False)
+    response_text = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    user = db.relationship('User', backref=db.backref('radiq_queries', lazy='dynamic'))
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'category': self.category,
+            'question': self.question,
+            'response_text': self.response_text,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }
+
+    def __repr__(self):
+        return f'<RadIQQuery {self.id} cat={self.category} user={self.user_id}>'

@@ -8,9 +8,9 @@
 {% endblock %}
 
 {% block content %}
-<div class="container py-4">
+<div class="container py-4" id="smartReporterContainer">
     <div class="row justify-content-center">
-        <div class="col-12 col-xl-10">
+        <div class="col-12 col-xl-10" id="smartReporterCol">
 
             <!-- Disclaimer -->
             <div class="p-2 rounded mb-3" style="background: #f8f9fa; border: 1px solid #e9ecef;">
@@ -376,6 +376,11 @@
                             <i class="fas fa-arrow-left me-1"></i>Back
                         </button>
                         <h5 class="mb-0"><i class="fas fa-edit me-2" style="color: #5E899E;"></i>Report Editor</h5>
+                        <button class="btn btn-sm btn-outline-secondary d-none d-lg-inline-flex align-items-center"
+                                id="btnViewToggle" onclick="toggleEditorView()" title="Toggle layout">
+                            <i class="fas fa-columns me-1" id="viewToggleIcon"></i>
+                            <span id="viewToggleLabel">Split View</span>
+                        </button>
                     </div>
                     <div class="d-flex align-items-center gap-2">
                         <button class="btn btn-sm btn-outline-info" onclick="showSaveTemplatePrompt()" title="Save as personal template" id="btnSaveTemplate">
@@ -447,9 +452,9 @@
                     </div>
                 </div>
 
-                <div class="row g-3">
+                <div class="row g-3" id="editorMainRow">
                     <!-- Left column: Input + Output -->
-                    <div class="col-lg-7">
+                    <div class="col-lg-7" id="editorLeftCol">
                         <!-- Input Box -->
                         <div class="card border-0 shadow-sm mb-3">
                             <div class="card-header bg-white border-0 py-2">
@@ -505,6 +510,8 @@
                             </button>
                         </div>
 
+                        <!-- Anchor for stack-mode output position -->
+                        <div id="stackOutputTarget"></div>
                         <!-- Output Box (shown after review) -->
                         <div id="outputSection" class="d-none">
                             <div class="card border-0 shadow-sm mb-3">
@@ -546,7 +553,9 @@
                     </div>
 
                     <!-- Right column: Quick Check Suggestions + RadInsight Intelligence -->
-                    <div class="col-lg-5">
+                    <div class="col-lg-5" id="editorRightCol">
+                        <!-- Anchor for split-mode output position -->
+                        <div id="splitOutputTarget"></div>
                         <!-- Quick Check Suggestions Panel (shown after Quick Check) -->
                         <div id="suggestionsPanel" class="d-none mb-3">
                             <div class="card border-0 shadow-sm">
@@ -1640,7 +1649,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const input = document.getElementById('editorInput');
         input.value = state.inputText;
         autoResizeTextarea(input);
-        document.getElementById('outputSection').classList.add('d-none');
+        hideOrClearOutput();
         document.getElementById('suggestionsPanel').classList.add('d-none');
 
         const completedSteps = Object.keys(state.answers).length;
@@ -2181,9 +2190,7 @@ document.addEventListener('DOMContentLoaded', function() {
         state.externalContext = null;
 
         // Clear UI
-        var output = document.getElementById('editorOutput');
-        if (output) output.value = '';
-        document.getElementById('outputSection').classList.add('d-none');
+        hideOrClearOutput();
         document.getElementById('suggestionsPanel').classList.add('d-none');
         document.getElementById('aiAssistResponse').classList.add('d-none');
         document.getElementById('aiAssistInsightsSection').classList.add('d-none');
@@ -2442,7 +2449,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const btn = document.getElementById('btnReviewReport2');
         if (btn) btn.disabled = true;
         document.getElementById('reviewLoading').classList.remove('d-none');
-        document.getElementById('outputSection').classList.add('d-none');
+        hideOrClearOutput();
         document.getElementById('suggestionsPanel').classList.add('d-none');
 
         cancelAIRequest();
@@ -3367,7 +3374,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const input = document.getElementById('editorInput');
                 input.value = state.inputText;
                 autoResizeTextarea(input);
-                document.getElementById('outputSection').classList.add('d-none');
+                hideOrClearOutput();
                 document.getElementById('suggestionsPanel').classList.add('d-none');
                 showToast('Loaded template: ' + data.title, 'success');
             })
@@ -3626,7 +3633,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const input = document.getElementById('editorInput');
             input.value = state.inputText;
             autoResizeTextarea(input);
-            document.getElementById('outputSection').classList.add('d-none');
+            hideOrClearOutput();
             document.getElementById('suggestionsPanel').classList.add('d-none');
 
             showToast('Full report generated with normal findings. Edit as needed.', 'success');
@@ -3793,6 +3800,92 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     };
 
+    // ==================== SPLIT / STACK VIEW TOGGLE ====================
+
+    function getSavedViewMode() {
+        try { return localStorage.getItem('smartReporterViewMode') || 'stack'; }
+        catch(e) { return 'stack'; }
+    }
+
+    function saveViewMode(mode) {
+        try { localStorage.setItem('smartReporterViewMode', mode); } catch(e) {}
+    }
+
+    window.toggleEditorView = function() {
+        var current = getSavedViewMode();
+        var next = current === 'split' ? 'stack' : 'split';
+        saveViewMode(next);
+        applyViewMode(next);
+    };
+
+    function applyViewMode(mode) {
+        var container = document.getElementById('smartReporterContainer');
+        var col = document.getElementById('smartReporterCol');
+        var row = document.getElementById('editorMainRow');
+        var outputSection = document.getElementById('outputSection');
+        var splitTarget = document.getElementById('splitOutputTarget');
+        var stackTarget = document.getElementById('stackOutputTarget');
+        var btnLabel = document.getElementById('viewToggleLabel');
+        var btnIcon = document.getElementById('viewToggleIcon');
+
+        if (!row || !outputSection) return;
+
+        if (mode === 'split') {
+            // Widen container
+            container.classList.remove('container');
+            container.classList.add('container-fluid');
+            col.classList.remove('col-xl-10');
+            col.classList.add('col-xl-12');
+            // Add split class
+            row.classList.add('sr-split-mode');
+            // Move output to right column
+            splitTarget.after(outputSection);
+            // Show output with placeholder if empty
+            outputSection.classList.remove('d-none');
+            var textarea = document.getElementById('editorOutput');
+            if (textarea && !textarea.value.trim()) {
+                textarea.placeholder = 'PACS-ready output will appear here after Quick Check or Finalize...';
+            }
+            // Update button
+            if (btnLabel) btnLabel.textContent = 'Stack View';
+            if (btnIcon) { btnIcon.classList.remove('fa-columns'); btnIcon.classList.add('fa-layer-group'); }
+        } else {
+            // Restore container
+            container.classList.remove('container-fluid');
+            container.classList.add('container');
+            col.classList.remove('col-xl-12');
+            col.classList.add('col-xl-10');
+            // Remove split class
+            row.classList.remove('sr-split-mode');
+            // Move output back to left column
+            stackTarget.after(outputSection);
+            // Hide output if empty
+            var textarea = document.getElementById('editorOutput');
+            if (!textarea || !textarea.value.trim()) {
+                outputSection.classList.add('d-none');
+            }
+            // Update button
+            if (btnLabel) btnLabel.textContent = 'Split View';
+            if (btnIcon) { btnIcon.classList.remove('fa-layer-group'); btnIcon.classList.add('fa-columns'); }
+        }
+    }
+
+    function hideOrClearOutput() {
+        var outputSection = document.getElementById('outputSection');
+        var textarea = document.getElementById('editorOutput');
+        if (getSavedViewMode() === 'split' && document.getElementById('editorMainRow').classList.contains('sr-split-mode')) {
+            // In split mode: clear content but keep section visible
+            if (textarea) {
+                textarea.value = '';
+                textarea.placeholder = 'PACS-ready output will appear here after Quick Check or Finalize...';
+            }
+        } else {
+            // In stack mode: hide the section
+            if (textarea) textarea.value = '';
+            outputSection.classList.add('d-none');
+        }
+    }
+
     // ==================== SCENE EXTENSION ====================
 
     // Extend showScene to reload lists and fetch related content
@@ -3802,6 +3895,8 @@ document.addEventListener('DOMContentLoaded', function() {
         if (scene === 'editor') {
             // Fetch related content if there's text
             fetchRelatedForScene2();
+            // Apply saved view mode
+            applyViewMode(getSavedViewMode());
         }
         if (scene === 'landing') {
             loadPersonalTemplates(false);

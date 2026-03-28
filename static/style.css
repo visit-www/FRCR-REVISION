@@ -5876,3 +5876,42 @@ body {
     margin-left: 0.5rem;
     font-variant-numeric: tabular-nums;
 }
+
+/* ==================== Smart Reporter Split View ==================== */
+.sr-split-mode #editorLeftCol {
+    flex: 0 0 50%;
+    max-width: 50%;
+}
+.sr-split-mode #editorRightCol {
+    flex: 0 0 50%;
+    max-width: 50%;
+}
+.sr-split-mode #editorLeftCol,
+.sr-split-mode #editorRightCol {
+    max-height: calc(100vh - 160px);
+    overflow-y: auto;
+    position: sticky;
+    top: 80px;
+}
+.sr-split-mode #outputSection {
+    display: block !important;
+}
+.sr-split-mode #outputSection .card-body textarea {
+    min-height: 200px;
+}
+@media (max-width: 991.98px) {
+    .sr-split-mode #editorLeftCol,
+    .sr-split-mode #editorRightCol {
+        flex: 0 0 100%;
+        max-width: 100%;
+        max-height: none;
+        overflow-y: visible;
+        position: static;
+    }
+    .sr-split-mode #outputSection {
+        display: none !important;
+    }
+    .sr-split-mode #outputSection.has-content {
+        display: block !important;
+    }
+}
