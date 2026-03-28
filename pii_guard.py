@@ -95,7 +95,7 @@ PII_PATTERNS = [
     )),
     # Doctor / clinician name with context keyword
     ('Doctor / Clinician Name', re.compile(
-        r'\b(?:referred\s+by|reporting\s+(?:radiologist|doctor|consultant)|reported\s+by|consultant|registrar|SpR|SHO|GP)\s*[:=\-]?\s*(?:Dr\.?\s+)?[A-Z][a-zA-Z\'-]+(?:\s+[A-Z][a-zA-Z\'-]+){0,3}',
+        r'\b(?:referred\s+by|reporting\s+(?:radiologist|doctor|consultant)|reported\s+by|consultant|registrar|SpR|SHO|GP)\b\s*[:=\-]?\s*(?:Dr\.?\s+)?[A-Z][a-zA-Z\'-]+(?:\s+[A-Z][a-zA-Z\'-]+){0,3}',
         re.IGNORECASE)),
     # Doctor name with Dr. title (requires 2+ name words)
     ('Doctor / Clinician Name', re.compile(
@@ -137,6 +137,7 @@ SKIP_ROUTE_PREFIXES = (
     '/login',
     '/register',
     '/api/backup',
+    '/api/pii-override-log',
     '/radiology-protocols/admin/',
     '/incidental-findings/admin/',
     '/admin/reporting-algorithms/',
@@ -184,6 +185,11 @@ def create_pii_middleware(app):
 
         # Skip admin, auth, and backup routes
         if any(request.path.startswith(prefix) for prefix in SKIP_ROUTE_PREFIXES):
+            return None
+
+        # Honor client-side PII override (user confirmed not PII, logged to audit trail)
+        if request.headers.get('X-PII-Override') == '1':
+            logger.info(f"PII override accepted on {request.method} {request.path}")
             return None
 
         # Skip non-JSON requests (file uploads, form data)

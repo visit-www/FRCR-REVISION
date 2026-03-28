@@ -1089,26 +1089,43 @@ document.addEventListener('DOMContentLoaded', function() {
         var result = PIIGuard.scan(editor.value);
         if (!result.hasPII) return false;
 
-        var action = await PIIGuard.showPIIModal(result.matches);
-        if (action === 'redact') {
-            var cleaned = PIIGuard.redact(editor.value, result.matches);
-            if (cleaned !== editor.value) {
-                editor.value = cleaned;
-                showToast('Patient data removed from your text. Please review and re-submit.', 'success');
-            } else {
-                // Fallback: manual string replacement if redact didn't change the text
+        // Build a body-like object so the modal can show highlighted preview
+        var previewBody = { report_text: editor.value };
+        var previewMatches = result.matches.map(function(m) {
+            return { type: m.type, match: m.match, index: m.index, description: m.description, field: 'report_text' };
+        });
+
+        var action = await PIIGuard.showPIIModal(previewMatches, previewBody);
+
+        if (action === 'override') {
+            // User confirmed this is not PII — allow submission to proceed
+            return false;
+        }
+
+        if (action === 'redact' || action === 'remove') {
+            var transformFn = action === 'remove' ? PIIGuard.remove : PIIGuard.redact;
+            var cleaned = transformFn(editor.value, result.matches);
+            if (cleaned === editor.value) {
+                // Fallback: manual string replacement
                 var fallback = editor.value;
+                var replacement = action === 'remove' ? '' : '[REDACTED]';
                 for (var i = 0; i < result.matches.length; i++) {
                     var m = result.matches[i].match;
                     if (m && fallback.indexOf(m) !== -1) {
-                        fallback = fallback.split(m).join('[REDACTED]');
+                        fallback = fallback.split(m).join(replacement);
                     }
                 }
-                editor.value = fallback;
-                showToast('Patient data removed from your text. Please review and re-submit.', 'success');
+                if (action === 'remove') fallback = fallback.replace(/  +/g, ' ').trim();
+                cleaned = fallback;
             }
+            editor.value = cleaned;
+            var label = action === 'remove' ? 'removed from' : 'redacted in';
+            showToast('Patient data ' + label + ' your text. Please review and re-submit.', 'success');
+            return true; // Block — user must review cleaned text before re-submitting
         }
-        return true; // Always block — user must review cleaned text before re-submitting
+
+        // Cancel — block submission
+        return true;
     }
 
     // Safety net for server-side PII catches (if client-side misses something)
@@ -1123,24 +1140,34 @@ document.addEventListener('DOMContentLoaded', function() {
             });
 
         if (displayMatches.length > 0 && window.PIIGuard) {
-            PIIGuard.showPIIModal(displayMatches).then(function(action) {
-                if (action === 'redact' && editor) {
-                    var matchesToRedact = clientMatches.length > 0 ? clientMatches : displayMatches;
-                    var cleaned = PIIGuard.redact(editor.value, matchesToRedact);
+            // Add field for preview
+            var previewBody = editor ? { report_text: editor.value } : null;
+            var previewMatches = displayMatches.map(function(m) {
+                return { type: m.type, match: m.match, description: m.description || m.type, field: 'report_text' };
+            });
+            PIIGuard.showPIIModal(previewMatches, previewBody).then(function(action) {
+                if (!editor) return;
+                var matchesToClean = clientMatches.length > 0 ? clientMatches : displayMatches;
+                if (action === 'redact' || action === 'remove') {
+                    var transformFn = action === 'remove' ? PIIGuard.remove : PIIGuard.redact;
+                    var cleaned = transformFn(editor.value, matchesToClean);
                     if (cleaned === editor.value) {
-                        // Fallback: manual string replacement
                         var fb = editor.value;
-                        for (var i = 0; i < matchesToRedact.length; i++) {
-                            var mt = matchesToRedact[i].match;
+                        var rep = action === 'remove' ? '' : '[REDACTED]';
+                        for (var i = 0; i < matchesToClean.length; i++) {
+                            var mt = matchesToClean[i].match;
                             if (mt && fb.indexOf(mt) !== -1) {
-                                fb = fb.split(mt).join('[REDACTED]');
+                                fb = fb.split(mt).join(rep);
                             }
                         }
+                        if (action === 'remove') fb = fb.replace(/  +/g, ' ').trim();
                         cleaned = fb;
                     }
                     editor.value = cleaned;
-                    showToast('Patient data removed. Please review and re-submit.', 'success');
+                    var label = action === 'remove' ? 'removed from' : 'redacted in';
+                    showToast('Patient data ' + label + ' your text. Please review and re-submit.', 'success');
                 }
+                // override: user confirmed not PII — they can re-submit normally
             });
         } else {
             showToast(data.error || 'Patient data detected. Please remove before submitting.', 'error');

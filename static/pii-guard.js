@@ -567,6 +567,41 @@
 
     // ======================== FETCH INTERCEPTOR ========================
 
+    // Decision cache: prevents re-prompting when the same URL is re-submitted
+    // after redact/remove/override within a short window.
+    var _piiDecisionCache = {};
+    var _PII_CACHE_TTL = 120000; // 2 minutes
+
+    function _getCachedDecision(urlStr) {
+        var entry = _piiDecisionCache[urlStr];
+        if (entry && (Date.now() - entry.ts) < _PII_CACHE_TTL) return entry.action;
+        delete _piiDecisionCache[urlStr];
+        return null;
+    }
+
+    function _cacheDecision(urlStr, action) {
+        _piiDecisionCache[urlStr] = { action: action, ts: Date.now() };
+    }
+
+    function _applyDecision(action, body, matches, url, options, originalFetch, context, urlStr) {
+        if (action === 'override') {
+            // Add header so server-side PII middleware allows it through
+            if (!options.headers) options.headers = {};
+            if (options.headers instanceof Headers) {
+                options.headers.set('X-PII-Override', '1');
+            } else {
+                options.headers['X-PII-Override'] = '1';
+            }
+            return originalFetch.call(context, url, options);
+        }
+        // Redact or Remove
+        var cleaned = action === 'remove'
+            ? removeObject(body, matches)
+            : redactObject(body, matches);
+        options.body = JSON.stringify(cleaned);
+        return originalFetch.call(context, url, options);
+    }
+
     function attachToFetch() {
         const originalFetch = window.fetch;
 
@@ -585,6 +620,7 @@
             // (Smart Reporter has its own checkEditorPII pre-check that cleans the textarea)
             const urlStr = typeof url === 'string' ? url : url.toString();
             const skipPrefixes = ['/auth/', '/api/admin/', '/api/backup', '/login', '/register',
+                '/api/pii-override-log',
                 '/radiology-protocols/admin/', '/incidental-findings/admin/', '/admin/reporting-algorithms/',
                 '/api/smart-reporter/ai-assist', '/api/smart-reporter/quick-review',
                 '/api/smart-reporter/generate-tree', '/api/smart-reporter/anatomy'];
@@ -605,6 +641,12 @@
                 return originalFetch.call(this, url, options);
             }
 
+            // Check if user already made a decision for this URL recently
+            var cachedAction = _getCachedDecision(urlStr);
+            if (cachedAction) {
+                return _applyDecision(cachedAction, body, matches, url, options, originalFetch, this, urlStr);
+            }
+
             // PII detected — show modal with highlighted preview
             const action = await showPIIModal(matches, body);
 
@@ -614,6 +656,9 @@
                     pii_blocked: true
                 }), { status: 422, headers: { 'Content-Type': 'application/json' } });
             }
+
+            // Cache the decision so re-submits don't re-prompt
+            _cacheDecision(urlStr, action);
 
             if (action === 'override') {
                 // Log the override to audit trail (fire-and-forget)
@@ -632,16 +677,9 @@
                         target_url: urlStr
                     })
                 }).catch(function() {});
-                // Send original body unchanged
-                return originalFetch.call(this, url, options);
             }
 
-            // Redact ([REDACTED] placeholder) or Remove (delete entirely)
-            const cleaned = action === 'remove'
-                ? removeObject(body, matches)
-                : redactObject(body, matches);
-            options.body = JSON.stringify(cleaned);
-            return originalFetch.call(this, url, options);
+            return _applyDecision(action, body, matches, url, options, originalFetch, this, urlStr);
         };
     }
 
