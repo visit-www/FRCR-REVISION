@@ -1,0 +1,148 @@
+{% extends 'base.html' %}
+{% block title %}{{ 'SBA Practice' if question_type == 'sba' else 'Viva Practice' }} - RadInsights{% endblock %}
+{% block tool_active_sba %}{{ 'active' if question_type == 'sba' else '' }}{% endblock %}
+{% block tool_active_viva %}{{ 'active' if question_type == 'viva' else '' }}{% endblock %}
+{% block mobile_active_sba %}{{ 'active' if question_type == 'sba' else '' }}{% endblock %}
+{% block mobile_active_viva %}{{ 'active' if question_type == 'viva' else '' }}{% endblock %}
+
+{% block mobile_breadcrumb %}
+<li class="breadcrumb-item active text-white-50">{{ 'SBA Practice' if question_type == 'sba' else 'Viva Practice' }}</li>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3 px-lg-4">
+    <div class="row">
+        <div class="col-12">
+            <!-- Header -->
+            <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+                <div>
+                    {% if question_type == 'sba' %}
+                    <h4 class="mb-1"><i class="fas fa-graduation-cap me-2" style="color: #198754;"></i>SBA Practice</h4>
+                    <small class="text-muted">FRCR 2B style Single Best Answer questions generated from radiology reports</small>
+                    {% else %}
+                    <h4 class="mb-1"><i class="fas fa-comments me-2" style="color: #6b46c1;"></i>Viva Practice</h4>
+                    <small class="text-muted">FRCR 2B style viva scenarios generated from radiology reports</small>
+                    {% endif %}
+                </div>
+                <div class="d-flex gap-2 align-items-center">
+                    <span class="badge bg-light text-dark border" style="font-size: 0.75rem;">{{ total_count }} {{ 'question set' if total_count == 1 else 'question sets' }}</span>
+                    <a href="/smart-reporter" class="btn btn-sm btn-brand-primary">
+                        <i class="fas fa-plus me-1"></i>Generate New
+                    </a>
+                </div>
+            </div>
+
+            <!-- Filters -->
+            <div class="card border-0 shadow-sm mb-3">
+                <div class="card-body py-2 px-3">
+                    <form method="GET" class="d-flex flex-wrap gap-2 align-items-center">
+                        <small class="fw-semibold text-muted me-1"><i class="fas fa-filter me-1"></i>Filter:</small>
+                        <select name="section" class="form-select form-select-sm" style="max-width: 200px;" onchange="this.form.submit()">
+                            <option value="">All Body Sections</option>
+                            {% for s in body_sections %}
+                            <option value="{{ s }}" {{ 'selected' if s == selected_section }}>{{ s }}{% if section_counts.get(s) %} ({{ section_counts[s] }}){% endif %}</option>
+                            {% endfor %}
+                        </select>
+                        <select name="modality" class="form-select form-select-sm" style="max-width: 220px;" onchange="this.form.submit()">
+                            <option value="">All Modalities</option>
+                            {% for m in modalities %}
+                            <option value="{{ m }}" {{ 'selected' if m == selected_modality }}>{{ m }}</option>
+                            {% endfor %}
+                        </select>
+                        {% if selected_section or selected_modality %}
+                        <a href="{{ '/learn/sba' if question_type == 'sba' else '/learn/viva' }}" class="btn btn-sm btn-outline-secondary">
+                            <i class="fas fa-times me-1"></i>Clear
+                        </a>
+                        {% endif %}
+                    </form>
+                </div>
+            </div>
+
+            <!-- Toggle between types -->
+            <div class="d-flex gap-2 mb-3">
+                <a href="/learn/sba{{ '?section=' + selected_section if selected_section }}{{ ('&' if selected_section else '?') + 'modality=' + selected_modality if selected_modality }}"
+                   class="btn btn-sm {{ 'btn-success' if question_type == 'sba' else 'btn-outline-success' }}">
+                    <i class="fas fa-graduation-cap me-1"></i>SBA Practice
+                </a>
+                <a href="/learn/viva{{ '?section=' + selected_section if selected_section }}{{ ('&' if selected_section else '?') + 'modality=' + selected_modality if selected_modality }}"
+                   class="btn btn-sm {{ 'btn-purple' if question_type == 'viva' else 'btn-outline-purple' }}">
+                    <i class="fas fa-comments me-1"></i>Viva Practice
+                </a>
+            </div>
+
+            {% if questions %}
+            <!-- Question Cards -->
+            <div class="row g-3">
+                {% for q in questions %}
+                <div class="col-12">
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-header bg-white border-0 py-2 px-3">
+                            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                                <div class="d-flex align-items-center gap-2">
+                                    {% if question_type == 'sba' %}
+                                    <i class="fas fa-graduation-cap" style="color: #198754;"></i>
+                                    {% else %}
+                                    <i class="fas fa-comments" style="color: #6b46c1;"></i>
+                                    {% endif %}
+                                    <small class="fw-semibold" style="color: var(--brand-text-primary);">
+                                        {{ q.title or ('SBA Set #' + q.id|string if question_type == 'sba' else 'Viva Scenario #' + q.id|string) }}
+                                    </small>
+                                </div>
+                                <div class="d-flex align-items-center gap-2">
+                                    {% if q.body_section %}
+                                    <span class="badge" style="background: {{ '#198754' if question_type == 'sba' else '#6b46c1' }}; font-size: 0.65rem;">{{ q.body_section }}</span>
+                                    {% endif %}
+                                    {% if q.modality %}
+                                    <span class="badge bg-light text-dark border" style="font-size: 0.65rem;">{{ q.modality }}</span>
+                                    {% endif %}
+                                    <small class="text-muted" style="font-size: 0.65rem;">{{ q.created_at.strftime('%d %b %Y') if q.created_at }}</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-body px-3 py-2">
+                            <div class="learn-question-content" id="qContent{{ q.id }}">
+                                {{ q.html_content|safe }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <!-- Empty State -->
+            <div class="text-center py-5">
+                <i class="fas {{ 'fa-graduation-cap' if question_type == 'sba' else 'fa-comments' }} mb-3" style="font-size: 3rem; color: #dee2e6;"></i>
+                <h5 class="text-muted">No {{ 'SBA' if question_type == 'sba' else 'Viva' }} questions yet</h5>
+                <p class="text-muted small mb-3">
+                    Questions are automatically captured when you use the {{ 'SBA' if question_type == 'sba' else 'Viva' }} button in Smart Reporter.
+                </p>
+                <a href="/smart-reporter" class="btn btn-brand-primary">
+                    <i class="fas fa-file-medical me-1"></i>Open Smart Reporter
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+    .btn-purple { background: #6b46c1; color: #fff; border-color: #6b46c1; }
+    .btn-purple:hover { background: #5a3aa5; color: #fff; }
+    .btn-outline-purple { color: #6b46c1; border-color: #6b46c1; background: transparent; }
+    .btn-outline-purple:hover { background: #6b46c1; color: #fff; }
+
+    .learn-question-content { font-size: 0.88rem; line-height: 1.6; }
+    .learn-question-content h5 { font-size: 1.1rem; font-weight: 600; color: var(--brand-text-primary); margin-bottom: 0.75rem; }
+    .learn-question-content h6 { font-size: 0.95rem; font-weight: 600; margin-top: 1rem; }
+    .learn-question-content details { margin: 0.5rem 0; }
+    .learn-question-content summary { cursor: pointer; font-weight: 600; color: var(--brand-primary); padding: 0.3rem 0; }
+    .learn-question-content summary:hover { text-decoration: underline; }
+    .learn-question-content .sba-question { border-left: 3px solid #198754; padding-left: 1rem; margin-bottom: 1.5rem; }
+    .learn-question-content .sba-vignette { background: #f8f9fa; padding: 0.75rem; border-radius: 0.375rem; margin-bottom: 0.5rem; }
+    .learn-question-content .viva-exchange { border-left: 3px solid #6b46c1; padding-left: 1rem; margin-bottom: 1rem; }
+    .learn-question-content ol[type="A"] { padding-left: 1.5rem; }
+    .learn-question-content ol[type="A"] li { margin-bottom: 0.25rem; }
+    .learn-question-content .action-further-reading { margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid #e9ecef; font-size: 0.8rem; }
+    .learn-question-content .action-further-reading h6 { font-size: 0.8rem; color: var(--brand-text-secondary); }
+</style>
+{% endblock %}

@@ -68,7 +68,18 @@ RADIQ_SYSTEM_PROMPT = (
     "- Always emphasise clinical safety and good practice.\n"
     "- If imaging is NOT indicated, clearly justify why — do not default to ordering scans.\n"
     "- If the query is ambiguous, state your assumptions clearly at the start.\n"
-    "- Transform messy user input into a clean, professional query title in the h5.radiq-title.\n"
+    "- Transform messy user input into a clean, professional query title in the h5.radiq-title.\n\n"
+
+    # ── Named protocols & DB content ──
+    "NAMED PROTOCOLS:\n"
+    "- When the user mentions a specific named protocol (e.g. Camp Bastion, Trauma CT, "
+    "Fleischner, Bosniak, LI-RADS, PI-RADS, TI-RADS), provide the ACTUAL protocol details — "
+    "specific criteria, categories, management recommendations, and decision thresholds.\n"
+    "- Do NOT paraphrase named protocols into generic advice. Be precise and authoritative.\n"
+    "- If RELEVANT CONTENT FROM RADINSIGHTS DATABASE is provided below the query, "
+    "incorporate it into your response. Reference that the content is available in RadInsights.\n"
+    "- Cite specific guideline publications (journal, year, DOI if known) — not just "
+    "'based on general consensus'.\n"
 )
 
 # ── Category-specific instruction overlays ─────────────────────────────
@@ -106,35 +117,82 @@ CATEGORY_PROMPTS = {
         "Cite real references only — if unsure, write 'Based on general radiology consensus'.\n"
     ),
     'incident': (
-        "TASK: Help structure a radiology incident/adverse event report.\n"
-        "STYLE: Datix-style structured incident report. Objective, non-judgmental, factual. "
-        "Focus on learning and system improvement, never individual blame.\n\n"
-        "SECTION STRUCTURE (use these exact <h5> headings in order):\n"
-        "1. <h5>Incident Description</h5> — What happened, when, where.\n"
-        "2. <h5>Patient Impact Assessment</h5> — Harm level: no harm / low / moderate / severe.\n"
-        "3. <h5>Contributing Factors</h5> — Systemic factors, not individual blame.\n"
-        "4. <h5>Root Cause Analysis</h5> — Focus on system failures.\n"
-        "5. <h5>Immediate Actions</h5> — Actions already taken.\n"
-        "6. <h5>Recommendations</h5> — Wrap in <div class='radiq-suggested-response'>. "
-        "Specific recommendations to prevent recurrence, lessons learned.\n"
-        "7. <h5>References</h5> — 2-4 guideline-level references. "
+        "TASK: Generate a complete Datix-style radiology incident/adverse event report.\n"
+        "STYLE: Structured, objective, non-judgmental, factual — suitable for electronic "
+        "incident reporting systems (Datix, Riskman, Ulysses). Focus on learning and system "
+        "improvement, never individual blame. Use British English.\n\n"
+        "IMPORTANT — PLACEHOLDERS: For any patient-specific or situation-specific details the "
+        "user has NOT provided, insert clearly marked placeholders in square brackets, e.g. "
+        "[Patient Initials], [Hospital Number], [Date of Incident], [Cannula Size e.g. 20G], "
+        "[Estimated Volume in ml], [Injection Rate ml/s], [Scanner Number], [Staff Grade]. "
+        "The user will fill these in. NEVER invent specific patient details.\n\n"
+        "SECTION STRUCTURE (use these exact <h5> headings in order):\n\n"
+        "1. <h5>Incident Details</h5>\n"
+        "   Present as a definition list (<dl>):\n"
+        "   - <strong>Incident Type:</strong> Clinical Incident / Treatment (or appropriate category)\n"
+        "   - <strong>Sub-Category:</strong> Infer from user input (e.g. Extravasation, Missed Finding, "
+        "Wrong Patient, Contrast Reaction, Equipment Failure, Communication Error)\n"
+        "   - <strong>Date of Incident:</strong> [Date of Incident]\n"
+        "   - <strong>Time of Incident:</strong> [Time of Incident]\n"
+        "   - <strong>Location:</strong> [Location e.g. Radiology Department — CT Scanner 2]\n"
+        "   - <strong>Severity of Harm:</strong> No Harm / Low / Moderate / Severe / Death "
+        "(select and justify based on description)\n"
+        "   - <strong>Was the Patient Informed?</strong> [Yes/No]\n\n"
+        "2. <h5>Incident Description</h5>\n"
+        "   Structured narrative covering:\n"
+        "   - <strong>Context:</strong> What procedure/examination was being performed\n"
+        "   - <strong>Incident:</strong> What happened — factual, chronological account\n"
+        "   - <strong>Observation:</strong> Clinical findings observed at the time\n"
+        "   Include relevant technical details as placeholders if not provided "
+        "(e.g. [Contrast Agent], [Injection Rate], [Cannula Size/Site]).\n\n"
+        "3. <h5>Action Taken</h5>\n"
+        "   - <strong>Immediate Action:</strong> What was done straight away\n"
+        "   - <strong>Patient Management:</strong> Clinical interventions (evidence-based for "
+        "the incident type — e.g. limb elevation + cool pack for extravasation, adrenaline "
+        "protocol for anaphylaxis)\n"
+        "   - <strong>Escalation:</strong> Who was informed and when\n"
+        "   - <strong>Follow-up:</strong> Observation period, outcome, ongoing plan\n\n"
+        "4. <h5>Documentation &amp; Reporting</h5>\n"
+        "   - Where the incident was documented (RIS/CRIS, medical notes)\n"
+        "   - Patient advice given (verbal and written)\n"
+        "   - State: 'Departmental protocol followed' if appropriate\n\n"
+        "5. <h5>Root Cause / Contributing Factors</h5>\n"
+        "   Present as a checklist of plausible factors (tick-box style using ☐ / ☑). "
+        "Focus on systemic factors, never individual blame. Examples:\n"
+        "   Equipment, Communication, Training, Workload, Patient factors, Process gaps.\n\n"
+        "6. <h5>Recommendations</h5> — Wrap in <div class='radiq-suggested-response'>.\n"
+        "   Specific, actionable recommendations to prevent recurrence. "
+        "Include lessons learned and any protocol changes suggested.\n\n"
+        "7. <h5>Key Elements Checklist</h5>\n"
+        "   A summary checklist of items that MUST be included for audit validity "
+        "(tailored to the incident type). Present as ☐ items.\n\n"
+        "8. <h5>References</h5> — 2-4 guideline-level references relevant to the incident type. "
+        "Cite RCR, NPSA, NHS Improvement, ACR, or ESUR guidelines as appropriate. "
         "Cite real references only — if unsure, write 'Based on general radiology consensus'.\n"
     ),
     'imaging_protocol': (
-        "TASK: Provide imaging protocol advice.\n"
-        "STYLE: Structured technical guidance. Be specific enough that a radiographer "
-        "could protocol the scan from your guidance.\n\n"
+        "TASK: Provide a practical, copy-ready imaging protocol suitable for daily consultant vetting.\n"
+        "STYLE: Concise, actionable, radiographer-ready. Written as a consultant would brief a "
+        "radiographer — not a textbook chapter. No padding or filler text.\n\n"
+        "CRITICAL: If the user mentions a NAMED protocol (e.g. Camp Bastion, Fleischner, "
+        "polytrauma, triple-rule-out, CTPA), provide the ACTUAL published protocol parameters — "
+        "not a generic approximation. Include the original source and year.\n\n"
         "SECTION STRUCTURE (use these exact <h5> headings in order):\n"
-        "1. <h5>Clinical Justification</h5> — Modality choice and clinical rationale.\n"
-        "2. <h5>Protocol Parameters</h5> — Wrap in <div class='radiq-suggested-response'>. "
-        "Specific sequences (MRI) or reconstruction kernels (CT), coverage, phases.\n"
-        "3. <h5>Contrast Protocol</h5> — Agent, volume, rate, timing of phases. "
-        "State 'No contrast required' if not applicable.\n"
-        "4. <h5>Patient Preparation</h5> — Fasting, hydration, bowel prep as needed.\n"
-        "5. <h5>Dose &amp; Safety</h5> — ALARA, DRLs, contraindications (eGFR, allergy, pregnancy). "
-        "Reference RCR iRefer guidelines where applicable.\n"
-        "6. <h5>References</h5> — 2-4 guideline-level references. "
-        "Cite real references only — if unsure, write 'Based on general radiology consensus'.\n"
+        "1. <h5>Justification</h5> — 1-2 sentences: why this modality and protocol. "
+        "Reference iRefer code if applicable.\n"
+        "2. <h5>Protocol</h5> — Wrap in <div class='radiq-suggested-response'>. "
+        "Present as a concise table or bullet list a radiographer can follow directly:\n"
+        "   • Coverage, kVp, mAs, pitch, slice thickness, reconstructions\n"
+        "   • Sequences (MRI) with plane, weighting, fat-sat\n"
+        "   • Contrast: agent, volume, rate, delay (seconds), phases\n"
+        "   • Reformats required\n"
+        "   If a named protocol is requested, give its EXACT published parameters.\n"
+        "3. <h5>Key Points</h5> — 3-5 bullet points: practical tips, common pitfalls, "
+        "contraindications, patient prep if non-standard. Only what matters clinically.\n"
+        "4. <h5>References</h5> — Cite specific publications with year (e.g. "
+        "'RCR iRefer 9th edition, 2024', 'ACR Appropriateness Criteria: Blunt Chest Trauma, "
+        "2022', 'ESUR Contrast Media Guidelines v10.0, 2018'). "
+        "If the protocol has a seminal publication, cite it with journal and year.\n"
     ),
     'radiographer': (
         "TASK: Respond to a radiographer's clinical or protocol query.\n"
@@ -167,13 +225,14 @@ CATEGORY_PROMPTS = {
 }
 
 
-def generate_radiq_response(question, category):
+def generate_radiq_response(question, category, db_context=''):
     """
     Generate a RadIQ AI response.
 
     Args:
         question: The user's clinical query text
         category: One of RADIQ_CATEGORIES
+        db_context: Optional string of relevant DB content to include in prompt
 
     Returns:
         str: HTML-formatted response
@@ -192,6 +251,7 @@ def generate_radiq_response(question, category):
     user_prompt = (
         f"{category_instruction}\n"
         f"QUERY:\n{question.strip()}\n\n"
+        f"{db_context}\n\n"
         "Transform the above input into a clean professional query title, "
         "then respond using the section structure described in the task instructions above."
     )

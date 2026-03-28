@@ -11,7 +11,10 @@ from datetime import date
 from flask import Blueprint, render_template, request, jsonify
 from flask_login import login_required, current_user
 
-from models import db, RadIQQuery
+from models import (
+    db, RadIQQuery, ClinicalProtocol, ReportingAlgorithm,
+    IncidentalFindingCalculator,
+)
 from ai_radiq import generate_radiq_response, RADIQ_CATEGORIES, RadIQError
 
 logger = logging.getLogger(__name__)
@@ -52,6 +55,85 @@ def radiq_landing():
 
 # ==================== QUERY SUBMISSION ====================
 
+def _find_relevant_db_content(question, category):
+    """Search DB for protocols, algorithms, and tools relevant to the user query."""
+    results = []
+    q = question.strip()
+    if not q:
+        return ''
+
+    try:
+        # 1. Clinical Protocols — most relevant for protocol/radiographer/general queries
+        protocols = ClinicalProtocol.query.filter_by(is_published=True).filter(
+            db.or_(
+                ClinicalProtocol.title.ilike(f'%{q[:80]}%'),
+                ClinicalProtocol.keywords.ilike(f'%{q[:80]}%'),
+            )
+        ).limit(3).all()
+
+        # If no match on full query, try individual keywords (3+ chars)
+        if not protocols:
+            words = [w for w in q.split() if len(w) >= 3]
+            for word in words[:5]:
+                found = ClinicalProtocol.query.filter_by(is_published=True).filter(
+                    db.or_(
+                        ClinicalProtocol.title.ilike(f'%{word}%'),
+                        ClinicalProtocol.keywords.ilike(f'%{word}%'),
+                    )
+                ).limit(2).all()
+                for p in found:
+                    if p not in protocols:
+                        protocols.append(p)
+                if len(protocols) >= 3:
+                    break
+
+        for p in protocols[:3]:
+            content_preview = ''
+            if p.content_html:
+                import re
+                content_preview = re.sub(r'<[^>]+>', '', p.content_html)[:500]
+            results.append(
+                f"[PROTOCOL] {p.title} (source: {p.source_citation or 'internal'})\n"
+                f"{content_preview}"
+            )
+
+        # 2. Reporting Algorithms — useful for structured guidance
+        algos = ReportingAlgorithm.query.filter_by(is_available=True).filter(
+            db.or_(
+                ReportingAlgorithm.title.ilike(f'%{q[:80]}%'),
+                ReportingAlgorithm.keywords.ilike(f'%{q[:80]}%') if ReportingAlgorithm.keywords is not None else False,
+            )
+        ).limit(2).all()
+        for a in algos:
+            results.append(
+                f"[ALGORITHM] {a.title} — {a.category or ''} ({a.body_section or ''})\n"
+                f"{(a.description or '')[:300]}"
+            )
+
+        # 3. Radiology Tools (IF calculators) — for specific clinical tools
+        tools = IncidentalFindingCalculator.query.filter(
+            IncidentalFindingCalculator.title.ilike(f'%{q[:80]}%')
+        ).limit(2).all()
+        for t in tools:
+            results.append(
+                f"[TOOL] {t.title} — {t.body_section or ''}"
+            )
+
+    except Exception as e:
+        logger.warning(f"DB content lookup for RadIQ failed (non-fatal): {e}")
+
+    if not results:
+        return ''
+
+    return (
+        "\n\nRELEVANT CONTENT FROM RADINSIGHTS DATABASE:\n"
+        "The following resources exist in our database and may be relevant. "
+        "Reference them in your response where appropriate, and mention they are "
+        "available in RadInsights for the user to access.\n\n"
+        + "\n\n".join(results)
+    )
+
+
 @radiq_bp.route('/api/radiq/query', methods=['POST'])
 @login_required
 def radiq_query():
@@ -73,8 +155,11 @@ def radiq_query():
     if not ok:
         return err
 
+    # Look up relevant content in DB before calling AI
+    db_context = _find_relevant_db_content(question, category)
+
     try:
-        response_html = generate_radiq_response(question, category)
+        response_html = generate_radiq_response(question, category, db_context=db_context)
     except RadIQError as e:
         logger.error("RadIQ generation failed: %s", e)
         return jsonify({'error': str(e)}), 500
@@ -113,11 +198,18 @@ def radiq_query():
 @radiq_bp.route('/api/radiq/history')
 @login_required
 def radiq_history():
-    """Get the current user's RadIQ query history (latest first, limit 50)."""
-    queries = RadIQQuery.query.filter_by(user_id=current_user.id)\
-        .order_by(RadIQQuery.created_at.desc())\
-        .limit(50)\
-        .all()
+    """Get the current user's RadIQ query history (latest first, limit 50). Supports ?q= search."""
+    search = (request.args.get('q') or '').strip()
+    query = RadIQQuery.query.filter_by(user_id=current_user.id)
+
+    if search:
+        like_pattern = f'%{search}%'
+        query = query.filter(db.or_(
+            RadIQQuery.question.ilike(like_pattern),
+            RadIQQuery.response_text.ilike(like_pattern),
+        ))
+
+    queries = query.order_by(RadIQQuery.created_at.desc()).limit(50).all()
     return jsonify({
         'queries': [q.to_dict() for q in queries],
     })

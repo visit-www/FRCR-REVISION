@@ -8,9 +8,9 @@
 {% endblock %}
 
 {% block content %}
-<div class="container py-4" id="smartReporterContainer">
+<div class="container-fluid py-4 px-lg-4" id="smartReporterContainer">
     <div class="row justify-content-center">
-        <div class="col-12 col-xl-10" id="smartReporterCol">
+        <div class="col-12" id="smartReporterCol">
 
             <!-- Disclaimer -->
             <div class="p-2 rounded mb-3" style="background: #f8f9fa; border: 1px solid #e9ecef;">
@@ -452,6 +452,50 @@
                     </div>
                 </div>
 
+                <!-- Sticky Action Toolbar -->
+                <div id="editorToolbar" class="sr-editor-toolbar">
+                    <div class="d-flex flex-wrap align-items-center gap-2">
+                        <!-- Quick Check -->
+                        <button class="btn btn-sm btn-brand-primary" id="btnReviewReport2" onclick="reviewReport()">
+                            <i class="fas fa-spell-check me-1"></i>Quick Check
+                        </button>
+                        <!-- Finalize -->
+                        <button class="btn btn-sm btn-outline-success" onclick="document.getElementById('askClaudeInput').value='Finalize this report'; askClaude();">
+                            <i class="fas fa-check-circle me-1"></i>Finalize
+                        </button>
+                        <!-- Separator -->
+                        <div class="vr mx-1 d-none d-md-block" style="height: 20px; opacity: 0.3;"></div>
+                        <!-- Ask Claude inline -->
+                        <div class="input-group input-group-sm" style="max-width: 300px; flex: 1; min-width: 180px;">
+                            <input type="text" id="askClaudeInput" class="form-control form-control-sm"
+                                   placeholder="Ask AI..." maxlength="1000">
+                            <button class="btn btn-sm btn-brand-primary" id="btnAskClaude" onclick="askClaude()">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                        <!-- Separator -->
+                        <div class="vr mx-1 d-none d-md-block" style="height: 20px; opacity: 0.3;"></div>
+                        <!-- Report Actions -->
+                        <div class="d-flex flex-wrap gap-1" id="reportActionButtons">
+                            <button class="btn report-action-btn" data-action="mdt" onclick="submitReportAction('mdt')" style="border-color:#e96304;color:#e96304;">
+                                <i class="fas fa-users"></i>MDT
+                            </button>
+                            <button class="btn report-action-btn" data-action="sba" onclick="submitReportAction('sba')" style="border-color:#198754;color:#198754;">
+                                <i class="fas fa-graduation-cap"></i>SBA
+                            </button>
+                            <button class="btn report-action-btn" data-action="viva" onclick="submitReportAction('viva')" style="border-color:#6b46c1;color:#6b46c1;">
+                                <i class="fas fa-comments"></i>Viva
+                            </button>
+                            <button class="btn report-action-btn" data-action="email_colleague" onclick="submitReportAction('email_colleague')" style="border-color:#5E899E;color:#5E899E;">
+                                <i class="fas fa-user-md"></i>Email Dr
+                            </button>
+                            <button class="btn report-action-btn" data-action="email_patient" onclick="submitReportAction('email_patient')" style="border-color:#0d6efd;color:#0d6efd;">
+                                <i class="fas fa-envelope"></i>Email Pt
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="row g-3" id="editorMainRow">
                     <!-- Left column: Input + Output -->
                     <div class="col-lg-7" id="editorLeftCol">
@@ -474,7 +518,7 @@
                             </div>
                             <div class="card-footer bg-white border-0 py-2 px-3">
                                 <div class="d-flex flex-wrap gap-2 align-items-center">
-                                    <button class="btn btn-sm btn-brand-primary" id="btnReviewReport2" onclick="reviewReport()">
+                                    <button class="btn btn-sm btn-brand-primary" onclick="reviewReport()">
                                         <i class="fas fa-spell-check me-1"></i>Quick Check
                                     </button>
                                 </div>
@@ -594,12 +638,13 @@
                                 </div>
                             </div>
                             <div class="card-body p-3" style="overflow: visible;">
-                                <!-- Input -->
+                                <!-- Ask Claude input (in-card mirror) -->
                                 <div class="input-group mb-2">
-                                    <input type="text" id="askClaudeInput" class="form-control form-control-sm"
+                                    <input type="text" class="form-control form-control-sm sr-ask-mirror"
                                            placeholder="e.g. Help me write the impression..."
-                                           maxlength="1000">
-                                    <button class="btn btn-sm btn-brand-primary" id="btnAskClaude" onclick="askClaude()">
+                                           maxlength="1000"
+                                           onkeydown="if(event.key==='Enter'){event.preventDefault(); window._proxyAskClaude(this);}">
+                                    <button class="btn btn-sm btn-brand-primary" onclick="window._proxyAskClaude(this.closest('.input-group').querySelector('.sr-ask-mirror'))">
                                         <i class="fas fa-paper-plane"></i>
                                     </button>
                                 </div>
@@ -620,8 +665,8 @@
                                         Recommendations
                                     </button>
                                 </div>
-                                <!-- Report Actions (one-click AI transforms) -->
-                                <div class="d-flex flex-wrap gap-1 mb-2" id="reportActionButtons">
+                                <!-- Report Actions (in-card duplicates) -->
+                                <div class="d-flex flex-wrap gap-1 mb-2">
                                     <button class="btn report-action-btn" data-action="mdt" onclick="submitReportAction('mdt')"
                                             style="border-color: #e96304; color: #e96304;">
                                         <i class="fas fa-users"></i>MDT
@@ -2765,6 +2810,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // ==================== ASK RADINSIGHT ====================
 
+    // Proxy: copy mirror input value to canonical #askClaudeInput, then fire
+    window._proxyAskClaude = function(mirrorInput) {
+        var canonical = document.getElementById('askClaudeInput');
+        canonical.value = mirrorInput.value;
+        mirrorInput.value = '';
+        askClaude();
+    };
+
     window.askClaude = async function() {
         const input = document.getElementById('askClaudeInput');
         const question = input.value.trim();
@@ -2934,6 +2987,14 @@ document.addEventListener('DOMContentLoaded', function() {
             card.style.borderLeft = '3px solid ' + meta.border;
             card.style.background = meta.bg;
             content.innerHTML = data.html || '<p>No content generated.</p>';
+            // Append learning capture note for SBA/Viva
+            if (action === 'sba' || action === 'viva') {
+                var learnLink = action === 'sba' ? '/learn/sba' : '/learn/viva';
+                content.insertAdjacentHTML('beforeend',
+                    '<p style="font-size:0.62rem;color:#999;margin-top:0.5rem;margin-bottom:0;">' +
+                    '<i class="fas fa-database me-1"></i>Questions &amp; answers saved to the ' +
+                    '<a href="' + learnLink + '" style="color:#999;text-decoration:underline;">learning database</a>.</p>');
+            }
             container.classList.remove('d-none');
             container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
@@ -3991,8 +4052,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // ==================== SPLIT / STACK VIEW TOGGLE ====================
 
     function getSavedViewMode() {
-        try { return localStorage.getItem('smartReporterViewMode') || 'split'; }
-        catch(e) { return 'split'; }
+        try { return localStorage.getItem('smartReporterViewMode') || 'stack'; }
+        catch(e) { return 'stack'; }
     }
 
     function saveViewMode(mode) {
@@ -4019,11 +4080,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!row || !outputSection) return;
 
         if (mode === 'split') {
-            // Widen container
-            container.classList.remove('container');
-            container.classList.add('container-fluid');
-            col.classList.remove('col-xl-10');
-            col.classList.add('col-xl-12');
             // Add split class
             row.classList.add('sr-split-mode');
             // Move output to right column
@@ -4038,11 +4094,6 @@ document.addEventListener('DOMContentLoaded', function() {
             if (btnLabel) btnLabel.textContent = 'Stack View';
             if (btnIcon) { btnIcon.classList.remove('fa-columns'); btnIcon.classList.add('fa-layer-group'); }
         } else {
-            // Restore container
-            container.classList.remove('container-fluid');
-            container.classList.add('container');
-            col.classList.remove('col-xl-12');
-            col.classList.add('col-xl-10');
             // Remove split class
             row.classList.remove('sr-split-mode');
             // Move output back to left column

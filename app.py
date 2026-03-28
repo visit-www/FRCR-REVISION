@@ -2147,6 +2147,95 @@ def get_study_stats():
     })
 
 
+# ==================== LEARN: SBA & VIVA PRACTICE ====================
+
+LEARNING_BODY_SECTIONS = [
+    'Head and Neck', 'Brain', 'Spine', 'Thorax', 'Cardiac',
+    'Abdomen', 'Liver', 'Renal', 'Pelvis', 'Breast',
+    'MSK', 'Trauma', 'Vascular', 'Paediatric',
+]
+
+LEARNING_MODALITIES = [
+    'CT with contrast', 'CT without contrast', 'CT with and without contrast',
+    'MRI with contrast', 'MRI without contrast', 'MRI with and without contrast',
+    'Ultrasound', 'X-ray', 'Fluoroscopy', 'Nuclear Medicine', 'PET-CT',
+]
+
+
+@app.route('/learn/sba')
+@login_required
+def learn_sba():
+    """Browse SBA practice questions by body section and modality."""
+    from models import LearningQuestion
+    from sqlalchemy import func
+
+    section = request.args.get('section', '')
+    modality = request.args.get('modality', '')
+
+    query = LearningQuestion.query.filter_by(question_type='sba')
+    if section:
+        query = query.filter_by(body_section=section)
+    if modality:
+        query = query.filter_by(modality=modality)
+
+    questions = query.order_by(LearningQuestion.created_at.desc()).all()
+
+    # Counts per section for sidebar
+    section_counts = dict(
+        db.session.query(LearningQuestion.body_section, func.count(LearningQuestion.id))
+        .filter_by(question_type='sba')
+        .group_by(LearningQuestion.body_section)
+        .all()
+    )
+
+    return render_template('learn_questions.html',
+                           question_type='sba',
+                           questions=questions,
+                           body_sections=LEARNING_BODY_SECTIONS,
+                           modalities=LEARNING_MODALITIES,
+                           section_counts=section_counts,
+                           selected_section=section,
+                           selected_modality=modality,
+                           total_count=LearningQuestion.query.filter_by(question_type='sba').count())
+
+
+@app.route('/learn/viva')
+@login_required
+def learn_viva():
+    """Browse Viva practice questions by body section and modality."""
+    from models import LearningQuestion
+    from sqlalchemy import func
+
+    section = request.args.get('section', '')
+    modality = request.args.get('modality', '')
+
+    query = LearningQuestion.query.filter_by(question_type='viva')
+    if section:
+        query = query.filter_by(body_section=section)
+    if modality:
+        query = query.filter_by(modality=modality)
+
+    questions = query.order_by(LearningQuestion.created_at.desc()).all()
+
+    # Counts per section for sidebar
+    section_counts = dict(
+        db.session.query(LearningQuestion.body_section, func.count(LearningQuestion.id))
+        .filter_by(question_type='viva')
+        .group_by(LearningQuestion.body_section)
+        .all()
+    )
+
+    return render_template('learn_questions.html',
+                           question_type='viva',
+                           questions=questions,
+                           body_sections=LEARNING_BODY_SECTIONS,
+                           modalities=LEARNING_MODALITIES,
+                           section_counts=section_counts,
+                           selected_section=section,
+                           selected_modality=modality,
+                           total_count=LearningQuestion.query.filter_by(question_type='viva').count())
+
+
 @app.route('/modules')
 @login_required
 def modules_view():

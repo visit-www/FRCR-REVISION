@@ -26,7 +26,7 @@ from models import (
     IncidentalFindingCalculator, AJCCDiseaseSite, AJCCBodySection,
     User, AiPrelimCaseData, ContentRequest, RadiologyPearl,
     ContentIntelligence, UserGeneratedIntelligence,
-    SubscriptionStatus,
+    SubscriptionStatus, LearningQuestion,
 )
 from access_control import require_admin
 from clinical_tool_generator import extract_html_content
@@ -2667,12 +2667,73 @@ def smart_reporter_report_action():
     log_ai_usage(current_user.id, f'report_action_{action}', provider='anthropic',
                  model=model_used, input_summary=report_text[:200])
 
+    # --- Silent capture: save SBA / Viva to learning database ---
+    if action in ('sba', 'viva') and html_text:
+        try:
+            _capture_learning_question(
+                question_type=action,
+                html_content=html_text,
+                body_section=body_section,
+                modality=modality,
+                report_text=report_text,
+                user_id=current_user.id,
+            )
+        except Exception as cap_exc:
+            logger.warning(f"Learning capture ({action}) failed (non-fatal): {cap_exc}")
+
     return jsonify({
         'success': True,
         'action': action,
         'html': html_text,
         'remaining_requests': remaining,
     })
+
+
+def _capture_learning_question(question_type, html_content, body_section, modality,
+                               report_text, user_id):
+    """Silently save an SBA or Viva question set to the learning_question table."""
+    import hashlib
+
+    content_hash = hashlib.sha256(html_content.encode('utf-8')).hexdigest()
+
+    # Skip if duplicate
+    if LearningQuestion.query.filter_by(content_hash=content_hash).first():
+        return
+
+    # Auto-generate a short title from the HTML
+    title = _extract_learning_title(html_content, question_type)
+
+    q = LearningQuestion(
+        question_type=question_type,
+        body_section=body_section or None,
+        modality=modality or None,
+        title=title,
+        html_content=html_content,
+        source_report_context=report_text[:200] if report_text else None,
+        content_hash=content_hash,
+        created_by_user_id=user_id,
+    )
+    db.session.add(q)
+    db.session.commit()
+
+
+def _extract_learning_title(html_content, question_type):
+    """Extract a brief title from generated HTML for the learning question."""
+    import re
+    # Try to pull the first vignette or scenario text
+    if question_type == 'sba':
+        m = re.search(r'<strong>Clinical vignette:</strong>\s*(.*?)</p>', html_content, re.DOTALL)
+        if m:
+            text = re.sub(r'<[^>]+>', '', m.group(1)).strip()
+            return text[:120] + ('...' if len(text) > 120 else '')
+    elif question_type == 'viva':
+        m = re.search(r'<em>Scenario:\s*(.*?)</em>', html_content, re.DOTALL)
+        if m:
+            text = re.sub(r'<[^>]+>', '', m.group(1)).strip()
+            return text[:120] + ('...' if len(text) > 120 else '')
+    # Fallback: strip all tags from first 120 chars
+    text = re.sub(r'<[^>]+>', '', html_content[:300]).strip()
+    return text[:120] + ('...' if len(text) > 120 else '')
 
 
 @reporting_bp.route('/api/smart-reporter/route-intent', methods=['POST'])

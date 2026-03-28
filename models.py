@@ -2932,6 +2932,29 @@ class RadiologyPearl(db.Model):
         return f'<RadiologyPearl {self.id} verified={self.is_verified}>'
 
 
+# ==================== LEARNING QUESTIONS (SBA / VIVA) ====================
+
+class LearningQuestion(db.Model):
+    """SBA and Viva questions silently captured from Smart Reporter report actions."""
+    __tablename__ = 'learning_question'
+
+    id = db.Column(db.Integer, primary_key=True)
+    question_type = db.Column(db.String(20), nullable=False, index=True)  # 'sba' or 'viva'
+    body_section = db.Column(db.String(100), index=True)
+    modality = db.Column(db.String(100))
+    title = db.Column(db.String(300))
+    html_content = db.Column(db.Text, nullable=False)
+    source_report_context = db.Column(db.Text)  # first 200 chars of source report
+    content_hash = db.Column(db.String(64), unique=True, nullable=False)  # SHA-256 dedup
+    created_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    created_by = db.relationship('User', foreign_keys=[created_by_user_id])
+
+    def __repr__(self):
+        return f'<LearningQuestion {self.id} type={self.question_type} section={self.body_section}>'
+
+
 # ==================== CONTENT INTELLIGENCE ====================
 
 class ContentIntelligence(db.Model):

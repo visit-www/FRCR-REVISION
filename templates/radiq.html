@@ -105,6 +105,9 @@
                         <div id="querySpinner" class="d-none">
                             <div class="spinner-border spinner-border-sm text-secondary me-2" role="status"></div>
                             <small class="text-muted">Generating...</small>
+                            <button class="btn btn-sm btn-outline-secondary ms-2" onclick="cancelRadIQRequest()" style="font-size: 0.75rem; padding: 0.15rem 0.5rem;">
+                                <i class="fas fa-times me-1"></i>Cancel
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -158,6 +161,14 @@
         </button>
         <div class="collapse mt-2" id="historyCollapse">
             <div class="card border-0 shadow-sm">
+                <div class="px-2 pt-2">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-white border-end-0"><i class="fas fa-search text-muted" style="font-size: 0.7rem;"></i></span>
+                        <input type="text" id="historySearchInput" class="form-control form-control-sm border-start-0"
+                               placeholder="Search queries &amp; responses..." style="font-size: 0.78rem;"
+                               oninput="filterHistory(this.value)">
+                    </div>
+                </div>
                 <div class="card-body p-0" id="historyPanel" style="max-height: 400px; overflow-y: auto;">
                     <div class="text-center py-4 text-muted" id="historyEmpty">
                         <i class="fas fa-inbox" style="font-size: 1.5rem; opacity: 0.4;"></i>
@@ -299,6 +310,16 @@ function resetCategory() {
     document.getElementById('responsePlaceholder').classList.remove('d-none');
 }
 
+// ── AbortController for RadIQ ──
+let radiqController = null;
+
+function cancelRadIQRequest() {
+    if (radiqController) {
+        radiqController.abort();
+        radiqController = null;
+    }
+}
+
 // ── Submit Query ──
 async function submitQuery() {
     const question = document.getElementById('queryInput').value.trim();
@@ -312,12 +333,17 @@ async function submitQuery() {
     document.getElementById('responseArea').classList.add('d-none');
     document.getElementById('responsePlaceholder').classList.remove('d-none');
 
+    cancelRadIQRequest();
+    radiqController = new AbortController();
+
     try {
         const res = await fetch('/api/radiq/query', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ question, category: selectedCategory }),
+            signal: radiqController.signal,
         });
+        radiqController = null;
         const data = await res.json();
         if (!res.ok || data.error) {
             alert(data.error || 'Request failed. Please try again.');
@@ -326,7 +352,12 @@ async function submitQuery() {
         showResponse(data.response_html, data.remaining_requests);
         loadHistory();
     } catch (err) {
-        alert('Network error. Please try again.');
+        radiqController = null;
+        if (err.name === 'AbortError') {
+            // User cancelled — silently reset UI
+        } else {
+            alert('Network error. Please try again.');
+        }
     } finally {
         btn.disabled = false;
         spinner.classList.add('d-none');
@@ -377,9 +408,17 @@ function newQuery() {
 }
 
 // ── History ──
-async function loadHistory() {
+let _historySearchTimer = null;
+function filterHistory(val) {
+    clearTimeout(_historySearchTimer);
+    _historySearchTimer = setTimeout(() => loadHistory(val), 400);
+}
+
+async function loadHistory(search) {
     try {
-        const res = await fetch('/api/radiq/history');
+        let url = '/api/radiq/history';
+        if (search) url += '?q=' + encodeURIComponent(search);
+        const res = await fetch(url);
         const data = await res.json();
         const list = document.getElementById('historyList');
         const empty = document.getElementById('historyEmpty');
